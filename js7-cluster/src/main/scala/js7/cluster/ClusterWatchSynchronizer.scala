@@ -82,13 +82,15 @@ private final class ClusterWatchSynchronizer(
     stopHeartbeating
 
   def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes,
-    clusterWatchIdChangeAllowed: Boolean = false)
+    clusterWatchIdChangeAllowed: Boolean = false,
+    forceWhenUntaught: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
     event match
       case _: ClusterPassiveLost =>
         suspendHeartbeat(IO.pure(updatedClusterState))(
           clusterWatch.applyEvent(event, updatedClusterState,
-            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
+            forceWhenUntaught = forceWhenUntaught))
 
       case _ =>
         // ClusterSwitchedOver must be emitted by the passive cluster node,

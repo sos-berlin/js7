@@ -67,7 +67,7 @@ object StreamExtensions:
                 Pull.eval(beat).flatMap(Pull.output1) >> go(next)
               case None =>
                 Pull.done
-          
+
           go(timedPull)
         .stream
 
@@ -133,7 +133,11 @@ object StreamExtensions:
         .unchunks
 
     /** When multiple elements are available, take only the newest one and drop the older ones.
-     *
+     * <ul>
+     * <li>Take only the last element of each non-empty Chunk if
+     * it differs from the last emitted element.
+     * <li>Only non-empty Chunks are emitted.
+     * </ul>
      * Consecutive equal elements are collapsed to one.
      */
     def onlyNewest(using Concurrent[F], Eq[O]): Stream[F, O] =

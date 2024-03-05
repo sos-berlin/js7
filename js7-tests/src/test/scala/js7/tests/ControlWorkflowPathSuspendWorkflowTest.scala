@@ -64,7 +64,7 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
       Seq(aAgent, bAgent)
         .flatMap(Option(_)).parTraverse(_.terminate()).await(99.s)
       controller.terminate(suppressSnapshot = true).await(99.s)
-    finally 
+    finally
       super.afterAll()
 
   "ControlWorkflowPath suspend=true" in:

@@ -43,7 +43,7 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     try
       controller.api.stop await 99.s
       controller.terminate() await longTimeout
-    finally 
+    finally
       super.afterAll()
 
   s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in:

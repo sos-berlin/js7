@@ -64,7 +64,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
 
       backupController.testEventBus
         .whenPF[WaitingForConfirmation, Unit](_.request match {
-          case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _) =>
+          case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
         })
         .await(99.s)
 

@@ -65,7 +65,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     try
       controllerApi.stop.await(99.s)
       controller.terminate() await 99.s
-    finally 
+    finally
       super.afterAll()
 
   private val agentRef = AgentRef(agentPath, directors = Seq(subagentId))

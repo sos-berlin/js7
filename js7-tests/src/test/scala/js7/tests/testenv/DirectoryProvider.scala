@@ -54,7 +54,6 @@ import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
-import scala.concurrent
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal

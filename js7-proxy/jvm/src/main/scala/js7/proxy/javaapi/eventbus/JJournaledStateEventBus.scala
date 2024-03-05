@@ -60,7 +60,7 @@ extends AutoCloseable:
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
   case class EventSubscription(asScala: JJournaledStateEventBus.this.asScala.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription, JavaWrapper, AutoCloseable:
-    
+
     type AsScala = JJournaledStateEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */

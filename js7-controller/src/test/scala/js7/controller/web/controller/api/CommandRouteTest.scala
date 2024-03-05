@@ -24,7 +24,7 @@ final class CommandRouteTest extends OurTestSuite, RouteTester, CommandRoute
   protected def whenShuttingDown = Deferred.unsafe
 
   private given IORuntime = ioRuntime
-  
+
   private var commandReceived = false
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =

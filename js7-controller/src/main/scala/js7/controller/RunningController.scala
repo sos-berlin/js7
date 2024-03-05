@@ -174,7 +174,7 @@ extends MainService, Service.StoppableByRequest:
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
 
   @TestOnly
-  def waitUntilReady(): Unit =
+  def waitUntilReady()(using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line): Unit =
     IO.fromFutureDummyCancelable(IO(whenReady))
       .logWhenItTakesLonger
       .await(99.s)
@@ -368,7 +368,7 @@ object RunningController:
     }
 
   def ioRuntimeResource[F[_]](conf: ControllerConfiguration)(implicit F: Sync[F])
-  : Resource[F, IORuntime] = 
+  : Resource[F, IORuntime] =
     OwnIORuntime.resource[F](conf.name, conf.config)
 
   private def itemVerifierResource(

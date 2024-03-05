@@ -88,6 +88,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
+import Logger.syntax.*
 
 /**
   * @author Joacim Zschimmer
@@ -1188,7 +1189,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           .recoverWith(t => IO(logger.error(
             s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
           .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
-          .awaitInfinite // TODO
+          .unsafeRunAndForget() // TODO
+          //.awaitInfinite until v2.7
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
         for agentRef <- journal.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath) do
@@ -1198,7 +1200,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             .recoverWith(t => IO(logger.error(
               s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
-            .awaitInfinite // TODO
+            .unsafeRunAndForget() // TODO
+            //.awaitInfinite until v2.7
 
       case ItemDetached(itemKey, agentPath: AgentPath) =>
         for agentEntry <- agentRegister.get(agentPath) do

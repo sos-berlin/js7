@@ -334,9 +334,10 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
-    (using IORuntime)
+    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
-    val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.shortClassName}]"
+    lazy val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.shortClassName}]" +
+      s" in ${summon[sourcecode.FileName].value}:${summon[sourcecode.Line].value}"
     logger.debugIO(label)(
       when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
         .map {

@@ -1,8 +1,8 @@
 package js7.controller.agent
 
 import cats.data.NonEmptyList
-import cats.effect.{IO, Resource}
 import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
@@ -237,7 +237,7 @@ extends Service.StoppableByRequest:
                 case Left(()) => IO.unit // stop requested
                 case Right(()) => commandQueue.maybeStartSending
               }
-              .recover(t => logger.error(
+              .handleError(t => logger.error(
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
               .raceFold(untilStopRequested)
               .startAndForget))
@@ -255,14 +255,14 @@ extends Service.StoppableByRequest:
     })
 
   def changeAgentRef(agentRef: AgentRef): IO[Unit] =
-    logger.traceIO("changeAgentRef", agentRef)(
+    logger.traceIO("changeAgentRef", agentRef):
       state.lock.lock(IO {
         state.directors = agentRef.directors
       }) *>
         // FIXME Handle Cluster node URI change or forbid this
         // TODO Restart DirectorDriver only if one of the URIs has changed
         startNewClusterWatch *>
-        startAndForgetDirectorDriver)
+        startAndForgetDirectorDriver
 
   def terminate(noJournal: Boolean = false, reset: Boolean = false): IO[Unit] =
     logger.traceIO("terminate",
@@ -314,9 +314,9 @@ extends Service.StoppableByRequest:
           case Some(agentRunId) => adoptEvents(agentRunId, stampedEvents)
         })
         .flatMap(_.fold(IO.unit)(releaseAdoptedEvents))
-        .recover(t =>
-          logger.error(s"$agentDriver.adoptEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
-        .logWhenItTakesLonger(s"$agentDriver.adoptEvents")
+        .handleError(t =>
+          logger.error(s"$agentDriver.onEventsFetched => " + t.toStringWithCauses, t.nullIfNoStackTrace))
+        .logWhenItTakesLonger(s"$agentDriver.onEventsFetched")
 
   private def releaseAdoptedEvents(adoptedEventId: EventId): IO[Unit] =
     state.lock.lock(IO {
@@ -420,7 +420,7 @@ extends Service.StoppableByRequest:
         .acquire(directorDriverResource)
         .void)
 
-  private def directorDriverResource: Resource[IO, DirectorDriver] =
+  private def directorDriverResource: ResourceIO[DirectorDriver] =
     logger.traceResource:
       for
         client <- activeClientResource
@@ -434,7 +434,7 @@ extends Service.StoppableByRequest:
           journal, conf)
       yield directorDriver
 
-  private def clusterWatchResource: Resource[IO, ClusterWatchService] =
+  private def clusterWatchResource: ResourceIO[ClusterWatchService] =
     for
       clients <- clientsResource
       clusterWatchService <- ClusterWatchService.resource(
@@ -476,7 +476,7 @@ extends Service.StoppableByRequest:
       .rightAs(())
       .onProblemHandleInF(problem => logger.error(problem.toString))
 
-  private def activeClientResource: Resource[IO, AgentClient] =
+  private def activeClientResource: ResourceIO[AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](
       clientsResource,
       failureDelays = conf.recouplingStreamReader.failureDelays,
@@ -486,7 +486,7 @@ extends Service.StoppableByRequest:
           case t => Problem.fromThrowable(t)
         }).void)
 
-  private def clientsResource: Resource[IO, Nel[AgentClient]] =
+  private def clientsResource: ResourceIO[Nel[AgentClient]] =
     Resource
       .eval(agentToUris(agentPath).orThrow/*AgentRef and SubagentItems must exist !!!*/)
       .flatMap(_.traverse(clientResource))
@@ -499,7 +499,7 @@ extends Service.StoppableByRequest:
           .map(_.map(_.uri).toList))
           .map(NonEmptyList.fromListUnsafe)
 
-  private def clientResource(uri: Uri): Resource[IO, AgentClient] =
+  private def clientResource(uri: Uri): ResourceIO[AgentClient] =
     SessionApi.resource(IO {
       val agentUserAndPassword = controllerConfiguration.config
         .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
@@ -524,7 +524,9 @@ extends Service.StoppableByRequest:
 
   override def toString = s"AgentDriver($agentPath)"
 
+
 private[controller] object AgentDriver:
+
   def resource(
     agentRef: AgentRef, eventId: EventId,
     adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => IO[Option[EventId]],
@@ -533,7 +535,7 @@ private[controller] object AgentDriver:
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration,
     actorSystem: ActorSystem)
     (using IORuntime)
-  : Resource[IO, AgentDriver] =
+  : ResourceIO[AgentDriver] =
     Service.resource(IO(
       new AgentDriver(
         agentRef, eventId,

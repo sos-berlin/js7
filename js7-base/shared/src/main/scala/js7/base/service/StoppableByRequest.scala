@@ -29,7 +29,7 @@ trait StoppableByRequest:
     stopRequested.get
 
   private val memoizedStop =
-    IO.defer:
+    IO.defer(
       logger
         .traceIO(s"$toString stop"):
           _isStopping = true
@@ -40,7 +40,7 @@ trait StoppableByRequest:
                 fiber.join.flatMap:
                   case Outcome.Canceled() => IO.unit
                   case o => IO.fromOutcome(o)
-        .unsafeMemoize
+    ).unsafeMemoize
 
   protected def stop: IO[Unit] =
     memoizedStop

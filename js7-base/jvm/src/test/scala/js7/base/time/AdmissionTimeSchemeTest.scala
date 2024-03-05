@@ -117,7 +117,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
 
 
 object AdmissionTimeSchemeTest:
-  
+
   def findLocalInterval(dateTimeString: String)(implicit admissionTimeScheme: AdmissionTimeScheme)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(

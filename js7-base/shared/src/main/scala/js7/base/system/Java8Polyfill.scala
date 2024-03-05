@@ -1,12 +1,8 @@
 package js7.base.system
 
-import com.sun.management.OperatingSystemMXBean
-import java.io.{InputStream, OutputStream}
-import scala.annotation.{nowarn, tailrec}
+import scala.annotation.nowarn
 
 object Java8Polyfill:
-
-  private val byteBufferSize = 8192
 
   val javaVersion: Int =
     // Java 9: = Runtime.version.major
@@ -25,32 +21,7 @@ object Java8Polyfill:
    *  and imports should be kept. */
   def java8Polyfill() = {}
 
-  implicit final class InputStreamPolyfill(private val in: InputStream) extends AnyVal:
-    // Since Java 9
-    def transferTo(out: OutputStream): Long =
-      var count = 0L
-      val buffer = new Array[Byte](byteBufferSize)
-
-      @tailrec def loop(): Unit =
-        val len = in.read(buffer)
-        if  len > 0 then
-          out.write(buffer, 0, len)
-          count += len
-          loop()
-      loop()
-      count
-
   implicit final class ThreadPolyfill(private val thread: Thread) extends AnyVal:
     // Since Java 19
     def threadId: Long =
       thread.getId: @nowarn("msg=deprecated")
-
-  implicit final class OperatingSystemMXBeanPolyfill(private val mx: OperatingSystemMXBean)
-  extends AnyVal:
-    // Since Java 14
-    def getCpuLoad: Double =
-      mx.getSystemCpuLoad: @nowarn("msg=deprecated")
-
-    // Since Java 14
-    def getTotalMemorySize: Long =
-      mx.getTotalPhysicalMemorySize: @nowarn("msg=deprecated")

@@ -15,9 +15,9 @@ object Logger
     scribe.Logger.empty
 
   def initialize(name: String) = {}
-  
-  def isInitialized: Boolean = true 
-  
+
+  def isInitialized: Boolean = true
+
   def apply[A: ClassTag]: scribe.Logger =
     apply(implicitClass[A])
 

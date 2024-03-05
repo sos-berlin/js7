@@ -27,7 +27,7 @@ import scala.concurrent.duration.FiniteDuration
 final class ClusterWatchTest extends OurAsyncTestSuite
 {
   ProblemCodeMessages.initialize()
-  
+
   private given IORuntime = ioRuntime
 
   private val correlId = CorrelId("TEST")

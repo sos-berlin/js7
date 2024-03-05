@@ -20,13 +20,15 @@
  */
 package js7.base.test
 
-import cats.effect.{IO, Outcome}
 import cats.effect.testkit.TestControl.NonTerminationException
 import cats.effect.testkit.{TestContext, TestControl}
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
+import cats.effect.{IO, Outcome}
+import cats.syntax.option.*
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.catsutils.OwnIORuntimeRegister
+import js7.base.utils.Atomic
 import scala.concurrent.CancellationException
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -288,7 +290,6 @@ final class OurTestControl[A] private(
   def seed: String = ctx.seed
 }
 
-
 object OurTestControl:
 
   /**
@@ -453,9 +454,7 @@ object OurTestControl:
 
   def executeEmbed_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A]): IO[A] =
     execute_(ctx, runtime)(program) flatMap { c =>
-      val nt = new(Id ~> IO) {
-        def apply[E](e: E) = IO.pure(e)
-      }
+      val nt = new (Id ~> IO) { def apply[E](e: E) = IO.pure(e) }
 
       val onCancel = IO.defer(IO.raiseError(new CancellationException()))
       val onNever = IO.raiseError(new NonTerminationException())

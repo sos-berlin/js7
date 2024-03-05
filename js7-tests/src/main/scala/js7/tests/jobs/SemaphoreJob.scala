@@ -85,7 +85,8 @@ object SemaphoreJob:
         .unsafeRunSync()
 
     def continue(n: Int = 1)(using IORuntime): Unit =
-      logger.debug(s"$name.continue($n)")
+      val count = semaphore.flatMap(_.count).unsafeRunSync()
+      logger.debug(s"$name.continue($n) count=$count")
       semaphore
         .flatMap(_.releaseN(n))
         .unsafeRunSync()

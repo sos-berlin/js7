@@ -28,7 +28,8 @@ final class ClusterWatchRequestTest extends OurTestSuite
           CorrelId("TESTTEST"),
           from = NodeId("A"),
           ClusterNodesAppointed(clusterSetting),
-          NodesAppointed(clusterSetting)),
+          NodesAppointed(clusterSetting),
+          forceWhenUntaught = false),
         json"""{
           "TYPE": "ClusterWatchCheckEvent",
           "requestId": 123,
@@ -61,7 +62,8 @@ final class ClusterWatchRequestTest extends OurTestSuite
                 "heartbeatTimeout": 20
               }
             }
-          }
+          },
+          "forceWhenUntaught": false
         }""")
     }
 

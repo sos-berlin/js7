@@ -87,7 +87,8 @@ extends Service.StoppableByRequest:
           currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes,
-    clusterWatchIdChangeAllowed: Boolean = false)
+    clusterWatchIdChangeAllowed: Boolean = false,
+    forceWhenUntaught: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
    logger.traceIOWithResult("applyEvent", clusterState, body =
     CorrelId.use { correlId =>
@@ -99,7 +100,8 @@ extends Service.StoppableByRequest:
         case _ =>
           check(
             clusterState.setting.clusterWatchId,
-            ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState),
+            ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState,
+              forceWhenUntaught = forceWhenUntaught),
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_)))
     })

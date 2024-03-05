@@ -89,7 +89,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, TestCatsEffect, ScalatestRou
     try
       Pekkos.shutDownHttpConnectionPools(system)
       allocatedWebServer.release.await(99.s)
-    finally 
+    finally
       super.afterAll()
 
   protected final def requireAuthorizedAccess(client: PekkoHttpClient, expectedUserId: UserId = UserId("A-USER"))

@@ -54,7 +54,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
 
   implicit private lazy val actorSystem: ActorSystem =
     newActorSystem(
-      "PekkoHttpClientTest", 
+      "PekkoHttpClientTest",
       config"""pekko.http.client.idle-timeout = 2s""",
       executionContext = ioRuntime.compute)
 
@@ -63,7 +63,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
       closer.close()
       // TODO shutdownAllConnectionPools blocks longer than 99s after "connection refused"
       Pekkos.terminateAndWait(actorSystem, 9.s)
-    finally 
+    finally
       super.afterAll()
 
   "Without a server" - {

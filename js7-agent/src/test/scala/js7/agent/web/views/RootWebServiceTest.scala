@@ -26,7 +26,7 @@ import cats.effect.unsafe.IORuntime
 final class RootWebServiceTest extends OurTestSuite, TestCatsEffect, WebServiceTest, RootWebService:
 
   private given IORuntime = ioRuntime
-  
+
   protected def whenShuttingDown = Deferred.unsafe
 
   protected def agentOverview = IO.pure(AgentOverview(

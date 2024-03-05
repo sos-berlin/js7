@@ -28,8 +28,8 @@ import scala.util.{Success, Try}
 final class CommandActor(agentHandle: AgentHandle)(using ioRuntime: IORuntime)
 extends Actor:
 
-  private given ExecutionContext = ioRuntime.compute 
-  
+  private given ExecutionContext = ioRuntime.compute
+
   // TODO Don't use CorrelId as command ID in the register
   //  because CorrelId may be used for several commands!
   //  The register is used for inspection via web service only

@@ -172,17 +172,18 @@ extends Service.StoppableByRequest:
   private def continuallyFetchEvents: IO[Unit] =
    logger.traceIO:
     observeAndConsumeEvents
-      .recover(t => logger.error(t.toStringWithCauses, t))
+      .handleError(t => logger.error(t.toStringWithCauses, t))
       .flatMapLoop(())((_, _, again) =>
         eventFetcher.decouple
           .*>(eventFetcher
             .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
             .raceFold(untilStopRequested))
           .void
-          .recover(t => logger.error(t.toStringWithCauses, t))
+          .handleError(t => logger.error(t.toStringWithCauses, t))
           .*>(IO.defer(IO.unlessA(isStopping)(
             again(())))))
-      .guarantee(untilFetchingStopped.complete(()).void)
+      .guarantee:
+        untilFetchingStopped.complete(()).void
 
   private def observeAndConsumeEvents: IO[Unit] =
     logger.traceIO(IO.defer {
@@ -193,6 +194,7 @@ extends Service.StoppableByRequest:
             stream.chunks
           else
             stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
+        .interruptWhenF(untilStopRequested)
         .flatMap(o => Stream
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).

@@ -21,7 +21,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest.*
 
 final class WindowsLogonTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
 

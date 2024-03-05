@@ -58,7 +58,7 @@ final class ProcessDriverTest
     try
       closer.close()
       ioxAllocated.release.await(99.s)
-    finally 
+    finally
       super.afterAll()
 
   "ProcessDriver" in:

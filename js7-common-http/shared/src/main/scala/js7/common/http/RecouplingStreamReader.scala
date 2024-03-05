@@ -6,7 +6,6 @@ import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
@@ -17,9 +16,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.{Atomic, MVar}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader.*
@@ -47,7 +44,7 @@ abstract class RecouplingStreamReader[
   protected def getStream(api: Api, after: I): IO[Checked[Stream[IO, V]]]
 
   protected def onCouplingFailed(api: Api, problem: Problem): IO[Boolean] =
-    inUseVar.flatMap(_.tryRead).map(_.isDefined)
+    inUse.get
       .flatMap(inUse =>
         IO {
           var logged = false
@@ -84,40 +81,29 @@ abstract class RecouplingStreamReader[
   protected def idleTimeout = Option(requestTimeout + 2.s)/*let service timeout kick in first*/
 
   private def isStopped =
-    val is = stopRequested || coupledApiVar.isStopped || !inUse.get()
+    val is = stopRequested || coupledApiVar.isStopped || !inUse.is
     if is then
       logger.trace(s"isStopped=true because stopRequested=$stopRequested" +
         s" || coupledApiVar.isStopped=${coupledApiVar.isStopped}" +
-        s" || !inUse.get()=${!inUse.get()}")
+        s" || inUse=$inUse")
     is
 
   private val stopped = Deferred.unsafe[IO, Unit]
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
-  private val inUse = Atomic(false)
-  private val inUseVar: IO[MVar[IO, Unit]] =
-    MVar.empty[IO, Unit].unsafeMemoize
+  private val inUse = new InUse
   private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def stream(api: Api, after: I): Stream[IO, V] =
-    logger.debugStream("stream", s"$api after=$after")(
-      Stream.eval(
-        inUseVar.flatMap(_.put(()))
-          .*>(IO:
-            logger.trace(s"$api: inUse := true")
-            inUse := true)
-          .logWhenItTakesLonger
-          .*>(decouple)
-      ) >>
-        new ForApi(api, after)
-          .streamAgainAndAgain
-          .interruptWhenF(stopped.get.void)
-          .onFinalize(IO.defer {
-            logger.trace(s"$api: inUse := false")
-            inUse := false
-            inUseVar.flatMap(_.tryTake.void)
-          }))
+    logger.debugStream("stream", s"$api after=$after"):
+      Stream
+        .resource(inUse.resource(api))
+        .evalTap: _ =>
+          decouple
+        .flatMap: _ =>
+          new ForApi(api, after).streamAgainAndAgain
+        .interruptWhenF(stopped.get)
 
   final def terminateAndLogout: IO[Unit] =
     logger.traceIO:

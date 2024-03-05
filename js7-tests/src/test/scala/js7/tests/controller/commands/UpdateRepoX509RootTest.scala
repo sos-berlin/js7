@@ -48,7 +48,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
     super.beforeAll()
   }
 
-  override def afterAll() = 
+  override def afterAll() =
     try deleteDirectoryRecursively(workDir)
     finally super.afterAll()
 

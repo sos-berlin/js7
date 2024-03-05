@@ -27,9 +27,9 @@ extends VersionedItem, TrivialItemState[ScheduledOrderGenerator]:
 
 
 object ScheduledOrderGenerator
-extends VersionedItem.Companion[ScheduledOrderGenerator], 
+extends VersionedItem.Companion[ScheduledOrderGenerator],
   TrivialItemState.Companion[ScheduledOrderGenerator]:
-  
+
   type Item = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 

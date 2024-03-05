@@ -19,6 +19,7 @@ sealed trait ClusterWatchRequest:
   def clusterState: HasNodes
   def maybeEvent: Option[ClusterEvent]
   def isNodeLostEvent(lostNodeId: NodeId): Boolean
+  def forceWhenUntaught: Boolean
   def toShortString: String
 
 final case class ClusterWatchCheckEvent(
@@ -26,7 +27,8 @@ final case class ClusterWatchCheckEvent(
   correlId: CorrelId,
   from: NodeId,
   event: ClusterEvent,
-  clusterState: ClusterState.HasNodes)
+  clusterState: ClusterState.HasNodes,
+  forceWhenUntaught: Boolean = false)
 extends ClusterWatchRequest:
   def checked: Checked[this.type] =
     if from != clusterState.activeId && !event.isInstanceOf[ClusterSwitchedOver] then
@@ -59,6 +61,8 @@ extends ClusterWatchRequest:
   def isNodeLostEvent(lostNodeId: NodeId) = false
 
   def maybeEvent = None
+
+  def forceWhenUntaught = false
 
   override def toShortString =
     s"$requestId ClusterState.${clusterState.toShortString}"

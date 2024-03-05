@@ -15,7 +15,7 @@ import js7.common.http.PekkoHttpUtils.RichHttpResponse
 final class RootRouteTest extends OurTestSuite, TestCatsEffect, ScalatestRouteTest, RootRoute:
 
   private given IORuntime = ioRuntime
-  
+
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 

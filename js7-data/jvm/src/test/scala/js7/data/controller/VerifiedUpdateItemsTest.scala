@@ -22,9 +22,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import fs2.Stream
 
 final class VerifiedUpdateItemsTest extends OurTestSuite, TestCatsEffect:
-  
+
   private given IORuntime = ioRuntime
-  
+
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
   private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)
   private lazy val itemSigner = new ItemSigner[SignableItem](signer, signableItemJsonCodec)

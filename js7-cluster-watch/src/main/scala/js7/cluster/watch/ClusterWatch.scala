@@ -52,7 +52,7 @@ final class ClusterWatch(
           _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
 
         (_state, request.maybeEvent) match
-          case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
+          case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) if !request.forceWhenUntaught =>
             manuallyConfirmed(event) match
               case None =>
                 val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)

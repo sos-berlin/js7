@@ -34,7 +34,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
 
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
-  
+
   private val lock = AsyncLock("HttpSessionApi")
   private val sessionTokenRef = Atomic(none[SessionToken])
 

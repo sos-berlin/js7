@@ -237,3 +237,4 @@ object FileJournal:
 
     final val whenNoFailoverByOtherNode: IO[Unit] =
       tryingPassiveLostSwitch.whenOff
+        .logWhenItTakesLonger

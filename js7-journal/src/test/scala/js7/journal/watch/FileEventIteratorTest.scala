@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers.*
 final class FileEventIteratorTest extends OurTestSuite, TestCatsEffect:
 
   private given IORuntime = ioRuntime
-  
+
   "FileEventIterator" in:
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
       val journalLocation = JournalLocation(TestState, dir resolve "test")

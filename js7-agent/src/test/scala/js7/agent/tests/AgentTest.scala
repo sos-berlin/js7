@@ -40,7 +40,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 final class AgentTest extends OurTestSuite, TestCatsEffect, AgentTester:
 
   private given IORuntime = ioRuntime
-  
+
   "work/http-uri" in:
     assert((agentConfiguration.workDirectory / "http-uri").contentString ==
       s"${agent.localUri}/subagent")

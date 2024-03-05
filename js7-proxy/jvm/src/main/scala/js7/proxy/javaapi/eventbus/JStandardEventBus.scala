@@ -61,7 +61,7 @@ extends JavaWrapper, AutoCloseable:
   case class EventSubscription private[JStandardEventBus](
     asScala: JStandardEventBus.this.asScala.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription, JavaWrapper, AutoCloseable:
-    
+
     type AsScala = JStandardEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */

@@ -23,6 +23,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MVar}
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.delegate.DelegateCouplingState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
@@ -101,10 +102,9 @@ private trait SubagentEventListener:
           if !bufferDelay.isPositive then
             stream.chunks
           else
-            stream
-              .groupWithin( // ticks
-                conf.eventBufferSize,
-                conf.eventBufferDelay max conf.commitDelay)
+            stream.groupWithin(
+              conf.eventBufferSize,
+              conf.eventBufferDelay max conf.commitDelay)
         .evalMap(_
           .traverse(handleEvent)
           .flatMap: updatedStampedChunk0 =>
@@ -199,15 +199,17 @@ private trait SubagentEventListener:
               heartbeat = Some(conf.heartbeatTiming.heartbeat))
             .map(_
               .detectPauses(conf.heartbeatTiming.longHeartbeatTimeout, PauseDetected)
-              .flatTap:
+              .evalTap:
                 case PauseDetected =>
                   val problem = Problem.pure(s"Missing heartbeat from $subagentId")
                   logger.warn(problem.toString)
-                  Stream.eval(onSubagentDecoupled(Some(problem)))
+                  onSubagentDecoupled(Some(problem))
                 case _ =>
                   onHeartbeatStarted
               .filter(_ != JournalEvent.StampedHeartbeat)
-              .takeWhile(_ ne PauseDetected))
+              .takeWhile(_ ne PauseDetected)
+              .onFinalize:
+                onSubagentDecoupled(problem = None)) // Since v2.7
               //.guaranteeCase(exitCase => IO.defer {
               //  // guaranteeCase runs concurrently, maybe with onDecoupled ?
               //  IO.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
@@ -253,19 +255,30 @@ private trait SubagentEventListener:
 
       protected def stopRequested = false
 
-  private val onHeartbeatStarted: Stream[IO, Unit] =
-    Stream.eval(
-      IO.defer(IO.whenA(!_isHeartbeating.getAndSet(true) && isCoupled)(
+  protected def isStopping: Boolean // Since v2.7
+  protected def isShuttingDown: Boolean // Since v2.7
+
+  private def onHeartbeatStarted: IO[Unit] =
+    IO.defer:
+      val wasHeartbeating = _isHeartbeating.getAndSet(true)
+      if !wasHeartbeating then logger.trace("_isHeartbeating := true")
+      logger.trace(s"### onHeartbeatStarted _isHeartbeating=${_isHeartbeating.get} wasHeartbeating=$wasHeartbeating isCoupled=$isCoupled isCouplingStateCoupled=$isCouplingStateCoupled isStopping=$isStopping isShuttingDown=$isStopping ${journal.unsafeCurrentState().idToSubagentItemState(subagentId).couplingState}")
+      IO.whenA(!wasHeartbeating && isCoupled):
+        IO(logger.trace(s"### persistKeyedEvent $subagentId <-: SubagentCoupled")) *>
         // Different to AgentDriver,
-        // for Subagents the Coupling state is tied to the continuous flow of events.
+        // for Subagents, the Coupling state is tied to the continuous flow of events.
         journal.persistKeyedEvent(subagentId <-: SubagentCoupled)
-          .map(_.orThrow))))
+          .map(_.orThrow)
+
+  private def isCouplingStateCoupled: Boolean =
+    journal.unsafeCurrentState().idToSubagentItemState(subagentId).couplingState ==
+      DelegateCouplingState.Coupled
 
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()
 
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
     IO.defer:
-      _isHeartbeating := false
+      if _isHeartbeating.getAndSet(false) then logger.trace("_isHeartbeating := false")
       IO.whenA(true || isCoupled)(
         emitSubagentCouplingFailed(problem))
 

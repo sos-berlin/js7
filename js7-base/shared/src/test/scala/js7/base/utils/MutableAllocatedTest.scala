@@ -8,7 +8,7 @@ import js7.base.test.OurAsyncTestSuite
 final class MutableAllocatedTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
-  
+
   "MutableAllocated" in:
     val a = new MutableAllocated[Int]
     var count = 0

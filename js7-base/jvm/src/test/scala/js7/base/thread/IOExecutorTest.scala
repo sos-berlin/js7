@@ -25,7 +25,7 @@ import scala.concurrent.duration.Deadline.now
 final class IOExecutorTest extends OurTestSuite, TestCatsEffect:
 
   private given IORuntime = ioRuntime
-  
+
   private val logger = Logger[this.type]
 
   "Success" in:

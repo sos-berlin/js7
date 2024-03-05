@@ -92,7 +92,7 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
     "onlyNewest" - {
       "onlyNewest" in:
         val stream: Stream[IO, Int] =
-          Stream.sleep_[IO](1.s) ++ Stream(1) ++ Stream(2, 3) ++
+          Stream.sleep_[IO](1.s) ++ Stream(1) ++ Stream.empty ++ Stream(2, 3) ++
             Stream.sleep_[IO](1.s) ++ Stream(4, 5) ++ Stream(6) ++
             Stream.sleep_[IO](1.s) ++ Stream(7) ++ Stream(8, 9)
 

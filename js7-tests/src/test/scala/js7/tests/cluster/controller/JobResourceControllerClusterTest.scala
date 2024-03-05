@@ -17,7 +17,7 @@ import js7.tests.jobs.EmptyJob
 import fs2.Stream
 
 final class JobResourceControllerClusterTest extends ControllerClusterTester:
-  
+
   "Cluster handles JobResources properly" in:
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
       primary.runAgents() { _ =>

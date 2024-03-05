@@ -198,20 +198,21 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
   : Resource[IO, Subagent] =
-    Resource.suspend(IO {
-      val eventId = eventWatch.lastAddedEventId
-      directoryProvider
-        .bareSubagentResource(subagentItem, director = director,
-          config,
-          suffix = suffix,
-          suppressSignatureKeys = suppressSignatureKeys)
-        .evalTap(_ => IO {
-          if awaitDedicated then {
-            val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
-            eventWatch.await[SubagentCoupled](after = e)
-          }
-        })
-    })
+    logger.traceResource(s"subagentResource(${subagentItem.id})"):
+      Resource.suspend(IO {
+        val eventId = eventWatch.lastAddedEventId
+        directoryProvider
+          .bareSubagentResource(subagentItem, director = director,
+            config,
+            suffix = suffix,
+            suppressSignatureKeys = suppressSignatureKeys)
+          .evalTap(_ => IO {
+            if awaitDedicated then {
+              val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
+              eventWatch.await[SubagentCoupled](after = e)
+            }
+          })
+      })
 
 
 object ControllerAgentForScalaTest:

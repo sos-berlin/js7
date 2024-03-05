@@ -84,7 +84,7 @@ trait EventWatch:
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (implicit ioRuntime: IORuntime)
+    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   def lastAddedEventId: EventId

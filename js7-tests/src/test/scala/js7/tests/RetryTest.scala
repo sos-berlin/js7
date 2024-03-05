@@ -371,7 +371,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       }
     }
   }
-  
+
   "JS-2105 Cancel while retrying (Engine has to synchronize OrderDetachable with ongoing events)" in
     repeatTest(if (isIntelliJIdea) 100 else 10) { testIndex =>
       // No more InapplicableEventProblem!

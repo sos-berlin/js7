@@ -21,7 +21,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.Deadline.now
 
 final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected val controllerConfig = config"""
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 0ms"""

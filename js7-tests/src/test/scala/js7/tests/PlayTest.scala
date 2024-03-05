@@ -19,7 +19,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 
 /* A test to play with. */
 final class PlayTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(AgentPath("AGENT"))
   protected val items = Nil
   override protected val controllerConfig = config"""

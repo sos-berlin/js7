@@ -62,7 +62,7 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
         .parTraverse(_.terminate())
         .await(99.s)
       controller.terminate(suppressSnapshot = true).await(99.s)
-    finally 
+    finally
       super.afterAll()
 
   "ControlWorkflow sets some breakpoints" in:
