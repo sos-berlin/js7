@@ -148,7 +148,7 @@ services:
     image: js7
     container_name: js7-subagent-2-a
     hostname: subagent-2-a
-    command: ["js7-subagent", "--arg0=js7-subagent-2-b", "-J-Xmx200m"]
+    command: ["js7-subagent", "--arg0=js7-subagent-2-a", "-J-Xmx200m"]
     working_dir: /home/js7
     volumes:
       - ./volumes/subagent-2-a/config:/var/opt/js7/agent/config:ro

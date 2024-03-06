@@ -45,10 +45,10 @@ final class AsyncLock private(
 
   def resource(acquirer: => String): Resource[IO, Locked] =
     Resource.makeCaseFull[IO, Locked](
-      acquire = interruptible =>
+      acquire = cancelable =>
         IO.defer:
           val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
-          acquire(locked, interruptible).as(locked))(
+          acquire(locked, cancelable).as(locked))(
       release = (locked, exitCase) =>
         release(locked, exitCase))
 
@@ -58,7 +58,7 @@ final class AsyncLock private(
   def locked: IO[Option[Locked]] =
     lockM.flatMap(_.tryRead)
 
-  private def acquire(locked: Locked, interruptible: Poll[IO]): IO[Unit] =
+  private def acquire(locked: Locked, cancelable: Poll[IO]): IO[Unit] =
     lockM.flatMap(mvar => IO.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
         if hasAcquired then
@@ -67,7 +67,7 @@ final class AsyncLock private(
           IO.unit
         else
           if noLog then
-            interruptible:
+            cancelable:
               mvar.put(locked)
                 .as(Right(()))
           else
@@ -79,7 +79,7 @@ final class AsyncLock private(
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
                     s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ⟲")
-                  interruptible(mvar.put(locked))
+                  cancelable(mvar.put(locked))
                     .whenItTakesLonger(warnTimeouts): _ =>
                       for lockedBy <- mvar.tryRead yield
                         sym.onInfo()

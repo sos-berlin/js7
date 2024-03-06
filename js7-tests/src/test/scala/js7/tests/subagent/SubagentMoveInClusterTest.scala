@@ -1,7 +1,6 @@
 package js7.tests.subagent
 
-import cats.effect.Resource
-import cats.effect.ResourceIO
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.copyDirectoryContent
@@ -23,7 +22,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveInClusterTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import cats.effect.IO
 
 final class SubagentMoveInClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest /*, SubagentTester*/, BlockingItemUpdater:

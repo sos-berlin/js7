@@ -106,7 +106,7 @@ final class AsyncLockTest extends OurAsyncTestSuite:
     }
   }
 
-  "Cancel releases lock only after io has been canceled" in:
+  "Cancellation releases lock only after io has been canceled" in:
     val lock = AsyncLock("CANCEL-BODY", logWorryDurations = Nil)
     val ioStarted = Deferred.unsafe[IO, Unit]
     @volatile var isCompleted = false

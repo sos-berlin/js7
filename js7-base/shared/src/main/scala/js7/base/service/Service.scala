@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, FiberIO, IO, Outcome, Resource}
+import cats.effect.{Deferred, IO, Outcome, Resource}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*

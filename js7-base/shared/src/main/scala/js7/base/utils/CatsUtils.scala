@@ -17,6 +17,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import scala.concurrent.duration.*
+import fs2.{Pure, Stream}
 
 /**
   * @author Joacim Zschimmer
@@ -210,6 +211,10 @@ object CatsUtils:
   def continueWithLast[A](seq: NonEmptyList[A]): Iterator[A] =
     val last = seq.last
     seq.iterator ++ Iterator.continually(last)
+
+  private // Not tested
+  def continueWithLastStream[A](seq: NonEmptyList[A]): Stream[Pure, A] =
+    Stream.iterable(seq.toList) ++ fs2.Stream.constant(seq.last).repeat
 
   def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
     continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))

@@ -8,11 +8,11 @@ import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.catsutils.SyncDeadline
 import js7.base.fs2utils.StreamExtensions.+:
-import js7.base.monixlike.MonixLikeExtensions.fromAsyncStateAction
 import js7.base.fs2utils.StreamUtils
 import js7.base.fs2utils.StreamUtils.closeableIteratorToStream
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.fromAsyncStateAction
 import js7.base.problem.Checked
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.CatsBlocking.syntax.*
@@ -25,7 +25,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
-import js7.journal.watch.JournalEventWatch.logger
 import js7.journal.watch.RealEventWatch.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
@@ -41,8 +40,6 @@ trait RealEventWatch extends EventWatch:
   protected def isActiveNode: Boolean
 
   protected def scheduler: Scheduler
-
-  given Scheduler = scheduler
 
   // Lazy, initialize only after whenStarted has been called!
   private lazy val committedEventIdSync =
