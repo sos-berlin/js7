@@ -1,10 +1,10 @@
 package js7.base.log
 
+import cats.effect.Resource.ExitCase
 import cats.effect.implicits.monadCancelOps
-import cats.effect.kernel.Sync
-import cats.effect.{IO, Outcome, Resource, SyncIO}
-import cats.syntax.functor.*
+import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
@@ -351,13 +351,16 @@ object Logger extends AdHocLogger:
       (using F: Sync[F])
     : Resource[F, A] =
       for
-        a <- Resource:
+        a <- Resource.applyFull[F, A]: cancelable =>
           logF(logger, logLevel, function + ".acquire", args):
-            resource.allocated
-          .map: pair =>
-            pair._1 ->
-              logF(logger, logLevel, function + ".release", args):
-                pair._2
+            cancelable:
+              resource.allocatedCase
+          .map { case (a, release) =>
+            a ->
+              (exitCase =>
+                logF[F, Unit](logger, logLevel, function + ".release", args):
+                  release(exitCase))
+          }
         //_ <- loggingResource[F](logger, logLevel, function + ".use", args)
       yield
         a

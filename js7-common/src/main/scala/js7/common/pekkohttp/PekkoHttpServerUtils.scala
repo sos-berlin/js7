@@ -1,20 +1,17 @@
 package js7.common.pekkohttp
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO}
 import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
 import js7.common.http.StreamingSupport.*

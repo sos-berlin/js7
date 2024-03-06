@@ -25,7 +25,6 @@ import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.Http
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 

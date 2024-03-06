@@ -86,8 +86,8 @@ extends Service.StoppableByRequest:
   private val sessionNumber = Atomic(0) // Do we still need this ???
   @volatile private var lastCouplingFailed: Option[AgentCouplingFailed] = None
   private var noJournal = false
-  private val clusterWatchAllocated = new MutableAllocated[ClusterWatchService]
-  private val directorDriverAllocated = new MutableAllocated[DirectorDriver]
+  private val clusterWatchAllocated = MutableAllocated[ClusterWatchService]
+  private val directorDriverAllocated = MutableAllocated[DirectorDriver]
   private var clusterState: Option[HasNodes] = None
   private val startDirectorDriverFiber = AsyncVariable(PureFiberIO[Unit](()))
 
@@ -160,11 +160,11 @@ extends Service.StoppableByRequest:
       sessionNumber += 1
       commandQueue.onDecoupled()
 
-  private val commandQueue: CommandQueue = new CommandQueue(
+  private object commandQueue extends CommandQueue(
     agentPath,
     batchSize = conf.commandBatchSize,
-    conf.commandErrorDelay
-  ):
+    conf.commandErrorDelay):
+
     protected def commandParallelism = conf.commandParallelism
 
     protected def executeCommand(command: AgentCommand.Batch) =
@@ -210,6 +210,7 @@ extends Service.StoppableByRequest:
           case _ =>
             logger.warn(msg)
             commandQueue.handleBatchFailed(queueables, delay = true)
+  end commandQueue
 
   protected def start =
     startService(
@@ -219,8 +220,8 @@ extends Service.StoppableByRequest:
         .guarantee(IO {
           state.releaseEventsCancelable.foreach(_.cancel())
         })
-        .guarantee(directorDriverAllocated.release)
-        .guarantee(clusterWatchAllocated.release))
+        .guarantee(directorDriverAllocated.releaseFinally)
+        .guarantee(clusterWatchAllocated.releaseFinally))
 
   def send(input: Queueable): IO[Unit] =
     /*logger.traceIO("send", input.toShortString)*/(IO.defer {
@@ -409,7 +410,6 @@ extends Service.StoppableByRequest:
           startNewDirectorDriver
             .recover(t => logger.error(
               s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t))
-            .raceFold(untilStopRequested)
             .start
       }
       .void

@@ -2,9 +2,8 @@ package js7.base.catsutils
 
 import cats.effect
 import cats.effect.Resource.ExitCase
-import cats.effect.kernel.Outcome
+import cats.effect.{Deferred, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.effect.testkit.TestControl
-import cats.effect.{Deferred, IO, OutcomeIO, Resource, SyncIO}
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.test.OurAsyncTestSuite
@@ -70,6 +69,47 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
           canceledOutcome <- fiber.join
         yield
           assert(notCanceled == 7 && canceledOutcome == Outcome.Canceled())
+
+    //"onCancellation" - {
+    //  "success" in:
+    //    val canceled = Atomic(false)
+    //    IO(7)
+    //      .onCancellation:
+    //        IO(canceled := true)
+    //      .map: result =>
+    //        assert(result == 7 && !canceled.get)
+    //
+    //  "failure" in:
+    //    val canceled = Atomic(false)
+    //    IO.raiseError[Int](new RuntimeException("TEST"))
+    //      .onCancellation:
+    //        IO(canceled := true)
+    //      .attempt
+    //      .map:
+    //        case Left(e: RuntimeException) => assert(e.getMessage == "TEST" && !canceled.get)
+    //        case o => fail(s"Exception expected, not: $o")
+    //
+    //  "cancel" in repeatTest(10_000): _ =>
+    //    // onCancellation is not in effect if cancellation occurs before .onCancellation is executed !!!
+    //    val canceled, cancellation = Atomic(false)
+    //    val started = Deferred.unsafe[IO, Unit]
+    //    started.complete(())
+    //      .*>(IO.never)
+    //      .onCancel(IO:
+    //        assert(!cancellation.get)
+    //        canceled := true)
+    //      .onCancellation(IO:
+    //        assert(canceled.get)
+    //        cancellation := true)
+    //      .start
+    //      .flatMap: fiber =>
+    //        /*IO.sleep(10.ms) // Wait until fiber executes IO.never
+    //          *>*/ started.get
+    //          *> fiber.cancel
+    //          *> fiber.join
+    //      .map: outcome =>
+    //        assert(outcome == Outcome.Canceled() & canceled.get & cancellation.get)
+    //}
   }
 
   "Fiber" - {

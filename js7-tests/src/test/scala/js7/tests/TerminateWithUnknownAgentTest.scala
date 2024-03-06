@@ -33,6 +33,7 @@ final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentF
     eventWatch.await[AgentCouplingFailed]()
     controller.terminate() await 99.s
 
+
 private object TerminateWithUnknownAgentTest:
   private val agentRef = AgentRef(AgentPath("UNKNOWN"), directors = Nil,
     uri = Some(Uri("http://0.0.0.0:0")))

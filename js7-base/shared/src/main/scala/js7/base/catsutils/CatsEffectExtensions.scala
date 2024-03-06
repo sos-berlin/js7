@@ -60,8 +60,12 @@ object CatsEffectExtensions:
           case Left(()) => IO.canceled.asInstanceOf[IO[A]]
           case Right(a) => IO.pure(a)
 
+    ///** cancel operation should not fail. */
+    //def onCancellation(onCancel: IO[Unit]): IO[A] =
+    // io.start.flatMap: fiber =>
+    //   fiber.join.flatMap(IO.fromOutcome).onCancel(onCancel)
 
-  private val fromFutureSimpleCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
+  private val fromFutureDummyCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
 
   extension [A](io: IO[Checked[A]])
 
@@ -116,7 +120,7 @@ object CatsEffectExtensions:
         case Outcome.Canceled() => IO.raiseError(new FiberCanceledException)
 
     def fromFutureDummyCancelable[A](future: IO[Future[A]]): IO[A] =
-      IO.fromFutureCancelable(future.map(_ -> fromFutureSimpleCancel))
+      IO.fromFutureCancelable(future.map(_ -> fromFutureDummyCancel))
 
     def fromFutureWithEC[A](io: ExecutionContext => IO[Future[A]]): IO[A] =
       for
@@ -168,12 +172,12 @@ object CatsEffectExtensions:
     def makeCancelable[F[_], A](acquire: F[A])(release: A => F[Unit])
       (using F: Functor[F])
     : Resource[F, A] =
-      Resource.makeFull[F, A](_(acquire))(release)
+      Resource.makeFull[F, A](poll => poll(acquire))(release)
 
     def makeCaseCancelable[F[_], A](acquire: F[A])(release: (A, ExitCase) => F[Unit])
       (using F: Functor[F])
     : Resource[F, A] =
-      Resource.makeCaseFull[F, A](_(acquire))(release)
+      Resource.makeCaseFull[F, A](poll => poll(acquire))(release)
 
   extension[F[_]](clock: Clock[F])
     def monotonicTime(using Functor[F]): F[CatsDeadline] =

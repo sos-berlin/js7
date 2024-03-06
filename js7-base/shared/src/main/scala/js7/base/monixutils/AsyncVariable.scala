@@ -2,13 +2,15 @@ package js7.base.monixutils
 
 import cats.effect.{IO, Resource}
 import izumi.reflect.Tag
+import js7.base.monixutils.AsyncVariable.*
 import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
 
-final class AsyncVariable[V](initial: V, varName: String, typeName: String):
+final class AsyncVariable[V] private(
+  initial: V, varName: String, typeName: String, logMinor: Boolean):
 
   @volatile private var _value = initial
-  private val lock = AsyncLock(varName)
+  private val lock = AsyncLock(varName, logMinor = logMinor)
 
   def get: V =
     _value
@@ -65,5 +67,7 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String):
 
 
 object AsyncVariable:
-  def apply[A](initial: A)(implicit src: sourcecode.Enclosing, tag: Tag[A]) =
-    new AsyncVariable(initial, src.value, tag.tag.toString)
+  def apply[A](initial: A, logMinor: Boolean = false)
+    (using src: sourcecode.Enclosing, tag: Tag[A])
+  : AsyncVariable[A] =
+    new AsyncVariable(initial, src.value, tag.tag.toString, logMinor = logMinor)

@@ -1,5 +1,7 @@
 package js7.controller
 
+import cats.effect.IO
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
@@ -11,13 +13,17 @@ import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
+import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
+import js7.base.catsutils.SyncDeadline
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger.ops.*
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.catsutils.SyncDeadline
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.CatsBlocking.syntax.*
@@ -76,11 +82,6 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import cats.effect.IO
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
-import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
@@ -88,7 +89,6 @@ import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
-import Logger.syntax.*
 
 /**
   * @author Joacim Zschimmer

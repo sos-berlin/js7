@@ -2,7 +2,6 @@ package js7.base.fs2utils
 
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.testkit.TestControl
-import cats.syntax.traverse.*
 import cats.effect.{IO, Resource, SyncIO}
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pure, Stream}

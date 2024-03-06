@@ -6,13 +6,14 @@ import js7.base.log.Logger
 import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichThrowable}
 import org.scalactic.source
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.{Assertion, PendingStatement, Tag}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, TimeoutException}
 import scala.language.implicitConversions
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -88,11 +89,22 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
 
   private def executeTest(testBody: => OwnResult): IO[Assertion] =
     Try(testBody) match
-      case Failure(t) => IO.raiseError(t)
-      case Success(o: Assertion) => IO.pure(o)
-      case Success(o: Future[Assertion @unchecked]) => IO.fromFuture(IO.pure(o))
-      case Success(io: IO[Assertion]) => io
-      case Success(o: SyncIO[Assertion]) => o.to[IO]
+      case Failure(t) =>
+        IO.raiseError(appendStackTrace(t))
+
+      case Success(o: Assertion) =>
+        IO.pure(o)
+
+      case Success(o: Future[Assertion @unchecked]) =>
+        IO.fromFuture(IO.pure(o))
+          .handleErrorWith(t => IO.raiseError(appendStackTrace(t)))
+
+      case Success(io: IO[Assertion]) =>
+        io.handleErrorWith(t => IO.raiseError(appendStackTrace(t)))
+
+      case Success(o: SyncIO[Assertion]) =>
+        o.to[IO]
+          .handleErrorWith(t => IO.raiseError(appendStackTrace(t)))
 
 
 object LoggingAsyncFreeSpec:
@@ -101,5 +113,15 @@ object LoggingAsyncFreeSpec:
 
   private[test] def isAsyncResult(result: Any) =
     result match
-      case _: Future[_] | _: IO[_] | _: SyncIO[_] => true
+      case _: Future[?] | _: IO[?] | _: SyncIO[?] => true
       case _ => false
+
+  private def appendStackTrace(throwable: Throwable): Throwable =
+    if throwable.getClass.getName startsWith "org.scalatest." then
+      throwable
+    else
+      throwable match
+        case NonFatal(t) =>
+          // Add our stacktrace
+          new RuntimeException(t.toStringWithCauses, t)
+        case t => t

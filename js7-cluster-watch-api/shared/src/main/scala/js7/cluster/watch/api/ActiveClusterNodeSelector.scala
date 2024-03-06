@@ -1,12 +1,14 @@
 package js7.cluster.watch.api
 
-import cats.effect.{FiberIO, IO, Outcome, Resource}
+import cats.effect.std.Supervisor
+import cats.effect.{FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.flatMap.*
-import cats.syntax.traverse.*
 import fs2.Stream
+import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -23,88 +25,76 @@ object ActiveClusterNodeSelector:
   /** Selects the API for the active node, waiting until one is active.
    * The returned EventApi is logged-in. */
   final def selectActiveNodeApi[Api <: HttpClusterNodeApi](
-    apisResource: Resource[IO, Nel[Api]],
+    apisResource: ResourceIO[Nel[Api]],
     failureDelays: Nel[FiniteDuration],
     onCouplingError: Api => Throwable => IO[Unit] =
       (_: Api) => (t: Throwable) => SessionApi.onErrorTryAgain(toString, t).void)
-  : Resource[IO, Api] =
-    apisResource.flatMap(apis =>
-      Resource.eval(
-        selectActiveNodeApiOnly[Api](
-          apis,
-          api => throwable => onCouplingError(api)(throwable),
-          failureDelays)))
+    (using Tag[Api])
+  : ResourceIO[Api] =
+    logger.traceResource:
+      apisResource.flatMap: apis =>
+        Resource.eval:
+          selectActiveNodeApiOnly[Api](
+            apis,
+            api => throwable => onCouplingError(api)(throwable),
+            failureDelays)
 
   private def selectActiveNodeApiOnly[Api <: HttpClusterNodeApi](
     apis: Nel[Api],
     onCouplingError: Api => Throwable => IO[Unit],
     failureDelays: Nel[FiniteDuration])
   : IO[Api] =
-    apis match
-      case Nel(api, Nil) =>
-        api
-          .loginUntilReachable(
-            onError = t => onCouplingError(api)(t).as(true),
-            onlyIfNotLoggedIn = true)
-          .map((_: Completed) => api)
+    logger.traceIOWithResult:
+      apis match
+        case Nel(api, Nil) =>
+          api
+            .loginUntilReachable(
+              onError = t => onCouplingError(api)(t).as(true),
+              onlyIfNotLoggedIn = true)
+            .map((_: Completed) => api)
 
-      case _ =>
-        IO.defer:
-          val failureDelayIterator = continueWithLast(failureDelays)
-          ().tailRecM(_ => apis
-              .traverse(api =>
-                fetchClusterNodeState(api)
-                  .catchIntoChecked  /*don't let the whole operation fail*/
-                  .start
-                  .map(ApiWithFiber(api, _)))
-              .flatMap((apisWithClusterNodeStateFibers: Nel[ApiWithFiber[Api]]) =>
-                Stream
-                  .iterable(apisWithClusterNodeStateFibers.toList)
-                  .covary[IO]
-                  .map(o => Stream
-                    .eval(o.fiber.joinStd)
-                    .map(ApiWithNodeState(o.api, _)))
-                  // Query nodes in parallel and continue with first response first
-                  .parJoinUnbounded
-                  .takeThrough(o => !o.clusterNodeState.exists(_.isActive))
-                  .compile
-                  .toList
-                  .flatMap { list =>
-                    val maybeActive = list.lastOption collect {
-                      case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
-                        api -> nodeState
-                    }
-                    logProblems(list, maybeActive, n = apis.length)
-                    apisWithClusterNodeStateFibers
-                      .collect { case o if list.forall(_.api ne o.api) =>
-                        logger.trace(s"Cancel discarded request to ${o.api.baseUri}")
-                        o.fiber.cancel
-                      }
-                      .sequence
-                      .flatMap(_ => maybeActive match {
-                        case None => IO.sleep(failureDelayIterator.next()).as(Left(()))
-                        case Some(x) => IO.pure(Right(x))
-                      })
-                  }
-                  .guaranteeCaseLazy {
-                    case Outcome.Succeeded(_) => IO.unit
-                    case outcome =>
-                      logger.debug(s"selectActiveNodeApiOnly => $outcome")
-                      apisWithClusterNodeStateFibers
-                        .map(_.fiber.cancel)
-                        .sequence
-                        .as(())
-                  }))
-            .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
-              logger.warn(throwable.toStringWithCauses)
-              if throwable.getStackTrace.nonEmpty then logger.debug(s"💥 $throwable", throwable)
-              tryAgain(()).delayBy(failureDelayIterator.next())
-            }
-            .map { case (api, clusterNodeState) =>
-              val x = if clusterNodeState.isActive then "active" else "maybe passive"
-              logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
-              api
-            }
+        case _ =>
+          IO.defer:
+            val /*mutable*/ failureDelayIterator = continueWithLast(failureDelays)
+            ()
+              .tailRecM: _ =>
+                Supervisor[IO].use: supervisor =>
+                  apis
+                    .traverse: api =>
+                      supervisor
+                        .supervise:
+                          fetchClusterNodeState(api)
+                            .catchIntoChecked /*don't let the whole operation fail*/
+                        .map(ApiWithFiber(api, _))
+                    .flatMap: (apisWithClusterNodeStateFibers: Nel[ApiWithFiber[Api]]) =>
+                      Stream
+                        .iterable(apisWithClusterNodeStateFibers.toList)
+                        .covary[IO]
+                        .map: o =>
+                          Stream.eval(o.fiber.joinStd).map(ApiWithNodeState(o.api, _))
+                        // Query nodes in parallel and continue with first response first
+                        .parJoinUnbounded
+                        .takeThrough(o => !o.clusterNodeState.exists(_.isActive))
+                        .compile
+                        .toList
+                        .flatMap: list =>
+                          val maybeActive = list.lastOption.collect:
+                            case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
+                              api -> nodeState
+                          logProblems(list, maybeActive, n = apis.length)
+                          maybeActive match
+                            case None => IO.sleep(failureDelayIterator.next()).as(Left(()))
+                            case Some(x) => IO.right(x)
+              .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
+                logger.warn(throwable.toStringWithCauses)
+                if throwable.getStackTrace.nonEmpty then logger.debug(s"💥 $throwable", throwable)
+                tryAgain(()).delayBy(failureDelayIterator.next())
+              }
+              .map { case (api, clusterNodeState) =>
+                val x = if clusterNodeState.isActive then "active" else "maybe passive"
+                logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
+                api
+              }
 
   private case class ApiWithFiber[Api <: HttpClusterNodeApi](
     api: Api,

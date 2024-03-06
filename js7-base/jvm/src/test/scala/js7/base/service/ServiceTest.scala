@@ -1,9 +1,7 @@
 package js7.base.service
 
 import cats.effect.{Deferred, IO, Resource}
-import cats.syntax.flatMap.*
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.service.ServiceTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.DurationRichInt

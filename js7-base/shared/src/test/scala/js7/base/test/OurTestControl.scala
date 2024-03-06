@@ -24,11 +24,9 @@ import cats.effect.testkit.TestControl.NonTerminationException
 import cats.effect.testkit.{TestContext, TestControl}
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 import cats.effect.{IO, Outcome}
-import cats.syntax.option.*
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.catsutils.OwnIORuntimeRegister
-import js7.base.utils.Atomic
 import scala.concurrent.CancellationException
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
