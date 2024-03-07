@@ -54,11 +54,12 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterFor
             "--cluster-watch-id=MY-CLUSTER-WATCH",
             "--config-directory=" + dir)
 
-          ClusterWatchMain.run2(args)(service => IO
-            .race(
-              service.untilStopped,
-              stopClusterWatch.get.to[IO])
-            .as(ProgramTermination()))
+          ClusterWatchMain
+            .run2(args, suppressShutdownLogging = true): service =>
+              IO.race(
+                  service.untilStopped,
+                  stopClusterWatch.get.to[IO])
+                .as(ProgramTermination())
 
     val runAnOrder = IO:
       runControllerAndBackup(suppressClusterWatch = true): (_, controller, _, _, _, _, _) =>

@@ -40,9 +40,10 @@ final class MutableAllocatedTest extends OurAsyncTestSuite:
       _ <- IO(assert(checked == Left(Problem(
         "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been allocated"))))
       either <- a.acquire(resource).attempt
-      _ <- IO(assert(either.left.toOption.map(_.getMessage).contains(
-        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int]" +
-          " has been finally released — new acquisition rejected")))
+      _ <- IO:
+        either match
+          case Left(t: a.AcquisitionCanceledException) => succeed
+          case unexpected => fail(s"Unexpected result from acquire: $unexpected")
     yield
       succeed
 

@@ -12,7 +12,7 @@ final class IPTest extends OurTestSuite {
 
   "InetAddress" in {
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }
-    intercept[UnknownHostException] { convert[String, InetAddress](" ") }
+    intercept[IllegalArgumentException] { convert[String, InetAddress](" ") }
     assert(convert[String, InetAddress]("1.2.3.4") == InetAddress.getByName("1.2.3.4"))
     assert(convert[String, InetAddress]("localhost") == InetAddress.getByName("localhost"))
   }
