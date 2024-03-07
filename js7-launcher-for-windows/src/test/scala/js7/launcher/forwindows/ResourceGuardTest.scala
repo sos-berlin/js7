@@ -6,10 +6,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 final class ResourceGuardTest extends OurTestSuite:
+
+  private given ExecutionContext = ioRuntime.compute
+
   "ResourceGuard immediately" in:
     var released = 0
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }

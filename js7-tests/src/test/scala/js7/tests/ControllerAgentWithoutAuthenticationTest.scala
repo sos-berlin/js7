@@ -11,7 +11,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
@@ -40,7 +40,7 @@ import fs2.Stream
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite, TestCatsEffect:
+final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
-import js7.base.catsutils.OwnIORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.crypt.SignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
@@ -44,7 +44,7 @@ extends SubagentEnv:
 
   def subagentResource: ResourceIO[Subagent] =
     for
-      given IORuntime <- OwnIORuntime.resource[IO](subagentConf.name, subagentConf.config)
+      given IORuntime <- OurIORuntime.resource[IO](subagentConf.name, subagentConf.config)
       subagent <- Subagent.resource(subagentConf, new StandardEventBus[Any])
     yield
       subagent

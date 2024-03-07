@@ -8,7 +8,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -23,7 +23,7 @@ import cats.effect.unsafe.IORuntime
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends OurTestSuite, TestCatsEffect, WebServiceTest, RootWebService:
+final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebService:
 
   private given IORuntime = ioRuntime
 

@@ -8,7 +8,7 @@ import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, Sup
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.common.auth.IdToUser
@@ -32,7 +32,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeperTest extends OurTestSuite, TestCatsEffect, ScalatestRouteTest
+final class GateKeeperTest extends OurTestSuite, ScalatestRouteTest
 {
   import GateKeeperTest.ImplicitGateKeeper
 

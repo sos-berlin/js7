@@ -9,16 +9,16 @@ import java.lang.Thread.currentThread
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
 import js7.base.system.Java8Polyfill.*
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.{ExecutionContext, Future}
 
-final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect:
+final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute

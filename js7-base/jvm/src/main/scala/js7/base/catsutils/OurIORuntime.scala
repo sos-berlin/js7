@@ -1,7 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Resource, Sync}
+import cats.effect.{Resource, Sync, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
 import java.util.concurrent.ConcurrentHashMap
@@ -11,22 +11,55 @@ import js7.base.log.Logger.syntax.*
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.{isTest, isTestParallel}
+import js7.base.utils.UseDefault.getOrElse
+import js7.base.utils.{Tests, UseDefault}
 import scala.util.control.NonFatal
 
-object OwnIORuntime:
+object OurIORuntime:
 
   // Lazy, to allow proper initialisation of logging first
   private lazy val logger = Logger[this.type]
+
+  val commonThreadPrefix = "JS7"
+
+  val useCommonIORuntime: Boolean =
+    isTest && (
+      sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed"))
+
+  final lazy val commonIORuntime: IORuntime =
+    ownResource[SyncIO](name = commonThreadPrefix)
+      .allocated.map(_._1)
+      .unsafeRunSync()
+
   private val usedNames = new ConcurrentHashMap[String, Int]
 
   def resource[F[_]](
     name: String,
     config: Config = ConfigFactory.empty,
-    shutdownHooks: Seq[() => Unit] = Nil)
+    shutdownHooks: Seq[() => Unit] = Nil,
+    threads: Int | UseDefault = UseDefault)
+    (using F: Sync[F])
+  : Resource[F, IORuntime] =
+    if useCommonIORuntime then
+      Resource.pure(commonIORuntime)
+    else
+      ownResource[F](name, config, shutdownHooks, threads)
+
+  def ownResource[F[_]](
+    name: String,
+    config: Config = ConfigFactory.empty,
+    shutdownHooks: Seq[() => Unit] = Nil,
+    threads: Int | UseDefault = UseDefault)
     (using F: Sync[F])
   : Resource[F, IORuntime] =
     val indexedName = toIndexedName(name)
-    val resource = resource2[F](indexedName, config, shutdownHooks)
+    val resource = resource2[F](indexedName, config, shutdownHooks,
+      threads = threads getOrElse:
+        if isTestParallel then
+          2 // Room for some other concurrently running tests and "internal" nodes
+        else
+          2 max sys.runtime.availableProcessors)
     Resource.defer:
       // Do not log for the initial IORuntime, before logging has been initialized.
       if Logger.isInitialized then
@@ -38,7 +71,8 @@ object OwnIORuntime:
   private def resource2[F[_]](
     name: String,
     config: Config = ConfigFactory.empty,
-    shutdownHooks: Seq[() => Unit] = Nil)
+    shutdownHooks: Seq[() => Unit] = Nil,
+    threads: Int)
     (using F: Sync[F])
   : Resource[F, IORuntime] =
     val computePrefix = s"$name-compute"
@@ -47,6 +81,7 @@ object OwnIORuntime:
     for
       pair <- Resource.eval(F.delay:
         IORuntime.createWorkStealingComputeThreadPool(
+          threads = threads,
           threadPrefix = computePrefix,
           blockerThreadPrefix = computeBlockerPrefix,
           reportFailure = reportFailure))

@@ -8,7 +8,7 @@ import java.nio.file.Files.delete
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.problem.Checked.*
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -25,7 +25,7 @@ import org.apache.pekko.pattern.ask
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReaderTest extends OurTestSuite, TestCatsEffect, TestJournalMixin
+final class JournalReaderTest extends OurTestSuite, TestJournalMixin
 {
   private given IORuntime = ioRuntime
 

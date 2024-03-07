@@ -49,14 +49,17 @@ object ThreadPools:
         // Writes to stderr:
         throwable.printStackTrace(System.err)
 
-  def unlimitedExecutionContextResource[F[_]](name: String, config: Config)(implicit F: Sync[F])
+  def unlimitedExecutionContextResource[F[_]](
+    name: String, config: Config, virtual: Boolean = false)
+    (using F: Sync[F])
   : Resource[F, ExecutionContext] =
-    schedulerServiceToResource(F.delay(newUnlimitedExecutionContext(name, config)))
+    schedulerServiceToResource(F.delay:
+      newUnlimitedExecutionContext(name, config, virtual = virtual))
 
-  private def newUnlimitedExecutionContext(name: String, config: Config)
+  private def newUnlimitedExecutionContext(name: String, config: Config, virtual: Boolean = false)
   : ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(
-      newBlockingExecutor(config, name),
+      newBlockingExecutor(name, config, virtual = virtual),
       reportUncaughtException)
 
   def newUnlimitedNonVirtualExecutionContext(name: String): ExecutionContextExecutorService =

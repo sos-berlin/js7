@@ -3,7 +3,7 @@ package js7.tests
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
@@ -23,7 +23,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import cats.effect.unsafe.IORuntime
 import scala.reflect.ClassTag
 
-final class FailUncatchableTest extends OurTestSuite, TestCatsEffect:
+final class FailUncatchableTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

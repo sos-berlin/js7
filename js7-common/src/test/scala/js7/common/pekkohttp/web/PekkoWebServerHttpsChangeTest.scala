@@ -14,7 +14,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.CatsBlocking.syntax.*
@@ -41,7 +41,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Try}
 
-final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
+final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll
 {
   private given IORuntime = ioRuntime
 

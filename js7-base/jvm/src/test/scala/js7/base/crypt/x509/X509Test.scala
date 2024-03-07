@@ -17,14 +17,14 @@ import js7.base.io.process.Processes.runProcess
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class X509Test extends OurTestSuite, TestCatsEffect:
+final class X509Test extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

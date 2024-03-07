@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
@@ -11,7 +11,7 @@ import js7.subagent.director.CommandDispatcherTest.*
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 
-final class CommandDispatcherTest extends OurTestSuite, TestCatsEffect:
+final class CommandDispatcherTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

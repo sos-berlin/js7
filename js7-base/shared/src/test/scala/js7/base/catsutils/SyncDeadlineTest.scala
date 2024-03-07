@@ -1,11 +1,11 @@
 package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
-import js7.base.test.{OurTestControl, TestCatsEffect}
+import js7.base.test.{OurTestControl}
 import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SyncDeadlineTest extends AnyFreeSpec, TestCatsEffect:
+final class SyncDeadlineTest extends AnyFreeSpec:
 
   //private given IORuntime = ioRuntime
 

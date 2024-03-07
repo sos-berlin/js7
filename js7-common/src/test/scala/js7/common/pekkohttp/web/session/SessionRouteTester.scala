@@ -4,7 +4,6 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
-import js7.base.test.TestCatsEffect
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
@@ -24,7 +23,7 @@ import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
-trait SessionRouteTester extends BeforeAndAfterAll, TestCatsEffect, ScalatestRouteTest, SessionRoute:
+trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionRoute:
   this: Suite =>
 
   private given IORuntime = ioRuntime

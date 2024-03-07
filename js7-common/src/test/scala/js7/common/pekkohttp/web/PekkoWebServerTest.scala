@@ -17,7 +17,7 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -51,7 +51,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
+final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
 {
   private given IORuntime = ioRuntime
 

@@ -1,6 +1,6 @@
 package js7.tests
 
-import cats.effect.{ExitCode, IO, IOApp, SyncIO}
+import cats.effect.{ExitCode, IO, SyncIO}
 import cats.syntax.all.*
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
@@ -27,12 +27,13 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
 import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.OurApp
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-object TestDockerExample extends IOApp:
+object TestDockerExample extends OurApp:
 
   private given IORuntime = runtime
 

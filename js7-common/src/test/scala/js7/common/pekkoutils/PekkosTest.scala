@@ -2,7 +2,7 @@ package js7.common.pekkoutils
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.pekkoutils.Pekkos.*
@@ -14,7 +14,7 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-final class PekkosTest extends OurTestSuite, TestCatsEffect:
+final class PekkosTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

@@ -5,6 +5,7 @@ import cats.effect.{Async, Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java8Polyfill.*
@@ -61,7 +62,13 @@ object IOExecutor:
   lazy val globalIOX: IOExecutor =
     val name = "JS7 global I/O"
     new IOExecutor(
-      newBlockingExecutor(name, keepAlive = 10.s),
+      newBlockingExecutor(
+        name,
+        config"""
+          js7.thread-pools.blocking.keep-alive = 60s
+          js7.thread-pools.virtual-allowed = true
+          """,
+        virtual = true),
       name)
 
   object Implicits:
@@ -71,7 +78,7 @@ object IOExecutor:
     logger.traceResource(
       Resource
         .make(
-          acquire = F.delay(newBlockingExecutor(config, name)))(
+          acquire = F.delay(newBlockingExecutor(name, config, virtual = true)))(
           release = executor => F.delay {
             logger.debug(s"shutdown $executor")
             executor.shutdown()

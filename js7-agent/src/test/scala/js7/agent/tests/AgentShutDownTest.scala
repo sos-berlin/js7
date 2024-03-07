@@ -13,7 +13,7 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.ServerOperatingSystem.operatingSystem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingIOResource
@@ -31,7 +31,7 @@ import js7.data.workflow.test.TestSetting.*
 import org.scalatest.BeforeAndAfterAll
 
 final class AgentShutDownTest
-  extends OurTestSuite, TestCatsEffect, BeforeAndAfterAll, TestAgentDirectoryProvider:
+  extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
 
   private given IORuntime = ioRuntime
 

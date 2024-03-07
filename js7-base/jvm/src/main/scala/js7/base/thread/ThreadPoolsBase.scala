@@ -13,17 +13,14 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 object ThreadPoolsBase:
   private val logger = Logger[this.type]
 
-  def newBlockingExecutor(config: Config, name: String): ExecutorService =
-    val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
-    val virtualAllowed = config.optionAs[String]("js7.thread-pools.blocking.virtual")
-      .exists(Set("", "true"))
+  def newBlockingExecutor(name: String, config: Config, virtual: Boolean = false)
+  : ExecutorService =
+    val keepAlive = config.getDuration("js7.thread-pools.blocking.keep-alive").toFiniteDuration
+    val virtualAllowed = virtual && config.getBoolean("js7.thread-pools.virtual-allowed")
     if virtualAllowed then
-      newBlockingExecutor(name, keepAlive)
+      maybeNewVirtualThreadExecutorService() getOrElse
+        newBlockingNonVirtualExecutor(name, keepAlive)
     else
-      newBlockingNonVirtualExecutor(name, keepAlive)
-
-  def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
-    maybeNewVirtualThreadExecutorService() getOrElse
       newBlockingNonVirtualExecutor(name, keepAlive)
 
   def newBlockingNonVirtualExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =

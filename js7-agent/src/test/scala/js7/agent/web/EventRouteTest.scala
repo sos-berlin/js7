@@ -9,11 +9,9 @@ import js7.agent.tests.TestAgentDirectoryProvider.*
 import js7.agent.web.EventRouteTest.*
 import js7.base.auth.Admission
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.monixlike.MonixLikeExtensions.headL
-import js7.base.monixlike.MonixLikeExtensions.lastL
-import js7.base.monixlike.MonixLikeExtensions.toListL
+import js7.base.monixlike.MonixLikeExtensions.{headL, lastL, toListL}
 import js7.base.problem.Checked.*
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
@@ -30,7 +28,7 @@ import org.apache.pekko.actor.ActorSystem
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends OurTestSuite, TestCatsEffect, AgentTester:
+final class EventRouteTest extends OurTestSuite, AgentTester:
 
   private given IORuntime = ioRuntime
 

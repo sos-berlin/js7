@@ -1,5 +1,7 @@
 package js7.data.value.expression.scopes
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.instances.vector.*
 import cats.syntax.parallel.*
 import java.io.IOException
@@ -9,8 +11,9 @@ import java.nio.file.{AccessDeniedException, Path, Paths}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -21,13 +24,10 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class FileValueScopeTest extends OurTestSuite, TestCatsEffect:
+final class FileValueScopeTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

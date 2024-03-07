@@ -12,7 +12,7 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -31,7 +31,7 @@ import scala.concurrent.ExecutionContext
  * @author Joacim Zschimmer
  */
 final class PekkoHttpAgentTextApiTest
-extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, HasCloser, TestAgentProvider:
+extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute

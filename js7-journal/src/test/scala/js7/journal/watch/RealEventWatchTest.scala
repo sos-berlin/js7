@@ -3,7 +3,7 @@ package js7.journal.watch
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -15,7 +15,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
+final class RealEventWatchTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler

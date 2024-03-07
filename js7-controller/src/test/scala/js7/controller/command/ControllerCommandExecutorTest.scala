@@ -1,9 +1,11 @@
 package js7.controller.command
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.{CommandExecutor, CommandMeta}
@@ -11,13 +13,11 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, NoOperation, ReleaseEvents, Response}
 import js7.data.order.OrderId
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerCommandExecutorTest extends OurTestSuite, TestCatsEffect:
+final class ControllerCommandExecutorTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

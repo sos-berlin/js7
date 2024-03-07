@@ -9,7 +9,7 @@ import io.circe.syntax.EncoderOps
 import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.catsutils.Js7IORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.eventbus.StandardEventBus
@@ -72,7 +72,7 @@ object TestControllerProxy:
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))
 
   def main(args: Array[String]): Unit =
-    given IORuntime = Js7IORuntime.ioRuntime
+    given IORuntime = OurIORuntime.commonIORuntime
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.prettyVersion}")
     Logger.initialize("JS7 TestControllerProxy")

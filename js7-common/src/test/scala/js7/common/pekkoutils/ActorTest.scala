@@ -5,18 +5,17 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
-import js7.common.pekkoutils.ActorTest.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.common.pekkoutils.ActorTest.*
 import org.apache.pekko.actor.{Actor, Props}
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
 final class ActorTest extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem:
 
   protected def config = config"pekko.actor.guardian-supervisor-strategy = org.apache.pekko.actor.StoppingSupervisorStrategy"
-  protected def executionContext = ExecutionContext.global
 
   override def afterAll() =
     Pekkos.terminateAndWait(actorSystem, 99.s)

@@ -1,10 +1,10 @@
 package js7.base.monixlike
 
 import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.time.ScalaTime.*
 
-final class SyncCancelableTest extends OurTestSuite, TestCatsEffect:
+final class SyncCancelableTest extends OurTestSuite:
 
   private lazy val scheduler = ioRuntime.scheduler
 

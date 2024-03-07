@@ -7,7 +7,7 @@ import cats.syntax.parallel.*
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureServiceTest.*
-import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
+import js7.base.test.{OurAsyncTestSuite}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -19,7 +19,7 @@ import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
-final class RestartAfterFailureServiceTest extends OurAsyncTestSuite, TestCatsEffect:
+final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
 
   "RestartAfterFailureService" in:
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()

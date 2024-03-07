@@ -3,7 +3,6 @@ package js7.controller.web.controller.api.test
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
-import js7.base.test.TestCatsEffect
 import js7.base.time.ScalaTime.*
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkohttp.web.auth.GateKeeper
@@ -18,7 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-trait RouteTester extends ScalatestRouteTest, TestCatsEffect, ExceptionHandling:
+trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
   this: Suite =>
 
   ProblemCodeMessages.initialize()

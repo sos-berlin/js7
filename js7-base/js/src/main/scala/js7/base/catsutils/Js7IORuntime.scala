@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
-object Js7IORuntime:
+object OurIORuntime:
 
   // Lazy, to allow proper initialisation of logging
   private lazy val logger = Logger[this.type]

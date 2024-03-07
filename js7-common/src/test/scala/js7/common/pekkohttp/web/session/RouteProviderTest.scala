@@ -6,7 +6,7 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.auth.IdToUser
@@ -24,7 +24,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class RouteProviderTest extends OurTestSuite, RouteProvider, TestCatsEffect, ScalatestRouteTest
+final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRouteTest
 {
   private given IORuntime = ioRuntime
 

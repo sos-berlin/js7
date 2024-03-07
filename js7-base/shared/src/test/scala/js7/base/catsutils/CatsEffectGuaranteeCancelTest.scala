@@ -1,13 +1,10 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, OutcomeIO}
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.mutable
 
-final class CatsEffectGuaranteeCancelTest extends AsyncFreeSpec:
-
-  private given IORuntime = IORuntime.global
+final class CatsEffectGuaranteeCancelTest extends OurAsyncTestSuite:
 
   "guaranteeCase Canceled" in:
     // Fails because the Canceled case is evaluated eagerly,
@@ -22,7 +19,6 @@ final class CatsEffectGuaranteeCancelTest extends AsyncFreeSpec:
         // evaluatedCases == "ArrayBuffer(Canceled(), Succeeded(IO(7)))"
         pendingUntilFixed:
           assert(evaluatedCases.toString == "ArrayBuffer(Succeeded(IO(7)))")
-      .unsafeToFuture()
 
   "guarantee Canceled" in:
     // Works as expected
@@ -34,4 +30,3 @@ final class CatsEffectGuaranteeCancelTest extends AsyncFreeSpec:
         IO.unit
       .map: _ =>
         assert(count == 1)
-      .unsafeToFuture()

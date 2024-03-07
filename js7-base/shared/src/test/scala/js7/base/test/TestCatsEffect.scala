@@ -6,7 +6,7 @@ import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.concurrent.locks.ReentrantLock
-import js7.base.catsutils.{Js7IORuntime, OwnIORuntime}
+import js7.base.catsutils.OurIORuntime
 import js7.base.data.ByteArray
 import js7.base.test.TestCatsEffect.*
 import js7.base.utils.Atomic.extensions.*
@@ -19,7 +19,6 @@ import scala.concurrent.ExecutionContext
 trait TestCatsEffect extends BeforeAndAfterAll:
   this: Suite =>
 
-  private val lock = new ReentrantLock
   private val _ioRuntime = Atomic(none[Allocated[SyncIO, IORuntime]])
   private var afterAllMayBeCalled = false
 
@@ -27,8 +26,8 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   final lazy val blockingThreadNamePrefix: String =
     // Suffix will be "-blocking-N" or "-compute-blocker-N"
     /*if (VirtualThreads.isEnabled) "" else*/
-    if useCommonIORuntime then
-      Js7IORuntime.threadPrefix
+    if OurIORuntime.useCommonIORuntime then
+      OurIORuntime.commonThreadPrefix
     else
       getClass.shortClassName
 
@@ -36,18 +35,14 @@ trait TestCatsEffect extends BeforeAndAfterAll:
     if !afterAllMayBeCalled then
       throw new IllegalStateException("IORuntime used but beforeAll() has not yet executed")
     else if useCommonIORuntime then
-      Js7IORuntime.ioRuntime
+      OurIORuntime.commonIORuntime
     else
-      lock.lockInterruptibly()
-      try
-        val allocated = OwnIORuntime
-          .resource[SyncIO](name = getClass.shortClassName)
-          .toAllocated
-          .unsafeRunSync()
-        _ioRuntime := allocated.some
-        allocated.allocatedThing
-      finally
-        lock.unlock()
+      val allocated = OurIORuntime
+        .resource[SyncIO](name = getClass.shortClassName)
+        .toAllocated
+        .unsafeRunSync()
+      _ioRuntime := allocated.some
+      allocated.allocatedThing
 
   override protected def beforeAll(): Unit =
     afterAllMayBeCalled = true

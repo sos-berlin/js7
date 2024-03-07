@@ -7,7 +7,7 @@ import cats.syntax.foldable.*
 import js7.base.monixlike.MonixLikeExtensions.{materialize, unsafeToCancelableFuture}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
@@ -19,7 +19,7 @@ import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 
-final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
+final class MemoryJournalTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler

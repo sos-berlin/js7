@@ -3,9 +3,10 @@ package js7.base.test
 import cats.Monoid
 import js7.base.log.Logger
 import js7.base.test.TestMixin.assertionMonoid
-import org.scalatest.{Assertion, Succeeded}
+import org.scalatest.{Assertion, Succeeded, Suite}
 
-transparent trait TestMixin:
+trait TestMixin extends TestCatsEffect:
+  this: Suite =>
 
   js7.base.log.Logger.initialize("JS7 Tests")
 

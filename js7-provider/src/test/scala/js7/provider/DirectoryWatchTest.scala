@@ -5,7 +5,6 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
-import js7.base.test.TestCatsEffect
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
@@ -19,7 +18,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatchTest extends OurTestSuite, TestCatsEffect, BeforeAndAfterAll
+final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
   private given IORuntime = ioRuntime
 

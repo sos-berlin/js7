@@ -6,7 +6,7 @@ import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.concurrent.Executor
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -22,7 +22,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends OurTestSuite, TestCatsEffect:
+final class IOExecutorTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

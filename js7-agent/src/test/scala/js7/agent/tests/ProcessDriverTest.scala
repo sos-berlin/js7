@@ -13,7 +13,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
@@ -41,7 +41,7 @@ import org.scalatest.compatible.Assertion
   * @author Joacim Zschimmer
   */
 final class ProcessDriverTest
-  extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, TestAgentDirectoryProvider:
+  extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
 
   private lazy val ioxAllocated = IOExecutor.resource[IO](SubagentConf.DefaultConfig, "ProcessDriverTest")
     .toAllocated.await(99.s)
@@ -50,7 +50,7 @@ final class ProcessDriverTest
   private given Scheduler = ioRuntime.scheduler
 
   private val config = config"""
-    js7.thread-pools.io.keep-alive = 3s
+    js7.thread-pools.blocking.keep-alive = 3s
     js7.thread-pools.blocking.virtual = true
     """
 

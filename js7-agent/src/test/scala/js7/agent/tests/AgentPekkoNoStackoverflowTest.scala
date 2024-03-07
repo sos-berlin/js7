@@ -6,13 +6,13 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.AgentPekkoNoStackoverflowTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentPekkoNoStackoverflowTest extends OurTestSuite, TestCatsEffect, AgentTester:
+final class AgentPekkoNoStackoverflowTest extends OurTestSuite, AgentTester:
 
   private given IORuntime = ioRuntime
 

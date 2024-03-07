@@ -15,7 +15,7 @@ import scala.util.Random
 final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAll:
 
   private lazy val threadPool = newFixedThreadPool(3)
-  private lazy val executionContext = ExecutionContext.fromExecutorService(threadPool)
+  private lazy val myExecutionContext = ExecutionContext.fromExecutorService(threadPool)
 
   override protected def afterAll() =
     threadPool.shutdownNow()
@@ -24,7 +24,7 @@ final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAl
   "With slow operation" in:
     val range = 1 to 1000
     val throttle = 3
-    implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
+    implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(myExecutionContext)
     ParallelismCounter.expect(throttle, range.size) { count =>
       val futures =
         for i <- range yield
@@ -40,14 +40,15 @@ final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAl
       for throttle <- 1 to 3 do
         info(s"n=$n throttle=$throttle: " +
           measureTime(10000, "FutureThrottle") {
-            implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
+            implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(myExecutionContext)
             val futures = for i <- 1 to n yield Future { i }
             assert((futures await 60.s).sum == (1 to n).sum)
           }.toString)
 
   if false then
   "Ordinary Future" in:
-    import ExecutionContext.Implicits.global
+    given ExecutionContext = ioRuntime.compute
+
     for n <- 1 to 2 do
       info(s"n=$n: " +
         measureTime(10000, "Future") {

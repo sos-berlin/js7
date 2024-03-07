@@ -8,7 +8,6 @@ import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.{Actor, DeadLetterSuppression, Props}
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +18,7 @@ final class DeadLetterActorTest extends OurTestSuite:
     val actorSystem = newActorSystem(
       classOf[DeadLetterActorTest].getSimpleName,
       config"pekko.log-dead-letters = 0",
-      executionContext = ExecutionContext.global)
+      executionContext = ioRuntime.compute)
     val buffer = mutable.Buffer[String]()
     DeadLetterActor.subscribe(actorSystem, (logLevel, msg) => buffer += msg())
     val actorRef = actorSystem.actorOf(Props[TestActor]())

@@ -8,7 +8,7 @@ import js7.base.crypt.SignedString
 import js7.base.crypt.x509.X509Signer
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -21,7 +21,7 @@ import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import fs2.Stream
 
-final class VerifiedUpdateItemsTest extends OurTestSuite, TestCatsEffect:
+final class VerifiedUpdateItemsTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

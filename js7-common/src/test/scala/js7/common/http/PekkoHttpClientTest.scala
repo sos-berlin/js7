@@ -13,7 +13,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -48,7 +48,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, HasCloser
+final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasCloser
 {
   private given IORuntime = ioRuntime
 

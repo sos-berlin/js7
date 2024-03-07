@@ -6,7 +6,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.ReturnCode
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -15,7 +15,7 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 final class AgentClientMainTest extends OurTestSuite,
-  TestCatsEffect, BeforeAndAfterAll, TestAgentProvider:
+  BeforeAndAfterAll, TestAgentProvider:
 
   private given IORuntime = ioRuntime
 

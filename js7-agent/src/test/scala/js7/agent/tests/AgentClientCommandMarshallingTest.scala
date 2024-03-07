@@ -7,7 +7,7 @@ import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
 import js7.agent.tests.AgentClientCommandMarshallingTest.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends OurTestSuite, TestCatsEffect, ScalaFutures, AgentTester:
+extends OurTestSuite, ScalaFutures, AgentTester:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute

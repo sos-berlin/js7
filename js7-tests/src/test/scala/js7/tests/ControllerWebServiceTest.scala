@@ -50,7 +50,7 @@ import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as Pekk
 import org.apache.pekko.stream.Materializer
 import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 /**
@@ -59,6 +59,8 @@ import scala.util.Try
 final class ControllerWebServiceTest
 extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
 {
+  private given ExecutionContext = ioRuntime.compute
+
   override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier
 

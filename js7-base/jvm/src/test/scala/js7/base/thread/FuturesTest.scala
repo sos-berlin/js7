@@ -8,14 +8,16 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.Failure
 
 /**
  * @author Joacim Zschimmer
  */
 final class FuturesTest extends OurTestSuite:
+
+  private given ExecutionContext = ioRuntime.compute
+
   "successValue" in:
     val promise = Promise[Int]()
     val future = promise.future

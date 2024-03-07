@@ -10,15 +10,16 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.common.auth.IdToUser.RawUserAccount
 import js7.common.auth.IdToUserTest.*
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class IdToUserTest extends OurTestSuite
+final class IdToUserTest extends OurTestSuite:
 {
+  private given ExecutionContext = ioRuntime.compute
+
   "Unknown user" in {
     assert(idToUser(UserId("UNKNOWN")) == None)
   }

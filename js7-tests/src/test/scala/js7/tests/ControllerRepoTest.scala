@@ -10,7 +10,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.ProblemException
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -45,7 +45,7 @@ import js7.base.utils.Atomic
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
-final class ControllerRepoTest extends OurTestSuite, TestCatsEffect:
+final class ControllerRepoTest extends OurTestSuite:
 
   import ControllerRepoTest.*
 

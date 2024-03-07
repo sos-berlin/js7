@@ -10,7 +10,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.{RestartableDirector, RunningAgent}
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.catsutils.OwnIORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
@@ -113,6 +113,6 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
 
   private def ioRuntimeResource: ResourceIO[IORuntime] =
     Resource.suspend/*delay access to agentConf*/(IO:
-      OwnIORuntime.resource[IO](agentConf.name, agentConf.config))
+      OurIORuntime.resource[IO](agentConf.name, agentConf.config))
 
   override def toString = s"DirectorEnv($name)"

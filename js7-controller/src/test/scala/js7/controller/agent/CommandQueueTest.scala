@@ -1,16 +1,18 @@
 package js7.controller.agent
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.agent.data.commands.AgentCommand
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.agent.CommandQueueTest.*
@@ -21,8 +23,6 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.immutable.ArraySeq
@@ -31,7 +31,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends OurTestSuite, TestCatsEffect:
+final class CommandQueueTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

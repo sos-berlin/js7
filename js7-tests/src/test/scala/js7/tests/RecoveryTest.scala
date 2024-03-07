@@ -5,7 +5,7 @@ import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -36,7 +36,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends OurTestSuite, TestCatsEffect:
+final class RecoveryTest extends OurTestSuite:
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 
   private given IORuntime = ioRuntime

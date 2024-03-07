@@ -4,7 +4,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -21,7 +21,7 @@ import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import cats.effect.unsafe.IORuntime
 
-final class ExpressionsTest extends OurTestSuite, TestCatsEffect:
+final class ExpressionsTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

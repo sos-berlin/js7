@@ -51,7 +51,7 @@ object Stopwatch:
       throw t
     }
 
-  //def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
+  //def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ioRuntime.compue): Result = {
   //  (for (_ <- 1 to warmUp) yield Future { body }).awaitInfinite
   //  val start = nanoTime
   //  (for (_ <- 1 to n) yield Future { body }).awaitInfinite

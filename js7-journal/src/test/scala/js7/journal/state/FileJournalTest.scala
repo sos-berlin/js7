@@ -1,7 +1,6 @@
 package js7.journal.state
 
 import cats.effect.unsafe.IORuntime
-import js7.base.test.TestCatsEffect
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
@@ -43,7 +42,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
+final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
 {
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute

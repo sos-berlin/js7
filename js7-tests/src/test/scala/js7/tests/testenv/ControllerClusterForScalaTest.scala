@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.catsutils.OwnIORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -218,7 +218,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
     (body: (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem]) => A)
   : A =
-    OwnIORuntime
+    OurIORuntime
       .resource[SyncIO](
         s"${getClass.simpleScalaName}-${clusterWatchId.string}",
         Js7Configuration.defaultConfig)

@@ -18,17 +18,17 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
-import scala.concurrent.ExecutionContext
 
 final case class SubagentConf(
   configDirectory: Path,
@@ -139,7 +139,7 @@ object SubagentConf:
 
     val config = resolvedConfig(configDir, extra = extraConfig, internal = internalConfig)
     val conf = SubagentConf.fromResolvedConfig(
-      configDirectory = common.configDirectory,
+      configDirectory = configDir,
       dataDirectory = common.dataDirectory,
       workDirectory = common.workDirectory,
       logDirectory = args.optionAs("--log-directory=")(asAbsolutePath)

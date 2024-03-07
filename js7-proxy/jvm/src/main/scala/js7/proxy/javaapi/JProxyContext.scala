@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import com.typesafe.config.{Config, ConfigFactory}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.catsutils.Js7IORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
@@ -36,7 +36,7 @@ extends HasCloser:
   private val proxyConf = ProxyConfs.fromConfig(config_)
 
   //private val useJavaThreadPool = config_.getBoolean("js7.proxy.use-java-thread-pool")
-  private[proxy] implicit val ioRuntime: IORuntime = Js7IORuntime.ioRuntime
+  private[proxy] implicit val ioRuntime: IORuntime = OurIORuntime.commonIORuntime
 
   private val actorSystemLazy = Lazy(newActorSystem(
     "JS7-Proxy",

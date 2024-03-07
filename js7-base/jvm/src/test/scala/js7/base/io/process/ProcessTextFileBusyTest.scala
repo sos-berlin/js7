@@ -9,7 +9,7 @@ import js7.base.io.process.ProcessTextFileBusyTest.*
 import js7.base.io.process.Processes.*
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessTextFileBusyTest extends OurTestSuite, TestCatsEffect:
+final class ProcessTextFileBusyTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

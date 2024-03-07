@@ -20,7 +20,7 @@ import js7.base.monixlike.MonixLikeExtensions.{headL, toListL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -48,7 +48,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentTest extends OurTestSuite, TestCatsEffect:
+final class OrderAgentTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

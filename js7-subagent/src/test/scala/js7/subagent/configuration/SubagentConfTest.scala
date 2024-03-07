@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.pekkohttp.web.data.WebServerPort
@@ -19,7 +19,7 @@ import js7.subagent.configuration.SubagentConfTest.*
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
 
-final class SubagentConfTest extends OurTestSuite, TestCatsEffect
+final class SubagentConfTest extends OurTestSuite
 {
   private lazy val logger = Logger[this.type]
 

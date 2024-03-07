@@ -4,13 +4,13 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.parallel.*
 import js7.base.log.Log4jTest.*
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
 import js7.base.time.Stopwatch
 import scala.concurrent.duration.Deadline.now
 
-final class Log4jTest extends OurTestSuite, TestCatsEffect:
+final class Log4jTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
 

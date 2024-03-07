@@ -28,3 +28,6 @@ object Tests:
     ).filter(_._2)
     if onlyTrues.nonEmpty then
       Logger[this.type].info(onlyTrues.view.map(_._1).mkString(" · "))
+
+  val isTestParallel: Boolean =
+    isTest && sys.props.contains("test.parallel" /*see build.sbt*/)

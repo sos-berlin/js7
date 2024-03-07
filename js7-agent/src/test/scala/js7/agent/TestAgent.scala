@@ -11,7 +11,7 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
-import js7.base.catsutils.OwnIORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
@@ -181,4 +181,4 @@ object TestAgent:
 
   private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])
   : Resource[F, IORuntime] =
-      OwnIORuntime.resource[F](conf.name, conf.config)
+      OurIORuntime.resource[F](conf.name, conf.config)

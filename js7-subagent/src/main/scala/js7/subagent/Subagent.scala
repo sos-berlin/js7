@@ -220,6 +220,7 @@ object Subagent:
 
     val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
       .orThrow
+    val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking")
 
     for
       actorSystem <- Pekkos.actorSystemResource(conf.name, config)
@@ -237,7 +238,7 @@ object Subagent:
       // For BlockingInternalJob (thread-blocking Java jobs)
       iox <- IOExecutor.resource[IO](config, conf.name + "-I/O")
       blockingInternalJobEC <- unlimitedExecutionContextResource[IO](
-        "JS7 blocking job", conf.config)
+        "JS7 blocking job", conf.config, virtual = useVirtualForBlocking)
       clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
       jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock).orThrow
       signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)

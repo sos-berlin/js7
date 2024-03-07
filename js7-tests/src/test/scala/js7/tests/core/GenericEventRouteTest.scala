@@ -6,7 +6,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -51,7 +51,7 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
 final class GenericEventRouteTest
-extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, GenericEventRoute
+extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
 {
   protected type OurSession = SimpleSession
 

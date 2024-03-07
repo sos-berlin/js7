@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
@@ -14,12 +15,13 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite, TestCatsEffect}
-import js7.base.thread.Futures.implicits.*
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -32,8 +34,6 @@ import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -41,7 +41,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
+final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
   import TestState.keyedEventJsonCodec
 

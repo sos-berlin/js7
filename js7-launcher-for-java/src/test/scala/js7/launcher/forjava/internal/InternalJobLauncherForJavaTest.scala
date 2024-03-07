@@ -11,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.parSequence
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.AlarmClock
@@ -41,7 +41,7 @@ import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import org.scalatest.BeforeAndAfterAll
 
-final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect, BeforeAndAfterAll
+final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterAll
 {
   private given IORuntime = ioRuntime
 

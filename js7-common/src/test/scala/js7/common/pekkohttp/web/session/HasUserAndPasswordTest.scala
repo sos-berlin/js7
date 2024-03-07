@@ -1,22 +1,21 @@
 package js7.common.pekkohttp.web.session
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.MVar
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.data.session.HttpSessionApi
-import js7.base.utils.MVar
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
-final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester, TestCatsEffect:
+final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester:
 
   private given IORuntime = ioRuntime
 

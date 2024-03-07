@@ -1,7 +1,7 @@
 package js7.base.time
 
 import cats.effect.IO
-import js7.base.catsutils.Js7IORuntime
+import js7.base.catsutils.OurIORuntime
 import js7.base.test.{OurAsyncTestSuite, OurTestControl}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -192,7 +192,7 @@ final class AlarmClockTest extends OurAsyncTestSuite:
     OurTestControl.executeEmbed:
       for
         ec <- IO.executionContext
-        _ = assert(ec != Js7IORuntime.ioRuntime.compute)
+        //Don't start commonIORuntime: _ = assert(ec != OurIORuntime.commonIORuntime.compute)
         assertion <- TestAlarmClock
           .resource(start, Some(clockCheckInterval))
           .use(body)

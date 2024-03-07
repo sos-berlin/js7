@@ -13,7 +13,7 @@ import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTempora
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,7 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessesTest extends OurTestSuite, TestCatsEffect:
+final class ProcessesTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
