@@ -131,6 +131,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+      // See also pekko.http.server.stream-cancellation-delay
       // On NoMoreElementsNeeded the Stream ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)

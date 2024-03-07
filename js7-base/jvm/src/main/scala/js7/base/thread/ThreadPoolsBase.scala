@@ -2,7 +2,6 @@ package js7.base.thread
 
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
-import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
@@ -26,15 +25,6 @@ object ThreadPoolsBase:
   def newBlockingNonVirtualExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     newThreadPoolExecutor(name = name, keepAlive = keepAlive,
       corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
-
-  //def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
-  //  newThreadPoolExecutor(
-  //    name = name,
-  //    keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
-  //    corePoolSize = config.getInt("js7.thread-pools.io.core-pool-size"),
-  //    maximumPoolSize = config.as("js7.thread-pools.io.maximum-pool-size")(StringAsIntOrUnlimited)
-  //      .getOrElse(Int.MaxValue),
-  //    queueSize = config.optionAs[Int]("js7.thread-pools.io.queue-size"))
 
   private def newThreadPoolExecutor(
     name: String,

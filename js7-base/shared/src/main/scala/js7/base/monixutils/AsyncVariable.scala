@@ -2,7 +2,6 @@ package js7.base.monixutils
 
 import cats.effect.{IO, Resource}
 import izumi.reflect.Tag
-import js7.base.monixutils.AsyncVariable.*
 import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
 

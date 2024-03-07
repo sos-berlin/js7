@@ -5,7 +5,6 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
-import java.util.concurrent.locks.ReentrantLock
 import js7.base.catsutils.OurIORuntime
 import js7.base.data.ByteArray
 import js7.base.test.TestCatsEffect.*

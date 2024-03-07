@@ -1,7 +1,6 @@
 package js7.base.time
 
 import cats.effect.IO
-import js7.base.catsutils.OurIORuntime
 import js7.base.test.{OurAsyncTestSuite, OurTestControl}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic

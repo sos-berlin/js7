@@ -37,7 +37,11 @@ object StreamingSupport:
                   .traceIO(s"toPekkoSourceForHttpResponseX deferred release: ${exitCase.toOutcome[IO]}"):
                     release
                   .logWhenItTakesLonger("toPekkoSourceForHttpResponseX.release")
-              .delayBy(100.ms) // FIXME Otherwise, the Pekko stream may not be completed
+              // Delay needed. Otherwise, the Pekko stream may not be complete !!!
+              // Does this relate to
+              // - pekko.http.(client|server).stream-cancellation-delay ?
+              // - org.apache.pekko.stream.CancellationStrategy.AfterDelay ?
+              .delayBy(100.ms)
               .startAndForget // Release in asynchronously, otherwise we will stick in a deadlock !!!
           .toPekkoSourceForHttpResponse
           .allocated

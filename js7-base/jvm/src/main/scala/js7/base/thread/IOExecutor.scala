@@ -12,7 +12,6 @@ import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newBlockingExecutor
-import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.Try
