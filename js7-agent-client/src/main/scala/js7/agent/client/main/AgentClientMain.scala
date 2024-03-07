@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
  */
 object AgentClientMain extends OurApp:
 
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
   private given IORuntime = runtime
   private given ExecutionContext = runtime.compute
 

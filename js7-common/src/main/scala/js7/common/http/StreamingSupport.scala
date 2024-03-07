@@ -61,7 +61,7 @@ object StreamingSupport:
       stream
         .onFinalizeCase:
           case ExitCase.Canceled => IO(logger.debug(s"⚫️ toPekkoSourceResource stream canceled"))
-          case exitCase => IO(logger.trace(s"### toPekkoSourceResource stream $exitCase"))
+          case _ => IO.unit
         .toUnicastPublisher
         .map(Source.fromPublisher)
 

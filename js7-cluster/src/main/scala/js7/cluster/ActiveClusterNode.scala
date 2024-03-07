@@ -363,16 +363,17 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             .as(Right(Completed)))
 
   def shutDownThisNode: IO[Checked[Completed]] =
-    clusterStateLock.lock(
-      persist() {
-        case _: Coupled =>
-          Right(Some(ClusterActiveNodeShutDown))
-        case _ =>
-          Right(None)
-      } .flatMapT: (_: (Seq[Stamped[?]], ?)) =>
-        acknowledgingStopRequested = true
-        stopAcknowledging.complete(())
-          .as(Right(Completed)))
+    logger.traceIOWithResult:
+      clusterStateLock.lock(
+        persist() {
+          case _: Coupled =>
+            Right(Some(ClusterActiveNodeShutDown))
+          case _ =>
+            Right(None)
+        } .flatMapT: (_: (Seq[Stamped[?]], ?)) =>
+          acknowledgingStopRequested = true
+          stopAcknowledging.complete(())
+            .as(Right(Completed)))
 
   private def proceed(state: ClusterState): IO[Completed] =
     state match
@@ -527,7 +528,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : IO[Checked[Completed]] =
-    logger.debugIO(HttpClient
+    logger.debugIOWithResult(HttpClient
       .liftProblem(Stream
         .resource:
           common.clusterNodeApi(
@@ -548,7 +549,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             .detectPauses(timing.passiveLostTimeout)
             .filter(_ != RightEventIdHeartbeat)
             .onlyNewest
-            .interruptWhenF(stopAcknowledging.get)  // Race condition: may be set too late
+            .interruptWhenF:
+              // Race condition: may be set too late?
+              stopAcknowledging.get *> IO:
+                logger.debug("Stop fetchAndHandleAcknowledgedEventIds2 due to stopAcknowledging")
             .flatMap: // Turn into Stream[,Problem]
               case Left(noHeartbeatSince) =>
                 val problem =
@@ -558,8 +562,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
               case Right(eventId) =>
                 Stream.exec:
-                  IO
-                    .fromFuture(IO:
+                  IO.fromFuture(IO:
                       // Possible dead letter when `stopAcknowledging` is detected too late !!!
                       // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                       journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
@@ -569,7 +572,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       .map(_.flatten))
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): IO[Checked[EventId]] =
-    logger.debugIO(common
+    logger.debugIOWithResult(common
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api => HttpClient
         .liftProblem(
@@ -610,13 +613,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : IO[Checked[Unit]] =
-    logger.traceIO("registerClusterWatchId", confirmation)(IO.defer {
-      if alreadyLocked then
-        nonLockingRegisterClusterWatchId(confirmation)
-      else
-        clusterStateLock.lock(
-          nonLockingRegisterClusterWatchId(confirmation))
-    })
+    logger.traceIOWithResult("registerClusterWatchId", confirmation, body =
+      IO.defer:
+        if alreadyLocked then
+          nonLockingRegisterClusterWatchId(confirmation)
+        else
+          clusterStateLock.lock(
+            nonLockingRegisterClusterWatchId(confirmation)))
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : IO[Checked[Unit]] =

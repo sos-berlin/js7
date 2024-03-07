@@ -31,7 +31,7 @@ object Log4j:
 
   def initialize(name: String) =
     ifNotInitialized:
-      if CorrelId.couldBeEnabled then CorrelIdLog4jThreadContextMap.initialize(name)
+      CorrelIdLog4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.failed do logger.warn(t.toString)
 
   def setDefaultConfiguration(resource: String): Unit =

@@ -44,7 +44,7 @@ object StartUp:
       logger.debug("TRACE level logging is enabled")
 
   def startUpLine(name: String): String =
-    s"""$name ${BuildInfo.longVersion} · ${startUpLine()}
+    s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
        |${"━" * 80}""".stripMargin // Log a bar, in case the previous log file is being appended
 
   /** Log Java version, config and data directory, and classpath. */

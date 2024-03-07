@@ -14,7 +14,8 @@ import scala.concurrent.{CancellationException, ExecutionContext, Future}
 
 object CatsEffectExtensions:
 
-  private val logger = Logger[this.type]
+  // Must be lazy when a non-logging function is called before proper logger initialization.
+  private lazy val logger = Logger[this.type]
 
   extension[A](io: IO[A])
 

@@ -32,8 +32,8 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
     else
       getOtherKey(key)
 
-  def containsKey(key: String) =
   // Not used
+  def containsKey(key: String) =
     keys(key)
 
   // Not used
@@ -69,8 +69,11 @@ object CorrelIdLog4jThreadContextMap:
   private[log] val CorrelIdKey = "js7.correlId"
   private val NameKey = "js7.name"
   private val VersionKey = "js7.version"
+  private val LongVersionKey = "js7.longVersion"
+  private val PrettyVersionKey = "js7.prettyVersion"
   private val SystemKey = "js7.system"
-  private val keys = Set(CorrelIdKey, NameKey, VersionKey, SystemKey)
+  private val keys = Set(CorrelIdKey, NameKey,
+    VersionKey, LongVersionKey, PrettyVersionKey, SystemKey)
 
   private val dummyNullCorrelId = CorrelId("__NULL__")
   private[log] var name = ""
@@ -86,6 +89,8 @@ object CorrelIdLog4jThreadContextMap:
     key match {
       case NameKey => name
       case VersionKey => BuildInfo.longVersion
+      case LongVersionKey => BuildInfo.longVersion
+      case PrettyVersionKey => BuildInfo.prettyVersion
       case SystemKey => StartUp.startUpLine()
       case _ => null
     }

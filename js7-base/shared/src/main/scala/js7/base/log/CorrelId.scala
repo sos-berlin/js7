@@ -51,7 +51,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   private[log] val local = DummyLocal()
   // TODO Change to monadic IOLocal
   final class DummyLocal:
-    def apply() = CorrelId("__CATS__")
+    def apply(): CorrelId = EmptyCorrelId
     def update(o: CorrelId) = {}
 
   private lazy val nextCorrelId: NextCorrelId =

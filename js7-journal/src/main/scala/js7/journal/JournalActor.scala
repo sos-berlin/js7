@@ -510,7 +510,7 @@ extends Actor, Stash, JournalLogging:
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true
         .mapParallelBatch() { snapshotObject =>
-          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
+          //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
         .foreach((snapshotObject, byteArray) => IO:
