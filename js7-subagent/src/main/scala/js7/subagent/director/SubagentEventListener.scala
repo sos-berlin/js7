@@ -16,8 +16,7 @@ import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic.extensions.*
-import js7.base.utils.CatsUtils.PureFiberIO
+import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MVar}
@@ -58,7 +57,7 @@ private trait SubagentEventListener:
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
   private val stopObserving = MVar.empty[IO, Unit].unsafeMemoize
-  @volatile private var observing: FiberIO[Unit] = PureFiberIO(())
+  @volatile private var observing: FiberIO[Unit] = pureFiberIO(())
   private val _isHeartbeating = Atomic(false)
   private val isListening = Atomic(false)
   private val lock = AsyncLock()

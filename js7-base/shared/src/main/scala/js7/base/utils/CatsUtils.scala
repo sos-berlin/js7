@@ -5,11 +5,13 @@ import cats.effect.{Deferred, Fiber, FiberIO, IO, MonadCancel, Outcome, Resource
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.{Applicative, Functor}
+import fs2.{Pure, Stream}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import js7.base.catsutils.CatsEffectExtensions.guaranteeCaseLazy
 import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
+import js7.base.fs2utils.StreamExtensions.repeatLast
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
@@ -17,7 +19,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import scala.concurrent.duration.*
-import fs2.{Pure, Stream}
 
 /**
   * @author Joacim Zschimmer
@@ -212,10 +213,6 @@ object CatsUtils:
     val last = seq.last
     seq.iterator ++ Iterator.continually(last)
 
-  private // Not tested
-  def continueWithLastStream[A](seq: NonEmptyList[A]): Stream[Pure, A] =
-    Stream.iterable(seq.toList) ++ fs2.Stream.constant(seq.last).repeat
-
   def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
     continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
 
@@ -225,6 +222,9 @@ object CatsUtils:
     else
       val last = seq.last
       seq ++: LazyList.continually(last)
+
+  def continueWithLastAsStream[A](seq: Iterable[A]): Stream[Pure, A] =
+    Stream.iterable(seq).repeatLast
 
   def pureFiberIO[A](a: A): FiberIO[A] =
     PureFiberIO(a)

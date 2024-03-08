@@ -29,7 +29,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.CatsUtils.{Nel, PureFiberIO}
+import js7.base.utils.CatsUtils.{Nel, pureFiberIO}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MutableAllocated}
 import js7.base.web.Uri
@@ -89,7 +89,7 @@ extends Service.StoppableByRequest:
   private val clusterWatchAllocated = MutableAllocated[ClusterWatchService]
   private val directorDriverAllocated = MutableAllocated[DirectorDriver]
   private var clusterState: Option[HasNodes] = None
-  private val startDirectorDriverFiber = AsyncVariable(PureFiberIO[Unit](()))
+  private val startDirectorDriverFiber = AsyncVariable(pureFiberIO[Unit](()))
 
   private object state:
     val lock = AsyncLock()

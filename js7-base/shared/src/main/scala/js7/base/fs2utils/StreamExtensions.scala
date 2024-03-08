@@ -11,7 +11,6 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
-import js7.base.log.Logger
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
@@ -22,7 +21,6 @@ import scala.reflect.ClassTag
 
 object StreamExtensions:
 
-  private val logger = Logger[this.type]
   val DefaultBatchSizeMin = 256
   private object Beat
 
@@ -92,6 +90,21 @@ object StreamExtensions:
                   .map(builder => Chunk.from(builder.result())))
                 .filter(_.nonEmpty)
               case _ => Stream.empty
+
+    /** Repeat endlessly the last element, or return the empty Stream iff this is empty. */
+    def repeatLast: Stream[F, O] =
+      Stream.suspend:
+        val empty = new AnyRef // Unique value
+        @volatile var last: O | empty.type = empty
+        stream
+          .map: o =>
+            last = o
+            o
+          .append:
+            last match
+              case `empty` => Stream.empty // The Stream was empty
+              case o: O => Stream.constant(o).repeat
+              //case o: O => Stream.chunk(Chunk.from(Array.fill(chunkSize)(o))).repeat
 
     def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
       other ++ stream

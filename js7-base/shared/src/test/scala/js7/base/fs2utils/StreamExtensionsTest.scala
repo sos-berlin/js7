@@ -247,6 +247,13 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
               Chunk("G"),
               Chunk("H", "I", "J")))
 
+    "repeatLast" in:
+      val eternal = Stream(1, 2, 3).repeatLast
+      assert(eternal.take(7).toList == List(1, 2, 3, 3, 3, 3, 3))
+
+      val empty = Stream.empty.repeatLast
+      assert(empty.toList == Nil)
+
     "insertHeartbeatsOnSlowUpstream" - {
       val heartbeat = -99
 

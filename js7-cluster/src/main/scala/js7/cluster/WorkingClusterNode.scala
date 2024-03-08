@@ -1,10 +1,6 @@
 package js7.cluster
 
-import cats.effect.Resource
-import org.apache.pekko
-import org.apache.pekko.actor.ActorRefFactory
-//diffx import com.softwaremill.diffx
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -30,6 +26,8 @@ import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
+import org.apache.pekko
+import org.apache.pekko.actor.ActorRefFactory
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *

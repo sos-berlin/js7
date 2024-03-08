@@ -10,7 +10,7 @@ import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, StreamNumberedQueue}
 import js7.base.utils.AsyncLock
-import js7.base.utils.CatsUtils.PureFiberIO
+import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
@@ -30,7 +30,7 @@ private trait CommandDispatcher:
   private lazy val logger = Logger.withPrefix[this.type](name)
   protected final var queue = new StreamNumberedQueue[Execute]
   private val processingAllowed = Switch(false)
-  private var processing: FiberIO[Unit] = PureFiberIO(()) // TODO Maybe unsafe immutable
+  private var processing: FiberIO[Unit] = pureFiberIO(()) // TODO Maybe unsafe immutable
   private val lock = AsyncLock()
 
   def start(subagentRunId: SubagentRunId): IO[Unit] =

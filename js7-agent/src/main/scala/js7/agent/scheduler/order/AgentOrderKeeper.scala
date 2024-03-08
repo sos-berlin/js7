@@ -29,7 +29,7 @@ import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.CatsUtils.{PureFiberIO, continueWithLast}
+import js7.base.utils.CatsUtils.{continueWithLast, pureFiberIO}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -505,7 +505,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
   private val changeSubagentAndClusterNodeAndProceedFiber =
-    AsyncVariable(PureFiberIO(Checked.unit))
+    AsyncVariable(pureFiberIO(Checked.unit))
 
   private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): IO[Checked[Unit]] =
     changeSubagentAndClusterNodeAndProceedFiber

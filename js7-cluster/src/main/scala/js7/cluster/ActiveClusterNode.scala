@@ -69,7 +69,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     Deferred.unsafe[IO, Try[Checked[Completed]]]
   private val startingBackupNode = Atomic(false)
   private val sendingClusterStartBackupNode = SetOnce[FiberIO[Unit]]
-  @volatile private var acknowledgingStopRequested = false
+  @volatile private var stopAcknowledgingRequested = false
   private val stopAcknowledging = Deferred.unsafe[IO, Unit]
   @volatile private var stopRequested = false
   private val clusterWatchSynchronizerOnce = SetOnce[ClusterWatchSynchronizer]
@@ -215,7 +215,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       case command @ ClusterCommand.ClusterPrepareCoupling(activeId, passiveId, _) =>
         requireOwnNodeId(command, activeId)(
           IO.defer:
-            if acknowledgingStopRequested | stopRequested then
+            if stopAcknowledgingRequested | stopRequested then
               // TODO Cancel also when ack is stopped after execution has been started
               IO.left(Problem.pure("Active cluster node is shutting down"))
             else
@@ -358,20 +358,28 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           Left(Problem.pure("Switchover is possible only for the active and coupled cluster node," +
             s" but cluster state is: $state"))
       } .flatMapT: (_: Seq[Stamped[?]], _) =>
-          acknowledgingStopRequested = true
+          stopAcknowledgingRequested = true
           stopAcknowledging.complete(())
             .as(Right(Completed)))
 
   def shutDownThisNode: IO[Checked[Completed]] =
     logger.traceIOWithResult:
+      // FIXME Deadlock when events are not yet acknowledged while this node shuts down
+      // Journal kann blockieren, wenn ein Commit noch nicht bestätigt worden ist.
+      // Lösungsvorschlag: Journal ordentlich beenden
+      //  - ClusterActiveNodeShutDown
+      //  - Ausstehende Acks abwarten
+      //  - Derweil kann ClusterPassiveLost auftreten.
+      //  - Erst nach Erfolg oder ClusterPassiveLost die Acks abschalten.
+      //  --> Das alles in eine stopJournaling-Routine? --> ResourceIO["Journaling"]
       clusterStateLock.lock(
         persist() {
           case _: Coupled =>
             Right(Some(ClusterActiveNodeShutDown))
           case _ =>
             Right(None)
-        } .flatMapT: (_: (Seq[Stamped[?]], ?)) =>
-          acknowledgingStopRequested = true
+        } .flatMapT: (_: (Seq[Stamped[?]], _)) =>
+          stopAcknowledgingRequested = true
           stopAcknowledging.complete(())
             .as(Right(Completed)))
 
@@ -437,7 +445,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
               IO.unit
             case tried =>
-              IO.unlessA(acknowledgingStopRequested):
+              IO.unlessA(stopAcknowledgingRequested):
                 // Completes only when not cancelled and then it is a failure
                 fetchingAcksTerminatedUnexpectedlyPromise.complete(tried).void
           .void
@@ -501,7 +509,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           IO.pure(o)
       .materialize.flatTap(tried => IO { tried match {
         case Success(Right(Completed)) =>
-          if !acknowledgingStopRequested then
+          if !stopAcknowledgingRequested then
             logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
