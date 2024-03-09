@@ -1,6 +1,6 @@
 package js7.common.internet
 
-import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
+import java.net.{InetAddress, InetSocketAddress}
 import js7.base.convert.As.convert
 import js7.base.test.OurTestSuite
 import js7.common.internet.IP.*

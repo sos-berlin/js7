@@ -1,7 +1,6 @@
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.Files.{createDirectories, deleteIfExists}
 import java.nio.file.Paths
-import java.security.Security
 import sbt.{ModuleID, ProjectReference}
 import sbtcrossproject.CrossPlugin.autoImport.JVMCrossProjectOps
 import sbtcrossproject.CrossProject
@@ -18,10 +17,11 @@ object BuildUtils
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
   val testParallelization: Int = {
-    val factor = sys.props.get("test.parallel") match {
+    val factor: Int = sys.props.get("test.parallel") match {
       case None => 1
-      case Some("") => 1 * sys.runtime.availableProcessors
-      case Some(o) if o.last == 'x' => (o.dropRight(1).toDouble * sys.runtime.availableProcessors + 0.01).toInt
+      case Some("") => BuildCPU.testParallelization
+      case Some(o) if o.last == 'x' =>
+        (BuildCPU.testParallelization * o.dropRight(1).toDouble + 0.01).toInt
       case Some(o) => o.toInt
     }
     if (factor != 1) println(s"build.sbt: test.parallel=$factor")
@@ -32,10 +32,7 @@ object BuildUtils
 
   // Initial call to Logger for proper slf4j and log4j initialization ???
   logger.info(s"test.parallel=$testParallelization")
-
-  if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
-    Security.setProperty("crypto.policy", "unlimited")
-  }
+  logger.debug(s"cpu=${BuildCPU.cpu}")
 
   System.setProperty("js7.test", "on")
 

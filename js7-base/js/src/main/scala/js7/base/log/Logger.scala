@@ -33,9 +33,16 @@ object Logger
 
   object syntax {
     // Empty implementation to be compatible with the JVM variant
-    implicit final class RichLogger(private val logger: scribe.Logger) extends AnyVal {
+    extension (logger: scribe.Logger)
+      /** Can be used to import these extensions. */
+      def forceImportExtensions: Unit = ()
+
       def isEnabled(level: LogLevel): Boolean =
         level != LogLevel.LogNone && logger.includes(logLevelToScribe(level))
+
+      inline def whenTraceEnabled(inline body: => Unit): Unit =
+        if logger.includes(scribe.Level.Trace) then
+          body
 
       def log(level: LogLevel, message: => String)
         (implicit pkg: Pkg, fileName: FileName, name: Name, line: Line)
@@ -147,7 +154,6 @@ object Logger
       inline def traceStream[A](function: String, inline args: => Any = "")(stream: Stream[IO, A])
       : Stream[IO, A] =
         stream
-    }
   }
 
   private def logF[F[_], A](

@@ -15,17 +15,17 @@ trait WallClock:
   override def toString = s"$productPrefix(${now()})"
 
 
-object WallClock extends WallClock:
+/** The system Wall clock. */
+object WallClock extends SystemWallClock:
 
-  def monotonicNanos() =
-    System.nanoTime()
-
-  override def epochMilli() =
-    System.currentTimeMillis()
-
+  /** A never proceeding clock. */
   def fixed(timestamp: Timestamp): WallClock =
     FixedWallclock(timestamp)
 
   private final case class FixedWallclock(fixed: Timestamp)
   extends WallClock:
     def epochMilli() = fixed.toEpochMilli
+
+
+trait SystemWallClock extends WallClock:
+  def epochMilli() = System.currentTimeMillis()

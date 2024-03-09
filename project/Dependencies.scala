@@ -10,9 +10,8 @@ object Dependencies
   val slf4jVersion = "2.0.9"  // See also plugins.sbt
   val log4jVersion = "2.21.1"  // See also plugins.sbt
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.3"
-  val catsEffectTestingVersion = "3.5.3"
-  val catsEffectOrga = "com.sos-berlin.js7.engine" // was: "org.typelevel"
+  val catsEffectVersion = "3.5.4"
+  val catsEffectTestingVersion = catsEffectVersion
   val catsSTMVersion = "0.13.4"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"

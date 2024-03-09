@@ -103,8 +103,8 @@ object StreamExtensions:
           .append:
             last match
               case `empty` => Stream.empty // The Stream was empty
-              case o: O => Stream.constant(o).repeat
-              //case o: O => Stream.chunk(Chunk.from(Array.fill(chunkSize)(o))).repeat
+              case o: O @unchecked => Stream.constant(o).repeat
+              //case o: O @unchecked => Stream.chunk(Chunk.from(Array.fill(chunkSize)(o))).repeat
 
     def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
       other ++ stream

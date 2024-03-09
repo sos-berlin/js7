@@ -20,7 +20,6 @@ import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger.ops.*
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
@@ -141,7 +140,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     private def schedule(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Timestamp): Unit =
       noticeToSchedule += boardPath -> noticeId ->
-        alarmClock.scheduleAt(endOfLife):
+        alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($boardPath, $noticeId)"):
           self ! Internal.NoticeIsDue(boardPath, noticeId)
 
     def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
@@ -1355,7 +1354,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             else
               for entry <- orderRegister.get(orderId) do
                 // TODO Cancel timer when unused
-                entry.timer := alarmClock.scheduleAt(until):
+                entry.timer := alarmClock.scheduleAt(until, s"OrderIsDue($orderId)"):
                   self ! Internal.OrderIsDue(orderId)
 
       for mark <- order.mark do

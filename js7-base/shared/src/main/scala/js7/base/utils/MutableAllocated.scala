@@ -36,8 +36,7 @@ final class MutableAllocated[A](logMinor: Boolean = false)
     logger.traceIO(s"$toString acquire"):
       allocatedVar
         .update: allocated =>
-          allocated.release.uncancelable
-            *> resource.toAllocated
+          allocated.release.uncancelable *> resource.toAllocated
         .map(_.allocatedThing)
         .start.flatMap: fiber =>
           whenReleaseFinally.get
@@ -49,7 +48,7 @@ final class MutableAllocated[A](logMinor: Boolean = false)
                   IO.defer(IO.raiseError(new AcquisitionCanceledException))
                   //IO.canceled
                   //  .asInstanceOf[IO[A]] /* we have been canceled, so A value is not used. */
-                .guaranteeCase: exitCase =>
+                .guarantee:
                   cancelFiber.cancel
 
   def release: IO[Unit] =

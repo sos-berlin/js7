@@ -75,8 +75,6 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //Scala 3? ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
-ThisBuild / dependencyOverrides += "org.typelevel" %% "cats-effect" % Dependencies.catsEffectVersion
-
 ThisBuild / scalacOptions ++= Seq(
   //"-explain",
   "-feature",
@@ -324,7 +322,6 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
       "co.fs2" %% "fs2-io" % fs2Version ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
-      "com.outr" %%% "scribe" % scribeVersion ++
       "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
       "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
@@ -718,8 +715,6 @@ lazy val `js7-agent-client` = project
   .settings(description := "JS7 Agent - Client")
   .settings {
     import Dependencies.*
-    libraryDependencies += "org.typelevel" %% "cats-core" % catsVersion
-    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectVersion
     libraryDependencies ++=
       pekkoActor ++
       pekkoHttp ++

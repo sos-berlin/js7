@@ -37,7 +37,7 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   private lazy val clock =
     given ZoneId = CalendarTest.zone
-    TestAlarmClock(local("2021-10-01T00:00"))(using ioRuntime.scheduler)
+    TestAlarmClock(local("2021-10-01T00:00"))
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -112,7 +112,7 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
 object CalendarTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
+  private given zone: ZoneId = ZoneId.of("Europe/Mariehamn")
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),

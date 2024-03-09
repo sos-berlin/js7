@@ -785,19 +785,17 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private def proceedWithOrder(order: Order[Order.State]): Unit =
     if order.isAttached then {
-      val delayed = clock
-        .lock(IO:
-          order.maybeDelayedUntil match
-            case Some(until) if clock.now() < until =>
-              // TODO Schedule only the next order ?
-              val orderEntry = orderRegister(order.id)
-              orderEntry.timer := clock.scheduleAt(until):
-                self ! Internal.Due(order.id)
-              true
+      val delayed = clock.lock:
+        order.maybeDelayedUntil match
+          case Some(until) if clock.now() < until =>
+            // TODO Schedule only the next order ?
+            val orderEntry = orderRegister(order.id)
+            orderEntry.timer := clock.scheduleAt(until, s"Due(${order.id})"):
+              self ! Internal.Due(order.id)
+            true
 
-            case _ =>
-              false)
-        .awaitInfinite/*!!!*/
+          case _ =>
+            false
 
       if !delayed then {
         val agentState = journal.unsafeCurrentState()
@@ -875,10 +873,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
     while it.hasNext && tryStartProcessing(it.next()) do {}
 
   private def tryStartProcessing(jobEntry: JobEntry): Boolean =
-    lazy val isEnterable = jobEntry
-      .checkAdmissionTimeInterval(clock):
-        self ! Internal.JobDue(jobEntry.jobKey)
-      .awaitInfinite /*!!!*/
+    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval:
+      self ! Internal.JobDue(jobEntry.jobKey)
 
     val idToOrder = journal.unsafeCurrentState().idToOrder
 
@@ -1018,9 +1014,8 @@ object AgentOrderKeeper:
       processCount += 1
       queue.recoverProcessingOrder(order)
 
-    def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): IO[Boolean] =
-      admissionTimeIntervalSwitch
-        .updateAndCheck(onPermissionGranted)(using clock)
+    def checkAdmissionTimeInterval(onPermissionGranted: => Unit)(using AlarmClock): Boolean =
+      admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
 
     def isBelowProcessLimit =
       processCount < workflowJob.processLimit

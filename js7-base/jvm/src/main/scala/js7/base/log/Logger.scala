@@ -93,6 +93,8 @@ object Logger extends AdHocLogger:
 
   object syntax:
     extension (logger: ScalaLogger)
+      /** Can be used to import these extensions. */
+      inline def forceImportExtensions: Unit = ()
 
       def isEnabled(level: LogLevel): Boolean =
         logger.underlying.isEnabled(level)

@@ -1,14 +1,14 @@
 package js7.base.time
 
-import js7.base.utils.emptyRunnable
-import ClockChecking.*
+import cats.effect.unsafe.Scheduler
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRate
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
+import js7.base.time.ClockChecking.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, emptyRunnable}
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
@@ -18,8 +18,9 @@ private[time] trait ClockChecking extends Runnable:
   self: AlarmClock =>
 
   protected def clockCheckInterval: FiniteDuration
-  //protected def scheduler: Scheduler
+  protected def scheduler: Scheduler
 
+  // TODO Use SortedSet like in TestScheduler. Is this code duplicate?
   private val epochMilliToAlarms = mutable.SortedMap.empty[Long, Vector[Alarm]]
   // Same as epochMilliToAlarms.headOption.fold(Long.MaxValue)(_._1).
   // Can be read unsynchronized.
@@ -40,10 +41,12 @@ private[time] trait ClockChecking extends Runnable:
       epochMilliToAlarms.values.view.flatten.foreach(_.cancel())
       epochMilliToAlarms.clear()
 
-  final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName) =
-    scheduleAt(now() + delay)(callback)
+  final def scheduleOnce(delay: FiniteDuration, label: => String)(callback: => Unit)
+  : SyncCancelable =
+    scheduleAt(now() + delay, label)(callback)
 
-  final def scheduleAt(at: Timestamp)(callback: => Unit)(using sourcecode.FullName) =
+  final def scheduleAt(at: Timestamp, label: => String)(callback: => Unit)
+  : SyncCancelable =
     val milli = at.toEpochMilli
     val alarm = new Alarm(milli, callback)
     self.synchronized:
@@ -68,12 +71,12 @@ private[time] trait ClockChecking extends Runnable:
 
         //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
         timer :=
-          (Try((delay max 0).ms) match
+          Try((delay max 0).ms).match
             case Failure(t) =>
               logger.error(s"scheduleNext: delay=${delay}ms is out of range for FiniteDuration")
               emptyRunnable
             case Success(delay) =>
-              scheduler.sleep(delay, this))
+              scheduler.sleep(delay, this)
 
         nextMilli = firstMilli
 
@@ -99,8 +102,6 @@ private[time] trait ClockChecking extends Runnable:
             alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
         //logger.trace(s"Tick: ${alarms.size} alarms!")
         for a <- alarms do a.call()
-      //else
-      //  logger.trace("Tick")
 
       self.synchronized:
         scheduleNext()

@@ -27,8 +27,8 @@ final class ExecuteAdmissionTimeSwitch(
 
   /** Update the state with the current or next admission time and set a _timer.
    * @return true iff an AdmissionTimeInterval is effective now. */
-  def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): IO[Boolean] =
-    clock.lock(IO:
+  def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): Boolean =
+    clock.lock:
       val now = clock.now()
       admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
       match
@@ -46,4 +46,4 @@ final class ExecuteAdmissionTimeSwitch(
                 _nextTime = None
                 onAdmissionStart
 
-          interval.contains(now)) // Has admission now?
+          interval.contains(now) // Has admission now?
