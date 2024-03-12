@@ -15,7 +15,7 @@
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout>
         <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n</pattern>
-        <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.version} · %X{js7.system}%n</header>
+        <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</header>
         <footer>%d{DEFAULT_MICROS} End of logging%n</footer>
         <charset>UTF-8</charset>
       </patternLayout>
