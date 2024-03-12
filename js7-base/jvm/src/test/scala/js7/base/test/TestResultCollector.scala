@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Paths
 import js7.base.log.{Log4j, Logger}
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.system.JavaHeapDump.dumpHeapTo
 import js7.base.test.LoggingTestAdder.Result
 import js7.base.thread.VirtualThreads.newMaybeVirtualThread
@@ -108,4 +108,4 @@ private object TestResultCollector:
       case Failure(_: TestPendingException) => 2
       case Failure(_) => 3
 
-  java8Polyfill()
+  java17Polyfill()

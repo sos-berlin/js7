@@ -8,7 +8,6 @@ import java.nio.{ByteBuffer, ReadOnlyBufferException}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
-import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
@@ -146,7 +145,7 @@ extends OurTestSuite:
       assert(byteSeq.unsafeArray ne array)
       assert(byteSeq == ByteSeq(2, 3))
   }
-  
+
   "unwrapChunk" in:
     val a = Array[Byte](1, 2, 3)
     val chunk = Chunk.array(a)
@@ -401,5 +400,3 @@ object ByteSequenceTester:
    "cnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmq\r\n" +
    "q6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj\r\n" +
    "5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
-
-  java8Polyfill() // For in.transferTo(out)

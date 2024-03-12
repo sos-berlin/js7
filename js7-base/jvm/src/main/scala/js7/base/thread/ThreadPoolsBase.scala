@@ -3,7 +3,7 @@ package js7.base.thread
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.log.Logger
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -91,4 +91,4 @@ object ThreadPoolsBase:
     export ec.*
     override def toString = label
 
-  java8Polyfill()
+  java17Polyfill()

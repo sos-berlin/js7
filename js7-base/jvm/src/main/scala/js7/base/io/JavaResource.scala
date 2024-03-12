@@ -10,7 +10,6 @@ import js7.base.io.JavaResource.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.Java8Polyfill.*
 import js7.base.utils.AutoClosing.autoClosing
 import scala.language.implicitConversions
 
@@ -124,5 +123,3 @@ object JavaResource:
     o.asResource
 
   implicit val writable: Writable[JavaResource] = _ writeToStream _
-
-  java8Polyfill()

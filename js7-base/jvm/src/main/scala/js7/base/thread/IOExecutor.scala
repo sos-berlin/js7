@@ -9,7 +9,7 @@ import js7.base.catsutils.CatsEffectExtensions.blockingOn
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger.syntax.*
 import js7.base.log.Logger
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newBlockingExecutorService
@@ -120,4 +120,4 @@ object IOExecutor:
         Some(IO:
           future.cancel(true))
 
-  java8Polyfill()
+  java17Polyfill()

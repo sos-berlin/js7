@@ -4,29 +4,45 @@ ENV LANG=C.UTF-8
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
-COPY --from=eclipse-temurin:8u392-b08-jdk-centos7 $JAVA_HOME $JAVA_HOME
+
+COPY --from=eclipse-temurin:17 $JAVA_HOME $JAVA_HOME
+
 # Own Docker image layer with downloaded microdnf metadata (may take several seconds)
 RUN yum -y install procps git unzip which sudo openssl
 # Until here, same Dockerfile command sequence as in JS7 Docker example for shorter build time
 #———————————————————————————————————————————————————————————————————————————————
 
-RUN \
-  yum -y install nodejs &&\
+RUN <<END
+  # Install packages
+  set -euo pipefail
+  yum -y install nodejs
   yum clean packages
+END
 
-RUN \
-  sbtVersion=1.9.7 &&\
-  mkdir --parents /opt/lib/sbt-$sbtVersion &&\
-  curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz |\
-    tar xzf - --directory=/opt/lib/sbt-$sbtVersion --strip-components=1 sbt/ &&\
+RUN <<END
+  # Install sbt
+  set -euo pipefail
+  sbtVersion=1.9.9
+  sbtSHA256=c57cae60c2122ca1bba77184dfb4d0d25fc6c18805394ab36ab6208b0c0f262f
+  mkdir --parents /opt/lib/sbt-$sbtVersion
+  cd /root
+  curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz \
+       --output sbt.tgz
+  echo "$sbtSHA256 sbt.tgz" | sha256sum --check
+  tar xzf sbt.tgz --directory=/opt/lib/sbt-$sbtVersion --strip-components=1 sbt/
+  rm sbt.tgz
   ln -snf /opt/lib/sbt-$sbtVersion/bin/sbt /usr/local/bin/sbt
+END
 
-RUN \
-  adduser --comment "JS7 build" --no-create-home build &&\
-  mkdir --parents /home/build/mount/{.cache,.ivy2,.npm,.sbt} &&\
-  ln -s /home/build/mount/{.cache,.ivy2,.npm,.sbt} /home/build/ &&\
-  mkdir /home/build/js7 &&\
+RUN <<END
+  # Finish
+  set -euo pipefail
+  adduser --comment "JS7 build" --no-create-home build
+  mkdir --parents /home/build/mount/{.cache,.ivy2,.npm,.sbt}
+  ln -s /home/build/mount/{.cache,.ivy2,.npm,.sbt} /home/build/
+  mkdir /home/build/js7
   chown -R build.build /home/build/
+END
 
 # echo "build ALL=(ALL) NOPASSWD: ALL" >>/etc/sudoers
 

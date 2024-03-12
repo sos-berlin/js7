@@ -10,7 +10,7 @@ import js7.base.configutils.Configs.{ConvertibleConfig, HoconStringInterpolator}
 import js7.base.convert.As
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.system.startup.Halt
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.*
@@ -173,4 +173,4 @@ object OurIORuntime:
       case o => o.toInt
     }
 
-  java8Polyfill()
+  java17Polyfill()

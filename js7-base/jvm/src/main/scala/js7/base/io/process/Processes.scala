@@ -11,7 +11,6 @@ import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
-import js7.base.system.Java8Polyfill.*
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime.*
@@ -143,5 +142,3 @@ object Processes:
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)
       def unapply(e: IOException): Option[IOException] =
         matchesError26(Option(e.getMessage) getOrElse "").matches option e
-
-  java8Polyfill()

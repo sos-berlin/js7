@@ -2,7 +2,6 @@ package js7.base.system
 
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
-import js7.base.system.Java8Polyfill.*
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import scala.util.Try
 
@@ -49,5 +48,3 @@ object SystemInformations:
       mxBeans = Map("operatingSystem" -> (
         operatingSystemMXBean() ++
         platformMBean())))
-
-  java8Polyfill()

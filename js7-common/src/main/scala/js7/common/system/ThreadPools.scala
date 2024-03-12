@@ -6,7 +6,7 @@ import java.lang.Thread.currentThread
 import java.util.concurrent.ExecutorService
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.thread.ThreadPoolsBase.{labeledExecutionContextExecutorService, newBlockingExecutorService, newBlockingNonVirtualExecutor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKiBGiB
@@ -100,4 +100,4 @@ object ThreadPools:
         else
           logger.debug("awaitTermination() finished")
 
-  java8Polyfill()
+  java17Polyfill()

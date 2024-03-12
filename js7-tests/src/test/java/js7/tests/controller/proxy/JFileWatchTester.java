@@ -55,7 +55,7 @@ final class JFileWatchTester
             Path file = directory.resolve("file-TEST.txt");
 
             Future<?> whenOrderDeleted = api.when(es -> {
-                // Fun with Java
+                // Fun with Java 17
                 if (!(es.stampedEvent().value().key() instanceof OrderId))
                     return false;
                 else {

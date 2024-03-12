@@ -1,14 +1,13 @@
 package js7.base.io.file
 
 import cats.effect.{Resource, Sync}
-import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException, InputStream, OutputStreamWriter}
+import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException, InputStream}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
+import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exists, isDirectory, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
-import java.util.Objects.requireNonNull
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops.*
 import js7.base.data.{ByteArray, ByteSequence, Writable}
@@ -59,18 +58,6 @@ object FileUtils:
           copy(file, destination, options*)
     }
 
-  // COMPATIBLE with Java 11 Files.writeString
-  def writeString(path: Path, chars: CharSequence, options: OpenOption*): Path =
-    writeString(path, chars, UTF_8, options*)
-
-  // COMPATIBLE with Java 11 Files.writeString
-  def writeString(path: Path, chars: CharSequence, charset: Charset, options: OpenOption*)
-  : Path =
-    requireNonNull(chars)
-    autoClosing(new OutputStreamWriter(newOutputStream(path, options*), charset)):
-      _.append(chars)
-    path
-
   object implicits:
     implicit def pathToFile(path: Path): File =
       path.toFile
@@ -115,7 +102,7 @@ object FileUtils:
 
       def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit =
         val options = Vector(CREATE, WRITE, if append then APPEND else TRUNCATE_EXISTING)
-        writeString(delegate, string, encoding, options*)
+        Files.writeString(delegate, string, encoding, options*)
 
       def ++=[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(

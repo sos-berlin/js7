@@ -5,14 +5,13 @@ import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.circeutils.StandardJsonCodecs.{PatternJsonCodec, RegexJsonCodec}
 import js7.base.problem.Problem
-import js7.base.system.Java8Polyfill.javaVersion
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.util.matching.Regex
 
 final class StandardJsonCodecsTest extends OurTestSuite:
   private val regexProblem = Problem(
-    if javaVersion >= 19 then
+    if Runtime.version.feature >= 19 then
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unescaped trailing backslash near index 1\\n\\"
     else
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unexpected internal error near index 1\\n\\")

@@ -7,7 +7,6 @@ import java.io.File.separator
 import java.io.{BufferedReader, File, InputStreamReader}
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, createTempFile, delete, exists}
-import java.nio.file.StandardOpenOption.{CREATE_NEW, WRITE}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
@@ -255,18 +254,6 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
           assert(checkRelativePath(invalid).isLeft)
         }
       }
-    }
-  }
-
-  "writeString emulation for Java 8" in {
-    withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
-      val big = ((' ' to '\ud001'): Seq[Char]).mkString
-      intercept[IOException] {
-        FileUtils.writeString(file, big, UTF_8, CREATE_NEW, WRITE)
-      }
-      delete(file)
-      FileUtils.writeString(file, big, UTF_8, CREATE_NEW, WRITE)
-      assert(file.contentString == big)
     }
   }
 

@@ -12,7 +12,6 @@ import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryD
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked.Ops
-import js7.base.system.Java8Polyfill.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
@@ -239,6 +238,3 @@ object TestControllerAgent extends OurApp:
          |       --period=${conf.period}
          |       --orders=${conf.orderGeneratorCount}
          |""".stripMargin
-
-
-  java8Polyfill()

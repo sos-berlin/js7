@@ -8,7 +8,7 @@ import cats.syntax.traverse.*
 import java.lang.Thread.currentThread
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
-import js7.base.system.Java8Polyfill.*
+import js7.base.system.Java17Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
@@ -113,7 +113,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
       future.await(99.s)
       logger.info(s"${currentThread.threadId} $current IO — not bound")
   }
-  
+
   "bindCorrelId[IO[r]]" in:
     pending // TODO
     val correlIds = Vector.tabulate(1000)(i => CorrelId(i.toString))
@@ -167,4 +167,4 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
 
 object CorrelIdJvmTest:
   private val logger = Logger[this.type]
-  java8Polyfill()
+  java17Polyfill()
