@@ -21,9 +21,12 @@ RUN yum -y install procps git unzip which sudo openssl
 # Used as group ID, too.
 ARG UID
 
-RUN \
-  yum -y install less findutils which &&\
+RUN <<END
+  # Install packages
+  set -euo pipefail
+  yum -y install less findutils which
   yum -y clean packages
+END
 
 # A tiny improvement of the Java runtime:
 #RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \

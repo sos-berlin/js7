@@ -17,9 +17,14 @@ data=
 appOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
+execOptions=()
 
 for arg in "$@"; do :
   case "$arg" in
+    --arg0=*)
+      a="${arg#*=}"
+      execOptions=("-a" "${arg#*=}")
+      ;;
     --camel-name=*)
       camelName="${arg#*=}"
       ;;
@@ -123,9 +128,9 @@ execute=(
   -classpath "$classpathString"
   "$mainClass"
   "${appOptions[@]}")
-log "${execute[@]}"
 
-"${execute[@]}" &
+log "${execute[@]}"
+exec "${execOptions[@]}" "${execute[@]}" &
 
 pid=$!
 log "PID $pid"

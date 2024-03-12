@@ -12,6 +12,7 @@ rm -rf "${dir:?}"/*
 docker run \
   --volume="$dir":/var/opt/js7/testAddOrders \
   --network=js7_default \
-  --rm --name=TestAddOrders \
+  --hostname=js7-testAddOrders
+  --rm --name=js7-testAddOrders \
   js7 \
-  testAddOrders "$@"
+  testAddOrders --arg0=TestAddOrders "$@"
