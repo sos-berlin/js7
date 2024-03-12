@@ -94,6 +94,8 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, H
     directoryProvider
 
   override def afterAll() =
-    closer.close()
-    directoryProvider.close()
-    super.afterAll()
+    try
+      closer.close()
+      directoryProvider.close()
+    finally
+      super.afterAll()

@@ -32,8 +32,10 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     myAgent = agent
 
   override def afterAll() =
-    myAgent.terminate().await(99.s)
-    super.afterAll()
+    try 
+      myAgent.terminate().await(99.s)
+    finally
+      super.afterAll()
 
   "Delete bare Subagent" in:
     runSubagent(bareSubagentItem) { _ =>

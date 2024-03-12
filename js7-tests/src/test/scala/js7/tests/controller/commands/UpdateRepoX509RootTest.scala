@@ -48,10 +48,11 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
     super.beforeAll()
   }
 
-  override def afterAll() = {
-    deleteDirectoryRecursively(workDir)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try 
+      deleteDirectoryRecursively(workDir)
+    finally 
+      super.afterAll()
 
   "UpdateRepo with openssl-generated root certificate" - {
     val v2 = VersionId("2")

@@ -36,5 +36,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest:
     bSubagent // Start Subagent
 
   override def afterAll() =
-    bSubagentRelease.await(99.s)
-    super.afterAll()
+    try 
+      bSubagentRelease.await(99.s)
+    finally 
+      super.afterAll()

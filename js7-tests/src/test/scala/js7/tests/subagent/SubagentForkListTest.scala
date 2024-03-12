@@ -56,9 +56,11 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
     bSubagent
 
   override def afterAll() =
-    bSubagentRelease.await(99.s)
-    bareSubagentRelease.await(99.s)
-    super.afterAll()
+    try
+      bSubagentRelease.await(99.s)
+      bareSubagentRelease.await(99.s)
+    finally
+      super.afterAll()
 
   "ForkList with subagentIds function at Controller is rejected" in:
     withTemporaryItem(Workflow(

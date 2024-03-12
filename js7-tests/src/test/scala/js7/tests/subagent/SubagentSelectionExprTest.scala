@@ -45,8 +45,10 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
     bareSubagent
 
   override def afterAll() =
-    bareSubagentRelease.await(99.s)
-    super.afterAll()
+    try 
+      bareSubagentRelease.await(99.s)
+    finally
+      super.afterAll()
 
   "Expression references a non-existing variable" in:
     val orderId = OrderId("MISSING")

@@ -87,12 +87,13 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     eventWriter.onJournalingStarted()
   }
 
-  override def afterAll() = {
-    allocatedWebServer.release.await(99.s)
-    eventWriter.close()
-    deleteDirectoryRecursively(directory)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      allocatedWebServer.release.await(99.s)
+      eventWriter.close()
+      deleteDirectoryRecursively(directory)
+    finally
+      super.afterAll()
 
   implicit private val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
   private lazy val file0 = journalLocation.file(0L)

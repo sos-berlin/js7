@@ -141,11 +141,12 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     allocatedServer
   }
 
-  override def afterAll() = {
-    allocatedServer.release.await(99.s)
-    Pekkos.terminateAndWait(actorSystem, 99.s)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      allocatedServer.release.await(99.s)
+      Pekkos.terminateAndWait(actorSystem, 99.s)
+    finally
+      super.afterAll()
 
   "Read event stream with getDecodedLinesStream" - {
     "empty, timeout=0" in {

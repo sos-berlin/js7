@@ -34,11 +34,12 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
     super.beforeAll()
     streamFuture
 
-  override def afterAll() = {
-    directoryWatcher.close()
-    deleteDirectoryRecursively(dir)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      directoryWatcher.close()
+      deleteDirectoryRecursively(dir)
+    finally
+      super.afterAll()
 
   if isMac then {
     "Java's WatchService does not work properly under MacOS" in {

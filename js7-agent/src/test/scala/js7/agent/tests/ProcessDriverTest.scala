@@ -55,9 +55,11 @@ final class ProcessDriverTest
     """
 
   override protected def afterAll() =
-    closer.close()
-    ioxAllocated.release.await(99.s)
-    super.afterAll()
+    try
+      closer.close()
+      ioxAllocated.release.await(99.s)
+    finally
+      super.afterAll()
 
   "ProcessDriver" in:
     val executableDirectory = createTempDirectory("ProcessDriverTest-")

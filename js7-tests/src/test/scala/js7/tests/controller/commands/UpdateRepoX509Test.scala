@@ -41,8 +41,10 @@ final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest
   override def controllerConfig = config"""js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   override def afterAll() =
-    deleteDirectoryRecursively(workDir)
-    super.afterAll()
+    try 
+      deleteDirectoryRecursively(workDir)
+    finally
+      super.afterAll()
 
   //"UpdateRepo with internally generated signature" in {
   //  val v1 = VersionId("1")

@@ -62,9 +62,11 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
   private var agent: TestAgent = null
 
   override def afterAll() =
-    controllerApi.stop.await(99.s)
-    controller.terminate() await 99.s
-    super.afterAll()
+    try
+      controllerApi.stop.await(99.s)
+      controller.terminate() await 99.s
+    finally
+      super.afterAll()
 
   private val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
 

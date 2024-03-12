@@ -108,11 +108,12 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
     super.beforeAll()
   }
 
-  override def afterAll() = {
-    stopProvider.await(99.s)
-    deleteDirectoryRecursively(providerDirectory)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      stopProvider.await(99.s)
+      deleteDirectoryRecursively(providerDirectory)
+    finally
+      super.afterAll()
 
   "updateControllerConfiguration" - {
     "(start provider)" in {

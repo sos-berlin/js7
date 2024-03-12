@@ -75,10 +75,11 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
     TestEvents foreach eventCollector.addStamped
   }
 
-  override def afterAll() = {
-    eventCollector.close()
-    super.afterAll()
-  }
+  override def afterAll() =
+    try 
+      eventCollector.close()
+    finally
+      super.afterAll()
 
   for (uri <- List(
     "/event?return=OrderEvent&timeout=0&after=0",

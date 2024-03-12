@@ -93,10 +93,12 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
     webServer
 
   override def afterAll() =
-    webServer.release.await(99.s)
-    Pekkos.terminateAndWait(actorSystem, 10.s)
-    deleteDirectoryRecursively(directory)
-    super.afterAll()
+    try
+      webServer.release.await(99.s)
+      Pekkos.terminateAndWait(actorSystem, 10.s)
+      deleteDirectoryRecursively(directory)
+    finally
+      super.afterAll()
 
   "HTTP" in {
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))

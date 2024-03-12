@@ -24,8 +24,10 @@ final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentF
   override protected def provideAgentClientCertificate = false
 
   override def afterAll() =
-    socket.close()
-    super.afterAll()
+    try 
+      socket.close()
+    finally
+      super.afterAll()
 
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in:
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))

@@ -40,9 +40,11 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     case _ => sys.error("Invalid number of arguments in property test.speed")
 
   override def afterAll() =
-    controller.api.stop await 99.s
-    controller.terminate() await longTimeout
-    super.afterAll()
+    try
+      controller.api.stop await 99.s
+      controller.terminate() await longTimeout
+    finally
+      super.afterAll()
 
   s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in:
     val t = new Stopwatch

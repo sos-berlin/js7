@@ -85,9 +85,11 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
     webServerResource.toAllocated.await(99.s)
 
   override def afterAll() =
-    Pekkos.shutDownHttpConnectionPools(system)
-    allocatedWebServer.release.await(99.s)
-    super.afterAll()
+    try
+      Pekkos.shutDownHttpConnectionPools(system)
+      allocatedWebServer.release.await(99.s)
+    finally
+      super.afterAll()
 
   protected final def requireAuthorizedAccess(client: PekkoHttpClient, expectedUserId: UserId = UserId("A-USER"))
     (implicit s: IO[Option[SessionToken]]): Unit =

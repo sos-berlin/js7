@@ -56,12 +56,14 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
     controller.eventWatch
 
   override def afterAll() =
-    Seq(aAgent, bAgent)
-      .flatMap(Option(_))
-      .parTraverse(_.terminate())
-      .await(99.s)
-    controller.terminate(suppressSnapshot = true).await(99.s)
-    super.afterAll()
+    try
+      Seq(aAgent, bAgent)
+        .flatMap(Option(_))
+        .parTraverse(_.terminate())
+        .await(99.s)
+      controller.terminate(suppressSnapshot = true).await(99.s)
+    finally
+      super.afterAll()
 
   "ControlWorkflow sets some breakpoints" in:
     controller = directoryProvider.newController()
