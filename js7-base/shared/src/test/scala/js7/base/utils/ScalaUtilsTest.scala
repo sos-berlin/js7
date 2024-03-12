@@ -190,7 +190,7 @@ final class ScalaUtilsTest extends OurTestSuite
 
   "Function1.withToString" in {
     def function(o: Int) = 2*o
-    val f = function _
+    val f = function
     val g = f.withToString("My function")
     g(3) shouldEqual f(3)
     g.toString() shouldEqual "My function"

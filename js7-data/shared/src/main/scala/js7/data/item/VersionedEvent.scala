@@ -43,7 +43,7 @@ object VersionedEvent:
     private[VersionedEvent] def jsonDecoder[A <: VersionedItemAddedOrChanged: ClassTag]
       (toA: Signed[VersionedItem] => A)
     : Decoder[A] =
-      c => SignedItemAdded.jsonCodec(ControllerState)
+      c => SignedItemAdded.jsonCodec[ControllerState]
         .decodeJson(c.value)
         .flatMap(e =>
           e.signed.value match {
@@ -58,7 +58,7 @@ object VersionedEvent:
     def id = signed.value.key
   object VersionedItemAdded:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemAdded] =
-      SignedItemAdded.jsonCodec(ControllerState)
+      SignedItemAdded.jsonCodec[ControllerState]
         .contramapObject(e => SignedItemAdded(e.signed))
 
     private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemAdded] =
@@ -68,7 +68,7 @@ object VersionedEvent:
     def id = signed.value.key
   object VersionedItemChanged:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemChanged] =
-      SignedItemChanged.jsonCodec(ControllerState).contramapObject(e => SignedItemChanged(e.signed))
+      SignedItemChanged.jsonCodec[ControllerState].contramapObject(e => SignedItemChanged(e.signed))
 
     private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemChanged] =
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemChanged(_))

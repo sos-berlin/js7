@@ -59,7 +59,7 @@ object InventoryItem:
     implicit def jsonCodec: Codec.AsObject[A]
 
     def subtype: Subtype[A] =
-      Subtype(jsonCodec)(ClassTag(cls))
+      Subtype(jsonCodec)(using ClassTag(cls))
 
     def jsonEncoder: Encoder.AsObject[A] =
       jsonCodec

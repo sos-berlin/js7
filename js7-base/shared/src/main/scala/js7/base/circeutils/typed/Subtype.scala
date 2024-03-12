@@ -2,7 +2,7 @@ package js7.base.circeutils.typed
 
 import io.circe.{Codec, Decoder, Encoder, Json}
 import js7.base.circeutils.CirceUtils.singletonCodec
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, typeName}
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichPairTraversable

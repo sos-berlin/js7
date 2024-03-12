@@ -32,7 +32,7 @@ object HashedPassword:
     override def toString = "HashedPassword(MatchesNothing)"
 
   private val Empty = HashedPassword(SecretString.empty, identity)
-  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
+  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString
 
   /** The empty clear-text password, differently hashed at each invocation. */
   def newEmpty() = Empty.hashAgainRandom

@@ -30,4 +30,5 @@ object Completed:
       override def reverse: CommutativeMonoid[Completed] =
         this
 
-  val combine = CompletedMonoid.combine _
+  val combine: (Completed, Completed) => Completed =
+    CompletedMonoid.combine
