@@ -9,8 +9,8 @@ final class IzumiTagTest extends OurTestSuite:
 
   "Tag.tag" in:
     val tag = summon[Tag[MyType]]
-    assert(tag.tag.toString == "IzumiTagTest$::MyTrait[=λ %A → IO[+A],=Tuple2[=Int,=Boolean]]")
-    assert(tag.tag.repr == "js7.base.utils.IzumiTagTest$::MyTrait[=λ %A → cats.effect.IO[+A],=scala.Tuple2[=scala.Int,=scala.Boolean]]")
+    assert(tag.tag.toString == "IzumiTagTest::MyTrait[=λ %0 → IO[+0],=Tuple2[+Int,+Boolean]]")
+    assert(tag.tag.repr == "js7.base.utils.IzumiTagTest::MyTrait[=λ %0 → cats.effect.IO[+0],=scala.Tuple2[+scala.Int,+scala.Boolean]]")
 
 
 object IzumiTagTest:

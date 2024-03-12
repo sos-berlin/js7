@@ -188,7 +188,7 @@ object CatsUtils:
 
     def checked[A: Tag](seq: Seq[A]): Checked[NonEmptyList[A]] =
       if seq.isEmpty then
-        Left(Problem(s"Cannot create NonEmptyList[${Tag[A].tag.longName}] from empty sequence"))
+        Left(Problem(s"Cannot create NonEmptyList[${Tag[A].tag.longNameWithPrefix}] from empty sequence"))
       else
         Right(NonEmptyList(seq.head, seq.toList.tail))
 
@@ -199,7 +199,7 @@ object CatsUtils:
 
     def checked[A: Tag](seq: Seq[A]): Checked[NonEmptySeq[A]] =
       if seq.isEmpty then
-        Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longName}] from empty sequence"))
+        Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longNameWithPrefix}] from empty sequence"))
       else
         Right(NonEmptySeq(seq.head, seq.tail))
 

@@ -65,7 +65,7 @@ object JournaledProxy:
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
-    (using S: JournaledState.Companion[S])
+    (using S: JournaledState.Companion[S], sTag: Tag[S])
   : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
 

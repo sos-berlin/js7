@@ -40,11 +40,11 @@ final class StreamNumberedQueueTest extends OurAsyncTestSuite:
     locally:
       val t = intercept[ProblemException](observe(3, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #3 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest::X]: #3 (must be >=0 and <=2)"))
     locally:
       val t = intercept[ProblemException](observe(-1, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #-1 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest::X]: #-1 (must be >=0 and <=2)"))
 
     streamNumberedQueue.enqueue(Seq(X("c"))).await(99.s)
     assert(observe(0, take = 3) == List(
@@ -94,7 +94,7 @@ final class StreamNumberedQueueTest extends OurAsyncTestSuite:
       streamNumberedQueue.release(1).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #0 (must be >=1 and <=6)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest::X]: #0 (must be >=1 and <=6)"))
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
 
@@ -102,10 +102,10 @@ final class StreamNumberedQueueTest extends OurAsyncTestSuite:
       streamNumberedQueue.release(3).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #0 (must be >=3 and <=6)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest::X]: #0 (must be >=3 and <=6)"))
 
     assert(streamNumberedQueue.release(7).await(99.s) == Left(Problem(
-      "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
+      "Unknown number: Numbered[StreamNumberedQueueTest::X]: #7 (must be >=3 and <=6)")))
 
 
 object StreamNumberedQueueTest:

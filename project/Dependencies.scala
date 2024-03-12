@@ -7,18 +7,18 @@ object Dependencies
 {
   val pekkoVersion = "1.0.2"
   val pekkoHttpVersion = "1.0.0"
-  val slf4jVersion = "2.0.9"  // See also plugins.sbt
-  val log4jVersion = "2.21.1"  // See also plugins.sbt
-  val catsVersion = "2.9.0"
+  val slf4jVersion = "2.0.12"  // See also plugins.sbt
+  val log4jVersion = "2.23.1"  // See also plugins.sbt
+  val catsVersion = "2.10.0"
   val catsEffectVersion = "3.5.4"
   val catsEffectTestingVersion = catsEffectVersion
   val catsSTMVersion = "0.13.4"
-  val izumiReflectVersion = "2.1.3"
+  val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
-  val catsParseVersion = "0.3.9"
+  val catsParseVersion = "1.0.0"
   val circeVersion = "0.14.6"
   val circeGenericExtrasVersion = "0.14.3"
-  val scalaTestVersion = "3.2.17"
+  val scalaTestVersion = "3.2.18"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
   val sourcecodeVersion = "0.3.1"
@@ -30,9 +30,9 @@ object Dependencies
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.4"
   val diffxVersion = "0.9.0"
-  val reactorVersion = "3.5.6"
+  val reactorVersion = "3.6.4"
   val vavrVersion = "0.10.4"
-  val jnaVersion = "5.13.0"
+  val jnaVersion = "5.14.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
@@ -58,7 +58,7 @@ object Dependencies
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.3"
 
   val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
   val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
