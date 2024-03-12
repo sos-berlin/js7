@@ -3,7 +3,7 @@ package js7.tests.cluster.controller
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
@@ -15,11 +15,11 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.util.Try
 
 final class SwitchOverControllerClusterTest extends ControllerClusterTester:
+
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverControllerClusterTest").map(_.toInt) getOrElse 1
   private lazy val timeout = if manyOrdersCount > 1 then 1.h else 99.s
@@ -83,7 +83,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester:
 
   private def addOrders(orderId: Seq[OrderId])(implicit controller: TestController): Unit =
     orderId.grouped(1000)
-      .map(Observable.fromIterable)
+      .map(Stream.iterable)
       .map(_.map(FreshOrder(_, TestWorkflow.path,
         scheduledFor = Some(Timestamp("3000-01-01T00:00:00Z")))))
       .foreach { orders =>

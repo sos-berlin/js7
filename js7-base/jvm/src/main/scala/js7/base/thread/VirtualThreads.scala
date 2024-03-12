@@ -10,7 +10,7 @@ import org.jetbrains.annotations.TestOnly
 object VirtualThreads:
 
   private val logger = Logger[this.type]
-  private var enabled = javaVersion >= 19 && (isTest || sys.props.contains("js7.VirtualThread"))
+  private var hasVirtualThreads = javaVersion >= 19 && (isTest || sys.props.contains("js7.VirtualThread"))
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
@@ -42,7 +42,7 @@ object VirtualThreads:
         }
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =
-    if !enabled then
+    if !hasVirtualThreads then
       None
     else
       try
@@ -54,7 +54,7 @@ object VirtualThreads:
       catch throwableToNone
 
   private lazy val newVirtualThreadFactory: Option[ThreadFactory] =
-    if !enabled then
+    if !hasVirtualThreads then
       None
     else
       try
@@ -91,6 +91,6 @@ object VirtualThreads:
 
   private def throwableToNone: PartialFunction[Throwable, None.type] =
     throwable =>
-      enabled = false
+      hasVirtualThreads = false
       logger.debug(s"No VirtualThread: ${throwable.toStringWithCauses}")
       None

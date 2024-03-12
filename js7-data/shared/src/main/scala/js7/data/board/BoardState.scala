@@ -1,5 +1,6 @@
 package js7.data.board
 
+import cats.effect.IO
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.{Checked, Problem}
@@ -10,7 +11,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.order.{Order, OrderId}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.View
 
 final case class BoardState(
@@ -30,16 +31,15 @@ extends UnsignedSimpleItemState:
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
-  override def toSnapshotObservable: Observable[Any/*BoardState | BoardSnapshot*/] =
+  override def toSnapshotStream: Stream[IO, Any/*BoardState | BoardSnapshot*/] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
-    Observable.fromIterable(
+    Stream.iterable:
       View(board) ++
         notices ++
         idToNotice.values.view.flatMap(_.toSnapshot(path)) ++
         orderToConsumptionStack.view
-          .map { case (orderId, consumptionStack) =>
+          .map: (orderId, consumptionStack) =>
             NoticeConsumptionSnapshot(path, orderId, consumptionStack)
-          })
 
   def recover(snapshot: BoardSnapshot): Checked[BoardState] =
     snapshot match

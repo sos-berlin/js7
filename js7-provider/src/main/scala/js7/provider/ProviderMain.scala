@@ -1,11 +1,15 @@
 package js7.provider
 
-import js7.common.system.startup.ServiceMain
+import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO}
+import js7.common.system.startup.ServiceApp
+import js7.controller.ControllerMain.runtime
 import js7.provider.configuration.ProviderConfiguration
 
-object ProviderMain:
+object ProviderMain extends ServiceApp:
   // No Logger here!
 
-  def main(args: Array[String]): Unit =
-    ServiceMain.mainThenExit(args, "JS7 Provider", ProviderConfiguration.fromCommandLine(_))(
-      Provider.resource(_)(_))
+  def run(args: List[String]): IO[ExitCode] =
+    given IORuntime = runtime
+    runService(args, "JS7 Controller", ProviderConfiguration.fromCommandLine(_)):
+      Provider.resource

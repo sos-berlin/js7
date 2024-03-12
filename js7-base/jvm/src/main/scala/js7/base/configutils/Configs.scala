@@ -32,7 +32,7 @@ object Configs:
   private val InternalOriginDescription = "JS7"
   private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
 
   def configIf(predicate: Boolean, config: => Config): Config =
     if predicate then config

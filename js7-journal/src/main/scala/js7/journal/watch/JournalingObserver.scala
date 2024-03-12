@@ -3,7 +3,7 @@ package js7.journal.watch
 import java.nio.file.Path
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +23,7 @@ private[journal] trait JournalingObserver:
 
   protected[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit
 
-  protected[journal] def releaseEvents(untilEventId: EventId)(implicit s: Scheduler): Unit
+  protected[journal] def releaseEvents(untilEventId: EventId)(using IORuntime): Unit
 
   final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int)
   : Unit =

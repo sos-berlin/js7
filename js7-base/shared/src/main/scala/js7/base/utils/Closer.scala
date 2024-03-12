@@ -1,19 +1,17 @@
 package js7.base.utils
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicAny
 import scala.util.control.NonFatal
 
 final class Closer extends AutoCloseable:
 
   private val stack = new ConcurrentLinkedDeque[AutoCloseable]
-  private val throwable = AtomicAny[Throwable](null)
+  private val throwable = Atomic[Throwable](null)
 
   def onCloseOrShutdown(body: => Unit): Unit =
     onClose(body)
@@ -74,10 +72,10 @@ object Closer:
     closeables.reverseIterator foreach closer.register
     closer.close()
 
-  private val resource: Resource[Task, Closer] =
+  private val resource: Resource[IO, Closer] =
     Resource.make(
-      acquire = Task(new Closer))(
-      release = closer => Task(closer.close()))
+      acquire = IO(new Closer))(
+      release = closer => IO(closer.close()))
 
   object syntax:
     implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val underlying: A) extends AnyVal:

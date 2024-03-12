@@ -5,7 +5,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
@@ -16,8 +16,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobDriverStarvationTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.{Chunk, Stream}
+import js7.base.monixlike.MonixLikeExtensions.completedL
 import scala.concurrent.duration.Deadline.now
 
 final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -32,7 +32,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "Add a order to start AgentDriver CommandQueue" in:
+  "Add an order to start AgentDriver CommandQueue" in:
     val zeroOrderId = OrderId("0")
     controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path, deleteWhenTerminated = true))
     TestJob.continue()
@@ -50,28 +50,29 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
     val orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i")
     val proxy = controller.api.startProxy().await(99.s)
 
-    val firstOrdersProcessing = proxy.observable
+    val firstOrdersProcessing = proxy.stream()
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
       .take(processLimit)
       .completedL
-      .runToFuture
+      .unsafeToFuture()
 
-    val allOrdersDeleted = proxy.observable
+    val allOrdersDeleted = proxy.stream()
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, _: OrderDeleted) => orderId
-      .scan0(orderIds.toSet)(_ - _)
+      .scan(orderIds.toSet)(_ - _).drop(1)
       .takeWhile(_.nonEmpty)
       .completedL
-      .runToFuture
+      .unsafeToFuture()
 
     var t = now
     controller.api
-      .addOrders(Observable
-        .fromIterable(orderIds)
-        .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
+      .addOrders(Stream
+        .chunk(Chunk.from(orderIds))
+        .mapChunks(_.map:
+          FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
       .await(99.s).orThrow
     firstOrdersProcessing.await(99.s)
     logger.info("🔷 " + itemsPerSecondString(t.elapsed, n, "started"))

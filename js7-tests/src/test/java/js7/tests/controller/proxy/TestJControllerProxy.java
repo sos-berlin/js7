@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy;
 
+import com.typesafe.config.ConfigFactory;
 import java.time.Instant;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -65,7 +66,7 @@ public final class TestJControllerProxy
     }
 
     private static void run(Iterable<JAdmission> admissions) throws InterruptedException, ExecutionException, TimeoutException {
-        try(JProxyContext context = new JProxyContext()) {
+        try(JProxyContext context = new JProxyContext(ConfigFactory.empty())) {
             JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class);
             proxyEventBus.subscribe(
                 asList(ProxyEvent.class),

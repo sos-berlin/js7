@@ -1,3 +1,6 @@
+# GIT
+.mailmap
+
 # SBT
 /.bsp/sbt.json
 /target/

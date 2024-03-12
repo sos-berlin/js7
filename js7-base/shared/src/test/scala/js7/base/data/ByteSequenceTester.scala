@@ -4,7 +4,7 @@ import cats.syntax.monoid.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import java.nio.ReadOnlyBufferException
+import java.nio.{ByteBuffer, ReadOnlyBufferException}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
@@ -12,9 +12,13 @@ import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
+import fs2.{Chunk, Stream}
+import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends OurTestSuite:
+
   "empty" in:
     assert(ByteSeq.empty.length == 0)
 
@@ -24,6 +28,9 @@ extends OurTestSuite:
     assert(byteSeq(1) == 'b'.toByte)
     intercept[RuntimeException](byteSeq(-1))
     intercept[RuntimeException](byteSeq(2))
+
+  "one" in:
+    assert(ByteSeq.one(0xff.toByte) == ByteSeq(0xff.toByte))
 
   "fromString" in:
     assert(ByteSeq.fromString("å").unsafeArray sameElements Array(0xc3.toByte, 0xa5.toByte))
@@ -46,12 +53,110 @@ extends OurTestSuite:
     assert(ByteSeq.fromArray(a, 2, 2) == ByteSeq.empty)
     assert(ByteSeq.fromArray(a, 3, 2) == ByteSeq.empty)
 
+  "readByteBuffer" - {
+    "slice" in:
+      val buffer = ByteBuffer.allocate(64)
+      buffer.put(Array[Byte](1, 2, 3, 4, 5))
+      buffer.position(2)
+      buffer.limit(5)
+      assert(buffer.position == 2 && buffer.limit == 5 && buffer.remaining == 3)
+
+      val byteSeq = ByteSeq.readByteBuffer(buffer)
+      assert(byteSeq == ByteSeq(3, 4, 5))
+      assert(buffer.position == 5 && buffer.limit == 5 && buffer.remaining == 0)
+
+      // ByteSeq uses its own Array
+      buffer.position(2)
+      buffer.put(99.toByte)
+      assert(byteSeq == ByteSeq(3, 4, 5))
+
+    "complete Array" in:
+      val array = Array[Byte](1, 2, 3)
+      val buffer = ByteBuffer.wrap(array)
+      assert(buffer.array eq array)
+      assert(buffer.position == 0 && buffer.limit == 3 && buffer.remaining == 3)
+
+      val byteSeq = ByteSeq.readByteBuffer(buffer)
+      assert(byteSeq == ByteSeq(1, 2, 3))
+      assert(buffer.position == 3 && buffer.limit == 3 && buffer.remaining == 0)
+
+      // ByteSeq uses its own Array
+      assert(byteSeq.unsafeArray ne array)
+      array(0) = 99
+      assert(byteSeq == ByteSeq(1, 2, 3))
+  }
+
   "fromSeq" in:
     val a = Seq[Byte](1, 2)
     assert(ByteSeq.fromSeq(a).unsafeArray sameElements a)
 
   "fromMimeBase64" in:
     assert(ByteArray.fromMimeBase64(mimeBase64string) == Right(ByteArray(mimeByte64Bytes)))
+
+  "unsafeWrap" in:
+    val a = Array[Byte](1, 2, 3)
+    assert(ByteSeq.unsafeWrap(a).unsafeArray eq a)
+
+  "wrapChunk" in:
+    val array = Array[Byte](1, 2, 3)
+    val chunk = Chunk.array(array)
+    val byteSeq = ByteSeq.wrapChunk(chunk)
+    assert(byteSeq == ByteSeq(1, 2, 3))
+
+    array(0) = 99
+    assert(chunk == Chunk[Byte](99, 2, 3))
+
+    // byteSeq has its own copy
+    assert(byteSeq == ByteSeq(1, 2, 3))
+
+  "unsafeWrapChunk" - {
+    "whole Array is wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val chunk = Chunk.array(array)
+      val byteSeq = ByteSeq.unsafeWrapChunk(chunk)
+
+      assert(ByteSeq.unsafeWrapChunk(Chunk.array(array, 0, 2)).unsafeArray ne array)
+      assert(ByteSeq.unsafeWrapChunk(Chunk.array(array, 1, 2)).unsafeArray ne array)
+
+      array(0) = 99
+      assert(chunk == Chunk[Byte](99, 2, 3))
+
+      // byteSeq wraps the original array passed via Chunk
+      assert(byteSeq.unsafeArray eq array)
+      assert(byteSeq == ByteSeq(99, 2, 3))
+
+    "Chunk.array checks strictly length of slice" in:
+      intercept[IllegalArgumentException]:
+        Chunk.array(Array[Byte](1, 2, 3), 0, 4)
+
+      intercept[ArrayIndexOutOfBoundsException]:
+        Chunk.array(Array[Byte](1, 2, 3), 3, 1)
+
+    "prefix of Array is not wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val byteSeq = ByteSeq.unsafeWrapChunk(Chunk.array(array, 0, 2))
+
+      assert(byteSeq.unsafeArray ne array)
+      assert(byteSeq == ByteSeq(1, 2))
+
+    "suffix of Array is not wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val byteSeq = ByteSeq.unsafeWrapChunk(Chunk.array(array, 1, 2))
+
+      assert(byteSeq.unsafeArray ne array)
+      assert(byteSeq == ByteSeq(2, 3))
+  }
+  
+  "unwrapChunk" in:
+    val a = Array[Byte](1, 2, 3)
+    val chunk = Chunk.array(a)
+
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].values eq a)
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].offset == 0)
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].length == a.length)
+
+    a(2) = 33
+    assert(chunk == Chunk[Byte](1, 2, 33))
 
   "equality" in:
     assert(ByteArray.empty == ByteArray(""))
@@ -93,13 +198,15 @@ extends OurTestSuite:
   "show" in:
     assert(ByteSeq.empty.show == "»«")
     assert(ByteSeq("SHORT").show == "»SHORT«")
-    assert(ByteSeq("SHORT\n").show == "»SHORT␊«")
-    assert(ByteSeq("SHORT\r\n").show == "»SHORT␍␊«")
+    assert(ByteSeq("SHORT\n").show == "»SHORT⏎«")
+    assert(ByteSeq("SHORT\r\n").show == "»SHORT␍⏎«")
+    assert(ByteSeq("Å").show == s"${ByteSeq.typeName}(»��« c385)")
+    assert(ByteSeq("♠️").show == s"${ByteSeq.typeName}(»������« e299a0ef b88f)")
     assert(ByteSeq(0x41, 0xf0, 0xf1, 0xf2, 0xf3).show == ByteSeq.typeName + "(»A����« 41f0f1f2 f3)")
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzÄÖ\nABCDEFGHIJKLMNOPQRSTUVWXYZ").show ==
       ByteSeq.typeName + "(" +
-        "»abcdefghijklmnopqrstuvwxyz����␊A…« " +
-        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41..., 57 bytes)")
+        "»abcdefghijklmnopqrstuvwxyz����⏎A…« " +
+         "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41..., 57 bytes)")
 
   "toStringAndHexRaw" in:
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringAndHexRaw() ==
@@ -181,12 +288,20 @@ extends OurTestSuite:
     assert(byteSeq.slice(1, 2) == ByteSeq("b"))
     assert(byteSeq.slice(99, 99) == ByteSeq.empty)
 
-  "chunk" in:
+  "chunkStream" in:
     val byteSeq = ByteSeq("abcd")
-    assert(byteSeq.chunk(1) == Seq(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
-    assert(byteSeq.chunk(2) == Seq(ByteSeq("ab"), ByteSeq("cd")))
-    assert(byteSeq.chunk(3) == Seq(ByteSeq("abc"), ByteSeq("d")))
-    assert(byteSeq.chunk(4) == Seq(ByteSeq("abcd")))
+    assert(byteSeq.chunkStream(1).toList == List(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
+    assert(byteSeq.chunkStream(2).toList == List(ByteSeq("ab"), ByteSeq("cd")))
+    assert(byteSeq.chunkStream(3).toList == List(ByteSeq("abc"), ByteSeq("d")))
+    assert(byteSeq.chunkStream(4).toList == List(ByteSeq("abcd")))
+
+  "byteStream" in:
+    val byteSeq = ByteSeq("abcd")
+    def chunk(string: String) = Chunk.array(string.getBytes(UTF_8))
+    assert(byteSeq.byteStream(1).chunks.toList == Stream(chunk("a"), chunk("b"), chunk("c"), chunk("d")).toList)
+    assert(byteSeq.byteStream(2).chunks.toList == Stream(chunk("ab"), chunk("cd")).toList)
+    assert(byteSeq.byteStream(3).chunks.toList == Stream(chunk("abc"), chunk("d")).toList)
+    assert(byteSeq.byteStream(4).chunks.toList == Stream(chunk("abcd")).toList)
 
   "utf8String" in:
     assert(ByteSeq("aå").utf8String == "aå")

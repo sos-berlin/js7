@@ -1,5 +1,6 @@
 package js7.agent.web.views
 
+import cats.effect
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import io.circe.Json
@@ -7,27 +8,28 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.CirceJsonSupport.*
 import js7.common.http.PekkoHttpUtils.RichHttpResponse
 import js7.data.system.JavaInformation
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.Future
+import cats.effect.IO
+import cats.effect.Deferred
+import cats.effect.unsafe.IORuntime
 
 /**
  * @author Joacim Zschimmer
  */
 final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebService:
-  
-  protected def whenShuttingDown = Future.never
-  protected def scheduler = Scheduler.traced
-  protected def agentOverview = Task.pure(AgentOverview(
+
+  private given IORuntime = ioRuntime
+
+  protected def whenShuttingDown = Deferred.unsafe
+
+  protected def agentOverview = IO.pure(AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
     buildId = "BUILD-ID",

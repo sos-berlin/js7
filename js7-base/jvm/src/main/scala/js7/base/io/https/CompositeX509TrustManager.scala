@@ -43,7 +43,7 @@ extends X509TrustManager:
 
     tries.collectFirst { case Success(a) => a }
       .getOrElse:
-        for t <- tries.map(_.failed.get) do logger.debug(t.toStringWithCauses)
+        for t <- tries.map(_.ifFailed.get) do logger.debug(t.toStringWithCauses)
         throw new CertificateException("None of the TrustManagers trust this certificate chain")
 
   def getAcceptedIssuers: Array[X509Certificate] =

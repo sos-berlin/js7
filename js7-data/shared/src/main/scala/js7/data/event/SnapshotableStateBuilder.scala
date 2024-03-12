@@ -13,7 +13,7 @@ import js7.base.utils.StackTraces.*
 import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.SnapshotableStateBuilder.*
-import monix.eval.Task
+import cats.effect.IO
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -28,7 +28,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
   private var _eventId = EventId.BeforeFirst
   private var _eventCount = 0L
   private val _journalHeader = SetOnce[JournalHeader]
-  private val getStatePromise = Promise[Task[S]]()
+  private val getStatePromise = Promise[IO[S]]()
 
   def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit =
     journalHeader foreach { _journalHeader := _ }
@@ -87,7 +87,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     onStateIsAvailable()
 
   private def onStateIsAvailable(): Unit =
-    getStatePromise.success(Task {
+    getStatePromise.success(IO {
       synchronized {
         result()
       }
@@ -129,7 +129,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
         ((elapsed >= 10.s) ?? s" in ${elapsed.pretty}") +
         ")")
 
-  def synchronizedStateFuture: Future[Task[S]] =
+  def synchronizedStateFuture: Future[IO[S]] =
     getStatePromise.future
 
   /** Journal file's JournalHeader. */

@@ -9,10 +9,12 @@ import izumi.reflect.macrortti.LightTypeTag
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 import js7.base.exceptions.PublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
@@ -20,11 +22,11 @@ import scala.collection.{AbstractMapView, Factory, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{Success, Try, Failure}
 import scala.util.chaining.*
 
 object ScalaUtils:
-  private val Ellipsis = "..."
+
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
   private lazy val logger = Logger[this.type]
@@ -120,6 +122,14 @@ object ScalaUtils:
         option match
           case None => Left(problem)
           case Some(a) => Right(a)
+
+
+    extension[A](try_ : Try[A])
+      /** Does not create an InvalidOperationException if Success. */
+      def ifFailed: Option[Throwable] =
+        try_ match
+          case Failure(t) => Some(t)
+          case Success(_) => None
 
     /** orElse inside a F[Option]. */
     implicit final class RichOptionF[F[_], A](private val underlying: F[Option[A]]) extends AnyVal:
@@ -237,7 +247,7 @@ object ScalaUtils:
 
     implicit final class RichAny[A](private val delegate: A) extends AnyVal:
       /** Apply the function. */
-      @inline def |>[B](f: A => B): B =
+      inline def |>[B](f: A => B): B =
         delegate.pipe(f)
 
       /** Apply the function conditionally. */
@@ -644,7 +654,29 @@ object ScalaUtils:
             t.fillInStackTrace()
             Left(if t.getStackTrace.nonEmpty then t else new IllegalStateException(s"$t", t))
 
+    extension (char: Char)
+      inline def utf8Length: Int =
+        ScalaUtils.utf8Length(char)
+
     implicit final class RichString(private val underlying: String) extends AnyVal:
+      /** Counts bytes of UTF-16 to UTF-8 encoding, the result may be bigger. */
+      def estimateUtf8Length: Int =
+        var byteCount = 0
+        val len = underlying.length
+        var i = 0
+        while i < len do
+          byteCount += underlying.charAt(i).utf8Length
+          i += 1
+        byteCount
+
+      //Java 9:
+      //def utf8Length: Int =
+      //  var byteCount = 0
+      //  val iterator = underlying.codePoints.iterator
+      //  while iterator.hasNext do
+      //    byteCount += ScalaUtils.utf8Length(iterator.next())
+      //  byteCount
+
       /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
       def truncateWithEllipsis(
         n: Int,
@@ -657,18 +689,15 @@ object ScalaUtils:
         else
           val sb = new StringBuilder(n + 2 * quote.toInt)
           if quote then sb.append('»')
-          val suffix = if showLength then s"$Ellipsis(length ${underlying.length})" else Ellipsis
-          val nn = max(/*suffix.length*/3, n)
+          val suffix = if showLength then s"...(length ${underlying.length})" else "..."
+          val nn = max(/*suffix.length*/3 , n)
           val firstLine = if firstLineOnly then underlying.firstLineLengthN(nn) else underlying.length
           val truncate = (nn min firstLine) < underlying.length
-          val truncateAt =
-            if truncate then nn - suffix.length min firstLineLength else underlying.length
+          val truncateAt = if truncate then (nn - suffix.length) min firstLine else underlying.length
 
           var i = 0
           while i < truncateAt do
-            var c = underlying(i)
-            if c.isControl then c = '·'
-            sb.append(c)
+            sb.append(toPrintableChar(underlying(i)))
             i += 1
 
           if quote then sb.append('«')
@@ -689,18 +718,19 @@ object ScalaUtils:
         while i > 0 && predicate(underlying(i - 1)) do i = i -1
         underlying.substring(0, i)
 
+      /** Length of the first line, including \n. */
       def firstLineLength = firstLineLengthN(Int.MaxValue)
 
       def firstLineLengthN(until: Int): Int =
         val n = until min underlying.length
         var i = 0
         while i < n do
-          if underlying.charAt(i) == '\n' then
-            return if i > 0 && underlying.charAt(i - 1) == '\r' then i - 1 else i
+          if underlying.charAt(i) == '\n' then return i + 1
           i += 1
         n
 
-    implicit final class RichStringuilder(private val sb: StringBuilder) extends AnyVal:
+
+    implicit final class RichStringBuilder(private val sb: StringBuilder) extends AnyVal:
       /** Right-adjust (moves) the text written by body and fill the left-side up with spaces. */
       def fillLeft(width: Int)(body: => Unit): Unit =
         val insert = sb.length()
@@ -729,6 +759,12 @@ object ScalaUtils:
         var i = 0
         while i < len && underlying(i) != byte do i = i + 1
         if i == len then -1 else i
+
+  extension (lock: ReentrantLock)
+    def use[A](body: => A): A =
+      lock.lock()
+      try body
+      finally lock.unlock()
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =
@@ -874,3 +910,10 @@ object ScalaUtils:
 
   /** Only to let the compiler check the body, nothing is executed. */
   inline def compilable(inline body: Any): Unit = {}
+
+  def utf8Length(char: Int): Int =
+    val c = char & 0x7fffffff
+    if c <= 0x7f then 1
+    else if c <= 0x07ff then 2
+    else if c <= 0xffff then 3
+    else 4

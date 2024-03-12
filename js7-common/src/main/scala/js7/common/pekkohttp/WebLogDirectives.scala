@@ -100,7 +100,7 @@ trait WebLogDirectives extends ExceptionHandling:
                     chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
                       tried.fold(t => " " + t.toStringWithCauses, _ => ""))
-              }(actorSystem.dispatcher)
+              }(ioRuntime.compute)
               mat
             }))
       case _ => response
@@ -198,7 +198,9 @@ object WebLogDirectives:
     js7.web.server.log.500-level = info
     js7.web.server.log.duration = off
     js7.web.server.verbose-error-messages = true
-    js7.web.server.shutdown-timeout = 10s"""
+    js7.web.server.shutdown-timeout = 10s
+    js7.web.server.shutdown-delay = 500ms
+    """
 
   private def appendQuotedString(sb: StringBuilder, string: String) =
     sb.ensureCapacity(3 + string.length)

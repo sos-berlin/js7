@@ -1,23 +1,33 @@
 package js7.journal
 
-import js7.base.time.{TestWallClock, Timestamp, WallClock}
+import js7.base.time.WallClock
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdClock(val clock: WallClock):
-  def this() = this(WallClock)
+trait EventIdClock:
 
   /** Current time in milliseconds since 1970-01-01 UTC, like Java currentTimeMillis. */
-  def currentTimeMillis: Long =
-    clock.epochMilli()
+  def currentTimeMillis: Long
+  def isRealClock = false
 
 
 object EventIdClock:
-  val Default = EventIdClock(WallClock)
 
+  @deprecated("Use SystemEventIdClock")
+  val Default: EventIdClock =
+    SystemEventIdClock
+
+  //@deprecated
   def apply(clock: WallClock): EventIdClock =
-    new EventIdClock(clock)
+    new EventIdClock:
+      def currentTimeMillis = clock.epochMilli()
+      override def isRealClock = clock eq WallClock
 
   def fixed(epochMilli: Long) =
-    new EventIdClock(TestWallClock(Timestamp.ofEpochMilli(epochMilli)))
+    new EventIdClock:
+      val currentTimeMillis = epochMilli
+
+  object SystemEventIdClock extends EventIdClock:
+    def currentTimeMillis = System.currentTimeMillis()
+    override def isRealClock = true

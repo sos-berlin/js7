@@ -36,7 +36,7 @@ extends SnapshotableStateBuilder[ControllerState],
   StandardsBuilder,
   EventDrivenStateView[ControllerStateBuilder, Event],
   OrderWatchStateHandler[ControllerStateBuilder]:
-  
+
   protected val S = ControllerState
   val companion: ControllerStateBuilder.type = ControllerStateBuilder
 

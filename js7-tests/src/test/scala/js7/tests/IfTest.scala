@@ -5,7 +5,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -20,9 +20,12 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.IfTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 final class IfTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "test" in:
     val directoryProvider = new DirectoryProvider(
       agentPaths = Seq(agentPath), items = Seq(TestWorkflow), testName = Some("IfTest"))

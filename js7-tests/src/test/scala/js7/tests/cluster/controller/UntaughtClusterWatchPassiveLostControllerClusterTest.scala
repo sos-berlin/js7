@@ -1,7 +1,7 @@
 package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
@@ -9,9 +9,9 @@ import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler.Implicits.traced
 
 final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester:
+
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
@@ -34,7 +34,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
 
       primaryController.testEventBus
         .whenFilterMap[WaitingForConfirmation, ClusterPassiveLost](_.request match {
-          case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _) => Some(event)
+          case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _, _) => Some(event)
           case _ => None
         })
         .await(99.s)

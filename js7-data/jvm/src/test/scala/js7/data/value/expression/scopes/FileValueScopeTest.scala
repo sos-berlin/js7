@@ -1,5 +1,7 @@
 package js7.data.value.expression.scopes
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.instances.vector.*
 import cats.syntax.parallel.*
 import java.io.IOException
@@ -9,24 +11,26 @@ import java.nio.file.{AccessDeniedException, Path, Paths}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
 final class FileValueScopeTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "IOException" in:
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
     autoClosing(new FileValueState(dir)) { fileValueState =>
@@ -101,7 +105,7 @@ final class FileValueScopeTest extends OurTestSuite:
     val stringCount = 100
     val strings = (1 to stringCount).map(_.toString)
 
-    withTemporaryDirectory("FileValueScopeTest-") { dir =>
+    withTemporaryDirectory("FileValueScopeTest-"): dir =>
       autoClosing(new FileValueState(dir)) { fileValueState =>
         val n = 1000
         val m = 10
@@ -113,16 +117,15 @@ final class FileValueScopeTest extends OurTestSuite:
               FileValueScope
                 .resource(fileValueState)
                 .use(fileValueScope =>
-                  Task.shift *>
-                    Task
-                      .parTraverse((1 to m).toVector)(_ => Task {
+                  IO.cede *>
+                    IO
+                      .parTraverse((1 to m).toVector)(_ => IO:
                         val string = strings(Random.nextInt(stringCount))
-                        toFile(fileValueScope, Seq(string, string)).orThrow
-                      })
-                      .tapEval(files =>
-                        Task.shift *>
-                          Task(assert(files
-                            .forall(file => file.contentString == file.getFileName.toString))))))
+                        toFile(fileValueScope, Seq(string, string)).orThrow)
+                      .flatTap: files =>
+                        IO.cede *>
+                          IO(assert(files
+                            .forall(file => file.contentString == file.getFileName.toString)))))
             .await(99.s)
 
         assert(files.size == n * m)
@@ -131,7 +134,6 @@ final class FileValueScopeTest extends OurTestSuite:
         assert(fileValueState.isEmpty)
       }
       assert(dir.directoryContents.isEmpty)
-    }
 
   private def toFile(fileValueScope: FileValueScope, args: Seq[String]): Checked[Path] =
     Expression.FunctionCall(functionName, args.map(a => Argument(StringConstant(a))))
@@ -139,16 +141,15 @@ final class FileValueScopeTest extends OurTestSuite:
       .map(Paths.get(_))
 
   private def check(body: FileValueScope => Unit): Unit =
-    withTemporaryDirectory("FileValueScopeTest-") { dir =>
-      autoClosing(new FileValueState(dir)) { fileValueState =>
-        val (fileValueScope, release) = FileValueScope.resource(fileValueState).allocated.await(99.s)
+    withTemporaryDirectory("FileValueScopeTest-"): dir =>
+      autoClosing(new FileValueState(dir)): fileValueState =>
+        val (fileValueScope, release) =
+          FileValueScope.resource(fileValueState).allocated.await(99.s)
         assert(dir.directoryContents.isEmpty)
         body(fileValueScope)
         release.await(99.s)
         assert(fileValueState.isEmpty)
-      }
       assert(dir.directoryContents.isEmpty)
-    }
 
 
 object FileValueScopeTest:

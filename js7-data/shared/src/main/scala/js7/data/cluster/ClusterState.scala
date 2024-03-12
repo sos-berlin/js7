@@ -10,7 +10,7 @@ import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
-import monix.reactive.Observable
+import fs2.Stream
 
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]:
@@ -80,8 +80,8 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
   def estimatedSnapshotSize =
     if this != Empty then 1 else 0
 
-  def toSnapshotObservable =
-    Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
+  def toSnapshotStream =
+    Stream.iterable((this != Empty) ? ClusterStateSnapshot(this))
 
   def toShortString: String =
     this match

@@ -1,7 +1,10 @@
 package js7.controller.client.main
 
+import cats.effect.{ExitCode, IO}
+import cats.effect.unsafe.IORuntime
 import java.nio.file.{Files, Path}
 import js7.base.auth.SessionToken
+import js7.base.catsutils.OurApp
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.process.ReturnCode
@@ -9,27 +12,29 @@ import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.JavaMain
 import js7.controller.client.PekkoHttpControllerTextApi
+import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
-object ControllerClientMain:
+object ControllerClientMain extends OurApp:
 
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
+  private given IORuntime = runtime
+  private given ExecutionContext = runtime.compute
 
-  def main(args: Array[String]): Unit =
-    try
-      val returnCode = run(args.toVector, println)
-      JavaMain.exitIfNonZero(returnCode)
-    catch { case NonFatal(t) =>
-      println(s"ERROR: $t")
-      logger.error(t.toString, t)
-      JavaMain.exit1()
-    }
+  def run(args: List[String]) =
+    IO:
+      try
+        run(args.toVector, println).toExitCode
+      catch { case NonFatal(t) =>
+        println(s"ERROR: $t")
+        logger.error(t.toString, t)
+        ExitCode(1)
+      }
 
   def run(args: Seq[String], print: String => Unit): ReturnCode =
     val (controllerUri, configDir, dataDir, operations) = parseArgs(args)

@@ -1,58 +1,56 @@
 package js7.base.monixutils
 
-import js7.base.time.ScalaTime.*
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
 import scala.concurrent.Promise
 
 final class LatchTest extends OurAsyncTestSuite:
+
   "Initially isNot" in:
-    val latch = new Latch
+    val latch = Latch()
     latch.isNot
-      .map(o => assert(!o))
+      .map(o => assert(o))
       .*>(latch.is)
-      .map(assert(_))
-      .runToFuture
+      .map(o => assert(!o))
 
   "switch" in:
-    val latch = new Latch
+    val latch = Latch()
     latch
       .switch
       .map(assert(_)) // first call
       .*>(latch.isNot)
-      .map(assert(_))
-      .*>(latch.is)
       .map(o => assert(!o))
+      .*>(latch.is)
+      .map(o => assert(o))
       .*>(latch.switch)
       .map(o => assert(!o)) // second call
-      .*>(latch.isNot)
-      .map(assert(_))
-      .runToFuture
+      .*>(latch.is)
+      .map(o => assert(o))
 
   "when" in:
-    val latch = new Latch
+    val latch = Latch()
     val promise = Promise[Unit]()
 
     val whenClosed = latch
       .when
-      .*>(Task { promise.success(()) })
-      .runToFuture
+      .*>(IO { promise.success(()) })
 
-    Task.sleep(100.ms)
+    val switch = IO.sleep(100.ms)
       .map(_ => assert(!promise.isCompleted))
       .*>(latch.switch)
       .map(assert(_))
-      .*>(Task.fromFuture(promise.future))
-      .*>(Task.fromFuture(whenClosed).as(succeed))
-    .runToFuture
+      .*>(IO.fromFuture(IO.pure(promise.future)))
+
+    whenClosed
+      .both(switch)
+      .as(succeed)
 
   "switchThen" in:
-    val latch = new Latch
+    val latch = Latch()
     val promise = Promise[Unit]()
     latch
-      .switchThen(Task { promise.success(()); 7 })
+      .switchThen(IO { promise.success(()); 7 })
       .map(maybe => assert(maybe.contains(7) && promise.isCompleted))
-      .*>(latch.switchThen(Task { promise.success(()) }))
+      .*>(latch.switchThen(IO { promise.success(()) }))
       .map(maybe => assert(maybe.isEmpty))
-      .runToFuture

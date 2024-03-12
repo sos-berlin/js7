@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
@@ -30,8 +30,8 @@ import js7.tests.BoardTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import fs2.Stream
 import scala.collection.View
 import scala.concurrent.duration.*
 
@@ -55,7 +55,9 @@ final class BoardTest
     expecting01Workflow, expecting02Workflow,
     postingAgentWorkflow, expectingAgentWorkflow)
 
-  private val clock = TestAlarmClock(startTimestamp)
+  private val clock =
+    given Scheduler = ioRuntime.scheduler
+    TestAlarmClock(startTimestamp)
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
@@ -71,7 +73,7 @@ final class BoardTest
         OrderId(s"#$qualifier#EXPECTING-0-1-A"),
         OrderId(s"#$qualifier#EXPECTING-0-1-B"))
       controller.api.addOrders(
-        Observable.fromIterable(expecting01OrderIds).map(FreshOrder(_, expecting01Workflow.path))
+        Stream.iterable(expecting01OrderIds).map(FreshOrder(_, expecting01Workflow.path))
       ).await(99.s).orThrow
       for orderId <- expecting01OrderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
@@ -140,7 +142,7 @@ final class BoardTest
 
       val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
       controller.api.addOrders(
-        Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expecting0Workflow.path))
+        Stream.iterable(expectingOrderIds).map(FreshOrder(_, expecting0Workflow.path))
       ).await(99.s).orThrow
       for orderId <- expectingOrderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
@@ -234,7 +236,7 @@ final class BoardTest
 
       val orderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
       controller.api.addOrders(
-        Observable.fromIterable(orderIds).map(FreshOrder(_, expectingAgentWorkflow.path))
+        Stream.iterable(orderIds).map(FreshOrder(_, expectingAgentWorkflow.path))
       ).await(99.s).orThrow
       for orderId <- orderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
       controller.api.executeCommand(
@@ -314,7 +316,7 @@ final class BoardTest
       val startAt = startTimestamp + 10.days
 
       controller.api
-        .addOrders(Observable(
+        .addOrders(Stream(
           FreshOrder(posterOrderId, posting0Workflow.path, scheduledFor = Some(startAt)),
           FreshOrder(expectingOrderId, expecting0Workflow.path, scheduledFor = Some(startAt))))
         .await(99.s).orThrow
@@ -374,7 +376,7 @@ final class BoardTest
 
   "Delete Board" in {
     val checked = controller
-      .updateItemsAsSystemUser(Observable(
+      .updateItemsAsSystemUser(Stream(
         DeleteSimple(board0.path),
         DeleteSimple(board1.path),
         DeleteSimple(board2.path)))
@@ -397,11 +399,11 @@ final class BoardTest
       ItemIsStillReferencedProblem(board2.path, posting12Workflow.id)))))
 
     controller.api
-      .deleteOrdersWhenTerminated(Observable.fromIterable(
+      .deleteOrdersWhenTerminated(Stream.iterable(
         controllerState.idToOrder.keys))
       .await(99.s).orThrow
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         DeleteSimple(board0.path),
         DeleteSimple(board1.path),
         DeleteSimple(board2.path),

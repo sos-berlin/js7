@@ -3,7 +3,7 @@ package js7.subagent
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.subagent.OutErrStatistics.*
-import monix.eval.Task
+import cats.effect.IO
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
 
@@ -13,10 +13,10 @@ private final class OutErrStatistics:
   private var messageCount = 0
   private var size = 0L
 
-  def count[A](length: Int, task: Task[A]): Task[A] =
-    messageCount += 1
-    size += length
-    task.timed.map { case (duration, a) =>
+  def count[A](totalLength: Int, n: Int = 1)(io: IO[A]): IO[A] =
+    messageCount += n
+    size += totalLength
+    io.timed.map { case (duration, a) =>
       blockedNanos += duration.toNanos
       a
     }

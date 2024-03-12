@@ -7,9 +7,10 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class RecouplingStreamReaderConf(
   timeout: FiniteDuration,
+  keepAlive: FiniteDuration,
   delay: FiniteDuration,
   failureDelays: NonEmptyList[FiniteDuration])
 
 
 object RecouplingStreamReaderConf:
-  val forTest = RecouplingStreamReaderConf(55.s, 1.s, Nel.one(5.s))
+  val forTest = RecouplingStreamReaderConf(55.s, 1.s, 1.s, Nel.one(5.s))

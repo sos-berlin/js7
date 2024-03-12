@@ -9,6 +9,7 @@ import js7.journal.configuration.JournalConfTest.*
   * @author Joacim Zschimmer
   */
 final class JournalConfTest extends OurTestSuite:
+
   "JournalConf" in:
     assert(JournalConf.fromConfig(config) == journalConf)
 

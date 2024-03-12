@@ -17,8 +17,8 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.RouteProvider.*
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
@@ -30,11 +30,12 @@ trait RouteProvider extends ExceptionHandling:
 
   protected def gateKeeper: GateKeeper[SimpleUser]
 
-  protected def scheduler: Scheduler
+  protected def ioRuntime: IORuntime
 
   protected final lazy val chunkSize = config.memorySizeAsInt("js7.web.chunk-size").orThrow
+  protected final lazy val prefetch = config.getInt("js7.web.server.prefetch")
 
-  private implicit def implicitScheduler: Scheduler = scheduler
+  private implicit def implicitIORuntime: IORuntime = ioRuntime
 
   protected final def authorizedUser(requiredPermission: Permission): Directive1[SimpleUser] =
     authorizedUser(Set(requiredPermission))
@@ -53,22 +54,22 @@ trait RouteProvider extends ExceptionHandling:
   : Directive1[(SimpleUser, Option[OurSession])] =
     new Directive[Tuple1[(SimpleUser, Option[OurSession])]]:
       def tapply(inner: Tuple1[(SimpleUser, Option[OurSession])] => Route) =
-        gateKeeper.preAuthenticate { idsOrUser =>
+        gateKeeper.preAuthenticate: idsOrUser =>
           // idsOrUser == Right(Anonymous) iff no credentials are given
           sessionOption(idsOrUser):
             case None =>
-              gateKeeper.authorize(idsOrUser getOrElse gateKeeper.anonymous, requiredPermissions) { authorizedUser =>
-                // If and only if gateKeeper allows public access, the authorizedUser may be an empowered user.
-                inner(Tuple1((authorizedUser, None)))
-              }
+              gateKeeper
+                .authorize(idsOrUser getOrElse gateKeeper.anonymous, requiredPermissions):
+                  authorizedUser =>
+                    // If and only if gateKeeper allows public access,
+                    // the authorizedUser may be an empowered user.
+                    inner(Tuple1((authorizedUser, None)))
 
             case Some(session) =>
               val user = session.currentUser./*???*/asInstanceOf[SimpleUser]
-              gateKeeper.authorize(user, requiredPermissions) { authorizedUser =>
+              gateKeeper.authorize(user, requiredPermissions): authorizedUser =>
                 // If and only if gateKeeper allows public access, the authorizedUser may be an empowered session.currentUser.
                 inner(Tuple1((authorizedUser, Some(session))))
-              }
-        }
 
   /** Returns the session denoted by optional header `x-js7-session` or None.
     * The request is `Forbidden` if
@@ -83,7 +84,7 @@ trait RouteProvider extends ExceptionHandling:
             inner(Tuple1(None))
 
           case Some(sessionToken) =>
-            onSuccess(sessionRegister.sessionFuture(sessionToken, idsOrUser)):
+            onSuccess(sessionRegister.session(sessionToken, idsOrUser).unsafeToFuture()):
               case Left(problem) =>
                 completeUnauthenticatedLogin(Forbidden, problem)
 
@@ -103,9 +104,9 @@ trait RouteProvider extends ExceptionHandling:
         else
           ZeroDuration
       complete:
-        Task.pure(statusCode -> problem)
-          .delayExecution(delay)
-          .runToFuture
+        IO.pure(statusCode -> problem)
+          .delayBy(delay)
+          .unsafeToFuture()
 
 
 object RouteProvider:

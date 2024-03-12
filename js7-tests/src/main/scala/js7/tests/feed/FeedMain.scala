@@ -1,30 +1,30 @@
 package js7.tests.feed
 
-import cats.effect.Resource
+import cats.effect.{ExitCode, IO, Resource}
 import java.io.InputStream
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.thread.Futures.implicits.SuccessFuture
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import js7.base.catsutils.OurApp
 
-object FeedMain:
-  def main(args: Array[String]): Unit =
-    Logger.initialize("JS7 Feed")
+object FeedMain extends OurApp:
 
-    if args.isEmpty || args.sameElements(Array("--help")) then
-      println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
-    else
-      run(args, Resource.eval(Task.pure(System.in)))
-        .runToFuture
-        .awaitInfinite
-        match
-          case Left(problem) =>
-            println(problem.toString)
-            System.exit(1)
+  def run(args: List[String]): IO[ExitCode] =
+    IO.defer:
+      Logger.initialize("JS7 Feed")
 
-          case Right(()) =>
+      if args.isEmpty || args.sameElements(Array("--help")) then
+        println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
+        IO.pure(ExitCode.Success)
+      else
+        run(args, Resource.eval(IO.pure(System.in)))
+          .map:
+            case Left(problem) =>
+              println(problem.toString)
+              ExitCode.Error
 
-  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Unit]] =
+            case Right(()) =>
+              ExitCode.Success
+
+  def run(args: Seq[String], in: Resource[IO, InputStream]): IO[Checked[Unit]] =
     val settings = Settings.parseArguments(args.toSeq)
     Feed.run(in, settings)

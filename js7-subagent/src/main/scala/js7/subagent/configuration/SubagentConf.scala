@@ -18,15 +18,15 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
-import monix.execution.Scheduler
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 
@@ -41,6 +41,7 @@ final case class SubagentConf(
   killScript: Option[ProcessKillScript],
   stdouterr: StdouterrConf,
   outerrCharBufferSize: Int,
+  outerrQueueSize: Int,
   stdoutCommitDelay: FiniteDuration,
   name: String,
   config: Config)
@@ -81,7 +82,7 @@ extends CommonConfiguration:
     autoCreateDirectory(valueDirectory)
     this
 
-  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
+  def toJobLauncherConf(iox: IOExecutor, blockingJobEC: ExecutionContext, clock: AlarmClock)
   : Checked[JobLauncherConf] =
     JobLauncherConf.checked(
       executablesDirectory = executablesDirectory,
@@ -94,7 +95,7 @@ extends CommonConfiguration:
       killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,
       iox,
-      blockingJobScheduler = blockingJobScheduler,
+      blockingJobEC = blockingJobEC,
       clock,
       config)
 
@@ -138,7 +139,7 @@ object SubagentConf:
 
     val config = resolvedConfig(configDir, extra = extraConfig, internal = internalConfig)
     val conf = SubagentConf.fromResolvedConfig(
-      configDirectory = common.configDirectory,
+      configDirectory = configDir,
       dataDirectory = common.dataDirectory,
       workDirectory = common.workDirectory,
       logDirectory = args.optionAs("--log-directory=")(asAbsolutePath)
@@ -171,7 +172,7 @@ object SubagentConf:
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
   : SubagentConf =
-    SubagentConf.of(
+    of(
       configDirectory = configAndData / "config",
       dataDirectory = configAndData / "data",
       logDirectory = configAndData / "data" / "logs",
@@ -193,7 +194,7 @@ object SubagentConf:
     killScript: Option[ProcessKillScript],
     extraConfig: Config = ConfigFactory.empty,
     internalConfig: Config = DefaultConfig,
-    name: String = "JS7")
+    name: String)
   : SubagentConf =
     fromResolvedConfig(
       configDirectory, dataDirectory,
@@ -210,7 +211,7 @@ object SubagentConf:
     jobWorkingDirectory: Path,
     webServerPorts: Seq[WebServerPort],
     killScript: Option[ProcessKillScript],
-    name: String = "JS7",
+    name: String,
     config: Config)
   : SubagentConf =
     val outErrConf = StdouterrConf.fromConfig(config)
@@ -226,6 +227,8 @@ object SubagentConf:
       outErrConf,
       outerrCharBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size")
         .orThrow.min(outErrConf.chunkSize),
+      outerrQueueSize = config.memorySizeAsInt("js7.order.stdout-stderr.queue-size")
+        .orThrow.max(1),
       stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       config)

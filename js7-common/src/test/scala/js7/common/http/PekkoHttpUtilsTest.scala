@@ -8,8 +8,7 @@ import org.apache.pekko.http.scaladsl.model.Uri as PekkoUri
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpUtilsTest extends OurTestSuite
-:
+final class PekkoHttpUtilsTest extends OurTestSuite:
 
   "Uri asPekko, asUri" in:
     val uri = "https://example.com:1/path/?query=value#hash"

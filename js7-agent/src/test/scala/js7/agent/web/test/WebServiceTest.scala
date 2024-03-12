@@ -1,5 +1,6 @@
 package js7.agent.web.test
 
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorRefFactory
 import org.apache.pekko.http.scaladsl.model.HttpHeader
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
@@ -9,8 +10,7 @@ import js7.agent.web.common.AgentRouteProvider
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Checked.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
 import js7.common.pekkohttp.WebLogDirectives
@@ -20,25 +20,26 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
 import js7.subagent.SubagentSession
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**
   * @author Joacim Zschimmer
   */
-trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:  
+trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
   this: AgentRouteProvider & Suite =>
 
   ProblemCodeMessages.initialize()
 
+  private given IORuntime = ioRuntime
+
   protected def uriPathPrefix = ""
 
-  protected final val gateKeeper = new GateKeeper(
+  protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
-  protected final val sessionRegister = SessionRegister.forTest[SubagentSession](
-    actorRefFactory, SubagentSession.apply, SessionRegister.TestConfig)
+  protected final lazy val sessionRegister = SessionRegister.forTest[SubagentSession](
+    SubagentSession.apply, SessionRegister.TestConfig)
 
   override def testConfig =
     config"pekko.loglevel = warning"
@@ -54,7 +55,7 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
   protected lazy val testSessionHeader: HttpHeader =
     val token = sessionRegister
       .login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), Some(Js7Version))
-      .await(99.s).orThrow
+      .await(99.s)
     RawHeader(`x-js7-session`.name, token.secret.string)
 
   /** Provide ActorRefFactory for some Routes. */

@@ -17,13 +17,15 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.JournalTest.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
 final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixin
 {
+  private given ExecutionContext = ioRuntime.compute
+
   "First run" in {
     withTestActor() { (actorSystem, actor) =>
       for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s

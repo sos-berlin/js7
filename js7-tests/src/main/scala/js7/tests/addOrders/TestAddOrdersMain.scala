@@ -1,42 +1,28 @@
 package js7.tests.addOrders
 
+import cats.effect.{ExitCode, IO}
+import js7.base.catsutils.OurApp
 import js7.base.log.Logger
-import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.Stopwatch.durationAndPerSecondString
-import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.duration.FiniteDuration
 
-object TestAddOrdersMain:
-  private val ClearLine = "\u001B[K"
+object TestAddOrdersMain extends OurApp:
 
-  def main(args: Array[String]): Unit =
-    Logger.initialize("JS7 TestAddOrdersMain")
+  def run(args: List[String]): IO[ExitCode] =
+    IO.defer:
+      Logger.initialize("JS7 TestAddOrdersMain")
 
-    if args.isEmpty || args.sameElements(Array("--help")) then
-      println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
-    else
-      val settings = Settings.parseArguments(args.toSeq)
+      if args.isEmpty || args.sameElements(Array("--help")) then
+        IO:
+          println:
+            "Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD"
+          ExitCode.Success
+      else
+        TestAddOrders.run(Settings.parseArguments(args), logToStdout = true)
+          .flatMap:
+            case Left(problem) =>
+              IO:
+                println(problem.toString)
+                ExitCode.Error
 
-      def logCurrentStatistics(statistics: Statistics) =
-        // TODO Crash is not reported
-        if statistics.totalOrderCount > 0 then
-          print(s"\r${statistics.toLine}  $ClearLine")
-
-      def logAddOrderDuration(duration: FiniteDuration) =
-        print("\r" + ClearLine +
-          durationAndPerSecondString(duration, settings.orderCount, "orders added") +
-          ClearLine + "\n" + ClearLine)
-
-      TestAddOrders.run(settings, logCurrentStatistics, logAddOrderDuration)
-        .runToFuture
-        .awaitInfinite
-        match
-          case Left(problem) =>
-            println(s"\r$ClearLine")
-            println(problem.toString)
-            System.exit(1)
-
-          case Right(statistics) =>
-            //print(s"$ClearLine\n$ClearLine\n$ClearLine")  // Left "main orders completed" lines
-            println(s"\r$ClearLine")
-            for line <- statistics.logLines do println(line + ClearLine)
+            case Right(statistics) =>
+              IO:
+                ExitCode.Success

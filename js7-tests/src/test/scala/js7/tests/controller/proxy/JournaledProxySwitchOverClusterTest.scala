@@ -4,7 +4,7 @@ import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
@@ -17,12 +17,15 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
+import js7.base.monixlike.MonixLikeExtensions.{headL, timeoutOnSlowUpstream}
 import scala.jdk.CollectionConverters.*
 
 final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterProxyTest:
-  
+
   override protected val removeObsoleteJournalFiles = false
+
+  private given IORuntime = ioRuntime
 
   "JournaledProxy accesses a switching Cluster" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
@@ -32,12 +35,12 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
       var lastEventId = EventId.BeforeFirst
 
       def runOrder(orderId: OrderId): Unit =
-        val whenFinished = proxy.observable
+        val whenFinished = proxy.stream()
           .find:
             case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
             case _ => false
           .timeoutOnSlowUpstream(99.s)
-          .headL.runToFuture
+          .headL.unsafeToFuture()
         controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         whenFinished await 99.s
 
@@ -84,5 +87,5 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))
         }
       finally
-        proxy.stop.runToFuture await 99.s
+        proxy.stop.unsafeToFuture() await 99.s
     }

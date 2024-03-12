@@ -37,13 +37,14 @@ import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.{removeJNull, testJson, testJsonDecoder}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
+import js7.base.monixlike.MonixLikeExtensions.toListL
 
 /**
   * @author Joacim Zschimmer
   */
 final class AgentStateTest extends OurAsyncTestSuite:
+
   private val subagentItem = SubagentItem(
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
@@ -196,12 +197,12 @@ final class AgentStateTest extends OurAsyncTestSuite:
 
   "estimatedSnapshotSize" in:
     assert(agentState.estimatedSnapshotSize == 14)
-    for n <- agentState.toSnapshotObservable.countL.runToFuture
+    for n <- agentState.toSnapshotStream.compile.count
       yield assert(n == agentState.estimatedSnapshotSize)
 
   "Snapshot JSON" in:
     implicit val x = AgentState.snapshotObjectJsonCodec
-    agentState.toSnapshotObservable.map(_.asJson).map(removeJNull).toListL.runToFuture
+    agentState.toSnapshotStream.map(_.asJson).map(removeJNull).toListL
       .flatMap { jsons =>
         assert(jsons == List(
           json"""{
@@ -332,11 +333,10 @@ final class AgentStateTest extends OurAsyncTestSuite:
           }"""))
 
         AgentState
-          .fromObservable(
-            Observable.fromIterable(jsons)
+          .fromStream(
+            Stream.iterable(jsons)
               .map(o => AgentState.snapshotObjectJsonCodec.decodeJson(o).toChecked.orThrow))
-          .runToFuture
-          .flatMap { fromSnapshot =>
+          .map { fromSnapshot =>
             val a = agentState.copy(eventId = 0)
             if fromSnapshot != a then  // Diff.compare do not uses our equals implementation
               fail("Eevent-build state differs from snapshot")

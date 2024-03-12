@@ -14,13 +14,15 @@ import js7.data.item.ItemOperation
 import js7.data.order.FreshOrder
 import js7.proxy.ControllerApi
 import js7.tests.feed.Feed.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.right
 
 final class Feed(controllerApi: ControllerApi, settings: Settings):
-  def run(in: Resource[Task, InputStream]): Task[Checked[Unit]] =
+
+  def run(in: Resource[IO, InputStream]): IO[Checked[Unit]] =
     in.use(in =>
-      Task {
+      IO {
         implicit val x = Feed.opJsonCodec
         ByteArray.fromInputStreamUnlimited(in).utf8String.parseJsonAs[Vector[Any]]
       }.flatMapT { objects =>
@@ -36,27 +38,27 @@ final class Feed(controllerApi: ControllerApi, settings: Settings):
           .flatMapT(_ => addOrders(collector.freshOrders))
       })
 
-  private def updateItems(ops: Seq[ItemOperation]): Task[Checked[Unit]] =
+  private def updateItems(ops: Seq[ItemOperation]): IO[Checked[Unit]] =
     if ops.isEmpty then
-      Task.right(())
+      IO.right(())
     else
       controllerApi
-        .updateItems(Observable.fromIterable(ops))
+        .updateItems(Stream.iterable(ops))
         .rightAs(())
 
-  private def addOrders(orders: Seq[FreshOrder]): Task[Checked[Unit]] =
+  private def addOrders(orders: Seq[FreshOrder]): IO[Checked[Unit]] =
     if orders.isEmpty then
-      Task.right(())
+      IO.right(())
     else
       controllerApi
-        .addOrders(Observable
-          .fromIterable(orders)
+        .addOrders(Stream
+          .iterable(orders)
           .map(_.copy(deleteWhenTerminated = true)))
         .rightAs(())
 
 
 object Feed:
-  def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Unit]] =
+  def run(in: Resource[IO, InputStream], settings: Settings): IO[Checked[Unit]] =
     Pekkos.actorSystemResource("Feed")
       .flatMap(actorSystem =>
         ControllerApi.resource(

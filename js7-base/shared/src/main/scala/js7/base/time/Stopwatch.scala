@@ -51,7 +51,7 @@ object Stopwatch:
       throw t
     }
 
-  //def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
+  //def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ioRuntime.compue): Result = {
   //  (for (_ <- 1 to warmUp) yield Future { body }).awaitInfinite
   //  val start = nanoTime
   //  (for (_ <- 1 to n) yield Future { body }).awaitInfinite
@@ -82,17 +82,24 @@ object Stopwatch:
 
   final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true):
     def singleDuration = duration / n
-    def perSecondString = if duration.toNanos == 0 then "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
+    def showPerSecond = n >= 10 && duration >= 100.ms && singleDuration <= 1.s || n > 100_00
+    def perSecondString: String =
+      if duration.toNanos == 0 then
+        "∞"
+      else
+        "~" + (n * 1000L*1000*1000 / duration.toNanos)
     val gapOps = (gap ?? " ") + ops
 
     override def toString =
-      if n == 0 then
-        s"0$gapOps"
-      else
-        s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}), $perSecondString$gapOps/s"
+      n match
+        case 0 => s"0$gapOps"
+        case 1 => s"${duration.pretty}/$n$gapOps"
+        case _ =>
+          val suffix = showPerSecond ?? s", $perSecondString$gapOps/s"
+          s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty})$suffix"
 
     def toShortString =
-      if n == 0 || duration.isZero then
+      if n == 0 || !showPerSecond then
         s"${duration.pretty}/$n$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"

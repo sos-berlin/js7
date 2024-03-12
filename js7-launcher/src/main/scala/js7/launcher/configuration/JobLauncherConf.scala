@@ -9,7 +9,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
-import monix.execution.Scheduler
+import scala.concurrent.ExecutionContext
 
 final case class JobLauncherConf(
   executablesDirectory: Path,
@@ -23,16 +23,16 @@ final case class JobLauncherConf(
   killForWindows: Seq[String],
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
+  errorLineLengthMax: Int,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   iox: IOExecutor,
-  blockingJobScheduler: Scheduler,
+  blockingJobEC: ExecutionContext,
   clock: AlarmClock):
 
   implicit def implicitIox: IOExecutor = iox
 
 
 object JobLauncherConf:
-  val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 
   def checked(
     executablesDirectory: Path,
@@ -42,7 +42,7 @@ object JobLauncherConf:
     systemEncoding: Charset,
     killScript: Option[ProcessKillScript],
     scriptInjectionAllowed: Boolean = false,
-    iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock, config: Config)
+    iox: IOExecutor, blockingJobEC: ExecutionContext, clock: AlarmClock, config: Config)
   : Checked[JobLauncherConf] =
     val sigtermName = "js7.job.execution.kill-with-sigterm-command"
     val sigkillName = "js7.job.execution.kill-with-sigkill-command"
@@ -70,7 +70,8 @@ object JobLauncherConf:
         killForWindows = config.seqAs[String](sigkillWindowsName),
         killScript = killScript,
         scriptInjectionAllowed = scriptInjectionAllowed,
+        errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
         RecouplingStreamReaderConfs.fromConfig(config).orThrow,
         iox,
-        blockingJobScheduler = blockingJobScheduler,
+        blockingJobEC = blockingJobEC,
         clock))

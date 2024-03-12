@@ -1,6 +1,7 @@
 package js7.subagent.director
 
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
+import cats.effect.{FiberIO, IO}
 import cats.syntax.all.*
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -18,7 +19,6 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.Journal
-import monix.eval.{Fiber, Task}
 
 trait SubagentDriver:
 
@@ -30,26 +30,26 @@ trait SubagentDriver:
 
   protected def isShuttingDown: Boolean
 
-  def startObserving: Task[Unit]
+  def startObserving: IO[Unit]
 
   protected val journal: Journal[? <: SubagentDirectorState[?]]
 
-  def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
+  def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]
 
-  def recoverOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
+  def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]
 
-  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
+  def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit]
 
-  def tryShutdown: Task[Unit]
+  def tryShutdown: IO[Unit]
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): Task[Unit]
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit]
 
-  def terminate: Task[Unit]
+  def terminate: IO[Unit]
 
   protected def api: SubagentApi
 
   protected final val orderToDeferred =
-    AsyncMap.stoppable[OrderId, Deferred[Task, OrderProcessed]]()
+    AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
   final def subagentId: SubagentId =
     subagentItem.id
@@ -64,7 +64,7 @@ trait SubagentDriver:
           /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
 
   protected final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
-  : Task[Checked[Map[String, Expression]]] =
+  : IO[Checked[Map[String, Expression]]] =
     journal.state
       .map(_
         .idToWorkflow
@@ -77,13 +77,13 @@ trait SubagentDriver:
 
   // TODO Emit one batch for all recovered orders!
   final def emitOrderProcessLost(order: Order[Order.Processing])
-  : Task[Checked[OrderProcessed]] =
+  : IO[Checked[OrderProcessed]] =
     journal
       .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
       .map(_.map(_._1.value.event))
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
-  : Task[Checked[Seq[Signed[SignableItem]]]] =
+  : IO[Checked[Seq[Signed[SignableItem]]]] =
     for s <- journal.state yield
       for
         signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)

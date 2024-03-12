@@ -17,13 +17,13 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
 {
   "AdmissionTimeScheme.always" in {
     val now = Timestamp("2021-01-01T12:00:00Z")
-    implicit val alarmClock = TestAlarmClock(now)
+    implicit val alarmClock: TestAlarmClock = TestAlarmClock(now)
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
 
     switch.updateAndCheck(sys.error("FAILED"))
     assert(switch.nextTime == None)
 
-    var isEnterable = switch.updateAndCheck(sys.error("FAILED"))
+    var isEnterable = switch.updateAndCheck(sys.error("FAIsLED"))
     assert(isEnterable)
     assert(switch.nextTime == None)
 
@@ -136,7 +136,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
 
 object ExecuteAdmissionTimeSwitchTest
 {
-  private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(implicit zone: ZoneId)
+  private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(using zone: ZoneId)
   {
     private implicit val clock: TestAlarmClock = TestAlarmClock(Timestamp.Epoch)
     private var _switched: Option[TimeInterval] = null

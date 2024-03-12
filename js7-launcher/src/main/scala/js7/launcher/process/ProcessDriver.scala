@@ -1,13 +1,16 @@
 package js7.launcher.process
 
+import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.generic.Completed
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
@@ -19,10 +22,7 @@ import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
 import js7.launcher.process.ProcessDriver.*
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
-import monix.eval.{Fiber, Task}
 import scala.collection.AbstractIterator
-import scala.concurrent.Promise
-import scala.util.{Failure, Success}
 
 final class ProcessDriver(
   orderId: OrderId,
@@ -37,27 +37,29 @@ final class ProcessDriver(
     jobLauncherConf.tmpDirectory,
     jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
-  private val terminatedPromise = Promise[Completed]()
+  //private val terminatedPromise = Deferred.unsafe[IO, Either[Throwable, Completed]]
   private val richProcessOnce = SetOnce[RichProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
-  def startAndRunProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : Task[Fiber[Outcome.Completed]] =
+  def runProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
+  : IO[Outcome.Completed] =
     startProcess(env, stdObservers)
       .flatMap:
-        case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
-        case Right(richProcess) => outcomeOf(richProcess).start
+        case Left(problem) => IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed)
+        case Right(richProcess) => outcomeOf(richProcess)
+      //.guarantee:
+      //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : Task[Checked[RichProcess]] =
-    Task.deferAction { implicit scheduler =>
+  : IO[Checked[RichProcess]] =
+    IO.defer {
       killedBeforeStart match
         case Some(signal) =>
-          Task.pure(Left(Problem.pure("Processing killed before start")))
+          IO.pure(Left(Problem.pure("Processing killed before start")))
 
         case None =>
-          Task(checkedWindowsLogon
+          IO(checkedWindowsLogon
             .flatMap { maybeWindowsLogon =>
               catchNonFatal {
                 for o <- maybeWindowsLogon do
@@ -80,34 +82,31 @@ final class ProcessDriver(
             startProcessLock.lock("startProcess")(
               globalStartProcessLock
                 .lock(orderId.toString)(
-                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
-                .flatMapT { richProcess =>
-                  logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
-                  terminatedPromise.future.value match {
-                    case Some(Failure(t)) => Task.pure(Left(Problem.fromThrowable(t)))
-                    case Some(Success(_)) => Task.pure(Left(Problem("Duplicate process start?")))
-                    case None =>
-                      terminatedPromise.completeWith(
-                        richProcess.terminated.as(Completed).runToFuture)
-                      richProcessOnce := richProcess
-                      killedBeforeStart
-                        .traverse(sendProcessSignal(richProcess, _))
-                        .as(Right(richProcess))
-                  }
+                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
+                    name = s"$orderId ${conf.jobKey}"))
+                .flatTapT { richProcess =>
+                  richProcessOnce := richProcess
+                  logger.info(
+                    s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
+                  richProcess.watchProcess
+                    .startAndForget
+                    .flatTap: _ =>
+                      killedBeforeStart.traverse(sendProcessSignal(richProcess, _))
+                    .as(Right(()))
                 }))
     }
 
-  private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
+  private def outcomeOf(richProcess: RichProcess): IO[Outcome.Completed] =
     richProcess
       .terminated
       .materialize.flatMap { tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
         logger.info(
           s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
-        Task.fromTry(tried)
+        IO.fromTry(tried)
       }
-      .map { returnCode =>
-        fetchReturnValuesThenDeleteFile() match
+      .flatMap { returnCode =>
+        fetchReturnValuesThenDeleteFile.map:
           case Left(problem) =>
             Outcome.Failed.fromProblem(
               problem.withPrefix("Reading return values failed:"),
@@ -116,32 +115,32 @@ final class ProcessDriver(
           case Right(namedValues) =>
             conf.toOutcome(namedValues, returnCode)
       }
-      .guarantee(Task {
+      .guarantee(IO.interruptible {
         returnValuesProvider.tryDeleteFile()
       })
 
-  private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
-    catchNonFatal:
-      val result = returnValuesProvider.read()
-      returnValuesProvider.tryDeleteFile()
-      result
+  private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
+    IO.interruptible:
+      catchNonFatal:
+        val result = returnValuesProvider.read()
+        returnValuesProvider.tryDeleteFile()
+        result
+    .logWhenItTakesLonger(s"fetchReturnValuesThenDeleteFile $orderId") // Because IO.interruptible does not execute ?
 
-  def kill(signal: ProcessSignal): Task[Unit] =
-    startProcessLock.lock("kill")(Task.defer {
+  def kill(signal: ProcessSignal): IO[Unit] =
+    startProcessLock.lock("kill")(IO.defer {
       richProcessOnce.toOption match {
         case None =>
-          logger.debug(s"$orderId: Kill before start")
-          Task {
-            terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
+          IO:
             killedBeforeStart = Some(signal)
-          }
+            logger.debug(s"$orderId: Kill before start")
         case Some(richProcess) =>
           sendProcessSignal(richProcess, signal)
       }
     })
 
-  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       logger.info(s"$orderId: Process $richProcess: kill \"$signal\"")
       richProcess.sendProcessSignal(signal)
 

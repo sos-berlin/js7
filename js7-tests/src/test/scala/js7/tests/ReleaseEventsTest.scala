@@ -9,7 +9,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.controller.client.{PekkoHttpControllerApi, HttpControllerApi}
 import js7.core.command.CommandMeta
@@ -28,12 +28,15 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
   */
 final class ReleaseEventsTest extends OurTestSuite, DirectoryProviderForScalaTest:
+
+  private given IORuntime = ioRuntime
+
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Seq(TestWorkflow)
   override protected val controllerConfig = config"""
@@ -138,7 +141,9 @@ private object ReleaseEventsTest:
   private val cOrder = FreshOrder(OrderId("🔻"), TestWorkflow.id.path)
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
-  private def newApi(controller: TestController, credentials: UserAndPassword): HttpControllerApi =
+  private def newApi(controller: TestController, credentials: UserAndPassword)
+    (using IORuntime)
+  : HttpControllerApi =
     val api = new TestApi(controller, credentials)
     api.loginUntilReachable() await 99.s
     api

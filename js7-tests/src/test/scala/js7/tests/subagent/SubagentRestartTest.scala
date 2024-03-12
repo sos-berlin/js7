@@ -5,7 +5,7 @@ import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
@@ -15,16 +15,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentRestartTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.execution.Scheduler
 import scala.collection.View
 
 final class SubagentRestartTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   private var myAgent: TestAgent = null
 

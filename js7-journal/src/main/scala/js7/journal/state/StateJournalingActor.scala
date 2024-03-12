@@ -4,7 +4,6 @@ import org.apache.pekko.actor.{ActorRef, Props}
 import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.log.CorrelId
-import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.pekkoutils.SupervisorStrategies
@@ -12,8 +11,10 @@ import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.state.StateJournalingActor.*
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.CatsEffectUtils
+import js7.base.catsutils.CatsEffectUtils.promiseIO
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
 
@@ -23,7 +24,7 @@ private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Eve
   protected val journalConf: JournalConf,
   persistPromise: Promise[PersistFunction[S, E]],
   persistLaterPromise: Promise[PersistLaterFunction[E]])
-  (implicit S: Tag[S], protected val scheduler: Scheduler)
+  (implicit S: Tag[S], protected val ioRuntime: IORuntime)
 extends MainJournalingActor[S, E]:
 
   override def supervisorStrategy = SupervisorStrategies.escalate
@@ -38,13 +39,13 @@ extends MainJournalingActor[S, E]:
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions,
     correlId: CorrelId)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    promiseTask[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    promiseIO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
       self ! Persist(stateToEvents, options, correlId, promise)
     }
 
-  private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): Task[Checked[Unit]] =
-    promiseTask[Checked[Unit]] { promise =>
+  private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): IO[Checked[Unit]] =
+    promiseIO[Checked[Unit]] { promise =>
       self ! PersistLater(keyedEvents, options, promise)
     }
 
@@ -69,9 +70,9 @@ extends MainJournalingActor[S, E]:
 
     case PersistLater(keyedEvents, options, promise) =>
       promise.completeWith(
-        persistKeyedEventAcceptEarlyTask(keyedEvents, options = options)
+        persistKeyedEventAcceptEarlyIO(keyedEvents, options = options)
           .rightAs(())
-          .runToFuture)
+          .unsafeToFuture())
 
   override lazy val toString = s"StateJournalingActor[${S.tag.toString.replaceAll("""^.*\.""", "")}]"
 
@@ -92,10 +93,10 @@ private[state] object StateJournalingActor:
 
   type PersistFunction[S <: JournaledState[S], E <: Event] =
     (StateToEvents[S, E], CommitOptions, CorrelId) =>
-      Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+      IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   type PersistLaterFunction[E <: Event] =
-    (Seq[KeyedEvent[E]], CommitOptions) => Task[Checked[Unit]]
+    (Seq[KeyedEvent[E]], CommitOptions) => IO[Checked[Unit]]
 
   def props[S <: JournaledState[S], E <: Event](
     currentState: () => S,
@@ -103,7 +104,7 @@ private[state] object StateJournalingActor:
     journalConf: JournalConf,
     persistPromise: Promise[PersistFunction[S, E]],
     persistLaterPromise: Promise[PersistLaterFunction[E]])
-    (implicit S: Tag[S], s: Scheduler)
+    (implicit S: Tag[S], ioRutime: IORuntime)
   =
     Props:
       new StateJournalingActor(currentState, journalActor, journalConf,

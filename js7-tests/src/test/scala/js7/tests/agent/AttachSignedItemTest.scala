@@ -1,11 +1,12 @@
 package js7.tests.agent
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachSignedItem, DedicateAgentDirector}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.SimpleUser
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
@@ -18,9 +19,10 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.AttachSignedItemTest.*
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 
 final class AttachSignedItemTest extends OurTestSuite, DirectoryProviderForScalaTest:
+
+  private given IORuntime = ioRuntime
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

@@ -2,7 +2,7 @@ package js7.base.utils
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 import js7.base.test.OurTestSuite
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 
 final class AtomicTest extends OurTestSuite:
 

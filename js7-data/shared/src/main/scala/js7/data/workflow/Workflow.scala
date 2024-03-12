@@ -48,7 +48,7 @@ final case class Workflow(
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem, TrivialItemState[Workflow]:
-  
+
   override def equals(o: Any) = o match
     case o: Workflow =>
       (id == o.id
@@ -497,7 +497,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
 
 
 object Workflow extends VersionedItem.Companion[Workflow], TrivialItemState.Companion[Workflow]:
-  
+
   type Item = Workflow
   type Path = WorkflowPath
 

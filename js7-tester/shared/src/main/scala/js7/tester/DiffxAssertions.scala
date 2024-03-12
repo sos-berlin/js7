@@ -5,6 +5,7 @@ import org.scalatest.Assertion
 import org.scalatest.Assertions.assert
 
 object DiffxAssertions:
+
   def assertEqual[A/*: diffx.Diff*/](a: A, b: A): Assertion =
     assert(a == b)
     //diffx if (a != b)

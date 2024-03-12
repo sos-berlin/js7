@@ -15,8 +15,8 @@ import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerSta
 import js7.data.event.{EventApi, EventId, JournalInfo}
 import js7.data.order.{FreshOrder, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
@@ -38,53 +38,53 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
       if baseUri.isEmpty then baseUri
       else Uri(baseUri.string.stripSuffix("/") + "/controller"))
 
-  final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =
+  final def post[A: Encoder, B: Decoder](uriTail: String, data: A): IO[B] =
     httpClient.post[A, B](baseUri /? uriTail, data)
 
-  final def postObservable[A: Encoder: Tag, B: Decoder](uriTail: String, data: Observable[A]): Task[B] =
-    httpClient.postObservable[A, B](baseUri /? uriTail, data)
+  final def postStream[A: Encoder: Tag, B: Decoder](uriTail: String, stream: Stream[IO, A]): IO[B] =
+    httpClient.postStream[A, B](baseUri /? uriTail, stream)
 
   @TestOnly
-  final def postObservableJsonString(uriTail: String, data: Observable[String]): Task[Json] =
-    httpClient.postObservableJsonString(baseUri /? uriTail, data)
+  final def postJsonStringStream(uriTail: String, stream: Stream[IO, String]): IO[Json] =
+    httpClient.postJsonStringStream(baseUri /? uriTail, stream)
 
-  final def get[B: Decoder](uriTail: String): Task[B] =
+  final def get[B: Decoder](uriTail: String): IO[B] =
     httpClient.get[B](baseUri /? uriTail)
 
-  final def executeCommand(command: ControllerCommand): Task[command.Response] =
+  final def executeCommand(command: ControllerCommand): IO[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
       .map(_.asInstanceOf[command.Response])
 
   //final def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
-  //: Task[command.Response] =
+  //: IO[command.Response] =
   //  httpClient.post[AgentCommand, AgentCommand.Response](uris.agentCommand(agentPath), command)
   //    .map(_.asInstanceOf[command.Response])
 
-  final def overview: Task[ControllerOverview] =
+  final def overview: IO[ControllerOverview] =
     httpClient.get[ControllerOverview](uris.overview)
 
-  final def addOrder(order: FreshOrder): Task[Boolean] =
+  final def addOrder(order: FreshOrder): IO[Boolean] =
     val uri = uris.order.add
     httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
       .map(_ == 201/*Created*/)
 
-  final def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
+  final def addOrders(orders: Seq[FreshOrder]): IO[Completed] =
     httpClient.postDiscardResponse(uris.order.add, orders)
       .map((_: Int) => Completed)
 
-  final def deleteOrdersWhenTerminated(orderIds: Seq[OrderId]): Task[Completed] =
+  final def deleteOrdersWhenTerminated(orderIds: Seq[OrderId]): IO[Completed] =
     executeCommand(DeleteOrdersWhenTerminated(orderIds))
       .map((_: ControllerCommand.Response.Accepted) => Completed)
 
-  final def ordersOverview: Task[OrdersOverview] =
+  final def ordersOverview: IO[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)
 
-  final def journalInfo: Task[JournalInfo] =
+  final def journalInfo: IO[JournalInfo] =
     httpClient.get[JournalInfo](uris.api("/journalInfo"))
 
   override def toString = s"HttpControllerApi($baseUri)"
 
-  final def snapshot(eventId: Option[EventId] = None): Task[ControllerState] =
+  final def snapshot(eventId: Option[EventId] = None): IO[ControllerState] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
 
 
@@ -96,8 +96,8 @@ object HttpControllerApi:
     admission: Admission,
     httpClient: HttpClient,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  : Resource[Task, HttpControllerApi] =
-    SessionApi.resource(Task(
+  : Resource[IO, HttpControllerApi] =
+    SessionApi.resource(IO(
       new HttpControllerApi.Standard(admission, httpClient, loginDelays)))
 
   final class Standard(

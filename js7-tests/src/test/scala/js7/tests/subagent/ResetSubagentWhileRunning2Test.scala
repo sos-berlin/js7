@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerCommand.ResetSubagent
@@ -20,16 +20,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunning2Test.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
 final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   override protected val primarySubagentsDisabled = true
   protected lazy val items = Seq(workflow, bareSubagentItem)
-
-  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent while Subagent is coupled and Subagent does not shut down" in:
     enableSubagents(directoryProvider.subagentId -> false)

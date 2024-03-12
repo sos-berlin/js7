@@ -1,6 +1,6 @@
 package js7.agent.web
 
-import cats.effect.Resource
+import cats.effect.{Deferred, IO, Resource}
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand.*
@@ -21,9 +21,7 @@ import js7.data.controller.ControllerRunId
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import js7.subagent.SubagentSession
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.decodeRequest
 import scala.concurrent.Future
@@ -32,6 +30,9 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 final class CommandWebServerTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
+
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for i <- 1 to n yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
   private lazy val coupleController = CoupleController(
@@ -40,30 +41,26 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
     EventId.BeforeFirst,
     ControllerRunId(JournalId.random()))
   private lazy val clientResource = for
-    as <- actorSystemResource("CommandWebServerTest", testConfig)
-    webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
-    client <- Resource.fromAutoCloseable(Task(AgentClient(
-      Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
-      as)))
+    given ActorSystem <- actorSystemResource("CommandWebServerTest", testConfig)
+    webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route)
+    client <- Resource.fromAutoCloseable(IO(AgentClient(
+      Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))))
   yield client
 
   "Big response" in:
     clientResource.use(_.commandExecute(coupleController))
       .map(response => assert(response == Right(CoupleController.Response(orderIds))))
-      .runToFuture
 
-  private def route(implicit actorSystem: ActorSystem) =
+  private def route =
     decodeRequest/*decompress*/ :
       pathSegments("agent/api/command"):
         new CommandWebService {
-          protected def scheduler = Scheduler.traced
-          protected def whenShuttingDown = Future.never
+          protected def ioRuntime = CommandWebServerTest.this.ioRuntime
+          protected def whenShuttingDown = Deferred.unsafe
           protected def config = testConfig
-          protected def commandOverview = throw new NotImplementedError
-          protected def commandDetailed = throw new NotImplementedError
 
           protected val executeCommand = (command, meta) =>
-            Task(
+            IO(
               command match {
                 case _: CoupleController => Right(CoupleController.Response(orderIds))
                 case _ => fail()
@@ -74,7 +71,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
           protected val sessionRegister = SessionRegister.forTest[SubagentSession](
-            actorSystem, SubagentSession.apply, SessionRegister.TestConfig)
+            SubagentSession.apply, SessionRegister.TestConfig)
         }.commandRoute
 
 private object CommandWebServerTest:
@@ -82,5 +79,6 @@ private object CommandWebServerTest:
     config"""
       js7.web.server.auth.public = on
       js7.web.server.shutdown-timeout = 10s
+      js7.web.server.shutdown-delay = 500ms
       pekko.http.client.parsing.max-content-length = 100MB
     """.withFallback(AgentConfiguration.DefaultConfig)

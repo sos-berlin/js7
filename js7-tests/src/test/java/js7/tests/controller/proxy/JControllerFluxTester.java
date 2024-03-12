@@ -1,7 +1,9 @@
 package js7.tests.controller.proxy;
 
+import com.typesafe.config.ConfigFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeoutException;
 import js7.data.event.Event;
 import js7.data.order.OrderEvent.OrderFinished;
@@ -25,7 +27,7 @@ import static js7.data_for_java.vavr.VavrUtils.await;
 public final class JControllerFluxTester
 implements AutoCloseable
 {
-    private final JProxyContext context = new JProxyContext();
+    private final JProxyContext context = new JProxyContext(ConfigFactory.empty(), ForkJoinPool.commonPool());
     private final JControllerApi api;
     private final JControllerProxy proxy;
     private int orderCounter = 0;

@@ -1,10 +1,11 @@
 package js7.agent.tests
 
+import cats.effect.ExitCode
+import cats.effect.unsafe.IORuntime
 import js7.agent.client.main.AgentClientMain
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.io.process.ReturnCode
 import js7.base.test.OurTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.scalatest.BeforeAndAfterAll
@@ -13,14 +14,17 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends OurTestSuite, BeforeAndAfterAll, TestAgentProvider:
-  
+final class AgentClientMainTest extends OurTestSuite,
+  BeforeAndAfterAll, TestAgentProvider:
+
+  private given IORuntime = ioRuntime
+
   override def afterAll() = closer closeThen super.afterAll()
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {
-  //    def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-  //      Task {
+  //    def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[command.Response]] =
+  //      IO {
   //        (command match {
   //          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
   //          case _ => fail()
@@ -44,14 +48,14 @@ final class AgentClientMainTest extends OurTestSuite, BeforeAndAfterAll, TestAge
 
   "main with Agent URI only checks whether Agent is responding (it is)" in:
     val output = mutable.Buffer.empty[String]
-    assertResult(ReturnCode(0)):
+    assertResult(ExitCode(0)):
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     assert(output == List("JS7 Agent is responding"))
 
   "main with Agent URI only checks whether Agent is responding (it is not)" in:
     val port = findFreeTcpPort()
     val output = mutable.Buffer.empty[String]
-    assertResult(ReturnCode(1)):
+    assertResult(ExitCode(1)):
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     assert(output.head contains "JS7 Agent is not responding: ")
     assert(output.head contains "Connection refused")

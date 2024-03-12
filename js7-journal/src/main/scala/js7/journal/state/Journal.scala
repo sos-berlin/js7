@@ -1,11 +1,11 @@
 package js7.journal.state
 
+import cats.effect.IO
 import js7.base.problem.Checked
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{Event, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.CommitOptions
-import monix.eval.Task
 
 trait Journal[S <: JournaledState[S]]
 extends ReadableStateJournal[S]:
@@ -19,25 +19,25 @@ extends ReadableStateJournal[S]:
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
     (using enclosing: sourcecode.Enclosing)
-  : Task[Checked[(Stamped[KeyedEvent[E]], S)]]
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]]
 
   final def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions,
     commitLater: Boolean)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     persistKeyedEvents(keyedEvent :: Nil, options, commitLater = commitLater)
 
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   final def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions,
     commitLater: Boolean)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     if commitLater then
       persistKeyedEventsLater(keyedEvents, options)
     else
@@ -46,20 +46,20 @@ extends ReadableStateJournal[S]:
   def persistKeyedEventsLater[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[Unit]]
+  : IO[Checked[Unit]]
 
   final def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     persistWithOptions(CommitOptions.default)(stateToEvents)
 
   def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   private val keyLockKeeper = new LockKeeper[Any]
 
-  def lock[A](key: Any)(body: Task[A])(implicit enclosing: sourcecode.Enclosing): Task[A] =
+  def lock[A](key: Any)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
     keyLockKeeper.lock(key)(body)
 
-  val whenNoFailoverByOtherNode: Task[Unit]
+  val whenNoFailoverByOtherNode: IO[Unit]

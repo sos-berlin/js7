@@ -1,14 +1,27 @@
 package js7.controller
 
+import cats.effect.unsafe.Scheduler
+import cats.effect.{Resource, Sync, SyncIO}
+import cats.syntax.traverse.*
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.catsutils.OurIORuntime
+import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
+import js7.base.utils.CatsBlocking.BlockingIOResource
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.SyncResource.syntax.RichSyncResource
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
-import cats.effect.{Resource, Sync, SyncIO}
-import cats.syntax.traverse.*
+import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.given
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
+import fs2.Stream
 import js7.base.auth.SimpleUser
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -16,21 +29,18 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
@@ -38,7 +48,6 @@ import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import js7.common.system.ThreadPools
 import js7.controller.RunningController.logger
 import js7.controller.client.PekkoHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
@@ -63,9 +72,6 @@ import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdClock, JournalActor}
 import js7.license.LicenseCheckContext
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
@@ -83,17 +89,17 @@ final class RunningController private(
   val webServer: PekkoWebServer,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
-  val controllerState: Task[ControllerState],
+  val controllerState: IO[ControllerState],
   commandExecutor: ControllerCommandExecutor,
   itemUpdater: ItemUpdater,
   whenReady: Future[Unit],
   val terminated: Future[ProgramTermination],
-  val clusterWatchServiceFor: AgentPath => Task[Checked[ClusterWatchService]],
+  val clusterWatchServiceFor: AgentPath => IO[Checked[ClusterWatchService]],
   val sessionRegister: SessionRegister[SimpleSession],
   val conf: ControllerConfiguration,
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
-  (implicit val scheduler: Scheduler)
+  (implicit val ioRuntime: IORuntime)
 extends MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
@@ -102,79 +108,79 @@ extends MainService, Service.StoppableByRequest:
     webServer.localUri
 
   val untilTerminated =
-    Task.fromFuture(terminated)
+    IO.fromFutureDummyCancelable(IO.pure(terminated))
 
   protected def start =
     startService(
       untilStopRequested *>
         shutdown(ShutDown()).void)
 
-  def shutdown(cmd: ShutDown): Task[ProgramTermination] =
-    Task.defer:
+  def shutdown(cmd: ShutDown): IO[ProgramTermination] =
+    IO.defer:
       if terminated.isCompleted then  // Works only if previous termination has been completed
         untilTerminated
       else
-        logger.debugTask(
+        logger.debugIO(
           executeCommandAsSystemUser(cmd)
             .rightAs(())
             .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
               logger.info(problem.toString)
-              Task.right(())
+              IO.right(())
             }
             .map(_.orThrow)
             .*>(untilTerminated))
 
-  private def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
+  private def executeCommandAsSystemUser(command: ControllerCommand): IO[Checked[command.Response]] =
     for
       checkedSession <- sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
     yield checkedChecked.flatten
 
-  private def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-    logger.debugTask("executeCommand", command.toShortString)(
-      commandExecutor.executeCommand(command, meta)
-        .executeOn(scheduler))
+  private def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
+    logger.debugIO(s"executeCommand ${command.toShortString}")(
+      commandExecutor.executeCommand(command, meta))
+        .evalOn(ioRuntime.compute)
 
-  def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
+  def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem]): IO[Checked[Completed]] =
     sessionRegister.systemUser
       .flatMapT(updateUnsignedSimpleItems(_, items))
-      .executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
-  private def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
+  private def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): IO[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(
-        Observable.fromIterable(items)
+        Stream.iterable(items)
           .map(ItemOperation.AddOrChangeSimple.apply),
         _ => Left(Problem.pure("updateUnsignedSimpleItems and verify?")),
         user)
       .flatMapT(itemUpdater.updateItems)
-      .executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
-  def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+  def updateItemsAsSystemUser(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     sessionRegister.systemUser
       .flatMapT(updateItems(_, operations))
 
-  private def updateItems(user: SimpleUser, operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+  private def updateItems(user: SimpleUser, operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
-      .executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
   @TestOnly
-  def addOrder(order: FreshOrder): Task[Checked[Unit]] =
+  def addOrder(order: FreshOrder): IO[Checked[Unit]] =
     executeCommandAsSystemUser(AddOrder(order))
       .mapT(response =>
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
 
   @TestOnly
-  def waitUntilReady(): Unit =
-    Task.fromFuture(whenReady)
+  def waitUntilReady()(using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line): Unit =
+    IO.fromFutureDummyCancelable(IO(whenReady))
       .logWhenItTakesLonger
       .await(99.s)
 
   @TestOnly
-  def clusterState: Task[ClusterState] =
+  def clusterState: IO[ClusterState] =
     controllerState.map(_.clusterState)
 
   @TestOnly
@@ -195,7 +201,7 @@ object RunningController:
   def blockingRun(conf: ControllerConfiguration, timeout: FiniteDuration)
     (whileRunning: RunningController => Unit)
   : ProgramTermination =
-    threadPoolResource[SyncIO](conf).useSync(implicit scheduler =>
+    ioRuntimeResource[SyncIO](conf).useSync(implicit ioRuntime =>
       resource(conf)
         .blockingUse(timeout) { runningController =>
           whileRunning(runningController)
@@ -203,32 +209,37 @@ object RunningController:
         })
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
-    (implicit scheduler: Scheduler)
-  : Resource[Task, RunningController] = {
+    (using ioRuntime: IORuntime)
+  : Resource[IO, RunningController] = {
+    given Scheduler = ioRuntime.scheduler
+
     val alarmClock: AlarmClock =
       testWiring.alarmClock getOrElse
         AlarmClock(Some(conf.config
           .getDuration("js7.time.clock-setting-check-interval")
-          .toFiniteDuration))(scheduler)
+          .toFiniteDuration))
 
     val eventIdClock: EventIdClock =
-      testWiring.eventIdClock getOrElse new EventIdClock(alarmClock)
+      testWiring.eventIdClock getOrElse EventIdClock(alarmClock)
 
     for
-      iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
-      runningController <- resource(conf, alarmClock, eventIdClock)(scheduler, iox)
+      iox <- IOExecutor.resource[IO](conf.config, conf.name + " I/O")
+      runningController <-
+        given IOExecutor = iox
+        resource(conf, alarmClock, eventIdClock)
     yield runningController
-  }.executeOn(scheduler)
+  }.evalOn(ioRuntime.compute)
 
   private def resource(
     conf: ControllerConfiguration,
     alarmClock: AlarmClock,
     eventIdClock: EventIdClock)
-    (implicit scheduler: Scheduler, iox: IOExecutor)
-  : Resource[Task, RunningController] =
+    (implicit ioRuntime: IORuntime, iox: IOExecutor)
+  : Resource[IO, RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
 
-    implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
+    given ExecutionContext = ioRuntime.compute
+    given testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
     implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] =
       val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
@@ -243,63 +254,67 @@ object RunningController:
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
 
-    val resources = /*CorrelId.bindNew*/(clusterNodeResource)
-      .parZip(CorrelId.bindNew(
-        itemVerifierResource(config, testEventBus)))
+    val resources = 
+      Resource.both(
+        /*CorrelId.bindNew*/ (clusterNodeResource),
+        CorrelId.bindNew:
+          itemVerifierResource(config, testEventBus))
 
     resources.flatMap { case (clusterNode, itemVerifier) =>
       import clusterNode.actorSystem
 
-      val orderKeeperStarted: Task[Either[ProgramTermination, OrderKeeperStarted]] =
-        logger.traceTaskWithResult(
-          clusterNode.untilActivated
-            .map(_.flatMap { workingClusterNode =>
-              startControllerOrderKeeper(
-                workingClusterNode.journalAllocated,
-                clusterNode.workingClusterNode.orThrow,
-                alarmClock,
-                conf, testEventBus)
-            })
-        ).memoize
+      val orderKeeperStarted: IO[Either[ProgramTermination, OrderKeeperStarted]] =
+        memoize:
+          logger.traceIOWithResult:
+            clusterNode.untilActivated
+              .map(_.flatMap { workingClusterNode =>
+                startControllerOrderKeeper(
+                  workingClusterNode.journalAllocated,
+                  clusterNode.workingClusterNode.orThrow,
+                  alarmClock,
+                  conf, testEventBus)
+              })
 
       val controllerState = clusterNode.currentState
 
       val whenReady = Promise[Unit]()
       whenReady.completeWith(
-        testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
+        testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type]
+          .map(_ => ()))
 
       // The ControllerOrderKeeper if started
-      val currentOrderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
-        logger.traceTask(
+      val currentOrderKeeperActor: IO[Checked[ActorRef @@ ControllerOrderKeeper]] =
+        logger.traceIO(
           controllerState
             .map(_.map(_.clusterState))
             .flatMapT { clusterState =>
               import conf.clusterConf.{isBackup, ownId}
               if !clusterState.isActive(ownId, isBackup = isBackup) then
-                Task.left(ClusterNodeIsNotActiveProblem)
+                IO.left(ClusterNodeIsNotActiveProblem)
               else
                 orderKeeperStarted.map {
                   case Left(_) => Left(ShuttingDownProblem)
                   case Right(o) => Right(o.actor)
                 }
             }
-            .tapError(t => Task {
+            .tapError(t => IO {
               logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
               whenReady.tryFailure(t)
             }))
 
-      val untilOrderKeeperTerminated = logger.traceTask(
-        orderKeeperStarted.flatMap {
-          case Left(termination) => Task.pure(termination)
-          case Right(o) =>
-            Task
-              .fromFuture(o.termination)
-              .tapError(t => Task(
-                logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)))
-          }
-          .tapError(t => Task(whenReady.tryFailure(t)))
-      ).uncancelable/*a test may use this in `race`, unintentionally canceling this*/
-        .memoize
+      val untilOrderKeeperTerminated = 
+        memoize:
+          logger.traceIO(
+            orderKeeperStarted.flatMap {
+              case Left(termination) => IO.pure(termination)
+              case Right(o) =>
+                IO
+                  .fromFuture(IO.pure(o.termination))
+                  .tapError(t => IO(
+                    logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)))
+              }
+              .tapError(t => IO(whenReady.tryFailure(t)))
+          ).uncancelable/*a test may use this in `race`, unintentionally canceling this*/
 
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(clusterNode, currentOrderKeeperActor))
@@ -309,7 +324,7 @@ object RunningController:
       import clusterNode.recoveredExtract
 
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
-      : Resource[Task, ControllerWebServer] =
+      : Resource[IO, ControllerWebServer] =
         for
           webServer <- ControllerWebServer.resource(
             orderApi, commandExecutor, itemUpdater, clusterNode,
@@ -317,23 +332,23 @@ object RunningController:
             recoveredExtract.eventWatch,
             conf, sessionRegister)
           _ <- webServer.restartWhenHttpsChanges
-          _ <- Resource.eval(Task(
+          _ <- Resource.eval(IO(
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
         yield webServer
 
-      def clusterWatchServiceFor(agentPath: AgentPath): Task[Checked[ClusterWatchService]] =
+      def clusterWatchServiceFor(agentPath: AgentPath): IO[Checked[ClusterWatchService]] =
         currentOrderKeeperActor
           .flatMapT(actor =>
-            Task.deferFuture(
+            IO.deferFuture(
               (actor ? ControllerOrderKeeper.Command.GetClusterWatchService(agentPath))
                 .mapTo[Checked[ClusterWatchService]]))
 
       def runningControllerResource(
         webServer: ControllerWebServer,
         sessionRegister: SessionRegister[SimpleSession])
-      : Resource[Task, RunningController] =
-        Service.resource(Task(
+      : Resource[IO, RunningController] =
+        Service.resource(IO(
           new RunningController(
             recoveredExtract.eventWatch.strict,
             webServer,
@@ -341,7 +356,7 @@ object RunningController:
             orderApi,
             controllerState.map(_.orThrow),
             commandExecutor, itemUpdater,
-            whenReady.future, untilOrderKeeperTerminated.runToFuture,
+            whenReady.future, untilOrderKeeperTerminated.unsafeToFuture(),
             clusterWatchServiceFor,
             sessionRegister, conf, testEventBus,
             actorSystem)))
@@ -354,16 +369,15 @@ object RunningController:
       yield runningController
     }
 
-  def threadPoolResource[F[_]](conf: ControllerConfiguration, orCommon: Option[Scheduler] = None)
-    (implicit F: Sync[F])
-  : Resource[F, Scheduler] =
-    ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
+  def ioRuntimeResource[F[_]](conf: ControllerConfiguration)(implicit F: Sync[F])
+  : Resource[F, IORuntime] =
+    OurIORuntime.resource[F](conf.name, conf.config)
 
   private def itemVerifierResource(
     config: Config,
     testEventBus: StandardEventBus[Any])(
     implicit iox: IOExecutor)
-  : Resource[Task, SignedItemVerifier[SignableItem]] =
+  : Resource[IO, SignedItemVerifier[SignableItem]] =
     DirectoryWatchingSignatureVerifier
       .checkedResource(
         config,
@@ -375,12 +389,12 @@ object RunningController:
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    journalAllocated: Allocated[Task, FileJournal[ControllerState]],
+    journalAllocated: Allocated[IO, FileJournal[ControllerState]],
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
     testEventPublisher: EventPublisher[Any])(
-    implicit scheduler: Scheduler, actorSystem: ActorSystem)
+    implicit ioRuntime: IORuntime, actorSystem: ActorSystem)
   : Either[ProgramTermination, OrderKeeperStarted] =
     logger.traceCall:
       val terminationPromise = Promise[ProgramTermination]()
@@ -391,21 +405,22 @@ object RunningController:
         },
         "ControllerOrderKeeper")
       actor ! ControllerOrderKeeper.Input.Start
+      given ExecutionContext = ioRuntime.compute
       val termination = terminationPromise.future
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
       Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
 
   private class MyCommandExecutor(
     clusterNode: ClusterNode[ControllerState],
-    orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
+    orderKeeperActor: IO[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]:
-    def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+    def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
       (command match {
         case command: ControllerCommand.ShutDown =>
           logger.info(s"❗ $command")
           if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
-            Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
+            IO.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else {
             if command.dontNotifyActiveNode && clusterNode.isPassive then {
               clusterNode.dontNotifyActiveNodeAboutShutdown()
@@ -413,36 +428,36 @@ object RunningController:
             clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
-                  Task.right(ControllerCommand.Response.Accepted)
-                case Left(problem) => Task.pure(Left(problem))
+                  IO.right(ControllerCommand.Response.Accepted)
+                case Left(problem) => IO.pure(Left(problem))
                 case Right(actor) =>
-                  Task.deferFuture(
+                  IO.deferFuture(
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                       .mapTo[Checked[ControllerCommand.Response]])
               }
           }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
-          Task(clusterNode.workingClusterNode)
+          IO(clusterNode.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId))
             .rightAs(ControllerCommand.Response.Accepted)
 
         case _ =>
           orderKeeperActor.flatMapT(actor =>
-            Task.deferFuture(
+            IO.deferFuture(
               (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                 .mapTo[Checked[ControllerCommand.Response]]))
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
 
   private class MyItemUpdater(
     val signedItemVerifier: SignedItemVerifier[SignableItem],
-    orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
+    orderKeeperActor: IO[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends ItemUpdater:
     def updateItems(verifiedUpdateItems: VerifiedUpdateItems) =
       orderKeeperActor
         .flatMapT(actor =>
-          Task.deferFuture(
+          IO.deferFuture(
             (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))
               .mapTo[Checked[Completed]]))
 

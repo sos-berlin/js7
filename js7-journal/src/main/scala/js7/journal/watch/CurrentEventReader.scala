@@ -1,7 +1,8 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
-import js7.base.monixutils.MonixDeadline
+import js7.base.catsutils.CatsDeadline
 import js7.base.stream.IncreasingNumberSync
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
@@ -19,7 +20,8 @@ private[watch] final class CurrentEventReader(
   firstEventPositionAndFileEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
   val isActiveNode: Boolean,
-  protected val config: Config)
+  protected val config: Config,
+  protected val ioRuntime: IORuntime)
 extends EventReader:
   protected def isHistoric = false
   protected def firstEventPosition = firstEventPositionAndFileEventId.position
@@ -44,7 +46,7 @@ extends EventReader:
     synchronized:
       journalingEnded && position >= _committedLength
 
-  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline) =
+  protected def whenDataAvailableAfterPosition(position: Long, until: CatsDeadline) =
     flushedLengthSync.whenAvailable(position, until = Some(until))
 
   protected def isFlushedAfterPosition(position: Long) =

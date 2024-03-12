@@ -4,8 +4,8 @@ import java.lang.reflect.Method
 import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Once
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.ScalaUtils.syntax.ifFailed
+import js7.base.utils.{Atomic, Once}
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 
@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
   */
 object Log4j:
 
-  private val isShutdown = AtomicBoolean(false)
+  private val isShutdown = Atomic(false)
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
   private val ifNotInitialized = new Once
@@ -32,8 +32,8 @@ object Log4j:
 
   def initialize(name: String) =
     ifNotInitialized:
-      if CorrelId.couldBeEnabled then CorrelIdLog4jThreadContextMap.initialize(name)
-      for t <- shutdownMethod.failed do logger.warn(t.toString)
+      CorrelIdLog4jThreadContextMap.initialize(name)
+      for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
   def setDefaultConfiguration(resource: String): Unit =
     if !sys.props.contains("log4j.configurationFile") then

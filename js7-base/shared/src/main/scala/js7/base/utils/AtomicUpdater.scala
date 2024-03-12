@@ -1,11 +1,10 @@
 package js7.base.utils
 
-import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
 
 final class AtomicUpdater[A <: AnyRef](initial: A):
 
-  private val value = AtomicAny(initial)
+  private val value = Atomic(initial)
 
   def get: A =
     value.get()

@@ -10,9 +10,14 @@ log4jXml="js7/tests/log4j2.xml"   # Java resource
 javaOptions=()
 args=()
 explicitController=0
+execOptions=()
 
 for arg in "$@"; do :
   case "$arg" in
+    --arg0=*)
+      a="${arg#*=}"
+      execOptions=("-a" "${arg#*=}")
+      ;;
     --java-option=*)
       a="${arg#*=}"
       javaOptions+=("$a")
@@ -50,4 +55,4 @@ execute=(
   "${args[@]}"
 )
 #echo "${execute[@]}"
-exec "${execute[@]}"
+exec "${execOptions[@]}" "${execute[@]}"

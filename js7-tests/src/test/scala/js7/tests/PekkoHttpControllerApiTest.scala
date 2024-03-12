@@ -1,11 +1,12 @@
 package js7.tests
 
+import cats.effect.IO
 import js7.base.BuildInfo
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
@@ -22,8 +23,6 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.PekkoHttpControllerApiTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
@@ -74,7 +73,7 @@ final class PekkoHttpControllerApiTest extends OurTestSuite, ControllerAgentForS
   "resource" in:
     PekkoHttpControllerApi
       .separatePekkoResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
-      .use(api => Task {
+      .use(api => IO {
         api.login() await 99.s
         assert(controller.sessionRegister.count.await(99.s) == 2)
         api.overview.await(99.s): ControllerOverview

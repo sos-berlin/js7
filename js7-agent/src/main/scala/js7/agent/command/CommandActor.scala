@@ -11,12 +11,13 @@ import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.monixlike.MonixLikeExtensions.deferFuture
+import js7.base.system.startup.Halt
 import org.apache.pekko.actor.{Actor, ActorRef}
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.{Success, Try}
 
 /**
@@ -24,8 +25,10 @@ import scala.util.{Success, Try}
  *
  * @author Joacim Zschimmer
  */
-final class CommandActor(agentHandle: AgentHandle)(implicit s: Scheduler)
+final class CommandActor(agentHandle: AgentHandle)(using ioRuntime: IORuntime)
 extends Actor:
+
+  private given ExecutionContext = ioRuntime.compute
 
   // TODO Don't use CorrelId as command ID in the register
   //  because CorrelId may be used for several commands!
@@ -126,7 +129,7 @@ object CommandActor:
 
   final class Handle(actor: ActorRef) extends CommandHandler:
     def execute(command: AgentCommand, meta: CommandMeta) =
-      Task.deferFuture:
+      IO.deferFuture:
         val promise = Promise[Checked[Response]]()
         actor ! Input.Execute(command, meta, CorrelId.current, promise)
         promise.future

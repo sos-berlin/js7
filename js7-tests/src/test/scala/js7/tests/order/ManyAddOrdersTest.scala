@@ -5,7 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
 import js7.data.agent.AgentPath
@@ -21,14 +21,16 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.ManyAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
+import js7.base.monixlike.MonixLikeExtensions.*
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isIntelliJIdea
 import scala.util.Random
 
 // Try to resemble a failed manual test
 final class ManyAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val items = Seq(workflow, workflow2)
   override def controllerConfig = config"""
@@ -45,28 +47,31 @@ final class ManyAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.eventWatch.await[AgentReady]()
 
   "Multiple AddOrders" in:
-    run(workflow.path, n = 100)
+    run(workflow.path, n = if isIntelliJIdea then 1000 else 100)
     //run(workflow2.path, n = 100)
 
   private def run(workflowPath: WorkflowPath, n: Int): Unit =
     val orderIds = (1 to n).view.map(i => OrderId(s"ORDER-$i")).toVector
-    val addOrders = Observable.fromIterable(orderIds)
-      .bufferTumbling(2)
-      .flatMap(orderIds =>
-        Observable.fromTask(
-          orderIds.toVector.traverse(orderId =>
-            controller.api.addOrders(Observable.pure(FreshOrder(orderId, workflowPath)))
-          ).delayExecution(Random.nextInt(2).ms) >>
-            orderIds.toVector.traverse(orderId =>
-              controller.api.deleteOrdersWhenTerminated(Observable(orderId)))
-        ))
+    val addOrders = Stream.iterable(orderIds)
+      //Monix .bufferTumbling(2)
+      .chunks.map(_.toVector)
+      .covary[IO]
+      .flatMap: orderIds =>
+        Stream.eval:
+          orderIds
+            .traverse: orderId =>
+              controller.api.addOrders(Stream.emit(FreshOrder(orderId, workflowPath)))
+            .delayBy(Random.nextInt(2).ms) *>
+            orderIds.traverse: orderId =>
+              controller.api.deleteOrdersWhenTerminated(Stream(orderId).covary[IO])
       .completedL
     val awaitRemoved = controller.eventWatch
-      .observe(EventRequest.singleClass[OrderDeleted](timeout = Some(99.s)))
+      .stream(EventRequest.singleClass[OrderDeleted](timeout = Some(99.s)))
       .scan(orderIds.toSet)((orderIds, stamped) => orderIds - stamped.value.key)
       .dropWhile(_.nonEmpty)
       .headL
-    Task.sequence(Seq(addOrders, awaitRemoved)) await 99.s
+      .void
+    Seq(addOrders, awaitRemoved).sequence await 99.s
 
 
 object ManyAddOrdersTest:

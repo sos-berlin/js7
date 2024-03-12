@@ -8,7 +8,7 @@ import js7.base.generic.GenericString
  * @author Joacim Zschimmer
  */
 sealed trait StdoutOrStderr extends GenericString, Product, Serializable/*to be compatible with case object*/ :
-  
+
   val string: String
   override def toString = string
 

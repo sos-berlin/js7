@@ -1,232 +1,248 @@
 package js7.cluster
 
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.time.ScalaTime.*
+import cats.effect.testkit.TestControl
+import cats.effect.{IO, Outcome}
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
-import monix.eval.Task
-import monix.execution.schedulers.TestScheduler
-import scala.util.Success
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class ActivationInhibitorTest extends OurTestSuite
+final class ActivationInhibitorTest extends OurAsyncTestSuite
 {
-  private implicit val scheduler: TestScheduler = TestScheduler()
-
   "startActive, startPassive" - {
     lazy val inhibitor = new ActivationInhibitor
 
     "state is Initial" in {
-      val a = inhibitor.state.runToFuture
-      scheduler.tick()
-      assert(a.value == Some(Success(Some(Initial))))
+      TestControl.executeEmbed:
+        for result <- inhibitor.state yield
+          assert(result == Some(Initial))
     }
 
     "startActive" in {
-      val a = inhibitor.startActive.runToFuture
-      scheduler.tick()
-      assert(a.value == Some(Success(())))
+      TestControl.executeEmbed:
+        for result <- inhibitor.startActive yield
+          assert(result == ())
     }
 
     "Following startActive is rejected" in {
-      val a = inhibitor.startActive.runToFuture
-      scheduler.tick()
-      assert(a.value.get.isFailure)
+      TestControl.executeEmbed:
+        for result <- inhibitor.startActive.attempt yield
+          assert(result.isLeft)
     }
 
     "Following startPassive is rejected" in {
-      val a = inhibitor.startPassive.runToFuture
-      scheduler.tick()
-      assert(a.value.get.isFailure)
+      TestControl.executeEmbed:
+        for result <- inhibitor.startPassive.attempt yield
+          assert(result.isLeft)
     }
 
     "state is Active" in {
-      val a = inhibitor.state.runToFuture
-      scheduler.tick()
-      assert(a.value == Some(Success(Some(Active))))
+      TestControl.executeEmbed:
+        for result <- inhibitor.state yield
+          assert(result == Some(Active))
     }
   }
 
   "tryActivate" - {
-    implicit lazy val inhibitor = new ActivationInhibitor
+    lazy val inhibitor = new ActivationInhibitor
     lazy val activation = succeedingActivation(inhibitor, Right(true))
 
     "first" in {
-      val a = activation.runToFuture
-      scheduler.tick()
-      assert(!a.isCompleted)
-      assert(inhibitor.state.await(99.s) == None)
+      TestControl.executeEmbed:
+        val activated = Atomic(false)
+        for
+          _ <- activation.<*(IO(activated := true)).start
+          _ <- IO.sleep(1.ms)
+          _ = assert(!activated.get)
+          _ <- for s <- inhibitor.state yield assert(s == None)
 
-      scheduler.tick(1.s)
-      assert(a.value == Some(Success(Right(true))))
-      assert(inhibitor.state.await(99.s) == Some(Active))
+          _ <- IO.sleep(1.s)
+          _ = assert(activated.get)
+          _ <- for s <- inhibitor.state yield assert(s == Some(Active))
+        yield
+          succeed
     }
 
     "second activation is allowed" in {
       // That means, the current activation is acknowledged
-      val a = activation.runToFuture
-      scheduler.tick(1.s)
-      assert(a.value == Some(Success(Right(true))))
-      assert(inhibitor.state.await(99.s) == Some(Active))
-    }
+      TestControl.executeEmbed:
+        val activated = Atomic(false)
+        for
+          a <- activation.<*(IO(activated := true)).start
+          _ <- IO.sleep(1.s + 1.ns/*???*/)
+          _ = assert(activated.get)
+          _ <- for a <- a.joinStd yield assert(a == Right(true))
+          state <- inhibitor.state
+        yield
+          assert(state == Some(Active))
+      }
   }
 
   "tryActivate but body rejects with Right(false)" in {
-    implicit lazy val inhibitor = new ActivationInhibitor
-    lazy val activation = succeedingActivation(inhibitor, Right(false))
+    TestControl.executeEmbed:
+      lazy val inhibitor = new ActivationInhibitor
+      lazy val activation = succeedingActivation(inhibitor, Right(false))
+      val activated = Atomic(false)
+      for
+        a <- activation.<*(IO(activated := true)).start
+        _ <- IO.sleep(1.ms)
+        _ = assert(!activated.get)
+        _ <- for s <- inhibitor.state yield assert(s == None)
 
-    val a = activation.runToFuture
-    scheduler.tick()
-    assert(!a.isCompleted)
-    assert(inhibitor.state.await(99.s) == None)
-
-    scheduler.tick(1.s)
-    assert(a.value == Some(Success(Right(false))))
-    assert(inhibitor.state.await(99.s) == Some(Passive))
+        _ <- IO.sleep(1.s)
+        _ = assert(activated.get)
+        _ <- for a <- a.joinStd yield assert(a == Right(false))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
+      yield
+        succeed
   }
 
   "tryActivate but body returns Left(problem)" in {
-    implicit lazy val inhibitor = new ActivationInhibitor
-    lazy val activation = succeedingActivation(inhibitor, Left(Problem("PROBLEM")))
+    TestControl.executeEmbed:
+      lazy val inhibitor = new ActivationInhibitor
+      lazy val activation = succeedingActivation(inhibitor, Left(Problem("PROBLEM")))
+      val activated = Atomic(false)
+      for
+        a <- activation.<*(IO(activated := true)).start
+        _ <- IO.sleep(1.ms)
+        _ = assert(!activated.get)
+        _ <- for s <- inhibitor.state yield assert(s == None)
 
-    val a = activation.runToFuture
-    scheduler.tick()
-    assert(!a.isCompleted)
-    assert(inhibitor.state.await(99.s) == None)
-
-    scheduler.tick(1.s)
-    assert(a.value == Some(Success(Left(Problem("PROBLEM")))))
-    assert(inhibitor.state.await(99.s) == Some(Passive))
+        _ <- IO.sleep(1.s)
+        _ = assert(activated.get)
+        _ <- for a <- a.joinStd yield assert(a == Left(Problem("PROBLEM")))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
+      yield
+        succeed
   }
 
   "tryActivate with failed activation" - {
-    implicit lazy val inhibitor = new ActivationInhibitor
+    lazy val inhibitor = new ActivationInhibitor
 
     "first" in {
-      val a = inhibitor.startPassive.runToFuture
-      scheduler.tick()
-      assert(a.value == Some(Success(())))
+      TestControl.executeEmbed:
+        val passivated = Atomic(false)
+        val activated = Atomic(false)
+        for
+          a <- inhibitor.startPassive.<*(IO(passivated := true)).start
+          _ <- IO.sleep(1.ms)
+          _ = assert(passivated.get)
+          _ <- for a <- a.joinStd yield assert(a == ())
 
-      val b = failingActivation(inhibitor).runToFuture
-      scheduler.tick()
-      assert(!b.isCompleted)
-      assert(inhibitor.state.await(99.s) == None)
+          b <- failingActivation(inhibitor).<*(IO(activated := true)).start
+          _ <- IO.sleep(1.ms)
+          _ = assert(!activated.get)
+          _ <- for s <- inhibitor.state yield assert(s == None)
 
-      scheduler.tick(1.s)
-      assert(b.value.map(_.failed.get.toString) == Some("java.lang.RuntimeException: TEST"))
-      assert(inhibitor.state.await(99.s) == Some(Passive))
+          _ <- IO.sleep(1.s)
+          _ <- b.join.map:
+            case Outcome.Errored(t) if t.toString == "java.lang.RuntimeException: TEST" => succeed
+            case o => fail(s"Unexpected $o")
+          _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
+        yield
+          succeed
     }
 
     "again with succeeding activation" in {
-      val a = succeedingActivation(inhibitor, Right(true)).runToFuture
-      scheduler.tick(1.s)
-      assert(a.value == Some(Success(Right(true))))
-      assert(inhibitor.state.await(99.s) == Some(Active))
+      TestControl.executeEmbed:
+        for
+          a <- succeedingActivation(inhibitor, Right(true))
+          _ = assert(a == Right(true))
+          _ <- for s <- inhibitor.state yield assert(s == Some(Active))
+        yield
+          succeed
     }
   }
 
-  "inhibitActivation" - {
-    implicit lazy val inhibitor = new ActivationInhibitor
 
-    "inhibitActivation" in {
-      val a = inhibitor.startPassive.runToFuture
-      scheduler.tick()
-      assert(a.value == Some(Success(())))
+  "inhibitActivation" in {
+    val inhibitor = new ActivationInhibitor
+    TestControl.executeEmbed:
+      for
+        _ <- inhibitor.startPassive
+        inhibited <- inhibitor.inhibitActivation(2.s)
+        _ = assert(inhibited == Right(true))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
+        b <- succeedingActivation(inhibitor, Right(true))
 
-      val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
-      scheduler.tick()
-      assert(whenInhibited.value == Some(Success(Right(true))))
-      assert(state == Some(Inhibited(1)))
+        // While inhibition is in effect
+        _ <- IO.sleep(1.s)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
+        _ <- IO.sleep(1.s + 1.ns)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
 
-      val b = succeedingActivation(inhibitor, Right(true)).runToFuture
-      scheduler.tick()
-      assert(b.value == Some(Success(Right(false))))
-    }
+        // After inhibition has timed out, activation starts
+        a <- succeedingActivation(inhibitor, Right(true)).start
+        _ <- IO.sleep(1.ms)
+        _ <- for o <- a.joinStd.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
 
-    "while inhibition is in effect" in {
-      assert(state == Some(Inhibited(1)))
-      scheduler.tick(2.s)
-      assert(state == Some(Passive))
-    }
+        a <- a.joinStd
+        _ = assert(a == Right(true))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Active))
 
-    "after inhibition has timed out, activation starts" in {
-      val a = succeedingActivation(inhibitor, Right(true)).runToFuture
-      scheduler.tick(1.s)
-      assert(a.value == Some(Success(Right(true))))
-      assert(inhibitor.state.await(99.s) == Some(Active))
-    }
-
-    "inhibitActivation returns false if state is active" in {
-      val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
-      scheduler.tick()
-      assert(whenInhibited.value == Some(Success(Right(false))))
-    }
+        // inhibitActivation returns false if state is active" in
+        inhibiting <- inhibitor.inhibitActivation(2.s).start
+        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield o == Right(false)
+      yield
+        succeed
   }
 
   "inhibitActivation waits when currently activating" in {
-    implicit val inhibitor = new ActivationInhibitor
+    TestControl.executeEmbed:
+      val inhibitor = new ActivationInhibitor
+      for
+        _ <- inhibitor.startPassive.timeout(1.ms)
+        b <- succeedingActivation(inhibitor, Right(true)).start
 
-    val a = inhibitor.startPassive.runToFuture
-    scheduler.tick()
-    assert(a.value == Some(Success(())))
+        _ <- IO.sleep(1.ms)
+        inhibiting <- inhibitor.inhibitActivation(2.s).start
+        _ <- for o <- inhibiting.joinStd.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
 
-    val b = succeedingActivation(inhibitor, Right(true)).runToFuture
-    scheduler.tick()
-    val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
+        _ <- IO.sleep(1.s)
+        _ <- for b <- b.joinStd.timeout(1.ms) yield assert(b == Right(true))
+        _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(o == Right(false))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Active))
 
-    scheduler.tick()
-    assert(!whenInhibited.isCompleted)
-
-    scheduler.tick(1.s)
-    assert(b.value == Some(Success(Right(true))))
-    assert(whenInhibited.value == Some(Success(Right(false))))
-    assert(state == Some(Active))
-
-    scheduler.tick(2.s)
-    assert(state == Some(Active))
+        _ <- IO.sleep(2.s)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Active))
+      yield succeed
   }
 
   "inhibit while inhibiting" in {
-    implicit val inhibitor = new ActivationInhibitor
+    TestControl.executeEmbed:
+      val inhibitor = new ActivationInhibitor
+      for
+        _ <- inhibitor.startPassive.timeout(1.ms)
+        inhibited <- inhibitor.inhibitActivation(2.s).timeout(1.ms)
+        _ = assert(inhibited == Right(true))
 
-    val a = inhibitor.startPassive.runToFuture
-    scheduler.tick()
-    assert(a.value == Some(Success(())))
+        _ <- IO.sleep(1.s)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
 
-    val aInhibited = inhibitor.inhibitActivation(2.s).runToFuture
-    scheduler.tick()
-    assert(aInhibited.value == Some(Success(Right(true))))
+        inhibited <- inhibitor.inhibitActivation(2.s).timeout(1.ms)
+        _ = assert(inhibited == Right(true))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 2)))
 
-    scheduler.tick(1.s)
-    assert(state == Some(Inhibited(1)))
-    val bInhibited = inhibitor.inhibitActivation(2.s).runToFuture
-    assert(bInhibited.value == Some(Success(Right(true))))
-    assert(state == Some(Inhibited(2)))
+        _ <- IO.sleep(1.s + 1.ns)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Inhibited(depth = 1)))
 
-    scheduler.tick(1.s)
-    assert(state == Some(Inhibited(1)))
-
-    scheduler.tick(1.s)
-    assert(state == Some(Passive))
+        _ <- IO.sleep(1.s)
+        _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
+      yield
+        succeed
   }
 
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
-  : Task[Checked[Boolean]] =
+  : IO[Checked[Boolean]] =
     inhibitor.tryToActivate(
-      ifInhibited = Task.right(false),
-      activate = Task.pure(bodyResult).delayExecution(1.s))
+      ifInhibited = IO.right(false),
+      activate = IO.pure(bodyResult).delayBy(1.s))
 
-  private def failingActivation(inhibitor: ActivationInhibitor): Task[Checked[Boolean]] =
+  private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Boolean]] =
     inhibitor.tryToActivate(
-      ifInhibited = Task.right(false),
-      activate = Task.raiseError(new RuntimeException("TEST")).delayExecution(1.s))
-
-  private def state(implicit inhibitor: ActivationInhibitor): Option[State] = {
-    val a = inhibitor.state.runToFuture
-    scheduler.tick()
-    a.value.get.get
-  }
+      ifInhibited = IO.right(false),
+      activate = IO.raiseError(new RuntimeException("TEST")).delayBy(1.s))
 }

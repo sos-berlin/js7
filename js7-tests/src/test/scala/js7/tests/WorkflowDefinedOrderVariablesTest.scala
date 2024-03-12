@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
@@ -17,13 +17,12 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.WorkflowDefinedOrderVariablesTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import org.scalatest.Assertions.*
 
 final class WorkflowDefinedOrderVariablesTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
@@ -52,7 +51,7 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite, ControllerAg
     assert(deEvents.contains(OrderFinished()) && svEvents.contains(OrderFinished()))
 
   "Argument and variable name sets must be disjoint" in:
-    val checked = controller.api.addOrders(Observable(
+    val checked = controller.api.addOrders(Stream(
       FreshOrder(OrderId("DUPLICATE-NAME"), workflow.path, arguments = Map(
         "jobResource" -> StringValue("de"),
         "variableName" -> StringValue("Acer"),
@@ -111,7 +110,7 @@ object WorkflowDefinedOrderVariablesTest:
 
   private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(Task {
+      OrderProcess(IO {
         assert(step.arguments("myONE") == NumberValue(1))
         assert(step.arguments("myPLANT") == step.arguments("myExpected"))
         Outcome.succeeded

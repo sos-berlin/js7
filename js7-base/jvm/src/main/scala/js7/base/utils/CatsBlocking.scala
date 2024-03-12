@@ -3,17 +3,17 @@ package js7.base.utils
 import cats.effect.Resource
 import izumi.reflect.Tag
 import js7.base.utils.AutoClosing.autoClosing
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
 object CatsBlocking:
 
-  implicit final class BlockingTaskResource[A](private val resource: Resource[Task, A]) extends AnyVal:
+  implicit final class BlockingIOResource[A](private val resource: Resource[IO, A]) extends AnyVal:
     @TestOnly
-    def blockingUse[R](timeout: Duration)(block: A => R)
-      (implicit aTag: Tag[A], s: Scheduler, src: sourcecode.Enclosing)
+    def blockingUse[R](timeout: Duration = Duration.Inf)(block: A => R)
+      (implicit aTag: Tag[A], rt: IORuntime, src: sourcecode.Enclosing)
     : R =
       autoClosing(ResourceAutoCloseable(resource, timeout))(o =>
         block(o.value))

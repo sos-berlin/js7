@@ -4,7 +4,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder}
-import monix.reactive.Observable
+import fs2.Stream
 
 /**
   * @author Joacim Zschimmer
@@ -18,9 +18,9 @@ extends SnapshotableState[TestState]:
 
   def estimatedSnapshotSize = standards.snapshotSize + keyToAggregate.size
 
-  def toSnapshotObservable =
-    standards.toSnapshotObservable ++
-      Observable.fromIterable(keyToAggregate.values)
+  def toSnapshotStream =
+    standards.toSnapshotStream ++
+      Stream.iterable(keyToAggregate.values)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
     keyedEvent match

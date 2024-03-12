@@ -1,6 +1,7 @@
 package js7.data.controller
 
 //diffx import com.softwaremill.diffx.generic.auto.*
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
@@ -41,16 +42,17 @@ import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
   */
 final class ControllerStateTest extends OurAsyncTestSuite
 {
+  private given IORuntime = ioRuntime
+
   "estimatedSnapshotSize" in {
     assert(controllerState.estimatedSnapshotSize == 21)
-    for n <- controllerState.toSnapshotObservable.countL.runToFuture yield
+    for n <- controllerState.toSnapshotStream.compile.count.unsafeToFuture() yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
 
@@ -61,8 +63,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
   }
 
-  "toSnapshotObservable" in {
-    for list <- controllerState.toSnapshotObservable.toListL.runToFuture
+  "toSnapshotStream" in {
+    for list <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
       yield assert(list ==
         Seq(
           SnapshotEventId(1001L),
@@ -156,11 +158,11 @@ final class ControllerStateTest extends OurAsyncTestSuite
         workflow.path -> Set(fileWatch.path)))
   }
 
-  "fromIterator is the reverse of toSnapshotObservable" in {
+  "fromIterator is the reverse of toSnapshotStream" in {
     ControllerState
-      .fromObservable(controllerState.toSnapshotObservable)
+      .fromStream(controllerState.toSnapshotStream)
       .map(expectedState => assertEqual(controllerState, expectedState))
-      .runToFuture
+      .unsafeToFuture()
   }
 
   private val expectedSnapshotJsonArray =
@@ -357,10 +359,10 @@ final class ControllerStateTest extends OurAsyncTestSuite
       }
     ]"""
 
-  "toSnapshotObservable JSON" in {
+  "toSnapshotStream JSON" in {
     implicit val x = ControllerState.snapshotObjectJsonCodec
     for
-      jsonArray <- controllerState.toSnapshotObservable.toListL.runToFuture
+      jsonArray <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
       assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
     yield assertion
   }

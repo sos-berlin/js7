@@ -1,10 +1,14 @@
 package js7.tests.subagent
 
+import cats.effect.IO
+import fs2.Stream
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -17,47 +21,53 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDisabledTest.*
 import js7.tests.subagent.SubagentTester.agentPath
+import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
 
-final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
-  
+final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
-  protected def items = Seq(workflow, aSubagentItem, bSubagentItem)
+  protected def items = Seq(workflow, aSubagentItem)
 
   private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
 
-  protected implicit val scheduler = Scheduler.traced
-
   private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
 
-  private lazy val (aSubagent, aSubagentRelease) =
+  private lazy val aSubagent = Lazy:
     subagentResource(aSubagentItem, director = toLocalSubagentId(agentPath))
-      .allocated
+      .toAllocated
       .await(99.s)
-  private lazy val (bSubagent, bSubagentRelease) =
+  private lazy val bSubagent = Lazy:
     subagentResource(bSubagentItem, director = toLocalSubagentId(agentPath))
-      .allocated
+      .toAllocated
       .await(99.s)
 
   override def beforeAll() =
     super.beforeAll()
-    aSubagent
-    bSubagent
+    aSubagent()
     eventWatch.await[ItemAttached](_.event.key == aSubagentId)
-    eventWatch.await[ItemAttached](_.event.key == bSubagentId)
 
   override def afterAll() =
-    Task.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
-    super.afterAll()
+    try
+      IO
+        .both(
+          aSubagent.whenDefined(_.release),
+          bSubagent.whenDefined(_.release))
+        .await(99.s)
+    finally super.afterAll()
+
+  s"Add $bSubagentId" in:
+    // Add bSubagentId late to be sure it will be listed as the second one.
+    // This test depends on this, because then bSubagentId will be selected with after aSubagentId.
+    updateItem(bSubagentItem)
+    eventWatch.await[ItemAttached](_.event.key == bSubagentId)
+    bSubagent()
 
   "All Subagents are enabled" in:
     runOrderAndCheck(localSubagentId)
@@ -101,7 +111,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
     // Re-enableSubagents
     eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddOrChangeSimple(aSubagentItem.copy(disabled = false))))
       .await(99.s).orThrow
 

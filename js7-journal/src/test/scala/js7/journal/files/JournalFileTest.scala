@@ -10,6 +10,7 @@ import js7.journal.files.JournalFile.{anyJournalFilePattern, garbagePattern}
   * @author Joacim Zschimmer
   */
 final class JournalFileTest extends OurTestSuite:
+
   "properLength" in:
     val file = createTempFile("JournalFileTest-", ".tmp")
     assert(JournalFile(0, file).properLength == 0)

@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import cats.effect.{FiberIO, IO}
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
@@ -10,7 +11,6 @@ import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.internal.JobLauncher
 import js7.launcher.process.ProcessJobLauncher.*
 import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.{Fiber, Task}
 
 trait ProcessJobLauncher extends JobLauncher:
   protected val executable: ProcessExecutable
@@ -19,7 +19,7 @@ trait ProcessJobLauncher extends JobLauncher:
   import executable.v1Compatible
   import jobConf.jobKey
 
-  final val start = Task.pure(Checked.unit)
+  final val start = IO.pure(Checked.unit)
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess =
@@ -32,16 +32,16 @@ trait ProcessJobLauncher extends JobLauncher:
       jobLauncherConf)
 
     new OrderProcess:
-      def run: Task[Fiber[Outcome.Completed]] =
+      def run: IO[FiberIO[Outcome.Completed]] =
         val checkedEnv = for
           jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
         yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
         checkedEnv match
           case Left(problem) =>
-            Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
+            IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
           case Right(env) =>
-            processDriver.startAndRunProcess(env, processOrder.stdObservers)
+            processDriver.runProcess(env, processOrder.stdObservers).start
 
       def cancel(immediately: Boolean) =
         processDriver.kill(if immediately then SIGKILL else SIGTERM)

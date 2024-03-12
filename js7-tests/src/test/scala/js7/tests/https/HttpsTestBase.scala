@@ -13,7 +13,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -30,7 +30,6 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv, DirectoryProvider}
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
 
@@ -179,15 +178,19 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
     super.beforeAll()
 
   override def afterAll() =
-    // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
-    controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
+    try
+      // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
+      controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
 
-    close()
-    delete(clientKeyStore)
-    super.afterAll()
-    if useCluster then
-      backupController.stop.await(99.s)
-      backupDirectoryProvider.close()
+      if useCluster then
+        backupController.stop.await(99.s)
+        backupDirectoryProvider.close()
+
+      close()
+      delete(clientKeyStore)
+    finally
+      super.afterAll()
+
 
 private[https] object HttpsTestBase:
   /* Following resources have been generated with the command line:

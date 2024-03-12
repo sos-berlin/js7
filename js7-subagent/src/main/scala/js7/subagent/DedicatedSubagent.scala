@@ -1,20 +1,21 @@
 package js7.subagent
 
-import cats.effect.concurrent.Deferred
-import cats.effect.{ExitCase, Resource}
+import cats.effect.kernel.Deferred
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
 import cats.syntax.all.*
+import fs2.{Pipe, Stream}
+import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
-import js7.base.utils.CatsUtils.completedFiber
-import js7.base.utils.ScalaUtils.chunkStrings
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.core.command.CommandMeta
@@ -23,7 +24,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
 import js7.data.subagent.SubagentEvent.SubagentShutdown
@@ -39,10 +40,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
-import monix.eval.{Fiber, Task}
-import monix.reactive.Observable
-import monix.reactive.subjects.PublishSubject
-import scala.concurrent.Promise
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -53,6 +50,7 @@ final class DedicatedSubagent private(
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
   subagentConf: SubagentConf)
+  (using ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
   protected type S = SubagentState
 
@@ -61,7 +59,7 @@ extends Service.StoppableByRequest:
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
-  //private val director = AsyncVariable(none[Allocated[Task, DirectorRegisterable]])
+  //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
   @volatile private var _dontWaitForDirector = false
   private val shuttingDown = Atomic(false)
 
@@ -75,7 +73,7 @@ extends Service.StoppableByRequest:
       untilStopRequested *>
         //director
         //  .use {
-        //  case None => Task.unit
+        //  case None => IO.unit
         //  case Some(allocated) => allocated.release
         //} *>
         terminate(Some(SIGTERM)))
@@ -83,26 +81,26 @@ extends Service.StoppableByRequest:
   private[subagent] def terminate(
     signal: Option[ProcessSignal],
     dontWaitForDirector: Boolean = false)
-  : Task[Unit] =
-    stoppingLock.lock(Task.defer {
+  : IO[Unit] =
+    stoppingLock.lock(IO.defer {
       _dontWaitForDirector |= dontWaitForDirector
       val first = !shuttingDown.getAndSet(true)
-      Task
-        .when(first)(Task.defer {
+      IO
+        .whenA(first)(IO.defer {
           val orderCount = orderIdToJobDriver.toMap.size
           if orderCount > 0 then {
             logger.info(s"Stopping, waiting for $orderCount processes")
           }
-          Task
-            .parZip2(
+          IO
+            .both(
               orderIdToJobDriver.stop,
-              signal.fold(Task.unit)(killAndStopAllJobs))
-            .*>(Task {
+              signal.fold(IO.unit)(killAndStopAllJobs))
+            .*>(IO {
               fileValueState.close()
             })
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
-            .*>(Task.defer {
-              if dontWaitForDirector then Task {
+            .*>(IO.defer {
+              if dontWaitForDirector then IO {
                 for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn(
                   s"Shutdown: Agent Director has not yet acknowledged processing of $orderId")
               } else
@@ -130,11 +128,11 @@ extends Service.StoppableByRequest:
       .void
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
-  : Task[Checked[numbered.value.Response]] =
+  : IO[Checked[numbered.value.Response]] =
     commandExecutor.executeCommand(numbered, meta)
 
   //private[subagent] def dedicateDirector(cmd: DedicateDirector, meta: CommandMeta)
-  //: Task[Checked[Unit]] =
+  //: IO[Checked[Unit]] =
   //  director.value.flatMap {
   //    case Some(allo) =>
   //      allo.allocatedThing.dedicateDirector(cmd, meta)
@@ -142,7 +140,7 @@ extends Service.StoppableByRequest:
   //    case None =>
   //      director
   //        .updateChecked {
-  //          case Some(allo) => Task.right(Some(allo))
+  //          case Some(allo) => IO.right(Some(allo))
   //          case None =>
   //            toDirector(cmd, meta)
   //              .flatMapT(_.toAllocated.map(allo => Right(Some(allo))))
@@ -151,8 +149,8 @@ extends Service.StoppableByRequest:
   //        .as(Left(AgentDirectorIsStartingProblem))
   //  }
 
-  private[subagent] def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
-    Task:
+  private[subagent] def executeCoupleDirector(cmd: CoupleDirector): IO[Checked[Unit]] =
+    IO:
       for
         _ <- checkSubagentId(cmd.subagentId)
         _ <- checkSubagentRunId(cmd.subagentRunId)
@@ -173,8 +171,8 @@ extends Service.StoppableByRequest:
     else
       Checked.unit
 
-  private def awaitOrderAcknowledgements: Task[Unit] =
-    Task.defer:
+  private def awaitOrderAcknowledgements: IO[Unit] =
+    IO.defer:
       val oToP = orderToProcessing.toMap.toVector
       for orderId <- oToP.map(_._1).sorted do logger.info(
         s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId")
@@ -182,44 +180,44 @@ extends Service.StoppableByRequest:
         .parTraverse { case (orderId, processing) =>
           processing.acknowldeged.get
             .flatMap(_ =>
-              Task(logger.info(s"🟢 Director has acknowledged processing of $orderId")))
+              IO(logger.info(s"🟢 Director has acknowledged processing of $orderId")))
         }
         .map(_.combineAll)
 
-  private def killAndStopAllJobs(signal: ProcessSignal): Task[Unit] =
-    logger.debugTask("killAndStopAllJobs", signal)(
-      Task(jobKeyToJobDriver.toMap.values)
+  private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
+    logger.debugIO("killAndStopAllJobs", signal)(
+      IO(jobKeyToJobDriver.toMap.values)
         .flatMap(_
           .toVector
           .parUnorderedTraverse(jobDriver => jobDriver
             .stop(signal)
-            .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
+            .handleError(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
           .map(_.combineAll)))
 
   def startOrderProcess(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression])
-  : Task[Checked[Fiber[OrderProcessed]]] =
-    Task.defer:
+  : IO[Checked[FiberIO[OrderProcessed]]] =
+    IO.defer:
       orderToProcessing
         .updateChecked(order.id, {
-          case Some(existing) =>
-            Task.pure(
-              if existing.workflowPosition != order.workflowPosition then {
+          case Some(processing) =>
+            IO.pure(
+              if processing.workflowPosition != order.workflowPosition then
                 val problem = Problem.pure(
                   "Duplicate SubagentCommand.StartOrder with different Order position")
                 logger.warn(s"$problem:")
                 logger.warn(s"  Added order   : ${order.id} ${order.workflowPosition}")
-                logger.warn(s"  Existing order: ${order.id} ${existing.workflowPosition}")
+                logger.warn(s"  Existing order: ${order.id} ${processing.workflowPosition}")
                 Left(problem)
-              } else
-                Right(existing)) // Idempotency: Order process has already been started
+              else
+                Right(processing)) // Idempotency: Order process has already been started
 
           case None =>
             startOrderProcess2(order, executeDefaultArguments)
               .guaranteeCase {
-                case ExitCase.Completed =>
-                  Task.unless(!_dontWaitForDirector) {
+                case Outcome.Succeeded(_) =>
+                  IO.whenA(_dontWaitForDirector) {
                     logger.warn(
                       s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost")
                     orderToProcessing.remove(order.id).void
@@ -234,17 +232,17 @@ extends Service.StoppableByRequest:
   private def startOrderProcess2(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression])
-  : Task[Fiber[OrderProcessed]] =
+  : IO[FiberIO[OrderProcessed]] =
     startOrderProcess3(order, executeDefaultArguments)
       .flatMap(_
-        .join
-        .onErrorHandle(Outcome.Failed.fromThrowable)
+        .joinStd
+        .handleError(OrderOutcome.Failed.fromThrowable)
         .flatMap { outcome =>
           val orderProcessed = OrderProcessed(outcome)
           if journal.isHalted then {
             // We simulate !!!
             logger.debug(s"⚠️  $orderProcessed suppressed because journal is halted")
-            Task.pure(orderProcessed)
+            IO.pure(orderProcessed)
           } else
             journal
               .persistKeyedEvent(order.id <-: orderProcessed)
@@ -255,107 +253,90 @@ extends Service.StoppableByRequest:
   private def startOrderProcess3(
     order: Order[Order.Processing],
     executeDefaultArguments: Map[String, Expression])
-  : Task[Fiber[Outcome]] =
+  : IO[FiberIO[OrderOutcome]] =
     jobDriver(order.workflowPosition).flatMap:
       case Left(problem) =>
-        Task.pure(completedFiber(Outcome.Disrupted(problem)))
+        IO.pure(OrderOutcome.Disrupted(problem): OrderOutcome).start
 
       case Right((workflowJob, jobDriver)) =>
         val releaseAssignment = orderIdToJobDriver.remove(order.id).void
         orderIdToJobDriver
           .put(order.id, jobDriver)
           .*>(
-            stdObserversResource(order.id, keepLastErrLine = workflowJob.failOnErrWritten)
+            stdObserversResource(order, keepLastErrLine = workflowJob.failOnErrWritten)
               .allocated)
-          .flatMap { case (stdObservers, releaseStdObservers) =>
-            jobDriver.startOrderProcess(order, executeDefaultArguments, stdObservers)
-              .flatMap(_
-                .join
-                .guarantee(releaseStdObservers)
-                .guarantee(releaseAssignment)
-                .start
-                .guaranteeExceptWhenCompleted(releaseStdObservers))
-          }
-          .guaranteeExceptWhenCompleted(releaseAssignment)
-          .onErrorRecover:
+          .flatMap: (stdObservers, releaseStdObservers) =>
+            jobDriver
+              .runOrderProcess(order, executeDefaultArguments, stdObservers)
+              .guarantee(releaseStdObservers)
+              .guarantee(releaseAssignment)
+              .start
+              .guaranteeExceptWhenSucceeded(releaseStdObservers)
+          .guaranteeExceptWhenSucceeded(releaseAssignment)
+          .recoverWith:
             case ProblemException(problem) if orderIdToJobDriver.isStoppingWith(problem) =>
-              completedFiber(Outcome.processLost(SubagentShutDownBeforeProcessStartProblem))
+              val processLost = OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
+              IO.pure(processLost: OrderOutcome).start
 
-  private def stdObserversResource(orderId: OrderId, keepLastErrLine: Boolean)
-  : Resource[Task, StdObservers] =
+  private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
+  : Resource[IO, StdObservers] =
+    import subagentConf.{outerrCharBufferSize, outerrQueueSize, stdouterr}
+    for
+      outErrStatistics <- outErrStatisticsResource
+      stdObservers <- StdObservers.resource(
+        outErrToJournalSink(order.id, outErrStatistics),
+        charBufferSize = outerrCharBufferSize,
+        chunkSize = stdouterr.chunkSize,
+        delay = stdouterr.delay,
+        queueSize = outerrQueueSize,
+        useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
+        name = s"${order.id} ${order.workflowPosition}")
+    yield
+      stdObservers
+
+  /** Logs some stdout and stderr statistics. */
+  private def outErrStatisticsResource: Resource[IO, Map[StdoutOrStderr, OutErrStatistics]] =
     Resource
       .make(
-        acquire = Task.defer {
-          import subagentConf.{outerrCharBufferSize, stdouterr}
-
-          val outErrStatistics = Map[StdoutOrStderr, OutErrStatistics](
+        acquire = IO:
+          Map[StdoutOrStderr, OutErrStatistics](
             Stdout -> new OutErrStatistics,
-            Stderr -> new OutErrStatistics)
+            Stderr -> new OutErrStatistics))(
+        release = outErrStatistics => IO:
+          if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then
+            logger.debug(
+              s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
 
-          val observingStarted = Map[StdoutOrStderr, Promise[Unit]](
-            Stdout -> Promise[Unit](),
-            Stderr -> Promise[Unit]())
-
-          val out, err = PublishSubject[String]()
-          val stdObservers = new StdObservers(out, err, charBufferSize = outerrCharBufferSize,
-            keepLastErrLine = keepLastErrLine)
-
-          def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
-            Task.defer {
-              val correlId = CorrelId.current
-              observable
-                .doAfterSubscribe(Task(observingStarted(outerr).success(())))
-                .buffer(Some(stdouterr.delay), stdouterr.chunkSize, toWeight = _.length)
-                .flatMap(strings => Observable.fromIterable(chunkStrings(strings, stdouterr.chunkSize)))
-                .flatMap(chunk => Observable.fromTask(
-                  outErrStatistics(outerr).count(
-                    chunk.length,
-                    correlId.bind(
-                      persistStdouterr(orderId, outerr, chunk)))))
-                .completedL
-            }
-
-          val observeOutErr = Task
-            .parZip2(
-              writeObservableAsEvents(Stdout, out),
-              writeObservableAsEvents(Stderr, err))
-            .void
-
-          for
-            observingOutErr <- observeOutErr.start
-            _ <- observingStarted.values.toSeq.traverse(promise => Task.fromFuture(promise.future))
-          yield (outErrStatistics, stdObservers, observingOutErr)
-        })(
-        release = {
-          case (outErrStatistics, stdObservers, observingOutErr) =>
-            for
-              _ <- stdObservers.stop /*may already have been stopped by OrderProcess/JobDriver*/
-              _ <- observingOutErr.join
-            yield {
-              if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then {
-                logger.debug(s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}")
-              }
-            }
-        })
-      .map(_._2)
-
-  def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
+  def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     orderToProcessing.remove(orderId)
-      .flatMap(_.fold(Task.unit)(_.acknowldeged.complete(())))
+      .flatMap(_.fold(IO.unit)(_.acknowldeged.complete(())))
       .as(Checked.unit)
 
-  private val stdoutCommitDelay = CommitOptions(delay = subagentConf.stdoutCommitDelay)
+  private val stdoutCommitDelayOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)
 
-  private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): Task[Unit] =
-    journal
-      .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, stdoutCommitDelay)
-      .map:
-        case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        case Right(_) =>
+  private def outErrToJournalSink(
+    orderId: OrderId,
+    outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
+    (outErr: StdoutOrStderr)
+  : Pipe[IO, String, Nothing] =
+    _.chunks
+      .map: chunk =>
+        chunk.toIArray.map: string =>
+          orderId <-: OrderStdWritten(outErr)(string)
+      .flatMap: events =>
+        Stream.exec:
+          val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
+          outErrStatistics(outErr)
+            .count(n = events.size, totalLength = totalLength):
+              journal.persistKeyedEventsLater(events, stdoutCommitDelayOptions)
+            .map:
+              case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
+              case Right(_) =>
+            .void
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
-  : Task[Checked[(WorkflowJob, JobDriver)]] =
+  : IO[Checked[(WorkflowJob, JobDriver)]] =
     journal.state
       .map(state =>
         for
@@ -365,7 +346,7 @@ extends Service.StoppableByRequest:
         yield
           jobKeyToJobDriver
             .getOrElseUpdate(jobKey,
-              Task.deferAction(implicit scheduler => Task {
+              IO:
                 val jobConf = JobConf(
                   jobKey, workflowJob, workflow, controllerId,
                   sigkillDelay = workflowJob.sigkillDelay
@@ -375,16 +356,15 @@ extends Service.StoppableByRequest:
                   jobConf,
                   id => journal.unsafeCurrentState().pathToJobResource.checked(id)/*live!*/,
                   JobLauncher.checked(jobConf, jobLauncherConf),
-                  fileValueState)
-              }))
+                  fileValueState))
             .map(workflowJob -> _))
       .flatMap(_.sequence)
 
-  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
+  def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     for
-      maybeJobDriver <- Task(orderIdToJobDriver.get(orderId))
+      maybeJobDriver <- IO(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver
-        .fold(Task(logger.debug(s"⚠️ killOrder $orderId => no JobDriver for Order")))(_
+        .fold(IO(logger.debug(s"⚠️ killOrder $orderId => no JobDriver for Order")))(_
           .killOrder(orderId, signal))
     yield ()
 
@@ -404,13 +384,14 @@ object DedicatedSubagent:
     controllerId: ControllerId,
     jobLauncherConf: JobLauncherConf,
     subagentConf: SubagentConf)
-  : Resource[Task, DedicatedSubagent] =
-  Service.resource(Task(
+    (using ioRuntime: IORuntime)
+  : Resource[IO, DedicatedSubagent] =
+  Service.resource(IO(
     new DedicatedSubagent(
       subagentId, subagentRunId, commandExecutor, journal, agentPath, controllerId,
       jobLauncherConf, subagentConf)))
 
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,
-    val fiber: Fiber[OrderProcessed]):
-    val acknowldeged = Deferred.unsafe[Task, Unit]
+    val fiber: FiberIO[OrderProcessed]):
+    val acknowldeged = Deferred.unsafe[IO, Unit]

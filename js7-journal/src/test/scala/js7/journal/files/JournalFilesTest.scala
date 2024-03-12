@@ -13,6 +13,7 @@ import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, del
   * @author Joacim Zschimmer
   */
 final class JournalFilesTest extends OurTestSuite:
+
   "listJournalFiles, currentFile" in:
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       dir / "test--0.journal" := "TEST-CONTENT"

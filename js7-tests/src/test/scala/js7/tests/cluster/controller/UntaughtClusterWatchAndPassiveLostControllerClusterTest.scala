@@ -2,7 +2,7 @@ package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
@@ -13,7 +13,6 @@ import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.UntaughtClusterWatchAndPassiveLostControllerClusterTest.*
-import monix.execution.Scheduler.Implicits.traced
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends ControllerClusterTester:
@@ -58,7 +57,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
       primaryController.testEventBus
         .whenPF[WaitingForConfirmation, Unit](_.request match {
-          case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterPassiveLost, _) =>
+          case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
         })
         .await(99.s)
 

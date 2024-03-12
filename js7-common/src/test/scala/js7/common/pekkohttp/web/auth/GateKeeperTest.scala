@@ -1,5 +1,6 @@
 package js7.common.pekkohttp.web.auth
 
+import cats.effect.unsafe.IORuntime
 import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
@@ -15,7 +16,6 @@ import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import js7.common.pekkohttp.web.auth.GateKeeperTest.*
 import js7.common.pekkohttp.web.data.WebServerBinding
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
 import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
@@ -35,6 +35,8 @@ import scala.language.implicitConversions
 final class GateKeeperTest extends OurTestSuite, ScalatestRouteTest
 {
   import GateKeeperTest.ImplicitGateKeeper
+
+  private given IORuntime = ioRuntime
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
@@ -491,7 +493,6 @@ final class GateKeeperTest extends OurTestSuite, ScalatestRouteTest
 
   private def newGateKeeper[U <: User: User.Companion ](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false) = {
     implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
-    implicit val s = Scheduler.traced
     new GateKeeper(WebServerBinding.Http, conf, isLoopback = isLoopback)
   }
 

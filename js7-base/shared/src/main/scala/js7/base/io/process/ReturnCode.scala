@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.ExitCode
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericInt
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -8,6 +9,7 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
  * @author Joacim Zschimmer
  */
 final case class ReturnCode private(number: Int) extends GenericInt:
+
   def isSuccess = number == 0
 
   def isProcessSignal: Boolean =
@@ -21,6 +23,9 @@ final case class ReturnCode private(number: Int) extends GenericInt:
         case SIGTERM.number => s"ReturnCode($number/SIGTERM)"
         case SIGKILL.number => s"ReturnCode($number/SIGKILL)"
         case signal => s"ReturnCode($number=128+$signal)"
+
+  def toExitCode: ExitCode =
+    ExitCode(number)
 
 
 object ReturnCode extends GenericInt.Companion[ReturnCode]:

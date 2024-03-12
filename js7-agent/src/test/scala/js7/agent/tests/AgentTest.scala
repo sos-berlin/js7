@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import js7.agent.TestAgent
@@ -14,7 +15,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
@@ -32,12 +33,13 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.TestAgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
   */
 final class AgentTest extends OurTestSuite, AgentTester:
+
+  private given IORuntime = ioRuntime
 
   "work/http-uri" in:
     assert((agentConfiguration.workDirectory / "http-uri").contentString ==

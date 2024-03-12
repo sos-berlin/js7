@@ -1,19 +1,23 @@
 package js7.controller.web.controller.api
 
+import cats.effect.IO
+import cats.effect.kernel.Deferred
+import cats.effect.unsafe.IORuntime
 import js7.base.circeutils.CirceUtils.RichCirceString
-import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.configutils.Configs.{HoconStringInterpolator, RichConfig}
+import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.ByteSequenceToLinesObservable
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ByteSequenceToLinesStream
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpUtils.{RichHttpResponse, RichResponseEntity}
-import js7.common.http.StreamingSupport.ObservablePekkoSource
+import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.controller.api.EventRouteTest.*
@@ -25,14 +29,12 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.EventDirectives
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.ContentType
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import org.apache.pekko.util.ByteString
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -43,20 +45,28 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
 {
   private implicit val timeout: FiniteDuration = 99.s
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout - 1.s)
-  protected def whenShuttingDown = Future.never
+  protected def whenShuttingDown = Deferred.unsafe
   protected def actorRefFactory = system
-  protected implicit def scheduler: Scheduler = Scheduler.traced
+
+  private def scheduler = ioRuntime.scheduler
+  private given IORuntime = ioRuntime
+
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]()
 
   protected def eventWatch: JournalEventWatch = eventCollector.eventWatch
 
   override protected def config = config"""
     js7.web.chunk-size = 1MiB
+    js7.web.client.prefetch = 0
+    js7.web.server.prefetch = 0
     pekko.actor.default-dispatcher.fork-join-executor {
       parallelism-min = 1
       parallelism-factor = 0
       parallelism-max = 2
     }""" withFallback super.config
+
+  private lazy val defaultDelay =
+    config.finiteDuration("js7.web.server.services.event.streaming.delay").orThrow
 
   private val route = pathSegments("event")(eventRoute)
 
@@ -191,7 +201,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       }
       val stampedSeq = getEvents("/event?timeout=1&after=180")
       assert(stampedSeq == stamped :: Nil)
-      assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay)
+      assert(runningSince.elapsed >= 100.millis + defaultDelay)
     }
 
     "/event?delay=0 MinimumDelay" in {
@@ -222,12 +232,11 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-      implicit val x = JsonStreamingSupport.NdJsonStreamingSupport
       response.entity.withoutSizeLimit.dataBytes
-        .toObservable
-        .flatMap(new ByteSequenceToLinesObservable)
+        .asFs2Stream()
+        .flatMap(ByteSequenceToLinesStream())
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
-        .toListL
+        .compile.toList
         .await(99.s)
     }
 }

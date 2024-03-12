@@ -1,29 +1,35 @@
 package js7.base.thread
 
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Outcome}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
-import java.util.concurrent.Executor
-import js7.base.log.Logger
-import js7.base.test.OurTestSuite
+import java.util.concurrent.ExecutorService
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualExecutor
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import org.scalatest.Assertions.succeed
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends OurTestSuite:
+final class IOExecutorTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
+
   private val logger = Logger[this.type]
 
   "Success" in:
@@ -39,6 +45,31 @@ final class IOExecutorTest extends OurTestSuite:
         assert(Thread.currentThread.getName startsWith "JS7 global I/O-")
       } await 10.seconds
 
+  "interruptible" in:
+    val test =
+      val exception = Exception("TEST")
+      for
+        succeedingFiber <-
+          IOExecutor.interruptible:
+            Thread.sleep(Random.nextInt(2))
+            3
+          .start
+        failingFiber <- IOExecutor.interruptible(throw exception).start
+        canceledFiber <- IOExecutor.interruptible(Thread.sleep(999999)).start
+
+        successOutcome <- succeedingFiber.join
+        failedOutcome <- failingFiber.join
+
+        _ <- IO.sleep(Random.nextInt(5).ms)
+        _ <- canceledFiber.cancel
+        canceledOutcome <- canceledFiber.join
+      yield
+        assert(successOutcome == Outcome.Succeeded(IO.pure(3)) &&
+          failedOutcome == Outcome.Errored(exception) &&
+          canceledOutcome == Outcome.Canceled())
+
+    test.parReplicateA_(1000).as(succeed)
+
   if sys.props.contains("test.speed") then
     if VirtualThreads.isEnabled then
       "Performance with VirtualThread" in:
@@ -49,6 +80,7 @@ final class IOExecutorTest extends OurTestSuite:
           testPerformance(executor, 200000)
           testPerformance(executor, 1000000) // May require big heap
           executor.shutdown()
+        succeed
 
     "Performance with thread pool" in:
       val executor = newBlockingNonVirtualExecutor("IOExecutorTest")
@@ -56,15 +88,16 @@ final class IOExecutorTest extends OurTestSuite:
       testPerformance(executor, 10000)
       testPerformance(executor, 100000)
       executor.shutdown()
+      succeed
 
-  private def testPerformance(executor: Executor, n: Int): Unit =
+  private def testPerformance(executor: ExecutorService, n: Int): Unit =
     val iox = new IOExecutor(executor, "IOExecutorTest")
     val since = now
-    val task = (1 to n).toVector
-      .traverse(_ => iox(Task { sleep(100.ms) }).start)
-      .map(_.map(_.join))
+    val io = (1 to n).toVector
+      .traverse(_ => iox(IO { sleep(100.ms) }).start)
+      .map(_.map(_.joinStd))
       .map(_.combineAll)
       .flatten
     for i <- 1 to 3 do
-      task.await(99.s)
+      io.await(99.s)
       logger.info(itemsPerSecondString(since.elapsed, n))

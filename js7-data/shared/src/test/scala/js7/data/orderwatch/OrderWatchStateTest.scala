@@ -16,7 +16,6 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import monix.execution.Scheduler.Implicits.traced
 
 final class OrderWatchStateTest extends OurAsyncTestSuite
 {
@@ -185,7 +184,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
           Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
           Subtype[OrderWatchState.Snapshot])
 
-      for snapshot <- orderWatchState.toSnapshotObservable.toListL.runToFuture yield
+      for snapshot <- orderWatchState.toSnapshotStream.compile.toVector yield
         assert(snapshot.asJson ==json"""[
           {
             "TYPE": "UnsignedSimpleItemAdded",

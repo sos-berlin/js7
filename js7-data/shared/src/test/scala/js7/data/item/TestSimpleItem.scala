@@ -17,7 +17,7 @@ final case class TestSimpleItem(
   content: String,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[TestSimpleItem]:
-  
+
   protected type Self = TestSimpleItem
   val item: TestSimpleItem = this
   val companion: TestSimpleItem.type = TestSimpleItem
@@ -35,7 +35,7 @@ object TestSimpleItem
 extends UnsignedSimpleItem.Companion[TestSimpleItem],
   UnsignedSimpleItemState.Companion[TestSimpleItem],
   TrivialItemState.Companion[TestSimpleItem]:
-  
+
   val cls = classOf[TestSimpleItem]
 
   override type Path = TestSimplePath

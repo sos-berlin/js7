@@ -1,8 +1,8 @@
 package js7.agent
 
 import cats.effect.Resource
-import cats.effect.concurrent.Deferred
-import cats.implicits.toFlatMapOps
+import cats.effect.kernel.Deferred
+import cats.syntax.flatMap.*
 import js7.agent.RestartableDirector.*
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
@@ -14,21 +14,22 @@ import js7.base.utils.CatsUtils.RichDeferred
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.subagent.Subagent
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
 import scala.util.{Failure, Success, Try}
 
 final class RestartableDirector private(
   subagent: Subagent,
   conf: AgentConfiguration,
   testWiring: TestWiring = TestWiring.empty)
-  (implicit scheduler: Scheduler)
+  (using ioRuntime: IORuntime)
 extends MainService, Service.StoppableByRequest:
 
   protected type Termination = DirectorTermination
 
   private val _currentDirector = AsyncVariable[RunningAgent](null: RunningAgent)
-  private val _untilTerminated = Deferred.unsafe[Task, Try[DirectorTermination]]
+  private val _untilTerminated = Deferred.unsafe[IO, Try[DirectorTermination]]
 
   protected def start =
     RunningAgent
@@ -45,17 +46,17 @@ extends MainService, Service.StoppableByRequest:
                 if terminated.restartDirector then
                   restartLoop
                 else
-                  Task.pure(terminated))
+                  IO.pure(terminated))
               .flatTap(termination =>
                 _untilTerminated.complete3(Success(termination)).as(Right(())))
               .tapError(t => // ???
                 _untilTerminated.complete3(Failure(t)).void)
               .void))
 
-  private def restartLoop: Task[DirectorTermination] =
-    Task.tailRecM(())(_ =>
-      Task(logger.info(s"⟲ Restart Agent Director after ${Delay.pretty}...")) *>
-        Task.sleep(Delay) *>
+  private def restartLoop: IO[DirectorTermination] =
+    ().tailRecM(_ =>
+      IO(logger.info(s"⟲ Restart Agent Director after ${Delay.pretty}...")) *>
+        IO.sleep(Delay) *>
         RunningAgent
           .director(subagent, conf, testWiring)
           .use(director =>
@@ -69,17 +70,17 @@ extends MainService, Service.StoppableByRequest:
                 else
                   Right(termination))))
 
-  private def onStopRequested(stop: Task[Unit]): Resource[Task, Unit] =
+  private def onStopRequested(stop: IO[Unit]): Resource[IO, Unit] =
     Resource
       .make(
         acquire = untilStopRequested.*>(stop).start)(
         release = _.cancel)
       .map(_ => ())
 
-  def untilTerminated: Task[DirectorTermination] =
+  def untilTerminated: IO[DirectorTermination] =
     _untilTerminated.get.dematerialize
 
-  def currentDirector: Task[RunningAgent] =
+  def currentDirector: IO[RunningAgent] =
     _currentDirector.value
 
   def webServer: PekkoWebServer =
@@ -95,7 +96,7 @@ private object RestartableDirector:
     subagent: Subagent,
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
-    (implicit scheduler: Scheduler)
-  : Resource[Task, RestartableDirector] =
-    Service.resource(Task(
+    (using ioRuntime: IORuntime)
+  : Resource[IO, RestartableDirector] =
+    Service.resource(IO(
       new RestartableDirector(subagent, conf, testWiring)))

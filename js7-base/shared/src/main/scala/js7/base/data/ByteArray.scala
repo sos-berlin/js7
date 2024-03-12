@@ -127,6 +127,9 @@ object ByteArray extends ByteSequence[ByteArray]:
   override def unsafeArray(byteArray: ByteArray) =
     byteArray.unsafeArray
 
+  override def unsafeWrappedArray(byteArray: ByteArray) =
+    Some(byteArray.unsafeArray)
+
   override def copyToArray(byteArray: ByteArray, array: Array[Byte]) =
     byteArray.copyToArray(array)
 

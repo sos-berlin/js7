@@ -1,6 +1,9 @@
 package js7.common.http
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
+import fs2.{Chunk, Stream}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.charset.StandardCharsets.UTF_8
@@ -10,8 +13,8 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -22,15 +25,12 @@ import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
 import js7.common.http.PekkoHttpClientTest.*
-import js7.common.http.StreamingSupport.PekkoObservable
-import js7.common.pekkohttp.CirceJsonSupport
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream}
 import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.{CirceJsonSupport, PekkoHttpServerUtils}
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
@@ -43,15 +43,20 @@ import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
 final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasCloser
 {
+  private given IORuntime = ioRuntime
+
   implicit private lazy val actorSystem: ActorSystem =
-    newActorSystem("PekkoHttpClientTest", config"""pekko.http.client.idle-timeout = 2s""")
+    newActorSystem(
+      "PekkoHttpClientTest",
+      config"""pekko.http.client.idle-timeout = 2s""",
+      executionContext = ioRuntime.compute)
 
   override def afterAll() = {
     closer.close()
@@ -73,8 +78,8 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       for case (uri, None) <- Setting do s"$uri" in {
         assert(httpClient.checkAgentUri(uri).isLeft)
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
-        implicit val s = Task.pure(none[SessionToken])
-        assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
+        implicit val s = IO.pure(none[SessionToken])
+        assert(Try(httpClient.get_[HttpResponse](uri).await(99.s)).failed.get.getMessage
           contains "does not match")
       }
     }
@@ -89,15 +94,15 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     //"Operations after close are rejected" in {
     //  httpClient.close()
     //  val uri = Uri("https://example.com:9999/PREFIX")
-    //  implicit val s = Task.pure(none[SessionToken])
-    //  assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage ==
+    //  implicit val s = IO.pure(none[SessionToken])
+    //  assert(Await.result(httpClient.get_[HttpResponse](uri).unsafeToFuture().failed, 99.seconds).getMessage ==
     //    "PekkoHttpClient has been closed: GET https://example.com:9999/PREFIX")
     //}
   }
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val allocatedWebServer: Allocated[Task, PekkoWebServer] = PekkoWebServer
+    lazy val allocatedWebServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
       .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller
@@ -119,17 +124,15 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
           } ~
             get {
               path("STREAM") {
-                val source = Observable("ONE\n", "TWO\n")
-                  .map(ByteString(_))
-                  .toPekkoSourceForHttpResponse
-                complete(HttpEntity(`application/x-ndjson`, source))
+                completeWithByteStream(`application/x-ndjson`):
+                  Stream("ONE\n", "TWO\n")
+                    .map(_.toCharArray.map(_.toByte))
+                    .map(Chunk.array)
+                    .unchunks
               } ~
-              path("IDLE-TIMEOUT") {
-                val source = Observable(ByteString("IDLE-TIMEOUT\n"))
-                  .delayExecution(5.s)
-                  .toPekkoSourceForHttpResponse
-                complete(HttpEntity(`application/x-ndjson`, source))
-              }
+              path("IDLE-TIMEOUT"):
+                completeWithStream(`application/x-ndjson`):
+                  Stream.emit(ByteString("IDLE-TIMEOUT\n")).covary[IO].delayBy(5.s)
             }
         }
       }
@@ -145,7 +148,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     }.closeWithCloser
 
     lazy val uri = allocatedWebServer.allocatedThing.localUri
-    implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
+    implicit val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
     "OK" in {
       assert(httpClient.post(Uri(s"$uri/OK"), A(1)).await(99.s) == A(2))
@@ -179,22 +182,22 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       assert(t.toString == s"""HTTP 500 Internal Server Error: POST $uri/SERVER-ERROR => "SERVER ERROR"""")
     }
 
-    "getRawLinesObservable" in {
-      val result = Observable
-        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/STREAM")))
+    "getRawLinesStream" in {
+      val result = Stream
+        .eval(httpClient.getRawLinesStream(Uri(s"$uri/STREAM")))
         .flatten
-        .toListL
+        .compile.toList
         .await(99.s)
         .map(_.utf8String)
       assert(result == List("ONE\n", "TWO\n"))
     }
 
-    "getRawLinesObservable: idle-timeout yield an empty observable" in {
-      // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Observable
-      val result = Observable
-        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/IDLE-TIMEOUT")))
+    "getRawLinesStream: idle-timeout yield an empty observable" in {
+      // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Stream
+      val result = Stream
+        .eval(httpClient.getRawLinesStream(Uri(s"$uri/IDLE-TIMEOUT")))
         .flatten
-        .toListL
+        .compile.toList
         .await(99.s)
       assert(result.isEmpty)
     }
@@ -207,7 +210,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
 
   "liftProblem, HttpException#problem" - {
     "No Exception" in {
-      assert(liftProblem(Task(1)).runSyncUnsafe(99.seconds) == Right(1))
+      assert(liftProblem(IO(1)).await(99.s) == Right(1))
     }
 
     "HttpException with problem" in {
@@ -219,7 +222,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
         jsonString)
       assert(e.problem == Some(problem))
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(problem))
+      assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(problem))
     }
 
     "HttpException with broken problem" in {
@@ -231,7 +234,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         jsonString)
       assert(e.problem.isEmpty)
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
+      assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(Problem(e.getMessage)))
     }
 
     "HttpException with string response" in {
@@ -241,12 +244,12 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
         "{}")
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
+      assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(Problem(e.getMessage)))
     }
 
     "Other exception" in {
       val e = new Exception
-      assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
+      assert(Try(liftProblem(IO.raiseError(e)).await(99.s)).failed.get eq e)
     }
   }
 
@@ -267,12 +270,12 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       protected def uriPrefixPath = "/PREFIX"
       protected def httpsConfig = HttpsConfig.empty
     }
-    implicit val sessionToken = Task.pure(none[SessionToken])
+    implicit val sessionToken = IO.pure(none[SessionToken])
 
     "First call" in {
       autoClosing(newHttpClient()) { httpClient =>
         val since = now
-        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
+        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).unsafeToFuture()
         val a = Await.ready(whenGot, 99.s - 1.s)
         assert(a.value.get.isFailure)
       }
@@ -282,7 +285,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       // Akka 2.6.5 or our PekkoHttpClient blocked on next call after connection failure.
       // This does not occur anymore!
       autoClosing(newHttpClient()) { httpClient =>
-        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
+        val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).unsafeToFuture()
         val a = Await.ready(whenGot, 99.s - 1.s)
         assert(a.value.get.isFailure)
       }

@@ -1,38 +1,33 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
+import cats.effect.IO
+import cats.effect.testkit.TestControl
+import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurAsyncTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.version.Version
 import js7.common.pekkohttp.web.session.RouteProviderTest.MySession
 import js7.common.pekkohttp.web.session.SessionRegisterTest.*
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
-import monix.execution.Scheduler.Implicits.traced
-import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends OurTestSuite, ScalatestRouteTest:
-  override def testConfig = config"pekko.loglevel = warning"
-    .withFallback(super.testConfig)
+final class SessionRegisterTest extends OurAsyncTestSuite:
 
-  override def executor = super.executor  // Not implicit
+  private given IORuntime = ioRuntime
 
-  private val testScheduler = TestScheduler()
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
   private lazy val sessionRegister =
-    implicit val scheduler = testScheduler
-    SessionRegister.forTest(system, MySession.apply, SessionRegister.TestConfig)
+    SessionRegister.forTest(MySession.apply, SessionRegister.TestConfig)
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   "Logout unknown SessionToken" in:
@@ -43,7 +38,8 @@ final class SessionRegisterTest extends OurTestSuite, ScalatestRouteTest:
     assert(sessionRegister.session(unknownSessionToken, Right(AUser)).await(99.s).isLeft)
 
   "login anonymously" in:
-    sessionToken = sessionRegister.login(Anonymous, Some(Js7Version)).await(99.s).orThrow
+    sessionToken = sessionRegister.login(Anonymous, Some(Js7Version)).await(99.s): SessionToken
+    succeed
 
   "login and update User" in:
     val originalSession = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
@@ -65,49 +61,57 @@ final class SessionRegisterTest extends OurTestSuite, ScalatestRouteTest:
     assert(session eq sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.s).orThrow)
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in:
-    val mySystem = newActorSystem("SessionRegisterTest")
+    val mySystem = newActorSystem("SessionRegisterTest", executionContext = ioRuntime.compute)
     val mySessionRegister =
-      implicit val scheduler = testScheduler
-      SessionRegister.forTest(mySystem, MySession.apply, SessionRegister.TestConfig)
+      SessionRegister.forTest(MySession.apply, SessionRegister.TestConfig)
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
-      .await(99.s).orThrow
+      .await(99.s)
 
-    mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).orThrow
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
+    mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
     assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == AUser/*changed*/)
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser/*changed*/)
 
     assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
     assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == AUser)
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser)
 
     Pekkos.terminateAndWait(mySystem, 10.s)
+    succeed
 
   "logout" in:
     assert(sessionRegister.logout(sessionToken).await(99.s) == Completed)
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
 
   "Session timeout" in:
-    assert(sessionRegister.count.await(99.s) == 0)
-
-    sessionToken = sessionRegister.login(AUser, Some(Js7Version)).await(99.s).orThrow
-    val eternal = sessionRegister.login(BUser, Some(Js7Version), isEternalSession = true)
-      .await(99.s).orThrow
-    assert(sessionRegister.count.await(99.s) == 2)
-    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isRight)
-
-    testScheduler.tick(TestSessionTimeout + 1.s)
-    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
-    assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.s).isRight)
-    assert(sessionRegister.count.await(99.s) == 1)
+    TestControl.executeEmbed:
+      SessionRegister.resource(MySession.apply, SessionRegister.TestConfig)
+        .use: sessionRegister =>
+          assert(sessionRegister.count.await(99.s) == 0)
+          for
+            sessionToken <- sessionRegister.login(AUser, Some(Js7Version))
+            eternal <- sessionRegister.login(BUser, Some(Js7Version), isEternalSession = true)
+            _ <- sessionRegister.count.map(n => assert(n == 2))
+            session <- sessionRegister.session(sessionToken, Right(Anonymous))
+            _ = assert(session.isRight)
+            _ <- IO.sleep(TestSessionTimeout + 1.s)
+            session <- sessionRegister.session(sessionToken, Right(Anonymous))
+            _ = assert(session.isLeft/*timed out*/)
+            session <- sessionRegister.session(eternal, Right(Anonymous))
+            _ = assert(session.isRight)
+            _ <- sessionRegister.count.map(n => assert(n == 1))
+          yield succeed
 
   "Non-matching version are still not checked" in:
-    assert(sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s).isRight)
+    sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s): SessionToken
       //Left(Problem(s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
+    succeed
+
 
 private object SessionRegisterTest:
+
   private val TestSessionTimeout = 1.hour
   private val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty())
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())

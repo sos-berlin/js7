@@ -9,5 +9,8 @@ object ProxyConfs
   lazy val default = ProxyConf(
     tornOlder = Some(10.s),
     syncPolling = 100.ms,
-    RecouplingStreamReaderConf(timeout = 55.s, delay = 1.s, failureDelays = Nel.one(3.s)))
+    eventQueueSize = 100,
+    RecouplingStreamReaderConf(
+      timeout = 55.s, keepAlive = 1.s, delay = 1.s,
+      failureDelays = Nel.one(3.s)))
 }

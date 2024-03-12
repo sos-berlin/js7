@@ -4,8 +4,10 @@ import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.{Completed, SecretString}
 import js7.base.session.TestSessionApi.*
-import monix.eval.Task
-import monix.execution.atomic.{AtomicAny, AtomicLong}
+import cats.effect.IO
+import cats.syntax.option.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import scala.collection.AbstractIterator
 
 final class TestSessionApi(expectedUserAndPassword: Option[UserAndPassword] = None)
@@ -13,17 +15,17 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   protected def userAndPassword = expectedUserAndPassword
 
-  private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
+  private val sessionTokenRef = Atomic(none[SessionToken])
 
   def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
-    Task:
+    IO:
       if userAndPassword == expectedUserAndPassword then
         sessionTokenRef := Some(sessionTokenGenerator.next())
         Completed
       else throw new IllegalArgumentException("TestSessionApi: userAndPassword do not match")
 
-  def logout(): Task[Completed] =
-    Task:
+  def logout(): IO[Completed] =
+    IO:
       sessionTokenRef := None
       Completed
 
@@ -39,6 +41,6 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
 object TestSessionApi:
   private val sessionTokenGenerator = new AbstractIterator[SessionToken]:
-    private val counter = AtomicLong(0L)
+    private val counter = Atomic(0L)
     def hasNext = true
     def next() = SessionToken(SecretString("SECRET-" + counter.incrementAndGet().toString))

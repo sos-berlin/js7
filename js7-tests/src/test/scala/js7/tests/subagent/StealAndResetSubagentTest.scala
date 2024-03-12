@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -19,12 +19,11 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.StealAndResetSubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.TimeoutException
 
 final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
-  
+
   override protected def agentConfig = config"""
     js7.auth.subagents.STOLEN-SUBAGENT = "THIEVE-AGENT-PASSWORD"
     """.withFallback(super.agentConfig)
@@ -32,8 +31,6 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
   protected val agentPaths = Seq(agentPath, thieveAgentPath)
   protected lazy val items = Seq(aWorkflow, thieveWorkflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent(force) steals a dedicated alien Subagent" in:
     // Both SubagentItems denote the same Subagent (same URI)
@@ -70,7 +67,7 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
         // Order waits for semaphore
 
       // THE THIEVE COMES
-      controller.api.updateItems(Observable(ItemOperation.AddOrChangeSimple(stolenSubagentItem)))
+      controller.api.updateItems(Stream(ItemOperation.AddOrChangeSimple(stolenSubagentItem)))
         .await(99.s).orThrow
 
       // THIEVE STARTS AN ORDER
@@ -99,7 +96,7 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
     controller.api.executeCommand(ResetSubagent(bareSubagentId, force = true))
       .await(99.s).orThrow
     eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
-    controller.api.updateItems(Observable(DeleteSimple(bareSubagentId))).await(99.s).orThrow
+    controller.api.updateItems(Stream(DeleteSimple(bareSubagentId))).await(99.s).orThrow
     eventWatch.await[ItemDeleted](_.event.key == bareSubagentId)
 
     // START SUBAGENT AGAIN AND THIEVE WILL TAKE IT OVER

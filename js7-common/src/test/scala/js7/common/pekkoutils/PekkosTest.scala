@@ -1,11 +1,11 @@
 package js7.common.pekkoutils
 
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.pekkoutils.Pekkos.*
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko
 import org.apache.pekko.actor.{Actor, ActorPath, ActorSystem, Props}
 import org.apache.pekko.util.ByteString
@@ -15,6 +15,9 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 final class PekkosTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "byteStringToTruncatedString" in:
     val byteString = ByteString(0, 1, 30, 31)
     assert(byteStringToTruncatedString(byteString) == "4 bytes 00 01 1e 1f")
@@ -60,7 +63,7 @@ final class PekkosTest extends OurTestSuite:
     assert(ActorPath.fromString("pekko://ActorSystem/%F0%9F%94%BA%7C%F0%9F%A5%95").pretty == "pekko://ActorSystem/🔺|🥕")
 
   "SupervisorStrategy" in:
-    val actorSystem = newActorSystem("PekkosTest")
+    val actorSystem = newActorSystem("PekkosTest", executionContext = ioRuntime.compute)
     try
       actorSystem.actorOf(Props { new Actor {
         def receive = {
@@ -72,7 +75,7 @@ final class PekkosTest extends OurTestSuite:
   "actorSystemResource" in:
     var _actorSystem: ActorSystem = null
     actorSystemResource("PekkosTest")
-      .use(actorSystem => Task {
+      .use(actorSystem => IO {
         _actorSystem = actorSystem
       })
       .await(99.s)

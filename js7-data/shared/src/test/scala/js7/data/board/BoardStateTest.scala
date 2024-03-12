@@ -11,7 +11,6 @@ import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
-import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 
 final class BoardStateTest extends OurAsyncTestSuite
@@ -33,12 +32,13 @@ final class BoardStateTest extends OurAsyncTestSuite
             NoticeId("NOTICE"),
             Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
 
-      boardState.toSnapshotObservable
+      boardState.toSnapshotStream
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
           .compactPrint)
         .map(s => parseJson(s).orThrow)
-        .toListL
+        .compile
+        .toVector
         .map(snapshots =>
           assert(snapshots == List(
             json"""{
@@ -56,7 +56,6 @@ final class BoardStateTest extends OurAsyncTestSuite
           "boardPath": "BOARD",
           "endOfLife": 123000
         }""")))
-        .runToFuture
     }
 
     lazy val boardState = BoardState(
@@ -82,13 +81,13 @@ final class BoardStateTest extends OurAsyncTestSuite
           NoticeId("NOTICE-2"),
           NoticeId("NOTICE-1"))))
 
-    "toSnapshotObservable JSON" in {
-      boardState.toSnapshotObservable
+    "toSnapshotStream JSON" in {
+      boardState.toSnapshotStream
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
           .printWith(Printer.noSpaces.copy(dropNullValues = true)))
         .map(s => io.circe.parser.parse(s).orThrow)
-        .toListL
+        .compile.toVector
         .map(snapshots =>
           assert(snapshots == List(
             json"""{
@@ -122,12 +121,11 @@ final class BoardStateTest extends OurAsyncTestSuite
               "boardPath": "BOARD",
               "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
             }""")))
-        .runToFuture
     }
 
-    "toSnapshotObservable and recover" in {
+    "toSnapshotStream and recover" in {
       var recovered: BoardState = null
-      boardState.toSnapshotObservable
+      boardState.toSnapshotStream
         .map(o =>
           reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
         .map {
@@ -136,10 +134,10 @@ final class BoardStateTest extends OurAsyncTestSuite
           case snapshot: BoardSnapshot =>
             recovered = recovered.recover(snapshot).orThrow
         }
-        .completedL
-        .map(_ =>
-          assert(recovered == boardState))
-        .runToFuture
+        .compile
+        .drain
+        .map: _ =>
+          assert(recovered == boardState)
     }
   }
 
@@ -291,7 +289,7 @@ final class BoardStateTest extends OurAsyncTestSuite
   }
 
   "BoardState snapshot" in {
-    (for snapshot <- boardState.toSnapshotObservable.toListL yield {
+    for snapshot <- boardState.toSnapshotStream.compile.toVector yield
       assert(snapshot == List(board, notice))
 
       // Order of addExpectation is irrelevant
@@ -307,7 +305,6 @@ final class BoardStateTest extends OurAsyncTestSuite
       recovered = recovered.addExpectation(NoticeId("B"), aOrderId).orThrow
       recovered = recovered.addNotice(notice).orThrow
       assert(recovered == boardState)
-    }).runToFuture
   }
 }
 

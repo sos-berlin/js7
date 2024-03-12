@@ -7,7 +7,6 @@ import js7.base.auth.Admission
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -15,7 +14,7 @@ import js7.controller.RunningController
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentItem
-import monix.execution.Scheduler
+import js7.base.test.TestCatsEffect
 import org.jetbrains.annotations.TestOnly
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
@@ -24,13 +23,14 @@ import scala.collection.immutable.Iterable
   * @author Joacim Zschimmer
   */
 @TestOnly
-trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, HasCloser:
+trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, HasCloser:
   this: org.scalatest.Suite =>
+
 
   ProblemCodeMessages.initialize()
 
-  protected def commonScheduler: Option[Scheduler] =
-    sys.props.contains("test.speed") ? Scheduler.traced
+  // UNUSED
+  protected final def commonScheduler: Nothing = sys.error("commonScheduler?")
 
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
@@ -59,8 +59,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, HasCloser:
     signer = signer,
     verifier = verifier,
     testName = Some(getClass.getSimpleName),
-    doNotAddItems = doNotAddItems,
-    scheduler = commonScheduler)
+    doNotAddItems = doNotAddItems)
 
   protected def agentConfig: Config = ConfigFactory.empty
 

@@ -1,12 +1,12 @@
 package js7.agent.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**
@@ -14,6 +14,9 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
  */
 trait TestAgentProvider extends TestAgentDirectoryProvider, BeforeAndAfterAll:
   this: Suite =>
+
+  protected def ioRuntime: IORuntime
+  private given IORuntime = ioRuntime
 
   protected def agentTestWiring: RunningAgent.TestWiring =
     RunningAgent.TestWiring.empty
@@ -29,6 +32,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider, BeforeAndAfterAll:
     super.afterAll()
 
   protected lazy final val agent: TestAgent =
+    given IORuntime = ioRuntime
     TestAgent
       .start(agentConfiguration, agentTestWiring)
       .await(99.s)

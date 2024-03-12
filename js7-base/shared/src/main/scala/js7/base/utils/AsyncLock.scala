@@ -1,16 +1,18 @@
 package js7.base.utils
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.kernel.Poll
+import cats.effect.kernel.Resource.ExitCase
+import cats.effect.{IO, Resource, kernel}
+import cats.syntax.flatMap.*
 import java.lang.System.nanoTime
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixutils.MonixBase.DefaultWorryDurations
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
+import js7.base.utils.CatsUtils.DefaultWorryDurations
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.catnap.MVar
-import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
@@ -22,100 +24,113 @@ final class AsyncLock private(
 
   asyncLock =>
 
-  private val lockM = MVar[Task].empty[Locked]().memoize
+  private val lockM = MVar[IO].empty[Locked].unsafeMemoize
   private val log = if noLog then Logger.empty else logger
 
-  def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
-    lock(src.value)(task)
+  // IntelliJ cannot locate references:
+  //def apply[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
+  //  lock(io)
+  //
+  //def apply[A](acquirer: => String)(io: IO[A]): IO[A] =
+  //  lock(acquirer)(io)
 
-  def lock[A](acquirer: => String)(task: Task[A]): Task[A] =
-    resource(acquirer).use(_ => task)
+  def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
+    lock(src.value)(io)
 
-  def resource(implicit src: sourcecode.Enclosing): Resource[Task, Locked] =
+  def lock[A](acquirer: => String)(io: IO[A]): IO[A] =
+    resource(acquirer).use(_ => io)
+
+  def resource(implicit src: sourcecode.Enclosing): Resource[IO, Locked] =
     resource(src.value)
 
-  def resource(acquirer: => String): Resource[Task, Locked] =
-    Resource.makeCase(
-      acquire = Task.defer {
-        val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
-        acquire(locked).as(locked)
-      })(
+  def resource(acquirer: => String): Resource[IO, Locked] =
+    Resource.makeCaseFull[IO, Locked](
+      acquire = cancelable =>
+        IO.defer:
+          val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
+          acquire(locked, cancelable).as(locked))(
       release = (locked, exitCase) =>
         release(locked, exitCase))
 
-  private def acquire(locked: Locked): Task[Unit] =
-    lockM.flatMap(mvar => Task.defer {
-      mvar.tryPut(locked).flatMap(hasAcquired =>
-        if hasAcquired then {
-          if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
+  def isLocked: IO[Boolean] =
+    locked.map(_.isDefined)
+
+  def locked: IO[Option[Locked]] =
+    lockM.flatMap(_.tryRead)
+
+  private def acquire(locked: Locked, cancelable: Poll[IO]): IO[Unit] =
+    lockM.flatMap(mvar => IO.defer:
+      mvar.tryPut(locked).flatMap: hasAcquired =>
+        if hasAcquired then
+          if logMinor then log.trace(s"↘ ⚪️${locked.nrString} $name acquired by ${locked.who} ↘")
           locked.startMetering()
-          Task.unit
-        } else
+          IO.unit
+        else
           if noLog then
-            mvar.put(locked)
-              .as(Right(()))
-          else {
+            cancelable:
+              mvar.put(locked)
+                .as(Right(()))
+          else
             val waitingSince = now
-            Task.tailRecM(())(_ =>
-              mvar.tryRead.flatMap {
+            ().tailRecM: _ =>
+              mvar.tryRead.flatMap:
                 case Some(lockedBy) =>
                   val sym = new BlockingSymbol
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
-                    s"⟲ $sym${locked.nr} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
-                  mvar.put(locked)
-                    .whenItTakesLonger(warnTimeouts) { _ =>
-                      for lockedBy <- mvar.tryRead yield
-                        sym.onInfo()
-                        logger.info(
-                          s"⟲ $sym${locked.nr} $name: ${locked.who} is still waiting" +
-                            s" for ${waitingSince.elapsed.pretty}," +
-                            s" currently acquired by ${lockedBy getOrElse "None"} ...")
-                    }
-                    .map { _ =>
+                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who
+                    } (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ⟲")
+                  cancelable:
+                    mvar.put(locked)
+                  .whenItTakesLonger(warnTimeouts): _ =>
+                    for lockedBy <- mvar.tryRead yield
+                      sym.onInfo()
+                      logger.info:
+                        s"⟲ $sym${locked.nrString} $name: ${locked.who} is still waiting" +
+                          s" for ${waitingSince.elapsed.pretty}," +
+                          s" currently acquired by ${lockedBy getOrElse "None"} ..."
+                  .onCancel(IO:
+                    log.debug:
+                      s"⚫️${locked.nrString} $name acquisition canceled after ${
+                        waitingSince.elapsed.pretty} ↙")
+                  .flatMap: _ =>
+                    IO:
                       log.log(sym.releasedLogLevel,
-                        s"↘ 🟢${locked.nr} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")
+                        s"↘ 🟢${locked.nrString} $name acquired by ${locked.who} after ${
+                          waitingSince.elapsed.pretty} ↘")
                       locked.startMetering()
                       Right(())
-                  }
 
                 case None =>  // Lock has just become available
                   for hasAcquired <- mvar.tryPut(locked) yield
                     if !hasAcquired then
                       Left(())  // Locked again by someone else, so try again
-                    else {
+                    else
                       // "…" denotes just-in-time availability
-                      if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
+                      if logMinor then log.trace:
+                        s"↘ ⚪️${locked.nrString} $name acquired by…${locked.who} ↘"
                       locked.startMetering()
-                      Right(())  // The lock is ours!
-                    }
-              })
-          })
-    })
+                      Right(()))  // The lock is ours!
 
-  private def release(locked: Locked, exitCase: ExitCase[Throwable]): Task[Unit] =
-    Task.defer:
+  private def release(locked: Locked, exitCase: ExitCase): IO[Unit] =
+    IO.defer:
       logRelease(locked, exitCase)
       lockM.flatMap(_.take).void
 
-  private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
+  private def logRelease(locked: Locked, exitCase: ExitCase): Unit =
     if logMinor then exitCase match
-      case ExitCase.Completed =>
-        log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
+      case ExitCase.Succeeded =>
+        log.trace(s"↙ ⚪️${locked.nrString} $name released by ${locked.acquirer} ↙")
 
       case ExitCase.Canceled =>
-        log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
+        log.trace(s"↙ ⚫${locked.nrString} $name released by ${locked.acquirer} · Canceled ↙")
 
-      case ExitCase.Error(t) =>
-        log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
+      case ExitCase.Errored(t) =>
+        log.trace(s"↙ 💥${locked.nrString} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
 
   override def toString = s"AsyncLock:$name"
 
-  final class Locked private[AsyncLock](
-    correlId: CorrelId,
-    private[AsyncLock] val nr: Int,
-    acquirerToString: => String):
-
+  final class Locked private[AsyncLock](correlId: CorrelId, nr: Int, acquirerToString: => String):
     private[AsyncLock] lazy val acquirer = acquirerToString
     private var lockedSince: Long = 0
 
@@ -136,7 +151,9 @@ final class AsyncLock private(
         s"$acquirer $duration ago"
 
     override def toString =
-      s"$asyncLock acquired by $who"
+      s"$asyncLock $nrString acquired by $who"
+
+    def nrString = s"†$nr"
 
 
 object AsyncLock:

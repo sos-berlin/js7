@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
@@ -21,11 +21,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ItemConsistencyTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
@@ -37,7 +36,7 @@ final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTes
 
   "Adding a FileWatch with missing Workflow is rejected" in:
     val checked = controller.api
-      .updateItems(Observable(AddOrChangeSimple(fileWatch)))
+      .updateItems(Stream(AddOrChangeSimple(fileWatch)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Seq(
       MissingReferencedItemProblem(fileWatch.path, agentPath),
@@ -45,7 +44,7 @@ final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTes
 
   "Workflow consistency" in:
     val checked = controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(versionId),
         AddOrChangeSigned(itemSigner.sign(workflow).signedString)))
       .await(99.s)
@@ -55,7 +54,7 @@ final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTes
       MissingReferencedItemProblem(workflow.id, agentPath)))))
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddOrChangeSimple(AgentRef(agentPath, Seq(subagentId))),
         AddOrChangeSimple(SubagentItem(subagentId, agentPath, Uri("http://0.0.0.0:0"))),
         AddOrChangeSimple(lock),
@@ -67,7 +66,7 @@ final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTes
 
   "Adding the FileWatch" in:
     controller.api
-      .updateItems(Observable(AddOrChangeSimple(fileWatch)))
+      .updateItems(Stream(AddOrChangeSimple(fileWatch)))
       .await(99.s)
       .orThrow
 

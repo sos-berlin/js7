@@ -9,13 +9,15 @@ import js7.base.session.SessionApi
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.web.Uri
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uris.encodeQuery
 import js7.common.http.PekkoHttpClient
-import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
+import js7.base.data.ByteArray
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -26,7 +28,7 @@ final class HttpSubagentApi private(
   protected val name: String,
   protected val actorSystem: ActorSystem)
 extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpClient:
-  
+
   import admission.uri
 
   def isLocal = false
@@ -45,7 +47,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   protected def userAndPassword = admission.userAndPassword
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
-  : Task[Checked[numbered.value.Response]] =
+  : IO[Checked[numbered.value.Response]] =
     liftProblem(retryIfSessionLost()(
       httpClient
         .post[Numbered[SubagentCommand], SubagentCommand.Response](
@@ -53,20 +55,28 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
           numbered.asInstanceOf[Numbered[SubagentCommand]])
         .map(_.asInstanceOf[numbered.value.Response])))
 
-  def eventObservable[E <: Event: ClassTag](
+  def eventStream[E <: Event: ClassTag](
+    request: EventRequest[E],
+    subagentRunId: SubagentRunId)
+    (implicit kd: Decoder[KeyedEvent[E]])
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
+    eventStream(request, subagentRunId, heartbeat = None)
+
+  def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration] = None)
+    heartbeat: Option[FiniteDuration])
     (implicit kd: Decoder[KeyedEvent[E]])
-  : Task[Observable[Stamped[KeyedEvent[E]]]] =
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     retryIfSessionLost()(
-      httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
+      httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
         Uri(
           eventUri.string +
             encodeQuery(
               Some("subagentRunId" -> subagentRunId.string) ++
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
                 request.toQueryParameters))),
+        returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
         responsive = true))
 
 
@@ -76,6 +86,6 @@ object HttpSubagentApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String,
     actorSystem: ActorSystem)
-  : Resource[Task, HttpSubagentApi] =
-    SessionApi.resource(Task(
+  : Resource[IO, HttpSubagentApi] =
+    SessionApi.resource(IO(
       new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))

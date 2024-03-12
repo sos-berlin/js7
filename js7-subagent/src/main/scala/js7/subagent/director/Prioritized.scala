@@ -3,7 +3,7 @@ package js7.subagent.director
 import js7.subagent.director.Prioritized.prioritySort
 
 private final class Prioritized[A] private(
-  private val orderedKeys: IndexedSeq[A],
+  private val orderedKeys: Vector[A],
   private val toPriority: A => Int):
 
   private val fixedPriority = new FixedPriority
@@ -31,7 +31,7 @@ private final class Prioritized[A] private(
     copy(Vector.empty)
 
   def selectNext(filter: A => Boolean): Option[A] =
-    val orderedValues = orderedKeys.view.filter(filter).toVector
+    val orderedValues = orderedKeys.filter(filter)
     if orderedValues.isEmpty then
       None
     else
@@ -42,7 +42,7 @@ private final class Prioritized[A] private(
         isEquivalent = (i, j) => toPriority(orderedValues(i)) == toPriority(orderedValues(j)))
       highest.drop(next).headOption orElse highest.headOption
 
-  private def copy(orderedKeys: IndexedSeq[A]) =
+  private def copy(orderedKeys: Vector[A]) =
     if orderedKeys == this.orderedKeys then
       // Keep fixedPriority.index
       this
@@ -50,6 +50,7 @@ private final class Prioritized[A] private(
       new Prioritized[A](orderedKeys, toPriority)
 
   override def toString = s"Prioritized(${orderedKeys.mkString(" ")})"
+
 
 private object Prioritized:
   def empty[A](toPriority: A => Int) =

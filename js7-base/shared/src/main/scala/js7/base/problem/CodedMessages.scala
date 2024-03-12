@@ -2,7 +2,8 @@ package js7.base.problem
 
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.execution.atomic.AtomicAny
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import scala.collection.mutable
 
 /**
@@ -11,7 +12,7 @@ import scala.collection.mutable
 object CodedMessages:
 
   // Yes, a global static variable, to be intialized by main()
-  private val _codeToPattern = AtomicAny[ProblemCode => Option[String]](noCodeToPattern)
+  private val _codeToPattern = Atomic[ProblemCode => Option[String]](noCodeToPattern)
 
   implicit val problemCodeToPattern: ProblemCode => Option[String] = codeToPattern
 

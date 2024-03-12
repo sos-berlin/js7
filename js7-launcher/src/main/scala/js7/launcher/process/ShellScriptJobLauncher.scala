@@ -19,7 +19,7 @@ import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
 import js7.launcher.process.RichProcess.{tryDeleteFile, tryDeleteFiles}
 import js7.launcher.process.ShellScriptJobLauncher.writeScriptToFile
-import monix.eval.Task
+import cats.effect.IO
 import scala.collection.mutable
 
 final class ShellScriptJobLauncher(
@@ -32,11 +32,11 @@ extends PathProcessJobLauncher:
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 
   protected def checkFile =
-    Task(
+    IO(
       executable.login
         .traverse(login => WindowsProcessCredential.keyToUser(login.credentialKey))
     ).flatMapT(maybeUserName =>
-        userToFileLock.lock(Task {
+        userToFileLock.lock(IO {
           userToFile.get(maybeUserName) match {
             case Some(path) => Right(path)
             case None =>
@@ -52,7 +52,7 @@ extends PathProcessJobLauncher:
           }
         }))
 
-  def stop = Task(
+  def stop = IO(
     userToFile.synchronized {
       tryDeleteFiles(userToFile.values)
     })

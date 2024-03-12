@@ -1,5 +1,8 @@
 package js7.base.crypt.x509
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.{Chunk, Stream}
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -12,20 +15,19 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
-import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
 final class X509Test extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "Sign programmatically and verify" in:
     val (signer, verifier) = X509Signer.forTest
     val document = "TEXT EXAMPLE"
@@ -38,7 +40,7 @@ final class X509Test extends OurTestSuite:
       Left(TamperedWithSignedMessageProblem))
 
   "Sign with certificate and verify" in:
-    withTemporaryDirectory("X509Test-") { dir =>
+    withTemporaryDirectory("X509Test-"): dir =>
       val privateKeyFile = dir / "SIGNER.key"
       val certificateFile = dir / "SIGNER.crt"
       val publicKeyFile = dir / "SIGNER.pem"
@@ -59,18 +61,18 @@ final class X509Test extends OurTestSuite:
       runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
-      val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
       val signerCert = X509Cert.fromPem(certificateBytes.utf8String).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
+
+      val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
       val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
       assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
-    }
 
   "Sign with certificate and verify signature and certificate against Root" in:
-    withTemporaryDirectory("X509Test-") { dir =>
+    withTemporaryDirectory("X509Test-"): dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
       val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow
@@ -83,20 +85,23 @@ final class X509Test extends OurTestSuite:
       val signer = new ca.Signer("SIGNER")
       val signatureFile = signer.signFile(documentFile)
 
-      assert(verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
-        Right(Seq(SignerId("CN=SIGNER"))))
+      assert:
+        verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile))
+          == Right(Seq(SignerId("CN=SIGNER")))
 
       val alienSigner = new ca.Signer("ALIEN-SIGNER")
       val alienSignatureFile = alienSigner.signFile(documentFile)
-      assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId)) ==
-        Left(TamperedWithSignedMessageProblem))
-      assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)) ==
-        Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER")))
+      assert:
+        verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId))
+          == Left(TamperedWithSignedMessageProblem)
+      assert:
+        verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId))
+          == Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER"))
 
       val root2 = new openssl.Root("Root-2")
-      assert(verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
-        Left(TamperedWithSignedMessageProblem))
-    }
+      assert:
+        verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile))
+          == Left(TamperedWithSignedMessageProblem)
 
   "Verification against root certificate requires the critical CA contraint" in:
     pending // openssl 1.1.1i always generates certificates with CA, so this test will fail !!!
@@ -119,40 +124,49 @@ final class X509Test extends OurTestSuite:
   if sys.props.contains("test.speed") then
     "Speed test" in:
       val n = 10_000
-      withTemporaryDirectory("X509Test-") { dir =>
+      withTemporaryDirectory("X509Test-"): dir =>
         val openssl = new Openssl(dir)
         val ca = new openssl.Root("Root")
         val signer = new ca.Signer("SIGNER")
 
         var t = now
-        val signedStrings = Observable.fromIterable(1 to n)
-          .mapParallelUnorderedBatch() { i =>
-            val documentFile = dir / s"document-$i"
-            documentFile := Random.nextString(1024)
-            val signatureFile = signer.signFile(documentFile)
-            val signedString = SignedString(
-              documentFile.contentString,
-              GenericSignature(
-                "X509",
-                signatureFile.contentString,
-                Some(signer.certificateFile.contentString)))
-            delete(documentFile)
-            delete(signatureFile)
-            signedString
-          }
-          .toListL.await(999.s)
+        val signedStrings = Stream
+          .chunk(Chunk.from(1 to n))
+          .covary[IO]
+          .parEvalMapUnorderedUnbounded: i =>
+            IO:
+              val documentFile = dir / s"document-$i"
+              documentFile := Random.nextString(1024)
+              val signatureFile = signer.signFile(documentFile)
+              val signedString = SignedString(
+                documentFile.contentString,
+                GenericSignature(
+                  "X509",
+                  signatureFile.contentString,
+                  algorithm = Some(SHA512withRSA.string),
+                  signerCertificate = Some(signer.certificateFile.contentString)))
+              delete(documentFile)
+              delete(signatureFile)
+              signedString
+          .compile
+          .toVector
+          .await(999.s)
         logger.info(itemsPerSecondString(t.elapsed, n, "signs"))
 
-        val verifier = X509SignatureVerifier.checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
+        val verifier = X509SignatureVerifier
+          .checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
           .orThrow
         for _ <- 1 to 10 do
           t = now
-          Observable.fromIterable(signedStrings)
-            .mapParallelUnorderedBatch()(signedString =>
-              assert(verifier.verify(signedString) == Right(Seq(SignerId("CN=SIGNER")))))
-            .completedL.await(999.s)
+          Stream
+            .chunk(Chunk.from(signedStrings))
+            .covary[IO]
+            .parEvalMapUnordered(sys.runtime.availableProcessors): signedString =>
+              IO:
+                assert(verifier.verify(signedString) == Right(Seq(SignerId("CN=SIGNER"))))
+            .compile.drain
+            .await(999.s)
           logger.info(itemsPerSecondString(t.elapsed, n, "verifys"))
-      }
 
 
 object X509Test:

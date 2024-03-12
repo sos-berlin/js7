@@ -7,21 +7,19 @@ import js7.base.session.SessionApi
 import js7.base.stream.Numbered
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
-import monix.eval.Task
-import monix.reactive.Observable
-import scala.concurrent.duration.FiniteDuration
+import cats.effect.IO
+import fs2.Stream
 import scala.reflect.ClassTag
 
 trait SubagentApi extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
-  
-  def eventObservable[E <: Event: ClassTag](
+
+  def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
-    subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration] = None)
+    subagentRunId: SubagentRunId)
     (implicit kd: Decoder[KeyedEvent[E]])
-  : Task[Observable[Stamped[KeyedEvent[E]]]]
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]]
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
-  : Task[Checked[numbered.value.Response]]
+  : IO[Checked[numbered.value.Response]]
 
   def isLocal: Boolean

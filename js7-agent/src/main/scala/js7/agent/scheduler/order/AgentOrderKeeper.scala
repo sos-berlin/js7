@@ -1,5 +1,8 @@
 package js7.agent.scheduler.order
 
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Fiber, IO}
+import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import com.softwaremill.tagging.{@@, Tagger}
 import io.circe.syntax.EncoderOps
@@ -10,20 +13,23 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, materializeIntoChecked, right}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize, scheduleAtFixedRate}
+import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
-import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
-import js7.base.utils.CatsUtils.continueWithLast
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.{continueWithLast, pureFiberIO}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -62,15 +68,13 @@ import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import monix.eval.{Fiber, Task}
-import monix.execution.{Cancelable, Scheduler}
 import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -84,17 +88,20 @@ final class AgentOrderKeeper(
   clusterNode: ClusterNode[AgentState],
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
-  changeSubagentAndClusterNode: ItemAttachedToMe => Task[Checked[Unit]],
-  journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  changeSubagentAndClusterNode: ItemAttachedToMe => IO[Checked[Unit]],
+  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   shutDownOnce: SetOnce[AgentCommand.ShutDown],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
-  (implicit protected val scheduler: Scheduler)
+  (implicit protected val ioRuntime: IORuntime)
 extends MainJournalingActor[AgentState, Event], Stash:
 
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}
+  import ioRuntime.scheduler
+
+  private given ExecutionContext = ioRuntime.compute
 
   private val journal = journalAllocated.allocatedThing
   private val (ownAgentPath, localSubagentId, controllerId) =
@@ -129,7 +136,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
   private object shutdown:
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
     private var snapshotFinished = false
-    private var stillTerminatingSchedule: Option[Cancelable] = None
+    private var stillTerminatingSchedule: Option[SyncCancelable] = None
     private var terminatingOrders = false
     private var terminatingJobs = false
     private var terminatingJournal = false
@@ -141,9 +148,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
       if !shuttingDown then
         since := now
         shutDownCommand = Some(cmd)
-        fileWatchManager.stop.runAsyncAndForget
+        fileWatchManager.stop.unsafeRunAndForget()
         if cmd.isFailOrSwitchover then
-          journalAllocated.release.runAsyncAndForget
+          journalAllocated.release.unsafeRunAndForget()
           context.stop(self)
         else if cmd.suppressSnapshot then
           snapshotFinished = true
@@ -181,14 +188,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
             if !terminatingJobs then
               terminatingJobs = true
               subagentKeeper.stop
-                .onErrorHandle(t => logger.error(
+                .recover(t => logger.error(
                   s"subagentKeeper.stop =>${t.toStringWithCauses}", t))
                 .map(_ => self ! Internal.JobDriverStopped)
-                .runAsyncAndForget
+                .unsafeRunAndForget()
             if jobRegister.isEmpty && !terminatingJournal then
               persist(AgentShutDown) { (_, _) =>
                 terminatingJournal = true
-                journalAllocated.release.runAsyncAndForget
+                journalAllocated.release.unsafeRunAndForget()
               }
   import shutdown.shuttingDown
 
@@ -204,9 +211,15 @@ extends MainJournalingActor[AgentState, Event], Stash:
   override def postStop() =
     // TODO Use Resource (like the Subagent starter)
     // TODO Blocking!
-    Try(subagentKeeper.stop.uncancelable.timeout(3.s).logWhenItTakesLonger.await(99.s))
+    try
+      subagentKeeper.stop
+        .uncancelable // TOOD Deadlock possible, probably due to stopped Journal. We time-out:
+        .start.flatMap(_.joinStd).timeout(3.s)
+        .logWhenItTakesLonger("subagentKeeper.stop")
+        .await(99.s)
+    catch case NonFatal(t) => logger.error(s"subagentKeeper.stop => ${t.toStringWithCauses}")
 
-    fileWatchManager.stop.runAsyncAndForget
+    fileWatchManager.stop.unsafeRunAndForget()
     shutdown.close()
     super.postStop()
     logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
@@ -251,7 +264,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
         fileWatchManager.start
           .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
-          .runAsyncAndForget
+          .unsafeRunAndForget()
 
         // TODO AgentReady should be the first event ?
         persist(
@@ -266,7 +279,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
     val receive: Receive =
       case Internal.SubagentKeeperInitialized(state, tried) =>
-        for t <- tried.failed do throw t.appendCurrentStackTrace
+        for t <- tried.ifFailed do throw t.appendCurrentStackTrace
 
         for workflow <- state.idToWorkflow.values do
           wrapException(s"Error while recovering ${workflow.path}"):
@@ -379,7 +392,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     case Input.ResetAllSubagents =>
       subagentKeeper
         .resetAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
-        .void.runToFuture.pipeTo(sender())
+        .void.unsafeToFuture().pipeTo(sender())
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match
     case cmd: OrderCommand => processOrderCommand(cmd)
@@ -399,7 +412,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           case path: OrderWatchPath =>
             fileWatchManager.remove(path)
               .rightAs(AgentCommand.Response.Accepted)
-              .runToFuture
+              .unsafeToFuture()
 
           case subagentId: SubagentId =>
             journal
@@ -409,7 +422,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
                 // SubagentKeeper will emit ItemDetached event
                 .map(Right(_)))
               .as(Right(AgentCommand.Response.Accepted))
-              .runToFuture
+              .unsafeToFuture()
 
           case selectionId: SubagentSelectionId =>
             journal
@@ -417,7 +430,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
               .flatMapT(_ => subagentKeeper
                 .removeSubagentSelection(selectionId)
                 .as(Right(AgentCommand.Response.Accepted)))
-              .runToFuture
+              .unsafeToFuture()
 
           case WorkflowId.as(workflowId) =>
             val maybeWorkflow = journal.unsafeCurrentState().idToWorkflow.get(workflowId)
@@ -425,9 +438,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
               for workflow <- maybeWorkflow do
                 subagentKeeper
                   .stopJobs(workflow.keyToJob.keys, SIGKILL/*just in case*/)
-                  .onErrorHandle(t => logger.error(
+                  .recover(t => logger.error(
                     s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t))
-                  .runAsyncAndForget
+                  .unsafeRunAndForget()
               Right(AgentCommand.Response.Accepted)
             }
 
@@ -439,12 +452,12 @@ extends MainJournalingActor[AgentState, Event], Stash:
     case AgentCommand.ResetSubagent(subagentId, force) =>
       val task =
         if journal.unsafeCurrentState().meta.directors.contains(subagentId) then
-          Task.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
+          IO.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
         else
           subagentKeeper.startResetSubagent(subagentId, force)
             .rightAs(AgentCommand.Response.Accepted)
 
-      task.runToFuture
+      task.unsafeToFuture()
 
     case AgentCommand.ClusterSwitchOver =>
       switchOver(cmd)
@@ -464,7 +477,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         else
           changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(agentRef))
             .rightAs(AgentCommand.Response.Accepted)
-            .runToFuture
+            .unsafeToFuture()
 
       case fileWatch: FileWatch =>
         if !conf.subagentConf.scriptInjectionAllowed then
@@ -472,18 +485,18 @@ extends MainJournalingActor[AgentState, Event], Stash:
         else
           fileWatchManager.update(fileWatch)
             .map(_.rightAs(AgentCommand.Response.Accepted))
-            .runToFuture
+            .unsafeToFuture()
 
       case item: SubagentItem =>
         changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(item))
           .rightAs(AgentCommand.Response.Accepted)
-          .runToFuture
+          .unsafeToFuture()
 
       case item @ (_: AgentRef | _: Calendar | _: SubagentSelection |
                    _: WorkflowPathControl | _: WorkflowControl) =>
         //val previousItem = journal.unsafeCurrentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
-          proceedWithItem(/*previousItem,*/ item).runToFuture
+          proceedWithItem(/*previousItem,*/ item).unsafeToFuture()
         }.flatten
           .rightAs(AgentCommand.Response.Accepted)
 
@@ -492,29 +505,29 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
   private val changeSubagentAndClusterNodeAndProceedFiber =
-    AsyncVariable(Fiber(Task.pure(Checked.unit), Task.unit))
+    AsyncVariable(pureFiberIO(Checked.unit))
 
-  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): Task[Checked[Unit]] =
+  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): IO[Checked[Unit]] =
     changeSubagentAndClusterNodeAndProceedFiber
       .update { fiber =>
         changeSubagentAndClusterNodeAndProceedFiberStop = true
-        fiber.join *>
-          Task.defer:
+        fiber.joinStd *>
+          IO.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)
               .start
       }
-      .flatMap(_.join.timeoutTo(10.s /*???*/ , Task.right(()) /*respond the command*/))
+      .flatMap(_.joinStd.timeoutTo(10.s /*???*/ , IO.right(()) /*respond the command*/))
 
   private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
-  : Task[Checked[Unit]] =
-    Task.defer:
+  : IO[Checked[Unit]] =
+    IO.defer:
       import event.item
       val label = s"${event.getClass.simpleScalaName}(${item.key})"
       val since = now
       val delays = continueWithLast(1.s, 3.s, 10.s)
       val sym = new BlockingSymbol
-      Task.tailRecM(()) { _ =>
+      ().tailRecM { _ =>
         changeSubagentAndClusterNode(event)
           .flatMapT(_ => proceedWithItem(item))
           .uncancelable // Only the loop should be cancelable, but not the inner operations
@@ -523,14 +536,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
               sym.increment()
               logger.warn(
                 s"$sym $label => $problem — trying since ${since.elapsed.pretty} ...")
-              Task.sleep(delays.next()).as(Left(())/*repeat*/)
+              IO.sleep(delays.next()).as(Left(())/*repeat*/)
 
             case checked =>
               if sym.called then checked match {
                 case Left(problem) => logger.error(s"🔥 $label => $problem")
                 case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
               }
-              Task.right(checked)
+              IO.right(checked)
       }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
@@ -573,7 +586,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
             Future.successful(Left(Problem.pure(s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")))
 
   private def proceedWithItem(/*previous: Option[InventoryItem],*/ item: InventoryItem)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
         //val processLimitIncreased = previous
@@ -582,12 +595,12 @@ extends MainJournalingActor[AgentState, Event], Stash:
         //  .forall(previous => agentRef.processLimit.forall(previous < _))
         //if processLimitIncreased then
         self ! Internal.TryStartProcessing
-        Task.right(())
+        IO.right(())
 
       case subagentItem: SubagentItem =>
         journal.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
-          .fold(Task.pure(Checked.unit))(subagentItemState => subagentKeeper
+          .fold(IO.pure(Checked.unit))(subagentItemState => subagentKeeper
             .proceedWithSubagent(subagentItemState)
             .materializeIntoChecked))
 
@@ -600,9 +613,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
           for order <- journal.unsafeCurrentState().orders
                if order.workflowPath == workflowPathControl.workflowPath do
             proceedWithOrder(order)
-        Task.right(())
+        IO.right(())
 
-      case _ => Task.right(())
+      case _ => IO.right(())
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match
     case AttachOrder(order) =>
@@ -675,31 +688,31 @@ extends MainJournalingActor[AgentState, Event], Stash:
                 // one after the other because execution is asynchronous.
                 // A second command may may see the same not yet updated order.
                 // TODO Queue for each order? And no more OrderActor?
-                Task
+                IO
                   .deferFuture(
                     (orderEntry.actor ? OrderActor.Command.HandleEvents(events, CorrelId.current))
                       .mapTo[Checked[Completed]])
                   .flatMap:
                     case Left(problem)
                       if problem.exists(_.isInstanceOf[InapplicableOrderEventProblem]) =>
-                      Task.sleep(100.ms) // brake
-                        .*>(Task.defer {
+                      IO.sleep(100.ms) // brake
+                        .*>(IO.defer {
                           logger.warn(s"Repeating $cmd due to race condition: $problem")
                           val promise = Promise[Checked[Response]]()
                           self.!(Input.ExternalCommand(cmd, CorrelId.current, promise))(sender)
-                          Task
-                            .fromFuture(promise.future)
+                          IO
+                            .fromFuture(IO.pure(promise.future))
                             .map(_.map(_.asInstanceOf[Response.Accepted]))
                         })
 
                     case Left(problem) =>
                       // Should not happen. Controller does not handle the problem.
                       logger.warn(s"$cmd => $problem")
-                      Task.left(problem)
+                      IO.left(problem)
 
                     case Right(Completed) =>
-                      Task.right(AgentCommand.Response.Accepted)
-                .runToFuture
+                      IO.right(AgentCommand.Response.Accepted)
+                .unsafeToFuture()
 
     case ReleaseEvents(after) =>
       if shuttingDown then
@@ -777,7 +790,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           case Some(until) if clock.now() < until =>
             // TODO Schedule only the next order ?
             val orderEntry = orderRegister(order.id)
-            orderEntry.timer := clock.scheduleAt(until):
+            orderEntry.timer := clock.scheduleAt(until, s"Due(${order.id})"):
               self ! Internal.Due(order.id)
             true
 
@@ -798,14 +811,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
           .groupMap(_.key)(_.event)
           .toSeq
           .parTraverse((orderId_ : OrderId, events) =>
-            Task
-              .fromFuture(
+            IO
+              .fromFuture(IO:
                 (orderRegister(orderId_).actor ?
                   OrderActor.Command.HandleEvents(events, CorrelId.current))
                     .mapTo[Checked[Completed]])
               .materializeIntoChecked
               .map(orderId_ -> events -> _))
-          .runToFuture
+          .unsafeToFuture()
         // TODO Not awaiting the response may lead to duplicate events
         //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
         //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
@@ -860,7 +873,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     while it.hasNext && tryStartProcessing(it.next()) do {}
 
   private def tryStartProcessing(jobEntry: JobEntry): Boolean =
-    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock):
+    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval:
       self ! Internal.JobDue(jobEntry.jobKey)
 
     val idToOrder = journal.unsafeCurrentState().idToOrder
@@ -892,20 +905,20 @@ extends MainJournalingActor[AgentState, Event], Stash:
       orderRegister.remove(orderId)
 
   private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
-    Task
+    IO
       .defer {
         logger.info(s"❗️ $cmd")
         switchingOver = true // Asynchronous !!!
-        Task(clusterNode.workingClusterNode)
+        IO(clusterNode.workingClusterNode)
           .flatTapT(_ =>
             // SubagentKeeper stops the local (surrounding) Subagent,
             // which lets the Director (RunningAgent) stop
             subagentKeeper.stop.as(Right(())))
           .flatMapT(_.switchOver)
-          .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+          .flatMapT(_ => IO.right(self ! Internal.ContinueSwitchover))
           .rightAs(AgentCommand.Response.Accepted)
       }
-      .runToFuture
+      .unsafeToFuture()
 
   override def unhandled(message: Any) =
     message match
@@ -955,6 +968,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   override def toString = "AgentOrderKeeper"
 
+
 object AgentOrderKeeper:
   private val logger = Logger[this.type]
 
@@ -1000,8 +1014,8 @@ object AgentOrderKeeper:
       processCount += 1
       queue.recoverProcessingOrder(order)
 
-    def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
-      admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
+    def checkAdmissionTimeInterval(onPermissionGranted: => Unit)(using AlarmClock): Boolean =
+      admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)
 
     def isBelowProcessLimit =
       processCount < workflowJob.processLimit

@@ -15,11 +15,13 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.tests.controller.proxy.ClusterProxyTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import org.scalatest.{BeforeAndAfterAll, TestSuite}
 
 trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest, ProvideActorSystem:
   this: TestSuite =>
+
+  private given IORuntime = ioRuntime
 
   protected val items = Seq(workflow)
   protected def config = config"""
@@ -42,7 +44,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest,
 
   override def afterAll() =
     close()
-    controllerApi.stop.runAsyncAndForget
+    controllerApi.stop.unsafeRunAndForget()
     super.afterAll()
 
   override protected def primaryControllerConfig = config"""

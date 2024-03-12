@@ -1,32 +1,44 @@
 // WARNING: Run tests only in a secure closed environment (like Docker) !!!
 // because tests open localhost TCP ports that may allow code injection.
 /**
-  * Install sbt from https://www.scala-sbt.org/.
-  * Not needed for standard (JVM-only) production build:
-  *   Install Node.js from https://nodejs.org/.
-  *   If you don't start sbt with "bin/sbt-batch": Run "npm install jsdom" in this or a parent directory.
-  *   This command creates a directory "node_modules" and a file "package-lock.json".
-  *
-  * Recommended usage for CI server:
-  *   sbt clean-publish
-  *
-  * To build only, without publishing:
-  *   sbt clean-build
-  *
-  * To build and publish to a repository use
-  *   sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
-  *   (publishRepository.name defaults to publishRepository.uri)
-  *
-  *   Under Windows, if system properties are not accepted, set a environment variable:
-  *   set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
-  *   sbt clean-publish
-  *
-  * To release an alpha version
-  *   Only if the current branch is not "main" and starts not with "release/" !
-  *   sbt release use-defaults
-  *
-  * sbt allows to preset these command line options in the environment variable SBT_OPTS.
-  */
+ * Install sbt from https://www.scala-sbt.org/.
+ *
+ * NOT NEEDED for standard (JVM-only) production build:
+ *    Install Node.js from https://nodejs.org/.
+ *    If you don't start sbt with "bin/sbt-batch": Run "npm install jsdom" in this or a parent directory.
+ *    This command creates a directory "node_modules" and a file "package-lock.json".
+ *
+ * Recommended usage for CI server:
+ *    sbt clean-publish
+ *
+ * To build only, without publishing:
+ *    sbt clean-build
+ *
+ * To build only without running tests or publishing:
+ *    sbt clean-pack
+ *
+ * To build and publish to a repository, use:
+ *    sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
+ *    (publishRepository.name defaults to publishRepository.uri)
+ *
+ *    Under Windows, if system properties are not accepted, set a environment variable:
+ *    set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
+ *    sbt clean-publish
+ *
+ * Parallelize testing with: (time-critical test may fail, don't use the machine while building)
+ *    sbt -Dtest.parallel ...
+ *
+ * OUTPUT
+ *    The complete installation package (only the files in lib/ are required):
+ *    js7-install/target/universal/js7-install-(version).tgz
+ *
+ *    The JS7 Engine code only, without externals jars:
+ *    target/js7-engine-(version).jar
+ *
+ *    There is also a Docker example:
+ *    js7-docker/target/universal/js7-docker-(version).tgz
+ */
+
 import BuildUtils.*
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
@@ -37,7 +49,7 @@ import sbtrelease.{Version, versionFormatError}
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
-ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / scalaVersion := "3.3.3"
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val target = {
@@ -76,7 +88,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  "-explain",
+  //"-explain",
   "-feature",
   "-deprecation",
   "-Yretain-trees", // Required for Circe derived default values
@@ -93,8 +105,9 @@ Global / concurrentRestrictions := Seq(
   Tags.limitAll(if (parallelExecution.value) sys.runtime.availableProcessors max testParallelization else 1))
 
 // https://www.scalatest.org/user_guide/using_scalatest_with_sbt
-val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
-  (if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30"): _*)
+val scalaTestArguments = Tests.Argument(
+  TestFrameworks.ScalaTest,
+  ((if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30")) *)
 
 val _dummy_ = {
   sys.props("TEST") = "true"
@@ -126,9 +139,7 @@ val commonSettings = Seq(
       Nil
     else {
       import Dependencies.*
-      cats ++
-        ("org.typelevel" %% "cats-core" % catsVersion) ++
-        ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
+      //? catsEffect ++
         circe ++
         slf4j
       }
@@ -209,7 +220,8 @@ lazy val `js7-install` = project
   .dependsOn(
     `js7-engine`,
     `js7-provider`,
-    `js7-license-fake`)
+    `js7-license-fake`,
+    `js7-tests`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -255,7 +267,8 @@ lazy val `js7-engine` = project.in(file("target/js7-engine"))
     `js7-subagent`,
     `js7-launcher-for-java`,
     `js7-launcher-for-windows`,
-    `js7-service-pgp`)
+    `js7-service-pgp`,
+    `js7-tests`)
   .settings(commonSettings)
   .settings(
     Compile / resourceGenerators += Def.task {
@@ -308,9 +321,10 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++=
       "dev.zio" %%% "izumi-reflect" % izumiReflectVersion ++
       "org.typelevel" %%% "cats-core" % catsVersion ++
-      "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "cats-parse" % catsParseVersion ++
+      "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
+      "io.github.timwspence" %% "cats-stm" % catsSTMVersion ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
@@ -318,13 +332,13 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic" % circeVersion ++
       "co.fs2" %% "fs2-core" % fs2Version ++
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
-      "io.monix" %%% "monix-eval" % monixVersion ++
-      "io.monix" %%% "monix-reactive" % monixVersion ++
+      "co.fs2" %% "fs2-io" % fs2Version ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
-      "com.outr" %%% "scribe" % scribeVersion ++
+      "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
       "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
+      catsEffectTesting ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatestplus" %%% "scalacheck-1-16" % scalaTestCheckVersion % "test" ++
@@ -430,7 +444,8 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
-    libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
+    libraryDependencies += "org.typelevel" %%% "cats-core" % catsVersion
+    libraryDependencies += "org.typelevel" %%% "cats-effect" % catsEffectVersion
   }
   .jvmSettings {
     import Dependencies.*
@@ -539,7 +554,6 @@ lazy val `js7-core` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      tagging ++
       diffx ++
       pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
@@ -714,7 +728,6 @@ lazy val `js7-agent-client` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      "io.monix" %% "monix-reactive" % monixVersion ++
       pekkoActor ++
       pekkoHttp ++
       scalaTest % "test" ++
@@ -793,6 +806,7 @@ lazy val `js7-tests` = project
   }
 
 def isExcludedJar(path: String) =
+  path.startsWith("org.scalatest.") ||
   path.startsWith("com.google.code.findbugs.jsr305-") ||
   path.startsWith("com.google.errorprone.error_prone_annotations-") ||
   path.startsWith("com.google.guava.listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar") ||

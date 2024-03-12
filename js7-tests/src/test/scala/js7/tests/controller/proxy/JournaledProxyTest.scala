@@ -1,16 +1,17 @@
 package js7.tests.controller.proxy
 
+import fs2.Stream
 import js7.base.Js7Version
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.pekkoutils.ProvideActorSystem
@@ -31,12 +32,10 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{primaryUserAndPassword, workflow}
-import js7.tests.controller.proxy.JournaledProxyObservableTester.syntax.*
+import js7.tests.controller.proxy.JournaledProxyStreamTester.syntax.*
 import js7.tests.controller.proxy.JournaledProxyTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 
@@ -82,7 +81,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
 
   "updateItems" - {
     "VersionId mismatch" in {
-      val response = api.updateItems(Observable(
+      val response = api.updateItems(Stream(
         AddVersion(VersionId("OTHER-VERSION")),
         AddOrChangeSigned(toSignedString(workflow))
       )).await(99.s)
@@ -92,7 +91,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
     "success" in {
       val myWorkflow = workflow withVersion versionId
       proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
-        api.updateItems(Observable(
+        api.updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(myWorkflow))
         )).map { o => assert(o.orThrow == Completed) }
@@ -103,13 +102,13 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
   "addOrders" - {
     "Adding duplicate orders is rejected" in {
       val order = FreshOrder(OrderId("DUPLICATE"), workflow.path)
-      assert(api.addOrders(Observable(order, order)).await(99.s) ==
+      assert(api.addOrders(Stream(order, order)).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Order:DUPLICATE")))
     }
 
     "success" in {
       val orderIds = (1 to 2).map(i => OrderId(s"ORDER-$i")).toSet
-      val whenFinished = proxy.observable
+      val whenFinished = proxy.stream()
         .collect {
           case EventAndState(Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)), _, _)
             if orderIds contains orderId =>
@@ -120,10 +119,10 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
             state + orderId
           case (state, _) => state
         }
-        .toListL
-        .runToFuture
+        .compile.toList
+        .unsafeToFuture()
       api.addOrders(
-        Observable.fromIterable(
+        Stream.iterable(
           orderIds.map(orderId => FreshOrder(orderId, workflow.path)))
       ).await(99.s).orThrow
       val observedEvents = whenFinished.await(99.s)

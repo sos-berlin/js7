@@ -1,5 +1,6 @@
 package js7.journal.write
 
+import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
@@ -12,7 +13,6 @@ import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.EventJournalWriter.*
-import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -27,10 +27,10 @@ final class EventJournalWriter(
   protected val simulateSync: Option[FiniteDuration],
   withoutSnapshots: Boolean = false,
   initialEventCount: Int = 0)
-  (implicit protected val scheduler: Scheduler)
-extends JournalWriter(S, after = after, append = !withoutSnapshots), 
+  (implicit protected val ioRuntime: IORuntime)
+extends JournalWriter(S, after = after, append = !withoutSnapshots),
   AutoCloseable:
-  
+
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: EventStatisticsCounter =
     new EventStatisticsCounter(initialEventCount)
@@ -108,7 +108,7 @@ private[journal] object EventJournalWriter:
 
   def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
-    (implicit scheduler: Scheduler)
+    (using IORuntime)
   =
     new EventJournalWriter(journalLocation.S, journalLocation.file(after), after, journalId, observer,
       simulateSync = None, withoutSnapshots = withoutSnapshots)

@@ -1,7 +1,8 @@
 package js7.common.pekkoutils
 
-import cats.effect.{Resource, Sync}
+import cats.effect.{IO, Resource, Sync}
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -9,8 +10,6 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.Js7Configuration
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.actor.{ActorContext, ActorPath, ActorRef, ActorRefFactory, ActorSystem, ChildActorPath, Props, RootActorPath, Terminated}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.Uri
@@ -28,7 +27,7 @@ object Pekkos:
   def newActorSystem(
     name: String,
     config: Config = ConfigFactory.empty,
-    executionContext: ExecutionContext = ExecutionContext.global)
+    executionContext: ExecutionContext)
   : ActorSystem =
     logger.debugCall("newActorSystem", name):
       val myConfig = ConfigFactory.systemProperties
@@ -47,15 +46,15 @@ object Pekkos:
       actorSystem.settings.config.getDuration("js7.pekko.shutdown-timeout").toFiniteDuration)
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
-    logger.debugCall("terminateAndWait", actorSystem.name)(
+    logger.debugCall(s"terminateAndWait ActorSystem:${actorSystem.name}")(
       try terminateFuture(actorSystem).await(timeout)
       catch { case NonFatal(t) =>
-        logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
+        logger.warn(s"ActorSystem:${actorSystem.name} .terminate(): ${t.toStringWithCauses}")
       })
 
-  def terminate(actorSystem: ActorSystem): Task[Unit] =
-    logger.debugTask(s"terminate ActorSystem('${actorSystem.name}')")(
-      Task.deferFuture(
+  def terminate(actorSystem: ActorSystem): IO[Unit] =
+    logger.debugIO(s"terminate ActorSystem:${actorSystem.name}")(
+      IO.fromFutureDummyCancelable(IO:
         terminateFuture(actorSystem)
       ).void)
 
@@ -66,7 +65,7 @@ object Pekkos:
     if actorSystem.whenTerminated.isCompleted then
       actorSystem.whenTerminated
     else
-      import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
+      import actorSystem.dispatcher  // The ExecutionContext may be shut down here !!!
       val poolShutdownTimeout =
         try actorSystem.settings.config.getDuration("js7.pekko.http.connection-pool-shutdown-timeout").toFiniteDuration
         catch { case _: ConfigException.Missing => 100.ms }
@@ -79,14 +78,14 @@ object Pekkos:
         timeoutPromise.future)
       ).flatMap { _ =>
         if timeoutPromise.isCompleted then
-          logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+          logger.debug(s"ActorSystem:${actorSystem.name} shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
         timer.cancel()
         actorSystem.terminate()
       }
 
   def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
     if actorSystem.hasExtension(Http) then
-      logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools()")
+      logger.debug(s"ActorSystem:${actorSystem.name} shutdownAllConnectionPools()")
       Http(actorSystem).shutdownAllConnectionPools()
     else
       Future.successful(())
@@ -140,14 +139,16 @@ object Pekkos:
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
 
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
-  : Resource[Task, ActorSystem] =
-    Resource.suspend(Task.deferAction(scheduler => Task(
-      actorSystemResource1(name, config, scheduler))))
+  : Resource[IO, ActorSystem] =
+    for
+      ec <- Resource.eval(IO.executionContext)
+      r <- actorSystemResource1(name, config, ec)
+    yield r
 
-  private def actorSystemResource1(name: String, config: Config, scheduler: Scheduler)
-  : Resource[Task, ActorSystem] =
+  private def actorSystemResource1(name: String, config: Config, ec: ExecutionContext)
+  : Resource[IO, ActorSystem] =
     Resource.make(
-      acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
+      acquire = IO(newActorSystem(name, config, ec)))(
       release = terminate)
 
   def actorResource[F[_]](props: Props, name: String)

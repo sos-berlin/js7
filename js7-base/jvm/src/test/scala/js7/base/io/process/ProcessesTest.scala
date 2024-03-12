@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.unsafe.IORuntime
 import cats.instances.future.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
@@ -12,13 +13,12 @@ import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTempora
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -28,12 +28,16 @@ import scala.util.Try
  */
 final class ProcessesTest extends OurTestSuite:
 
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
+
   "processToPidOption, toShellCommandArguments" in:
     if isWindows then
       val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
         .startRobustly().await(99.s)
       //assert(processToPidOption(process).isEmpty)
       process.waitFor()
+      succeed
     else
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
@@ -42,6 +46,7 @@ final class ProcessesTest extends OurTestSuite:
       val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
+      succeed
 
   "toShellCommandArguments" in:
     val file = Paths.get("FILE")
@@ -63,6 +68,7 @@ final class ProcessesTest extends OurTestSuite:
       for (a, b) <- echoLines.tail zip Args do assert(a == b)
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
+      succeed
     }
 
   "newLogFile" in:
@@ -98,13 +104,13 @@ final class ProcessesTest extends OurTestSuite:
 
   "Many processes" in:
     for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do
-        val since = now
-        (1 to n).toVector
-          .traverse(_ => Future {
-            runProcess("sleep 0")
-          })
-          .await(99.s)
-        info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
+      val since = now
+      (1 to n).toVector
+        .traverse(_ => Future {
+          runProcess("sleep 0")
+        })
+        .await(99.s)
+      info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
   //"runProcess" in {
   //  assert(runProcess("echo HELLO").trim == "HELLO")
   //}

@@ -3,7 +3,6 @@ package js7.base.utils
 import java.util.concurrent.ConcurrentLinkedQueue
 import js7.base.test.OurTestSuite
 import js7.base.utils.CloserTest.*
-import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NoStackTrace
@@ -142,7 +141,7 @@ object CloserTest
     def closed = closeables.asScala.toList
 
     final class TestCloseable(throwable: Option[Throwable] = None) extends AutoCloseable {
-      private val closed = AtomicBoolean(false)
+      private val closed = Atomic(false)
 
       def close() = {
         if closed.getAndSet(true) then sys.error("Duplicate close")

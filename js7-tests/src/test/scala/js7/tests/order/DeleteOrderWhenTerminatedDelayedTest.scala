@@ -3,7 +3,7 @@ package js7.tests.order
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
@@ -17,10 +17,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.DeleteOrderWhenTerminatedDelayedTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
-import monix.execution.Scheduler.Implicits.traced
 
 final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = agentPath :: Nil
   protected val items = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.delete-delay = 1s"""

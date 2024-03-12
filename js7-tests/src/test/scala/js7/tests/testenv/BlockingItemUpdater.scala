@@ -1,17 +1,18 @@
 package js7.tests.testenv
 
+import cats.effect.unsafe.IORuntime
+import fs2.{Pure, Stream}
 import java.util.Locale
 import js7.base.crypt.Signed
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, Lazy}
 import js7.data.controller.ControllerState
+import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import monix.execution.Scheduler
-import monix.reactive.Observable
 import scala.annotation.tailrec
 
 trait BlockingItemUpdater:
@@ -36,21 +37,34 @@ trait BlockingItemUpdater:
         v
     loop()
 
-  protected final def withTemporaryItem[I <: InventoryItem, A](item: I)(body: I => A)
-    (implicit s: Scheduler)
+  protected final def withTemporaryItem[I <: InventoryItem, A](
+    item: I, awaitDeletion: Boolean = false)
+    (body: I => A)
+    (using IORuntime)
   : A =
     val realItem = updateItem(item)
-    try body(realItem)
-    finally deleteItems(realItem.path)
+    var deleted = false
+    try
+      val a = body(realItem)
+
+      if awaitDeletion && controller.controllerState().keyToItem.contains(realItem.key) then
+        controller.eventWatch
+          .expect[ItemDeleted](_.event.key == realItem.key):
+            deleteItems(realItem.path)
+            deleted = true
+
+      a
+    finally if !deleted then
+      deleteItems(realItem.path)
 
   protected final def withItems[A](items: InventoryItem*)(body: => A)
-    (implicit s: Scheduler)
+    (using IORuntime)
   : A =
     updateItems(items*)
     try body
     finally deleteItems(items.map(_.path)*)
 
-  protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler): I =
+  protected final def updateItem[I <: InventoryItem](item: I)(using IORuntime): I =
     val myItem: I = item match
       case workflow: Workflow if workflow.id.isAnonymous =>
         workflow.withId(nextPath[WorkflowPath]).asInstanceOf[I]
@@ -60,34 +74,37 @@ trait BlockingItemUpdater:
       case (myItem: VersionedItem, Some(v)) => myItem.withVersion(v).asInstanceOf[I]
       case _ => myItem
 
-  protected final def updateItems(items: InventoryItem*)(implicit s: Scheduler)
+  protected final def updateItems(items: InventoryItem*)(using IORuntime)
   : Option[VersionId] =
     val versionId = Lazy(nextVersionId())
-    val operations: Vector[AddOrChangeOperation] = items
-      .toVector
-      .map:
-        case item: VersionedItem if item.id.versionId.isAnonymous =>
-          // Update versionId as a side effect !
-          item withVersion versionId()
-        case o => o
+    val operations: Stream[Pure, AddOrChangeOperation] = Stream
+      .iterable:
+        items.toVector
+          // execute this eagerly to trigger versionId
+          .map:
+            case item: VersionedItem if item.id.versionId.isAnonymous =>
+              item withVersion versionId()
+            case o => o
       .map:
         case item: SignableItem => AddOrChangeSigned(sign(item).signedString)
         case item: UnsignedSimpleItem => AddOrChangeSimple(item)
 
     controller.api
-      .updateItems(
-        Observable.fromIterable(versionId.toOption.map(AddVersion(_))) ++
-          Observable.fromIterable(operations))
+      .updateItems:
+        Stream.fromOption(versionId.toOption.map(AddVersion(_)))
+          ++ operations
       .await(99.s)
       .orThrow
 
     versionId.toOption
 
-  protected final def deleteItems(paths: InventoryItemPath*)(implicit s: Scheduler): Unit =
+  protected final def deleteItems(paths: InventoryItemPath*)(using IORuntime): Unit =
     controller.api
-      .updateItems(
-        Observable.fromIterable(
-          (paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())) ++
-            paths.map(ItemOperation.Remove(_))))
+      .updateItems:
+        Stream
+          .fromOption:
+            paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())
+          .append:
+            Stream.iterable(paths).map(ItemOperation.Remove(_))
       .await(99.s)
       .orThrow

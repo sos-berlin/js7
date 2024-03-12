@@ -5,7 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
@@ -21,9 +21,12 @@ import js7.tests.ForkListRecoveryTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 final class ForkListRecoveryTest extends OurTestSuite, DirectoryProviderForScalaTest:
+
+  private given IORuntime = ioRuntime
+
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """

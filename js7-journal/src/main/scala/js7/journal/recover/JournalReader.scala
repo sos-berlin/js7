@@ -6,7 +6,6 @@ import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.*
@@ -15,8 +14,9 @@ import js7.common.utils.untilNoneIterator
 import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.recover.JournalReader.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
+import js7.base.fs2utils.StreamExtensions.{+:, mapParallelBatch}
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
@@ -66,16 +66,18 @@ extends AutoCloseable:
               positionAndJson.copy(value = positionAndJson.value.toByteArray))
       jsonReader.position
 
-  private[recover] def readSnapshot: Observable[Any] =
+  private[recover] def readSnapshot: Stream[IO, Any] =
     synchronized:
       journalHeader +:
-        Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
+        Stream.fromIterator[IO](untilNoneIterator(nextSnapshotJson()), chunkSize = 1/*???*/)
           .mapParallelBatch()(json => S.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
 
-  private[recover] def readSnapshotRaw: Observable[ByteArray] =
+  private[recover] def readSnapshotRaw: Stream[IO, ByteArray] =
     synchronized:
       rawJournalHeader.value +:
-        Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotRaw().map(_.value)))
+        Stream.fromIterator[IO](
+          untilNoneIterator(nextSnapshotRaw().map(_.value)),
+          chunkSize = 1/*???*/)
 
   private def nextSnapshotJson(): Option[Json] =
     nextSnapshotRaw().map(jsonReader.toJson).map(_.value)
@@ -209,18 +211,18 @@ extends AutoCloseable:
 
 object JournalReader:
   def snapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
-  : Observable[Any] =
+  : Stream[IO, Any] =
     snapshot_(_.readSnapshot)(S, journalFile, expectedJournalId)
 
   def rawSnapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
-  : Observable[ByteArray] =
+  : Stream[IO, ByteArray] =
     snapshot_(_.readSnapshotRaw)(S, journalFile, expectedJournalId)
 
-  private def snapshot_[A](f: JournalReader => Observable[A])
+  private def snapshot_[A](f: JournalReader => Stream[IO, A])
     (S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
-  : Observable[A] =
-    Observable
-      .fromResource(Resource.fromAutoCloseable(Task(
+  : Stream[IO, A] =
+    Stream
+      .resource(Resource.fromAutoCloseable(IO(
         new JournalReader(S, journalFile, expectedJournalId))))
       .flatMap(f)
 

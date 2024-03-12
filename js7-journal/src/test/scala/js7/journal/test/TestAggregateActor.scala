@@ -9,7 +9,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.journal.configuration.JournalConf
 import js7.journal.test.TestAggregateActor.*
 import js7.journal.{JournalActor, KeyedJournalingActor}
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 /**
@@ -17,12 +18,14 @@ import scala.util.{Failure, Success}
   */
 private[test] final class TestAggregateActor(key_ : String, val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
-  (implicit protected val scheduler: Scheduler)
+  (implicit protected val ioRuntime: IORuntime)
 extends KeyedJournalingActor[TestState, TestEvent]:
 
   protected def key = key_.asInstanceOf[E.Key]
   private var aggregate: TestAggregate = null
   private var disturbance = 0
+
+  private given ExecutionContext = ioRuntime.compute
 
   def receive =
     case Input.RecoverFromSnapshot(aggregate) =>
@@ -70,8 +73,8 @@ extends KeyedJournalingActor[TestState, TestEvent]:
         case Command.AcceptEarly =>
           val sender = this.sender()
           val event = TestEvent.NothingDone
-          persistAcceptEarlyTask(event).runToFuture onComplete:
-            // persistAcceptEarlyTask does not update persistedEventId
+          persistAcceptEarlyIO(event).unsafeToFuture() onComplete:
+            // persistAcceptEarlyIO does not update persistedEventId
             case Success(Right(_: Accepted)) => sender ! Response.Completed(disturbance)
             case Success(Left(problem)) =>
               logger.error(problem.toString)

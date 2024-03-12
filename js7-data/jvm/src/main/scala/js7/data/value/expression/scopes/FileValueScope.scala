@@ -1,15 +1,14 @@
 package js7.data.value.expression.scopes
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import js7.base.problem.Checked
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.scopes.FileValueScope.*
 import js7.data.value.expression.{Expression, Scope}
-import monix.eval.Task
 
-private[scopes] final class FileValueScope private(
+private[js7] final class FileValueScope private(
   private[scopes] val fileValueState: FileValueState)
 extends Scope, AutoCloseable:
 
@@ -60,6 +59,6 @@ extends Scope, AutoCloseable:
 object FileValueScope:
   val functionName = "toFile"
 
-  def resource(fileValueState: FileValueState): Resource[Task, FileValueScope] =
-    Resource.fromAutoCloseable(Task(
-      new FileValueScope(fileValueState)))
+  def resource(fileValueState: FileValueState): Resource[IO, FileValueScope] =
+    Resource.fromAutoCloseable(IO:
+      new FileValueScope(fileValueState))

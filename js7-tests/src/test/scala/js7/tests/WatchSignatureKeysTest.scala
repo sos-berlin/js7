@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.IO
 import java.io.FileOutputStream
 import java.nio.file.Files.{createTempDirectory, delete}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -11,14 +12,14 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -33,13 +34,12 @@ import js7.tests.WatchSignatureKeysTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScalaTest
 {
+  private given ExecutionContext = executionContext
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.directory-watch.watch-delay = 0s
@@ -173,12 +173,9 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     }
 
     val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
-      .void.runToFuture
     val agentUpdated = agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]
-      .void.runToFuture
     val subagentUpdated = idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
       .when[Subagent.ItemSignatureKeysUpdated]
-      .void.runToFuture
 
     X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
     val pem = ByteArray(cCertAndKey.certificatePem).toArray
@@ -205,7 +202,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       }
     }
 
-    Future.sequence(Seq[Future[Unit]](controllerUpdated, agentUpdated, subagentUpdated)).await(99.s)
+    Future.sequence(Seq[Future[?]](controllerUpdated, agentUpdated, subagentUpdated)).await(99.s)
 
     val v = nextVersion()
     controller.api.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
@@ -214,15 +211,18 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
   }
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =
-    Task.parZip3(
-      controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
+    IO.parSequenceN(3)(Seq(
+      IO.fromFuture(IO.pure:
+          controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated])
         .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
-      agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]
+      IO.fromFuture(IO.pure:
+          agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated])
         .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
-      idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
-        .when[Subagent.ItemSignatureKeysUpdated]
-        .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated")
-    ).void.runToFuture
+      IO.fromFuture(IO.pure:
+          idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
+            .when[Subagent.ItemSignatureKeysUpdated])
+        .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated"))
+    ).void.unsafeToFuture()
 
   private def testOrder(versionId: VersionId): Unit = {
     val events = controller.runOrder(FreshOrder(OrderId(versionId.toString), workflow.path))

@@ -31,7 +31,7 @@ import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.MapView
 
 /**
@@ -82,20 +82,20 @@ extends SignedItemContainer,
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
 
-  def toSnapshotObservable = Observable(
-    standards.toSnapshotObservable,
-    Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
-    Observable.fromIterable(keyToItem(AgentRef).values),
-    Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
-    Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(idToOrder.values)
+  def toSnapshotStream = Stream(
+    standards.toSnapshotStream,
+    Stream.iterable(meta != AgentMetaState.empty thenList meta),
+    Stream.iterable(keyToItem(AgentRef).values),
+    Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
+    Stream.iterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
+    Stream.iterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
+    Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(idToOrder.values)
   ).flatten
 
   // COMPATIBLE with v2.2

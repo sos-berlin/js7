@@ -4,7 +4,7 @@ import io.circe.Codec
 import js7.data.item.SimpleItemPath.*
 
 trait SimpleItemPath extends InventoryItemKey, InventoryItemPath:
-  
+
   protected type Self <: SimpleItemPath
 
   def companion: Companion[? <: SimpleItemPath]

@@ -1,40 +1,41 @@
 package js7.base.monixutils
 
-import monix.catnap.MVar
-import monix.eval.Task
+import cats.effect.{Deferred, IO}
 
-/** A single-use latch, after being closed it can never opened again. */
+/** A single-use, initially open latch.
+ * After being closed it cannot opened again. */
 final class Latch extends Latch.ReadOnly:
 
-  // Initially open
-  private val latch = MVar[Task].empty[Unit]().memoize
+  private val deferred = Deferred.unsafe[IO, Unit]
 
-  val is: Task[Boolean] =
-    latch.flatMap(_.isEmpty)
+  /** True before switch. */
+  val isNot: IO[Boolean] =
+    deferred.tryGet.map(_.isEmpty)
 
-  val isNot: Task[Boolean] =
-    is.map(!_)
+  /** True after switch. */
+  val is: IO[Boolean] =
+    deferred.tryGet.map(_.isDefined)
 
   /** Close the latch and return true if not was already closed. */
-  val switch: Task[Boolean] =
-    latch.flatMap(_.tryPut(()))
+  val switch: IO[Boolean] =
+    deferred.complete(())
 
-  /** Close and return `task` iff switch was previously off. */
-  def switchThen[A](task: => Task[A]): Task[Option[A]] =
+  /** Close and return `io` iff switch was previously off. */
+  def switchThen[A](io: => IO[A]): IO[Option[A]] =
     switch.flatMap(hasSwitched =>
       if hasSwitched then
-        task.map(Some(_))
+        io.map(Some(_))
       else
-        Task.none)
+        IO.none)
 
-  val when: Task[Unit] =
-    latch.flatMap(_.read).void
+  def when: IO[Unit] =
+    deferred.get
 
 
 object Latch:
   trait ReadOnly:
-    def is: Task[Boolean]
+    def is: IO[Boolean]
 
-    def isNot: Task[Boolean]
+    def isNot: IO[Boolean]
 
-    def when: Task[Unit]
+    def when: IO[Unit]

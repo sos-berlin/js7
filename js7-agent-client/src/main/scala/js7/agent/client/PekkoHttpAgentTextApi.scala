@@ -14,6 +14,7 @@ import js7.base.web.Uri
 import js7.common.http.{PekkoHttpClient, TextApi}
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.session.HttpSessionApi
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +24,8 @@ private[agent] final class PekkoHttpAgentTextApi(
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser, 
+  (using protected val executionContext: ExecutionContext)
+extends HasCloser,
   ProvideActorSystem, TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword:
 
   protected val name = "PekkoHttpAgentTextApi"

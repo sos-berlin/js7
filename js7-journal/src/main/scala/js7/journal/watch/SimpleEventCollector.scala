@@ -10,14 +10,14 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.write.EventJournalWriter
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
 import org.jetbrains.annotations.TestOnly
 import scala.reflect.ClassTag
 
 final class SimpleEventCollector(
   eventTypedJsonCodec: KeyedEventTypedJsonCodec[Event],
   config: Config = ConfigFactory.empty)
-(implicit protected val scheduler: Scheduler)
+(implicit protected val ioRuntime: IORuntime)
 extends AutoCloseable:
 
   private val directory = createTempDirectory("SimpleEventCollector-")
@@ -56,7 +56,7 @@ extends AutoCloseable:
 object SimpleEventCollector:
   @TestOnly
   def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])(config: Config = ConfigFactory.empty)
-  (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E], scheduler: Scheduler)
+  (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E], ioRuntime: IORuntime)
   : SimpleEventCollector =
     val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](KeyedSubtype[E])
     new SimpleEventCollector(keyedEventTypedJsonCodec, config)

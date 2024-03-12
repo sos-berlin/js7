@@ -52,7 +52,7 @@ private object ClusterableStateTest:
 
     def estimatedSnapshotSize = standards.snapshotSize
 
-    def toSnapshotObservable = standards.toSnapshotObservable
+    def toSnapshotStream = standards.toSnapshotStream
 
     def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)

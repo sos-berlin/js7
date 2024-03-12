@@ -1,5 +1,6 @@
 package js7.tests.filewatch
 
+import cats.effect.IO
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentEvent.AgentReady
@@ -9,13 +10,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedStateEvent, ItemAttachedToMe}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
@@ -32,12 +33,15 @@ import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, 
 import js7.tests.filewatch.FileWatch2Test.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import java.io.File.separator
+import js7.base.monixlike.MonixLikeExtensions.toListL
 
 final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
+  private given IORuntime = ioRuntime
+
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
 
@@ -111,7 +115,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
 
-          assert(!TestJob.semaphore.flatMap(_.tryAcquire).runSyncUnsafe())
+          assert(!TestJob.semaphore.flatMap(_.tryAcquire).await(99.s))
           aDirectory / "3" := ""
           await[OrderStarted](_.key == orderId3)
         }
@@ -320,10 +324,11 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
   private def checkAgentEvents(client: AgentClient): Unit =
     client.login().await(99.s)
     val keyedEvents = client
-      .eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
-      .await(99.s).orThrow
+      .agentEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+      .await(99.s)
+      .orThrow
       .map(_.value)
-      .flatMap(ke => Observable.fromIterable(Some(ke.event)
+      .flatMap(ke => Stream.emit(ke.event)
         .collect {
           case e: AgentReady => e.copy(
             timezone = "Europe/Berlin",
@@ -332,7 +337,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           case e: InventoryItemEvent if e.key.isInstanceOf[OrderWatchPath] => e
           case e: OrderWatchEvent => e
         }
-        .map(e => ke.key <~: e)))
+        .map(e => ke.key <~: e))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),

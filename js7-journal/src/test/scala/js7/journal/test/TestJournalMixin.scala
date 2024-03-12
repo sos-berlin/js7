@@ -1,5 +1,6 @@
 package js7.journal.test
 
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.Done
 import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
@@ -18,12 +19,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
+import js7.base.test.TestCatsEffect
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.Pekkos.newActorSystem
-import js7.common.pekkoutils.{Pekkos, DeadLetterActor}
+import js7.common.pekkoutils.{DeadLetterActor, Pekkos}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.event.{Event, JournalId, KeyedEvent}
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -39,7 +41,10 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite =>
+private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffect
+{ this: Suite =>
+
+  private given IORuntime = ioRuntime
 
   protected implicit val askTimeout: Timeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")
@@ -53,7 +58,8 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit =
     val config_ = config withFallback TestConfig
-    val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
+    val actorSystem = newActorSystem(getClass.simpleScalaName, config_,
+      executionContext = ioRuntime.compute)
     try
       DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[Unit]()

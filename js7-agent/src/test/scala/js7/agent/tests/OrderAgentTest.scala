@@ -1,6 +1,7 @@
 package js7.agent.tests
 
-import org.apache.pekko.actor.ActorSystem
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -15,11 +16,12 @@ import js7.base.configutils.Configs.*
 import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped}
+import js7.base.monixlike.MonixLikeExtensions.{headL, toListL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax.*
@@ -38,7 +40,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.service.pgp.PgpSigner
-import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -47,6 +49,9 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 final class OrderAgentTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   private lazy val controllerRunId = ControllerRunId(JournalId.random())
 
   "AgentCommand AttachOrder" in:
@@ -111,13 +116,12 @@ final class OrderAgentTest extends OurTestSuite:
 
           // Await OrderDetachable
           agentClient
-            .eventObservable(EventRequest.singleClass[Event](timeout = Some(10.s)))
-            .map(_.orThrow)
-            .map(_.find {
-                case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>  true
-                case _ => false
-              })
-            .flatMap(_.headL)
+            .agentEventStream(EventRequest.singleClass[Event](timeout = Some(10.s)))
+            .flatMap(_
+              .orThrow
+              .collectFirst:
+                case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
+              .headL)
             .await(99.s)
 
           val processedOrder = agent.currentAgentState().idToOrder(order.id)
@@ -150,7 +154,8 @@ final class OrderAgentTest extends OurTestSuite:
       val timeout = 1.hour
       TestAgent.blockingRun(agentConf, timeout) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem =
+            newActorSystem(getClass.getSimpleName, executionContext = ioRuntime.compute)
           val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
             .closeWithCloser
           agentClient.login() await 99.s
@@ -176,7 +181,7 @@ final class OrderAgentTest extends OurTestSuite:
           val ready = mutable.Set.empty[OrderId]
           while ready != awaitedOrderIds do
             ready ++= agentClient
-              .eventObservable(EventRequest.singleClass[Event](timeout = Some(timeout)))
+              .agentEventStream(EventRequest.singleClass[Event](timeout = Some(timeout)))
               .map(_.orThrow)
               .await(99.s)
               .map(_.value)

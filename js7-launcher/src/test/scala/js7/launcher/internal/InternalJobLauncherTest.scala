@@ -1,18 +1,20 @@
 package js7.launcher.internal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.io.process.{Stderr, Stdout}
 import js7.base.problem.Checked.*
-import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
-import js7.base.thread.IOExecutor.globalIOX
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.expression.Scope
@@ -20,14 +22,13 @@ import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.internal.InternalJobLauncherTest.*
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.subjects.PublishSubject
 
-final class InternalJobLauncherTest extends OurTestSuite:
-  private implicit val scheduler: Scheduler = Scheduler.traced
+final class InternalJobLauncherTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "InternalJobLauncher" in:
     val executable = InternalExecutable(
@@ -44,34 +45,40 @@ final class InternalJobLauncherTest extends OurTestSuite:
         sigkillDelay = 0.s,
         UTF_8),
       Map.empty,
-      globalIOX.scheduler,
-      AlarmClock())(Scheduler.traced, globalIOX)
-    val out = PublishSubject[String]()
-    val err = PublishSubject[String]()
-    val whenOutString = out.fold.lastL.runToFuture
-    val whenErrString = err.fold.lastL.runToFuture
-    val stdObservers = new StdObservers(out, err, charBufferSize = 4096, keepLastErrLine = false)
-    val orderId = OrderId("TEST")
-    val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))
-    val orderProcess = executor.toOrderProcess(
-      ProcessOrder(
-        Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
-        workflow,
-        jobKey,
-        workflowJob,
-        jobResources = Nil,
-        executeArguments = Map.empty,
-        jobArguments = Map("ARG" -> NumericConstant(1)),
-        ControllerId("CONTROLLER"),
-        stdObservers,
-        fileValueScope = Scope.empty)
-    ).await(99.s).orThrow
-    val outcome = orderProcess.start(orderId, jobKey, stdObservers).flatten.await(99.s)
-    assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
-    out.onComplete()
-    err.onComplete()
-    assert(whenOutString.await(99.s) == "OUT 1/" + "OUT 2" &&
-           whenErrString.await(99.s) == "ERR 1/" + "ERR 2")
+      blockingJobEC = globalIOX.executionContext,
+      null: AlarmClock)
+
+    StdObservers
+      .testSink(name = "InternalJobLauncherTest")
+      .use: testSink =>
+        val orderId = OrderId("TEST")
+        val jobKey = JobKey.Named(
+          WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil),
+          WorkflowJob.Name("TEST-JOB"))
+        for
+          orderProcess <- executor
+            .toOrderProcess:
+              ProcessOrder(
+                Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
+                workflow,
+                jobKey,
+                workflowJob,
+                jobResources = Nil,
+                executeArguments = Map.empty,
+                jobArguments = Map("ARG" -> NumericConstant(1)),
+                ControllerId("CONTROLLER"),
+                testSink.stdObservers,
+                fileValueScope = Scope.empty)
+            .map(_.orThrow)
+          fiber <- orderProcess.start(orderId, jobKey)
+          orderOutcome <- fiber.joinStd
+          _ = assert:
+            orderOutcome == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(2)))
+          outString <- testSink.out
+          errString <- testSink.err
+        yield assert:
+          outString == "OUT 1/" + "OUT 2" &&
+          errString == "ERR 1/" + "ERR 2"
 
 
 object InternalJobLauncherTest:
@@ -79,16 +86,14 @@ object InternalJobLauncherTest:
 
   private class TestInternalJob extends InternalJob:
     override def toOrderProcess(step: Step) =
-      OrderProcess(
-        Task.fromFuture(step.outObserver.onNext("OUT 1/")) >>
-        Task.fromFuture(step.errObserver.onNext("ERR 1/")) >>
-        Task.fromFuture(step.outObserver.onNext("OUT 2")) >>
-        Task.fromFuture(step.errObserver.onNext("ERR 2")) >>
-        Task {
+      OrderProcess:
+        step.write(Stdout, "OUT 1/")
+          *> step.write(Stderr, "ERR 1/")
+          *> step.write(Stdout, "OUT 2")
+          *> step.write(Stderr, "ERR 2")
+          *> IO:
           Outcome.Completed.fromChecked(
-          step.arguments.checked("ARG")
-            .flatMap(_.as[NumberValue])
-            .map(_.number + 1)
-            .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))
-        }
-      )
+            step.arguments.checked("ARG")
+              .flatMap(_.as[NumberValue])
+              .map(_.number + 1)
+              .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))

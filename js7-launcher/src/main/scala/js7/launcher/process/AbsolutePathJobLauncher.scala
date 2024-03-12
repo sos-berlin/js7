@@ -4,7 +4,8 @@ import java.nio.file.{InvalidPathException, Paths}
 import js7.base.problem.Checked._
 import js7.data.job.{AbsolutePathExecutable, JobConf}
 import js7.launcher.configuration.JobLauncherConf
-import monix.eval.Task
+import cats.effect.IO
+import js7.base.catsutils.UnsafeMemoizable.memoize
 
 final class AbsolutePathJobLauncher(
   protected val executable: AbsolutePathExecutable,
@@ -13,9 +14,9 @@ final class AbsolutePathJobLauncher(
 extends PathProcessJobLauncher:
 
   protected val checkFile =
-    Task {
-      catchExpected[InvalidPathException](
-        Paths.get(executable.path))
-    }.memoize
+    memoize:
+      IO:
+        catchExpected[InvalidPathException]:
+          Paths.get(executable.path)
 
-  def stop = Task.unit
+  def stop = IO.unit

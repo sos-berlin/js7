@@ -13,7 +13,7 @@ import js7.base.log.Logger
 import js7.base.stream.Numbered
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
-import js7.common.pekkohttp.StandardDirectives.taskRoute
+import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
@@ -26,24 +26,24 @@ import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 private final class SubagentRoute(
   routeBinding: RouteBinding,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[SubagentSession],
-  directorRoute: Task[Route],
+  directorRoute: IO[Route],
   protected val subagent: Subagent,
   protected val config: Config)
   (implicit
-    protected val scheduler: Scheduler,
+    protected val ioRuntime: IORuntime,
     protected val actorSystem: ActorSystem)
 extends WebLogDirectives,
   CommandRoute,
   SessionRoute,
   EventRoute:
-  
+
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
@@ -63,7 +63,7 @@ extends WebLogDirectives,
   private lazy val route =
     pathPrefix(Segment):
       case "subagent" => subagentRoute
-      case "agent" => taskRoute(directorRoute)
+      case "agent" => ioRoute(directorRoute)
       case _ => complete(NotFound)
 
   lazy val subagentRoute: Route =

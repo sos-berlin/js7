@@ -9,7 +9,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.UnknownOrderProblem
@@ -35,9 +35,9 @@ import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
-final class SuspendResumeOrdersTest 
+final class SuspendResumeOrdersTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override def controllerConfig = config"""

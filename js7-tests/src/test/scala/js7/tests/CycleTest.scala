@@ -1,5 +1,8 @@
 package js7.tests
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import java.time.{LocalDateTime, LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
@@ -7,7 +10,7 @@ import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
@@ -35,9 +38,6 @@ import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
@@ -285,7 +285,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       assert(local("2021-10-31T04:00") - local("2021-10-31T03:59:59") == 1.h + 1.s)
     }
 
-    val workflow = updateItem(Workflow(
+    lazy val workflow = updateItem(Workflow(
       WorkflowPath("DST"),
       Seq(
         Cycle(
@@ -382,7 +382,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     }
   }
 
-  "SchedulerTester standard example" - {
+  "ScheduleTester standard example" - {
     clock.resetTo(local("2021-10-01T00:00"))
 
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
@@ -589,7 +589,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     "Break without Cycle is rejected" in {
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(Workflow.of(
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
@@ -604,7 +604,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     "Break in Fork without Cycle is rejected" in {
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(Workflow(
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
@@ -720,7 +720,7 @@ object CycleTest
 
   private class TestJob extends SemaphoreJob(TestJob) {
     override def onAcquired(step: Step, semaphoreName: String) =
-      Task {
+      IO {
         val now = clock.now()
         logger.info(s"🔹 $now  ${LocalDateTime.ofInstant(now.toInstant, zone)}")
         Outcome.succeeded

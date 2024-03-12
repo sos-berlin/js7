@@ -24,6 +24,9 @@ sealed trait Outcome:
 
   def show: String
 
+// TODO Rename Outcome as OrderOutcome
+type OrderOutcome = Outcome
+val OrderOutcome = Outcome
 
 object Outcome:
   val succeeded: Completed = Succeeded.empty

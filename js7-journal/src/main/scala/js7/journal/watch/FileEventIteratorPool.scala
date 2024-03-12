@@ -7,7 +7,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
 import js7.journal.data.JournalLocation
 import js7.journal.watch.FileEventIteratorPool.*
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -23,7 +23,7 @@ private[watch] final class FileEventIteratorPool(
 
   private val freeIterators = mutable.ArrayBuffer.empty[FileEventIterator]
   private val lentIterators = mutable.ArrayBuffer.empty[FileEventIterator]
-  private val closed = AtomicBoolean(false)
+  private val closed = Atomic(false)
 
   def close(): Unit =
     synchronized:

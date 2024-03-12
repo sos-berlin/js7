@@ -9,7 +9,9 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
+import java.util.concurrent.CancellationException
+import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
 
@@ -18,17 +20,19 @@ import scala.concurrent.duration.*
   */
 final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
+  private given IORuntime = ioRuntime
+
   private val timeout = if isMac then 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatchTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
-  private lazy val observable = directoryWatcher.singleUseObservable
-  private lazy val observableFuture = observable.map(_ => counter += 1) foreach { _ => }
+  private lazy val stream = directoryWatcher.singleUseStream
+  private lazy val streamFuture =
+    stream.map(_ => counter += 1).compile.drain.unsafeToCancelableFuture()
   private var counter = 0
 
-  override def beforeAll() = {
-    observableFuture
+  override def beforeAll() =
     super.beforeAll()
-  }
+    streamFuture
 
   override def afterAll() = {
     directoryWatcher.close()
@@ -73,9 +77,10 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
   }
 
   "cancel" in {
-    assert(!directoryWatcher.isClosed && !observableFuture.isCompleted)
-    observableFuture.cancel()
-    observableFuture await 99.s
+    assert(!directoryWatcher.isClosed && !streamFuture.isCompleted)
+    streamFuture.cancelToFuture().await(99.s)
+    intercept[CancellationException]:
+      streamFuture await 99.s
     assert(directoryWatcher.isClosed)
   }
 }

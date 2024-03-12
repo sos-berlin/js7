@@ -3,7 +3,7 @@ package js7.tests
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -23,7 +23,7 @@ import js7.tests.FinishTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import scala.reflect.ClassTag
 
 final class FinishTest

@@ -1,13 +1,15 @@
 package js7.journal.test
 
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.Done
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import org.apache.pekko.util.Timeout
+import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -18,8 +20,7 @@ import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournal
 import js7.journal.test.TestActor.*
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
@@ -27,18 +28,24 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(config: Config, journalLocation: JournalLocation, journalStopped: Promise[Unit])
+private[journal] final class TestActor(
+  config: Config,
+  journalLocation: JournalLocation,
+  journalStopped: Promise[Unit])
+  (using IORuntime)
 extends Actor, Stash:
-  
+
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout: Timeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
-  private var journalAllocated: Allocated[Task, FileJournal[TestState]] = null
+  private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
   private def journal = journalAllocated.allocatedThing
 
   private def journalActor = journal.journalActor
+
+  private given ExecutionContext = summon[IORuntime].compute
 
   override def preStart() =
     super.preStart()
@@ -48,7 +55,6 @@ extends Actor, Stash:
       .resource(recovered, journalConf,
         new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
       .toAllocated
-      .runToFuture
       .await(99.s)
 
     val state = recovered.state

@@ -6,6 +6,7 @@ import scala.concurrent.duration.FiniteDuration
 final case class ProxyConf(
   tornOlder: Option[FiniteDuration],
   syncPolling: FiniteDuration,
+  eventQueueSize: Int,
   recouplingStreamReaderConf: RecouplingStreamReaderConf)
 
 

@@ -8,7 +8,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
@@ -26,13 +26,15 @@ import js7.proxy.javaapi.JProxyContext
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
 final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
+  private given IORuntime = ioRuntime
+
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {

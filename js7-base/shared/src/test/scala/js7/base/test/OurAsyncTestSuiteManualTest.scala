@@ -1,15 +1,13 @@
 package js7.base.test
 
-import org.slf4j.LoggerFactory
 import scala.concurrent.Future
 
 final class OurAsyncTestSuiteManualTest extends OurAsyncTestSuite:
-  private val logger = LoggerFactory.getLogger(getClass)
 
   "test" in:
     Future:
       Thread.sleep(10)
-      logger.info("test")
+      info("OurAsyncTestSuiteManualTest: test")
       succeed
 
   if false then

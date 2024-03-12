@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient.HttpException
@@ -16,7 +16,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.http.scaladsl.model.StatusCodes.InternalServerError
 
 final class AddOrderTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest:

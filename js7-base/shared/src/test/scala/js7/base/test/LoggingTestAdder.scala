@@ -5,7 +5,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.UnifiedStringWrapper
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowable}
 import js7.base.utils.Tests.isSbt
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
@@ -13,9 +13,12 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
-private final class LoggingTestAdder(suiteName: String):
+private final class LoggingTestAdder(testClass: Class[?]):
 
-  logger.info(s"$magenta${"━" * barLength} $bold↘ $suiteName$resetColor")
+  private val suiteName = testClass.shortClassName
+  private val longSuiteName = testClass.scalaName
+
+  logger.info(s"$magenta${"━" * barLength} $bold↘ $longSuiteName$resetColor")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
@@ -24,24 +27,24 @@ private final class LoggingTestAdder(suiteName: String):
   private var pendingCount = 0
   private var failedCount = 0
 
-  def toStringWrapper[R, T](
+  def toStringWrapper[OwnResult, ScalaTestResult, T](
     name: String,
-    wrapper: UnifiedStringWrapper[R, T],
-    executeTest: (LoggingTestAdder.TestContext, => R) => R,
+    wrapper: UnifiedStringWrapper[ScalaTestResult, T],
+    executeTest: (LoggingTestAdder.TestContext, => OwnResult) => ScalaTestResult,
     suppressCorrelId: Boolean)
-  : LoggingFreeSpecStringWrapper[R, T] =
-    new LoggingFreeSpecStringWrapper(name, wrapper, this,
-      (ctx, test) => {
-        if !firstTestCalled then {
+  : LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T] =
+    new LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
+      name, wrapper, this,
+      (ctx, testBody) => {
+        if !firstTestCalled then
           firstTestCalled = true
           logger.info("\n" + magenta + "━" * barLength + resetColor)
-        }
+
         if suppressCorrelId then
-          executeTest(ctx, test)
+          executeTest(ctx, testBody)
         else
-          CorrelId.bindNow {
-            executeTest(ctx, test)
-          }
+          CorrelId.bindNow:
+            executeTest(ctx, testBody)
       })
 
   def addTests(name: String, addTests: => Unit): Unit =
@@ -54,7 +57,7 @@ private final class LoggingTestAdder(suiteName: String):
     new TestContext(this, outerNames.toVector, testName)
 
   def afterAll(): Unit =
-    logger.info(s"$suiteName — " +
+    logger.info(s"$longSuiteName · " +
       (if succeededCount == 0 then failureMarkup
       else if succeededCount > 0 then successMarkup
       else bold) +
@@ -63,7 +66,7 @@ private final class LoggingTestAdder(suiteName: String):
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty)
-    logger.info(s"$magenta${"▲" * barLength} $bold↙ $suiteName$resetColor\n")
+    logger.info(s"$magenta${"▲" * barLength} $bold↙ $longSuiteName$resetColor\n")
 
 
 private object LoggingTestAdder:
@@ -99,10 +102,10 @@ private object LoggingTestAdder:
 
   final class TestContext(adder: LoggingTestAdder, val nesting: Seq[String], testName: String):
     private lazy val since = now
-    private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
+    private val prefix = nesting.view.reverse.mkString("", " · ", " · ")
 
     def beforeTest(): Unit =
-      logger.info(eager(s"↘ $magenta$bold$prefix$testName$resetColor"))
+      logger.info(eager(s"""↘ $magenta$bold$prefix"$testName"$resetColor"""))
       since
 
     def afterTest[A](tried: Try[A]): Unit =
@@ -144,25 +147,25 @@ private object LoggingTestAdder:
     def toLogLine: String =
       tried match
         case Success(_) =>
-          s"$successMarkup↙ $prefix$testName$resetColor $prettyDuration"
+          s"""$successMarkup↙ $prefix"$testName"$resetColor $prettyDuration"""
 
         case Failure(_: TestPendingException) =>
-          s"🚧 $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"
+          s"""$""pendingMarkup↙ 🚧 $prefix"$testName" (PENDING)$resetColor $prettyDuration"""
 
         case Failure(t) =>
-          s"💥 $failureMarkup$prefix$testName 💥$resetColor $prettyDuration"
+          s"""$failureMarkup↙ 💥 $prefix"$testName" 💥$resetColor $prettyDuration"""
 
     def toSummaryLine: String =
       val shortTestName = testName.truncateWithEllipsis(100) // Replaces \n
       tried match
         case Success(_) =>
-          f"✔️  $prettyDuration%-7s $successMarkup$prefix$shortTestName$resetColor"
+          f"""✔️  $prettyDuration%-7s $successMarkup$prefix"$shortTestName"$resetColor"""
 
         case Failure(_: TestPendingException) =>
-          f"🚧 $prettyDuration%-7s $pendingMarkup$prefix$shortTestName (PENDING)$resetColor"
+          f"""🚧 $prettyDuration%-7s $pendingMarkup$prefix"$shortTestName" (PENDING)$resetColor"""
 
         case Failure(t) =>
-          f"💥 $prettyDuration%-7s $failureMarkup$prefix$shortTestName 💥$resetColor"
+          f"""💥 $prettyDuration%-7s $failureMarkup$prefix"$shortTestName" 💥$resetColor"""
 
   private def clipStackTrace(t: Throwable): Unit =
     val st = t.getStackTrace

@@ -1,6 +1,6 @@
 package js7.launcher
 
-import cats.effect.Resource
+import cats.effect.ResourceIO
 import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked
@@ -15,7 +15,6 @@ import js7.data.value.{MissingValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.ProcessOrder.evalEnv
-import monix.eval.Task
 import scala.collection.MapView
 
 final case class ProcessOrder(
@@ -71,7 +70,7 @@ object ProcessOrder:
     controllerId: ControllerId,
     stdObservers: StdObservers,
     fileValueState: FileValueState)
-  : Resource[Task, ProcessOrder] =
+  : ResourceIO[ProcessOrder] =
     for fileValueScope <- FileValueScope.resource(fileValueState) yield
       ProcessOrder(
         order, workflow, jobKey, workflowJob, jobResources,

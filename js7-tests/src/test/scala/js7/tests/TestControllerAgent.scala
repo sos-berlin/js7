@@ -15,7 +15,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.Java8Polyfill.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -36,34 +36,42 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.testenv.DirectoryProvider
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.{ExitCode, IO}
+import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.OurApp
+import js7.base.monixlike.MonixLikeExtensions.{parZip2, scheduleAtFixedRate}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-object TestControllerAgent:
+object TestControllerAgent extends OurApp:
+
+  private given IORuntime = runtime
+  private given ExecutionContext = runtime.compute
+
   private val TestWorkflowPath = WorkflowPath("test")
   private val TestPathExecutable = RelativePathExecutable("test")
   private val StdoutRowSize = 1000
   private val logger = Logger[this.type]
 
-  def main(args: Array[String]): Unit =
-    lazy val directory =
-      temporaryDirectory / "TestControllerAgent" sideEffect { directory =>
-        println(s"Using --directory=$directory")
-        if !Files.exists(directory) then
-          createDirectory(directory)
-        else
-          println(s"Deleting $directory")
-          deleteDirectoryContentRecursively(directory)
-      }
-    val conf = Conf.parse(args.toIndexedSeq, () => directory)
-    println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
-    try run(conf)
-    finally Log4j.shutdown()
+  def run(args: List[String]): IO[ExitCode] =
+    IO:
+      lazy val directory =
+        temporaryDirectory / "TestControllerAgent" sideEffect { directory =>
+          println(s"Using --directory=$directory")
+          if !Files.exists(directory) then
+            createDirectory(directory)
+          else
+            println(s"Deleting $directory")
+            deleteDirectoryContentRecursively(directory)
+        }
+      val conf = Conf.parse(args.toIndexedSeq, () => directory)
+      println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} ios/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
+      try run(conf)
+      finally Log4j.shutdown()
+      ExitCode.Success
 
   private def run(conf: Conf): Unit =
     val directoryProvider = new DirectoryProvider(
@@ -100,7 +108,7 @@ object TestControllerAgent:
           directoryProvider.runController() { controller =>
             JavaShutdownHook.add("TestControllerAgent") {
               print('\n')
-              Task
+              IO
                 .parZip2(
                   controller.stop,
                   agents.parTraverse(_.terminate(processSignal = Some(SIGTERM))))
@@ -109,7 +117,7 @@ object TestControllerAgent:
             } .closeWithCloser
 
             val startTime = Timestamp.now
-            Scheduler.traced.scheduleWithFixedDelay(0.s, conf.period):
+            runtime.scheduler.scheduleAtFixedRate(0.s, conf.period):
               for i <- 1 to conf.orderGeneratorCount do
                 val at = Timestamp.now
                 controller
@@ -117,10 +125,9 @@ object TestControllerAgent:
                     FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, scheduledFor = Some(at)))
                   .rightAs(())
                   .map(_.orThrow)
-                  .onErrorRecover { case t: Throwable =>
+                  .handleError: t =>
                     logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                  }
-                  .runAsyncAndForget
+                  .unsafeRunAndForget()
             controller.actorSystem.actorOf(Props {
               new Actor {
                 //TODO controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])

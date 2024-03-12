@@ -1,10 +1,11 @@
 package js7.tests.subagent
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -21,10 +22,9 @@ import js7.tests.subagent.SubagentForkListTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler
 
 final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
-  
+
   override protected def agentConfig = config"""
     js7.auth.subagents.BARE-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -43,8 +43,6 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
     bSubagentId,
     agentPath,
     findFreeLocalUri())
-
-  protected implicit val scheduler = Scheduler.traced
 
   lazy val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem)
     .allocated.await(99.s)

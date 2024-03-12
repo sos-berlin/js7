@@ -248,8 +248,8 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderStdoutWritten toString" in:
-    assert(OrderStderrWritten("*"*30 + "\r\n" + "*"*200).toString ==
-      """OrderStderrWritten(******************************...(length 232))""")
+    assert(OrderStderrWritten("*"*30 + "\r\n" + "*"*500).toString ==
+      s"OrderStderrWritten(******************************␍⏎${"*" * 253}...(length 532))")
 
   "OrderStdoutWritten" in:
     testJson[OrderEvent](OrderStdoutWritten("STDOUT\n"), json"""

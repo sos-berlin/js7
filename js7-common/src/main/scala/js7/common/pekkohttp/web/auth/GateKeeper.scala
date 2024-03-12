@@ -1,5 +1,7 @@
 package js7.common.pekkohttp.web.auth
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
@@ -10,11 +12,11 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.auth.IdToUser
+import js7.common.pekkohttp.PekkoHttpServerUtils
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.*
 import js7.common.pekkohttp.web.data.WebServerBinding
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, HEAD}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
@@ -35,9 +37,9 @@ final class GateKeeper[U <: User](
   isLoopback: Boolean = false)
   (implicit
     U: User.Companion[U],
-    scheduler: Scheduler,
     /** For `Route` `seal`. */
-    exceptionHandler: ExceptionHandler):
+    exceptionHandler: ExceptionHandler,
+    IORuntime: IORuntime):
 
   // https://tools.ietf.org/html/rfc7235#section-3.1: "A server generating a 401 (Unauthorized) response
   // MUST send a WWW-Authenticate header field containing at least one challenge."
@@ -217,7 +219,8 @@ final class GateKeeper[U <: User](
           Left(Problem.pure("Anonymous is permitted HTTP GET only")))
 
   private def completeDelayed(body: => ToResponseMarshallable): Route =
-    complete(Task(body).delayExecution(invalidAuthenticationDelay).runToFuture)
+    completeIO:
+      IO(body).delayBy(invalidAuthenticationDelay)
 
   def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
 
@@ -232,7 +235,7 @@ object GateKeeper:
     binding: WebServerBinding,
     conf: Configuration[U])
     (implicit
-      scheduler: Scheduler,
+      IORuntime: IORuntime,
       exceptionHandler: ExceptionHandler)
   : GateKeeper[U] =
     new GateKeeper(
@@ -304,7 +307,7 @@ object GateKeeper:
     Unauthorized
 
   def forTest(scheme: WebServerBinding.Scheme = WebServerBinding.Http, isPublic: Boolean = false,
-    config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, s: Scheduler)
+    config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, IORuntime: IORuntime)
   : GateKeeper[SimpleUser] =
     new GateKeeper(
       scheme = scheme,

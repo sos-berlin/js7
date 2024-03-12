@@ -8,5 +8,6 @@ import scala.jdk.CollectionConverters.*
 object JavaCollections:
 
   object syntax:
-    implicit final class JavaStreamToScala[A](private val underlying: java.util.stream.Stream[A]) extends AnyVal:
+    implicit final class JavaStreamToScala[A](private val underlying: java.util.stream.Stream[A])
+    extends AnyVal:
       def asScala: Iterator[A] = underlying.iterator.asScala

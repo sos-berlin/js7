@@ -1,9 +1,10 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import java.time.LocalDate
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -26,13 +27,12 @@ import js7.tests.ConsumeNoticesTest.*
 import js7.tests.jobs.{FailingJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class ConsumeNoticesTest 
+final class ConsumeNoticesTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -548,14 +548,16 @@ final class ConsumeNoticesTest
           retryDelays = Some(Vector(0.s)),
           maxTries = Some(2))))
 
-    withTemporaryItem(workflow) { workflow =>
-      val events = controller.runOrder(FreshOrder(OrderId("#2022-10-25#"), workflow.path))
+    withTemporaryItem(workflow, awaitDeletion = true) { workflow =>
+      val orderId = OrderId("#2022-10-25#")
+      val events = controller.runOrder:
+        FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
       val endOfLife = Timestamp.Epoch
       assert(events.map(_.value).map {
         case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
         case o => o
       } == Seq(
-        OrderAdded(workflow.id),
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticePosted(Notice(noticeId, aBoard.path, endOfLife)),
         OrderMoved(Position(1) / "try+0" % 0),
@@ -582,6 +584,7 @@ final class ConsumeNoticesTest
         OrderNoticesConsumed(failed = true),
 
         OrderFailed(Position(1) / "try+1" % 0)))
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     }
 
 

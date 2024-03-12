@@ -4,7 +4,7 @@ import java.time.{LocalDate, LocalTime}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.{DurationRichInt, sleep}
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -17,12 +17,12 @@ import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.Cycle2Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
 final class Cycle2Test extends OurTestSuite, ControllerAgentForScalaTest, ScheduleTester:
-  
+
   protected val agentPaths = Nil
   protected val items = Seq(calendar, js2012Workflow)
 
@@ -36,20 +36,17 @@ final class Cycle2Test extends OurTestSuite, ControllerAgentForScalaTest, Schedu
     """
 
   "One first cycle in mid of period (bug JS-2012)" in:
-    val now = LocalTime.now()
-    val now0 = now.withHour(0)
-    if now.isBefore(LocalTime.of(1, 0))
-     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1))
-     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1)) then
-      logger.warn("Test does not work around a full hour")
+    val startedAt = LocalTime.now()
+    val today = LocalDate.now().toString
+    val orderId = OrderId(s"#$today#ONCE-A-DAY")
+    controller.api.addOrder(FreshOrder(orderId, js2012Workflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderCycleStarted](_.key == orderId)
+    sleep(1.s)
+    if startedAt.getHour != LocalTime.now().getHour then
+      logger.warn("Test does not work when the current hour has changed")
       pending
     else
-      val today = LocalDate.now().toString
-      val orderId = OrderId(s"#$today#ONCE-A-DAY")
-      controller.api.addOrder(FreshOrder(orderId, js2012Workflow.path))
-        .await(99.s).orThrow
-      eventWatch.await[OrderCycleStarted](_.key == orderId)
-      sleep(1.s)
       assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
 

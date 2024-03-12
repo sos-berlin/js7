@@ -1,17 +1,22 @@
 package js7.common.pekkohttp
 
+import cats.effect.IO
+import cats.effect.kernel.Deferred
+import cats.effect.unsafe.IORuntime
+import cats.implicits.catsSyntaxEitherId
 import com.typesafe.config.Config
 import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.ExceptionHandling.*
+import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import org.apache.pekko
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{InternalServerError, ServiceUnavailable}
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, StatusCode}
 import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractRequest}
 import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, Route}
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
 /**
@@ -19,10 +24,21 @@ import scala.concurrent.duration.Deadline
   */
 trait ExceptionHandling:
 
-  protected def whenShuttingDown: Future[Deadline]
+  protected def whenShuttingDown: Deferred[IO, Deadline]
   protected def config: Config
+  protected def ioRuntime: IORuntime
+
+  private given IORuntime = ioRuntime
 
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
+
+  protected final lazy val isShuttingDown: IO[Option[Deadline]] =
+    whenShuttingDown.get
+      .map(Some(_))
+      .timeoutTo(ZeroDuration, IO.none) // TODO Is this reliable? Maybe use SignallingRef
+
+  protected final lazy val shutdownSignaled: IO[Unit] =
+    whenShuttingDown.get.as(().asRight[Throwable])
 
   implicit protected final lazy val exceptionHandler: ExceptionHandler =
     ExceptionHandler:
@@ -30,13 +46,17 @@ trait ExceptionHandling:
         complete(e.statusCode -> e.problem)
 
       case e: pekko.pattern.AskTimeoutException =>
-        if whenShuttingDown.isCompleted then
-          extractRequest { request =>
-            webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
-            complete(ServiceUnavailable -> Problem.pure("Shutting down"))
-          }
-        else
-          completeWithError(InternalServerError, e)
+        ioRoute:
+          isShuttingDown
+            .map(Some(_))
+            .timeoutTo(0.s, IO.none)
+            .map:
+              case None =>
+                completeWithError(InternalServerError, e)
+              case Some(_) =>
+                extractRequest: request =>
+                  webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
+                  complete(ServiceUnavailable -> Problem.pure("Shutting down"))
 
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException

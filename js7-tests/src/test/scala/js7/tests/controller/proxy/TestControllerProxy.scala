@@ -1,21 +1,30 @@
 package js7.tests.controller.proxy
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigFactory
+import fs2.Stream
+import io.circe.syntax.EncoderOps
 import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.catsutils.OurIORuntime
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.eventbus.StandardEventBus
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
-import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
-import js7.common.pekkohttp.StandardMarshallers.monixObservableToMarshallable
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.pekkohttp.PekkoHttpServerUtils
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithStream, pathSegments}
 import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.controller.ControllerState
@@ -23,15 +32,13 @@ import js7.data.event.{Event, EventId}
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy.*
-import monix.eval.Task
-import monix.execution.Scheduler
-import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
-import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
+import org.apache.pekko.http.scaladsl.server.Directives.{get, pathSingleSlash}
 import scala.util.Try
 
-private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler):
-  def run(): Task[Unit] =
+private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
+  (implicit ioRuntime: IORuntime):
+
+  def run(): IO[Unit] =
     Pekkos.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
         val apiResource = PekkoHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
@@ -43,10 +50,10 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             PekkoWebServer
-              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(Task(currentState)))
+              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState)))
               .use(_ =>
-                Task.tailRecM(())(_ =>
-                  Task {
+                ().tailRecM(_ =>
+                  IO {
                     println(
                       Try(currentState).map(controllerState =>
                         EventId.toTimestamp(controllerState.eventId).show + " " +
@@ -54,7 +61,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
                           controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
                       ).fold(identity, identity))
                     Left(())
-                  }.delayResult(1.s)))
+                  }.andWait(1.s)))
           }
           .guarantee(api.stop)
       }
@@ -65,7 +72,7 @@ object TestControllerProxy:
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))
 
   def main(args: Array[String]): Unit =
-    implicit val scheduler: Scheduler = Scheduler.traced
+    given IORuntime = OurIORuntime.commonIORuntime
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.prettyVersion}")
     Logger.initialize("JS7 TestControllerProxy")
@@ -74,17 +81,15 @@ object TestControllerProxy:
       val httpPort = arguments.as[Int]("--http-port=")
       new TestControllerProxy(controllerUri, httpPort = httpPort)
         .run()
-        .runSyncUnsafe()
+        .unsafeRunSync()
     }
 
-  private def webServiceRoute(snapshot: Task[ControllerState])(implicit s: Scheduler) =
+  private def webServiceRoute(snapshot: IO[ControllerState])(using IORuntime) =
     pathSegments("proxy/api/snapshot"):
       pathSingleSlash:
         get:
-          complete(
-            snapshot.map { controllerState =>
-              implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
-              implicit val y: TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
-              implicit val z: ToEntityMarshaller[Any] = jsonSeqMarshaller
-              monixObservableToMarshallable(controllerState.toSnapshotObservable)
-            }.runToFuture)
+          completeWithStream(`application/x-ndjson`):
+            fs2.Stream.eval(snapshot).flatMap: controllerState =>
+              given TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
+              controllerState.toSnapshotStream
+                .mapParallelBatch()(_.asJson.toByteArray.toByteString)

@@ -1,13 +1,16 @@
 package js7.journal
 
-import cats.effect.Resource
+import cats.effect.std.Semaphore
+import cats.effect.unsafe.Scheduler
+import cats.effect.{IO, Resource}
 import cats.syntax.traverse.*
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.CorrelId
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.BinarySearch.binarySearch
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, CloseableIterator}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
@@ -15,8 +18,6 @@ import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.Journal
 import js7.journal.watch.RealEventWatch
-import monix.catnap.Semaphore
-import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 
@@ -26,7 +27,7 @@ final class MemoryJournal[S <: JournaledState[S]] private[journal](
   waitingFor: String = "releaseEvents",
   infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
-  (implicit protected val S: JournaledState.Companion[S])
+  (implicit protected val S: JournaledState.Companion[S], scheduler: Scheduler)
 extends Journal[S]:
 
   val journalId = JournalId.random()
@@ -34,7 +35,7 @@ extends Journal[S]:
   private val stateLock = AsyncLock("MemoryJournal.state")
   private val queueLock = AsyncLock("MemoryJournal.queue")
   // TODO Pause journal if queue is events are not released for a long time, despite length of queue?
-  private val semaphore = Semaphore[Task](size).memoize
+  private val semaphore: IO[Semaphore[IO]] = Semaphore[IO](size).unsafeMemoize
   private val semaMininum = size max 1
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
   @volatile private var _state = initial
@@ -46,11 +47,13 @@ extends Journal[S]:
 
   def isHalted = false
 
-  val whenNoFailoverByOtherNode = Task.unit
+  val whenNoFailoverByOtherNode = IO.unit
 
   val eventWatch: RealEventWatch = new MemoryJournalEventWatch
 
   private class MemoryJournalEventWatch extends RealEventWatch:
+    protected val scheduler = MemoryJournal.this.scheduler
+
     protected def eventsAfter(after: EventId) =
       eventsAfter_(after)
         .map(iterator => CloseableIterator.fromIterator(iterator))
@@ -76,28 +79,28 @@ extends Journal[S]:
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
     (using enclosing: sourcecode.Enclosing)
-  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistKeyedEvents(keyedEvent :: Nil)
       .map(_.map { case (events, s) => events.head -> s })
 
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     persist(_ => Right(keyedEvents))
 
   def persistKeyedEventsLater[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     persistKeyedEvents(keyedEvents, options)
       .rightAs(())
 
   def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)(
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    stateLock.lock(Task.defer {
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    stateLock.lock(IO.defer {
       (for
         keyedEvents <- stateToEvents(_state)
         updated <- _state.applyEvents(keyedEvents)
@@ -107,7 +110,7 @@ extends Journal[S]:
           .acquireN(stampedEvents.length min semaMininum)
           .logWhenItTakesLonger(waitingFor)
           .*>(queueLock
-            .lock(Task {
+            .lock(IO {
               var q = queue
               val qLen = q.events.length
               q = q.copy(events = q.events ++ stampedEvents)
@@ -135,13 +138,13 @@ extends Journal[S]:
       since = now,
       isLastOfFlushedOrSynced = true)).view)
 
-  def releaseEvents(untilEventId: EventId): Task[Checked[Unit]] =
-    queueLock.lock(Task.defer {
+  def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
+    queueLock.lock(IO.defer {
       val q = queue
       val (index, found) =
         binarySearch(0, q.events.length, i => q.events(i).eventId.compare(untilEventId))
       if !found then
-        Task.pure(Left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}")))
+        IO.pure(Left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}")))
       else {
         val n = index + 1
         queue = q.copy(
@@ -192,7 +195,7 @@ object MemoryJournal:
     waitingFor: String = "releaseEvents",
     infoLogEvents: Set[String] = Set.empty,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
-    (implicit S: JournaledState.Companion[S])
-  : Resource[Task, MemoryJournal[S]] =
-    Resource.eval(Task(
+    (implicit S: JournaledState.Companion[S], scheduler: Scheduler)
+  : Resource[IO, MemoryJournal[S]] =
+    Resource.eval(IO(
       new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator)))

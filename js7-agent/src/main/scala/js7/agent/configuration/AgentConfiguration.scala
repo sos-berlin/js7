@@ -19,6 +19,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
+import js7.subagent.director.RemoteSubagentDriver
 import org.apache.pekko.util.Timeout
 
 /**
@@ -66,6 +67,7 @@ extends CommonConfiguration:
       journalConf,
       httpsConfig,
       RecouplingStreamReaderConfs.fromConfig(config).orThrow,
+      RemoteSubagentDriver.Conf.fromConfig(config, commitDelay = journalConf.delay),
       subagentConf)
 
   // Suppresses Config (which may contain secrets)

@@ -3,22 +3,22 @@ package js7.launcher.forjava.internal
 import js7.base.problem.Checked
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
-import monix.eval.Task
+import cats.effect.IO
 import scala.jdk.FutureConverters.CompletionStageOps
 
 private[js7] final class JInternalJobAdapter(jobContext: JobContext)
 extends InternalJob:
 
-  private val helper = new InternalJobAdapterHelper[JInternalJob]
+  private val helper = new InternalJobAdapterHelper[JInternalJob](jobContext.blockingJobEC)
 
-  override def start: Task[Checked[Unit]] =
+  override def start: IO[Checked[Unit]] =
     helper.callStart(
       JInternalJob.JobContext(jobContext),
-      job => Task.fromFuture(job.start.asScala))
+      job => IO.fromFuture(IO(job.start.asScala)))
 
-  override def stop: Task[Unit] =
+  override def stop: IO[Unit] =
     helper.callStop(
-      job => Task.fromFuture(job.stop.asScala).void)
+      job => IO.fromFuture(IO(job.stop.asScala)).void)
 
   def toOrderProcess(step: Step) =
     import jobContext.implicitJs7Scheduler

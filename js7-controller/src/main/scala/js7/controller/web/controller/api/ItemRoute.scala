@@ -5,13 +5,12 @@ import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
-import js7.base.utils.{ByteSequenceToLinesObservable, FutureCompletion}
+import js7.base.utils.ByteSequenceToLinesStream
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -23,7 +22,8 @@ import js7.data.controller.ControllerState.*
 import js7.data.controller.VerifiedUpdateItems
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.{ItemOperation, SignableItem}
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.HttpEntity
@@ -39,11 +39,8 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
 
   protected def itemUpdater: ItemUpdater
 
-  private implicit def implicitScheduler: Scheduler = scheduler
-  private implicit def implicitActorsystem: ActorSystem = actorSystem
-
-  // TODO Abort POST with error when shutting down
-  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
+  private given IORuntime = ioRuntime
+  private given ActorSystem = actorSystem
 
   final lazy val itemRoute: Route =
     post:
@@ -56,9 +53,9 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                 var byteCount = 0L
                 val operations = httpEntity
                   .dataBytes
-                  .toObservable
+                  .asFs2Stream(bufferSize = prefetch)
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                  .flatMap(new ByteSequenceToLinesObservable)
+                  .flatMap(new ByteSequenceToLinesStream)
                   .mapParallelBatch()(_
                     .parseJsonAs[ItemOperation].orThrow)
                 VerifiedUpdateItems.fromOperations(operations, verify, user)
@@ -84,7 +81,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                     case Right(Completed) =>
                       OK -> emptyJsonObject
                   }
-                  .runToFuture
+                  .unsafeToFuture()
               }
             })
         }

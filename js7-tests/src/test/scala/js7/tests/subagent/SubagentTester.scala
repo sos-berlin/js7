@@ -6,7 +6,6 @@ import js7.data.agent.AgentPath
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler
 import org.scalatest.Suite
 
 trait SubagentTester extends ControllerAgentForScalaTest:
@@ -31,8 +30,6 @@ trait SubagentTester extends ControllerAgentForScalaTest:
     bareSubagentId,
     agentPath,
     findFreeLocalUri())
-
-  protected val scheduler: Scheduler
 
 
 object SubagentTester:

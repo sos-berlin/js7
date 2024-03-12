@@ -1,12 +1,15 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.try_.*
 import cats.syntax.foldable.*
+import js7.base.monixlike.MonixLikeExtensions.{materialize, unsafeToCancelableFuture}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
@@ -14,10 +17,13 @@ import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
 import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
 final class MemoryJournalTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+  private given Scheduler = ioRuntime.scheduler
+
   "Initial values" in:
     val journal = newJournal()
     import journal.eventWatch
@@ -33,7 +39,7 @@ final class MemoryJournalTest extends OurTestSuite:
       "A" -> TestAggregate("A", "a"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1000)
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a"))))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
@@ -42,12 +48,12 @@ final class MemoryJournalTest extends OurTestSuite:
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1001)
 
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a")),
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1000)).toListL.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1000)).compile.toList.await(99.s) == List(
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1001)).toListL.await(99.s).isEmpty)
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1001)).compile.toList.await(99.s).isEmpty)
 
   "test" in:
     val journal = newJournal()
@@ -55,10 +61,12 @@ final class MemoryJournalTest extends OurTestSuite:
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
     val observing = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
-      .foreach(o => synchronized(observed += o))
+      .foreach(o => IO(synchronized:
+        observed += o))
+      .compile.drain.unsafeToCancelableFuture()
 
     def firstUpdate(state: TestState) =
       state match
@@ -88,25 +96,25 @@ final class MemoryJournalTest extends OurTestSuite:
       Stamped(1001, "B" <-: TestEvent.Added("B")),
       Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
-    observing.cancel()
+    observing.cancelAndForget()
 
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     journal.releaseEvents(1001).await(99.s).orThrow
     assert(eventWatch.tornEventId == 1001)
 
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst))
-      .toListL
+      .compile.toList
       .materialize
       .await(99.s)
       .failed
       .exists(_.isInstanceOf[TornException]))
 
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = 1001))
-      .toListL
+      .compile.toList
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
   "size" in:
@@ -116,17 +124,21 @@ final class MemoryJournalTest extends OurTestSuite:
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
     val observing = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
-      .foreach(o => synchronized(observed += o))
+      .foreach(o => IO(synchronized:
+        observed += o))
+      .compile
+      .drain
+      .unsafeToCancelableFuture()
 
     val n = 10
     val persisting = (0 until n).map(_.toString).toVector
       .traverse_(x => journal
         .persistKeyedEvent(x <-: TestEvent.Added(x))
         .map(_.orThrow))
-        .runToFuture
+        .unsafeToFuture()
 
     def lastObserved = synchronized(observed.lastOption).map(_.eventId)
 
@@ -137,7 +149,7 @@ final class MemoryJournalTest extends OurTestSuite:
       awaitAndAssert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
 
     persisting.await(9.s)
-    observing.cancel()
+    observing.cancelAndForget(): Unit
 
   "persist more than size events at once" in:
     val size = 3
@@ -150,14 +162,14 @@ final class MemoryJournalTest extends OurTestSuite:
       .await(99.s)
     assert(journal.queueLength == 3 * size)
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
+      .stream(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
       .map(_.value)
-      .toListL
+      .compile.toList
       .await(99.s) == events)
 
 
 object MemoryJournalTest:
-  private def newJournal(size: Int = Int.MaxValue) =
+  private def newJournal(size: Int = Int.MaxValue)(using Scheduler) =
     new MemoryJournal(
       TestState.empty,
       size = size,

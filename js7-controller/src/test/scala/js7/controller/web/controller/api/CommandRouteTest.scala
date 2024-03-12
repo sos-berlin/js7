@@ -1,5 +1,6 @@
 package js7.controller.web.controller.api
 
+import cats.effect.{Deferred, IO}
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -8,13 +9,10 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerId}
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.PayloadTooLarge
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -22,16 +20,15 @@ import scala.concurrent.Future
 final class CommandRouteTest extends OurTestSuite, RouteTester, CommandRoute
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
-  protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.traced
+  protected def whenShuttingDown = Deferred.unsafe
 
   private var commandReceived = false
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     command match {
       case ControllerCommand.NoOperation(None) =>
         commandReceived = true
-        Task.pure(Right(ControllerCommand.Response.Accepted.asInstanceOf[command.Response]))
+        IO.pure(Right(ControllerCommand.Response.Accepted.asInstanceOf[command.Response]))
 
       case _ =>
         fail()

@@ -7,10 +7,11 @@ import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 
 /**
   * @author Joacim Zschimmer
@@ -18,7 +19,7 @@ import monix.execution.atomic.AtomicBoolean
 object StartUp:
   val startedAt = Timestamp.now
   private var _isMain = false
-  private val classPathLogged = AtomicBoolean(false)
+  private val classPathLogged = Atomic(false)
 
   def initializeMain(): Unit =
     _isMain = true
@@ -43,7 +44,7 @@ object StartUp:
       logger.debug("TRACE level logging is enabled")
 
   def startUpLine(name: String): String =
-    s"""$name ${BuildInfo.longVersion} · ${startUpLine()}
+    s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
        |${"━" * 80}""".stripMargin // Log a bar, in case the previous log file is being appended
 
   /** Log Java version, config and data directory, and classpath. */

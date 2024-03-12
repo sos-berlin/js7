@@ -1,5 +1,7 @@
 package js7.agent.web
 
+import cats.effect
+import cats.effect.{Deferred, IO}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.agent.data.commands.AgentCommand
@@ -14,31 +16,29 @@ import js7.base.time.ScalaTime.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.data.agent.Problems.AgentIsShuttingDown
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends OurTestSuite, WebServiceTest, CommandWebService:
-  
-  protected def whenShuttingDown = Future.never
-  protected def scheduler = Scheduler.traced
+final class CommandWebServiceTest
+  extends OurTestSuite, WebServiceTest, CommandWebService:
+
+  protected def whenShuttingDown = Deferred.unsafe
+
   override protected val uriPathPrefix = "test"
 
   protected val executeCommand = (command, _) =>
-    Task(
+    IO(
       command match {
         case TestCommand => Right(AgentCommand.Response.Accepted)
         case TestCommandWhileShuttingDown => Left(AgentIsShuttingDown)
         case _ => fail()
       })
 
-  private val route =
+  private lazy val route =
     pathSegments("agent/api/command"):
       commandRoute
 
@@ -68,6 +68,7 @@ final class CommandWebServiceTest extends OurTestSuite, WebServiceTest, CommandW
       testSessionHeader ~>
       Accept(`application/json`) ~>
       route
+
 
 private object CommandWebServiceTest:
   private val TestCommand = ShutDown(None)

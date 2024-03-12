@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -13,9 +14,9 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.agent.{AgentPath, AgentRef}
@@ -27,10 +28,12 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 
-final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
+final class AgentShutDownTest
+  extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
+
+  private given IORuntime = ioRuntime
 
   override def beforeAll() =
     (agentDirectory / "config" / "private" / "private.conf") ++= """
@@ -43,7 +46,7 @@ final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgent
 
   "ShutDown" in:
     val agentConfiguration = AgentConfiguration.forTest(agentDirectory, "AgentShutDownTest")
-    val orderIds = for i <- 0 until 3 yield OrderId(s"TEST-ORDER-$i")
+    val orderIds = Vector.from(for i <- 0 until 3 yield OrderId(s"TEST-ORDER-$i"))
 
     TestAgent.blockingRun(agentConfiguration,  99.s) { agent =>
       actorSystemResource("AgentShutDownTest").blockingUse(99.s) { implicit actorSystem =>

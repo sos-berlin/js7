@@ -190,18 +190,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       OrderProcessingStarted(Some(subagentId), stick)
 
   sealed trait OrderStdWritten extends OrderEvent:
-
     def stdoutStderr: StdoutOrStderr
     def chunk: String
 
     override def toString = getClass.simpleScalaName + "(" +
-      chunk
-        .truncateWithEllipsis(
-          300/*for error lines with long (file path) prefix*/,
-          showLength = true,
-          firstLineOnly = true)
-        .replace("\n", "\\n")
-        .replace("\r", "\\r") + ")"
+      chunk.truncateWithEllipsis(
+        300/*for error lines with long (file path) prefix*/,
+        showLength = true) + ")"
   object OrderStdWritten:
     def apply(t: StdoutOrStderr): String => OrderStdWritten =
       t match

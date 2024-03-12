@@ -5,7 +5,7 @@ import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.TestAlarmClock
@@ -19,12 +19,11 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RetryDelayTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 final class RetryDelayTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -35,6 +34,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
+
+  private given ZoneId = ZoneId.of("Europe/Mariehamn")
+
+  private val start = local("2022-10-25T12:00")
+  private val clock = TestAlarmClock(start)
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
@@ -116,7 +120,4 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
 
 object RetryDelayTest:
-  private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
-  private val start = local("2022-10-25T12:00")
-  private val clock = TestAlarmClock(start)
   private val agentPath = AgentPath("AGENT")

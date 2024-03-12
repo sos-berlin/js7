@@ -10,6 +10,7 @@ import scala.util.Try
   * @author Joacim Zschimmer
   */
 object ProblemCodeMessages:
+
   private val resource = JavaResource("js7/common/message/messages-en.conf")
   private val config = Configs.loadResource(resource)
 

@@ -5,45 +5,47 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.data.event.{Event, EventId, JournalPosition}
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 trait ClusterNodeApi
 extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
-  def clusterState: Task[Checked[ClusterState]]
+  def clusterState: IO[Checked[ClusterState]]
 
-  def clusterNodeState: Task[ClusterNodeState]
+  def clusterNodeState: IO[ClusterNodeState]
 
-  /** Observable for a journal file.
+  /** Stream for a journal file.
    *
    * @param journalPosition denotes journal file and position
    * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
    */
-  def journalObservable(
+  def journalStream(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[ByteArray] = None,
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
-  : Task[Observable[ByteArray]]
+  : IO[Stream[IO, ByteArray]]
 
   //NOT USED
-  //def journalLengthObservable(
+  //def journalLengthStream(
   //  journalPosition: JournalPosition,
   //  timeout: FiniteDuration,
   //  markEOF: Boolean = false)
-  //: Task[Observable[Long]]
+  //: IO[Stream[IO, Long]]
 
-  def eventIdObservable[E <: Event](
+  def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
-    heartbeat: Option[FiniteDuration] = None)
-  : Task[Observable[EventId]]
+    heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[EventId] = None)
+  : IO[Stream[IO, Checked[EventId]]]
 
-  def clusterWatchRequestObservable(
+  def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,
     keepAlive: Option[FiniteDuration])
-  : Task[Observable[ClusterWatchRequest]]
+  : IO[Stream[IO, ClusterWatchRequest]]
 
-  def executeClusterCommand(command: ClusterCommand): Task[command.Response]
+  def executeClusterCommand(command: ClusterCommand): IO[command.Response]

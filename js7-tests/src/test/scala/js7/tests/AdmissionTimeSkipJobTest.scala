@@ -5,7 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timezone, WeekdayPeriod}
@@ -24,7 +24,6 @@ import js7.tests.AdmissionTimeSkipJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
 
 final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForScalaTest
 {

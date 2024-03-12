@@ -2,12 +2,11 @@ package js7.tests.https
 
 import javax.net.ssl.SSLException
 import js7.base.io.https.HttpsConfig
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.controller.client.PekkoHttpControllerApi
 import js7.tests.testenv.DirectoryProvider.ExportedControllerTrustStoreRef
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * Controller and Agent with server-side HTTPS.
@@ -15,6 +14,7 @@ import monix.execution.Scheduler.Implicits.traced
   * @author Joacim Zschimmer
   */
 final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests:
+
   override protected def useCluster = false
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = true

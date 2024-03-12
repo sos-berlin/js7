@@ -1,11 +1,15 @@
 package js7.tests
 
+import cats.effect.IO
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import js7.agent.RunningAgent
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.*
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileExtension as sh
@@ -14,8 +18,8 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -38,9 +42,6 @@ import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
@@ -49,6 +50,7 @@ import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as Pekk
 import org.apache.pekko.stream.Materializer
 import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 /**
@@ -57,6 +59,8 @@ import scala.util.Try
 final class ControllerWebServiceTest
 extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
 {
+  private given ExecutionContext = ioRuntime.compute
+
   override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier
 
@@ -73,8 +77,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
 
   private var sessionToken: String = "INVALID"
 
-  private implicit def implicitSessionToken: Task[Some[SessionToken]] =
-    Task(Some(SessionToken(SecretString(sessionToken))))
+  private implicit def implicitSessionToken: IO[Some[SessionToken]] =
+    IO(Some(SessionToken(SecretString(sessionToken))))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
     eventIdClock = Some(EventIdClock.fixed(2000)))
@@ -83,6 +87,11 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
     eventIdClock = Some(EventIdClock.fixed(1000)))
 
   private implicit def materializer: Materializer = httpClient.materializer
+
+  override def controllerConfig = config"""
+     js7.journal.sync = off
+     js7.journal.delay = 0s
+     """
 
   override def beforeAll() = {
     directoryProvider.controllerEnv.configDir / "controller.conf" ++=
@@ -149,7 +158,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
   "Add workflows" in {
     controller.updateItemsAsSystemUser(
       ItemOperation.AddVersion(VersionId("VERSION-1")) +:
-        Observable(
+        Stream(
           Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION-1",
             Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable(s"A$sh")))),
           Workflow.of(WorkflowPath("FOLDER/WORKFLOW-2") ~ "VERSION-1",

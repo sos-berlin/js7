@@ -1,7 +1,7 @@
 package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.{ClusterEvent, ClusterTiming}
 import js7.data.controller.ControllerCommand.TakeSnapshot
@@ -10,8 +10,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class ReplicatingControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 5.s)
@@ -57,7 +56,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester:
           backupController.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
 
           // Check acknowledgement of empty event list
-          primaryController.api.addOrders(Observable.empty).await(99.s).orThrow  // Emits no events
+          primaryController.api.addOrders(Stream.empty).await(99.s).orThrow  // Emits no events
         }
       }
     }

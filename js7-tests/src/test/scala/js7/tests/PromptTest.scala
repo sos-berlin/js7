@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -18,10 +18,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.PromptTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, failingWorkflow, skippedWorkflow)
 

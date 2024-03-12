@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
@@ -26,13 +26,12 @@ import js7.tests.cluster.agent.KeepSubagentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
 import scala.util.control.NonFatal
 
-final class KeepSubagentClusterTest 
+final class KeepSubagentClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -58,13 +57,13 @@ final class KeepSubagentClusterTest
   protected def items = Nil
 
   "Job started at backup Subagent while failing-over" in:
-    val primaryDirectorResource: Resource[Task, RunningAgent] =
+    val primaryDirectorResource: Resource[IO, RunningAgent] =
       directoryProvider
         .directorEnvResource(
           primarySubagentItem, otherSubagentIds = Seq(backupSubagentId))
         .flatMap(_.directorResource)
 
-    val backupDirectorResource: Resource[Task, RunningAgent] =
+    val backupDirectorResource: Resource[IO, RunningAgent] =
       directoryProvider
         .directorEnvResource(
           backupSubagentItem, otherSubagentIds = Seq(primarySubagentId), isClusterBackup = true)
@@ -127,6 +126,7 @@ final class KeepSubagentClusterTest
 
 
 object KeepSubagentClusterTest:
+
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)

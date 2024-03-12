@@ -1,38 +1,20 @@
 package js7.launcher.forjava.internal
 
-import java.io.{IOException, Writer}
-import monix.execution.Ack.{Continue, Stop}
-import monix.execution.{Ack, UncaughtExceptionReporter}
-import monix.reactive.Observer
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
+import cats.effect.unsafe.IORuntime
+import java.io.Writer
+import js7.base.thread.CatsBlocking.syntax.awaitInfinite
+import js7.launcher.StdWriter
 
-private final class ObserverWriter(observer: Observer[String])
-  (implicit u: UncaughtExceptionReporter)
-extends Writer:
-  self =>
-
-  private var ack: Future[Ack] = Continue
+private final class BlockingStdWriter(stdWriter: StdWriter)(using IORuntime) extends Writer:
 
   def write(array: Array[Char], offset: Int, len: Int) =
     write(new String(array, offset, len))
 
-  override def write(string: String) =
-    self.synchronized:
-      await()
-      ack = ack.syncOnContinue(observer.onNext(string))
+  override def write(string: String): Unit =
+    stdWriter.write(string).awaitInfinite
 
-  def flush() =
-    self.synchronized:
-      await()
+  /** NOT IMPLEMENTED. */
+  def flush() = {}
 
-  def close() = observer.onComplete()
-
-  private def await(): Unit =
-    Await.ready(ack, Duration.Inf)
-    ack.value match
-      case Some(Failure(t: IOException)) => throw t
-      case Some(Failure(t)) => throw new IOException(t.toString, t.getCause)
-      case Some(Success(Stop)) => throw new IOException("Stream closed")
-      case _ =>
+  /** Does nothing, because stdout and stdin are closed by the JS7 Engine. */
+  def close() = {}

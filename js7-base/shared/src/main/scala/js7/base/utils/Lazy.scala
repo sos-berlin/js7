@@ -1,13 +1,21 @@
 package js7.base.utils
 
+import cats.InvariantMonoidal
+import cats.instances.option.*
+import java.util.concurrent.locks.ReentrantLock
+import js7.base.utils.ScalaUtils.use
+import scala.concurrent
+import scala.concurrent.blocking
+
 /**
   * Like Scala lazy but synchronization moved to own object.
   * `Lazy` is queryable about its state and detects recursive evaluation.
   *
   * @author Joacim Zschimmer
   */
-final class Lazy[A] private(eval: => A):
+private class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
 
+  private val lock = new ReentrantLock()
   @volatile
   private var state: State = NotEvaluated
 
@@ -25,15 +33,22 @@ final class Lazy[A] private(eval: => A):
     state match
       case Evaluated(a) => Some(a)
       case _ =>
-        synchronized:
-          state match
-            case Evaluated(a) => Some(a)
-            case Evaluating => None
-            case NotEvaluated =>
-              state = Evaluating
-              val a = eval
-              state = Evaluated(a)
-              Some(a)
+        block:
+          lock.use:
+            state match
+              case Evaluated(a) => Some(a)
+              case Evaluating => None
+              case NotEvaluated =>
+                state = Evaluating
+                val a = eval
+                state = Evaluated(a)
+                Some(a)
+
+  def whenDefined[F[_]](f: A => F[Unit])(using F: InvariantMonoidal[F]): F[Unit] =
+    toOption.fold(F.unit)(f)
+
+  def fold[B](ifEmpty: => B)(f: A => B): B =
+    toOption.fold(ifEmpty)(f)
 
   def toOption: Option[A] =
     state match
@@ -63,5 +78,14 @@ final class Lazy[A] private(eval: => A):
 
 
 object Lazy:
+
   def apply[A](eval: => A): Lazy[A] =
-    new Lazy(eval)
+    blocking(eval)
+
+  def blocking[A](eval: => A): Lazy[A] =
+    new Lazy(eval, scala.concurrent.blocking(_))
+
+  /** For very fast evaluations.
+   * During evaluation other threads accessing the value are blocked. */
+  def nonBlocking[A](eval: => A): Lazy[A] =
+    new Lazy(eval, o => o)

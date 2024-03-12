@@ -6,7 +6,7 @@ import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
@@ -34,8 +34,8 @@ import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -755,7 +755,7 @@ final class CancelOrdersTest
 
   private def addWorkflow(workflow: Workflow): Unit = {
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(workflow.id.versionId),
         AddOrChangeSigned(directoryProvider.itemSigner.toSignedString(workflow))))
       .await(99.s).orThrow

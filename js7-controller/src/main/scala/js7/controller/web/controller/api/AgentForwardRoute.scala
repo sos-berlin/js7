@@ -9,15 +9,15 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpUtils.RichPekkoUri
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentForwardRoute.*
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerState
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.Forbidden
@@ -30,11 +30,11 @@ import scala.collection.MapView
 trait AgentForwardRoute extends ControllerRouteProvider:
 
   protected implicit def actorSystem: ActorSystem
-  protected def pathToAgentRefState: Task[Checked[MapView[AgentPath, AgentRefState]]]
+  protected def pathToAgentRefState: IO[Checked[MapView[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
-  protected def controllerState: Task[Checked[ControllerState]]
+  protected def controllerState: IO[Checked[ControllerState]]
 
-  private implicit def implicitScheduler: Scheduler = scheduler
+  private given IORuntime = ioRuntime
 
   protected final lazy val agentForwardRoute: Route =
     authorizedUser(ValidUserPermission)(_ =>
@@ -67,14 +67,14 @@ trait AgentForwardRoute extends ControllerRouteProvider:
           complete(Forbidden))
 
     def forward1(remainingUrl: String): Route =
-      completeTask(
+      completeIO(
         pathToAgentRefState.map(_.flatMap(_.checked(agentPath)))
           .flatMapT(agentRefState =>
             forward2(agentRefState.agentRef, remainingUrl = remainingUrl)
               .map(Right.apply)))
 
     def forward2(agentRef: AgentRef, remainingUrl: String)
-    : Task[HttpResponse] =
+    : IO[HttpResponse] =
       controllerState
         .map(_.map { s =>
           val uri = s.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
@@ -85,7 +85,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
         })
         .flatMap:
           case Left(problem) =>
-            Task.pure(HttpResponse(
+            IO.pure(HttpResponse(
               problem.httpStatusCode,
               // Encoding: application/json, or use standard marshaller ???
               entity = HttpEntity(problem.toString)))
@@ -94,14 +94,14 @@ trait AgentForwardRoute extends ControllerRouteProvider:
             forwardTo(agentRef, uri, pekkoUri, request.headers)
 
     def forwardTo(agentRef: AgentRef, uri: Uri, pekkoUri: PekkoUri, headers: Seq[HttpHeader])
-    : Task[HttpResponse] =
+    : IO[HttpResponse] =
       AgentClient // TODO Reuse AgentClient of AgentDriver
         .resource(
           Admission(uri, userAndPassword),
           label = agentRef.path.toString,
           controllerConfiguration.httpsConfig)
         .use { agentClient =>
-          implicit val sessionToken = Task(agentClient.sessionToken)
+          implicit val sessionToken = IO(agentClient.sessionToken)
           agentClient.login() *>
             agentClient
               .sendReceive(HttpRequest(request.method, pekkoUri,

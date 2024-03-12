@@ -1,17 +1,16 @@
 package js7.journal.recover
 
-import org.apache.pekko.pattern.ask
+import cats.effect.unsafe.IORuntime
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
@@ -21,13 +20,15 @@ import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
-import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.pattern.ask
 
 /**
   * @author Joacim Zschimmer
   */
 final class JournalReaderTest extends OurTestSuite, TestJournalMixin
 {
+  private given IORuntime = ioRuntime
+
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private val stateName = "TestState"
 
@@ -38,7 +39,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       autoClosing(scala.io.Source.fromFile(file.toFile)(UTF_8))(_.getLines().next())
         .parseJsonAs[JournalHeader].orThrow.journalId
     autoClosing(new JournalReader(journalLocation.S, file, journalId)) { journalReader =>
-      assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
+      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000000)
       assert(journalReader.totalEventCount == 1)
@@ -56,7 +57,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
     autoClosing(new JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)) { journalReader =>
-      assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
+      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000)
       assert(journalReader.totalEventCount == 1)
@@ -80,7 +81,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
     autoClosing(new JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)) { journalReader =>
       assert(journalReader.fileEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
-      assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
+      assert(journalReader.readSnapshot.compile.toList.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000L, NoKey <-: SnapshotTaken) :: Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       assert(journalReader.eventId == 1001)
       assert(journalReader.totalEventCount == 2)
@@ -95,7 +96,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")) await 99.s
     }
     autoClosing(new JournalReader(journalLocation.S, currentFile, journalId)) { journalReader =>
-      assert(journalReader.readSnapshot.toL(Set).await(99.s) == Set(
+      assert(journalReader.readSnapshot.compile.to(Set).await(99.s) == Set(
         journalReader.journalHeader,
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C","(C.Add)")))

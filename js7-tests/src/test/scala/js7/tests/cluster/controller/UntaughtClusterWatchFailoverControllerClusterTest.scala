@@ -4,7 +4,7 @@ import java.nio.file.Files.size
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
@@ -21,10 +21,10 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerClusterTest.*
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester:
+
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
@@ -44,7 +44,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
           // Let ClusterWatch run because it confirms after ClusterCoupled has been committed
 
           since = now
-          sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
+          sleepWhileFailing = clusterTiming.activeLostTimeout + 3.s
 
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
             "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
@@ -63,7 +63,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
         backupController.testEventBus
           .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.request match {
-            case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _) => Some(event)
+            case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
             case _ => None
           })
           .await(99.s)

@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -18,7 +18,6 @@ import js7.tests.ExecuteOrderInInnerBlockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 
 final class ExecuteOrderInInnerBlockTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:

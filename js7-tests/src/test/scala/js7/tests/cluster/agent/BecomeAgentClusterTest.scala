@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -27,13 +27,12 @@ import js7.tests.cluster.agent.BecomeAgentClusterTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
 import scala.util.control.NonFatal
 
-final class BecomeAgentClusterTest 
+final class BecomeAgentClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -64,7 +63,7 @@ final class BecomeAgentClusterTest
     assert(stampedEvents.last.value.isInstanceOf[OrderFinished])
 
   "Add a backup Subagent" in:
-    val subagentAllocated: Allocated[Task, RunningAgent] =
+    val subagentAllocated: Allocated[IO, RunningAgent] =
       directoryProvider
         .directorEnvResource(backupSubagentItem, isClusterBackup = true,
           extraConfig = config"""

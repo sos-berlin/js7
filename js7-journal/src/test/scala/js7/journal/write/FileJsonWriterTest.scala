@@ -11,7 +11,7 @@ import org.scalatest.BeforeAndAfterAll
   * @author Joacim Zschimmer
   */
 final class FileJsonWriterTest extends OurTestSuite, BeforeAndAfterAll:
-  
+
   private lazy val file = createTempFile("FileJsonWriterTest-", ".tmp")
   private lazy val writer = new FileJsonWriter(file)
 

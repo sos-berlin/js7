@@ -1,9 +1,12 @@
 package js7.launcher.internal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.semigroup.*
 import java.nio.file.Files.{exists, getPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
@@ -15,23 +18,21 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.process.{AbsolutePathJobLauncher, CommandLineJobLauncher, RelativePathJobLauncher, ShellScriptJobLauncher}
 import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.Task
-import monix.execution.Scheduler
 import scala.util.Try
 
 trait JobLauncher:
   protected val jobConf: JobConf
 
-  def precheckAndWarn = Task.unit
+  def precheckAndWarn = IO.unit
 
-  protected def start: Task[Checked[Unit]]
+  protected def start: IO[Checked[Unit]]
 
-  def stop: Task[Unit]
+  def stop: IO[Unit]
 
-  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
+  def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]]
 
-  final lazy val startIfNeeded: Task[Checked[Unit]] =
-    start.memoize
+  final lazy val startIfNeeded: IO[Checked[Unit]] =
+    start.unsafeMemoize
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
 
@@ -42,7 +43,7 @@ object JobLauncher:
   def checked(
     jobConf: JobConf,
     launcherConf: JobLauncherConf)
-    (implicit scheduler: Scheduler)
+    (using ioRuntime: IORuntime)
   : Checked[JobLauncher] =
     jobConf.workflowJob.executable match
       case executable: AbsolutePathExecutable =>
@@ -72,7 +73,7 @@ object JobLauncher:
           lazy val scope = NowScope() |+| EnvScope
           for jobArguments <- evalExpressionMap(executable.jobArguments, scope)
             yield new InternalJobLauncher(executable, jobConf, jobArguments,
-              launcherConf.blockingJobScheduler, launcherConf.clock)
+              launcherConf.blockingJobEC, launcherConf.clock)
 
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
     if !exists(file) then

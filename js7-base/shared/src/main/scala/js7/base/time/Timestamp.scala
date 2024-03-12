@@ -3,7 +3,7 @@ package js7.base.time
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp.*
 import scala.concurrent.duration.*
@@ -26,6 +26,15 @@ trait Timestamp extends Ordered[Timestamp]:
 
   def toTimeString: String =
     toIsoString.substring(11).stripSuffix("Z")
+
+  final def isFiniteDurationCompatible: Boolean =
+    toEpochMilli >= 0 && toEpochSecond < Long.MaxValue / 1_000_000
+
+  final def checkFiniteDurationCompatible: Checked[this.type] =
+    if !isFiniteDurationCompatible then
+      Left(Problem(s"$toString is out of range"))
+    else
+      Right(this)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String]
 

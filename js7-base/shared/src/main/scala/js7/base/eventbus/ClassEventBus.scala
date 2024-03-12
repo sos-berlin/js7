@@ -1,12 +1,11 @@
 package js7.base.eventbus
 
+import cats.effect.IO
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.eventbus.ClassEventBus.*
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.SuperclassCache
-import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.{Atomic, SuperclassCache}
 import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
@@ -61,36 +60,35 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
     synchronized:
       register.clear()
 
-  final def when[C <: Classifier : ClassTag]: Task[ClassifierToEvent[C]] =
+  // TODO Replace IO-returning call with Future-returning calls.
+  // Denn da beginnt die Überwachung sofort und nicht irgendwann.
+  final def when[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
     when_[C](_ => true)
 
   final def when_[C <: Classifier: ClassTag](predicate: ClassifierToEvent[C] => Boolean)
-  : Task[ClassifierToEvent[C]] =
-    Task.deferFuture:
+  : Future[ClassifierToEvent[C]] =
       val promise = Promise[ClassifierToEvent[C]]()
       oneShot[C](predicate)(promise.success)
       promise.future
 
   final def whenPF[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
-  : Task[D] =
+  : IO[D] =
     whenFilterMap(pf.lift)
 
-  final def whenFilterMap[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D]): Task[D] =
-    Task.deferFuture:
+  final def whenFilterMap[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D]): IO[D] =
+    IO.fromFuture(IO:
       val promise = Promise[D]()
       oneShotFilterMap(f)(promise.success)
-      promise.future
+      promise.future)
 
-  // TODO Replace above Task-returning call with the following Future-returning calls.
-  // Denn die hier beginnen die Überwachung sofort und nicht irgendwann.
+  @deprecated("Use when")
   final def whenFuture[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
     whenFuture_[C](_ => true)
 
+  @deprecated("Use when_")
   final def whenFuture_[C <: Classifier : ClassTag](predicate: ClassifierToEvent[C] => Boolean)
   : Future[ClassifierToEvent[C]] =
-    val promise = Promise[ClassifierToEvent[C]]()
-    oneShot[C](predicate)(promise.success)
-    promise.future
+    when_(predicate)
 
   final def whenPFFuture[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : Future[D] =
@@ -106,7 +104,7 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
     predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
     (handle: ClassifierToEvent[C] => Unit)
   : Unit =
-    val used = AtomicBoolean(false)
+    val used = Atomic(false)
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
@@ -126,7 +124,7 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
     f: ClassifierToEvent[C] => Option[A])
     (handle: A => Unit)
   : Unit =
-    val used = AtomicBoolean(false)
+    val used = Atomic(false)
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]

@@ -5,7 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
@@ -25,7 +25,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater

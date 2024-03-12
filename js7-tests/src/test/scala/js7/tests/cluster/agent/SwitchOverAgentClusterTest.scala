@@ -1,14 +1,14 @@
 package js7.tests.cluster.agent
 
-import cats.effect.Resource
+import cats.effect.{IO, ResourceIO}
 import js7.agent.{DirectorTermination, RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
-import js7.base.utils.AllocatedForJvm.BlockingAllocated
+import js7.base.utils.AllocatedForJvm.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -26,13 +26,11 @@ import js7.tests.cluster.agent.SwitchOverAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
-final class SwitchOverAgentClusterTest 
+final class SwitchOverAgentClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -60,8 +58,8 @@ final class SwitchOverAgentClusterTest
 
   "SwitchOver to backup" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) =
-      val resource: Resource[Task, (DirectorEnv, RunningAgent)] =
+    def toTestAgent(envResource: ResourceIO[DirectorEnv]): (DirectorEnv, TestAgent) =
+      val resource: ResourceIO[(DirectorEnv, RunningAgent)] =
         for
           env <- envResource
           program <- env.programResource
@@ -70,8 +68,8 @@ final class SwitchOverAgentClusterTest
       allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2) /*, Some(SIGTERM) ???*/)
 
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def allocate(envResource: Resource[Task, DirectorEnv])
-    : Allocated[Task, (DirectorEnv, Task[RunningAgent])] =
+    def allocate(envResource: ResourceIO[DirectorEnv])
+    : Allocated[IO, (DirectorEnv, IO[RunningAgent])] =
       locally {
         for
           env <- envResource

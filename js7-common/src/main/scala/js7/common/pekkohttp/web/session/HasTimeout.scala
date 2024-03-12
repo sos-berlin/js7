@@ -1,24 +1,34 @@
 package js7.common.pekkohttp.web.session
 
-import js7.base.time.Timestamp
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.syntax.option.*
+import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.time.ScalaTime.*
+import js7.common.pekkohttp.web.session.HasTimeout.*
 import scala.concurrent.duration.*
 
-/**
-  * @author Joacim Zschimmer
-  */
-trait HasTimeout:
-  @volatile
-  private var timeoutAt: Long = Long.MaxValue
+private[session] trait HasTimeout:
 
-  final def isAlive(implicit scheduler: Scheduler) =
-    scheduler.clockRealTime(MILLISECONDS) < timeoutAt
+  @volatile private var state = none[State]
 
-  private[session] final def touch(timeout: FiniteDuration)(implicit scheduler: Scheduler): Unit =
-    timeoutAt = scheduler.clockRealTime(MILLISECONDS) + timeout.toMillis
+  final def isAlive: IO[Boolean] =
+    state.fold(IO.True)(_.timeoutAt.hasTimeLeft)
 
-  private[session] final def isEternal =
-    timeoutAt == Long.MaxValue
+  /** Only untouched ones are eternal! */
+  private[session] final def touch(timeout: FiniteDuration): IO[Unit] =
+    CatsDeadline.now.map: now =>
+      state = Some(State(
+        touchedAt = now,
+        timeoutAt = now + timeout))
 
-  final def touchedAt =
-    Timestamp.ofEpochMilli(timeoutAt)
+  private[session] final def isEternal: Boolean =
+    state.isEmpty
+
+  final def touchedBefore: IO[FiniteDuration] =
+    state.fold(IO.pure(0.s/*???*/))(_.touchedAt.elapsed)
+
+
+private[session] object HasTimeout:
+
+  private final case class State(touchedAt: CatsDeadline, timeoutAt: CatsDeadline)

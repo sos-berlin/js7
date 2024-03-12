@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
@@ -18,9 +18,10 @@ import js7.tests.agent.ResetAgentWhenCancelingTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
+import js7.agent.data.commands.AgentCommand
 
-final class ResetAgentWhenCancelingTest 
+final class ResetAgentWhenCancelingTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   override protected def controllerConfig =
@@ -46,8 +47,8 @@ final class ResetAgentWhenCancelingTest
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-    val agentTerminated = agent.terminate().runToFuture
-    sleep(500.ms) // Give terminate some time to take effect !!!
+    val agentTerminated = agent.terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover)).unsafeToFuture()
+    sleep(500.ms) // Give terminate some time to start !!!
     TestJob.continue()
     // May wait forever and fail when second job has been started while terminating !!!
     agentTerminated.await(99.s)
@@ -66,7 +67,6 @@ final class ResetAgentWhenCancelingTest
       .filter(e => !e.isInstanceOf[OrderCancellationMarked]/*unreliable ordering*/)
       .filter(e => !e.isInstanceOf[OrderMoved]/*may occur after OrderProcessed*/)
       .map {
-        // OrderFailed(Position(1)) when OrderMoved has been emitted
         case OrderFailed(Position(Nil, InstructionNr(1)), None) => OrderFailed(Position(0))
         case e => e
       } ==
@@ -77,8 +77,8 @@ final class ResetAgentWhenCancelingTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("TestJob\n"),
-        OrderProcessed(Outcome.succeeded),
-        //OrderCancellationMarked(FreshOrStarted(None)),
+        OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
+        //OrderProcessed(Outcome.succeeded), // Until v2.6 (Monix), only when non-parallel tested
         OrderDetached,
         OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
         OrderFailed(Position(0)),

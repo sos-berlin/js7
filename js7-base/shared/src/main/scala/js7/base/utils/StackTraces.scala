@@ -6,6 +6,9 @@ import scala.util.{Failure, Try}
   * @author Joacim Zschimmer
   */
 object StackTraces:
+
+  // FIXME Bad for constant exceptions which will get its stack trace growing
+
   private val eyecatcher =
     val bar = "________________________________________"
     new StackTraceElement(bar, bar, "appended", -1)

@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
@@ -31,12 +31,14 @@ import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowPathSuspendWorkflowTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 
 final class ControlWorkflowPathSuspendWorkflowTest
 extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
+  private given IORuntime = ioRuntime
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -58,10 +60,12 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
   private def eventWatch = controller.eventWatch
 
   override def afterAll() =
-    Seq(aAgent, bAgent)
-      .flatMap(Option(_)).parTraverse(_.terminate()).await(99.s)
-    controller.terminate(suppressSnapshot = true).await(99.s)
-    super.afterAll()
+    try
+      Seq(aAgent, bAgent)
+        .flatMap(Option(_)).parTraverse(_.terminate()).await(99.s)
+      controller.terminate(suppressSnapshot = true).await(99.s)
+    finally
+      super.afterAll()
 
   "ControlWorkflowPath suspend=true" in:
     controller = directoryProvider.newController()
@@ -182,7 +186,7 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
         _ == bOrderId <-: OrderStdoutWritten("B1SemaphoreJob\n"),
         after = eventId)
 
-      val terminated = bAgent.terminate().runToFuture
+      val terminated = bAgent.terminate().unsafeToFuture()
       sleep(500.ms)  // Wait until AgentCommand.ShutDown takes effect
       B1SemaphoreJob.continue()
       terminated.await(99.s)
@@ -232,7 +236,7 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
     val eventId = eventWatch.lastAddedEventId
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(aWorkflow.path),
         RemoveVersioned(bWorkflow.path)))

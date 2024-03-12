@@ -1,11 +1,12 @@
 package js7.tests
 
+import fs2.Stream
 import java.time.ZoneId
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, TestAlarmClock, Timestamp, Timezone}
@@ -28,12 +29,15 @@ import js7.tests.CalendarTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 
 final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, workflow)
+
+  private lazy val clock =
+    given ZoneId = CalendarTest.zone
+    TestAlarmClock(local("2021-10-01T00:00"))
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -85,18 +89,18 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
   "Delete Workflow and Calendar" in:
     val eventId = eventWatch.lastAddedEventId
     if false then // TODO Allow and test simultaneous deletion of Calendar and Workflow (?)
-      controller.api.updateItems(Observable(
+      controller.api.updateItems(Stream(
         DeleteSimple(calendar.path),
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path))
       ).await(99.s).orThrow
     else
-      controller.api.updateItems(Observable(
+      controller.api.updateItems(Stream(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path))
       ).await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == workflow.id, after = eventId)
-      controller.api.updateItems(Observable(
+      controller.api.updateItems(Stream(
         DeleteSimple(calendar.path)),
       ).await(99.s).orThrow
     eventWatch.await[ItemDeletionMarked](_.event.key == calendar.path, after = eventId)
@@ -108,8 +112,7 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
 object CalendarTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
-  private val clock = TestAlarmClock(local("2021-10-01T00:00"))
+  private given zone: ZoneId = ZoneId.of("Europe/Mariehamn")
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),

@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
-import org.apache.pekko.util.ByteString
+import org.apache.pekko.util.{ByteString, CompactByteString}
 
 object ByteStringByteSequence extends ByteSequence[ByteString]:
 
@@ -59,6 +59,12 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
 
   override def unsafeArray(byteString: ByteString): Array[Byte] =
     byteString.toArrayUnsafe()
+
+  override def unsafeWrappedArray(byteString: ByteString) =
+    byteString match
+      case byteString: CompactByteString => Some(byteString.toArrayUnsafe())
+      //Inaccessible: case ByteString1(array, 0, len) if len == array.length => Some(array)
+      case _ => None
 
   override def copyToArray(byteString: ByteString, array: Array[Byte]): Int =
     byteString.copyToArray(array)

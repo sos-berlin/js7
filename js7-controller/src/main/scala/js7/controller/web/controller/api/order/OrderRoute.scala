@@ -7,20 +7,18 @@ import org.apache.pekko.http.scaladsl.model.headers.Location
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Route}
-import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import io.circe.Json
 import js7.base.auth.{SimpleUser, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ByteSequenceToLinesObservable
+import js7.base.utils.ByteSequenceToLinesStream
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -34,8 +32,9 @@ import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, DeleteOrdersWhenTerminated}
 import js7.data.order.{FreshOrder, OrderId}
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import scala.concurrent.duration.Deadline.now
 
 /**
@@ -43,12 +42,12 @@ import scala.concurrent.duration.Deadline.now
   */
 trait OrderRoute
 extends ControllerRouteProvider, EntitySizeLimitProvider:
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]]
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]]
   protected def orderApi: OrderApi
   protected def actorSystem: ActorSystem
 
-  private implicit def implicitScheduler: Scheduler = scheduler
-  private implicit def implicitActorsystem: ActorSystem = actorSystem
+  private given IORuntime = ioRuntime
+  private given ActorSystem = actorSystem
 
   final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { user =>
@@ -57,19 +56,21 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
           withSizeLimit(entitySizeLimit)(
             entity(as[HttpEntity])(httpEntity =>
               if httpEntity.contentType == `application/x-ndjson`.toContentType then
-                completeTask {
+                completeIO {
                   val startedAt = now
                   var byteCount = 0L
                   httpEntity
                     .dataBytes
-                    .toObservable
+                    .asFs2Stream(bufferSize = prefetch)
+                    .chunks.evalTap(chunk => IO(logger.trace(s"### chunk.size=${chunk.size}"))).unchunks
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                    .flatMap(new ByteSequenceToLinesObservable)
-                    .mapParallelBatch()(_
+                    .flatMap(new ByteSequenceToLinesStream)
+                    .mapParallelBatch(prefetch = prefetch)(_
                       .parseJsonAs[FreshOrder])
-                    .toL(Vector)
+                    .compile
+                    .toVector
                     .map(_.sequence)
-                    .flatTap(checkedOrders => Task(
+                    .flatTap(checkedOrders => IO(
                       for orders <- checkedOrders do {
                         val d = startedAt.elapsed
                         if d > 1.s then logger.debug("post controller/api/order received - " +
@@ -85,7 +86,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                     json.as[Vector[FreshOrder]] match {
                       case Left(failure) => complete(failure.toProblem)
                       case Right(orders) =>
-                        completeTask(
+                        completeIO(
                           executeCommand(AddOrders(orders), CommandMeta(user))
                             .map(_.map(o => o: ControllerCommand.Response)))
                     }
@@ -94,7 +95,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                       case Left(failure) => complete(failure.toProblem)
                       case Right(order) =>
                         extractUri { uri =>
-                          onSuccess(executeCommand(AddOrder(order), CommandMeta(user)).runToFuture) {
+                          onSuccess(executeCommand(AddOrder(order), CommandMeta(user)).unsafeToFuture()) {
                             case Left(problem) => complete(problem)
                             case Right(response) =>
                               respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
@@ -117,7 +118,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
         pathEnd {
           parameter("return".?):
             case None =>
-              complete(orderApi.ordersOverview.runToFuture)  // TODO Should be streamed
+              complete(orderApi.ordersOverview.unsafeToFuture())  // TODO Should be streamed
             case _ =>
               complete(Problem.pure("Parameter return is not supported here"))
         } ~
@@ -132,20 +133,21 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
         if httpEntity.contentType != `application/x-ndjson`.toContentType then
           complete(UnsupportedMediaType)
         else
-          completeTask(
+          completeIO(
             httpEntity
               .dataBytes
-              .toObservable
-              .flatMap(new ByteSequenceToLinesObservable)
+              .asFs2Stream(bufferSize = prefetch)
+              .flatMap(new ByteSequenceToLinesStream)
               .mapParallelBatch()(_
                 .parseJsonAs[OrderId].orThrow)
-              .toL(Vector)
+              .compile
+              .toVector
               .map(DeleteOrdersWhenTerminated(_))
               .flatMap(executeCommand(_, CommandMeta(user)))
               .map(_.map(o => o: ControllerCommand.Response)))))
 
   private def singleOrder(orderId: OrderId): Route =
-    completeTask(
+    completeIO(
       orderApi.order(orderId).map(_.map {
         case Some(o) =>
           o: ToResponseMarshallable

@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -14,16 +14,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentMoveTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   private lazy val bare1SubagentItem =
     bareSubagentItem.copy(uri = findFreeLocalUri())
@@ -42,7 +39,7 @@ final class SubagentMoveTest extends OurTestSuite, SubagentTester:
 
       eventId = eventWatch.lastAddedEventId
       //val agentEventId = myAgent.eventWatch.lastAddedEventId
-      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Stream(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == bare1SubagentItem.id,
       //  after = agentEventId)

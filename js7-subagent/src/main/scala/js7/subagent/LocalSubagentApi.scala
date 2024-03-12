@@ -1,5 +1,7 @@
 package js7.subagent
 
+import cats.effect.IO
+import fs2.Stream
 import io.circe.Decoder
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -8,29 +10,25 @@ import js7.core.command.CommandMeta
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import js7.subagent.director.SubagentApi
-import monix.eval.Task
-import monix.reactive.Observable
-import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 private final class LocalSubagentApi(subagent: Subagent)
 extends SubagentApi, SessionApi.Dummy:
-  
+
   def isLocal = true
 
   override def hasRelevantStackTrace(throwable: Throwable): Boolean =
     true
 
-  def eventObservable[E <: Event : ClassTag](
+  def eventStream[E <: Event : ClassTag](
     request: EventRequest[E],
-    subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration] = None)
+    subagentRunId: SubagentRunId)
     (implicit kd: Decoder[KeyedEvent[E]])
-  : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    Task.pure(
-      subagent.journal.eventWatch.observe(request))
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
+    IO.pure(
+      subagent.journal.eventWatch.stream(request))
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
-  : Task[Checked[numbered.value.Response]] =
+  : IO[Checked[numbered.value.Response]] =
     subagent.commandExecutor.executeCommand(numbered, CommandMeta.System)
-      .asInstanceOf[Task[Checked[numbered.value.Response]]]
+      .asInstanceOf[IO[Checked[numbered.value.Response]]]

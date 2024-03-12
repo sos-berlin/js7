@@ -1,17 +1,34 @@
 package js7.data_for_java.reactor
 
-import monix.execution.Scheduler
-import monix.reactive.Observable
-import reactor.core.publisher.Flux
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
+import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
+import java.util.function.Function.identity as jIdentity
+import org.reactivestreams.Publisher
+import reactor.core.publisher.{Flux, Mono}
 
 object ReactorConverters:
 
-  implicit final class FluxObservable[A](private val asScala: Observable[A]) extends AnyVal:
-    /** Convert this Monix Observable to a Reactor Flux. */
-    def asFlux(implicit scheduler: Scheduler): Flux[A] =
-      Flux.from(asScala.toReactivePublisher(scheduler))
+  extension [A](stream: Stream[IO, A])
+    /** Convert this FS2 Stream to a Reactor Flux. */
+    def asFlux(using IORuntime): Flux[A] =
+      Mono.fromFuture:
+        stream.toUnicastPublisher
+          .allocated
+          .map: (publisher, release) =>
+            Flux.usingWhen[A, Publisher[A]](
+              Mono.just(publisher),
+              jIdentity,
+              _ =>
+                Mono.fromFuture: () =>
+                  release.unsafeToCompletableFuture())
+          .unsafeToCompletableFuture()
+      .flux
+      .flatMap(jIdentity)
 
-  implicit final class ObservableFlux[A](private val asScala: Flux[A]) extends AnyVal:
-    /** Convert this Reactor Flux to a Monix Observable. */
-    def asObservable: Observable[A] =
-      Observable.fromReactivePublisher(asScala)
+
+  extension [A](flux: Flux[A])
+    /** Convert this Reactor Flux to a FS2 Stream. */
+    def asFs2Stream(bufferSize: Int = 1): Stream[IO, A] =
+      flux.toStreamBuffered[IO](bufferSize = bufferSize)

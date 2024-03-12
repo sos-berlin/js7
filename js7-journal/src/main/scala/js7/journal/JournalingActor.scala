@@ -1,25 +1,28 @@
 package js7.journal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.@@
+import fs2.Stream
+import js7.base.catsutils.CatsEffectUtils
+import js7.base.catsutils.CatsEffectUtils.promiseIO
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
+import js7.base.fs2utils.StreamExtensions.repeatLast
 import js7.base.generic.Accepted
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.promiseTask
-import js7.base.monixutils.MonixBase.syntax.RichScheduler
+import js7.base.monixlike.FutureCancelable
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.pekkoutils.ReceiveLoggingActor
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
-import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
-import monix.execution.{Cancelable, Scheduler}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
@@ -34,12 +37,14 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
 
   protected def journalActor: ActorRef @@ JournalActor.type
   protected def journalConf: JournalConf
-  protected def scheduler: Scheduler
+  protected def ioRuntime: IORuntime
+
+  private given IORuntime = ioRuntime
 
   private var stashingCount = 0
   private val persistStatistics = new PersistStatistics
   private var _persistedEventId = EventId.BeforeFirst
-  private val journalingTimer = SerialCancelable()
+  private val journalingTimer = Atomic(FutureCancelable.empty)
 
   become("receive")(receive)
 
@@ -51,30 +56,23 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     super.become(stateName)(journaling orElse receive)
 
   override def postStop(): Unit =
-    journalingTimer.cancel()
+    journalingTimer.get().cancelAndForget()
     super.postStop()
 
-  // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
-  protected def inhibitJournaling(): Unit =
-    if stashingCount > 0 then throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
-    stashingCount = Inhibited
-
-  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
+  protected final def persistKeyedEventIO[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
     (callback: (Stamped[KeyedEvent[E]], S) => A)
-  : Task[Checked[A]] =
-    promiseTask[Checked[A]] { promise =>
+  : IO[Checked[A]] =
+    promiseIO[Checked[A]]: promise =>
       self ! Persist(keyedEvent, async = async, callback, promise)
-    }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
+  protected final def persistKeyedEventAcceptEarlyIO[EE <: E](
     keyedEvents: Seq[KeyedEvent[EE]],
     timestampMillis: Option[Long] = None,
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[Accepted]] =
-    promiseTask[Checked[Accepted]] { promise =>
+  : IO[Checked[Accepted]] =
+    promiseIO[Checked[Accepted]]: promise =>
       self ! PersistAcceptEarly(keyedEvents, timestampMillis, options, promise)
-    }
 
   protected final def persistKeyedEvent[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
@@ -94,7 +92,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     persistKeyedEventsReturnChecked2(timestamped, options, async)(callback)
-      .map(_.orThrow)(context.dispatcher)
+      .map(_.orThrow)(ioRuntime.compute)
 
   protected final def persistKeyedEventsReturnChecked[EE <: E, A](
     timestamped: Seq[Timestamped[EE]],
@@ -178,7 +176,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
           }))
 
     case PersistAcceptEarly(keyedEvents, timestampMillis, options, promise) =>
-      start(async = true, "persistKeyedEventAcceptEarlyTask")
+      start(async = true, "persistKeyedEventAcceptEarlyIO")
       val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
       journalActor.forward(
         JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now, commitLater = true,
@@ -244,11 +242,21 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       persistStatistics.beginStashing(firstName)
       logBecome("journaling")
       context.become(journaling, discardOld = false)
-      logger.whenWarnEnabled:
-        val since = now
-        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations):
-          // Under load it may be normal to be busy for some time ???
-          logger.warn(s"»$toString« 🟠 Still persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
+      if journalConf.persistWarnDurations.nonEmpty then
+        logger.whenWarnEnabled:
+          val since = now
+          val timer = FutureCancelable:
+            Stream.iterable(journalConf.persistWarnDurations)
+              .covary[IO]
+              .repeatLast
+              .evalMap(IO.sleep)
+              .foreach(_ => IO:
+                // Under load it may be normal to be busy for some time ???
+                logger.warn(s"»$toString« 🟠 Still persisting for ${
+                  since.elapsed.pretty} ($stashingCount persist operations in progress)"))
+              .compile.drain
+              .unsafeRunCancelable()
+          journalingTimer.getAndSet(timer).cancelAndForget()
 
   private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit =
     if stashingCount == 0 then
@@ -257,7 +265,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       throw new RuntimeException(msg)
     stashingCount -= 1
     if stashingCount == 0 then
-      journalingTimer := Cancelable.empty
+      journalingTimer.get().cancelAndForget()
       unstashAll()
       persistStatistics.endStashing()
       if TraceLog then logger.trace(s"»$toString« unbecome")

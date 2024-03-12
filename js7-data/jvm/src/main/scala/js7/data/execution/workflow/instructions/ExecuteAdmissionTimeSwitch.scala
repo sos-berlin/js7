@@ -1,10 +1,10 @@
 package js7.data.execution.workflow.instructions
 
 import java.time.ZoneId
+import js7.base.monixlike.SerialSyncCancelable
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.execution.cancelables.SerialCancelable
 import org.jetbrains.annotations.TestOnly
 
 /** Mutable state for calculating the current or next admission time. */
@@ -14,36 +14,35 @@ final class ExecuteAdmissionTimeSwitch(
   onSwitch: Option[TimeInterval] => Unit):
 
   @volatile private var _nextTime: Option[Timestamp] = None
-  private val timer = SerialCancelable()
+  private val _timer = SerialSyncCancelable()
 
   @TestOnly
   private[instructions] def nextTime = _nextTime
 
-  /** Cancel the callback timer for admission start. */
+  /** Cancel the callback _timer for admission start. */
   def cancel(): Unit =
     _nextTime = None
-    timer.cancel()
+    _timer.cancel()
 
-  /** Update the state with the current or next admission time and set a timer.
+  /** Update the state with the current or next admission time and set a _timer.
    * @return true iff an AdmissionTimeInterval is effective now. */
-  def updateAndCheck(onPermissionStart: => Unit)(implicit clock: AlarmClock): Boolean =
+  def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): Boolean =
     clock.lock:
       val now = clock.now()
-      val interval =
-        admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
-      interval match
+      admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
+      match
         case None =>
-          timer.cancel()
+          _timer.cancel()
           false // Not enterable now
 
         case Some(interval) =>
           if !_nextTime.contains(interval.start) then
             onSwitch((interval != TimeInterval.never) ? interval)
-            // Also set timer if clock has been adjusted
+            // Also set _timer if clock has been adjusted
             if now < interval.start then
               _nextTime = Some(interval.start)
-              timer := clock.scheduleAt(interval.start):
+              _timer := clock.scheduleAt(interval.start):
                 _nextTime = None
-                onPermissionStart
+                onAdmissionStart
 
           interval.contains(now) // Has admission now?

@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -16,10 +16,10 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 final class FailOnErrWrittenTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -32,7 +32,7 @@ final class FailOnErrWrittenTest extends OurTestSuite, ControllerAgentForScalaTe
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "JobResourcePath" in:
+  "failOnErrWritten lets the job fail with the last stderr line, when it exists" in:
     val orderId = OrderId("ORDER")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")

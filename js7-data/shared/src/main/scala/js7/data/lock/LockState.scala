@@ -107,7 +107,7 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
 
   private def lockPath = lock.path
 
-  //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
+  //TODO Break snapshot into smaller parts: private def toSnapshot: Stream[IO, Any] = ...
 
 
 object LockState extends UnsignedSimpleItemState.Companion[LockState]:

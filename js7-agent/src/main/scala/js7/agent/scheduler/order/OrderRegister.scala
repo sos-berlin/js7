@@ -1,10 +1,10 @@
 package js7.agent.scheduler.order
 
-import org.apache.pekko.actor.ActorRef
 import js7.agent.scheduler.order.OrderRegister.*
+import js7.base.monixlike.SerialSyncCancelable
 import js7.core.common.ActorRegister
 import js7.data.order.OrderId
-import monix.execution.cancelables.SerialCancelable
+import org.apache.pekko.actor.ActorRef
 import scala.concurrent.Promise
 
 /**
@@ -32,7 +32,7 @@ private[order] object OrderRegister:
   final class OrderEntry(
     val orderId: OrderId,
     val actor: ActorRef):
-    val timer = SerialCancelable()
+    val timer = SerialSyncCancelable()
     var detachResponses: List[Promise[Unit]] = Nil
 
     def isDetaching = detachResponses.nonEmpty

@@ -1,14 +1,15 @@
 package js7.base.utils
 
+import cats.effect.SyncIO
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurTestSuite
 import js7.base.utils.SetOnceTest.*
-import monix.execution.atomic.AtomicInt
 
 /**
  * @author Joacim Zschimmer
  */
 final class SetOnceTest extends OurTestSuite:
+
   "SetOnce" in:
     val a = SetOnce[Int]
     assert(a.isEmpty)
@@ -31,7 +32,7 @@ final class SetOnceTest extends OurTestSuite:
     assert(r == 0)
 
   "getOrUpdate" in:
-    val counter = AtomicInt(0)
+    val counter = Atomic(0)
     val a = SetOnce[A]
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
@@ -43,6 +44,33 @@ final class SetOnceTest extends OurTestSuite:
     assert(a.checked == Left(Problem.pure("SetOnce[Int] promise has not been kept so far")))
     a := 7
     assert(a.checked == Right(7))
+
+  "whenDefined" in :
+    val a = Lazy(7)
+    var called: Int = -1
+
+    def f(i: Int): SyncIO[Unit] =
+      SyncIO:
+        called = i
+
+    a.whenDefined(f).unsafeRunSync()
+    assert(a() == 7)
+    assert(called == -1)
+
+    a.whenDefined(f).unsafeRunSync()
+    assert(called == 7)
+
+  "toOption" in:
+    val a = SetOnce[Int]
+    assert(a.toOption == None)
+    a := 7
+    assert(a.toOption == Some(7))
+
+  "fold" in:
+    val a = SetOnce[Int]
+    assert(a.fold(0)(_ * 3) == 0)
+    a := 7
+    assert(a.fold(0)(_ * 3) == 21)
 
   "toString" in:
     val a = SetOnce[Int]

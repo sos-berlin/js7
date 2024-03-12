@@ -1,6 +1,7 @@
 package js7.base.crypt.generic
 
-import cats.effect.Resource
+import cats.effect
+import cats.effect.{IO, Resource}
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.foldable.*
@@ -13,11 +14,12 @@ import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.collectAndFlushOnSilence
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
@@ -25,8 +27,6 @@ import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.Task
-import monix.reactive.Observable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -34,8 +34,8 @@ final class DirectoryWatchingSignatureVerifier private(
   companionToDirectory: Map[SignatureVerifier.Companion, Path],
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
-  (implicit iox: IOExecutor)
-extends SignatureVerifier, Service.StoppableByRequest:
+  (using iox: IOExecutor)
+extends SignatureVerifier, Service.StoppableByCancel:
 
   @volatile private var state = State(Map.empty)
 
@@ -48,7 +48,7 @@ extends SignatureVerifier, Service.StoppableByRequest:
   def publicKeyOrigin = "(DirectoryWatchingSignatureVerifier)"
 
   protected def start =
-    Task.defer:
+    IO.defer:
       val companionToDir = companionToDirectory
         .map { case (companion, directory) =>
           companion -> (directory -> readDirectory(directory).orThrow)
@@ -64,12 +64,13 @@ extends SignatureVerifier, Service.StoppableByRequest:
         companionToDir
           .toVector
           .map { case (companion, (directory, directoryState)) =>
-            CorrelId.bindNew(
+            CorrelId.bindNew:
               observeDirectory(companion, directory, directoryState)
-                .onErrorRestartLoop(()) { (t, _, retry) =>
-                  logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                  retry(()).delayExecution(10.s)
-                })
+                .onErrorRestartLoop(()): (t, _, retry) =>
+                  IO.defer:
+                    logger.error(s"${companion.typeName}: ${t.toStringWithCauses}",
+                      t.nullIfNoStackTrace)
+                    retry(()).delayBy(10.s)
           }
           .parSequence
           .map(_.combineAll))
@@ -78,41 +79,37 @@ extends SignatureVerifier, Service.StoppableByRequest:
     companion: SignatureVerifier.Companion,
     directory: Path,
     directoryState: DirectoryState)
-  : Task[Unit] =
+  : IO[Unit] =
     DirectoryWatch
-      .observable(directory, directoryState, settings, isRelevantFile)
-      .takeUntilEval(untilStopRequested)
-      .flatMap(Observable.fromIterable)
-      .debounce(settings.directorySilence)
-      .bufferIntrospective(1024)
-      .tapEach(events => logger.info(
+      .stream(directory, directoryState, settings, isRelevantFile)
+      .collectAndFlushOnSilence(settings.directorySilence)
+      .evalTap(events => IO(logger.info:
         s"Rereading signature keys of ${companion.typeName} type due to ${
-          events.distinct.mkString(", ")}"))
-      .mapEval(_ =>
-        rereadDirectory(directory))
-      .completedL
+          events.asSeq.mkString(", ")}"))
+      .foreach: _ =>
+        rereadDirectory(directory)
+      .compile
+      .drain
 
-  private def rereadDirectory(directory: Path): Task[Unit] =
-    logger.debugTask(Task.defer {
+  private def rereadDirectory(directory: Path): IO[Unit] =
+    logger.debugF(IO.defer:
       companionToDirectory
         .collect { case (companion, `directory`) =>
-          iox(Task(readDirectory(directory)))
-            .flatMapT(directoryState => Task(
+          IO
+            .interruptible:
+              readDirectory(directory)
+            .flatMapT(directoryState => IO(
               toVerifier(companion, directory, directoryState)))
             .map(companion -> _)
         }
         .toVector
         .sequence
-        .map { updated =>
+        .map: updated =>
           // Update state atomically:
           state = State(state.companionToVerifier ++ updated)
-
           try onUpdated()
-          catch { case NonFatal(t) =>
-            logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-          }
-        }
-      })
+          catch case NonFatal(t) =>
+            logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
   private def toVerifier(
     companion: SignatureVerifier.Companion,
@@ -172,7 +169,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
   def checkedResource(config: Config, onUpdated: () => Unit)
     (implicit iox: IOExecutor)
-  : Checked[Resource[Task, DirectoryWatchingSignatureVerifier]] =
+  : Checked[Resource[IO, DirectoryWatchingSignatureVerifier]] =
     prepare(config).map(_.toResource(onUpdated))
 
   def prepare(config: Config): Checked[Prepared] =
@@ -205,8 +202,8 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
     settings: DirectoryWatchSettings):
 
     def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
-    : Resource[Task, DirectoryWatchingSignatureVerifier] =
-      Service.resource(Task(
+    : Resource[IO, DirectoryWatchingSignatureVerifier] =
+      Service.resource(IO(
         new DirectoryWatchingSignatureVerifier(
           companionToDirectory, settings, onUpdated)))
 

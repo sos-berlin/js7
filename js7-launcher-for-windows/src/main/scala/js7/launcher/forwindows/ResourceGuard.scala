@@ -1,6 +1,6 @@
 package js7.launcher.forwindows
 
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 
 /**
   * Once `releaseAfterUse` has been called and no one uses the resource, `release` ist called.
@@ -9,7 +9,7 @@ import monix.execution.atomic.AtomicBoolean
 private final class ResourceGuard[A] private(resource: A, release: A => Unit):
 
   private var usage = 1
-  private val _releaseAfterUse = AtomicBoolean(false)
+  private val _releaseAfterUse = Atomic(false)
 
   def use[B](body: Option[A] => B): B =
     if increment() > 0 then

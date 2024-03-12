@@ -1,22 +1,21 @@
 package js7.base.utils
 
 import cats.:<:
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.utils.AutoClosing.autoClosing
-import monix.eval.Task
-import monix.execution.Scheduler
-import scala.annotation.unused
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.duration.Duration
 
 object AllocatedForJvm:
 
-  implicit final class BlockingAllocated[F[_], A](private val allocated: Allocated[F, A])
-  extends AnyVal:
+  extension[F[_], A](allocated: Allocated[F, A])
+
     def useSync[R](stopTimeout: Duration)(body: A => R)
-      (implicit s: Scheduler, @unused evidence: F :<: Task, src: sourcecode.Enclosing)
+      (using IORuntime, F :<: IO, sourcecode.Enclosing)
     : R =
-      val stop = allocated.release.asInstanceOf[Task[Unit]]
+      val stop = allocated.release.asInstanceOf[IO[Unit]]
       val ac: AutoCloseable = () =>
         stop
           .logWhenItTakesLonger(s"${allocated.toAllocatedString}.useSync.stop")

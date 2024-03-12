@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -13,11 +13,10 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 final class FileWatchInjectionTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""

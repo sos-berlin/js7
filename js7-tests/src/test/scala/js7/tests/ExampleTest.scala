@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -15,10 +15,9 @@ import js7.data.workflow.position.Position
 import js7.tests.ExampleTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
 
 final class ExampleTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"""

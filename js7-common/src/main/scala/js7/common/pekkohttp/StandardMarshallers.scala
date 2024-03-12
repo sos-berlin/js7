@@ -1,26 +1,14 @@
 package js7.common.pekkohttp
 
-import org.apache.pekko.NotUsed
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
+import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import org.apache.pekko.http.scaladsl.marshalling.{Marshaller, Marshalling, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
-import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType, StatusCode}
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
-import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.util.ByteString
-import io.circe.Encoder
-import io.circe.syntax.*
-import izumi.reflect.Tag
-import js7.base.circeutils.CirceUtils.*
-import js7.base.generic.GenericString
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.{Checked, Problem}
-import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
-import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.common.http.StreamingSupport.PekkoObservable
-import monix.execution.Scheduler
-import monix.reactive.Observable
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
@@ -29,6 +17,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 object StandardMarshallers:
+
   private val Nl = ByteString("\n")
 
   val StringMarshaller: ToEntityMarshaller[String] =
@@ -52,18 +41,6 @@ object StandardMarshallers:
   private def stringToFiniteDuration(string: String) =
     (BigDecimal(string) * 1000).toLong.millis
 
-  def monixObservableToMarshallable[A: Tag](observable: Observable[A])
-    (implicit s: Scheduler, toMarshallable: Source[A, NotUsed] => ToResponseMarshallable)
-  : ToResponseMarshallable =
-    toMarshallable(observable.toPekkoSourceForHttpResponse)
-
-  private def observableToJsonArrayHttpEntity[A: Encoder: Tag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
-    HttpEntity(
-      `application/json`,
-      observable
-        .mapParallelBatch()(o => o.asJson.toByteSequence[ByteString])
-        .intersperse(ByteString("["), ByteString(","), ByteString("]"))
-        .toPekkoSourceForHttpResponse)
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

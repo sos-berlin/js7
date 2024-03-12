@@ -18,9 +18,9 @@ extends UnsignedSimpleItemPath, DelegateId, InventoryItemPath.AttachableToAgent:
 
 
 object SubagentSelectionId
-extends DelegateId.Companion[SubagentSelectionId], 
+extends DelegateId.Companion[SubagentSelectionId],
   UnsignedSimpleItemPath.Companion[SubagentSelectionId]:
-  
+
   def fromSubagentId(subagentId: SubagentId): SubagentSelectionId =
     SubagentSelectionId(subagentId.string)
 

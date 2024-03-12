@@ -1,19 +1,26 @@
 package js7.cluster.watch
 
-import js7.base.io.process.ReturnCode
+import cats.effect.{ExitCode, IO}
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.{JavaMain, ServiceMain}
-import monix.eval.Task
+import js7.common.system.startup.{ServiceApp, ServiceMain}
+import org.jetbrains.annotations.TestOnly
 
-object ClusterWatchMain:
+object ClusterWatchMain extends ServiceApp:
   // No Logger here!
 
-  def main(args: Array[String]): Unit =
-    val returnCode = run(args)(_.untilTerminated)
-    JavaMain.exitIfNonZero(returnCode)
+  def run(args: List[String]) =
+    runService(args, "JS7 ClusterWatch", ClusterWatchConf.fromCommandLine)(
+      conf => ClusterWatchService.completeResource(conf),
+      use = (_, service: ClusterWatchService) => service.untilTerminated)
 
-  def run(args: Array[String])(use: ClusterWatchService => Task[ProgramTermination]): ReturnCode =
-    ServiceMain.returnCodeMain(args, "JS7 ClusterWatch", ClusterWatchConf.fromCommandLine)(
-      (conf, _) => ClusterWatchService.completeResource(conf),
-      use = (_, service: ClusterWatchService, _) => use(service))
+  @TestOnly
+  def runAsTest(args: List[String])
+    (use: ClusterWatchService => IO[ProgramTermination])
+  : IO[ExitCode] =
+    ServiceMain
+      .runAsMain(args, "JS7 ClusterWatch",
+        ClusterWatchConf.fromCommandLine,
+        suppressShutdownLogging = true
+      )(conf => ClusterWatchService.completeResource(conf),
+        use = (_, service: ClusterWatchService) => use(service))

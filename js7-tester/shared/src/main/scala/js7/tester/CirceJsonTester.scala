@@ -12,6 +12,7 @@ import org.scalatest.Assertions.*
   * @author Joacim Zschimmer
   */
 object CirceJsonTester:
+
   private val printer = Printer.noSpaces.copy(dropNullValues = true/*drops None*/)
   private val prettyPrinter = Printer.spaces2.copy(colonLeft = "", lrbracketsEmpty = "")
 

@@ -1,7 +1,8 @@
 package js7.data.item
 
+import cats.effect.IO
+import fs2.Stream
 import js7.base.problem.Checked
-import monix.reactive.Observable
 
 trait InventoryItemState:
   protected type Self <: InventoryItemState
@@ -11,8 +12,8 @@ trait InventoryItemState:
 
   def updateItem(item: companion.Item): Checked[companion.ItemState]
 
-  def toSnapshotObservable: Observable[Any] =
-    Observable.pure(this)
+  def toSnapshotStream: Stream[IO, Any] =
+    Stream.emit(this)
 
 
 object InventoryItemState:

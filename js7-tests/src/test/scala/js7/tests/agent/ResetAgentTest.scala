@@ -1,20 +1,25 @@
 package js7.tests.agent
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import java.nio.file.Files.exists
 import java.time.LocalTime
 import js7.agent.TestAgent
 import js7.base.auth.Admission
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.MVar
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
@@ -44,10 +49,6 @@ import js7.tests.agent.ResetAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
-import monix.catnap.MVar
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 
 final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -59,6 +60,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.subagent-driver.reset-timeout = 10s # Allow slow testing
     """ withFallback super.agentConfig
 
   protected val agentPaths = Seq(agentPath)
@@ -128,14 +130,14 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     // The Director has terminated the BareSubagent, too
     idToAllocatedSubagent(bareSubagentId).allocatedThing.untilTerminated.await(99.s)
 
-    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
+    barrier.flatMap(_.tryPut(())).await(99.s)
 
   "Run another order" in:
     val orderId = OrderId("RESET-AGENT-2")
     controller.api.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
 
-    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
+    barrier.flatMap(_.tryPut(())).await(99.s)
 
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
@@ -187,7 +189,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderMoved(Position(1)),
       OrderFinished()))
 
-    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
+    barrier.flatMap(_.tryPut(())).await(99.s)
 
   "ResetAgent when Agent is reset already" in:
     val checked = controller.api.executeCommand(ResetAgent(agentPath)).await(99.s)
@@ -254,7 +256,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
             secondController.localUri,
             Some(directoryProvider.controllerEnv.userAndPassword))
           ))(secondController.actorSystem))
-        secondControllerApi.updateItems(Observable(
+        secondControllerApi.updateItems(Stream(
           AddOrChangeSimple(AgentRef(agentPath, Seq(agentEnv.localSubagentId))),
           AddOrChangeSimple(SubagentItem(agentEnv.localSubagentId, agentPath, agents(0).localUri)),
           AddOrChangeSigned(secondProvider.toSignedString(jobResource)),
@@ -346,14 +348,14 @@ object ResetAgentTest:
             joinIfFailed = true)),
         Workflow.empty)))
 
-  private val barrier = MVar.empty[Task, Unit]().memoize
+  private val barrier = MVar.empty[IO, Unit].unsafeMemoize
 
   private final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
         barrier
-          .tapEval(_ => Task(logger.debug("TestJob start")))
+          .flatTap(_ => IO(logger.debug("TestJob start")))
           .flatMap(_.take)
-          .guaranteeCase(exitCase => Task(logger.debug(s"TestJob $exitCase")))
+          .guaranteeCase(exitCase => IO(logger.debug(s"TestJob $exitCase")))
           .as(Outcome.succeeded))
   private object TestJob extends InternalJob.Companion[TestJob]

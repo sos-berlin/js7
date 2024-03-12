@@ -1,7 +1,7 @@
 package js7.tests.jobresource
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -9,10 +9,10 @@ import js7.data.item.ItemOperation
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.jobresource.JobResourceTest.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class JobResourceAtBareSubagentTest extends JobResourceTest:
+
   override protected val agentConfig = config"""
     js7.auth.subagents.BARE-SUBAGENT = "${toLocalSubagentId(agentPath).string}'s PASSWORD"
     """.withFallback(super.agentConfig)
@@ -28,7 +28,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest:
   override def beforeAll() =
     super.beforeAll()
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         ItemOperation.AddOrChangeSimple(bareSubagentItem),
         ItemOperation.AddOrChangeSimple(directoryProvider.subagentItems(0).copy(disabled = true))))
       .await(99.s)

@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
@@ -21,10 +21,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchNarrowPatternTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 
 final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""

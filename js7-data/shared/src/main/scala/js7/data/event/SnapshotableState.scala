@@ -11,8 +11,8 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 
 /** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
 trait SnapshotableState[S <: SnapshotableState[S]]
@@ -21,7 +21,7 @@ extends JournaledState[S]:
 
   def companion: SnapshotableState.Companion[S]
 
-  def toSnapshotObservable: Observable[Any]
+  def toSnapshotStream: Stream[IO, Any]
 
   def estimatedSnapshotSize: Int
 
@@ -57,9 +57,9 @@ extends JournaledState[S]:
   def eventId: EventId
 
   /** For testing, should be equal to this. */
-  final def toRecovered: Task[S] =
+  final def toRecovered: IO[S] =
     companion
-      .fromObservable(toSnapshotObservable)
+      .fromStream(toSnapshotStream)
       .map(_.withEventId(eventId))
 
 
@@ -70,9 +70,9 @@ object SnapshotableState:
     def snapshotSize =
       journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
 
-    def toSnapshotObservable: Observable[Any] =
-      journalState.toSnapshotObservable ++
-        clusterState.toSnapshotObservable
+    def toSnapshotStream: Stream[IO, Any] =
+      journalState.toSnapshotStream ++
+        clusterState.toSnapshotStream
   object Standards:
     def empty = Standards(JournalState.empty, ClusterState.Empty)
 
@@ -89,14 +89,16 @@ object SnapshotableState:
 
     def empty: S
 
-    def fromObservable(snapshotObjects: Observable[Any]): Task[S] =
-      Task.defer:
+    def fromStream(snapshotObjects: Stream[IO, Any]): IO[S] =
+      IO.defer:
         val builder = newBuilder()
-        snapshotObjects.foreachL(builder.addSnapshotObject)
-          .map { _ =>
+        snapshotObjects
+          .foreach(o => IO:
+            builder.addSnapshotObject(o))
+          .compile.drain
+          .map: _ =>
             builder.onAllSnapshotsAdded()
             builder.result()
-          }
 
     def newBuilder(): SnapshotableStateBuilder[S]
 

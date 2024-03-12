@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
 import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -17,9 +17,11 @@ import js7.tests.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.{IORuntime, Scheduler}
 
 final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
+
+  private given Scheduler = ioRuntime.scheduler
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -30,7 +32,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  private val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
+  private lazy val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(alarmClock))

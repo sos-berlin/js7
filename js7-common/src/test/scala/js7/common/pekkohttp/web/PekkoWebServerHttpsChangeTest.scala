@@ -14,10 +14,10 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -28,8 +28,8 @@ import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
@@ -43,8 +43,10 @@ import scala.util.{Failure, Try}
 
 final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll
 {
+  private given IORuntime = ioRuntime
+
   private implicit lazy val actorSystem: ActorSystem =
-    newActorSystem("PekkoWebServerHttpsChangeTest")
+    newActorSystem("PekkoWebServerHttpsChangeTest", executionContext = ioRuntime.compute)
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("PekkoWebServerHttpsChangeTest-")
   private lazy val http = Http()
@@ -65,7 +67,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   private implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
-  private lazy val webServer: Allocated[Task, PekkoWebServer] = PekkoWebServer
+  private lazy val webServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
     .resource(
       Seq(
         WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),
@@ -73,6 +75,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
       config"""
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s
+        js7.web.server.shutdown-delay = 500ms
         js7.directory-watcher.watch-delay = 10ms
         js7.directory-watcher.directory-silence = 10ms
         """.withFallback(Js7Configuration.defaultConfig),
@@ -85,17 +88,15 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
     .toAllocated
     .await(99.s)
 
-  override def beforeAll() = {
-    webServer
+  override def beforeAll() =
     super.beforeAll()
-  }
+    webServer
 
-  override def afterAll() = {
+  override def afterAll() =
     webServer.release.await(99.s)
     Pekkos.terminateAndWait(actorSystem, 10.s)
     deleteDirectoryRecursively(directory)
     super.afterAll()
-  }
 
   "HTTP" in {
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))
@@ -149,7 +150,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
       restarted
       testEventBus.subscribe[PekkoWebServer.RestartedEvent.type](_ =>
-        restarted.success(()))
+        restarted.trySuccess(()))
 
       writtenLength = 3
       certFile := changedCert.take(writtenLength)

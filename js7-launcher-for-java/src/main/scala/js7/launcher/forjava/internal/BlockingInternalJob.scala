@@ -1,9 +1,11 @@
 package js7.launcher.forjava.internal
 
+import cats.effect.unsafe.IORuntime
 import io.vavr.control.Either as VEither
 import java.io.{PrintWriter, Writer}
 import java.util.{Optional, Map as JMap}
 import javax.annotation.Nonnull
+import js7.base.io.process.{Stderr, Stdout}
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
 import js7.data.job.JobResourcePath
@@ -15,7 +17,6 @@ import js7.data_for_java.value.JExpression
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.forjava.internal.BlockingInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
-import monix.execution.Scheduler
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOption
@@ -64,7 +65,18 @@ object BlockingInternalJob:
     private val outLazy = Lazy(new PrintWriter(outWriter, true))
     private val errLazy = Lazy(new PrintWriter(errWriter, true))
 
+    /** Unbuffered PrinterWriter for stdout.
+     *
+     * Despite the PrinterWriter is unbuffered,
+     * the corresponding OrderStdWritten events are written asynchronously in background.
+     */
     lazy val out: PrintWriter = outLazy()
+
+    /** Unbuffered PrinterWriter for stderr.
+     *
+     * Despite the PrinterWriter is unbuffered,
+     * the corresponding OrderStdWritten events are written asynchronously in background.
+     */
     lazy val err: PrintWriter = errLazy()
 
     private[internal] def close(): Unit =
@@ -88,9 +100,13 @@ object BlockingInternalJob:
       asScala.env
         .map(_.view.mapValues(_.toJava).asJava)
         .toVavr
+
   object Step:
-    def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =
-      Step(asScala, new ObserverWriter(asScala.outObserver), new ObserverWriter(asScala.errObserver))
+    def apply(asScala: InternalJob.Step)(using IORuntime): Step =
+      Step(
+        asScala,
+        outWriter = BlockingStdWriter(asScala.writer(Stdout)),
+        errWriter = BlockingStdWriter(asScala.writer(Stderr)))
 
   trait OrderProcess:
     /** Process the order.

@@ -1,15 +1,16 @@
 package js7.agent.scheduler.order
 
-import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
-import org.apache.pekko.pattern.pipe
+import cats.effect.unsafe.IORuntime
+import cats.effect.{FiberIO, IO}
 import com.softwaremill.tagging.@@
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor.*
+import js7.base.catsutils.CatsEffectExtensions.materializeIntoChecked
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.monixlike.MonixLikeExtensions.{foreach, materialize}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
@@ -20,9 +21,9 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.subagent.director.SubagentKeeper
-import monix.eval.{Fiber, Task}
-import monix.execution.Scheduler
-import scala.concurrent.Future
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
+import org.apache.pekko.pattern.pipe
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 /**
@@ -34,8 +35,10 @@ final class OrderActor private(
   subagentKeeper: SubagentKeeper[AgentState],
   protected val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
-  (implicit protected val scheduler: Scheduler)
+  (implicit protected val ioRuntime: IORuntime)
 extends KeyedJournalingActor[AgentState, OrderEvent]:
+
+  private given ExecutionContext = ioRuntime.compute
 
   private val logger = Logger.withPrefix[this.type](orderId.toString)
 
@@ -61,10 +64,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
               o,
               events => self ! Internal.UpdateEvents(events, orderCorrelId))
             .materializeIntoChecked
-            .tapEval:
-              case Left(problem) => Task(logger.error(s"recoverOrderProcessing(${o.id}): $problem"))
-              case Right(_) => Task.unit
-            .foreach { (_: Checked[Fiber[OrderProcessed]]) =>
+            .flatTap:
+              case Left(problem) => IO(logger.error(s"recoverOrderProcessing(${o.id}): $problem"))
+              case Right(_) => IO.unit
+            .foreach { (_: Checked[FiberIO[OrderProcessed]]) =>
               sender ! Output.RecoveryFinished
             }
 
@@ -113,23 +116,24 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
           else
             // Separate CorrelId for each order process
             CorrelId.bindNew:
-              subagentKeeper
-                .processOrder(
-                  order.checkedState[Order.IsFreshOrReady].orThrow,
-                  events => self ! Internal.UpdateEvents(events, orderCorrelId))
-                .materialize
-                .map:
-                  case Failure(t) =>
-                    logger.error(s"startOrderProcessing => ${t.toStringWithCauses}")  // OrderFailed ???
+              IO.defer:
+                subagentKeeper
+                  .processOrder(
+                    order.checkedState[Order.IsFreshOrReady].orThrow,
+                    events => self ! Internal.UpdateEvents(events, orderCorrelId))
+                  .materialize
+                  .map:
+                    case Failure(t) =>
+                      logger.error(s"startOrderProcessing => ${t.toStringWithCauses}") // OrderFailed ???
 
-                  //case Success(Left(problem: SubagentDriverStoppedProblem)) =>
-                  //  logger.debug(s"startOrderProcessing => $problem")
+                    //case Success(Left(problem: SubagentDriverStoppedProblem)) =>
+                    //  logger.debug(s"startOrderProcessing => $problem")
 
-                  case Success(Left(problem)) =>
-                    logger.error(s"startOrderProcessing => $problem")  // ???
+                    case Success(Left(problem)) =>
+                      logger.error(s"startOrderProcessing => $problem")  // ???
 
-                  case Success(Right(())) =>
-                .runToFuture
+                    case Success(Right(())) =>
+              .unsafeToFuture()
 
       case _: Input.Terminate =>
         context.stop(self)
@@ -142,7 +146,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
           for signal <- signal do
             subagentKeeper
               .killProcess(orderId, signal)
-              .runAsyncAndForget
+              .unsafeRunAndForget()
         else
           context.stop(self)
 
@@ -164,7 +168,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
       }
 
   private def handleEvents(events: Seq[OrderCoreEvent]): Future[Checked[Completed]] =
-    order.applyEvents(events) match 
+    order.applyEvents(events) match
       case Left(problem) =>
         Future.successful(Left(problem))
 
@@ -200,7 +204,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
         .killProcess(
           order.id,
           if kill.immediately then SIGKILL else SIGTERM)
-        .runAsyncAndForget
+        .unsafeRunAndForget()
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit =
     if anOrder.isDetaching then
@@ -297,7 +301,7 @@ private[order] object OrderActor:
     subagentKeeper: SubagentKeeper[AgentState],
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf)
-    (implicit s: Scheduler) =
+    (using IORuntime) =
     Props { new OrderActor(
       orderId, correlId, subagentKeeper, journalActor = journalActor, journalConf)
     }

@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.ExprFunction
-import monix.eval.Task
+import cats.effect.IO
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
 sealed trait Value:
   def valueType: ValueType
 
-  def release = Task.unit
+  def release = IO.unit
 
   def asString: Checked[String] =
     as[StringValue].map(_.string)

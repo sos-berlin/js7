@@ -9,7 +9,7 @@ import io.circe.syntax.*
 import io.circe.{Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
@@ -26,33 +26,34 @@ import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import monix.eval.Task
-import monix.execution.Scheduler
-import scala.concurrent.Future
+import cats.effect.IO
+import cats.effect.kernel.Deferred
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
-  
-  protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.traced
+
+  protected def whenShuttingDown = Deferred.unsafe
   protected def actorSystem = system
   protected val orderApi = new OrderApi:
-    def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))
-    def orders = Task(Right(TestOrders.values.toVector))
-    def orderCount = Task(Right(TestOrders.values.size))
+    def order(orderId: OrderId) = IO(Right(TestOrders.get(orderId)))
+    def orders = IO(Right(TestOrders.values.toVector))
+    def orderCount = IO(Right(TestOrders.values.size))
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     (command match {
-      case AddOrder(order) => Task(Right(AddOrder.Response(ignoredBecauseDuplicate = order.id == DuplicateOrderId)))
-      case AddOrders(_) => Task(Right(AddOrders.Response(1234L)))
-      case _ => Task(fail())
+      case AddOrder(order) => IO(Right(AddOrder.Response(ignoredBecauseDuplicate = order.id == DuplicateOrderId)))
+      case AddOrders(_) => IO(Right(AddOrders.Response(1234L)))
+      case _ => IO(fail())
     }).map(_.map(_.asInstanceOf[command.Response]))
 
   private def route: Route =
     pathSegments("controller/api/order"):
       orderRoute
+
+  private given IORuntime = ioRuntime
 
   // OrdersOverview
   "/controller/api/order" in:

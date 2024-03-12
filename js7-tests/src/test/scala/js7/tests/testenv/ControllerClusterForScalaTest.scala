@@ -1,29 +1,31 @@
 package js7.tests.testenv
 
-import cats.effect.{Resource, SyncIO}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked.*
+import js7.base.test.TestCatsEffect
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
 import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
@@ -35,13 +37,13 @@ import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import org.jetbrains.annotations.TestOnly
 
 @TestOnly
-trait ControllerClusterForScalaTest:
+trait ControllerClusterForScalaTest extends TestCatsEffect:
   this: org.scalatest.Suite =>
+
+  private given IORuntime = ioRuntime
 
   protected def agentPaths: Seq[AgentPath] = AgentPath("AGENT") :: Nil
   protected def items: Seq[InventoryItem]
@@ -216,38 +218,40 @@ trait ControllerClusterForScalaTest:
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
     (body: (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem]) => A)
   : A =
-    ThreadPools
-      .standardSchedulerResource[SyncIO](
+    OurIORuntime
+      .resource[SyncIO](
         s"${getClass.simpleScalaName}-${clusterWatchId.string}",
         Js7Configuration.defaultConfig)
-      .use(_ => SyncIO(
-        clusterWatchServiceResource(clusterWatchId)
-          .blockingUse(99.s)(body.tupled)))
+      .use: ioRuntime =>
+        given IORuntime = ioRuntime
+        SyncIO:
+          clusterWatchServiceResource(clusterWatchId)
+            .blockingUse(99.s)(body.tupled)
       .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
-  : Resource[Task, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
+  : Resource[IO, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
     for
-      eventbus <- Resource.fromAutoCloseable(Task(
-        new StandardEventBus[ClusterNodeLossNotConfirmedProblem]))
+      eventbus <- Resource.fromAutoCloseable(IO:
+        new StandardEventBus[ClusterNodeLossNotConfirmedProblem])
       clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
         clusterWatchId,
         controllerAdmissions,
         HttpsConfig.empty,
         clusterWatchConfig,
         onUndecidableClusterNodeLoss = {
-          case Some(prblm) => Task(eventbus.publish(prblm))
-          case None => Task.unit
+          case Some(prblm) => IO(eventbus.publish(prblm))
+          case None => IO.unit
         })
     yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
-  protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =
+  protected final def simulateKillActiveNode(controller: TestController): IO[Unit] =
     controller
       .api.executeCommand(
         ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
-      .flatMap(_ => Task.deferFuture(controller.terminated))
+      .flatMap(_ => controller.untilTerminated)
       .map((_: ProgramTermination) => ())
 
 

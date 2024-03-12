@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -25,7 +25,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.StickySubagentTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
 
 final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
   // See also SubagentKeeperTest, determineSubagentSelection
@@ -49,8 +49,6 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     simpleWithSubagentSelectionWorkflow,
     failAtControllerWorkflow, failAtAgentWorkflow,
     aSubagentSelection, a2SubagentSelection)
-
-  protected implicit val scheduler: Scheduler = Scheduler.traced
 
   "StickySubagent with SubagentSelection" in:
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)

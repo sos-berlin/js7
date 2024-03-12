@@ -22,13 +22,15 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.CoupleControllerTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
   */
 final class CoupleControllerTest extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
+  private given IORuntime = ioRuntime
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(TestWorkflow)
 

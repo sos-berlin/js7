@@ -62,8 +62,8 @@ private object StateRecovererTest
 //
 //    def withEventId(eventId: EventId) = {}
 //
-//    def toSnapshotObservable: Observable[Any] =
-//      Observable.pure(this)
+//    def toSnapshotStream: Stream[IO, Any] =
+//      Stream.emit(this)
 //  }
 //
 //  sealed trait TestEvent extends NoKeyEvent

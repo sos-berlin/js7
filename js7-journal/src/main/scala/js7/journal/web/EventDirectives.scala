@@ -15,18 +15,14 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 object EventDirectives:
-  val DefaultTimeout = 0.s
-  val DefaultDelay = 500.ms
+
   val MinimumDelay = 100.ms
   private val PekkoTimeoutTolerance = 1.s  // To let event reader timeout before Pekko
 
-  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =
-    eventRequest[E](None)
-
   def eventRequest[E <: Event](
     defaultAfter: Option[EventId] = None,
-    defaultTimeout: FiniteDuration = DefaultTimeout,
-    defaultDelay: FiniteDuration = DefaultDelay,
+    defaultTimeout: FiniteDuration,
+    minimumDelay: FiniteDuration,
     defaultReturnType: Option[String] = None)
     (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
       classTag: ClassTag[E])
@@ -47,7 +43,7 @@ object EventDirectives:
             if eventClasses.size != returnTypeNames.size then
               reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
             else
-              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, defaultDelay, inner)
+              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, minimumDelay, inner)
         }
       })
 
@@ -55,7 +51,7 @@ object EventDirectives:
     eventClasses: Set[Class[? <: E]],
     defaultAfter: Option[EventId],
     defaultTimeout: FiniteDuration,
-    defaultDelay: FiniteDuration,
+    minimumDelay: FiniteDuration,
     inner: Tuple1[EventRequest[E]] => Route)
   : Route =
     parameter("limit" ? Int.MaxValue) { limit =>
@@ -70,22 +66,22 @@ object EventDirectives:
                 val maybeTimeout = timeout match
                   case o: FiniteDuration => Some(o)
                   case _/*Duration.Inf only*/ => None
-                parameter("delay" ? defaultDelay) { delay =>
+                parameter("delay" ? minimumDelay) { delay =>
                   parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
                     optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting pekko.http.server.request-timeout
-                      val eventRequest = EventRequest[E](eventClasses,
-                        after = after,
-                        timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
-                          case Some(pekkoTimeout: FiniteDuration) =>
-                            maybeTimeout.map(t =>
-                              if pekkoTimeout > PekkoTimeoutTolerance && t > pekkoTimeout - PekkoTimeoutTolerance then
-                                t - PekkoTimeoutTolerance  // Requester's timeout before Pekkos pekko.http.server.request-timeout
-                              else t)
-                          case _ => maybeTimeout
-                        },
-                        delay = delay max (defaultDelay min MinimumDelay),
-                        limit = limit, tornOlder = tornOlder)
-                      inner(Tuple1(eventRequest))
+                      inner(Tuple1:
+                        EventRequest[E](eventClasses,
+                          after = after,
+                          timeout =
+                            val maybePekko = timeoutAccess.map(_.timeoutAccess.timeout).collect:
+                              case t: FiniteDuration => t
+                            (maybeTimeout, maybePekko) match
+                              case (Some(timeout), Some(pekko)) =>
+                                Some(timeout min pekko - PekkoTimeoutTolerance)
+                              case (None, Some(t)) => Some(t)
+                              case (t, None) => t,
+                          delay = delay max minimumDelay,
+                          limit = limit, tornOlder = tornOlder))
                     }
                   }
                 }

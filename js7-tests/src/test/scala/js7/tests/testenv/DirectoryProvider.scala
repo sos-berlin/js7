@@ -1,14 +1,18 @@
 package js7.tests.testenv
 
-import cats.effect.Resource
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
+import fs2.Stream
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
+import js7.base.catsutils.CatsEffectExtensions.orIfNone
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -17,15 +21,15 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, HasCloser}
+import js7.base.utils.{Allocated, Atomic, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
 import js7.cluster.watch.ClusterWatchService
@@ -48,13 +52,9 @@ import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.traced
-import monix.execution.atomic.AtomicBoolean
-import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
@@ -85,7 +85,7 @@ final class DirectoryProvider(
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
   doNotAddItems: Boolean = false,
-  scheduler: Option[Scheduler] = None)
+  commonIORuntime: Option[IORuntime] = None)
 extends HasCloser:
   private lazy val controllerPort_ = controllerPort
 
@@ -129,7 +129,7 @@ extends HasCloser:
   lazy val subagentItems: Vector[SubagentItem] = agentEnvs.map(_.subagentItem) ++ bareSubagentItems
   lazy val subagentId: SubagentId = agentEnvs.head.localSubagentId
 
-  private val itemsHaveBeenAdded = AtomicBoolean(false)
+  private val itemsHaveBeenAdded = Atomic(false)
 
   closeOnError(this):
     agentEnvs foreach prepareAgentFiles
@@ -153,7 +153,7 @@ extends HasCloser:
     itemSigner.sign(item)
 
   /** Proxy's ControllerApi */
-  def controllerApiResource(runningController: RunningController): Resource[Task, ControllerApi] =
+  def controllerApiResource(runningController: RunningController): Resource[IO, ControllerApi] =
     ControllerApi.resource(
       admissionsToApiResource(
         Nel.one(controllerAdmission(runningController)))(
@@ -162,7 +162,7 @@ extends HasCloser:
   def controllerAdmission(runningController: RunningController): Admission =
     Admission(runningController.localUri, Some(controllerEnv.userAndPassword))
 
-  def run[A](body: (TestController, IndexedSeq[TestAgent]) => A): A =
+  def run[A](body: (TestController, IndexedSeq[TestAgent]) => A)(using IORuntime): A =
     runAgents()(agents =>
       runController()(controller =>
         body(controller, agents)))
@@ -172,6 +172,7 @@ extends HasCloser:
     dontWaitUntilReady: Boolean = false,
     config: Config = ConfigFactory.empty)
     (body: TestController => A)
+    (using IORuntime)
   : A =
     testControllerResource(httpPort = httpPort, config = config)
       .blockingUse(99.s) { testController =>
@@ -203,6 +204,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
+    (using IORuntime)
   : TestController =
     testControllerResource(testWiring, config, httpPort, httpsPort)
       .allocated
@@ -214,7 +216,8 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[Task, TestController] =
+    (using IORuntime)
+  : Resource[IO, TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
         .toAllocated
@@ -229,7 +232,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[Task, RunningController] =
+  : Resource[IO, RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
       config.withFallback(controllerConfig),
@@ -237,7 +240,7 @@ extends HasCloser:
       httpsPort = httpsPort,
       name = controllerName)
 
-    def startForTest(runningController: RunningController): Unit =
+    def startForTest(runningController: RunningController)(using ioRuntime: IORuntime): Unit =
       if !doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty) then
         if !itemsHaveBeenAdded.getAndSet(true) then
           runningController.waitUntilReady()
@@ -249,28 +252,31 @@ extends HasCloser:
             val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
               .updateItemsAsSystemUser(
-                Observable.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
-                  Observable.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
-                  Observable.fromIterable(signableItems)
+                Stream.iterable(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
+                  Stream.iterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
+                  Stream.iterable(signableItems)
                     .map(itemSigner.toSignedString)
                     .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow
+      given ExecutionContext = ioRuntime.compute
       for t <- runningController.terminated.failed do
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         logger.debug(t.toStringWithCauses, t)
 
-    CorrelId.bindNew(
-      RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
-        .flatMap(js7Scheduler =>
+    CorrelId.bindNew:
+      Resource.eval(IO.pure(commonIORuntime))
+        .orIfNone:
+          RunningController.ioRuntimeResource[IO](conf)
+        .flatMap(implicit ioRuntime =>
           RunningController
-            .resource(conf, testWiring)(js7Scheduler)
-            .evalTap(runningController => Task {
-              startForTest(runningController)
-            })))
+            .resource(conf, testWiring)(using ioRuntime)
+            .evalTap: runningController =>
+              IO(startForTest(runningController)))
 
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
     body: Vector[TestAgent] => A)
+    (using IORuntime)
   : A =
     val agents = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
@@ -292,18 +298,20 @@ extends HasCloser:
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-  : Task[Seq[TestAgent]] =
+    (using IORuntime)
+  : IO[Seq[TestAgent]] =
     agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
 
   def startAgent(
     agentPath: AgentPath,
     testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-  : Task[TestAgent] =
+    (using IORuntime)
+  : IO[TestAgent] =
     TestAgent.start(
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
+  def startBareSubagents()(using IORuntime): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
         bareSubagentResource(subagentItem, config = agentConfig)
@@ -316,14 +324,15 @@ extends HasCloser:
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[VersionedItemPath] = Nil)
+    (using IORuntime)
   : Unit =
     controller.updateItemsAsSystemUser(
       AddVersion(versionId) +:
-        (Observable.fromIterable(change)
+        (Stream.iterable(change)
           .map(_ withVersion versionId)
           .map(itemSigner.toSignedString)
           .map(AddOrChangeSigned(_)) ++
-          Observable.fromIterable(delete)
+          Stream.iterable(delete)
             .map(RemoveVersioned.apply))
     ).await(99.s).orThrow
 
@@ -340,9 +349,10 @@ extends HasCloser:
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-  : Resource[Task, DirectorEnv] =
+    (using IORuntime)
+  : Resource[IO, DirectorEnv] =
     Resource
-      .fromAutoCloseable(Task(
+      .fromAutoCloseable(IO(
         newDirectorEnv(subagentItem, suffix, otherSubagentIds,
           isClusterBackup = isClusterBackup,
           suppressSignatureKeys = suppressSignatureKeys,
@@ -375,7 +385,8 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, Subagent] =
+    (using IORuntime)
+  : Resource[IO, Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
         director = director,
@@ -391,9 +402,10 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-  : Resource[Task, BareSubagentEnv] =
+    (using IORuntime)
+  : Resource[IO, BareSubagentEnv] =
     Resource
-      .fromAutoCloseable(Task(
+      .fromAutoCloseable(IO(
         new BareSubagentEnv(
           subagentItem = subagentItem,
           directorSubagentId = director,
@@ -495,8 +507,8 @@ object DirectoryProvider:
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
-    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
-  : Resource[Task, ClusterWatchService] =
+    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
+  : Resource[IO, ClusterWatchService] =
     Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>

@@ -1,8 +1,9 @@
 package js7.tests.cluster.agent
 
+import cats.effect.IO
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -26,11 +27,10 @@ import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectorEnv
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
 final class SimpleAgentClusterTest extends ControllerClusterTester:
+
   protected override val agentPaths = Nil
 
   private lazy val subagentItems = Seq(
@@ -45,7 +45,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
 
       def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId,
         isBackup: Boolean = false)
-      : Allocated[Task, (DirectorEnv, RunningAgent)] =
+      : Allocated[IO, (DirectorEnv, RunningAgent)] =
         primary
           .directorEnvResource(director, otherSubagentIds = Seq(otherDirectorId),
             isClusterBackup = isBackup)
@@ -53,10 +53,10 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
           .toAllocated
           .await(99.s)
 
-      val primaryDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
+      val primaryDirectorAllocated: Allocated[IO, (DirectorEnv, RunningAgent)] =
         allocateDirector(subagentItems(0), otherDirectorId = subagentItems(1).id)
 
-      val backupDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
+      val backupDirectorAllocated: Allocated[IO, (DirectorEnv, RunningAgent)] =
         allocateDirector(subagentItems(1), otherDirectorId = subagentItems(0).id, isBackup = true)
 
       TestAgent(primaryDirectorAllocated.map(_._2)).useSync(99.s) { primaryDirector =>

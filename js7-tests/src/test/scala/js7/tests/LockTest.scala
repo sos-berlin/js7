@@ -6,7 +6,7 @@ import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -34,8 +34,8 @@ import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import scala.collection.immutable.Queue
 import scala.util.Random
 
@@ -224,7 +224,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     val orders = Random.shuffle(
       for workflow <- Seq(workflow1, workflow2); i <- 1 to 100 yield
         FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
-    controller.api.addOrders(Observable.from(orders)).await(99.s).orThrow
+    controller.api.addOrders(Stream.iterable(orders)).await(99.s).orThrow
     controller.api.executeCommand(DeleteOrdersWhenTerminated(orders.map(_.id))).await(99.s).orThrow
     val terminated = for order <- orders yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     val terminatedX = controller.eventWatch.awaitKeys[OrderTerminated](orders.map(_.id))
@@ -466,7 +466,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Queue.empty))
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("FINISH-REMOVED")),
         RemoveVersioned(workflow.path)))
       .await(99.s).orThrow
@@ -501,7 +501,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Queue.empty))
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("FINISH-IN-FORK-REMOVED")),
         RemoveVersioned(workflow.path)))
       .await(99.s).orThrow
@@ -610,7 +610,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           Lock(lock2Path, itemRevision = Some(ItemRevision(0)))))
 
       controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(VersionId("MULTIPLE-1-DELETE")),
           RemoveVersioned(aWorkflow.path),
           RemoveVersioned(bWorkflow.path)))
@@ -742,7 +742,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           Lock(lock2Path, itemRevision = Some(ItemRevision(0)))))
 
       controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(VersionId("MULTIPLE-2-DELETE")),
           RemoveVersioned(aWorkflow.path),
           RemoveVersioned(bWorkflow.path),
@@ -799,7 +799,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Available,
         Queue.empty))
 
-    controller.api.updateItems(Observable(
+    controller.api.updateItems(Stream(
       AddVersion(VersionId("DELETE")),
       RemoveVersioned(queueingWorkflow.path)
     )).await(99.s).orThrow
@@ -886,7 +886,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       eventWatch.await[OrderDeleted](_.key == bOrder.id)
     }
 
-    controller.api.updateItems(Observable(
+    controller.api.updateItems(Stream(
       AddVersion(VersionId("REMOVE-EXCLUSIVE")),
       RemoveVersioned(exclusiveWorkflow.path),
       RemoveVersioned(nonExclusiveWorkflow.path)
@@ -960,7 +960,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             retryDelays = Some(Vector(1.ms)),
             maxTries = Some(2))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withTemporaryItem(workflow, awaitDeletion = true) { workflow =>
       val orderId = OrderId("RETRY-LOCK")
       val events = controller.runOrder(
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -1008,7 +1008,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         lock (lock = "LOCK") {}
       }""")
     val v = VersionId("DELETE-BUT-ORDER")
-    assert(controller.api.updateItems(Observable(
+    assert(controller.api.updateItems(Stream(
       AddVersion(v),
       DeleteSimple(lockPath)
     )).await(99.s) == Left(Problem.Combined(Set(
@@ -1030,7 +1030,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
     def removeWorkflowAndLock() = controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         DeleteSimple(lockPath),
         AddVersion(v),
         RemoveVersioned(workflow.path),
@@ -1048,7 +1048,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     val eventId = controller.eventWatch.lastAddedEventId
     val previousControllerState = controllerState
     val v = VersionId("DELETE")
-    controller.api.updateItems(Observable(
+    controller.api.updateItems(Stream(
       DeleteSimple(lockPath),
       DeleteSimple(lock2Path),
       DeleteSimple(limit2LockPath),

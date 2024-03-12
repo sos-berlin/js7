@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import cats.effect.unsafe.IORuntime
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
@@ -32,13 +33,14 @@ import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
-import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 
 final class ControllerStateExecutorTest extends OurTestSuite
 {
   import ControllerStateExecutorTest.instructionExecutorService
   import ControllerStateExecutorTest.itemSigner.sign
+
+  private given IORuntime = ioRuntime
 
   "resetAgent" in {
     pending // TODO
@@ -198,9 +200,9 @@ final class ControllerStateExecutorTest extends OurTestSuite
   }
 
   "addOrders" - {
-    val aOrderId = OrderId("A")
-    val bOrderId = OrderId("B")
-    val executor = new Executor(ControllerState.empty)
+    lazy val aOrderId = OrderId("A")
+    lazy val bOrderId = OrderId("B")
+    lazy val executor = new Executor(ControllerState.empty)
 
     "addOrder for unknown workflow is rejected" in {
       assert(executor.controllerState.addOrders(Seq(FreshOrder(aOrderId, aWorkflow.path))) ==
@@ -274,7 +276,7 @@ final class ControllerStateExecutorTest extends OurTestSuite
     "After VersionedItemRemoved or VersionItemChanged, the unused workflows are deleted" - {
       val a2Workflow = aWorkflow.withVersion(v2)
       val a4Workflow = aWorkflow.withVersion(v4)
-      val executor = new Executor(ControllerState.empty)
+      lazy val executor = new Executor(ControllerState.empty)
 
       "v1 VersionItemAdded" in {
         val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
@@ -498,8 +500,8 @@ final class ControllerStateExecutorTest extends OurTestSuite
 }
 
 
-object ControllerStateExecutorTest
-{
+object ControllerStateExecutorTest:
+
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(WallClock)
 
@@ -556,8 +558,9 @@ object ControllerStateExecutorTest
       WorkflowJob(
         agentPath, InternalExecutable("UNKNOWN")))
 
-  private class Executor(var controllerState: ControllerState)
-  {
+
+  private class Executor(var controllerState: ControllerState)(using IORuntime):
+
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[Seq[AnyKeyedEvent]] =
       VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, controllerState)
@@ -579,11 +582,9 @@ object ControllerStateExecutorTest
           controllerState = eventsAndState.controllerState
           eventsAndState.keyedEvents.toVector
         }
-      assert(controllerState.toRecovered.runSyncUnsafe() == controllerState)
+      assert(controllerState.toRecovered.unsafeRunSync() == controllerState)
       result
     }
 
     def toSnapshot: Seq[Any] =
-      controllerState.toSnapshotObservable.toListL.runSyncUnsafe()
-  }
-}
+      controllerState.toSnapshotStream.compile.toVector.unsafeRunSync()

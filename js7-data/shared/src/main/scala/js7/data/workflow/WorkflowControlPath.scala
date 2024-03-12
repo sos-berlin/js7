@@ -13,7 +13,7 @@ extends UnsignedItemPath, VersionedControlPath, InventoryItemPath.AttachableToAg
 
 
 object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowControlPath]:
-  
+
   protected def unchecked(string: String) = new WorkflowControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowControlPath] =

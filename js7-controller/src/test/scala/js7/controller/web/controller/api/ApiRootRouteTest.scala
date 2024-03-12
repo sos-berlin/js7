@@ -1,5 +1,6 @@
 package js7.controller.web.controller.api
 
+import cats.effect.{Deferred, IO}
 import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.system.startup.StartUp
@@ -11,12 +12,9 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, SnapshotableState}
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -26,9 +24,9 @@ import scala.concurrent.duration.Deadline.now
 final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
 
   protected val controllerId = ControllerId("TEST-CONTROLLER")
-  protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.traced
-  protected def controllerState = Task.pure(Right(ControllerState.empty.copy(
+  protected val whenShuttingDown = Deferred.unsafe
+
+  protected def controllerState = IO.pure(Right(ControllerState.empty.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),

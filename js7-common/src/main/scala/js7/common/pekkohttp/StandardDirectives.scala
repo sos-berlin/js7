@@ -1,22 +1,23 @@
 package js7.common.pekkohttp
 
+import cats.effect.unsafe.IORuntime
+import cats.effect.IO
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.Uri.Path
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
 import org.apache.pekko.http.scaladsl.model.headers.{ETag, `Cache-Control`}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{Directive0, PathMatcher1, Route}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
 object StandardDirectives:
+
   def remainingPath[A](implicit A: CheckedString[A]): PathMatcher1[A] =
     new PathMatcher1[A]:
       def apply(path: Path) = A.checked(path.toString) match
@@ -48,10 +49,11 @@ object StandardDirectives:
   def lazyRoute(lazyRoute: => Route): Route =
     ctx => Future.successful(lazyRoute(ctx)).flatten
 
-  def taskRoute(routeTask: Task[Route])(implicit s: Scheduler): Route =
-    ctx => routeTask.runToFuture.flatMap(_(ctx))
+  def ioRoute(routeIO: IO[Route])(using ioRuntime: IORuntime): Route =
+    given ExecutionContext = ioRuntime.compute
+    ctx => routeIO.unsafeToFuture().flatMap(route => route(ctx))
 
-  //def routeFuture(routeFuture: Future[Route])(implicit scheduler: Scheduler): Route =
+  //def routeFuture(routeFuture: Future[Route])(using ioRuntime: IORuntime): Route =
   //  ctx => routeFuture.flatMap(_(ctx))
 
   private val removeEtag: Directive0 =

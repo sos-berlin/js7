@@ -9,7 +9,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import monix.eval.Task
+import cats.effect.IO
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 
@@ -42,7 +42,7 @@ object PekkoHttpControllerApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
-  : Resource[Task, HttpControllerApi] =
+  : Resource[IO, HttpControllerApi] =
     val myName = if name.nonEmpty then name else "PekkoHttpControllerApi"
     for
       actorSystem <- actorSystemResource(name = myName, config)
@@ -54,7 +54,7 @@ object PekkoHttpControllerApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, Nel[HttpControllerApi]] =
+  : Resource[IO, Nel[HttpControllerApi]] =
     admissions.zipWithIndex
       .traverse { case (a, i) => resource(a, httpsConfig, name = s"$name-$i") }
 
@@ -65,7 +65,7 @@ object PekkoHttpControllerApi:
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, HttpControllerApi] =
+  : Resource[IO, HttpControllerApi] =
     for
       httpClient <- PekkoHttpClient.resource(
         admission.uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,

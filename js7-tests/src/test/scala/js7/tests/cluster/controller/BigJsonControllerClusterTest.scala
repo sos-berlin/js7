@@ -4,7 +4,7 @@ import js7.base.auth.Admission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.configuration.Js7Configuration
@@ -23,10 +23,13 @@ import js7.proxy.ControllerApi
 import js7.tests.cluster.controller.BigJsonControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 
 final class BigJsonControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
+
+  private given IORuntime = ioRuntime
+
   private val bigString = BigJsonControllerClusterTest.bigString // Allocate one
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
@@ -50,7 +53,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
 
       val orderId = OrderId("BIG-ORDER")
       controllerApi
-        .addOrders(Observable(FreshOrder(orderId, workflow.path, Map(
+        .addOrders(Stream(FreshOrder(orderId, workflow.path, Map(
           "ARG" -> StringValue(bigString)))))
         .await(99.s).orThrow
       val event = eventWatch.await[OrderTerminated](_.key == orderId)
@@ -69,7 +72,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
 object BigJsonControllerClusterTest:
   private val agentPath = AgentPath("AGENT")
   private val bigStringSize = 9_000_000 max
-    Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow
+    Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow + 1000
 
   // Function, to keep heap small (for proper a heap dump)
   private def bigString = "+" * bigStringSize

@@ -3,7 +3,7 @@ package js7.tests.cluster.controller
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.Problems.BackupClusterNodeNotAppointed
@@ -15,7 +15,6 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.cluster.controller.ControllerClusterTester.*
-import monix.execution.Scheduler.Implicits.traced
 
 final class AppointNodesLatelyControllerClusterTest extends OurTestSuite, ControllerClusterTester:
 

@@ -1,16 +1,16 @@
 package js7.tests.https
 
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.tests.https.ControllerClientSideHttpsWithoutCertificateTest.*
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 /**
   * @author Joacim Zschimmer
   */
 final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBase:
+
   override protected def controllerHttpsMutual = true  // Controller requires Clients certificate
   override protected def useCluster = false
 

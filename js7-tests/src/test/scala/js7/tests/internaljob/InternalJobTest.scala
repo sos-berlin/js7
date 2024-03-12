@@ -1,13 +1,18 @@
 package js7.tests.internaljob
 
+import cats.effect.IO
+import cats.effect.std.Semaphore
+import fs2.Stream
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.*
+import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.thread.VirtualThreads
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
 import js7.data.agent.AgentPath
@@ -33,11 +38,6 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.internaljob.InternalJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.catnap.Semaphore
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.execution.atomic.{Atomic, AtomicInt}
-import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import scala.collection.mutable
@@ -55,13 +55,13 @@ final class InternalJobTest
     js7.controller.agent-driver.event-buffer-delay = 10ms
     """
   override protected val agentConfig = config"""
-    js7.thread-pools.virtual = false
+    js7.thread-pools.long-blocking.virtual = false
     js7.job.execution.signed-script-injection-allowed = on
     """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
-  private val testCounter = AtomicInt(0)
+  private val testCounter = Atomic(0)
 
   "One InternalJob.start for multiple InternalJob.toOrderProcess" in:
     val versionId = versionIdIterator.next()
@@ -116,8 +116,6 @@ final class InternalJobTest
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
-  private val blockingThreadPoolName = if (VirtualThreads.isEnabled) "" else "JS7 blocking job"
-
   for jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     jobClass.getName - {
       val n = 10
@@ -128,7 +126,7 @@ final class InternalJobTest
           InternalExecutable(
             jobClass.getName,
             script = "TEST SCRIPT",
-            jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
+            jobArguments = Map("blockingThreadNamePrefix" -> StringConstant(blockingThreadNamePrefix)),
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
           processLimit = n)),
         indexedOrderIds
@@ -176,8 +174,8 @@ final class InternalJobTest
     controller.terminate() await 99.s
     agent.terminate() await 99.s
     assert(SimpleJob.stopped)
-    assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
-    assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+    assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
+    assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
 
   private def addInternalJobTest(
     execute: Execute,
@@ -231,7 +229,7 @@ final class InternalJobTest
       workflowId = workflow.id
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrders(
-        Observable.fromIterable(ordersArguments)
+        Stream.iterable(ordersArguments)
           .map { case (orderId, args) =>
             FreshOrder(orderId, workflow.path, arguments = args, deleteWhenTerminated = true)
           })
@@ -239,15 +237,16 @@ final class InternalJobTest
       val orderIds = ordersArguments.keySet
       val _runningOrderIds = orderIds.to(mutable.Set)
       eventWatch
-        .observe(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
+        .stream(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
         .filter(stamped => orderIds contains stamped.value.key)
         .map(_.value)
         .tapEach:
           case KeyedEvent(orderId: OrderId, _: OrderTerminated) =>
             _runningOrderIds -= orderId
           case _ =>
-        .takeWhileInclusive(_ => _runningOrderIds.nonEmpty)
-        .toL(Vector)
+        .takeThrough(_ => _runningOrderIds.nonEmpty)
+        .compile
+        .toVector
         .await(99.s)
         .groupMap(_.key)(_.event)
     }
@@ -280,17 +279,17 @@ object InternalJobTest:
     var started = false
     var stopped = false
 
-    override def start = Task:
+    override def start = IO:
       started = true
       Right(())
 
-    override def stop = Task:
+    override def stop = IO:
       assert(started)
       stopped = true
 
     def toOrderProcess(step: Step) =
       assert(started)
-      OrderProcess(Task(Outcome.succeeded))
+      OrderProcess(IO(Outcome.succeeded))
 
   private final class AddOneJob(jobContext: JobContext) extends InternalJob:
     assertThat(jobContext.implementationClass == getClass)
@@ -299,15 +298,15 @@ object InternalJobTest:
     private val startCount = Atomic(0)
     private val processCount = Atomic(0)
 
-    override def start = Task:
+    override def start = IO:
       startCount += 1
       Right(())
 
     override def stop =
-      Task.raiseError(new RuntimeException("AddOneJob.stop FAILS"))
+      IO.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
 
     def toOrderProcess(step: Step) =
-      OrderProcess(Task {
+      OrderProcess(IO {
         processCount += 1
         Outcome.Completed.fromChecked(
           step.arguments
@@ -334,4 +333,4 @@ object InternalJobTest:
            else
              sys.error("TEST EXCEPTION FOR KILL")
   private object CancelableJob:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).unsafeMemoize

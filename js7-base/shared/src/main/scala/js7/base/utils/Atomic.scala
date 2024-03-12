@@ -2,6 +2,13 @@ package js7.base.utils
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 
+type Atomic[A] = A match
+  case Boolean => AtomicBoolean
+  case Int => AtomicInteger
+  case Long => AtomicLong
+  case AnyRef => AtomicReference[A]
+
+
 object Atomic:
   inline def apply(initial: Boolean): AtomicBoolean =
     new AtomicBoolean(initial)
@@ -15,13 +22,14 @@ object Atomic:
   inline def apply[A <: AnyRef](initial: A): AtomicReference[A] =
     new AtomicReference(initial)
 
-  //inline def apply(initial: Any): Any =
-  //  inline initial match
+  //transparent inline def apply(initial: Any): Any =
+  //  initial match
   //    case o: Boolean => new AtomicBoolean(o)
   //    case o: Int => new AtomicInteger(o)
-  //    case o if o.isInstanceOf[AnyRef] => new AtomicReference(o)
+  //    case o: Long => new AtomicLong(o)
+  //    case _: AnyRef => new AtomicReference(initial)
 
-  object syntax:
+  object extensions:
     extension(o: AtomicBoolean)
       def :=(a: Boolean): Unit =
         o.set(a)

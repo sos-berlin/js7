@@ -22,6 +22,7 @@ import scala.concurrent.duration.*
  * @author Joacim Zschimmer
  */
 final class AgentConfigurationTest extends OurTestSuite:
+
   "Shortest argument list" in:
     provideConfigAndData { (configDir, dataDir) =>
       val agentConf = AgentConfiguration.fromCommandLine(CommandLineArguments(Seq(
@@ -36,7 +37,8 @@ final class AgentConfigurationTest extends OurTestSuite:
           jobWorkingDirectory = WorkingDirectory,
           webServerPorts = Nil,
           killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
-          internalConfig = DefaultConfig)
+          internalConfig = DefaultConfig,
+          name = "JS7")
         AgentConfiguration(
           subagentConf,
           pekkoAskTimeout = 1.hour,

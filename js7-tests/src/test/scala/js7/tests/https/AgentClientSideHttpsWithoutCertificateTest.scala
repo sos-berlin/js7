@@ -1,7 +1,7 @@
 package js7.tests.https
 
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
@@ -9,13 +9,13 @@ import js7.data.event.KeyedEvent
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.tests.https.AgentClientSideHttpsWithoutCertificateTest.*
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
 final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase:
+
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = false
   override protected def useCluster = false

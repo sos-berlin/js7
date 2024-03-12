@@ -1,17 +1,18 @@
 package js7.journal.state
 
 import cats.effect.Resource
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import org.apache.pekko
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
+import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -24,8 +25,8 @@ import js7.journal.recover.Recovered
 import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
 import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import scala.concurrent.Promise
 import sourcecode.Enclosing
 
@@ -41,25 +42,25 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   val eventWatch: FileEventWatch,
   getCurrentState: () => S,
   isHaltedFun: () => Boolean,
-  persistTask: Task[PersistFunction[S, Event]],
-  persistLaterTask: Task[PersistLaterFunction[Event]],
+  persistIO: IO[PersistFunction[S, Event]],
+  persistLaterIO: IO[PersistLaterFunction[Event]],
   val journalActor: ActorRef @@ JournalActor.type)
   (implicit
     protected val S: SnapshotableState.Companion[S])
 extends Journal[S], FileJournal.PossibleFailover:
-  
+
   def isHalted: Boolean =
     isHaltedFun()
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
     (using enclosing: sourcecode.Enclosing)
-  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistKeyedEvent(keyedEvent, CommitOptions.default)
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E], options: CommitOptions)
     (using enclosing: sourcecode.Enclosing)
-  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    Task.defer:
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    IO.defer:
       val E = keyedEvent.event.keyCompanion.asInstanceOf[Event.KeyCompanion[E]]
       persistEvent(using E)(key = keyedEvent.key.asInstanceOf[E.Key], options)(_ =>
         Right(keyedEvent.event))
@@ -67,19 +68,19 @@ extends Journal[S], FileJournal.PossibleFailover:
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     persistWithOptions(options)(_ => Right(keyedEvents))
 
   def persistKeyedEventsLater[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[Unit]] =
-    persistLaterTask.flatMap(_(keyedEvents, options))
+  : IO[Checked[Unit]] =
+    persistLaterIO.flatMap(_(keyedEvents, options))
 
   def persistEvent[E <: Event](using E: Event.KeyCompanion[? >: E])
     (key: E.Key, options: CommitOptions = CommitOptions.default)
     (using enclosing: sourcecode.Enclosing)
-  : (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+  : (S => Checked[E]) => IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
     stateToEvent =>
       lock(key)(
         persistEventUnlocked(
@@ -89,8 +90,8 @@ extends Journal[S], FileJournal.PossibleFailover:
   private def persistEventUnlocked[E <: Event](
     stateToEvent: S => Checked[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistTask
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    persistIO
       .flatMap(_(state => stateToEvent(state).map(_ :: Nil), options, CorrelId.current))
       .map(_ map {
         case (stampedKeyedEvents, state) =>
@@ -101,14 +102,14 @@ extends Journal[S], FileJournal.PossibleFailover:
   def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    Task.defer:
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    IO.defer:
       persistUnlocked(stateToEvents, options)
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
-  : (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    stateToEvents => Task.defer:
+  : (S => Checked[Seq[E]]) => IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    stateToEvents => IO.defer:
       lock(key)(
         persistUnlocked(
           state => stateToEvents(state)
@@ -118,14 +119,14 @@ extends Journal[S], FileJournal.PossibleFailover:
   private def persistUnlocked[E <: Event](
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    Task.defer:
-      persistTask.flatMap(
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    IO.defer:
+      persistIO.flatMap(
         _(stateToEvents, options, CorrelId.current)
           .map(_.map { case (stampedKeyedEvents, state) =>
             stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
 
-  def clusterState: Task[ClusterState] =
+  def clusterState: IO[ClusterState] =
     state.map(_.clusterState)
 
   def unsafeCurrentState(): S =
@@ -143,13 +144,15 @@ object FileJournal:
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
     (implicit
-      scheduler: Scheduler,
+      ioRuntime: IORuntime,
       actorRefFactory: ActorRefFactory,
       timeout: pekko.util.Timeout)
-  : Resource[Task, FileJournal[S]] =
+  : Resource[IO, FileJournal[S]] =
     Resource.make(
-      acquire = Task.defer {
+      acquire = IO.defer {
         import recovered.journalLocation
+        given ExecutionContext = ioRuntime.compute
+
         val S = implicitly[SnapshotableState.Companion[S]]
         val journalId = recovered.journalId getOrElse JournalId.random()
 
@@ -160,13 +163,13 @@ object FileJournal:
         val journalActorStopped = Promise[JournalActor.Stopped]()
         val journalActor = actorRefFactory
           .actorOf(
-            JournalActor.props[S](journalLocation, journalConf, keyedEventBus, scheduler,
+            JournalActor.props[S](journalLocation, journalConf, keyedEventBus, ioRuntime,
               eventIdGenerator, journalActorStopped),
             "Journal")
           .taggedWith[JournalActor.type]
 
 
-        val whenJournalActorReady = Task.fromFuture(
+        val whenJournalActorReady = IO.fromFuture(IO:
           (journalActor ?
             JournalActor.Input.Start(
               recovered.state,
@@ -180,21 +183,22 @@ object FileJournal:
           .flatMap { journalHeader =>
             logger.debug("JournalActor is ready")
             for
-              getState <- Task
-                .deferFuture((journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
+              getState <- IO
+                .fromFuture(IO:
+                  (journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
                 .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
-              isHalted <- Task
-                .deferFuture((journalActor ? JournalActor.Input.GetIsHaltedFunction).mapTo[() =>
-                  Boolean])
-                .logWhenItTakesLonger("JournalActor.Input.GetIsHaltedFunction")
+              isHalted <-
+                IO.fromFuture(IO:
+                    (journalActor ? JournalActor.Input.GetIsHaltedFunction).mapTo[() => Boolean])
+                  .logWhenItTakesLonger("JournalActor.Input.GetIsHaltedFunction")
             yield (journalHeader, getState, isHalted)
           }
           .flatMap { case (journalHeader, getCurrentState, isHalted) =>
-            Task {
+            IO {
               val persistPromise = Promise[PersistFunction[S, Event]]()
-              val persistTask = Task.fromFuture(persistPromise.future)
+              val persistIO = IO.fromFuture(IO.pure(persistPromise.future))
               val persistLaterPromise = Promise[PersistLaterFunction[Event]]()
-              val persistLaterTask = Task.fromFuture(persistLaterPromise.future)
+              val persistLaterIO = IO.fromFuture(IO.pure(persistLaterPromise.future))
 
               val actor = actorRefFactory
                 .actorOf(
@@ -206,7 +210,7 @@ object FileJournal:
               val journal = new FileJournal[S](
                 journalId, journalHeader, journalConf,
                 recovered.eventWatch,
-                getCurrentState, isHalted, persistTask, persistLaterTask,
+                getCurrentState, isHalted, persistIO, persistLaterIO,
                 journalActor)
 
               (journal, journalActor, actor, journalActorStopped)
@@ -214,11 +218,11 @@ object FileJournal:
           }
       })(
       release = { case (journal, journalActor, actor, journalActorStopped) =>
-        logger.debugTask(s"$journal stop")(
-          Task.defer {
+        logger.debugIO(s"$journal stop")(
+          IO.defer {
             actorRefFactory.stop(actor)
             journalActor ! JournalActor.Input.Terminate
-            Task.fromFuture(journalActorStopped.future).void
+            IO.fromFuture(IO.pure(journalActorStopped.future)).void
               .logWhenItTakesLonger("JournalActor.Input.Terminate")
           })
       })
@@ -228,8 +232,9 @@ object FileJournal:
     private val tryingPassiveLostSwitch = Switch(false)
 
     // Not nestable !!! (or use a readers-writer lock)
-    final def forPossibleFailoverByOtherNode[A](task: Task[A]): Task[A] =
-      tryingPassiveLostSwitch.switchOnFor(task)
+    final def forPossibleFailoverByOtherNode[A](io: IO[A]): IO[A] =
+      tryingPassiveLostSwitch.switchOnAround(io)
 
-    final val whenNoFailoverByOtherNode: Task[Unit] =
+    final val whenNoFailoverByOtherNode: IO[Unit] =
       tryingPassiveLostSwitch.whenOff
+        .logWhenItTakesLonger

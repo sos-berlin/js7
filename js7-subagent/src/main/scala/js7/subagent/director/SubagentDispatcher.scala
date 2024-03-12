@@ -1,5 +1,6 @@
 package js7.subagent.director
 
+import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.Switch
@@ -7,7 +8,6 @@ import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId}
 import js7.subagent.director.SubagentDispatcher.*
-import monix.eval.Task
 
 private final class SubagentDispatcher(
   subagentId: SubagentId,
@@ -18,8 +18,8 @@ extends CommandDispatcher:
   protected def name = subagentId.toString
 
   // Required only for change of URI when it denotes the same running Subagent
-  private def enqueueExecutes(previous: SubagentDispatcher): Task[Unit] =
-    logger.debugTask(previous
+  private def enqueueExecutes(previous: SubagentDispatcher): IO[Unit] =
+    logger.debugIO(previous
       .queue
       .stop
       .flatMap(executes => queue
@@ -37,6 +37,6 @@ extends CommandDispatcher:
 
 private object SubagentDispatcher:
   type PostCommand = (Numbered[SubagentCommand.Queueable], SubagentRunId, Switch.ReadOnly) =>
-    Task[Checked[Unit]]
+    IO[Checked[Unit]]
 
   private val logger = Logger[this.type]

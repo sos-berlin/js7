@@ -1,12 +1,17 @@
 package js7.data.event
 
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
+import js7.tester.CirceJsonTester
+import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventIdTest extends OurTestSuite:
+
   private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740Z")
 //private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740992Z")
 
@@ -33,3 +38,14 @@ final class EventIdTest extends OurTestSuite:
     assert(EventId.toString(EventId( 123456)) ==  "123456/1970-01-01T00:00:00.123Z")
     assert(EventId.toString(EventId(1000000)) == "1000000/1970-01-01T00:00:01Z")
     assert(EventId.toString(EventId.JavascriptMaxValue) == "9007199254740992/2255-06-05T23:47:34.740Z")
+
+  "Codec[Checked[EventId]]" in:
+    import EventId.given_Codec_Checked
+
+    testJson[Checked[EventId]](Left(Problem("PROBLEM")),
+      json"""{
+        "TYPE": "Problem",
+        "message": "PROBLEM"
+      }""")
+
+    testJson[Checked[EventId]](Right(7), json"7")

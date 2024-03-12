@@ -1,11 +1,12 @@
 package js7.tests.controller.commands
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -16,12 +17,14 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest.*
 import js7.tests.testenv.{DirectoryProvider, TestController}
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
   */
 final class UpdateRepoAgentTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "ControllerCommand.UpdateRepo" in:
     val directoryProvider = new DirectoryProvider(
       agentPaths = agentPath :: Nil,
@@ -80,6 +83,6 @@ object UpdateRepoAgentTest:
         }"""
   ).orThrow
 
-  private def runOrder(controller: TestController, orderId: OrderId): Unit =
+  private def runOrder(controller: TestController, orderId: OrderId)(using IORuntime): Unit =
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderFinished](predicate = _.key == orderId)

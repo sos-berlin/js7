@@ -1,32 +1,29 @@
 package js7.provider
 
 import cats.Show
+import cats.effect.IO
+import cats.effect.kernel.Resource.ExitCase
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import java.nio.file.StandardWatchEventKinds.*
-import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
-import js7.base.generic.Completed
+import java.nio.file.{Path, WatchEvent}
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.provider.DirectoryWatcher.*
-import monix.execution.atomic.AtomicBoolean
-import monix.execution.{Ack, Cancelable, Scheduler}
-import monix.reactive.Observable
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcher(directory: Path, timeout: Duration)(implicit iox: IOExecutor, s: Scheduler)
+final class DirectoryWatcher(directory: Path, timeout: Duration)(using IOExecutor, IORuntime)
 extends AutoCloseable:
+
   private val watchService = directory.getFileSystem.newWatchService()
-  private val closed = AtomicBoolean(false)
-  private val subscribed = AtomicBoolean(false)
+  private val closed = Atomic(false)
 
   closeOnError(watchService):
     // Register early to get the events from now
@@ -38,56 +35,41 @@ extends AutoCloseable:
 
   def isClosed = closed.get()
 
-  /** Observable may only be subscribed to once, because it uses the outer WatchService. */
-  def singleUseObservable: Observable[Unit] =
-    subscriber => {
-      if subscribed.getAndSet(true) then sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
-      new Cancelable:
-        def cancel() =
-          logger.trace(s"$directory: cancel")
-          DirectoryWatcher.this.close()
-
-        def continue(): Future[Completed] =
-          ioFuture { waitForNextChange(timeout) }
-            .flatMap(_ => subscriber.onNext(())
-            .flatMap {
-              case Ack.Continue => continue()
-              case Ack.Stop => Future.successful(Completed)
-            })
-
-        continue() onComplete:
-          case Success(Completed) =>
-            logger.trace(s"$directory: completed")
-          case Failure(e: ClosedWatchServiceException) =>
-            logger.trace(s"$directory: subscriber.onComplete due to ${e.toStringWithCauses}")
-            subscriber.onComplete()
-          case Failure(t) =>
-            logger.trace(s"$directory: ${t.toStringWithCauses}")
-            subscriber.onError(t)
-    }
+  /** Stream may only be subscribed to once, because it uses the outer WatchService. */
+  def singleUseStream: Stream[IO, Unit] =
+    Stream
+      .repeatEval:
+        waitForNextChange(timeout).void
+      .onFinalizeCase:
+        case ExitCase.Canceled =>
+          IO.blocking:
+            logger.trace(s"$directory: cancel")
+            DirectoryWatcher.this.close()
+        case _ => IO.unit
 
   /**
    * Waits until any directory change.
    *
    * @return true, iff A matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
-  private def waitForNextChange(timeout: Duration): Boolean =
-    val remainingMillis = timeout.toMillis
-    remainingMillis <= 0 || {
-      logger.trace(s"$directory: poll ${timeout.pretty} ...")
-      val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
-      if watchKey == null then
-        logger.trace(s"$directory: poll timed out")
-        false
-      else
-        try
-          val events = watchKey.pollEvents()
-          logger.whenTraceEnabled:
-            if events.isEmpty then logger.trace(s"$directory: poll returned no events")
-            else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
-        finally watchKey.reset()
-        true
-    }
+  private def waitForNextChange(timeout: Duration): IO[Boolean] =
+    IOExecutor.interruptible:
+      val remainingMillis = timeout.toMillis
+      remainingMillis <= 0 || {
+        logger.trace(s"$directory: poll ${timeout.pretty} ...")
+        val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
+        if watchKey == null then
+          logger.trace(s"$directory: poll timed out")
+          false
+        else
+          try
+            val events = watchKey.pollEvents()
+            logger.whenTraceEnabled:
+              if events.isEmpty then logger.trace(s"$directory: poll returned no events")
+              else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
+          finally watchKey.reset()
+          true
+      }
 
 
 object DirectoryWatcher:

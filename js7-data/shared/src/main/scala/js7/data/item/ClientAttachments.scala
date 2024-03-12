@@ -1,5 +1,6 @@
 package js7.data.item
 
+import cats.effect.IO
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -10,7 +11,7 @@ import js7.data.delegate.DelegateId
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
 import js7.data.item.ClientAttachments.*
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.View
 import scala.reflect.ClassTag
 
@@ -21,8 +22,8 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
   def estimatedSnapshotSize: Int =
     itemToDelegateToAttachedState.values.view.map(_.size).sum
 
-  def toSnapshotObservable: Observable[ItemAttachedStateEvent] =
-    Observable.fromIterable(itemToDelegateToAttachedState
+  def toSnapshotStream: Stream[IO, ItemAttachedStateEvent] =
+    Stream.iterable(itemToDelegateToAttachedState
       .to(View)
       .flatMap { case (key, agentToAttached) =>
         agentToAttached.map { case (agentPath, attachedState) =>

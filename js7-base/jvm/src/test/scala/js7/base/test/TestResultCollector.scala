@@ -12,6 +12,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 private object TestResultCollector:
@@ -41,7 +42,7 @@ private object TestResultCollector:
         .toVector
         .sortBy(th => (th._1.getName, th._1.threadId))
 
-      logger.debug("Shutdown hook\n" + threadToTrace.size.toString + " threads:\n" +
+      val msg = "Shutdown hook\n" + threadToTrace.size.toString + " threads:\n" +
         "━" * 80 + "\n" +
         threadToTrace.view.map(_._1.getName)
           .groupBy(name => ThreadNameRegex.findAllIn(name.reverse).group(2).reverse)
@@ -52,7 +53,10 @@ private object TestResultCollector:
           }
           .toVector
           .sorted
-          .mkString("\n"))
+          .mkString("\n")
+
+      try logger.debug(msg)
+      catch case NonFatal(t) => System.err.println(s"TestResultCollector: ${t.toStringWithCauses}")
 
       //logger.debug(threadToTrace.size.toString + " threads:\n" +
       //  "━" * 80 + "\n" +

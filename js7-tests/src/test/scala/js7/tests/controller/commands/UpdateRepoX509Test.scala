@@ -14,14 +14,13 @@ import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.{signableItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{SignableItem, VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

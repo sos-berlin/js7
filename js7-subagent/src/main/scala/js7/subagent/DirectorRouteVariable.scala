@@ -7,7 +7,7 @@ import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.data.subagent.Problems.NoDirectorProblem
 import js7.subagent.DirectorRouteVariable.*
-import monix.eval.Task
+import cats.effect.IO
 import org.apache.pekko.http.scaladsl.server.Directives.complete
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.collection.mutable
@@ -18,35 +18,35 @@ private final class DirectorRouteVariable:
   private var _toRoute: ToRoute = noDirector
   private val cache = mutable.Map.empty[WebServerBinding, (Route, Int)]
 
-  def registeringRouteResource(toRoute: ToRoute): Resource[Task, Unit] =
+  def registeringRouteResource(toRoute: ToRoute): Resource[IO, Unit] =
     Resource.make(
-      acquire = lock.lock(Task {
+      acquire = lock.lock(IO {
         if _toRoute ne noDirector then throw new IllegalStateException(
           "registeringRouteResource called twice")
         _toRoute = toRoute
         cache.clear()
       }))(
-      release = _ => lock.lock(Task {
+      release = _ => lock.lock(IO {
         _toRoute = noDirector
         cache.clear()
       }))
 
-  def route(routeBinding: RouteBinding): Task[Route] =
-    lock.lock/*readlock!*/(Task.defer(
+  def route(routeBinding: RouteBinding): IO[Route] =
+    lock.lock/*readlock!*/(IO.defer(
       cache.get(routeBinding.webServerBinding) match {
         case Some((route, routeBinding.revision)) =>
-          Task.pure(route)
+          IO.pure(route)
 
         case _ =>
           _toRoute(routeBinding)
-            .tapEval(route => Task {
+            .flatTap(route => IO {
               cache(routeBinding.webServerBinding) = route -> routeBinding.revision
             })
       }))
 
 
 object DirectorRouteVariable:
-  type ToRoute = RouteBinding => Task[Route]
+  type ToRoute = RouteBinding => IO[Route]
 
   private val noDirector: ToRoute =
-    _ => Task.pure(complete(NoDirectorProblem))
+    _ => IO.pure(complete(NoDirectorProblem))

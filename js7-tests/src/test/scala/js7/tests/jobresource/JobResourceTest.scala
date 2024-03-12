@@ -11,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{PathEnvName, isMac, isWindows}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -38,9 +38,9 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobresource.JobResourceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import org.scalatest.Assertions.*
 
 class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
@@ -232,7 +232,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
 
   "Delete a JobResource" in {
     val deleteJobResource =
-      controller.api.updateItems(Observable.pure(DeleteSimple(bJobResource.path)))
+      controller.api.updateItems(Stream.emit(DeleteSimple(bJobResource.path)))
 
     // ItemIsStillReferenced
     assert(deleteJobResource.await(99.s)
@@ -256,7 +256,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
 
     // Remove workflows
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("JOBRESOURCE-DELETED")),
         ItemOperation.RemoveVersioned(workflow.path),
         ItemOperation.RemoveVersioned(internalWorkflow.path)))
@@ -271,7 +271,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
     // JobResource can be added again
     val v = VersionId("JOBRESOURCE-ADDED-AGAIN")
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(v),
         AddOrChangeSigned(toSignedString(bJobResource)),
         AddOrChangeSigned(toSignedString(workflow.withId(workflow.path ~ v)))))
@@ -520,7 +520,7 @@ object JobResourceTest
 
   private class TestJob extends InternalJob {
     def toOrderProcess(step: Step) =
-      OrderProcess(Task {
+      OrderProcess(IO {
         assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
         assert(step.jobResourceVariable(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("JobResource variable", "UNKNOWN")))
         assert(step.jobResourceVariable(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))

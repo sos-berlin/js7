@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -31,12 +31,12 @@ import js7.tests.ControlWorkflowBreakpointTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -265,7 +265,7 @@ object ControlWorkflowBreakpointTest:
     resultBreakpoints: Set[Position],
     revision: ItemRevision,
     workflowControlToEvent: WorkflowControl => UnsignedItemEvent)
-    (implicit controllerApi: ControllerApi, eventWatch: StrictEventWatch)
+    (implicit controllerApi: ControllerApi, eventWatch: StrictEventWatch, ioRuntime: IORuntime)
   : EventId =
     val eventId = eventWatch.lastAddedEventId
     val jCmd = JControllerCommand

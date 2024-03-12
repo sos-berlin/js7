@@ -1,8 +1,13 @@
 package js7.launcher.internal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
+import js7.base.catsutils.CatsEffectExtensions.blockingOn
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
@@ -16,39 +21,42 @@ import js7.data.value.expression.Scope.evalExpressionMap
 import js7.launcher.ProcessOrder
 import js7.launcher.internal.InternalJob.{JobContext, Step}
 import js7.launcher.internal.InternalJobLauncher.*
-import monix.eval.Task
-import monix.execution.Scheduler
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 final class InternalJobLauncher(
   executable: InternalExecutable,
   val jobConf: JobConf,
   val jobArguments: NamedValues,
-  blockingJobScheduler: Scheduler,
+  blockingJobEC: ExecutionContext,
   clock: AlarmClock)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit ioRuntime: IORuntime, iox: IOExecutor)
 extends JobLauncher:
 
   private val internalJobLazy = Lazy[Checked[InternalJob]](
     toInstantiator(executable.className)
       .flatMap(_()))
 
-  val start: Task[Checked[Unit]] =
-    Task { internalJobLazy() }
-      .flatMapT(_.start)
-      .tapEval:
-        case Left(problem) => Task(
+  val start: IO[Checked[Unit]] =
+    IO { internalJobLazy() }
+      .flatMapT: internalJob =>
+        logger.traceIO(s"${executable.className} start"):
+          internalJob.start
+      .flatTap:
+        case Left(problem) => IO(
           logger.debug(s"${executable.className} start: $problem", problem.throwableOption.orNull))
-        case Right(_) => Task.unit
-      .memoize
+        case Right(_) => IO.unit
+      .unsafeMemoize
 
-  val stop: Task[Unit] =
-    Task.defer {
-      internalJobLazy.value.fold(_ => Task.unit, _.stop)
-    }.memoize
+  val stop: IO[Unit] =
+    IO.defer:
+      internalJobLazy.value.fold(_ => IO.unit, internalJob =>
+        logger.traceIO(s"${executable.className} stop"):
+          internalJob.stop)
+    .unsafeMemoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    Task:
+    IO.blockingOn(blockingJobEC):
       for
         internalJob <- internalJobLazy()
         step <- toStep(processOrder)
@@ -85,7 +93,7 @@ extends JobLauncher:
           () => construct(con, toJobContext(cls)))
 
   private def toJobContext(cls: Class[?]) =
-    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock,
+    JobContext(cls, executable, jobArguments, jobConf, ioRuntime, iox, blockingJobEC, clock,
       jobConf.systemEncoding)
 
   override def toString = s"InternalJobLauncher(${jobConf.jobKey} ${executable.className})"

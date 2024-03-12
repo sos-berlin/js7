@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.Functor
-import cats.effect.{BracketThrow, Resource}
+import cats.effect.{MonadCancel, Resource}
 import cats.syntax.functor.*
 
 trait Stoppable[F[_]]:
@@ -17,5 +17,5 @@ object Stoppable:
 
   implicit final class RichServiceResource[F[_], A](private val resource: Resource[F, A])
   extends AnyVal:
-    def acquire(implicit F: BracketThrow[F], evidence: A <:< Stoppable[F]): F[A] =
+    def acquire(using MonadCancel[F, Throwable], A <:< Stoppable[F]): F[A] =
       resource.allocated.map(_._1)

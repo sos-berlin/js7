@@ -1,9 +1,11 @@
 package js7.agent.data.web
 
 import js7.agent.data.web.AgentUris.*
+import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
 import js7.data.event.{Event, EventRequest}
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * URIs of the JS7 Agent.
@@ -18,8 +20,14 @@ final class AgentUris private(agentUri: Uri):
   val session = toUri("api/session")
   val command = toUri("api/command")
 
-  def controllersEvents[E <: Event](request: EventRequest[E]) =
-    toUri("api/event" + encodeQuery(request.toQueryParameters*))
+  def controllersEvents[E <: Event](
+    request: EventRequest[E],
+    heartbeat: Option[FiniteDuration] = None)
+  : Uri =
+    toUri("api/event" +
+      encodeQuery:
+        request.toQueryParameters ++
+          (heartbeat.fold(Nil)(h => ("heartbeat" -> h.toDecimalString) :: Nil)))
 
   def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 

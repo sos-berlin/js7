@@ -11,8 +11,8 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.web.Uri
@@ -33,14 +33,17 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ControllerAgentWithoutAuthenticationTest.*
 import js7.tests.testenv.TestController
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 
 /**
   * @author Joacim Zschimmer
   */
 final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "js7.web.server.auth.public = true" in:
     runMyTest(isPublic = true) { (controller, _) =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
@@ -98,14 +101,14 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
       TestAgent.blockingRun(agentConfiguration, 99.s) { _ =>
         RunningController.blockingRun(controllerConfiguration, 99.s) { runningController =>
           val testController = new TestController(
-            new Allocated(runningController, Task.unit),
+            new Allocated(runningController, IO.unit),
             Admission(
               runningController.localUri,
               Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))))
           )
           testController.waitUntilReady()
 
-          testController.updateItemsAsSystemUser(Observable(
+          testController.updateItemsAsSystemUser(Stream(
             ItemOperation.AddOrChangeSimple(agentRef),
             ItemOperation.AddOrChangeSimple(subagentItem),
             ItemOperation.AddVersion(versionId),

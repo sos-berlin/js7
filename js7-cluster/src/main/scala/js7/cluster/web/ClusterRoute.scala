@@ -1,48 +1,44 @@
 package js7.cluster.web
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.problem.Checked
-import js7.base.utils.FutureCompletion
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterRoute.*
 import js7.common.pekkohttp.CirceJsonSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.FileEventWatch
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.server.Directives.*
 
 trait ClusterRoute extends ClusterWatchRequestRoute:
 
-  protected def scheduler: Scheduler
+  protected def ioRuntime: IORuntime
   protected def actorSystem: ActorSystem
-  protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
+  protected def checkedClusterState: IO[Checked[Stamped[ClusterState]]]
   protected def clusterNodeIsBackup: Boolean
   protected def nodeId: NodeId
-  protected def executeClusterCommand(cmd: ClusterCommand): Task[Checked[ClusterCommand.Response]]
-  protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Checked[Unit]]
+  protected def executeClusterCommand(cmd: ClusterCommand): IO[Checked[ClusterCommand.Response]]
+  protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): IO[Checked[Unit]]
   protected def eventWatch: FileEventWatch
 
-  private implicit def implicitScheduler: Scheduler = scheduler
-
-  // TODO Abort POST with error when shutting down
-  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
+  private given IORuntime = ioRuntime
 
   protected final lazy val clusterRoute =
     authorizedUser(ValidUserPermission) { user =>
       get {
         pathEnd {
           parameter("return".?) { maybeReturn =>
-            completeTask(
+            completeIO(
               checkedClusterState
                 .map(_.map[ToResponseMarshallable] { case stamped @ Stamped(_, _, clusterState) =>
                   if maybeReturn contains "ClusterNodeState" then
@@ -64,11 +60,11 @@ trait ClusterRoute extends ClusterWatchRequestRoute:
               .toChecked
               .fold(complete(_), {
                 case cmd: ClusterCommand =>
-                  completeTask(
+                  completeIO(
                     executeClusterCommand(cmd))
 
                 case cmd: ClusterWatchingCommand =>
-                  completeTask(
+                  completeIO(
                     executeClusterWatchingCommand(cmd)
                       .rightAs(JsonObject.empty))
             })

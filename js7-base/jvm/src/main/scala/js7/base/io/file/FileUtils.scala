@@ -22,7 +22,6 @@ import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.eval.Task
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
@@ -168,6 +167,9 @@ object FileUtils:
       def directoryContentsAs[C](factory: collection.Factory[Path, C]): C =
         autoClosing(Files.list(delegate)) { _.asScala.to(factory) }
 
+      def toFs2Path: fs2.io.file.Path =
+        fs2.io.file.Path.fromNioPath(delegate)
+
   import syntax.*
 
   @tailrec
@@ -188,6 +190,16 @@ object FileUtils:
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[?]*)(body: Path => A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes*))(body)
 
+  def temporaryFileResource[F[_]](
+    prefix: String = "",
+    suffix: String = ".tmp",
+    attributes: FileAttribute[?]*)
+    (using F: Sync[F])
+  : Resource[F, Path] =
+    Resource.make(
+      acquire = F.delay(Files.createTempFile(prefix, suffix, attributes*)))(
+      release = file => F.delay(Files.deleteIfExists(file)))
+
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
       closer.onClose:
@@ -203,10 +215,10 @@ object FileUtils:
       body(dir)
     }
 
-  def temporaryDirectoryResource(prefix: String): Resource[Task, Path] =
+  def temporaryDirectoryResource[F[_]](using F: Sync[F])(prefix: String): Resource[F, Path] =
     Resource.make(
-      acquire = Task(Files.createTempDirectory(prefix)))(
-      release = dir => Task(deleteDirectoryRecursively(dir)))
+      acquire = F.delay(Files.createTempDirectory(prefix)))(
+      release = dir => F.delay(deleteDirectoryRecursively(dir)))
 
   def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(

@@ -20,15 +20,17 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
 final class StandardMarshallersTest extends OurTestSuite, BeforeAndAfterAll {
 
-  implicit private val actorSystem: ActorSystem =
-    newActorSystem("StandardMarshallersTest")
+  private given ExecutionContext = ioRuntime.compute
+
+  implicit private lazy val actorSystem: ActorSystem =
+    newActorSystem("StandardMarshallersTest", executionContext = executionContext)
 
   override def afterAll(): Unit =
     Pekkos.terminateAndWait(actorSystem, 10.s)

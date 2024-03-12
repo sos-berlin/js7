@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.RunningAgent
 import js7.agent.client.PekkoHttpAgentTextApi
 import js7.agent.configuration.AgentConfiguration
@@ -11,27 +12,30 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkohttp.web.auth.OurMemoizingAuthenticator
 import js7.common.utils.FreeTcpPortFinder.{findFreeLocalUri, findFreeTcpPort}
-import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko
 import org.apache.pekko.http.scaladsl.model.StatusCodes.*
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
  */
 final class PekkoHttpAgentTextApiTest
 extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
-  
+
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
+
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
     name = "PekkoHttpAgentTextApiTest",

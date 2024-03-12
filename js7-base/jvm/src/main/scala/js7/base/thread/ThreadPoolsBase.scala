@@ -2,42 +2,32 @@ package js7.base.thread
 
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
-import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, ExecutionContextExecutorService}
 
 object ThreadPoolsBase:
   private val logger = Logger[this.type]
 
-  def newBlockingExecutor(config: Config, name: String): ExecutorService =
-    val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
-    val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
-      .exists(Set("", "true"))
-    if virtualAllowed then
-      newBlockingExecutor(name, keepAlive)
-    else
-      newBlockingNonVirtualExecutor(name, keepAlive)
-
-  def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
-    maybeNewVirtualThreadExecutorService() getOrElse
-      newBlockingNonVirtualExecutor(name, keepAlive)
+  def newBlockingExecutorService(name: String, config: Config, virtual: Boolean = false)
+  : ExecutorService =
+    val keepAlive = config.getDuration("js7.thread-pools.long-blocking.keep-alive").toFiniteDuration
+    val virtualAllowed = virtual && config.getBoolean("js7.thread-pools.long-blocking.virtual")
+    labeledExecutorService(name):
+      if virtualAllowed then
+        maybeNewVirtualThreadExecutorService() getOrElse
+          newBlockingNonVirtualExecutor(name, keepAlive)
+      else
+        newBlockingNonVirtualExecutor(name, keepAlive)
 
   def newBlockingNonVirtualExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
-    newThreadPoolExecutor(name = name, keepAlive = keepAlive,
-      corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
-
-  //def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
-  //  newThreadPoolExecutor(
-  //    name = name,
-  //    keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
-  //    corePoolSize = config.getInt("js7.thread-pools.io.core-pool-size"),
-  //    maximumPoolSize = config.as("js7.thread-pools.io.maximum-pool-size")(StringAsIntOrUnlimited)
-  //      .getOrElse(Int.MaxValue),
-  //    queueSize = config.optionAs[Int]("js7.thread-pools.io.queue-size"))
+    labeledExecutorService(name):
+      newThreadPoolExecutor(name = name, keepAlive = keepAlive,
+        maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 
   private def newThreadPoolExecutor(
     name: String,
@@ -67,5 +57,38 @@ object ThreadPoolsBase:
       thread.setDaemon(true)  // Do it like Monix and Pekko
       thread
     }
+
+  def labeledExecutionContext(label: String)(ec: ExecutionContext): ExecutionContext =
+    ec match
+      case ec: ExecutionContextExecutor => LabeledExecutionContextExecutor(label, ec)
+      case ec => LabeledExecutionContext(label, ec)
+
+  def labeledExecutorService(label: String)(ec: ExecutorService): ExecutorService =
+    LabeledExecutorService(label, ec)
+
+  def labeledExecutionContextExecutorService(label: String)(ec: ExecutionContextExecutorService)
+  : ExecutionContextExecutorService =
+    LabeledExecutionContextExecutorService(label, ec)
+
+  private class LabeledExecutionContextExecutor(label: String, ec: ExecutionContextExecutor)
+  extends ExecutionContextExecutor:
+    export ec.*
+    override def toString = label
+
+  private class LabeledExecutionContext(label: String, ec: ExecutionContext)
+  extends ExecutionContextExecutor:
+    export ec.*
+    override def toString = label
+
+  private class LabeledExecutorService(label: String, ec: ExecutorService)
+  extends ExecutorService:
+    export ec.*
+    override def toString = label
+
+  private class LabeledExecutionContextExecutorService(
+    label: String, ec: ExecutionContextExecutorService)
+  extends ExecutionContextExecutorService:
+    export ec.*
+    override def toString = label
 
   java8Polyfill()

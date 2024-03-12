@@ -5,8 +5,8 @@ import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -28,7 +28,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RecoveryTest.*
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
 import js7.tests.testenv.{DirectoryProvider, TestController}
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.unsafe.IORuntime
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -38,6 +38,8 @@ import scala.util.control.NonFatal
   */
 final class RecoveryTest extends OurTestSuite:
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
+
+  private given IORuntime = ioRuntime
 
   "test" in:
     for _ <- if sys.props contains "test.infinite" then Iterator.from(1) else Iterator(1) do

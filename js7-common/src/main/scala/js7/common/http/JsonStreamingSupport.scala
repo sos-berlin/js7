@@ -23,7 +23,7 @@ object JsonStreamingSupport:
   val `application/x-ndjson-ContentType` = `application/x-ndjson`.toContentType
   val CustomMediaTypes = `application/json-seq` :: `application/x-ndjson` :: Nil
 
-  /** Useable for HTTP request expecting a Checked[Observable] response. */
+  /** Useable for HTTP request expecting a Checked[Stream] response. */
   val StreamingJsonHeader = Accept(
     MediaRange.One(`application/x-ndjson`, 1.0f),   // For observed items
     MediaRange.One(`application/json`, 0.9f))       // For Problem response

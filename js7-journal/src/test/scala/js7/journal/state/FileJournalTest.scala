@@ -1,13 +1,16 @@
 package js7.journal.state
 
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
+import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.*
+import cats.effect.IO
+import fs2.Stream
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
-import java.util.concurrent.Executors
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString
@@ -15,8 +18,8 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -33,10 +36,6 @@ import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.schedulers.SchedulerService
-import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
@@ -45,16 +44,17 @@ import scala.concurrent.Future
   */
 final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
 {
-  private implicit lazy val scheduler: SchedulerService =
-    Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
+
   protected lazy val directory = createTempDirectory("FileJournalTest-")
   private lazy val journalLocation = testJournalMeta(fileBase = directory)
 
-  override def afterAll() = {
-    deleteDirectoryRecursively(directory)
-    scheduler.shutdown()
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      deleteDirectoryRecursively(directory)
+    finally
+      super.afterAll()
 
   private val n = 100
   private val keys = for o <- 'A' to 'D' yield NumberKey(o.toString)
@@ -76,24 +76,24 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
     }
 
     "persistKeyedEvent with simple KeyedEvent" in {
-      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
-      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
+      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
+      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
           "'FileJournalTest.TestState': Duplicate NumberThing: ONE")))
-      intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
+      intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() }
     }
 
     "persistEvent" in {
       assert(journal
         .persistEvent[NumberEvent](NumberKey("TWO"))(
-          _ => Right(NumberAdded)).runSyncUnsafe().isRight)
+          _ => Right(NumberAdded)).unsafeRunSync().isRight)
     }
 
     "Concurrent update" in {
       val updated = keys
         .map(key =>
           journal.persistKeyedEvent(key <-: NumberAdded)
-            .runToFuture: Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
+            .unsafeToFuture(): Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
 
@@ -101,7 +101,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
         Future {
           for i <- 0 until n yield
             journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
-              .runToFuture.await(99.s)
+              .await(99.s)
         }
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
     }
@@ -134,9 +134,13 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
     }
   }
 
-  private class RunningJournal extends ProvideActorSystem {
+  private class RunningJournal(
+    using protected val executionContext: ExecutionContext)
+  extends ProvideActorSystem:
+
     protected def config = TestConfig
-    private var journalAllocated: Allocated[Task, FileJournal[TestState]] = null
+
+    private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
     def journal = journalAllocated.allocatedThing
 
     def start() = {
@@ -159,7 +163,6 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
       journalAllocated.release.await(99.s)
       close()
     }
-  }
 }
 
 private object FileJournalTest
@@ -278,7 +281,7 @@ private object FileJournalTest
 
     def estimatedSnapshotSize = numberThingCollection.numberThings.size
 
-    def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
+    def toSnapshotStream = Stream.iterable(numberThingCollection.numberThings.values)
   }
   object TestState extends SnapshotableState.Companion[TestState]
   {

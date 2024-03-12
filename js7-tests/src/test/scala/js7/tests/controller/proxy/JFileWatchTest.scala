@@ -8,10 +8,9 @@ import js7.proxy.javaapi.JControllerApi
 import js7.tests.controller.proxy.JFileWatchTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 
 final class JFileWatchTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
   override protected def controllerConfig = config"""

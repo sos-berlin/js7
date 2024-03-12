@@ -1,6 +1,6 @@
 package js7.proxy
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource, ResourceIO}
 import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -32,14 +32,15 @@ import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
-import monix.eval.Task
-import monix.reactive.Observable
+import fs2.Stream
+import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, onErrorRestartLoop}
 import scala.collection.immutable
 import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
 
 final class ControllerApi(
-  val apisResource: Resource[Task, Nel[HttpControllerApi]],
+  val apisResource: Resource[IO, Nel[HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
@@ -51,120 +52,130 @@ extends ControllerApiWithHttp:
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
 
-  def stop: Task[Unit] =
+  def stop: IO[Unit] =
     stop()
 
-  def stop(dontLogout: Boolean = true): Task[Unit] =
-    logger.debugTask(
-      Task
-        .when(dontLogout)(
+  def stop(dontLogout: Boolean = true): IO[Unit] =
+    logger.debugIO(
+      IO
+        .whenA(dontLogout)(
           apiCache.cachedValue
-            .fold(Task.unit)(api => Task(
+            .fold(IO.unit)(api => IO(
               api.clearSession())))
         .*>(apiCache.release))
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
-  : Task[EventAndState[Event, ControllerState]] =
+  : IO[EventAndState[Event, ControllerState]] =
     CorrelId.bindIfEmpty(
-      JournaledProxy.observable(apisResource, None, _ => (), proxyConf)
+      JournaledProxy.stream(apisResource, None, _ => (), proxyConf)
         .filter(predicate)
-        .headOptionL
+        .head.compile.last
         .map(_.getOrElse(throw new EndOfEventStreamException)))
 
   /** Read events and state from Controller. */
-  def eventAndStateObservable(
+  def eventAndStateStream(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     fromEventId: Option[EventId] = None)
-  : Observable[EventAndState[Event, ControllerState]] =
+  : Stream[IO, EventAndState[Event, ControllerState]] =
     // CorrelId.bind ???
-    logger.debugObservable(
-      JournaledProxy.observable(apisResource, fromEventId, proxyEventBus.publish, proxyConf))
+    logger.debugStream(
+      JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf))
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
-  : Task[ControllerProxy] =
-    CorrelId.bindIfEmpty(logger.debugTask(
-      ControllerProxy.start(this, apisResource, proxyEventBus, eventBus, proxyConf)))
+  : IO[ControllerProxy] =
+    logger.traceIO:
+      proxyResource(proxyEventBus, eventBus)
+        .allocated // Caller must stop the ControllerProxy
+        .map(_._1)
+
+  def proxyResource(
+    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
+    eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
+  : ResourceIO[ControllerProxy] =
+    /*CorrelId.bindIfEmpty???*/(logger.debugResource:
+      ControllerProxy
+        .resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
-  : Task[Checked[Accepted]] =
+  : IO[Checked[Accepted]] =
     executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId))
 
   def updateRepo(
     versionId: VersionId,
     signedItems: immutable.Iterable[Signed[SignableItem]] = Nil,
     delete: immutable.Iterable[VersionedItemPath] = Nil)
-  : Task[Checked[Completed]] =
+  : IO[Checked[Completed]] =
     updateItems(AddVersion(versionId) +: (
-      Observable.fromIterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++
-        Observable.fromIterable(delete).map(RemoveVersioned.apply)))
+      Stream.iterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++
+        Stream.iterable(delete).map(RemoveVersioned.apply)))
 
-  def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): Task[Checked[Completed]] =
+  def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): IO[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(items) map ItemOperation.AddOrChangeSimple.apply)
+      Stream.iterable(items) map ItemOperation.AddOrChangeSimple.apply)
 
   def updateSignedItems(items: Iterable[Signed[SignableItem]], versionId: Option[VersionId] = None)
-  : Task[Checked[Completed]] =
+  : IO[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(versionId).map(AddVersion(_)) ++
-        Observable.fromIterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
+      Stream.iterable(versionId).map(AddVersion(_)) ++
+        Stream.iterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
 
-  def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
-    logger.debugTask(
+  def updateItems(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
+    logger.debugIO(
       untilReachable(_
-        .postObservable[ItemOperation, JsonObject](
+        .postStream[ItemOperation, JsonObject](
           "controller/api/item",
           operations)
       ).map(_.map((_: JsonObject) => Completed)))
 
-  def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
-    logger.debugTask(
-      untilReachable(_.postObservable[FreshOrder, Json]("controller/api/order", orders))
+  def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
+    logger.debugIO(
+      untilReachable(_.postStream[FreshOrder, Json]("controller/api/order", orders))
         .map(_.flatMap(_.checkedAs[AddOrders.Response])))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
-  def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
+  def addOrder(order: FreshOrder): IO[Checked[Boolean]] =
     executeCommand(AddOrder(order))
       .map(_.map(o => !o.ignoredBecauseDuplicate))
 
-  def deleteOrdersWhenTerminated(orderIds: Observable[OrderId])
-  : Task[Checked[ControllerCommand.Response.Accepted]] =
-    logger.debugTask(
+  def deleteOrdersWhenTerminated(orderIds: Stream[IO, OrderId])
+  : IO[Checked[ControllerCommand.Response.Accepted]] =
+    logger.debugIO(
       untilReachable(_
-        .postObservable[OrderId, Json](
+        .postStream[OrderId, Json](
           "controller/api/order/DeleteOrdersWhenTerminated",
           orderIds))
         .map(_.flatMap(_
           .checkedAs[ControllerCommand.Response]
           .map(_.asInstanceOf[ControllerCommand.Response.Accepted]))))
 
-  def releaseEvents(eventId: EventId): Task[Checked[Completed]] =
+  def releaseEvents(eventId: EventId): IO[Checked[Completed]] =
     executeCommand(ReleaseEvents(eventId))
       .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
-  def executeCommand(command: ControllerCommand): Task[Checked[command.Response]] =
-    logger.debugTask("executeCommand", command.toShortString)(
+  def executeCommand(command: ControllerCommand): IO[Checked[command.Response]] =
+    logger.debugIO(s"executeCommand ${command.toShortString}")(
       untilReachable(_.executeCommand(command)))
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
-  //: Task[Checked[command.Response]] =
-  //  logger.debugTask("executeAgentCommand", command.toShortString)(
+  //: IO[Checked[command.Response]] =
+  //  logger.debugIO("executeAgentCommand", command.toShortString)(
   //    untilReachable(_.executeAgentCommand(agentPath, command)))
 
-  def journalInfo: Task[Checked[JournalInfo]] =
-    logger.debugTask(
+  def journalInfo: IO[Checked[JournalInfo]] =
+    logger.debugIO(
       untilReachable(_.journalInfo))
 
-  def controllerState: Task[Checked[ControllerState]] =
-    logger.debugTask(
+  def controllerState: IO[Checked[ControllerState]] =
+    logger.debugIO(
       untilReachable(_.snapshot()))
 
-  def clusterState: Task[Checked[ClusterState]] =
+  def clusterState: IO[Checked[ClusterState]] =
     controllerState.map(_.map(_.clusterState))
 
-  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
+  private def untilReachable[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
     CorrelId.bindIfEmpty(
       if !failWhenUnreachable then
         untilReachable1(body)
@@ -175,8 +186,8 @@ extends ControllerApiWithHttp:
               .retryIfSessionLost()(
                 body(api)))))
 
-  private def untilReachable1[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
-    CorrelId.bindIfEmpty(Task.defer {
+  private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
+    CorrelId.bindIfEmpty(IO.defer {
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
@@ -199,10 +210,10 @@ extends ControllerApiWithHttp:
               logger.debug(t.toStringWithCauses)
             }
             apiCache.clear *>
-              Task.sleep(delays.next()) *>
+              IO.sleep(delays.next()) *>
               retry(())
 
-          case (t, _, _) => Task.raiseError(t)
+          case (t, _, _) => IO.raiseError(t)
         }
     })
 
@@ -211,7 +222,7 @@ object ControllerApi:
   private val logger = Logger[this.type]
 
   def resource(
-    apisResource: Resource[Task, Nel[HttpControllerApi]],
+    apisResource: Resource[IO, Nel[HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)
-  : Resource[Task, ControllerApi] =
-    Resource.make(Task { new ControllerApi(apisResource, proxyConf) })(_.stop)
+  : Resource[IO, ControllerApi] =
+    Resource.make(IO { new ControllerApi(apisResource, proxyConf) })(_.stop)

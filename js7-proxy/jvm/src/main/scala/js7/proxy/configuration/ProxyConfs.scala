@@ -18,4 +18,5 @@ object ProxyConfs:
     ProxyConf(
       tornOlder = Some(c.getDuration("js7.proxy.torn-older").toFiniteDuration),
       syncPolling = c.getDuration("js7.proxy.sync-polling").toFiniteDuration,
+      eventQueueSize = c.getInt("js7.proxy.event-queue-size"),
       RecouplingStreamReaderConfs.fromConfig(config).orThrow)

@@ -1,22 +1,28 @@
 package js7.base.utils
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.foldable.*
-import js7.base.utils.AtomicUpdaterTest.*
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.syntax.traverse.*
 import js7.base.test.OurAsyncTestSuite
+import js7.base.utils.AtomicUpdaterTest.*
 
 final class AtomicUpdaterTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "update" in:
     val n = 1000
     val atomicUpdater = new AtomicUpdater(0: java.lang.Integer)
-    Task
-      .parSequenceUnordered(
-        (1 to n).map(_ => Task(
-          atomicUpdater.update { i => delay(); i + 1 })))
+    val ios: Seq[IO[Unit]] =
+      for _ <- 1 to n yield IO:
+        atomicUpdater.update:
+          i => delay()
+          i + 1
+    ios.sequence
       .map(_.combineAll)
       .map(_ => assert(atomicUpdater.get == n))
-      .runToFuture
+      .unsafeToFuture()
 
 
 object AtomicUpdaterTest:

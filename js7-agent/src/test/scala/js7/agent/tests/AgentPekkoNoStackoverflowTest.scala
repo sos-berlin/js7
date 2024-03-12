@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.AgentPekkoNoStackoverflowTest.*
@@ -12,6 +13,8 @@ import js7.base.time.ScalaTime.*
   * @author Joacim Zschimmer
   */
 final class AgentPekkoNoStackoverflowTest extends OurTestSuite, AgentTester:
+
+  private given IORuntime = ioRuntime
 
   "Job working directory" in:
     val exception = intercept[RuntimeException]:

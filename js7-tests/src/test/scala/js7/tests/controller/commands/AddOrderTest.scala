@@ -3,11 +3,12 @@ package js7.tests.controller.commands
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
+import js7.base.io.process.Stdout
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
@@ -24,7 +25,6 @@ import js7.tests.controller.commands.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.traced
 
 final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -98,9 +98,10 @@ object AddOrderTest:
   private class EchoJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(step
-        .outTaskObserver.send(
+        .write(
+          Stdout,
           s"STRING=${step.arguments("STRING").convertToString}\n" +
-          s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
+            s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
         .as(Outcome.succeeded))
   private object EchoJob extends InternalJob.Companion[EchoJob]
 

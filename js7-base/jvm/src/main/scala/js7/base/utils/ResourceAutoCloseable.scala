@@ -1,16 +1,15 @@
 package js7.base.utils
 
-import cats.effect.Resource
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
 import izumi.reflect.Tag
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.utils.CatsUtils.syntax.RichResource
-import monix.eval.Task
-import monix.execution.Scheduler
 import scala.concurrent.duration.*
 import scala.util.Try
 
-final case class ResourceAutoCloseable[A](resource: Resource[Task, A], timeout: Duration)
-  (implicit aTag: Tag[A], s: Scheduler, src: sourcecode.Enclosing)
+final case class ResourceAutoCloseable[A](resource: ResourceIO[A], timeout: Duration)
+  (using Tag[A], IORuntime, sourcecode.Enclosing)
 extends AutoCloseable:
 
   private lazy val allocated = Try(resource.toAllocated.await(timeout))

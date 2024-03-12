@@ -1,7 +1,10 @@
 package js7.data.orderwatch
 
+import cats.effect.IO
+import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
@@ -16,8 +19,6 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchPath.syntax.*
-import monix.reactive.Observable
 import scala.collection.View
 
 /**
@@ -192,12 +193,11 @@ extends UnsignedSimpleItemState:
   def estimatedSnapshotSize =
     1 + externalToState.size
 
-  override def toSnapshotObservable: Observable[Any] =
+  override def toSnapshotStream: Stream[IO, Any] =
     UnsignedSimpleItemAdded(orderWatch) +:
-      Observable.fromIterable(externalToState)
-        .map { case (externalOrderName, state) =>
+      Stream.iterable(externalToState)
+        .map: (externalOrderName, state) =>
           ExternalOrderSnapshot(orderWatch.key, externalOrderName, state)
-        }
 
   def applySnapshot(snapshot: ExternalOrderSnapshot): Checked[OrderWatchState] =
     externalToState.insert(snapshot.externalOrderName -> snapshot.state)

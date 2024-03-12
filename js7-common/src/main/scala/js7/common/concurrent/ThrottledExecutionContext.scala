@@ -36,7 +36,7 @@ extends ExecutionContext:
       }
     })
 
-  private def enqueueIfThrottled[A](runnable: Runnable): Boolean =
+  private def enqueueIfThrottled(runnable: Runnable): Boolean =
     synchronized:
       !semaphore.tryAcquire() && {
         queue.add(runnable)

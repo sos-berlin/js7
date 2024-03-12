@@ -1,26 +1,28 @@
 package js7.common.http
 
-import cats.syntax.apply.*
+import cats.effect.{Deferred, IO}
+import cats.implicits.catsSyntaxApplicativeError
+import cats.syntax.flatMap.*
+import fs2.Stream
+import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.{UpstreamTimeoutException, materialize, timeoutOnSlowUpstream}
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.EventSeqTornProblem
-import monix.catnap.MVar
-import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
-import monix.execution.exceptions.UpstreamTimeoutException
-import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -29,22 +31,22 @@ import scala.util.control.NoStackTrace
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
 abstract class RecouplingStreamReader[
   @specialized(Long/*EventId or file position*/) I,
-  V,
-  Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
+  V: Tag,
+  Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace,
 ](toIndex: V => I,
   conf: RecouplingStreamReaderConf):
 
   private val sym = new BlockingSymbol
 
-  protected def couple(index: I): Task[Checked[I]] =
-    Task.right(index)
+  protected def couple(index: I): IO[Checked[I]] =
+    IO.right(index)
 
-  protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
+  protected def getStream(api: Api, after: I): IO[Checked[Stream[IO, V]]]
 
-  protected def onCouplingFailed(api: Api, problem: Problem): Task[Boolean] =
-    inUseVar.flatMap(_.tryRead).map(_.isDefined)
+  protected def onCouplingFailed(api: Api, problem: Problem): IO[Boolean] =
+    inUse.get
       .flatMap(inUse =>
-        Task {
+        IO {
           var logged = false
           lazy val msg = s"$api: coupling failed: $problem"
           if inUse && !stopRequested && !coupledApiVar.isStopped then {
@@ -63,11 +65,11 @@ abstract class RecouplingStreamReader[
           true  // Recouple and continue
         })
 
-  protected def onCoupled(api: Api, after: I): Task[Completed] =
-    Task.completed
+  protected def onCoupled(api: Api, after: I): IO[Completed] =
+    IO.completed
 
-  protected def onDecoupled: Task[Completed] =
-    Task.completed
+  protected def onDecoupled: IO[Completed] =
+    IO.completed
 
   protected def eof(index: I) = false
 
@@ -78,118 +80,125 @@ abstract class RecouplingStreamReader[
 
   protected def idleTimeout = Option(requestTimeout + 2.s)/*let service timeout kick in first*/
 
-  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
+  private def isStopped =
+    stopRequested || coupledApiVar.isStopped || !inUse.is
 
+  private val stopped = Deferred.unsafe[IO, Unit]
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
-  private val inUse = AtomicBoolean(false)
-  private val inUseVar = MVar.empty[Task, Unit]().memoize
+  private val inUse = new InUse
   private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
-  final def observe(api: Api, after: I): Observable[V] =
-    logger.debugObservable("observe", s"$api after=$after")(
-      Observable.fromTask(
-        inUseVar.flatMap(_.put(()))
-          .*>(Task { inUse := true })
-          .logWhenItTakesLonger
-          .*>(decouple)
-      ) *>
-        new ForApi(api, after)
-          .observeAgainAndAgain
-          .guarantee(Task.defer {
-            logger.trace(s"$api: inUse := false")
-            inUse := false
-            inUseVar.flatMap(_.tryTake.void)
-          }))
+  final def stream(api: Api, after: I): Stream[IO, V] =
+    logger.debugStream("stream", s"$api after=$after"):
+      Stream
+        .resource(inUse.resource(api))
+        .evalTap: _ =>
+          decouple
+        .flatMap: _ =>
+          new ForApi(api, after).streamAgainAndAgain
+        .interruptWhenF(stopped.get)
 
-  final def terminateAndLogout: Task[Unit] =
-    decouple
-      .*>(coupledApiVar.terminate)
-      .logWhenItTakesLonger
+  final def terminateAndLogout: IO[Unit] =
+    logger.traceIO:
+      stopStreaming
+        .*>(coupledApiVar.terminate)
+        .logWhenItTakesLonger
 
-  final def decouple: Task[Completed] =
+  def stopStreaming: IO[Unit] =
+    logger.traceIO:
+      stopped.complete(()).void
+
+  final def decouple: IO[Completed] =
     coupledApiVar.isTerminated.flatMap(
       if _ then
-        Task.completed
+        IO.completed
       else
         coupledApiVar.tryTake
           .flatMap {
-            case None => Task.completed
+            case None => IO.completed
             case Some(api) => onDecoupled *> api.tryLogout
           })
 
-  final def invalidateCoupledApi: Task[Completed] =
+  final def invalidateCoupledApi: IO[Completed] =
     coupledApiVar.invalidate
 
-  final def coupledApi: Task[Option[Api]] =
+  final def coupledApi: IO[Option[Api]] =
     coupledApiVar.tryRead
 
-  final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
-    Task.defer {
-      Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity)
-    } *>
-      Task:
+  final def pauseBeforeNextTry(delay: FiniteDuration): IO[Unit] =
+    IO.defer:
+      for
+        _ <- IO.sleep((sinceLastTry + delay).timeLeftOrZero.roundUpToNext(PauseGranularity))
+      yield
         sinceLastTry = now  // update asynchronously
 
   private final class ForApi(api: Api, initialAfter: I):
     @volatile private var lastIndex = initialAfter
 
-    def observeAgainAndAgain: Observable[V] =
-      Observable.tailRecM(initialAfter)(after =>
-        if eof(after) || isStopped then
-          Observable.pure(Right(Observable.empty))
-        else
-          Observable
-            .pure(Right(
-              observe(after)
-                .onErrorHandleWith {
-                  case t: ProblemException if isSevereProblem(t.problem) =>
-                    Observable.raiseError(t)
-                  case t =>
-                    Observable.fromTask(
-                      onCouplingFailed(api, Problem.fromThrowable(t)) map {
-                        case false => Observable.raiseError(t)
-                        case true => Observable.empty[V]
-                      }).flatten
-                })) ++
-              (Observable.fromTask(pauseBeforeNextTry(conf.delay)) *>
-                Observable.eval(Left(lastIndex)))
-      ).flatten
+    def streamAgainAndAgain: Stream[IO, V] =
+      logger.traceStream:
+        initialAfter
+          .tailRecM/*Memory leak ???*/: after =>
+            if eof(after) || isStopped then
+              Stream.emit(Right(Stream.empty))
+            else
+              Right(
+                streamAfter(after)
+                  .handleErrorWith {
+                    case t: ProblemException if isSevereProblem(t.problem) =>
+                      Stream.raiseError[IO](t)
+                    case t =>
+                      Stream
+                        .eval:
+                          onCouplingFailed(api, Problem.fromThrowable(t))
+                        .flatMap:
+                          case false => Stream.raiseError[IO](t)
+                          case true => Stream.empty
+                  }
+              ) +:
+                Stream.eval:
+                  pauseBeforeNextTry(conf.delay) *>
+                    IO.defer(IO.left(lastIndex))
+          .flatten
 
-    private def observe(after: I): Observable[V] =
-      Observable.fromTask(
-        tryEndlesslyToGetObservable(after)
-          .<*(Task {
-            if sym.called then logger.info(s"🟢 Observing $api ...")
-          }))
+    private def streamAfter(after: I): Stream[IO, V] =
+     logger.traceStream:
+      Stream
+        .eval(
+          tryEndlesslyToGetStream(after)
+            .<*(IO {
+              if sym.called then logger.info(s"🟢 Streaming $api ...")
+            }))
         .flatten
         .map { v =>
           lastIndex = toIndex(v)
           v
         }
 
-    /** Retries until web request returns an Observable. */
-    private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
-      Task.tailRecM(())(_ =>
+    /** Retries until web request returns an Stream. */
+    private def tryEndlesslyToGetStream(after: I): IO[Stream[IO, V]] =
+      ().tailRecM(_ =>
         if isStopped then
-          Task.right(Observable.raiseError(
-            new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
+          IO.right(Stream.empty)
+          //IO.right(Stream.raiseError[IO](
+          //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
         else
           coupleIfNeeded(after = after)
             .flatMap(after => /*`after` may have changed after initial AgentDedicated.*/
-              getObservableX(after = after)
+              getStreamX(after = after)
                 .materialize.map(Checked.flattenTryChecked)
                 .flatMap {
                   case Left(problem) =>
                     if isStopped then
-                      Task.left(())  // Fail in next iteration
+                      IO.left(())  // Fail in next iteration
                     else if isSevereProblem(problem) then
-                      Task.raiseError(problem.throwable)
+                      IO.raiseError(problem.throwable)
                     else
                       (problem match {
                         case InvalidSessionTokenProblem =>
-                          Task {
+                          IO {
                             logger.debug(s"🔒 $api: $InvalidSessionTokenProblem")
                             true
                           }
@@ -200,50 +209,49 @@ abstract class RecouplingStreamReader[
                           (if continue then
                             pauseBeforeRecoupling.as(Left(()))
                           else
-                            Task.right(Observable.empty)))
+                            IO.right(Stream.empty)))
 
-                  case Right(observable) =>
-                    Task.right(observable)
+                  case Right(stream) =>
+                    IO.right(stream)
                 }))
 
-    private def getObservableX(after: I): Task[Checked[Observable[V]]] =
-      Task {
+    private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
+      logger.traceIO("getStreamX", s"after=$after")(IO.defer:
         sinceLastTry = now
-      } *>
-        getObservable(api, after = after)
+        getStream(api, after = after)
           //.timeout(idleTimeout)
-          .onErrorRecoverWith:
+          .recoverWith:
             case t: TimeoutException =>
               logger.debug(s"💥 $api: ${t.toString}")
-              Task.right(Observable.empty)
+              IO.right(Stream.empty)
 
             case HttpException.HasProblem(problem) =>
-              Task.left(problem)
+              IO.left(problem)
           .map(_.map(obs =>
             idleTimeout.fold(obs)(idleTimeout => obs
               .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
-              .onErrorRecoverWith { case t: UpstreamTimeoutException =>
+              .recoverWith { case t: UpstreamTimeoutException =>
                 logger.debug(s"💥 $api: ${t.toString}")
                 // This should let Pekko close the TCP connection to abort the stream
-                Observable.empty
-              })))
+                Stream.empty
+              }))))
 
-    private def coupleIfNeeded(after: I): Task[I] =
+    private def coupleIfNeeded(after: I): IO[I] =
       coupledApiVar.tryRead.flatMap:
-        case Some(_) => Task.pure(after)
+        case Some(_) => IO.pure(after)
         case None => tryEndlesslyToCouple(after)
 
-    private def tryEndlesslyToCouple(after: I): Task[I] =
-      logger.debugTask(Task.tailRecM(())(_ => Task.defer(
+    private def tryEndlesslyToCouple(after: I): IO[I] =
+      logger.debugIO(().tailRecM(_ => IO.defer(
         if isStopped then
-          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
+          IO.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
             with NoStackTrace)
         else
           ( for
               otherCoupledClient <- coupledApiVar.tryRead
-              _ <- otherCoupledClient.fold(Task.unit)(_ =>
-                Task.raiseError(new IllegalStateException("Coupling while already coupled")))
-              _ <- Task { recouplingPause.onCouple() }
+              _ <- otherCoupledClient.fold(IO.unit)(_ =>
+                IO.raiseError(new IllegalStateException("Coupling while already coupled")))
+              _ <- IO { recouplingPause.onCouple() }
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
               updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
             yield updatedIndex
@@ -251,11 +259,11 @@ abstract class RecouplingStreamReader[
             .flatMap {
               case Left(problem) =>
                 if isStopped then {
-                  Task.left((()))
+                  IO.left((()))
                 } // Fail in next iteration
                 else
                   for
-                    _ <- Task.when(problem == InvalidSessionTokenProblem)(
+                    _ <- IO.whenA(problem == InvalidSessionTokenProblem)(
                       api.tryLogout.void)
                     // TODO pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
                     continue <- onCouplingFailed(api, problem)
@@ -263,19 +271,19 @@ abstract class RecouplingStreamReader[
                       if continue then
                         pauseBeforeRecoupling.map(_ => Left(()))
                       else
-                        Task.raiseError(problem.throwable)
+                        IO.raiseError(problem.throwable)
                   yield either
 
               case Right(updatedIndex) =>
                 for
                   _ <- coupledApiVar.put(api)
-                  _ <- Task { recouplingPause.onCouplingSucceeded() }
+                  _ <- IO { recouplingPause.onCouplingSucceeded() }
                   _ <- onCoupled(api, after)
                 yield Right(updatedIndex)
             })))
 
   private val pauseBeforeRecoupling =
-    Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
+    IO.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
 
 
 object RecouplingStreamReader:
@@ -284,24 +292,26 @@ object RecouplingStreamReader:
   private val PauseGranularity = 500.ms
   private val logger = Logger[this.type]
 
-  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace](
-    toIndex: V => I,
+  def stream[
+    @specialized(Long/*EventId or file position*/) I,
+    V: Tag,
+    Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
+  ](toIndex: V => I,
     api: Api,
     conf: RecouplingStreamReaderConf,
     after: I,
-    getObservable: I => Task[Checked[Observable[V]]],
+    getStream: I => IO[Checked[Stream[IO, V]]],
     eof: I => Boolean = (_: I) => false,
     stopRequested: () => Boolean = () => false)
-  : Observable[V]
-  =
+  : Stream[IO, V] =
     val eof_ = eof
-    val getObservable_ = getObservable
+    val getStream_ = getStream
     val stopRequested_ = stopRequested
     new RecouplingStreamReader[I, V, Api](toIndex, conf) {
-      def getObservable(api: Api, after: I) = getObservable_(after)
+      def getStream(api: Api, after: I) = getStream_(after)
       override def eof(index: I) = eof_(index)
       def stopRequested = stopRequested_()
-    }.observe(api, after)
+    }.stream(api, after)
 
   private def isSevereProblem(problem: Problem) =
     problem.is(EventSeqTornProblem) || problem.is(AckFromActiveClusterNodeProblem)

@@ -1,20 +1,19 @@
 package js7.base.utils
 
-import cats.effect.Resource
-import monix.eval.Task
+import cats.effect.{IO, Resource}
 
 final class OneTimeTokenProvider private():
 
   @volatile private var current: Option[OneTimeToken] = None
 
-  val resource: Resource[Task, OneTimeToken] =
+  val resource: Resource[IO, OneTimeToken] =
     Resource.make(
-      acquire = Task {
+      acquire = IO {
         val token = OneTimeToken.random()
         current = Some(token)
         token
       })(
-      release = _ => Task {
+      release = _ => IO {
         current = None
       })
 

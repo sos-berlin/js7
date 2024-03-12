@@ -1,27 +1,33 @@
 package js7.agent.scheduler.order
 
+import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.monoid.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
+import fs2.concurrent.{Signal, SignallingRef}
+import fs2.Chunk
 import java.nio.file.{Path, Paths}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
 import js7.agent.scheduler.order.FileWatchManager.*
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, right}
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
-import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
+import js7.base.io.file.watch.DirectoryEventDelayer.syntax.*
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -36,9 +42,6 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.Journal
-import monix.eval.Task
-import monix.reactive.Observable
-import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
 
 /** Persists, recovers and runs FileWatches. */
@@ -50,14 +53,14 @@ final class FileWatchManager(
 
   private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]
-  private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, Task[Unit]])
+  private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, IO[Unit]])
 
-  def stop: Task[Unit] =
+  def stop: IO[Unit] =
     idToStopper.removeAll
       .flatMap(_.values.toVector.parUnorderedSequence)
       .map(_.unorderedFold)
 
-  def start: Task[Checked[Unit]] =
+  def start: IO[Checked[Unit]] =
     journal.state
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_
@@ -65,7 +68,7 @@ final class FileWatchManager(
         .traverse(startWatching)
         .map(_.combineAll))
 
-  def update(fileWatch: FileWatch): Task[Checked[Unit]] =
+  def update(fileWatch: FileWatch): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatch.path) {
       journal
         .persist(agentState =>
@@ -92,7 +95,7 @@ final class FileWatchManager(
       startWatching(agentState.keyTo(FileWatchState)(fileWatch.path))
     }
 
-  def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
+  def remove(fileWatchPath: OrderWatchPath): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath):
       journal
         .persist(agentState =>
@@ -112,42 +115,41 @@ final class FileWatchManager(
             .as(Checked.unit)
         }
 
-  private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] =
+  private def startWatching(fileWatchState: FileWatchState): IO[Checked[Unit]] =
     val id = fileWatchState.fileWatch.path
-    logger.debugTask("startWatching", id)(Task.defer {
-      val stop = PublishSubject[Unit]()
-      watch(fileWatchState, stop)
-        .traverse(observable =>
-          // Execute previously registered stopper (which awaits completion),
-          // and start our observable as a fiber.
-          // At the same time, register a stopper in idToStopper.
-          // The stopper is a task that stops the observable and awaits its completion.
-          idToStopper
-            .update(fileWatchState.id, previous =>
-              // Wait for previous Observable to complete (stop and fiber.join)
-              previous.getOrElse(Task.unit) *>
-                observable
-                  .onCancelRaiseError(CanceledException)
-                  .onErrorHandle(throwable =>
-                    logger.error(throwable.toStringWithCauses))  // Ignore ???
-                  .start
-                  .map(fiber =>
-                    // Register the stopper, a joining task for the next update:
-                    logger.debugTask("stop watching", id)(Task.defer {
-                      stop.onComplete()
-                      fiber.join
-                        .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
-                    })))
-            .void)
-        .logWhenItTakesLonger(s"startWatching $id")
-    })
+    logger.debugIO("startWatching", id):
+      SignallingRef[IO, Boolean](false).flatMap: stop =>
+        watch(fileWatchState, stop)
+          .traverse(stream =>
+            // Execute previously registered stopper (which awaits completion),
+            // and start our stream as a fiber.
+            // At the same time, register a stopper in idToStopper.
+            // The stopper is a task that stops the stream and awaits its completion.
+            idToStopper
+              .update(fileWatchState.id, previous =>
+                // Wait for previous Stream to complete (stop and fiber.join)
+                previous.getOrElse(IO.unit) *>
+                  stream
+                    //?.onCancelRaiseError(CanceledException)
+                    .recover(throwable =>
+                      logger.error(throwable.toStringWithCauses))  // Ignore ???
+                    .start
+                    .map(fiber =>
+                      // Register the stopper, a joining task for the next update:
+                      logger.debugIO("stop watching", id):
+                        stop.set(true) *>
+                          fiber.joinStd
+                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
+                    ))
+              .void)
+          .logWhenItTakesLonger(s"startWatching $id")
 
-  private def stopWatching(id: OrderWatchPath): Task[Unit] =
+  private def stopWatching(id: OrderWatchPath): IO[Unit] =
     idToStopper
       .remove(id)
-      .flatMap(_ getOrElse Task.unit)
+      .flatMap(_ getOrElse IO.unit)
 
-  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Checked[Task[Unit]] =
+  private def watch(fileWatchState: FileWatchState, stop: Signal[IO, Boolean]): Checked[IO[Unit]] =
     import fileWatchState.fileWatch
 
     fileWatch.directoryExpr
@@ -160,33 +162,32 @@ final class FileWatchManager(
         var directoryState = fileWatchState.directoryState
 
         DirectoryWatch
-          .observable(
+          .stream(
             directory, directoryState,
             settings,
             isRelevantFile = relativePath =>
               fileWatch.resolvedPattern.matcher(relativePath.toString).matches)
-          .doOnSubscribe(Task {
-            logger.debug(s"${fileWatch.path} watching started - $directory")
-          })
-          .takeUntil(stop)
-          .flatMap(Observable.fromIterable)
+          .onStart(IO:
+            logger.debug(s"${fileWatch.path} watching started - $directory"))
+          .interruptWhen(stop)
           // Buffers without limit all incoming events
           .delayFileAdded(directory, fileWatch.delay, settings.logDelays)
-          .bufferIntrospective(1024)
-          .mapEval(dirEventSeqs =>
+          .chunks
+          .evalMap(chunk =>
             lockKeeper.lock(fileWatch.path)(
-              emitOrderWatchEvents(fileWatch, directory, dirEventSeqs)))
-          .foreachL:
-            case Left(problem) => logger.error(problem.toString)
-            case Right((_, agentState)) =>
+              emitOrderWatchEvents(fileWatch, directory, chunk)))
+          .foreach:
+            case Left(problem) => IO(logger.error(problem.toString))
+            case Right((_, agentState)) => IO:
               directoryState = agentState.keyTo(FileWatchState)(fileWatch.path).directoryState
+          .compile.drain
           .onErrorRestartLoop(now) { (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
             logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
             for t <- throwable.ifStackTrace do logger.debug(t.toString, t)
-            Task.sleep(delay) *> restart(now)
+            IO.sleep(delay) *> restart(now)
           }
-          .guaranteeCase(exitCase => Task {
+          .guaranteeCase(exitCase => IO {
             logger.debug(s"${fileWatch.path} watching $exitCase - $directory")
           })
       }
@@ -194,20 +195,19 @@ final class FileWatchManager(
   private def emitOrderWatchEvents(
     fileWatch: FileWatch,
     directory: Path,
-    dirEventSeqs: List[Seq[DirectoryEvent]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
+    dirEventSeqs: Chunk[DirectoryEvent])
+  : IO[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
     journal.state
       .flatMap(agentState =>
         if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
-          Task.right(Nil -> agentState)
+          IO.right(Nil -> agentState)
         else
           journal.persist { agentState =>
             Right(
               dirEventSeqs
-                .view
-                .flatten
                 // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
                 // We check this here.
+                .asSeq
                 .flatMap(dirEvent =>
                   agentState.keyTo(FileWatchState)
                     .get(fileWatch.path)
@@ -230,8 +230,7 @@ final class FileWatchManager(
                           logger.debug(s"Ignore $event")
                           None
                       }))
-                .map(fileWatch.path <-: _)
-                .toVector)
+                .map(fileWatch.path <-: _))
           })
 
   private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
@@ -247,7 +246,7 @@ final class FileWatchManager(
 
 object FileWatchManager:
   private val logger = Logger[this.type]
-  private val CanceledException = new Exception
+  //private val CanceledException = new Exception
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")

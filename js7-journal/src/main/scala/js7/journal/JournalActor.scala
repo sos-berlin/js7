@@ -1,7 +1,11 @@
 package js7.journal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
-//diffx import com.softwaremill.diffx
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
@@ -10,7 +14,6 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
@@ -35,12 +38,10 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
-import monix.execution.cancelables.SerialCancelable
-import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{Await, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -50,7 +51,7 @@ final class JournalActor[S <: SnapshotableState[S]/*: diffx.Diff*/] private(
   journalLocation: JournalLocation,
   protected val conf: JournalConf,
   keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
-  scheduler: Scheduler,
+  ioRuntime: IORuntime,
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
   (implicit S: SnapshotableState.Companion[S])
@@ -59,11 +60,13 @@ extends Actor, Stash, JournalLogging:
   assert(journalLocation.S eq S)
 
   import context.{become, stop}
+  private given IORuntime = ioRuntime
 
+  private val scheduler = ioRuntime.scheduler
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
-  private var snapshotSchedule: Cancelable = null
+  private var snapshotSchedule: SyncCancelable = null
 
   private var uncommittedState: S = null.asInstanceOf[S]
   // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
@@ -81,7 +84,7 @@ extends Actor, Stash, JournalLogging:
   private var lastWrittenEventId = EventId.BeforeFirst
   private var lastAcknowledgedEventId = EventId.BeforeFirst
   private var commitDeadline: Deadline = null
-  private val delayedCommit = SerialCancelable()
+  private val delayedCommit = SerialSyncCancelable()
   private var totalEventCount = 0L
   private var fileEventCount = 0L
   private var lastSnapshotSizeEventCount = 0L
@@ -91,7 +94,7 @@ extends Actor, Stash, JournalLogging:
   private val ackWarnMinimumDuration =
     conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue)
   private var waitingForAcknowledge = false
-  private val waitingForAcknowledgeTimer = SerialCancelable()
+  private val waitingForAcknowledgeTimer = SerialSyncCancelable()
   private var waitingForAcknowledgeSince = now
   private val waitingForAckSym = new BlockingSymbol
   private var isHalted = false
@@ -103,7 +106,7 @@ extends Actor, Stash, JournalLogging:
   override def postStop() =
     isHalted = true // is publicly readable via Journal#isHalted, even after actor stop
     if snapshotSchedule != null then snapshotSchedule.cancel()
-    delayedCommit := Cancelable.empty // Discard commit for fast exit
+    delayedCommit.cancel() // Discard commit for fast exit
     stopped.trySuccess(Stopped)
     if snapshotWriter != null then
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
@@ -279,7 +282,7 @@ extends Actor, Stash, JournalLogging:
         else
           logger.trace(s"StillWaitingForAcknowledge n=0, persistBuffer.size=${persistBuffer.size}")
       else
-        waitingForAcknowledgeTimer := Cancelable.empty
+        waitingForAcknowledgeTimer := SyncCancelable.empty
 
   private def forwardCommit(delay: FiniteDuration): Unit =
     val deadline = now + delay
@@ -295,7 +298,7 @@ extends Actor, Stash, JournalLogging:
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(terminating: Boolean = false): Unit =
     commitDeadline = null
-    delayedCommit := Cancelable.empty
+    delayedCommit := SyncCancelable.empty
     if persistBuffer.nonEmpty then
       try eventWriter.flush(sync = conf.syncOnCommit)
       catch { case NonFatal(t) if !terminating =>
@@ -338,7 +341,7 @@ extends Actor, Stash, JournalLogging:
       waitingForAckSym.clear()
       requireClusterAcknowledgement = false
       waitingForAcknowledge = false
-      waitingForAcknowledgeTimer := Cancelable.empty
+      waitingForAcknowledgeTimer := SyncCancelable.empty
     commit()
 
   private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit =
@@ -392,7 +395,7 @@ extends Actor, Stash, JournalLogging:
       assertEqualSnapshotState("onAllCommitsFinished",
         journaledStateBuilder.result().withEventId(committedState.eventId))
     waitingForAcknowledge = false
-    waitingForAcknowledgeTimer := Cancelable.empty
+    waitingForAcknowledgeTimer := SyncCancelable.empty
     maybeDoASnapshot()
 
   private def continueCallers(persist: StandardPersist): Unit =
@@ -493,7 +496,7 @@ extends Actor, Stash, JournalLogging:
     logger.debug(journalHeader.toString)
 
     snapshotWriter = new SnapshotJournalWriter(journalLocation.S, toSnapshotTemporary(file), after = lastWrittenEventId,
-      simulateSync = conf.simulateSync)(scheduler)
+      simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
     //journalLogger.logHeader(journalHeader)
@@ -501,20 +504,20 @@ extends Actor, Stash, JournalLogging:
     locally:
       lazy val checkingBuilder = S.newBuilder()
 
-      val future = committedState.toSnapshotObservable
+      committedState.toSnapshotStream
         .filter:
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true
         .mapParallelBatch() { snapshotObject =>
-          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
+          //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
-        .foreach { case (snapshotObject, byteArray) =>
+        .foreach((snapshotObject, byteArray) => IO:
           if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
-          snapshotWriter.writeSnapshot(byteArray)
-        }(scheduler)
-      // TODO Do not block the thread
-      Await.result(future, 999.s)
+          snapshotWriter.writeSnapshot(byteArray))
+        .compile
+        .drain
+        .unsafeRunSync() // TODO Do not block the thread
 
       if conf.slowCheckState then
         // Simulate recovery
@@ -562,7 +565,7 @@ extends Actor, Stash, JournalLogging:
     val w = new EventJournalWriter(journalLocation.S, file,
       after = after, journalHeader.journalId,
       journalingObserver.orThrow, simulateSync = conf.simulateSync,
-      withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)(scheduler)
+      withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
     journalLocation.updateSymbolicLink(file)
     w
 
@@ -600,7 +603,7 @@ extends Actor, Stash, JournalLogging:
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${committedState.journalState}, clusterState=${committedState.clusterState}")
     journalingObserver.orThrow match
       case Some(o) =>
-        o.releaseEvents(untilEventId)(scheduler)
+        o.releaseEvents(untilEventId)
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
@@ -620,8 +623,7 @@ extends Actor, Stash, JournalLogging:
         stampedEvents)
 
       // Check recoverability
-      implicit val s = scheduler
-      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.runSyncUnsafe(99.s),
+      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSync(),
         stampedEvents)
 
       val builder = S.newBuilder()
@@ -653,12 +655,12 @@ object JournalActor:
     journalLocation: JournalLocation,
     conf: JournalConf,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
-    scheduler: Scheduler,
+    ioRuntime: IORuntime,
     eventIdGenerator: EventIdGenerator,
     stopped: Promise[Stopped] = Promise())
   =
     Props:
-      new JournalActor[S](journalLocation, conf, keyedEventBus, scheduler, eventIdGenerator, stopped)
+      new JournalActor[S](journalLocation, conf, keyedEventBus, ioRuntime, eventIdGenerator, stopped)
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
 

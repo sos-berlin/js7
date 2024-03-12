@@ -1,11 +1,12 @@
 package js7.tests.controller
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
@@ -19,12 +20,14 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.ObsoleteJournalFilesRemovedTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
   */
 final class ObsoleteJournalFilesRemovedTest extends OurTestSuite, DirectoryProviderForScalaTest:
+
+  private given IORuntime = ioRuntime
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"

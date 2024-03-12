@@ -19,5 +19,5 @@ trait EventRoute extends ControllerRouteProvider, GenericEventRoute:
   protected final def filteredEventRoute(filter: StampedEventFilter): Route =
     new GenericEventRouteProvider {
       def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec
-      override def filterObservable = filter
+      override def filterStream = filter
     }.route

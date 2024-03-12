@@ -13,8 +13,8 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
 import js7.data.controller.ControllerState
 import js7.journal.watch.FileEventWatch
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline
 
@@ -29,8 +29,8 @@ object ControllerWebServer:
     eventWatch: FileEventWatch,
     controllerConfiguration: ControllerConfiguration,
     sessionRegister: SessionRegister[SimpleSession])(
-    implicit actorSystem_ : ActorSystem, scheduler: Scheduler)
-  : Resource[Task, ControllerWebServer] =
+    implicit actorSystem_ : ActorSystem, ioRuntime: IORuntime)
+  : Resource[IO, ControllerWebServer] =
     PekkoWebServer.resource(
       controllerConfiguration.webServerBindings,
       controllerConfiguration.config,
@@ -47,7 +47,7 @@ object ControllerWebServer:
           gateKeeperConf.secureStateString(scheme)
 
         def webServerRoute =
-          Task.pure(
+          IO.pure(
             new ControllerRoute(
               routeBinding,
               controllerConfiguration,

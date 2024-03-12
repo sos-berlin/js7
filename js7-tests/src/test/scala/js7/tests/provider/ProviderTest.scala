@@ -16,7 +16,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
@@ -35,7 +35,7 @@ import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
+import js7.base.monixlike.MonixLikeExtensions.completedL
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -236,7 +236,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
   "observe" - {
     lazy val (provider, stopProvider) = Provider.resource(conf)
       .allocated.await(99.s)
-    lazy val whenObserved = provider.observe.completedL.runToFuture
+    lazy val whenObserved = provider.stream.completedL.unsafeToFuture()
     var lastEventId = EventId.BeforeFirst
 
     "Initial observation with a workflow and an agentRef added" in {

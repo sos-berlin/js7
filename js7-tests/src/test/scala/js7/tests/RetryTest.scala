@@ -4,11 +4,10 @@ import izumi.reflect.Tag
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
@@ -28,7 +27,6 @@ import js7.tests.RetryTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Random
@@ -371,14 +369,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           .await(99.s).orThrow
         eventWatch.await[OrderCancelled](_.key == orderId)
       }
-    }
-  }
-
-  private def repeatTest(n: Int)(body: Int => Any): Unit = {
-    for (i <- 1 to n) {
-      logger.debugCall(s"#$i", "")(
-        withClue(s"#$i: ")(
-          body(i)))
     }
   }
 

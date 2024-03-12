@@ -6,14 +6,16 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.data.event.EventId
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventIdGeneratorTest extends OurTestSuite:
+
+  private given ExecutionContext = ioRuntime.compute
+
   "test" in:
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala
     val eventIdGenerator = new EventIdGenerator

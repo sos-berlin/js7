@@ -1,16 +1,21 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.semigroup.*
 import com.typesafe.config.Config
+import fs2.Stream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, exists, size}
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -18,20 +23,16 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{CloseableIterator, SetOnce}
+import js7.base.utils.{Atomic, CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatch.*
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.execution.atomic.AtomicAny
-import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
@@ -46,13 +47,16 @@ final class JournalEventWatch(
   val journalLocation: JournalLocation,
   config: Config,
   announceNextFileEventId: Option[EventId] = None)
+  (using ioRuntime: IORuntime)
 extends AutoCloseable,
   RealEventWatch,
   FileEventWatch,
   JournalingObserver:
-  
+
   logger.debug(
     s"new JournalEventWatch($journalLocation, announceNextFileEventId=$announceNextFileEventId)")
+
+  protected val scheduler = ioRuntime.scheduler
 
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
   private val releaseEventsDelay =
@@ -128,6 +132,7 @@ extends AutoCloseable,
       case None => journalIdOnce := expectedJournalId
       case Some(o) => require(expectedJournalId == o, s"JournalId $o does not match expected $expectedJournalId")
         //throw JournalIdMismatchProblem(journalLocation.fileBase, expectedJournalId = expectedJournalId, o).throwable
+
     synchronized:
       _isActiveNode = isActiveNode
       val after = flushedLengthAndEventId.value
@@ -154,12 +159,13 @@ extends AutoCloseable,
         journalLocation,
         expectedJournalId,
         firstEventPositionAndFileEventId, flushedLengthAndEventId,
-        isActiveNode = isActiveNode, config)
+        isActiveNode = isActiveNode, config, ioRuntime)
       maybeCurrentEventReader = Some(currentEventReader)
       logger.debug(s"currentEventReader=$currentEventReader")
       for (eventId, promise) <- announcedEventReaderPromise do
         if eventId == firstEventPositionAndFileEventId.value then
           promise.success(Some(currentEventReader))
+
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
     startedPromise.trySuccess(this)
@@ -175,7 +181,7 @@ extends AutoCloseable,
       announcedEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
 
-  def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit =
+  def releaseEvents(untilEventId: EventId)(using IORuntime): Unit =
     val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
     if delay.isZeroOrBelow then
       releaseEventsNow(untilEventId)
@@ -251,8 +257,8 @@ extends AutoCloseable,
           }
 
   /**
-    * @return `Task(None)` torn, `after` < `tornEventId`
-    *         `Task(Some(Iterator.empty))` if no events are available for now
+    * @return `IO(None)` torn, `after` < `tornEventId`
+    *         `IO(Some(Iterator.empty))` if no events are available for now
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
     val result = maybeCurrentEventReader match
@@ -301,24 +307,25 @@ extends AutoCloseable,
   def journalPosition =
     checkedCurrentEventReader.map(_.journalPosition)
 
-  def observeFile(journalPosition: JournalPosition,
+  def streamFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
-  : Task[Checked[Observable[PositionAnd[ByteArray]]]] =
-    Task.defer:
+  : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]] =
+    IO.defer:
       import journalPosition.{fileEventId, position}
 
       if onlyAcks && _isActiveNode then
-        Task.left(AckFromActiveClusterNodeProblem)
+        logger.warn(AckFromActiveClusterNodeProblem.toString)
+        IO.left(AckFromActiveClusterNodeProblem)
       else
         announcedEventReaderPromise match
           case Some((`fileEventId`, promise)) =>
             if !promise.isCompleted then
-              logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
-            Task.fromFuture(promise.future).map:
+              logger.debug(s"streamFile($fileEventId): waiting for this new journal file")
+            IO.fromFuture(IO.pure(promise.future)).map:
               case None =>
-                Right(Observable.empty) // JournalEventWatch has been closed
+                Right(Stream.empty) // JournalEventWatch has been closed
               case Some(currentEventReader) =>
-                Right(currentEventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+                Right(currentEventReader.streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
 
           case _ =>
             val maybeEventReader = maybeCurrentEventReader
@@ -326,22 +333,23 @@ extends AutoCloseable,
               .orElse(fileEventIdToHistoric.get(fileEventId).map(_.eventReader))
             maybeEventReader match
               case None =>
-                logger.debug(s"observeFile($journalPosition): announcedEventReaderPromise=$announcedEventReaderPromise " +
+                logger.debug(s"streamFile($journalPosition): announcedEventReaderPromise=$announcedEventReaderPromise " +
                   s"maybeCurrentEventReader=$maybeCurrentEventReader " +
                   s"fileEventIdToHistoric=${fileEventIdToHistoric.keys.toVector.sorted.mkString(",")}")
-                Task.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
+                IO.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
 
               case Some(eventReader) =>
-                Task(Right(eventReader
-                  .observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
+                IO(Right(eventReader
+                  .streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
                   .pipeIf(onlyAcks)(_
                     // Never acknowledge events written by this active cluster node
                     // to other wanna-be active nodes!
-                    // We would acknowledge events until failover, but it's not worth it,
-                    // because the wanne-be active node should shut down immediately.
+                    // We could acknowledge events until failover, but it's not worth it,
+                    // because the wanna-be active node should shut down immediately.
                     //.takeWhile(_ => !_isActiveNode)
-                    .tapEval(_ => Task.when(isActiveNode)(
-                      Task.raiseError(AckFromActiveClusterNodeProblem.throwable))))))
+                    .evalTap(_ => IO.whenA(isActiveNode):
+                      logger.warn(AckFromActiveClusterNodeProblem.toString)
+                      IO.raiseError(AckFromActiveClusterNodeProblem.throwable)))))
 
   private def lastEventId =
     synchronized:
@@ -365,7 +373,7 @@ extends AutoCloseable,
     val fileEventId: EventId,
     val file: Path,
     initialEventReader: Option[EventReader] = None):
-    private val _eventReader = AtomicAny[EventReader](initialEventReader.orNull)
+    private val _eventReader = Atomic[EventReader](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
       for r <- Option(_eventReader.get()) do r.closeAfterUse()
@@ -378,7 +386,7 @@ extends AutoCloseable,
       _eventReader.get() match
         case null =>
           val r = new HistoricEventReader(journalLocation, journalIdOnce.orThrow,
-            fileEventId = fileEventId, file, config)
+            fileEventId = fileEventId, file, config, ioRuntime)
           if _eventReader.compareAndSet(null, r) then
             logger.debug(s"Using $r")
             r
@@ -403,7 +411,9 @@ extends AutoCloseable,
       val reader = _eventReader.get()
       reader != null && !reader.isInUse
 
-    override def toString = "HistoricJournalFile:" + file.getFileName
+    override def toString =
+      val fileSize = Try(" " + toKiBGiB(size(file))) getOrElse ""
+      s"HistoricJournalFile:${file.getFileName}$fileSize"
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalLocation.fileBase))

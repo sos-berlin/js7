@@ -15,7 +15,10 @@ import scala.collection.mutable
 final class DeadLetterActorTest extends OurTestSuite:
 
   "DeadLetterActor.subscribe" in:
-    val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, config"pekko.log-dead-letters = 0")
+    val actorSystem = newActorSystem(
+      classOf[DeadLetterActorTest].getSimpleName,
+      config"pekko.log-dead-letters = 0",
+      executionContext = ioRuntime.compute)
     val buffer = mutable.Buffer[String]()
     DeadLetterActor.subscribe(actorSystem, (logLevel, msg) => buffer += msg())
     val actorRef = actorSystem.actorOf(Props[TestActor]())

@@ -1,11 +1,13 @@
 package js7.base.session
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.{IO, Outcome, Resource}
+import cats.syntax.flatMap.*
 import js7.base.auth.UserAndPassword
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
@@ -14,7 +16,6 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
-import monix.eval.Task
 import scala.concurrent.duration.*
 
 // Test in SessionRouteTest
@@ -25,35 +26,35 @@ trait SessionApi:
   private val tryLogoutLock = AsyncLock("SessionApi.tryLogout")
 
   def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
-  : Task[Completed]
+  : IO[Completed]
 
-  def logout(): Task[Completed]
+  def logout(): IO[Completed]
 
   def clearSession(): Unit
 
   // overrideable
-  def retryIfSessionLost[A]()(body: Task[A])
-  : Task[A] =
+  def retryIfSessionLost[A]()(body: IO[A])
+  : IO[A] =
     body
 
   // overrideable
-  def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorTryAgain)
-    (body: => Task[A])
-  : Task[A] =
+  def retryUntilReachable[A](onError: Throwable => IO[Boolean] = onErrorTryAgain)
+    (body: => IO[A])
+  : IO[A] =
     body
 
-  final def tryLogout: Task[Completed] =
-    logger.traceTask(s"$toString: tryLogout")(
+  final def tryLogout: IO[Completed] =
+    logger.traceIO(s"$toString: tryLogout")(
       tryLogoutLock.lock(
         logout()
           .timeout(tryLogoutTimeout)
-          .onErrorRecover { case t =>
+          .handleError { t =>
             logger.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
             clearSession()
             Completed
           }))
 
-  private[SessionApi] final def onErrorTryAgain(throwable: Throwable): Task[Boolean] =
+  private[SessionApi] final def onErrorTryAgain(throwable: Throwable): IO[Boolean] =
     SessionApi.onErrorTryAgain(toString, throwable)
 
 
@@ -61,7 +62,7 @@ object SessionApi:
   private val logger = Logger[this.type]
 
   /** Logs out when the resource is being released. */
-  def resource[A <: SessionApi](api: Task[A]): Resource[Task, A] =
+  def resource[A <: SessionApi](api: IO[A]): Resource[IO, A] =
     Resource.make(
       acquire = api)(
       release = _.tryLogout.void)
@@ -76,8 +77,8 @@ object SessionApi:
           && Option(throwable.getCause).forall(_.getClass.scalaName != "org.apache.pekko.stream.StreamTcpException") then
           logger.debug(s"$myToString: ${throwable.toString}", throwable)
 
-  def onErrorTryAgain(myToString: String, throwable: Throwable): Task[Boolean] =
-    Task.pure(true)
+  def onErrorTryAgain(myToString: String, throwable: Throwable): IO[Boolean] =
+    IO.pure(true)
 
   trait LoginUntilReachable extends SessionApi:
     self =>
@@ -90,12 +91,12 @@ object SessionApi:
     final def loginUntilReachable_(
       userAndPassword: Option[UserAndPassword],
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = this.onErrorTryAgain,
+      onError: Throwable => IO[Boolean] = this.onErrorTryAgain,
       onlyIfNotLoggedIn: Boolean = false)
-    : Task[Completed] =
-      Task.defer(
+    : IO[Completed] =
+      IO.defer(
         if onlyIfNotLoggedIn && hasSession then
-          Task.completed
+          IO.completed
         else {
           val sym = new BlockingSymbol
           login_(userAndPassword)
@@ -108,16 +109,16 @@ object SessionApi:
                     s"$sym "
                   }
                   warn(s"$prefix$self", throwable)
-                  retry(()) delayExecution delays.next()
+                  retry(()).delayBy(delays.next())
                 } else
-                  Task.raiseError(throwable))
+                  IO.raiseError(throwable))
             }
             .guaranteeCase {
-              case ExitCase.Completed => Task(
+              case Outcome.Succeeded(_) => IO(
                 if sym.called then logger.info(s"🟢 $self logged-in"))
-              case ExitCase.Canceled => Task(
+              case Outcome.Canceled() => IO(
                 if sym.called then logger.info(s"⚫️ $self Canceled"))
-              case _ => Task.unit
+              case _ => IO.unit
             }
         })
 
@@ -128,45 +129,42 @@ object SessionApi:
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    override def retryIfSessionLost[A]()(body: Task[A]): Task[A] =
-      Task.defer:
+    override def retryIfSessionLost[A]()(body: IO[A]): IO[A] =
+      IO.defer:
         val delays = Iterator(0.s) ++ loginDelays()
         login(onlyIfNotLoggedIn = true) *>
-          Task.tailRecM(())(_ =>
+          ().tailRecM(_ =>
             body
-              .onErrorRestartLoop(()) {
+              .onErrorRestartLoop(()):
                 case (HttpException.HasProblem(problem), _, retry)
                   if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                   renewSession(problem, delays) *>
                     retry(())
-
                 case (throwable, _, _) =>
-                  Task.raiseError(throwable)
-              }
-              .flatMap { // A may be a Checked[Problem]
+                  IO.raiseError(throwable)
+              .flatMap: // A may be a Checked[Problem]
                 case Left(problem: Problem)
                   if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                   renewSession(problem, delays).as(Left(()))
-                case o => Task.right(o)
-              }
+                case o => IO.right(o)
           )
 
     private def renewSession(problem: Problem, delays: Iterator[FiniteDuration])
-    : Task[Completed] =
-      Task.defer:
+    : IO[Completed] =
+      IO.defer:
         clearSession()
         // Race condition with a parallel operation,
         // which after the same error has already logged-in again successfully.
         // Should be okay if login is delayed like here
         logger.debug(s"$toString: Login again due to: $problem")
-        Task.sleep(delays.next()) *>
+        IO.sleep(delays.next()) *>
           login()
 
     override final def retryUntilReachable[A](
-      onError: Throwable => Task[Boolean] = this.onErrorTryAgain)
-      (body: => Task[A])
-    : Task[A] =
-      Task.defer:
+      onError: Throwable => IO[Boolean] = this.onErrorTryAgain)
+      (body: => IO[A])
+    : IO[A] =
+      IO.defer:
         val delays = loginDelays()
         val sym = new BlockingSymbol
         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
@@ -187,29 +185,29 @@ object SessionApi:
                       warn(s"$sym $toString", e)
                         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
                     } else
-                      Task.raiseError(e))
+                      IO.raiseError(e))
 
                   case _ =>
-                    Task.raiseError(throwable)
+                    IO.raiseError(throwable)
                 }
-                .*>(Task.sleep(delays.next()))
+                .*>(IO.sleep(delays.next()))
                 .*>(retry(()))
             })
           .guaranteeCase:
-            case ExitCase.Completed => Task(
+            case Outcome.Succeeded(_) => IO(
               if sym.called then logger.info(s"🟢 $self reached"))
-            case ExitCase.Canceled => Task(
+            case Outcome.Canceled() => IO(
               if sym.called then logger.info(s"⚫️ $self Canceled"))
-            case _ => Task.unit
+            case _ => IO.unit
 
-    final def login(onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
+    final def login(onlyIfNotLoggedIn: Boolean = false): IO[Completed] =
       login_(userAndPassword, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
 
     final def loginUntilReachable(
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = this.onErrorTryAgain,
+      onError: Throwable => IO[Boolean] = this.onErrorTryAgain,
       onlyIfNotLoggedIn: Boolean = false)
-    : Task[Completed] =
+    : IO[Completed] =
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
 
   trait Dummy extends SessionApi.HasUserAndPassword:
@@ -218,9 +216,9 @@ object SessionApi:
     def hasSession = true
 
     def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
-      Task.completed
+      IO.completed
 
-    def logout() = Task.completed
+    def logout() = IO.completed
 
     def clearSession() = {}
 

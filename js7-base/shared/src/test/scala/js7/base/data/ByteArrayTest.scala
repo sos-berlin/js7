@@ -4,14 +4,15 @@ import js7.base.data.ByteSequence.ops.*
 import scala.collection.immutable.ArraySeq
 
 final class ByteArrayTest extends ByteSequenceTester[ByteArray]:
+
   "unsafeWrap, unsafeArray" in:
-    val a = Array(1.toByte)
-    assert(ByteArray.unsafeWrap(a).unsafeArray eq a)
+    val array = Array[Byte](1, 2, 3)
+    assert(ByteArray.unsafeWrap(array).unsafeArray eq array)
 
   "fromSeq(ArraySeq) does not copy" in:
     val array = Array[Byte](1, 2)
-    val b: collection.Seq[Byte] = ArraySeq.unsafeWrapArray(array)
-    assert(ByteArray.fromSeq(b).unsafeArray eq array)
+    val seq: collection.Seq[Byte] = ArraySeq.unsafeWrapArray(array)
+    assert(ByteArray.fromSeq(seq).unsafeArray eq array)
 
   "++" in:
     assert(ByteArray.empty ++ ByteArray.empty == ByteArray.empty)
@@ -30,6 +31,10 @@ final class ByteArrayTest extends ByteSequenceTester[ByteArray]:
 
   "toMimeBase64" in:
     assert(ByteArray(ByteSequenceTester.mimeByte64Bytes).toMimeBase64 == ByteSequenceTester.mimeBase64string)
+
+  "unsafeWrappedArray" in :
+    val array = Array[Byte](1, 2, 3)
+    assert(ByteArray.unsafeWrap(array).unsafeWrappedArray.get eq array)
 
   "toString" in:
     assert(ByteArray.empty.toString == "»«")

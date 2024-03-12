@@ -1,7 +1,7 @@
 package js7.tests.subagent
 
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -14,16 +14,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDeleteWhileMovedTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentDeleteWhileMovedTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   "Delete SubagentItem while being changed" in:
     var eventId = eventWatch.lastAddedEventId
@@ -43,14 +40,14 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite, SubagentTester:
     locally:
       val bare1SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Stream(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
 
     // Delete SubagentItem
     locally:
       eventId = eventWatch.lastAddedEventId
-      controller.api.updateItems(Observable(DeleteSimple(bareSubagentId)))
+      controller.api.updateItems(Stream(DeleteSimple(bareSubagentId)))
         .await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentId, after = eventId)
 

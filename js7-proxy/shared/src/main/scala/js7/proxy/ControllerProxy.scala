@@ -1,53 +1,56 @@
 package js7.proxy
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import js7.base.eventbus.StandardEventBus
 import js7.base.problem.Checked
+import js7.base.service.Service
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.data.controller.ControllerCommand.AddOrders
 import js7.data.controller.ControllerState
-import js7.data.event.Event
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.event.{EventAndState, ProxyEvent}
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import js7.proxy.data.event.ProxyEvent
 
-final class ControllerProxy private(
-  api: ControllerApi,
-  protected val baseObservable: Observable[EventAndState[Event, ControllerState]],
-  val proxyEventBus: StandardEventBus[ProxyEvent],
+final class ControllerProxy private[ControllerProxy](
+  journaledProxy: JournaledProxy[ControllerState],
   val eventBus: JournaledStateEventBus[ControllerState],
-  protected val proxyConf: ProxyConf)
-  (protected implicit val scheduler: Scheduler)
-extends JournaledProxy[ControllerState]:
-  protected def S = ControllerState
-  protected val onEvent = eventBus.publish
+  api: ControllerApi)
+extends
+  Service.StoppableByRequest, JournaledProxy[ControllerState]:
 
-  def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
+  export journaledProxy.*
+
+  protected def start =
+    startService(untilStopRequested)
+
+  override def stop =
+    super.stop
+
+  def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
     api.addOrders(orders)
-      .flatMapT(response =>
-        sync(response.eventId)
-          .map(_ => Right(response)))
+      .flatMapT: response =>
+        journaledProxy.sync(response.eventId)
+          .as(Right(response))
 
 
 object ControllerProxy:
-  private[proxy] def start(
+
+  private[proxy] def resource(
     api: ControllerApi,
-    apisResource: Resource[Task, Nel[HttpControllerApi]],
+    apisResource: Resource[IO, Nel[HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
     proxyConf: ProxyConf = ProxyConf.default)
-  : Task[ControllerProxy] =
-    Task.deferAction { implicit s =>
-      val proxy = new ControllerProxy(
-        api,
-        JournaledProxy.observable(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
-        proxyEventBus,
-        eventBus,
-        proxyConf)
-      proxy.startObserving.map(_ => proxy)
-    }
+  : Resource[IO, ControllerProxy] =
+      for
+        journaledProxy <- JournaledProxy.resource(
+          JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
+          proxyConf,
+          eventBus.publish)
+        controllerProxy <- Service.resource(IO:
+          new ControllerProxy(journaledProxy, eventBus, api))
+      yield
+        controllerProxy

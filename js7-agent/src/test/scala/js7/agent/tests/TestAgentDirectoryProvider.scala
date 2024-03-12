@@ -1,5 +1,7 @@
 package js7.agent.tests
 
+import cats.effect.kernel.Sync
+import cats.effect.Resource
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 import js7.agent.data.AgentState
@@ -89,3 +91,6 @@ object TestAgentDirectoryProvider:
     autoClosing(TestAgentDirectoryProvider()) { provider =>
       body(provider.agentDirectory)
     }
+
+  def resource[F[_]](using F: Sync[F]): Resource[F, TestAgentDirectoryProvider] =
+    Resource.fromAutoCloseable(F.delay(TestAgentDirectoryProvider()))

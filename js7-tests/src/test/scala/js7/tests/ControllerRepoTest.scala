@@ -6,14 +6,13 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.ProblemException
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -38,15 +37,19 @@ import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.tests.testenv.{DirectoryProvider, TestController}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.execution.atomic.AtomicInt
-import monix.reactive.Observable
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
+import js7.base.fs2utils.StreamExtensions.{mapParallelBatch, prependOne}
+import js7.base.utils.Atomic
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
 final class ControllerRepoTest extends OurTestSuite:
+
   import ControllerRepoTest.*
+
+  private given IORuntime = ioRuntime
 
   "test" in:
     val provider = new DirectoryProvider(
@@ -65,7 +68,7 @@ final class ControllerRepoTest extends OurTestSuite:
           |}
           |""".stripMargin
 
-      val versionCounter = AtomicInt(0)
+      val versionCounter = Atomic(0)
 
       provider.runAgents() { _ =>
         provider.runController() { controller =>
@@ -182,13 +185,13 @@ final class ControllerRepoTest extends OurTestSuite:
         val operations = generateAddItemOperations(itemCount)
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
         actorSystemResource(name = "ControllerRepoTest-SPEED")
-          .use(actorSystem => Task {
+          .use(actorSystem => IO {
             val apiResource  = resource(Admission(uri, credentials))(actorSystem)
             val controllerApi = new ControllerApi(apiResource map Nel.one)
             for _ <- 1 to n do {
               val t = now
-              controllerApi.updateItems(Observable.fromIterable(operations))
-                .runToFuture
+              controllerApi.updateItems(Stream.iterable(operations))
+                .unsafeToFuture()
                 .await(99.s)
                 .orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "items"))
@@ -197,11 +200,11 @@ final class ControllerRepoTest extends OurTestSuite:
               val t = now
               val workflowPath = WorkflowPath(s"WORKFLOW-1")
               controllerApi.addOrders(
-                Observable.fromIterable(1 to itemCount / 2)
-                  .flatMap(i => Observable(
+                Stream.iterable(1 to itemCount / 2)
+                  .flatMap(i => Stream(
                     FreshOrder(OrderId(s"SPEED-DISTRIBUTED-$i"), WorkflowPath(s"WORKFLOW-$i")),
                     FreshOrder(OrderId(s"SPEED-SAME-$i"), workflowPath))))
-                .runToFuture
+                .unsafeToFuture()
                 .await(99.s)
                 .orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "orders"))
@@ -209,7 +212,7 @@ final class ControllerRepoTest extends OurTestSuite:
             locally {
               val t = now
               controllerApi.executeCommand(TakeSnapshot)
-                .runToFuture
+                .unsafeToFuture()
                 .await(99.s)
                 .orThrow
               logInfo(s"Snapshot taken in ${t.elapsed.pretty}")
@@ -217,14 +220,14 @@ final class ControllerRepoTest extends OurTestSuite:
             locally {
               val t = now
               controllerApi.updateItems(deleteItemOperations(itemCount))
-                .runToFuture
+                .unsafeToFuture()
                 .await(99.s)
                 .orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "deletions"))
             }
             controllerApi.stop.await(99.s)
           })
-          .runToFuture
+          .unsafeToFuture()
           .await(1.h)
 
       def generateAddItemOperations(n: Int): Seq[ItemOperation] =
@@ -232,19 +235,19 @@ final class ControllerRepoTest extends OurTestSuite:
           Prompt(StringConstant("")),
           Execute(WorkflowJob(TestAgentPath, ShellScriptExecutable(": # " + "BIG "*256))))
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
-        Observable.fromIterable(1 to n)
-          .mapParallelUnorderedBatch() { i =>
+        Stream.iterable(1 to n)
+          .mapParallelBatch() { i =>
             val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
             AddOrChangeSigned(provider.toSignedString(workflow))
           }
-          .prepend(AddVersion(v))
-          .toL(Vector)
+          .prependOne(AddVersion(v))
+          .compile.toVector
           .await(99.s)
 
-      def deleteItemOperations(n: Int): Observable[ItemOperation] =
+      def deleteItemOperations(n: Int): Stream[IO, ItemOperation] =
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
-        (Observable(AddVersion(v)) ++
-          Observable.fromIterable(1 to n)
+        (Stream(AddVersion(v)) ++
+          Stream.iterable(1 to n)
             .map(i => RemoveVersioned(WorkflowPath(s"WORKFLOW-$i"))))
     }
 

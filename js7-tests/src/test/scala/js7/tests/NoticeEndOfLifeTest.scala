@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,9 +16,8 @@ import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotice
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.NoticeEndOfLifeTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced
 
-final class NoticeEndOfLifeTest 
+final class NoticeEndOfLifeTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""

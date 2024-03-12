@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import static io.vavr.control.Either.right;
 import static java.lang.System.lineSeparator;
 import static java.util.Collections.singletonMap;
-import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,6 +30,7 @@ public final class TestJInternalJob implements JInternalJob
     // Public static for testing
     public static Map<String, Boolean> stoppedCalled = new ConcurrentHashMap<>();
 
+    private JobContext jobContext;
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
     private static final int delayMillis = 500;
 
@@ -40,18 +40,25 @@ public final class TestJInternalJob implements JInternalJob
     // Schedule like Java 9:
     private final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(0);
     private Executor delayedExecutor(long delay, TimeUnit unit) {
-      return runnable -> scheduler.schedule(() -> commonPool().execute(runnable), delay, unit);
+      return runnable ->
+          scheduler.schedule(() ->
+              // Use internalJs7Executor only if you know what you do! DO NEVER BLOCK!
+              // Otherwise, use ForkJoinPool.commonPool() or any other Executor.
+              jobContext.internalJs7Executor().execute(runnable), delay, unit);
     }
 
     public TestJInternalJob(JobContext jobContext) {
+        logger.debug("Constructor");
+        this.jobContext = jobContext;
         Map<String,Value> arguments = jobContext.jobArguments();
-        blockingThreadPoolName = arguments.get("blockingThreadPoolName").convertToString();
+        blockingThreadPoolName = arguments.get("blockingThreadNamePrefix").convertToString();
     }
 
     @Override
     public CompletionStage<Either<Problem,Void>> start() {
         return CompletableFuture.supplyAsync(
             () -> {
+                logger.debug("start");
                 started = "STARTED";
                 return right(null);
             });
@@ -61,6 +68,7 @@ public final class TestJInternalJob implements JInternalJob
     public CompletionStage<Void> stop() {
         return CompletableFuture.supplyAsync(
             () -> {
+                logger.debug("stop");
                 assertThat(started, equalTo("STARTED"));
                 stoppedCalled.put(blockingThreadPoolName, true);
                 scheduler.shutdown();
@@ -69,14 +77,26 @@ public final class TestJInternalJob implements JInternalJob
     }
 
     public JOrderProcess toOrderProcess(Step step) {
-        return JOrderProcess.of(
-            CompletableFuture
-                .supplyAsync(
-                    () -> process(step),
-                    delayedExecutor(delayMillis, MILLISECONDS))
-                .thenCombine(step.sendOut("TEST FOR OUT" + lineSeparator()), (a, b) -> a)
-                .thenCombine(step.sendOut("FROM " + TestJInternalJob.class.getName() + lineSeparator()), (a, b) -> a)
-                .thenCombine(step.sendErr("TEST FOR ERR" + lineSeparator()), (a, b) -> a));
+
+        return JOrderProcess.of(CompletableFuture
+            .supplyAsync(
+                () -> null,
+                delayedExecutor(delayMillis, MILLISECONDS))
+            .thenApply(o -> {
+                logger.debug("toOrderProcess");
+                return o;
+            })
+            .thenCompose(o -> step
+                .writeOut("TEST FOR OUT" + lineSeparator())
+                .thenApply(x -> o))
+            .thenCompose(o -> step
+                .writeOut("FROM " + TestJInternalJob.class.getName() + lineSeparator())
+                .thenApply(x -> o))
+            .thenCompose(o -> step
+                .writeErr("TEST FOR ERR" + lineSeparator())
+                .thenApply(x -> o))
+            .thenApply(o ->
+                process(step)));
     }
 
     private JOutcome.Completed process(Step step) {

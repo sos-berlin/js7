@@ -1,7 +1,9 @@
 package js7.agent
 
-import org.apache.pekko.actor.ActorSystem
-import cats.effect.{ExitCase, Resource}
+import cats.effect.Resource.ExitCase
+import cats.effect.kernel.Sync
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, kernel}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
 import js7.agent.configuration.AgentConfiguration
@@ -9,39 +11,42 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
+import js7.base.catsutils.OurIORuntime
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AllocatedForJvm.BlockingAllocated
+import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
-import js7.common.system.ThreadPools
-import js7.common.system.startup.MainServices
+import js7.common.system.startup.ServiceMain
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
-import monix.eval.Task
-import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 final class TestAgent(
-  allocated: Allocated[Task, RunningAgent],
+  allocated: Allocated[IO, RunningAgent],
   terminateProcessesWith: Option[ProcessSignal] = None):
 
   val agent = allocated.allocatedThing
+  @volatile private var released = false
 
-  def stop: Task[Unit] =
+  def stop: IO[Unit] =
     agent.terminate(terminateProcessesWith).void *>
-      allocated.release
+      logger.traceIO("allocated.release"):
+        allocated.release *> IO:
+          released = true
 
-  def killForFailOver: Task[ProgramTermination] =
+  def killForFailOver: IO[ProgramTermination] =
     terminate(
       processSignal = Some(SIGTERM),
       clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
@@ -50,17 +55,23 @@ final class TestAgent(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
-  : Task[ProgramTermination] =
-    agent
-      .terminate(processSignal, clusterAction, suppressSnapshot)
-      .guarantee(stop)
+  : IO[ProgramTermination] =
+    IO.defer:
+      if released then
+        // The Agent's own test IORuntime have have been shutdown
+        IO.pure(ProgramTermination())
+      else
+        logger.traceIO:
+          agent
+            .terminate(processSignal, clusterAction, suppressSnapshot)
+            .guarantee(stop)
 
-  def untilTerminated: Task[ProgramTermination] =
+  def untilTerminated: IO[ProgramTermination] =
     agent.untilTerminated <*
       stop/*release outer resources*/
 
   /** Use TestAgent once, then stop it. */
-  def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(implicit scheduler: Scheduler): R =
+  def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(using IORuntime): R =
     logger.debugCall[R](s"useSync »${agent.conf.name}«")(
       allocated.useSync(timeout)(_ => body(this)))
 
@@ -73,11 +84,11 @@ final class TestAgent(
   def sessionToken: SessionToken =
     agent.systemSessionToken
 
-  def untilReady: Task[MainActor.Ready] =
+  def untilReady: IO[MainActor.Ready] =
     agent.untilReady
 
   def currentAgentState(): AgentState =
-    import agent.scheduler
+    given IORuntime = agent.ioRuntime
     agent.agentState.await(99.s).orThrow
 
   def eventWatch: EventWatch =
@@ -86,10 +97,10 @@ final class TestAgent(
   def testEventBus: StandardEventBus[Any] =
     agent.testEventBus
 
-  def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
+  def executeCommandAsSystemUser(command: AgentCommand): IO[Checked[AgentCommand.Response]] =
     agent.executeCommandAsSystemUser(command)
 
-  def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
+  def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
 
   def name: String =
@@ -105,7 +116,7 @@ object TestAgent:
   private val logger = Logger[this.type]
 
   def apply(
-    allocated: Allocated[Task, RunningAgent],
+    allocated: Allocated[IO, RunningAgent],
     terminateProcessesWith: Option[ProcessSignal] = None)
   : TestAgent =
     new TestAgent(allocated, terminateProcessesWith)
@@ -114,54 +125,60 @@ object TestAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty,
     terminateProcessesWith: Option[ProcessSignal] = None)
-  : Task[TestAgent] =
-    CorrelId.bindNew(
-      ThreadPools
-        .ownThreadPoolResource(conf.name, conf.config)(
-          RunningAgent.resource(conf, testWiring)(_))
-        .toAllocated
-        .map(new TestAgent(_, terminateProcessesWith)))
+  : IO[TestAgent] =
+    CorrelId.bindNew:
+      ioRuntimeResource[IO](conf).flatMap(implicit ioRuntime =>
+        RunningAgent
+          .resource(conf, testWiring)(using ioRuntime))
+          .toAllocated
+          .map(new TestAgent(_, terminateProcessesWith))
 
   def blockingRun(
     conf: AgentConfiguration,
     timeout: FiniteDuration = 99.s,
     terminateProcessesWith: Option[ProcessSignal] = None)
     (body: TestAgent => Unit)
+    (using IORuntime)
   : ProgramTermination =
-    MainServices.blockingRun(conf.name, conf.config, timeout = timeout)(
-      resource = resource(conf)(_),
-      use = (agent: RunningAgent, scheduler: Scheduler) =>
-      try {
-        implicit val s = scheduler
-        val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
-        try body(testAgent)
-        catch { case NonFatal(t) =>
-          logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+    ServiceMain.blockingRun(conf.name, timeout = timeout)(
+      resource = resource(conf),
+      use = (agent: RunningAgent) =>
+        try
+          val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
+          try body(testAgent)
+          catch { case NonFatal(t) =>
+            logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+            try agent.terminate(terminateProcessesWith).await(99.s)
+            catch case NonFatal(t2) => logger.error(
+              s"agent.terminate while handling an exception: ${t.toStringWithCauses}",
+              t.nullIfNoStackTrace)
+            throw t
+          }
           agent.terminate(terminateProcessesWith).await(99.s)
-          throw t
-        }
-        agent.terminate(terminateProcessesWith).await(99.s)
-      } catch { case NonFatal(t) =>
-        // Silent deadlock in case of failure?
-        logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-        throw t
-      })
+        catch case NonFatal(t) =>
+          // Silent deadlock in case of failure?
+          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+          throw t)
 
-  private def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
-    (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] =
+  def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
+    (using ioRuntime: IORuntime)
+  : Resource[IO, RunningAgent] =
     RunningAgent.resource(conf, testWiring)
       .flatMap(agent => Resource.makeCase(
-        acquire = Task.pure(agent))(
-        release = (agent, exitCase) => {
+        acquire = IO.pure(agent))(
+        release = (agent, exitCase) => IO.defer:
           exitCase match {
-            case ExitCase.Error(throwable) =>
+            case ExitCase.Errored(throwable) =>
               logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
             case _ =>
           }
           // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
           agent.untilTerminated.void
-            .timeoutTo(3.s, Task.unit)
-            .tapError(t => Task(
-              logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
-        }))
+            .timeoutTo(3.s, IO.unit)
+            .tapError(t => IO(
+              logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))))
+
+
+  private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])
+  : Resource[F, IORuntime] =
+      OurIORuntime.resource[F](conf.name, conf.config)

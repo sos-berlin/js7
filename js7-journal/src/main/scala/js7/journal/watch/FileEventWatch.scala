@@ -4,16 +4,17 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalPosition}
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 trait FileEventWatch extends EventWatch:
-  def observeFile(journalPosition: JournalPosition,
-    timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
-  : Task[Checked[Observable[PositionAnd[ByteArray]]]]
 
-  def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
+  def streamFile(journalPosition: JournalPosition,
+    timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
+  : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]]
+
+  def rawSnapshotAfter(after: EventId): Option[Stream[IO, ByteArray]]
 
   def journalPosition: Checked[JournalPosition]
 

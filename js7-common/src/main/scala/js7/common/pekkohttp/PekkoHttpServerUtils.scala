@@ -1,26 +1,27 @@
 package js7.common.pekkohttp
 
-import cats.effect.concurrent.Deferred
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
-import js7.base.auth.UserId
+import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax.FutureCompletionObservable
+import js7.base.problem.Checked
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.PekkoHttpClient.`x-js7-request-id`
-import js7.common.http.StreamingSupport.PekkoObservable
-import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.RichByteSequenceChunkerObservable
-import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
+import js7.common.http.StreamingSupport.*
+import js7.common.http.{JsonStreamingSupport, PekkoHttpClient}
+import js7.common.pekkohttp.StandardDirectives.ioRoute
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
@@ -32,9 +33,8 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 object PekkoHttpServerUtils:
+
   private val logger = Logger[this.type]
-  private val LF = ByteString("\n")
-  private val heartbeatChunk = Chunk(LF)
 
   object implicits:
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
@@ -247,18 +247,52 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
-  def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
+  def completeWithCheckedJsonStream[A: Encoder: Tag](chunkSize: Int, prefetch: Int = 0)
+    (stream: IO[Checked[Stream[IO, A]]])
+    (using IORuntime)
+  : Route =
+    completeWithCheckedStream(`application/x-ndjson`):
+      stream.map(_.map:
+        _.through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch)))
+
+  def completeWithCheckedStream(contentType: ContentType)
+    (checkedStream: IO[Checked[Stream[IO, ByteString]]])
+    (using IORuntime)
+  : Route =
+    ioRoute:
+      checkedStream.flatMap:
+        case Left(problem) => IO.pure(complete(problem))
+        case Right(stream) => completeWithIOStream(contentType)(stream)
+
+  def completeWithByteStream(contentType: ContentType)(stream: Stream[IO, Byte])
+    (using IORuntime)
+  : Route =
+    completeWithStream(contentType):
+      stream.chunks.map(_.toByteString)
+
+  def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
+    (using IORuntime)
+  : Route =
+    accept(contentType.mediaType):
+      ioRoute:
+        completeWithIOStream(contentType)(stream)
+
+  def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString]): IO[Route] =
+    stream.toPekkoSourceForHttpResponseX.map: source =>
+      complete(HttpEntity(contentType, source))
+
+  def completeIO[A: ToResponseMarshaller](io: IO[A])(using IORuntime): Route =
     optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
       case None =>
         complete:
-          task.runToFuture
+          io.unsafeToFuture()
 
       case Some(correlId) =>
         complete:
-          import js7.base.log.CanBindCorrelId.cancelableFuture
+          import js7.base.log.CanBindCorrelId.future
           correlId.bind {
-            task.runToFuture
-          } (cancelableFuture)
+            io.unsafeToFuture()
+          } (future)
 
   val extractJs7RequestId: Directive1[Long] =
     new Directive1[Long]:
@@ -279,40 +313,22 @@ object PekkoHttpServerUtils:
                 }
           })
 
-  def observableToResponseMarshallable[A: Encoder](
-    observable: Observable[A],
-    httpRequest: HttpRequest,
-    userId: UserId,
-    shuttingDownCompletion: FutureCompletion[?],
+  // Was observableToResponseMarshallable in v2.6
+  def encodeAndHeartbeat[A: Encoder : Tag](
     chunkSize: Int,
-    keepAlive: Option[FiniteDuration] = None)
-    (implicit s: Scheduler)
-  : ToResponseMarshallable =
-    val chunks = observable
-      .mapParallelBatch(responsive = true)(_
+    keepAlive: FiniteDuration,
+    prefetch: Int = 0)
+    (using IORuntime)
+  : Pipe[IO, A, ByteString] =
+    _.through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
+      .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
+
+  def encodeParallel[A: Encoder : Tag](chunkSize: Int, prefetch: Int = 0)
+    (using IORuntime)
+  : Pipe[IO, A, ByteString] =
+    _.mapParallelBatch(/*responsive = true,*/ prefetch = prefetch)(_
         .asJson
-        .toByteSequence[ByteString]
-        .concat(LF))
-      .chunk(chunkSize)
-      .map(Chunk(_))
-
-    val obs: Observable[Chunk] = keepAlive match
-      case None => chunks
-      case Some(h) =>
-        for
-          terminated <- Observable.from(Deferred[Task, Unit])
-          chunk <-
-            Observable(
-              chunks.guarantee(terminated.complete(())),
-              Observable.repeat(heartbeatChunk).delayOnNext(h).takeUntilEval(terminated.get)
-            ).merge(/*Scala 3:*/implicitly[Observable[Chunk] <:< Observable[Chunk]])
-        yield chunk
-
-    ToResponseMarshallable(
-      HttpEntity.Chunked(
-        `application/x-ndjson`,
-        obs
-          .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => Task {
-            logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}")
-          })
-          .toPekkoSourceForHttpResponse))
+        .toByteSequence[fs2.Chunk[Byte]] ++ fs2.Chunk.singleton('\n'.toByte))
+      .unchunks
+      .chunkLimit(chunkSize)
+      .map(_.toByteSequence[ByteString])

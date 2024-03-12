@@ -1,8 +1,11 @@
 package js7.tests.cluster.controller
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import cats.instances.vector.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.cluster.ClusterEvent
@@ -13,12 +16,12 @@ import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.SpeedControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
-  
+
+  private given IORuntime = ioRuntime
+
   val items = Seq(workflow)
 
   for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do
@@ -30,7 +33,7 @@ final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterFo
 
             val orderIdIterator = Iterator.from(1).map(i => OrderId(i.toString))
 
-            def cycle = Task.defer:
+            def cycle = IO.defer:
               val orderId = orderIdIterator.synchronized(orderIdIterator.next())
               val order = FreshOrder(orderId, workflow.path)
               // 3 acks:
@@ -41,11 +44,17 @@ final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterFo
                 _ <- primaryController.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id)))
                   .map(_.orThrow)
               yield ()
-            // Warm up
-            Task.parSequence((1 to 1000).map(_ => cycle)).await(99.s)
+
+            def run() =
+              val concurrency = sys.runtime.availableProcessors min 30 /*number of connections*/
+              IO.parTraverseN(concurrency)(Vector.fill(1000)(())): _ =>
+                cycle
+              .await(99.s)
+
+            run() // Warm up
 
             val t = now
-            Task.parSequence((1 to n).map(_ => cycle)).await(99.s)
+            run()
             info(Stopwatch.itemsPerSecondString(t.elapsed, 3 * n, "acks"))
           }
         }

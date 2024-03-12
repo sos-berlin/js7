@@ -1,42 +1,42 @@
 package js7.common.http
 
-import cats.effect.concurrent.Deferred
-import cats.effect.{ExitCase, Resource}
-import cats.syntax.flatMap.*
+import cats.effect.{Deferred, IO, Outcome, Resource}
+import cats.syntax.applicativeError.*
+import fs2.Stream
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.ByteSequenceToLinesObservable
-import js7.base.utils.MonixAntiBlocking.executeOn
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, ByteSequenceToLinesStream, UseDefault}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
 import js7.common.http.PekkoHttpUtils.{RichPekkoAsUri, RichPekkoUri, RichResponseEntity, decompressResponse, encodeGzip}
-import js7.common.http.StreamingSupport.*
-import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
+import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicLong
-import monix.reactive.Observable
 import org.apache.pekko
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
@@ -55,7 +55,7 @@ import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
+import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Success
@@ -66,7 +66,7 @@ import scala.util.matching.Regex
   * @author Joacim Zschimmer
   */
 trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrace:
-  
+
   implicit protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
@@ -76,8 +76,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   private lazy val http = Http(actorSystem)
   private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
-  private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-read-ahead")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
+  private final lazy val httpPrefetch = actorSystem.settings.config.getInt("js7.web.client.prefetch")
+  private final lazy val jsonPrefetch = actorSystem.settings.config.getInt("js7.web.server.prefetch")
   @volatile private var closed = false
 
   protected def httpsConfig: HttpsConfig
@@ -95,233 +96,252 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     logger.trace(s"$toString: close")
     closed = true
 
-  final def getDecodedLinesObservable[A: Decoder](uri: Uri, responsive: Boolean = false)
-    (implicit s: Task[Option[SessionToken]])
-  : Task[Observable[A]] =
-    getRawLinesObservable(uri)
-      .map(_
-        // Ignore empty keep-alives
-        .collect { case o if o != EmptyLine => o }
-        .mapParallelBatch(
-          batchSize = jsonReadAhead / sys.runtime.availableProcessors,
-          responsive = responsive)(
-          _.parseJsonAs[A].orThrow))
+  final def getDecodedLinesStream[A: Decoder](
+    uri: Uri,
+    responsive: Boolean = false,
+    returnHeartbeatAs: Option[ByteArray] = None,
+    prefetch: Int | UseDefault = UseDefault)
+    (using IO[Option[SessionToken]])
+  : IO[Stream[IO, A]] =
+    val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
+    for stream <- getRawLinesStream(uri, returnHeartbeatAs) yield
+      stream
+        .mapParallelBatch(prefetch = myPrefetch):
+          _.parseJsonAs[A].orThrow
 
-  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]])
-  : Task[Observable[ByteArray]] =
+  final def getRawLinesStream(
+    uri: Uri,
+    returnHeartbeatAs: Option[ByteArray] = None)
+    (using s: IO[Option[SessionToken]])
+  : IO[Stream[IO, ByteArray]] =
+    val heartbeatAsStream = Stream.fromOption[IO](returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
-      .pipeIf(logger.underlying.isDebugEnabled)(_.logTiming(_.size, (d, s, _) =>
-        if d >= 1.s && s > 10_000_000 then
-          logger.debug(s"get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
-        .flatMap(new ByteSequenceToLinesObservable))
-      .map(_.onErrorRecoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
-      .onErrorRecover(ignoreIdleTimeout)
+        .entity.withoutSizeLimit.dataBytes.asFs2Stream()
+        .pipeIf(logger.isDebugEnabled)(_
+          .logTiming(_.size, (d, n, _) => IO:
+            if d >= 1.s && n > 10_000_000 then
+              logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}")))
+        .flatMap(new ByteSequenceToLinesStream)
+        .flatMap:
+          case HttpHeartbeatByteArray => heartbeatAsStream
+          case o => Stream.emit(o)
+        .recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
+      .recover(ignoreIdleTimeout)
 
-  private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Observable[Nothing]] =
+  private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-      // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
+      // See also pekko.http.server.stream-cancellation-delay
+      // On NoMoreElementsNeeded the Stream ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
-      Observable.empty
+      Stream.empty
 
-  private def ignoreIdleTimeout: PartialFunction[Throwable, Observable[Nothing]] =
+  private def ignoreIdleTimeout: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
-      // Idle timeout is silently ignored !!! Maybe harmless?
+      // Idle timeout is ignored !!!
+      // We issue a warning, because the caller should make this not happen.
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
-      Observable.empty
+      Stream.empty
 
   /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =
+  final def get[A: Decoder](uri: Uri)(implicit s: IO[Option[SessionToken]]): IO[A] =
     get[A](uri, Nil)
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri, headers: List[HttpHeader])
-    (implicit s: Task[Option[SessionToken]])
-  : Task[A] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[A] =
     get_[A](uri, AcceptJson ::: headers)
 
   final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
-    (implicit s: Task[Option[SessionToken]])
-  : Task[A] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[A] =
     sendReceive(HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers))
       .flatMap(unmarshal[A](GET, uri))
 
-  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
+  final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: IO[Option[SessionToken]]): IO[B] =
     post2[A, B](uri, data, Nil)
 
-  final def postObservable[A: Encoder, B: Decoder](
+  final def postStream[A: Encoder, B: Decoder](
     uri: Uri,
-    data: Observable[A],
+    stream: Stream[IO, A],
     responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false)
-    (implicit s: Task[Option[SessionToken]])
-  : Task[B] =
-    def toNdJson(a: A) = a.asJson.toByteSequence[ByteString] ++ LF
+    (implicit s: IO[Option[SessionToken]])
+  : IO[B] =
+    def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
 
-    val chunks: Observable[ByteString] =
-      if responsive then
-        for a <- data yield toNdJson(a)
-      else
-        data
-          .mapParallelBatch(responsive = responsive)(a =>
-            toNdJson(a).chunk(chunkSize))
-          .flatMap(Observable.fromIterable)
+    val chunks: Stream[IO, ByteString] =
+      //if responsive then
+      //  for a <- stream yield toNdJson(a)
+      //else
+        stream
+          .mapParallelBatch(prefetch = jsonPrefetch): a =>
+            toNdJson(a).chunkStream(chunkSize).toVector
+          .flatMap(Stream.iterable)
 
-    Task.defer:
-      val stop = Deferred.unsafe[Task, Unit]
-      val stopped = Deferred.unsafe[Task, Unit]
+    IO.defer:
+      val stop = Deferred.unsafe[IO, Unit]
+      val stopped = Deferred.unsafe[IO, Unit]
       chunks
         .map(Chunk(_))
-        .append[ChunkStreamPart](LastChunk)
+        .append[IO, ChunkStreamPart](Stream.emit(LastChunk))
         .takeUntilEval(stop.get)
-        .guarantee(stopped.complete(()))
-        .toPekkoSourceTask
-        .flatMap(pekkoChunks =>
+        .onFinalize:
+          stopped.complete(()).void
+        .toPekkoSourceResource
+        .use: pekkoChunks =>
           sendReceive(
             HttpRequest(POST, uri.asPekko, AcceptJson,
               HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-            logData = Some("postObservable")))
+            logData = Some("postStream"))
         .flatMap(unmarshal[B](POST, uri))
-        .pipeIf(terminateStreamOnCancel)(_.doOnCancel(
+        .pipeIf(terminateStreamOnCancel)(_.onCancel:
           // Terminate stream properly to avoid "TCP Connection reset" error
           // Maybe a race condition. So good luck!
-          stop.complete(()) *> stopped.get))
+          stop.complete(()) *> stopped.get)
 
   @TestOnly
-  final def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json] =
+  final def postJsonStringStream(uri: Uri, data: Stream[IO, String])
+    (using s: IO[Option[SessionToken]])
+  : IO[Json] =
     data
       .map(o => ByteString(o) ++ LF)
-      .chunk(chunkSize)
+      .splitByteSequences(chunkSize)
       .map(Chunk(_))
-      .append(LastChunk)
-      .toPekkoSourceTask
-      .flatMap(pekkoChunks =>
+      .append(Stream.emit(LastChunk))
+      .toPekkoSourceResource
+      .use: pekkoChunks =>
         sendReceive(
           HttpRequest(POST, uri.asPekko, AcceptJson,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-          logData = Some("postObservable")))
+          logData = Some("postStream"))
       .flatMap(unmarshal[Json](POST, uri))
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Task[Option[SessionToken]])
-  : Task[B] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[B] =
     post2[A, B](uri, data, headers)
 
   private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Task[Option[SessionToken]])
-  : Task[B] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[B] =
     post_[A](uri, data, AcceptJson ::: headers)
       .flatMap(unmarshal[B](POST, uri))
 
   final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
-    (implicit s: Task[Option[SessionToken]])
-  : Task[Int] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[Int] =
     post_[A](uri, data, AcceptJson)
       .flatMap { httpResponse =>
-        Task.defer {
+        IO.defer {
           if !httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue) then
             failWithResponse(uri, httpResponse)
           else
-            Task.pure(httpResponse.status.intValue)
-        }.guarantee(Task {
+            IO.pure(httpResponse.status.intValue)
+        }.guarantee(IO {
           httpResponse.discardEntityBytes()
         })
       }
 
   final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
-    (implicit s: Task[Option[SessionToken]])
-  : Task[HttpResponse] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[HttpResponse] =
     for
       // Maybe executeOn avoid blocking with a single thread Scheduler,
       // but sometimes throws RejectedExecutionException in test build
-      //entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
-      entity <- Task.deferFutureAction(implicit s => Marshal(data).to[RequestEntity])
+      //entity <- IO.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
+      entity <- IO.fromFutureWithEC(implicit ec => IO:
+        Marshal(data).to[RequestEntity])
       response <- sendReceive(
         HttpRequest(POST, uri.asPekko, headers, entity),
         logData = Some(data.toString))
     yield response
 
   final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
-    (implicit s: Task[Option[SessionToken]])
-  : Task[HttpResponse] =
+    (implicit s: IO[Option[SessionToken]])
+  : IO[HttpResponse] =
     sendReceive(HttpRequest(POST, uri.asPekko, headers, entity))
 
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
-    (implicit sessionTokenTask: Task[Option[SessionToken]])
-  : Task[HttpResponse] =
-    withCheckedAgentUri(request)(request =>
-      sessionTokenTask.flatMap { sessionToken =>
-        if closed then {
+    (implicit sessionTokenIO: IO[Option[SessionToken]])
+  : IO[HttpResponse] =
+    withCheckedAgentUri(request): request =>
+      sessionTokenIO.flatMap: sessionToken =>
+        if closed then
           logger.debug(s"(WARN) PekkoHttpClient has actually been closed: ${requestToString(request, logData)}")
-        }
         val number = requestCounter.incrementAndGet()
-        val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
-          `x-js7-request-id`(number) ::
-          CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
-          request.headers.toList :::
-          standardHeaders
-        val req = request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
+
+        val req =
+          logRequestStream("#" + number):
+            val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
+              `x-js7-request-id`(number) ::
+              CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
+              request.headers.toList :::
+              standardHeaders
+            request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
+
         @volatile var canceled = false
-        var responseFuture: Future[HttpResponse] = null
+        //var responseFuture: Future[HttpResponse] = null
         val since = now
         lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s">-->  $logPrefix ${requestToString(req, logData)}")
-        Task
-          .deferFutureAction { scheduler =>
-            responseFuture = http.singleRequest(req,
-              if req.uri.scheme == "https" then httpsConnectionContext else http.defaultClientHttpsContext)
-            responseFuture
-              .recover { case t if canceled =>
-                logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
-                // Task guarantee below may report a failure after cancel
-                // via thread pools's reportFailure. To avoid this, we convert the failure
-                // to a dummy successful response, which will get lost immediately.
-                HttpResponse(GatewayTimeout, entity = "CANCELED")
-              }(scheduler)
-          }
-          .onErrorRecoverWith {
-            case t: pekko.stream.StreamTcpException => Task.raiseError(makePekkoExceptionLegible(t))
-          }
-          .map(decompressResponse)
-          .pipeIf(logger.underlying.isDebugEnabled)(
-            logResponding(request, _, responseLogPrefix)
-              .map { response =>
-                lazy val prefix = "#" + number
-                if !logger.underlying.isTraceEnabled then
-                  response
-                else
-                  logResponseStream(response, prefix)
-              })
-          .guaranteeCase {
-            case ExitCase.Canceled => Task {
-              canceled = true
-              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
-              if responseFuture != null then {
+        locally:
+          def arrow = if request.entity.isChunked then ">-->" else "|-->"
+          logger.trace(s"$arrow  $logPrefix ${requestToString(req, logData)}")
+        IO
+          .fromFutureCancelable:
+            IO:
+              val httpsCtx = req.uri.scheme match
+                case "https" => httpsConnectionContext
+                case _ => http.defaultClientHttpsContext
+              //————————————————————————————————————————————
+              val future = http.singleRequest(req, httpsCtx)
+              //————————————————————————————————————————————
+              val cancel = IO.executionContext.flatMap(implicit ec => IO:
+                logger.debug(s"🗑    ↘$responseLogPrefix cancel ...")
                 // TODO Pekko's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Pekko
-                //  until the server has reponded or some Pekko (idle connection) timeout.
+                //  until the server has responded or some Pekko (idle connection) timed out.
                 //  Anyway, the caller's code should be fault-tolerant.
                 // TODO Maybe manage own connection pool? Or switch to http4s?
-                executeOn(materializer.executionContext) { implicit ec =>
-                  responseFuture
-                    .flatMap(_
-                      .discardEntityBytes().future.andThen { case tried =>
-                        logger.debug(s"    🗑️ $responseLogPrefix discardEntityBytes => " +
-                          tried.fold(_.toStringWithCauses, _ => "ok"))
-                      })
-                    .map((_: Done) => ())
-                    .recover { case _ => () }
-                }
-              }
-            }
+                future
+                  .flatMap(_
+                    .discardEntityBytes().future)
+                  .andThen: tried =>
+                    logger.debug(s"🗑 <-|↙$responseLogPrefix canceled with discardEntityBytes => " +
+                      tried.fold(_.toStringWithCauses, _ => "OK"))
+                  .map((_: Done) => ())
+                  .recover(_ => ())
+                ()) // Forget the started Future, discard the remaining entities in background
 
-            case ExitCase.Error(throwable) => Task.defer {
-              val sym = throwable match {
+              future -> cancel
+          .recoverWith:
+            case t if canceled => IO:
+              logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
+              // IO guarantee below may report a failure after cancel
+              // via thread pools's reportFailure. To avoid this, we convert the failure
+              // to a dummy successful response, which will get lost immediately.
+              HttpResponse(GatewayTimeout, entity = "CANCELED")
+            case t: pekko.stream.StreamTcpException => IO.raiseError(makePekkoExceptionLegible(t))
+          .map(decompressResponse)
+          .pipeIf(logger.isDebugEnabled):
+            logResponding(request, _, responseLogPrefix)
+              .map: response =>
+                if logger.isTraceEnabled then
+                  logResponseStream("#" + number)(response)
+                else
+                  response
+          .guaranteeCaseLazy:
+            case Outcome.Canceled() => IO:
+              canceled = true
+              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
+
+            case Outcome.Errored(throwable) => IO.defer:
+              val sym = throwable match
                 case _: java.net.ConnectException => "⭕"
                 case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥"
                 case t: pekko.stream.StreamTcpException
@@ -329,38 +349,32 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 case t: LegiblePekkoHttpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
                 case _ => "💥"
-              }
-              logger.debug(
-                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
-              Task.raiseError(toPrettyProblem(throwable).throwable)
-            }
 
-            case ExitCase.Completed => Task.unit
-          }
-      })
+              logger.debug:
+                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}"
+              IO.raiseError(toPrettyProblem(throwable).throwable)
+
+            case Outcome.Succeeded(_) => IO.unit
 
   private def logResponding(
     request: HttpRequest,
-    untilResponded: Task[HttpResponse],
+    untilResponded: IO[HttpResponse],
     responseLogPrefix: => String)
-  : Task[HttpResponse] =
+  : IO[HttpResponse] =
     if request.headers.contains(StreamingJsonHeader) then
-      untilResponded.map { response =>
+      untilResponded.map: response =>
         logResponse(response, responseLogPrefix, " ✔")
         response
-      }
     else
       var waitingLogged = false
       untilResponded
-        .whenItTakesLonger()(_ => Task {
+        .whenItTakesLonger()(_ => IO:
           val sym = if !waitingLogged then "🟡" else "🟠"
           waitingLogged = true
           logger.debug(
-            s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
-        })
-        .flatTap(response => Task(
-          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔")
-        ))
+            s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}"))
+        .flatTap(response => IO:
+          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔"))
 
   private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit =
     val sym =
@@ -390,63 +404,95 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       } catch {
         case NonFatal(_) => ""
       })
-    val arrow = if response.entity.isChunked then "<-<-" else "<--<"
+    val arrow = if response.entity.isChunked then "<--<" else "<--|"
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
 
-  // >-->  request
-  // <--<  non-chunked response
-  // <-<- ✔header of chunked response
-  // <-<-  chunk
-  // <--|  last chunk
+  // |-->  non-chunked request
+  // <--|✔ non-chunked response, ok
+  // <-<-✔ header of chunked response, ok
+  // <-<-  chunk of stream
+  // <--|  last chunk of stream
 
-  private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
-  : HttpResponse =
-    response.entity match
+  // TODO Similar to logRestreamStream
+  private def logRequestStream(requestLogPrefix: => String)(request: HttpRequest)
+  : HttpRequest =
+    request.entity match
       case chunked: Chunked =>
         val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
           || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
-        response.pipeIf(logger.underlying.isTraceEnabled)(_
+        request
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map { chunk =>
-                if chunk.isLastChunk then {
-                  val arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
-                  val data =
+                if LogData || chunk.isLastChunk then {
+                  def arrow = if chunk.isLastChunk then "|-->  " else "->->  "
+                  def data =
                     if isUtf8 then
                       chunk.data.utf8String.truncateWithEllipsis(
                         200, showLength = true, firstLineOnly = true, quote = true)
                     else
                       s"${chunk.data.length} bytes"
-                  logger.trace(s"$arrow$responseLogPrefix $data")
+                  if chunk.data == HttpHeartbeatByteString then
+                    loggerHeartbeat.trace(s"$arrow$requestLogPrefix $data")
+                  else
+                    loggerStream.trace(s"$arrow$requestLogPrefix $data")
                 }
                 chunk
-              })))
+              }
+              .mapError: t =>
+                logger.trace(s"~~> 💥$requestLogPrefix ${t.toStringWithCauses}")
+                t))
+      case _ => request
+
+  private def logResponseStream(responseLogPrefix: => String)(response: HttpResponse)
+  : HttpResponse =
+    response.entity match
+      case chunked: Chunked =>
+        val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
+          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
+        response
+          .withEntity(chunked.copy(
+            chunks = chunked.chunks
+              .map { chunk =>
+                if LogData || chunk.isLastChunk then {
+                  def arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
+                  def data =
+                    if isUtf8 then
+                      chunk.data.utf8String.truncateWithEllipsis(
+                        200, showLength = true, firstLineOnly = true, quote = true)
+                    else
+                      s"${chunk.data.length} bytes"
+                  if chunk.data == HttpHeartbeatByteString then
+                    loggerHeartbeat.trace(s"$arrow$responseLogPrefix $data")
+                  else
+                    loggerStream.trace(s"$arrow$responseLogPrefix $data")
+                }
+                chunk
+              }
+              .mapError: t =>
+                logger.trace(s"<~~ 💥$responseLogPrefix ${t.toStringWithCauses}")
+                t))
       case _ => response
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
       failWithResponse(uri, httpResponse)
     else
-      Task.deferFuture[A](
-        executeOn(materializer.executionContext) { implicit ec =>
-          Unmarshal(httpResponse).to[A]
-            .recover { case t =>
-              if !materializer.isShutdown then {
-                logger.debug(
-                  s"💥 $toString: Error when unmarshalling response of ${method.name} $uri: ${
-                    t.toStringWithCauses}", t)
-              }
-              throw t
-            }
-        })
+      IO
+        .fromFuture[A](IO:
+          Unmarshal(httpResponse).to[A])
+        .onErrorTap(t => IO:
+          if !materializer.isShutdown then
+            logger.debug(s"💥 $toString: Error when unmarshalling response of ${
+              method.name} $uri: ${t.toStringWithCauses}", t))
 
-  private def failWithResponse(uri: Uri, response: HttpResponse): Task[Nothing] =
+  private def failWithResponse(uri: Uri, response: HttpResponse): IO[Nothing] =
     response.entity.asUtf8String.flatMap(errorMsg =>
-      Task.raiseError(new HttpException(POST, uri, response, errorMsg)))
+      IO.raiseError(new HttpException(POST, uri, response, errorMsg)))
 
-  private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
+  private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => IO[A]): IO[A] =
     toCheckedAgentUri(request.uri.asUri) match
-      case Left(problem) => Task.raiseError(problem.throwable)
+      case Left(problem) => IO.raiseError(problem.throwable)
       case Right(uri) => body(request.withUri(uri.asPekko))
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
@@ -497,7 +543,16 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 
 object PekkoHttpClient:
-  private val EmptyLine = ByteArray("\n")
+  val HttpHeartbeatByteArray = ByteArray("\n")
+  val HttpHeartbeatByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
+
+  val LogData: Boolean = true
+    //val key = "js7.PekkoHttpClient.log-data"
+    //val value = sys.props.get(key)
+    //try value.fold(false)(StringAsBoolean(_))
+    //catch case NonFatal(_) =>
+    //  logger.error(s"Invalid property key $key=$value")
+    //  false
 
   def resource(
     uri: Uri,
@@ -505,19 +560,19 @@ object PekkoHttpClient:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = "")
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, PekkoHttpClient] =
-    Resource.fromAutoCloseable(Task(new PekkoHttpClient.Standard(
+  : Resource[IO, PekkoHttpClient] =
+    Resource.fromAutoCloseable(IO(new PekkoHttpClient.Standard(
       uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
     //Resource.make(
-    //  acquire = Task(new PekkoHttpClient.Standard(
+    //  acquire = IO(new PekkoHttpClient.Standard(
     //    uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))(
     //  release = { client =>
     //    val logout = client match {
     //      case client: HttpSessionApi => client.logout()
-    //      case _ => Task.unit
+    //      case _ => IO.unit
     //    }
     //    logout
-    //      .guarantee(Task(client.close()))
+    //      .guarantee(IO(client.close()))
     //  })
 
   final case class `x-js7-session`(sessionToken: SessionToken)
@@ -567,9 +622,11 @@ object PekkoHttpClient:
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
 
   private val logger = Logger[this.type]
+  private val loggerStream = Logger(getClass.scalaName + ".stream")
+  private val loggerHeartbeat = Logger(getClass.scalaName + ".heartbeat")
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
-  private val requestCounter = AtomicLong(0)
+  private val requestCounter = Atomic(0L)
 
   final class Standard(
     protected val baseUri: Uri,

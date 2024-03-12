@@ -6,9 +6,9 @@ import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite}
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -35,9 +35,14 @@ import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.GenericEventRoute
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.core.GenericEventRouteTest.*
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import cats.effect.{Deferred, IO}
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
+import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.onStart
+import js7.base.monixlike.MonixLikeExtensions.{completedL, toListL, unsafeToCancelableFuture}
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isIntelliJIdea
 import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -50,9 +55,10 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
 {
   protected type OurSession = SimpleSession
 
+  private given IORuntime = ioRuntime
+
   protected def actorRefFactory = actorSystem
   private implicit def implicitActorSystem: ActorSystem = actorSystem
-  protected implicit def scheduler: Scheduler = Scheduler.traced
 
   protected val config = config"""
     js7 {
@@ -62,9 +68,12 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       }
       pekko.shutdown-timeout = 10s
       web.chunk-size = 1MiB
+      web.client.prefetch = 0
+      web.server.prefetch = 0
       web.server {
         verbose-error-messages = on
         shutdown-timeout = 10s
+        shutdown-delay = 0s
         auth {
           https-client-authentication = off
           realm = "TEST Server"
@@ -86,17 +95,21 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
           }
         }
       }
-    }"""
+    }
+    pekko.loglevel = DEBUG
+    pekko.actor.debug.autoreceive = on
+    pekko.actor.debug.lifecycle = on
+    pekko.actor.debug.unhandled = on
+    """
 
   protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final lazy val sessionRegister = SessionRegister.forTest(
-    actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
-  private val shuttingDown = Promise[Deadline]()
-  protected val whenShuttingDown = shuttingDown.future
+    SimpleSession.apply, SessionRegister.TestConfig)
+  protected val whenShuttingDown = Deferred.unsafe
 
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
-  protected val eventWatch: JournalEventWatch = eventCollector.eventWatch
+  protected lazy val eventWatch: JournalEventWatch = eventCollector.eventWatch
 
   private lazy val allocatedServer = PekkoWebServer
     .resource(
@@ -120,7 +133,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     protected def httpsConfig = HttpsConfig.empty
   }
 
-  private implicit val noSessionToken: Task[Option[SessionToken]] = Task.pure(None)
+  private implicit val noSessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
   override def beforeAll() = {
     super.beforeAll()
@@ -134,16 +147,16 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     super.afterAll()
   }
 
-  "Read event stream with getDecodedLinesObservable" - {
+  "Read event stream with getDecodedLinesStream" - {
     "empty, timeout=0" in {
-      val observable = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
-      assert(observable.toListL.await(99.s) == Nil)
+      val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
+      assert(stream.toListL.await(99.s) == Nil)
     }
 
     "empty, timeout > 0" in {
       val t = now
-      val observable = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(100.ms)))
-      assert(observable.toListL.await(99.s) == Nil)
+      val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(100.ms)))
+      assert(stream.toListL.await(99.s) == Nil)
       assert(t.elapsed >= 90.ms)
     }
 
@@ -151,8 +164,11 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       eventCollector.addStamped(TestEvents(0))
 
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
-      val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-        .foreach(observed += _)
+      val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
+        .foreach(o => IO:
+          observed += o)
+        .compile.drain
+        .unsafeToCancelableFuture()
       awaitAndAssert { observed.size == 1 }
       assert(observed(0) == TestEvents(0))
 
@@ -160,7 +176,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       awaitAndAssert { observed.size == 2 }
       assert(observed(1) == TestEvents(1))
 
-      observableCompleted.cancel()
+      streamCompleted.cancelToFuture().await(99.s)
     }
 
     "Fetch events with repeated GET requests" - {  // Similar to EventRouteTest
@@ -181,7 +197,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       }
 
       "Repeatedly" in {
-        for _ <- 1 to 1000 do {
+        for _ <- 1 to (if isIntelliJIdea then 10_000 else 1000) do {
           locally {
             val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
             assert(stampedSeq.head.eventId == 40)
@@ -235,7 +251,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     "Fetch EventIds while active is rejected" in {
       assert(eventWatch.isActiveNode)
       val response = intercept[HttpException](
-        getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")))
+        getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")))
       assert(response.problem == Some(AckFromActiveClusterNodeProblem))
     }
 
@@ -243,7 +259,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
-      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
+      assert(getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
 
       eventWatch.isActiveNode = wasActive
     }
@@ -252,13 +268,17 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
+      val heartbeat = -1L
       val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=3")
-      val events = Observable.fromTask(api.getDecodedLinesObservable[EventId](uri))
+      val events = Stream
+        .eval:
+          api.getDecodedLinesStream[EventId](uri,
+            returnHeartbeatAs = Some(ByteArray(heartbeat.toString)))
         .flatten
         .take(3)
         .toListL
         .await(99.s)
-      assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
+      assert(events == Seq(180, heartbeat, heartbeat))
 
       eventWatch.isActiveNode = wasActive
     }
@@ -267,7 +287,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     //  for (i <- 1 to 16/*below Pekko's max-open-requests, see js7.conf, otherwise the pool will overflow and block*/) {
     //    logger.debug(s"cancel #$i")
     //    val future = getEvents(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
-    //      .runToFuture
+    //      .unsafeToFuture()
     //    sleep(10.ms)
     //    assert(!future.isCompleted)
     //    future.cancel()
@@ -275,46 +295,52 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     //}
 
     "whenShuttingDown" - {
-      "completes a running observable" in {
+      "completes a running stream" in {
         val started = Promise[Unit]()
-        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-          .doOnStart(_ => Task {
-            started.success(())
-          })
-          .completedL.runToFuture
+        val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
+          .onStart(IO:
+            started.success(()))
+          .completedL.unsafeToFuture()
         started.future await 9.s
-        assert(!observableCompleted.isCompleted)
+        assert(!streamCompleted.isCompleted)
         // Shut down service
-        shuttingDown.success(now)
-        observableCompleted await 99.s
+        whenShuttingDown.complete(now).await(99.s)
+        streamCompleted await 99.s
       }
 
-      "completes a observable request, before observable started" in {
+      "completes a stream request, before stream started" in {
         // Shut down service, try again, in case the previous test failed
-        shuttingDown.trySuccess(now)
-        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
-          .completedL.runToFuture
+        whenShuttingDown.complete(now).await(99.s)
+        val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
+          .completedL.unsafeToFuture()
         // Previous test has already shut down the service
-        observableCompleted await 99.s
+        streamCompleted await 99.s
       }
     }
   }
 
-  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
+  private def getEventStream(eventRequest: EventRequest[Event]): Stream[IO, Stamped[KeyedEvent[Event]]] =
     getEvents(eventRequest).await(99.s)
 
-  private def getEvents(eventRequest: EventRequest[Event]): Task[Observable[Stamped[KeyedEvent[Event]]]] = {
+  private def getEvents(eventRequest: EventRequest[Event]): IO[Stream[IO, Stamped[KeyedEvent[Event]]]] = {
     import ControllerState.keyedEventJsonCodec
-    api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
-      Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)),
-      responsive = true)
+    api
+      .getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
+        Uri("/" + encodePath("event") +
+          encodeQuery(("heartbeat" -> "1"/*allows early cancellation*/) +:
+            eventRequest.toQueryParameters)),
+        responsive = true)
   }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
-    getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
+    getDecodedLinesStream[Stamped[KeyedEvent[OrderEvent]]](uri)
 
-  private def getDecodedLinesObservable[A: Decoder: Tag](uri: Uri): Seq[A] =
-    Observable.fromTask(api.getDecodedLinesObservable[A](uri, responsive = true))
+  private def getDecodedLinesStream[A: Decoder: Tag](uri: Uri): Seq[A] =
+    // TODO Without heartbeat the stream does not terminate before TCP idle timeout
+    //  in about one of 1000 requests.
+    //  With heartbeat the delay is until the next heartbeat.
+    val heartbeatUri = Uri(s"$uri&heartbeat=1")
+    Stream.eval(api.getDecodedLinesStream[A](heartbeatUri, responsive = true))
       .flatten
       .toListL
       .await(99.s)

@@ -1,15 +1,18 @@
 package js7.controller
 
-import js7.common.system.startup.ServiceMain
+import cats.effect.unsafe.IORuntime
+import js7.common.system.startup.ServiceApp
 import js7.controller.configuration.ControllerConfiguration
 
-object ControllerMain:
+object ControllerMain extends ServiceApp:
   // No Logger here!
 
-  def main(args: Array[String]): Unit =
-    ServiceMain.mainThenExit[ControllerConfiguration, RunningController](
+  def run(args: List[String]) =
+    given IORuntime = runtime
+    runService(
       args,
       "JS7 Controller",
       ControllerConfiguration.fromCommandLine(_),
-      useLockFile = true)(
-      RunningController.resource(_)(_))
+      useLockFile = true
+    )(conf => RunningController.resource(conf),
+      use = (_, service: RunningController) => service.untilTerminated)

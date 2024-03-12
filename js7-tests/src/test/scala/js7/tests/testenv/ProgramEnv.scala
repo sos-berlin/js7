@@ -1,6 +1,9 @@
 package js7.tests.testenv
 
+import cats.effect.IO
+import cats.effect.ResourceIO
 import cats.effect.Resource
+import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
@@ -17,14 +20,13 @@ import js7.data.event.SnapshotableState
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
 import js7.tests.testenv.ProgramEnv.*
-import monix.eval.Task
 
 trait ProgramEnv extends AutoCloseable:
   type Program
 
   val directory: Path
   protected def confFilename: String
-  def programResource: Resource[Task, Program]
+  def programResource(using IORuntime): ResourceIO[Program]
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
 
@@ -79,15 +81,15 @@ trait ProgramEnv extends AutoCloseable:
       createDirectoriesAndFiles()
       onInitialize()
 
-  protected final def programRegistering(program: Program): Resource[Task, Program] =
+  protected final def programRegistering(program: Program): ResourceIO[Program] =
     Resource.make(
-      acquire = Task {
+      acquire = IO {
         if _currentProgram.isDefined then throw new IllegalStateException(
           s"$toString: Second program start")
         _currentProgram = Some(program)
         program
       })(release =
-      _ => Task {
+      _ => IO {
         _currentProgram = None
       })
 
@@ -105,7 +107,7 @@ object ProgramEnv:
 
     def journalLocation: JournalLocation
 
-    def recoverState: S =
+    def recoverState(using IORuntime): S =
       StateRecoverer
         .recover[S](journalLocation, Js7Configuration.defaultConfig)
         .state

@@ -1,5 +1,7 @@
 package js7.controller.web.controller.api
 
+import cats.effect.{Deferred, IO}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.test.OurTestSuite
 import js7.cluster.web.ClusterRoute
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
@@ -9,28 +11,24 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class ClusterRouteTest extends OurTestSuite, RouteTester, ClusterRoute:
-  
+
   protected type OurSession = SimpleSession
 
-  protected def scheduler = Scheduler.traced
   protected def actorSystem = system
-  protected def whenShuttingDown = Future.never
+  protected def whenShuttingDown = Deferred.unsafe
 
   protected val nodeId = NodeId("NODE-ID")
   protected def clusterNodeIsBackup = false
-  protected val checkedClusterState = Task.right(Stamped(1, ClusterState.Empty))
+  protected val checkedClusterState = IO.right(Stamped(1, ClusterState.Empty))
   protected def clusterWatchRequestStream = throw new NotImplementedError
   protected def nextCusterWatchMessage = throw new NotImplementedError
 

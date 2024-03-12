@@ -4,11 +4,16 @@ import java.nio.file.Paths
 import js7.base.test.OurTestSuite
 
 final class SourcecodeTest extends OurTestSuite:
+
   private val enclosing = implicitly[sourcecode.Enclosing].value
+  private val fullName = implicitly[sourcecode.FullName].value
   private val name = implicitly[sourcecode.Name].value
 
   "sourcecode.Enclosing" in:
     assert(enclosing == "js7.base.utils.SourcecodeTest#enclosing")
+
+  "sourcecode.Fullname" in:
+    assert(fullName == "js7.base.utils.SourcecodeTest.fullName")
 
   "sourcecode.Name" in:
     assert(name == "name")
@@ -24,7 +29,7 @@ final class SourcecodeTest extends OurTestSuite:
     assert(implicitly[sourcecode.FileName].value == "SourcecodeTest.scala")
 
   "sourcecode.Line" in:
-    assert(implicitly[sourcecode.Line].value == 27)
+    assert(implicitly[sourcecode.Line].value == 32/*number of this source code line*/)
 
   "sourcecode.Text" in:
     def text(arg: sourcecode.Text[Int]) = arg

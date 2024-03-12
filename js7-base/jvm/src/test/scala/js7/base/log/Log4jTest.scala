@@ -1,16 +1,19 @@
 package js7.base.log
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.parallel.*
 import js7.base.log.Log4jTest.*
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.test.{OurTestSuite}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
 import js7.base.time.Stopwatch
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class Log4jTest extends OurTestSuite:
+
+  private given IORuntime = ioRuntime
+
   private val testSpeed = sys.props contains "test.speed"
 
   "Speed" in:
@@ -27,12 +30,10 @@ final class Log4jTest extends OurTestSuite:
     val started = now
     (1 to n)
       .toVector
-      .parTraverse(i =>
-        CorrelId.bindNew(Task {
-          for j <- 1 to m do {
-            logger.debug(s"$i-$j")
-          }
-        }))
+      .parTraverse: i =>
+        CorrelId.bindNew(IO:
+          for j <- 1 to m do
+            logger.debug(s"$i-$j"))
       .await(199.s)
     logger.info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
     if testSpeed then info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))

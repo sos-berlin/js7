@@ -1,18 +1,22 @@
 package js7.base.log
 
-import cats.effect.Resource
+import cats.effect.kernel.Sync
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import js7.base.utils.ScalaUtils.implicitClass
-import monix.eval.Task
-import monix.reactive.Observable
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
 
 object Logger
 {
+  type Underlying = scribe.Logger
+
   val empty: scribe.Logger =
     scribe.Logger.empty
 
-  def initialize() = {}
+  def initialize(name: String) = {}
+
+  def isInitialized: Boolean = true
 
   def apply[A: ClassTag]: scribe.Logger =
     apply(implicitClass[A])
@@ -29,9 +33,16 @@ object Logger
 
   object syntax {
     // Empty implementation to be compatible with the JVM variant
-    implicit final class RichLogger(private val logger: scribe.Logger) extends AnyVal {
+    extension (logger: scribe.Logger)
+      /** Can be used to import these extensions. */
+      def forceImportExtensions: Unit = ()
+
       def isEnabled(level: LogLevel): Boolean =
         level != LogLevel.LogNone && logger.includes(logLevelToScribe(level))
+
+      inline def whenTraceEnabled(inline body: => Unit): Unit =
+        if logger.includes(scribe.Level.Trace) then
+          body
 
       def log(level: LogLevel, message: => String)
         (implicit pkg: Pkg, fileName: FileName, name: Name, line: Line)
@@ -45,57 +56,116 @@ object Logger
           logger.log(logLevelToScribe(level), message, Some(throwable))
         }
 
-      def debugTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      inline def infoIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
-        task
+      inline def infoIO[A](functionName: String, inline args: => Any = "")(io: IO[A]): IO[A] =
+        io
 
-      def debugTaskWithResult[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        infoF[F, A](functionName = src.value)(body)
 
-      def debugTaskWithResult[A](
-        function: String,
-        args: => Any = "",
-        result: A => Any = identity[A](_))
-        (task: Task[A])
-      : Task[A] =
-        task
+      def infoF[F[_], A](functionName: String, args: => Any = "")
+        (body: F[A])
+        (using F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Info, functionName, args)(body)
 
-      def traceTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      inline def debugIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        task
+      inline def debugIO[A](functionName: String, inline args: => Any = "")(io: IO[A]): IO[A] =
+        io
 
-      def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        traceTaskWithResult[A](src.value)(task)
+      inline def debugIOWithResult[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def traceTaskWithResult[A](
-        function: String,
-        args: => Any = "",
-        result: A => Any = identity[A](_))
-        (task: Task[A])
-      : Task[A] =
-        task
+      inline def debugIOWithResult[A](
+        inline function: String,
+        inline args: => Any = "",
+        inline result: A => Any = identity[A](_),
+        inline body: IO[A])
+      : IO[A] =
+        body
 
-      def debugResource[A](resource: Resource[Task, A])(implicit src: sourcecode.Name)
-      : Resource[Task, A] =
-        debugResource(src.value)(resource)
+      def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        debugF[F, A](functionName = src.value)(body)
 
-      def debugResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
-      : Resource[Task, A] =
+      def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Debug, functionName, args)(body)
+
+      inline def traceIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
+
+      inline def traceIO[A](function: String, inline args: => Any = "")(io: IO[A]): IO[A] =
+        io
+
+      inline def traceIOWithResult[A](io: IO[A]): IO[A] =
+        io //traceIOWithResult[A](src.value)(io)
+
+      inline def traceIOWithResult[A](
+        inline function: String,
+        inline args: => Any = "",
+        inline result: A => Any = identity[A](_),
+        inline body: IO[A])
+      : IO[A] =
+        body
+
+      def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        traceF(functionName = src.value)(body)
+
+      def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
+
+      inline def debugResource[A](resource: Resource[IO, A])
+      : Resource[IO, A] =
+        resource //debugResource(src.value)(resource)
+
+      inline def debugResource[A](function: String, inline args: => Any = "")
+        (resource: Resource[IO, A])
+      : Resource[IO, A] =
         resource
 
-      def debugObservable[A](observable: Observable[A])/*(implicit src: sourcecode.Name)*/
-      : Observable[A] =
-        observable
+      inline def traceResource[A](resource: Resource[IO, A])
+      : Resource[IO, A] =
+        resource //traceResource(src.value)(resource)
 
-      def debugObservable[A](function: String, args: => Any = "")(observable: Observable[A])
-      : Observable[A] =
-        observable
-    }
+      inline def traceResource[A](function: String, inline args: => Any = "")
+        (resource: Resource[IO, A])
+      : Resource[IO, A] =
+        resource
+
+      inline def debugStream[A](stream: Stream[IO, A]): Stream[IO, A] =
+        stream
+
+      inline def debugStream[A](inline function: String, inline args: => Any = "")
+        (stream: Stream[IO, A])
+      : Stream[IO, A] =
+        stream
+
+      inline def traceStream[A](stream: Stream[IO, A]): Stream[IO, A] =
+        stream
+
+      inline def traceStream[A](function: String, inline args: => Any = "")(stream: Stream[IO, A])
+      : Stream[IO, A] =
+        stream
   }
+
+  private def logF[F[_], A](
+    logger: Underlying,
+    logLevel: LogLevel,
+    function: String,
+    args: => Any = "",
+    resultToLoggable: A => Any = null)
+    (body: F[A])
+    (implicit F: Sync[F])
+  : F[A] =
+    body
 
   private def logLevelToScribe(logLevel: LogLevel): scribe.Level =
     logLevel match {

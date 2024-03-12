@@ -7,7 +7,7 @@ import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
@@ -20,11 +20,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
@@ -65,7 +64,7 @@ final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
     sleep(5.s)
 
   "Delete FileWatch" in:
-    assert(controller.api.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
+    assert(controller.api.updateItems(Stream(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)

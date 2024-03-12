@@ -16,7 +16,6 @@ import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
-import monix.eval.Coeval
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
 import scala.concurrent.duration.Deadline.now
@@ -93,11 +92,11 @@ final class ScalaUtilsTest extends OurTestSuite
       }
     }
 
-    "Coeval" in {
-      assert(Coeval[E](Left("A")).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("A"))
-      assert(Coeval[E](Left("A")).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Left("A"))
-      assert(Coeval[E](Right(7)).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("B"))
-      assert(Coeval[E](Right(7)).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Right(21))
+    "SyncIO" in {
+      assert(SyncIO[E](Left("A")).flatMapT(_ => SyncIO.pure(Left("B"))).unsafeRunSync() == Left("A"))
+      assert(SyncIO[E](Left("A")).flatMapT(right => SyncIO.pure(Right(3 * right))).unsafeRunSync() == Left("A"))
+      assert(SyncIO[E](Right(7)).flatMapT(_ => SyncIO.pure(Left("B"))).unsafeRunSync() == Left("B"))
+      assert(SyncIO[E](Right(7)).flatMapT(right => SyncIO.pure(Right(3 * right))).unsafeRunSync() == Right(21))
     }
 
     "flatMapLeft" in {
@@ -744,7 +743,22 @@ final class ScalaUtilsTest extends OurTestSuite
     assert(in.read() == -1)
   }
 
+  "Char" - {
+    "utf8Length" in:
+      assert('\u0000'.utf8Length == 1)
+      assert('A'.utf8Length == 1)
+      assert('\u007f'.utf8Length == 1)
+      assert('\u0080'.utf8Length == 2)
+      assert('\u6771'.utf8Length == 3)
+      assert('\uffff'.utf8Length == 3)
+  }
+
   "String" - {
+    //"utf8Length" in:
+    //  for base <- 0 to 0x10ffff by 0x10000 do withClue(s"base=$base: "):
+    //    val string = (base to base + 0xffff).map(_.toChar).mkString
+    //    assert(string.estimatedUtf8Length == string.getBytes(UTF_8).length)
+
     "truncateWithEllipsis" in {
       assert("".truncateWithEllipsis(0) == "")
       assert("".truncateWithEllipsis(1) == "")
@@ -788,10 +802,10 @@ final class ScalaUtilsTest extends OurTestSuite
       assert(expected.length == 50)
 
       assert("ABCDEFGH\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "ABC...")
-      assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A...")
-      assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "...")
+      assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A⏎...")
+      assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "⏎...")
 
-      assert("\n\t\u0000\u0080".truncateWithEllipsis(99) == "····")
+      assert("line\n\ttab\u0000\u0080".truncateWithEllipsis(99) == "line⏎⟶tab␀�")
     }
 
     "replaceChar" in {
@@ -812,18 +826,20 @@ final class ScalaUtilsTest extends OurTestSuite
 
     "firstLineLength" in {
       assert("".firstLineLength == 0)
-      assert("\n".firstLineLength == 0)
-      assert("\n\n".firstLineLength == 0)
-      assert("123\n".firstLineLength == 3)
-      assert("123\r\n456".firstLineLength == 3)
-      assert("123\n456".firstLineLength == 3)
-      assert("123\n456\n".firstLineLength == 3)
+      assert("\n".firstLineLength == 1)
+      assert("\n\n".firstLineLength == 1)
+      assert("123\n".firstLineLength == 4)
+      assert("123\r\n456".firstLineLength == 5)
+      assert("123\n456".firstLineLength == 4)
+      assert("123\n456\n".firstLineLength == 4)
     }
 
     "firstLineLengthN" in {
       assert("".firstLineLengthN(2) == 0)
-      assert("\n".firstLineLengthN(2) == 0)
-      assert("\n\n".firstLineLengthN(2) == 0)
+      assert("\n".firstLineLengthN(2) == 1)
+      assert("\n\n".firstLineLengthN(2) == 1)
+      assert("1\n".firstLineLengthN(2) == 2)
+      assert("123".firstLineLengthN(2) == 2)
       assert("123\n".firstLineLengthN(2) == 2)
       assert("123\n456".firstLineLengthN(2) == 2)
       assert("123\n456\n".firstLineLengthN(2) == 2)

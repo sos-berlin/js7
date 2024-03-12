@@ -1,288 +1,298 @@
 package js7.base.io.file.watch
 
 import cats.data.NonEmptySeq
+import cats.effect
+import cats.effect.kernel.Deferred
+import cats.effect.std.{AtomicCell, Queue}
+import cats.effect.{IO, Outcome}
+import cats.syntax.apply.*
+import cats.syntax.flatMap.*
+import fs2.{Pipe, Stream}
 import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
-import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileAddedOrModified, FileDeleted, FileModified}
+import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsDeadline.now
+import js7.base.catsutils.UnsafeMemoizable.{memoize, unsafeMemoize}
+import js7.base.io.file.watch
+import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayer.*
-import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixAckFuture
-import js7.base.monixutils.MonixDeadline
-import js7.base.monixutils.MonixDeadline.now
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.continueWithLast
-import monix.execution.Ack.{Continue, Stop}
-import monix.execution.{Ack, Cancelable, Scheduler}
-import monix.reactive.Observable
-import monix.reactive.observers.Subscriber
-import scala.annotation.tailrec
-import scala.collection.immutable.VectorBuilder
-import scala.collection.mutable
-import scala.concurrent.Future
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import scala.collection.immutable.TreeMap
 import scala.concurrent.duration.*
 import scala.util.Try
 
-/** A special delay line for DirectoryEvents.
+/** A special delay line for DirectoryEvent to detect slow writing of a file as a single FileAdded event.
   *
-  * FileAdded is delayed,
-  * FileModified delays FileAdded further,
-  * FileDeleted is not delayed (and thus forcing a maybe pending FileAdded).
-  *
-  * Yields only FileAdded and FileDeleted events.
-  *
-  * Derived from Monix' `DelayByTimespanObservable`.
+  * <ul>
+  * <li> FileAdded is delayed,
+  * <li> FileModified delays FileAdded further,
+  * <li> FileDeleted is not delayed (and thus forcing a maybe pending FileAdded).
+  * </ul>
   */
 private final class DirectoryEventDelayer(
-  source: Observable[DirectoryEvent],
   directory: Path,
   delay: FiniteDuration,
   logDelays: NonEmptySeq[FiniteDuration])
-extends Observable[Seq[DirectoryEvent]]:
+extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
 
-  def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
-    source.subscribe(new Subscriber[DirectoryEvent] { self =>
-      implicit val scheduler: Scheduler = out.scheduler
-      private var timer: Option[Cancelable] = None
-      private val forwardReentrant = Atomic(0)
-      private var callerCompleted = false
-      private var hasError = false
-      private val isDone = Atomic(false)
-      private var ack: Future[Ack] = Continue
-      private val indexToEntry = mutable.TreeMap.empty[Long, Entry]  // input queue
-      private val pathToIndex = mutable.Map.empty[Path, Long]
-      private val outputQueue = new VectorBuilder[DirectoryEvent]
-      private var statsAdded = 0L
-      private var statsModified = 0L
-      private var statsTimer = 0L
+  import Operation.*
 
-      def onNext(directoryEvent: DirectoryEvent) = {
-        logger.trace(s"onNext $directoryEvent")
+  private val feed = new Feed
+  private val maturer = new Maturer
 
-        directoryEvent match {
-          case fileAdded @ FileAdded(path) =>
-            statsAdded += 1
-            self.synchronized {
-              for index <- pathToIndex.remove(path) do {
-                indexToEntry -= index
-              }
-              enqueue(new Entry(fileAdded, now))
-            }
+  def apply(in: Stream[IO, DirectoryEvent]): Stream[IO, DirectoryEvent] =
+    Stream
+      .bracket(
+        acquire = run(in).start)(
+        release = _.joinWithUnit
+          .handleError(t => logger.error(s"💥 ${t.toStringWithCauses}")))
+      .*>(feed.stream)
 
-          case fileModified @ FileModified(path) =>
-            statsModified += 1
-            self.synchronized {
-              pathToIndex.remove(path) match {
-                case None =>
-                  enqueue(new Entry(fileModified, now))
+  private def run(in: Stream[IO, DirectoryEvent]): IO[Unit] =
+    for
+      eating <- eatAll(in).start
+      maturing <- maturer.emitMaturedFileAddedEvents.start
+      _ <- IO.both(
+        eating.join.flatMap:
+          case Outcome.Canceled() => maturing.cancel
+          case Outcome.Errored(t) => feed.error(t) *> maturer.finish
+          case Outcome.Succeeded(_) => maturer.finish,
+        maturing.join.flatMap:
+          case Outcome.Canceled() => feed.finish
+          case Outcome.Errored(t) => eating.cancel *> feed.error(t)
+          case Outcome.Succeeded(_) => feed.finish)
+    yield ()
 
-                case Some(previousIndex) =>
-                  for entry <- indexToEntry.remove(previousIndex) do {
-                    val now_ = now
-                    entry.logStillWritten(now_)
-                    entry.delayUntil = now_ + delay
-                    enqueue(entry)
-                  }
-              }
-            }
+  private def eatAll(in: Stream[IO, DirectoryEvent]): IO[Unit] =
+    logger.debugIO:
+      in.foreach(eatEvent).compile.drain
 
-          case deleted: FileDeleted =>
-            self.synchronized {
-              pathToIndex.remove(deleted.relativePath) match {
-                case None =>
-                  outputQueue += deleted
-                  forward()
+  private def eatEvent(directoryEvent: DirectoryEvent): IO[Unit] =
+    directoryEvent match
+      case fileAdded @ FileAdded(path) =>
+        maturer.remove(path) *>
+        maturer.addAddedFile(fileAdded)
 
-                case Some(previousIndex) =>
-                  indexToEntry -= previousIndex
-              }
-            }
-        }
+      case fileModified: FileModified =>
+        maturer.onFileModified(fileModified)
 
-        // Swallow all incoming events and keep FileAdded events until delay is elapsing !!!
-        if ack == Stop then Stop else Continue
-      }
+      case fileDeleted @ FileDeleted(path) =>
+        maturer.remove(path).flatMap:
+          if _ then
+            // FileDeleted before FileAdded has been delayed completely: we ignore the file
+            IO.unit
+          else
+            feed.emit(fileDeleted)
 
-      private def enqueue(entry: Entry): Unit = {
-        val isFirst = indexToEntry.isEmpty
-        val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
-        indexToEntry.update(index, entry)
-        pathToIndex(entry.path) = index
 
-        if delay.isZero then {
-          forward()
-        } else if isFirst then {
-          setTimer(delay)
-        }
-      }
+  private final class Feed:
+    private val out = Queue.unbounded[IO, Either[Throwable, DirectoryEvent]].unsafeMemoize
+    private val eof = null.asInstanceOf[Either[Throwable, DirectoryEvent]]
 
-      def onComplete(): Unit = {
-        logger.trace("onComplete")
-        self.synchronized {
-          if indexToEntry.nonEmpty then {
-            callerCompleted = true
-          } else
-            outOnComplete()
-        }
-      }
+    def emit(event: watch.DirectoryEvent): IO[Unit] =
+      emit_(Right(event))
 
-      def onError(throwable: Throwable): Unit =
-        self.synchronized {
-          if !isDone.getAndSet(true) then {
-            hasError = true
-            try out.onError(throwable)
-            finally {
-              ack = Stop
-              timer.foreach(_.cancel())
-            }
-          }
-        }
+    def error(throwable: Throwable): IO[Unit] =
+      IO.defer:
+        // An error after finish or another error gets lost, so we log it
+        logger.debug(s"💥 Feed.error ${throwable.toStringWithCauses}")
+        emit_(Left(throwable))
 
-      // ⬇︎ ASYNCHRONOUSLY CALLED CODE ⬇
+    def finish: IO[Unit] =
+      logger.traceIO("Feed.finish"):
+        emit_(eof)
 
-      private def setTimer(nextDelay: FiniteDuration): Unit =
-        self.synchronized {
-          if timer.isEmpty && !hasError then {
-            logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
-            timer = Some(
-              scheduler.scheduleOnce(nextDelay) {
-                logger.trace("🔔 Timer event")
-                self.synchronized {
-                  timer = None
-                  statsTimer += 1
-                }
-                forward()
-              })
-          }
-        }
+    private def emit_(event: Either[Throwable, DirectoryEvent]): IO[Unit] =
+      out.flatMap(_.offer(event))
 
-      @tailrec
-      private def forward(): Unit =
-        if forwardReentrant.incrementAndGet() == 1 then {
-          @tailrec def loop(): Unit = {
-            self.synchronized {
-              dequeueTo(outputQueue)
-            }
-            sendOutputQueue()
-            self.synchronized {
-              if callerCompleted && indexToEntry.isEmpty && outputQueue.isEmpty then {
-                outOnComplete()
-              }
-            }
-            if forwardReentrant.decrementAndGet() > 0 then {
-              loop()
-            }
-          }
+    def stream: Stream[IO, DirectoryEvent] =
+      logger.traceStream:
+        Stream.eval(out).flatMap(Stream
+          .fromQueueUnterminated(_, limit = 100)
+          .takeWhile(_ ne eof)
+          .flatMap:
+            case Left(t) => Stream.raiseError[IO](t)
+            case Right(event) => Stream.emit(event))
 
-          loop()
+  /** Delays (matures) FileAdded events and emits them. */
+  private final class Maturer:
+    private val finishIt = Deferred.unsafe[IO, Unit]
+    private val atomicCell = memoize:
+      AtomicCell[IO].of(State(TreeMap.empty, Map.empty, Deferred.unsafe))
 
-          self.synchronized {
-            if timer.isEmpty && !hasError then
-              for entry <- indexToEntry.values.headOption yield
-                entry.delayUntil.timeLeftOrZero
-            else
-              None
-          } match {
-            case None =>
-            case Some(ZeroDuration) => forward()
-            case Some(nextDelay) => setTimer(nextDelay)
-          }
-        }
+    private def update(f: State => State): IO[Unit] =
+      atomicCell.flatMap(_.update(f))
 
-      private def dequeueTo(growable: mutable.Growable[FileAddedOrModified]): Unit =
-        if !hasError then {
-          val now_ = now
+    private def modify[A](f: State => (State, A)): IO[A] =
+      atomicCell.flatMap(_.modify(f))
 
-          @tailrec def loop(): Unit =
-            indexToEntry.headOption match {
-              case Some((index, entry)) if entry.delayUntil <= now_ =>
-                indexToEntry -= index
-                pathToIndex -= entry.path
-                growable += entry.event
-                loop()
-              case _ =>
-            }
+    def addAddedFile(fileAdded: FileAdded): IO[Unit] =
+      for
+        now <- CatsDeadline.now
+        untilAdded <- modify: state =>
+          val updated = state.addFileAdded(fileAdded, now)
+          updated -> updated.untilAdded
+        _ <- untilAdded.complete(()).void
+      yield ()
 
-          loop()
-        }
+    def remove(path: Path): IO[Boolean] =
+      modify(_.remove(path))
 
-      private def sendOutputQueue(): Unit =
-        ack = ack.syncFlatMapOnContinue {
-          val events = self.synchronized {
-            val events = outputQueue.result()
-            outputQueue.clear()
-            events
-          }
-          if events.isEmpty then
-            Continue
-          else {
-            for event <- events do logger.trace(s"out.onNext $event")
-            out.onNext(events)
-          }
-        }
+    def onFileModified(fileModified: FileModified): IO[Unit] =
+      for
+        now <- CatsDeadline.now
+        exists <- modify(_.onFileModified(fileModified, now))
+        _ <- IO.unlessA(exists)(feed.emit(fileModified))
+      yield ()
 
-      private def outOnComplete(): Unit =
-        ack.syncTryFlatten.syncOnContinue {
-          if !isDone.getAndSet(true) then {
-            logger.debug(
-              s"$statsAdded×FileAdded · $statsModified×FileModified · $statsTimer timer events")
-            try out.onComplete()
-            finally timer.foreach(_.cancel())  // Just to be sure
-          }
-        }
+    def finish: IO[Unit] =
+      logger.traceIO("Maturer.finish"):
+        finishIt.complete(()).void
 
-      private final class Entry(
-        val event: FileAddedOrModified,
-        val since: MonixDeadline)
-      {
-        var delayUntil = since + delay
-        val logDelayIterator = continueWithLast(logDelays)
-        var lastLoggedAt = since
-        var lastLoggedSize: Long =
-          Try(size(directory.resolve(path))) getOrElse 0
-        var logDelay = delay + logDelayIterator.next()
+    def emitMaturedFileAddedEvents: IO[Unit] =
+      logger.debugIO:
+        ().tailRecM(_ =>
+          for
+            now <- CatsDeadline.now
+            either <- modify(_.nextOperation(now)).flatMap:
+              // Left: loop again, Right: end loop
+              case UntilAdded(untilAdded) =>
+                IO.race(untilAdded, finishIt.get)
 
-        def path = event.relativePath
+              case Wait(remaining) =>
+                IO.sleep(remaining).as(Left(()))
 
-        def logStillWritten(now: MonixDeadline): Unit =
-          if lastLoggedAt + logDelay <= now then {
-            switchLogDelay()
-            lastLoggedAt = now
-            val file = directory.resolve(path)
-            val growth = try {
-              val s = size(file)
-              val growth = s - lastLoggedSize
-              lastLoggedSize = s
-              toKBGB(growth)
-            } catch {
-              case _: IOException => "?"
-            }
-            logger.info(
-              s"Watched file is still being modified for ${(now - since).pretty}: $file +$growth")
-          }
+              case Emit(fileAdded) =>
+                feed.emit(fileAdded).as(Left(()))
+          yield either)
+  end Maturer
 
-        private def switchLogDelay(): Unit =
-          if logDelayIterator.hasNext then {
-            logDelay = logDelayIterator.next()
-          }
+  private case class State(
+    indexToEntry: TreeMap[Long, Entry],
+    pathToIndex: Map[Path, Long],
+    untilAdded: Deferred[IO, Unit]):
 
-        override def toString = s"$path ${since.elapsed.pretty} delayUntil=$delayUntil"
-      }
-    })
+    def addFileAdded(fileAdded: FileAdded, now: CatsDeadline): State =
+      addEntry(Entry(fileAdded, now))
+
+    private def addEntry(entry: Entry): State =
+      val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
+      copy(
+        indexToEntry = indexToEntry.updated(index, entry),
+        pathToIndex = pathToIndex.updated(entry.path, index))
+
+    def remove(path: Path): (State, Boolean) =
+      pathToIndex
+        .get(path)
+        .flatMap(i => indexToEntry.get(i).map(i -> _)) match
+          case None => this -> false
+          case Some((i, entry)) =>
+            //logger.traceIO(s"remove ${entry.fileAdded}")
+            copy(
+              pathToIndex = pathToIndex.removed(path),
+              indexToEntry = indexToEntry.removed(i)
+            ) -> true
+
+    def onFileModified(fileModified: FileModified, now: CatsDeadline): (State, Boolean) =
+      pathToIndex.get(fileModified.relativePath) match
+        case None => this -> false
+        case Some(i) =>
+          val entry = indexToEntry(i)
+          entry.logStillWritten(now)
+          entry.delayUntil = now + delay
+          remove(fileModified.relativePath)._1
+            .addEntry(entry)
+            -> true
+
+    def nextOperation(now: CatsDeadline): (State, Operation) =
+      indexToEntry.headOption match
+        case None =>
+          val until = Deferred.unsafe[IO, Unit]
+          copy(untilAdded = until) -> UntilAdded(until.get)
+
+        case Some((index, entry)) =>
+          val remaining = entry.delayUntil - now
+          if remaining.isPositive then
+            this -> Wait(remaining)
+          else
+            entry.onMatured(now)
+            val updated = copy(
+              pathToIndex = pathToIndex.removed(entry.path),
+              indexToEntry = indexToEntry.removed(index))
+            updated -> Emit(entry.fileAdded)
+  end State
+
+  private final class Entry(val fileAdded: FileAdded, since: CatsDeadline):
+    var delayUntil = since + delay
+    private val logDelayIterator = continueWithLast(logDelays)
+    private var lastLoggedAt = since
+    private var lastLoggedSize = Try(size(directory.resolve(path))) getOrElse 0L
+    private var logDelay = delay + logDelayIterator.next()
+    private val sym = BlockingSymbol()
+
+    def path = fileAdded.relativePath
+
+    def logStillWritten(now: CatsDeadline): Unit =
+      if (now - (lastLoggedAt + logDelay)).isZeroOrAbove then
+        logDelay = logDelayIterator.next()
+        lastLoggedAt = now
+        sym.increment()
+        sym.onInfo()
+        logger.log(sym.logLevel,
+          s"$sym Watched file is still being modified for ${logExtra(now)}")
+
+    def onMatured(now: CatsDeadline) =
+      logger.log(sym.releasedLogLevel,
+        s"🟢 Watched file is considered written after ${logExtra(now)}")
+
+    private def logExtra(now: CatsDeadline): String =
+      val file = directory.resolve(path)
+      val growth =
+        try
+          val s = size(file)
+          val growth = s - lastLoggedSize
+          lastLoggedSize = s
+          " +" + toKBGB(growth)
+        catch case _: IOException => ""
+      s"${(now - since).pretty}: $file$growth"
+
+    override def toString = s"$path delayUntil=$delayUntil"
 
 
 object DirectoryEventDelayer:
   private val logger = Logger[this.type]
 
+  def apply(
+    directory: Path,
+    delay: FiniteDuration,
+    logDelays: NonEmptySeq[FiniteDuration])
+  : Pipe[IO, DirectoryEvent, DirectoryEvent] =
+    if delay.isPositive then
+      new DirectoryEventDelayer(directory, delay, logDelays)
+    else
+      identity
+
+
   object syntax:
-    implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
-    extends AnyVal:
+    extension(self: Stream[IO, DirectoryEvent])
+      @deprecated("Use .through(DirectoryEventDelayer.pipe(...))", "2.7")
       def delayFileAdded(
         directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
-      : Observable[Seq[DirectoryEvent]] =
-        if delay.isPositive then
-          new DirectoryEventDelayer(self, directory, delay, logDelays)
-        else
-          self.bufferIntrospective(1024)  // Similar to DirectoryEventDelayer, which buffers without limit
+      : Stream[IO, DirectoryEvent] =
+        self.through(DirectoryEventDelayer(directory, delay, logDelays))
+
+
+  private sealed trait Operation
+  private object Operation:
+    case class UntilAdded(untilAdded: IO[Unit]) extends Operation
+
+    case class Wait(duration: FiniteDuration) extends Operation:
+      override def toString = s"Wait(${duration.pretty})"
+
+    case class Emit(fileAdded: FileAdded) extends Operation

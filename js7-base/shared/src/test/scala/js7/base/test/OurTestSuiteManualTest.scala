@@ -1,13 +1,9 @@
 package js7.base.test
 
-import org.slf4j.LoggerFactory
-
 final class OurTestSuiteManualTest extends OurTestSuite:
 
-  private val logger = LoggerFactory.getLogger(getClass)
-
   "test" in:
-    logger.info("test")
+    info("OurTestSuiteManualTest: test")
 
   if false then
   "failing" in:

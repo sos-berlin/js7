@@ -7,7 +7,7 @@ import js7.subagent.Subagent
 import org.apache.pekko.http.scaladsl.server.Directives.*
 
 private trait EventRoute extends SubagentRouteProvider, GenericEventRoute:
-  
+
   protected val subagent: Subagent
 
   protected final lazy val eventRoute =

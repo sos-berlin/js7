@@ -5,7 +5,7 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
@@ -25,13 +25,12 @@ import js7.tests.cluster.agent.ResetAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
 import scala.util.control.NonFatal
 
-final class ResetAgentClusterTest 
+final class ResetAgentClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -59,8 +58,8 @@ final class ResetAgentClusterTest
 
   "Reset backup Director, too" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) =
-      val resource: Resource[Task, (DirectorEnv, RunningAgent)] =
+    def toTestAgent(envResource: Resource[IO, DirectorEnv]): (DirectorEnv, TestAgent) =
+      val resource: Resource[IO, (DirectorEnv, RunningAgent)] =
         for
           env <- envResource
           program <- env.programResource

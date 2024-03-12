@@ -3,7 +3,6 @@ package js7.subagent
 import cats.syntax.traverse.*
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
@@ -14,8 +13,10 @@ import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.subagent.SubagentCommandExecutor.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.duration.Deadline.now
 
 private[subagent] final class SubagentCommandExecutor(
@@ -25,8 +26,8 @@ private[subagent] final class SubagentCommandExecutor(
   private val journal = subagent.journal
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
-  : Task[Checked[numbered.value.Response]] =
-    Task.defer:
+  : IO[Checked[numbered.value.Response]] =
+    IO.defer:
       val command = numbered.value
       logger.debug(s"#${numbered.number} -> $command")
       val since = now
@@ -39,7 +40,7 @@ private[subagent] final class SubagentCommandExecutor(
           //case AttachItem(item) =>
           //  item match {
           //    case _: SignableItem =>
-          //      Task.pure(Left(Problem.pure("SignabledItem must have a signature")))
+          //      IO.pure(Left(Problem.pure("SignabledItem must have a signature")))
           //
           //    case item: UnsignedSimpleItem =>
           //      attachItem(item)
@@ -48,7 +49,7 @@ private[subagent] final class SubagentCommandExecutor(
 
           case AttachSignedItem(signed) =>
             signatureVerifier.verify(signed.signedString) match
-              case Left(problem) => Task.pure(Left(problem))
+              case Left(problem) => IO.pure(Left(problem))
               case Right(signerIds) =>
                 // Duplicate with Agent
                 logger.info(Logger.SignatureVerified,
@@ -66,7 +67,7 @@ private[subagent] final class SubagentCommandExecutor(
             subagent.executeDedicateSubagent(cmd)
 
           case cmd: CoupleDirector =>
-            Task(subagent.checkedDedicatedSubagent)
+            IO(subagent.checkedDedicatedSubagent)
               .flatMapT(_.executeCoupleDirector(cmd))
               .rightAs(SubagentCommand.Accepted)
 
@@ -86,24 +87,24 @@ private[subagent] final class SubagentCommandExecutor(
               .rightAs(SubagentCommand.Accepted)
 
           case NoOperation =>
-            Task.right(SubagentCommand.Accepted)
+            IO.right(SubagentCommand.Accepted)
 
           case SubagentCommand.Batch(correlIdWrappedCommands) =>
             // TODO Sobald Kommandos in einem Stream geschickt werden,
             //  wird Batch wohl nicht mehr gebraucht.
             // Der Stream braucht dann Kommando-Transaktionen?
-            Observable
-              .fromIterable(correlIdWrappedCommands)
+            Stream
+              .iterable(correlIdWrappedCommands)
               // mapEval is executed one by one with takeWhileInclusive
-              .mapEval(_
+              .evalMap(_
                 .bindCorrelId(subcmd =>
                   executeCommand(numbered.copy(value = subcmd), meta)
                     .map(_.map(o => o: SubagentCommand.Response))))
-              .takeWhileInclusive(_.isRight) // Don't continue after first problem
+              .takeThrough(_.isRight) // Don't continue after first problem
               .map(_.rightAs(()))
-              .foldL
+              .compile.foldMonoid
               .rightAs(SubagentCommand.Accepted)
-        .tapEval(checked => Task(logger.debug(
+        .flatTap(checked => IO(logger.debug(
           s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
             s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)}")))
         .map(_.map(_.asInstanceOf[numbered.value.Response]))

@@ -3,7 +3,7 @@ package js7.tests.controller.load
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ByteUnits.toKBGB
@@ -16,11 +16,10 @@ import js7.data.value.StringValue
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.load.ManyOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
 
@@ -59,21 +58,23 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     val order = FreshOrder(OrderId(s"ORDER"), workflow.path,
       arguments = Map("BIG" -> StringValue(payload * (orderSize / payload.length))))
     controller.api
-      .addOrders(Observable
-        .fromIterable(1 to n)
+      .addOrders(Stream
+        .iterable(1 to n)
         .map(i => order.copy(id = OrderId(s"ORDER-$i"))))
       .await(longTimeout).orThrow
 
   def waitUntilAllOrdersFinished(stopwatch: Stopwatch): Unit =
     controller.eventWatch
-      .observe(EventRequest.singleClass[OrderFinished](after = EventId.BeforeFirst, timeout = None))
+      .stream(EventRequest.singleClass[OrderFinished](after = EventId.BeforeFirst, timeout = None))
       .scan(0)((i, _) => i + 1)
       .map { i =>
         if n > 100 && i % 100 == 0 then println(stopwatch.itemsPerSecondString(i, s"orders finished"))
         i
       }
       .dropWhile(_ < n)
-      .headOptionL
+      .head
+      .compile
+      .last
       .await(longTimeout)
 
 

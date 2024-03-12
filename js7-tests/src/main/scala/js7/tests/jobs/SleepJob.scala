@@ -21,7 +21,7 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
         .get("sleep")
         .fold_(Right(0.s), _.asDuration)
         .traverse(duration =>
-          clock.sleep(duration).when(duration.isPositive)
+          clock.sleep(duration, "SleepJob").when(duration.isPositive)
             .as(Outcome.succeeded))
         .map(Outcome.Completed.fromChecked))
 

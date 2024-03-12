@@ -1,59 +1,65 @@
 package js7.launcher
 
-import js7.base.test.OurTestSuite
+import cats.effect.std.Semaphore
+import cats.effect.unsafe.IORuntime
+import cats.effect.{FiberIO, IO}
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.job.JobKey
 import js7.data.order.{OrderId, Outcome}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.catnap.Semaphore
-import monix.eval.{Fiber, Task}
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.subjects.PublishSubject
+import scala.concurrent.Await
+import scala.util.Try
 
-final class OrderProcessTest extends OurTestSuite:
+final class OrderProcessTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
+
   "Run an OrderProcess" in:
-    val orderProcess = OrderProcess(Task(Outcome.succeeded))
-    val stdObservers = newStdObservers
-    assert(
-      orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers).flatten.await(99.s)
-        == Outcome.succeeded)
+    val orderProcess = OrderProcess(IO(Outcome.succeeded))
+    for
+      running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+      outcome <- running.joinStd
+    yield assert(outcome == Outcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
-    var fiber: Fiber[Unit] = null
+    val canceled = new RuntimeException("TEST FIBER CANCELED")
+    var fiber: FiberIO[Unit] = null
     val future = semaphore
       .flatMap(_.acquire)
       .start
-      .tapEval(fib => Task { fiber = fib })
-      .flatMap(_.join)
-      .runToFuture
+      .flatTap(fib => IO { fiber = fib })
+      .flatMap(_.joinWith(IO.raiseError(canceled)))
+      .unsafeToFuture()
 
     // One waiting acquirer
     awaitAndAssert(count == -1)
 
-    // Does not work if the Future is being canceled. Instead, the Fiber must be canceled.
-    //future.cancel()
     fiber.cancel.await(99.s)
 
-    // The Future never completes
-    sleep(100.ms)
-    assert(!future.isCompleted)
+    // The Future completes with Canceled
+    val result: Try[Unit] = Await.ready(future, 99.s).value.get
+    assert(result.failed.get eq canceled)
 
     // No waiting acquirer
     awaitAndAssert(count == 0)
 
   "Cancel an OrderProcess Fiber" in:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
     val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))
-    val stdObservers = newStdObservers
-    val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
-      .flatten.runToFuture
+
+    val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+      .flatMap(_.joinStd)
+      .unsafeToFuture()
 
     // One waiting acquirer
     awaitAndAssert(count == -1)
@@ -63,6 +69,3 @@ final class OrderProcessTest extends OurTestSuite:
 
     // No waiting acquirer
     awaitAndAssert(count == 0)
-
-  private def newStdObservers =
-    new StdObservers(PublishSubject(), PublishSubject(), 100, keepLastErrLine = false)

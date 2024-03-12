@@ -1,7 +1,8 @@
 package js7.tests.testenv
 
-import cats.effect.Resource
-import cats.syntax.flatMap.*
+import cats.effect
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
@@ -9,15 +10,14 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.{RestartableDirector, RunningAgent}
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.*
-import monix.eval.Task
 
 /** Environment with config and data directories for a Subagent with Agent Director. */
 final class DirectorEnv(
@@ -33,7 +33,7 @@ final class DirectorEnv(
   protected val otherSubagentIds: Seq[SubagentId] = Nil,
   protected val extraConfig: Config = ConfigFactory.empty)
 extends SubagentEnv, ProgramEnv.WithFileJournal:
-  
+
   type Program = RunningAgent
   protected type S = AgentState
   val S = AgentState
@@ -93,19 +93,26 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
        |}
        |""".stripMargin
 
-  def programResource: Resource[Task, RunningAgent] =
+  def programResource(using IORuntime): ResourceIO[RunningAgent] =
     directorResource
 
-  def directorResource: Resource[Task, RunningAgent] =
-    Resource.suspend/*delay access to agentConf*/(Task(
-      ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
-        RunningAgent
-          .resource(agentConf)
-          .flatTap(programRegistering))))
+  def directorResource: ResourceIO[RunningAgent] =
+    for
+      given IORuntime <- ioRuntimeResource
+      agent <- RunningAgent.resource(agentConf)
+      _ <- programRegistering(agent)
+    yield
+      agent
 
-  def restartableDirectorResource: Resource[Task, RestartableDirector] =
-    Resource.suspend/*delay access to agentConf*/(Task(
-      ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
-        RunningAgent.restartable(agentConf))))
+  def restartableDirectorResource: ResourceIO[RestartableDirector] =
+    for
+      given IORuntime <- ioRuntimeResource
+      agent <- RunningAgent.restartable(agentConf)
+    yield
+      agent
+
+  private def ioRuntimeResource: ResourceIO[IORuntime] =
+    Resource.suspend/*delay access to agentConf*/(IO:
+      OurIORuntime.resource[IO](agentConf.name, agentConf.config))
 
   override def toString = s"DirectorEnv($name)"

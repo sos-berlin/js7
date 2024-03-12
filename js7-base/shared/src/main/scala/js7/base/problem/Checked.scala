@@ -3,7 +3,6 @@ package js7.base.problem
 import cats.syntax.functor.*
 import cats.syntax.monoid.*
 import cats.{Functor, Monoid}
-import implicitbox.Not
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -15,7 +14,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
-import scala.util.{Failure, Left, Success, Try}
+import scala.util.{Failure, Left, NotGiven, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -46,8 +45,18 @@ object Checked:
       case None => Left(problem)
       case Some(o) => Right(o)
 
+  def flattenAttemptedChecked[A](eitherChecked: Either[Throwable, Checked[A]]): Checked[A] =
+    eitherChecked match
+      case Left(t) => Left(Problem.fromThrowable(t))
+      case Right(checked) => checked
+
   def flattenTryChecked[A](tryChecked: Try[Checked[A]]): Checked[A] =
     fromTry(tryChecked).flatten
+
+  def fromThrowableEither[A](either: Either[Throwable, A]): Checked[A] =
+    either match
+      case Left(t) => Left(Problem.fromThrowable(t))
+      case Right(o) => Right(o)
 
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match
@@ -73,7 +82,7 @@ object Checked:
     new Catcher[T]
 
   final class Catcher[T <: Throwable]:
-    def apply[A](f: => A)(implicit T: ClassTag[T], @unused ev: Not[T =:= Nothing]): Checked[A] =
+    def apply[A](f: => A)(implicit T: ClassTag[T], @unused ev: NotGiven[T =:= Nothing]): Checked[A] =
       try Right(f)
       catch
         case t if T.runtimeClass isAssignableFrom t.getClass =>

@@ -8,20 +8,14 @@ import java.nio.file.{Path, Paths}
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
-import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.time.ScalaTime.*
+import js7.base.test.{OurTestSuite}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConfTest.*
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
 
@@ -41,7 +35,8 @@ final class SubagentConfTest extends OurTestSuite
         logDirectory = dataDir / "logs",
         jobWorkingDirectory = WorkingDirectory,
         webServerPorts = Nil,
-        killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh"))))
+        killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
+        name = "JS7"))
     }
   }
 
@@ -121,7 +116,8 @@ final class SubagentConfTest extends OurTestSuite
       jobWorkingDirectory = Paths.get(if isWindows then """c:\tmp\WORKING""" else "/tmp/WORKING"),
       webServerPorts = Nil,
       killScript = None,
-      config"""js7.windows.codepages.88888 = "UNKNOWN" """)
+      config"""js7.windows.codepages.88888 = "UNKNOWN" """,
+      name = "JS7")
 
     "windowsCodepageToEncoding" in {
       assert(subagentConf.windowsCodepageToEncoding(99999) == Left(Problem(
@@ -172,25 +168,7 @@ final class SubagentConfTest extends OurTestSuite
       }
     }
 
-    "Known codepages" in {
-      // Slow due to many Charset.forName
-      val configuredCodepages  = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
-        .asScala.keySet
-      // Parallelize for shorter test duration (4s instead of 17s)
-      val cpToEnc = Observable.fromIterable(1 to 32767)
-        .bufferTumbling(512)
-        .mapParallelOrdered(sys.runtime.availableProcessors)(chunk => Task(
-          chunk.map(cp => cp -> subagentConf.windowsCodepageToEncoding(cp))))
-        .flatMap(Observable.fromIterable)
-        .collect { case (codepage, Right(encoding)) => codepage -> encoding }
-        .toListL
-        .await(99.s)
-      for (codepage, encoding) <- cpToEnc do {
-        logger.info(s"Known Windows code page $codepage -> $encoding " +
-          encoding.aliases.asScala.toVector.sorted.mkString(", ") +
-          ((configuredCodepages(codepage.toString) ?? " (configured)")))
-      }
-    }
+    // "Known codepages": see ListWindowsCodepages program
 
     "Encodings without codepage (informative)" in {
       val supportedEncodings = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")

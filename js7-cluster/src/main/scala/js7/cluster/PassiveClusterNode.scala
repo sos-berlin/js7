@@ -1,8 +1,19 @@
 package js7.cluster
 
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
+import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
-//diffx import com.softwaremill.diffx
+import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
+import js7.base.catsutils.SyncDeadline
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.monixutils.RefCountedResource
+import js7.base.monixutils.StreamPauseDetector.detectPauses
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.common.http.PekkoHttpClient
+import js7.data.event.JournalEvent
+import js7.data.event.JournalEvent.StampedHeartbeatByteArray
+import cats.effect.IO
+import fs2.Stream
 import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -17,10 +28,6 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
-import js7.base.monixutils.MonixDeadline.now
-import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
-import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -42,16 +49,12 @@ import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/](
   ownId: NodeId,
@@ -67,14 +70,14 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
   common: ClusterCommon)
   (implicit
     S: ClusterableState.Companion[S],
-    nodeNameToPassword: NodeNameToPassword[S]):
+    nodeNameToPassword: NodeNameToPassword[S],
+    ioRuntime: IORuntime):
 
-  import clusterConf.{config, journalConf}
+  import clusterConf.journalConf
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 
-  private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
-  private val shutdown = Deferred.unsafe[Task, Unit]
+  private val shutdown = Deferred.unsafe[IO, Unit]
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
@@ -95,56 +98,56 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
   @volatile private var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
-  def onShutdown(dontNotifyActiveNode: Boolean = false): Task[Unit] =
+  def onShutdown(dontNotifyActiveNode: Boolean = false): IO[Unit] =
     shutdown.complete(()).attempt *>
-      Task.unless(dontNotifyActiveNode)(notifyActiveNodeAboutShutdown)
+      IO.unlessA(dontNotifyActiveNode)(notifyActiveNodeAboutShutdown)
 
   /** Allow the active node to emit ClusterPassiveLost quickly. */
-  private def notifyActiveNodeAboutShutdown: Task[Unit] =
-    logger.debugTask:
+  private def notifyActiveNodeAboutShutdown: IO[Unit] =
+    logger.debugIO:
       // Active and passive node may be shut down at the same time. We try to handle this here.
-      val untilDecoupled = logger.traceTask:
-        Task.tailRecM(())(_ =>
+      val untilDecoupled = logger.traceIO:
+        ().tailRecM(_ =>
           stateBuilderAndAccessor.state
             .map(_.clusterState)
             .flatMap:
-              case _: Coupled => Task.left(()).delayResult(1.s)
-              case clusterState => Task.right(clusterState))
+              case _: Coupled => IO.left(()).delayBy(1.s)
+              case clusterState => IO.right(clusterState))
 
       val notifyActive = activeApiResource
         .use(api => api
           .login(onlyIfNotLoggedIn = true)
           .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
           .void
-          .onErrorHandle(throwable => logger.debug(
+          .recover(throwable => logger.debug(
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
             throwable.nullIfNoStackTrace)))
-        .timeoutTo(clusterConf.timing.heartbeat /*some short time*/ , Task.unit)
+        .timeoutTo(clusterConf.timing.heartbeat /*some short time*/ , IO.unit)
         .logWhenItTakesLonger
 
-      Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
-        .tapEval:
+      IO.race(untilDecoupled, notifyActive.delayBy(50.ms))
+        .flatTap:
           case Left(clusterState) =>
             // The connection of the killed notifyActive HTTP request may be still blocked !!!
             // until it is responded (see PekkoHttpClient)
             // It should not disturb the shutdown.
-            Task(logger.debug(s"notifyActiveNodeAboutShutdown: clusterState=$clusterState"))
+            IO(logger.debug(s"notifyActiveNodeAboutShutdown: clusterState=$clusterState"))
           case Right(()) =>
-            Task(logger.debug(
+            IO(logger.debug(
               "notifyActiveNodeAboutShutdown: Active node has been notified about shutdown"))
         .as(())
 
-  def state: Task[S] =
+  def state: IO[S] =
     stateBuilderAndAccessor.state
 
   /**
     * Runs the passive node until activated or terminated.
-    * Returns also a `Task` with the current ClusterState while being passive or active.
+    * Returns also a `IO` with the current ClusterState while being passive or active.
     */
-  def run(recoveredState: S): Task[Checked[Recovered[S]]] =
-    CorrelId.bindNew(logger.debugTask(
+  def run(recoveredState: S): IO[Checked[Recovered[S]]] =
+    CorrelId.bindNew(logger.debugIO(
       common.requireValidLicense
-        .flatMapT(_ => Task.deferAction { implicit s =>
+        .flatMapT(_ => IO.defer {
           val recoveredClusterState = recoveredState.clusterState
           logger.debug(s"recoveredClusterState=$recoveredClusterState")
           assertThat(!stopped)  // Single-use only
@@ -164,26 +167,26 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           // Other node failed-over while this node was active but lost?
           // Then FailedOver event will be replicated.
-          Task.unless(otherFailed) {
+          IO.unlessA(otherFailed) {
             backgroundNotifyActiveNodeAboutRestart(recoveredClusterState)
           } *>
             replicateJournalFiles(recoveredClusterState)
-              .guarantee(Task {
+              .guarantee(IO {
                 stopped = true
               })
               .guarantee(activeApiCache.clear)
               .flatTap {
-                case Left(PassiveClusterNodeResetProblem) => Task(
+                case Left(PassiveClusterNodeResetProblem) => IO(
                   journalLocation.deleteJournal(ignoreFailure = true))
-                case _ => Task.unit
+                case _ => IO.unit
               }
         })))
 
-  private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): Task[Unit] =
+  private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): IO[Unit] =
     recoveredClusterState
       .match
         case ClusterState.Empty =>
-          Task.unit
+          IO.unit
 
         case _: IsDecoupled =>
           tryEndlesslyToSendCommandInBackground(
@@ -199,7 +202,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           // Then the active node couples again with this passive node,
           // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
           // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-          Task.defer:
+          IO.defer:
             awaitingCoupledEvent = true
             tryEndlesslyToSendCommandInBackground(
               _ => ClusterRecouple(activeId = activeId, passiveId = ownId))
@@ -218,7 +221,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           f.truncate(length)
         }
 
-  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] =
+  private def tryEndlesslyToSendClusterPrepareCoupling: IO[Unit] =
     // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
     //  Annähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
     //  Wenn kein Event kommt? Herzschlag mit Zeitstempel (nicht EventId) versehen (wäre sowieso nützlich)
@@ -229,7 +232,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
 
   private def tryEndlesslyToSendCommandInBackground(toCommand: OneTimeToken => ClusterCommand)
-  : Task[Unit] =
+  : IO[Unit] =
     tryEndlesslyToSendCommand(toCommand)
       .attempt
       .map:
@@ -242,36 +245,33 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       .startAndForget
 
   private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand)
-  : Task[Unit] =
-    Task
+  : IO[Unit] =
+    IO
       .race(
         shutdown.get,
         common.tryEndlesslyToSendCommand(activeApiResource, toCommand))
       .flatMap:
-        case Left(()) => Task(logger.debug(
+        case Left(()) => IO(logger.debug(
           s"⚫ tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
-        case Right(()) => Task.unit
+        case Right(()) => IO.unit
 
-  private def sendClusterCouple: Task[Unit] =
+  private def sendClusterCouple: IO[Unit] =
     tryEndlesslyToSendCommand(
       ClusterCouple(activeId = activeId, passiveId = ownId, _))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
-  : Task[Checked[Recovered[S]]] =
+  : IO[Checked[Recovered[S]]] =
     activeApiResource
       .use(activeNodeApi =>
-        Task.tailRecM(
-          (recovered.recoveredJournalFile match {
-            case None =>
-              assertThat(recoveredClusterState == ClusterState.Empty)
-              NoLocalJournal(initialFileEventId.get)
-            case Some(recoveredJournalFile) =>
-              FirstPartialFile(recoveredJournalFile/*, recoveredClusterState*/)
-          }): Continuation.Replicatable
-        )(continuation =>
-          Task.deferAction(implicit scheduler =>
-            replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
-          ) // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
+        val start: Continuation.Replicatable = recovered.recoveredJournalFile match
+          case None =>
+            assertThat(recoveredClusterState == ClusterState.Empty)
+            NoLocalJournal(initialFileEventId.get)
+          case Some(recoveredJournalFile) =>
+            FirstPartialFile(recoveredJournalFile /*, recoveredClusterState*/)
+        start.tailRecM(continuation =>
+          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
+           // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) =>
                 Right(Left(problem))
@@ -290,9 +290,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     continuation: Continuation.Replicatable,
     newStateBuilder: () => SnapshotableStateBuilder[S],
     activeNodeApi: ClusterNodeApi)
-    (implicit s: Scheduler)
-  : Task[Checked[Continuation.Replicatable]] =
-    Task.defer:
+    (implicit ioRuntime: IORuntime)
+  : IO[Checked[Continuation.Replicatable]] =
+    IO.defer:
       import continuation.file
 
       val maybeTmpFile = locally:
@@ -311,7 +311,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         case None => FileChannel.open(file, APPEND)
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
-      val startedAt = now
+      val startedAt = SyncDeadline.now()
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
@@ -346,14 +346,20 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], ClusterNodeApi](
         toIndex = _.position,
         clusterConf.recouplingStreamReader):
-        protected def getObservable(api: ClusterNodeApi, position: Long) =
+        protected def getStream(api: ClusterNodeApi, position: Long) =
           HttpClient.liftProblem(
-            api.journalObservable(
-              JournalPosition(continuation.fileEventId, position),
-              heartbeat = Some(setting.timing.heartbeat),
-              markEOF = true
-            ).map(_.scan(PositionAnd(position, ByteArray.empty/*unused*/))((s, line) =>
-              PositionAnd(s.position + (if line == HeartbeatMarker then 0 else line.length), line))))
+            api
+              .journalStream(
+                JournalPosition(continuation.fileEventId, position),
+                heartbeat = Some(setting.timing.heartbeat),
+                returnHeartbeatAs = Some(StampedHeartbeatByteArray),
+                markEOF = true)
+              .map(_
+                .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
+                  PositionAnd(
+                    s.position + (if line == StampedHeartbeatByteArray then 0 else line.length),
+                    line)
+                .drop(1)))
 
         protected def stopRequested = stopped
 
@@ -365,27 +371,27 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         assertThat(continuation.fileLength == size(f))
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
-      recouplingStreamReader.observe(activeNodeApi, after = continuation.fileLength)
+      recouplingStreamReader.stream(activeNodeApi, after = continuation.fileLength)
         // TODO Aktiver kann JournalFileIsNotReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
         //  (zB Login klappt nicht, isTemporaryUnreachable).
         //  observe überwacht selbst die Herzschläge, und verbindet sich bei Ausfall erneut.
         //  Dann entfällt hier die Herzschlagüberwachung.
-        .doOnError(t => Task {
+        .handleErrorWith: t =>
           logger.debug(s"observeJournalFile($activeNodeApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
-        })
+          Stream.raiseError[IO](t)
         // detectPauses here ???
         .mapParallelBatch(
-          batchSize = jsonReadAhead / sys.runtime.availableProcessors,
-          responsive = true)(
+          /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
+          responsive = true*/)(
           positionAndLine =>
             (positionAndLine.position,
               positionAndLine.value,
               positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.activeLostTimeout)
-        .flatMap[Checked[Unit]]:
+        .flatMap[IO, Checked[Unit]]:
           case Left(noHeartbeatSince) =>
             (if isReplicatingHeadOfFile then continuation.clusterState else builder.clusterState) match
               case clusterState: Coupled if clusterState.passiveId == ownId =>
@@ -393,11 +399,11 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                   logger.trace(
                     s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat " +
                       s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
-                  Observable.empty  // Ignore
+                  Stream.empty  // Ignore
                 else
                   logger.warn(s"❗ No heartbeat from the currently active cluster $activeId " +
                     s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
-                  Observable.fromTask(
+                  Stream.eval(
                     if isReplicatingHeadOfFile then {
                       val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
                         throw new IllegalStateException("Failover but nothing has been replicated"))
@@ -407,7 +413,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
-                        Task {
+                        IO {
                           val file = recoveredJournalFile.file
                           val fileSize =
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
@@ -437,7 +443,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
-                        Task {
+                        IO {
                           writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
@@ -455,33 +461,35 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                         || problem.is(UntaughtClusterWatchProblem)
                         || problem.is(NoClusterWatchProblem) then
                         logger.info(s"No failover because ClusterWatch responded: $problem")
-                        Observable.empty   // Ignore
+                        Stream.empty   // Ignore
                       else
-                        Observable.raiseError(problem.throwable.appendCurrentStackTrace)
+                        Stream.raiseError[IO](problem.throwable.appendCurrentStackTrace)
 
-                    case Right(false) => Observable.empty   // Ignore
-                    case Right(true) => Observable.pure(Right(()))  // End observation
+                    case Right(false) => Stream.empty   // Ignore
+                    case Right(true) => Stream.emit(Right(()))  // End observation
 
               case clusterState =>
                 logger.trace("Ignoring observed pause without heartbeat because cluster is not coupled: " +
                   "clusterState=" + clusterState)
-                Observable.empty  // Ignore
+                Stream.empty  // Ignore
 
-          case Right((_, HeartbeatMarker, _)) =>
-            logger.trace(HeartbeatMarker.utf8String.trim)
-            Observable.empty
+          case Right((_, h @ StampedHeartbeatByteArray, _)) =>
+            if !PekkoHttpClient.LogData then
+              logger.trace(h.utf8String.trim)
+            Stream.empty
 
           case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             // fileLength may be advanced to end of file when file's last record is truncated
             logger.debug("End of replicated journal file reached: " +
               s"${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
             _eof = true
-            Observable.pure(Left(EndOfJournalFileMarker))
+            Stream.emit(Left(EndOfJournalFileMarker))
 
           case Right((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
-            logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
-              s"${line.utf8StringTruncateAt(200).trim}")
+            if !PekkoHttpClient.LogData/*avoid duplicate logging*/ then
+              logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
+                s"${line.utf8StringTruncateAt(200).trim}")
             val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {
               case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
               case _ => false
@@ -516,7 +524,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
             if builder.journalProgress == JournalProgress.InCommittedEventsSection then
               lastProperEventPosition = fileLength
             if isReplicatingHeadOfFile then
-              Observable.pure(Right(()))
+              Stream.emit(Right(()))
             else
               if builder.journalProgress == JournalProgress.InCommittedEventsSection then
                 // An open transaction may be rolled back, so we do not notify about these
@@ -527,20 +535,20 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
               journalRecord match
                 case JournalSeparators.Commit =>
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
-                  Observable.pure(Right(()))
+                  Stream.emit(Right(()))
 
                 case Stamped(_, _, KeyedEvent(_, event)) =>
                   event match
                     case _: JournalEventsReleased =>
                       releaseEvents()
-                      Observable.pure(Right(()))
+                      Stream.emit(Right(()))
 
                     case clusterEvent: ClusterEvent =>
                       // TODO Use JournalLogging
                       logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
                       clusterEvent match
                         case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
-                          Observable.fromTask(
+                          Stream.eval(
                             tryEndlesslyToSendClusterPrepareCoupling
                               .map(Right.apply))  // TODO Handle heartbeat timeout !
 
@@ -553,21 +561,21 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                           if !otherFailed then
                             logger.error("Replicated unexpected FailedOver event")  // Should not happen
                           dontActivateBecauseOtherFailedOver = false
-                          Observable.fromTask(
+                          Stream.eval(
                             tryEndlesslyToSendClusterPrepareCoupling
                               .map(Right.apply))  // TODO Handle heartbeat timeout !
 
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
                           val clusterState = builder.clusterState.asInstanceOf[ClusterState.HasNodes]
-                          Observable.fromTask(common
+                          Stream.eval(common
                             .clusterWatchSynchronizer(clusterState)
                             .flatMap(_.applyEvent(switchedOver, clusterState))
                             .map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
                           assertThat(activeId != ownId)
-                          Observable.fromTask(
+                          Stream.eval(
                             sendClusterCouple
                               .map(Right.apply))  // TODO Handle heartbeat timeout !
 
@@ -575,26 +583,26 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                           assertThat(activeId != ownId)
                           awaitingCoupledEvent = false
                           releaseEvents()
-                          Observable.pure(Right(()))
+                          Stream.emit(Right(()))
 
                         case ClusterResetStarted =>
                           assertThat(activeId != ownId)
-                          Observable.fromTask(Task
+                          Stream.eval(IO
                             .sleep(1.s) // Allow event acknowledgment !!!
                             .as(Left(PassiveClusterNodeResetProblem)))
 
                         case _ =>
-                          Observable.pure(Right(()))
+                          Stream.emit(Right(()))
                     case _ =>
-                      Observable.pure(Right(()))
+                      Stream.emit(Right(()))
                 case _ =>
-                  Observable.pure(Right(()))
+                  Stream.emit(Right(()))
         .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
-        .takeWhileInclusive(_ => !shouldActivate(builder.clusterState))
+        .takeThrough(_ => !shouldActivate(builder.clusterState))
         .collect:
           case Left(problem) => problem
           //case Right(Completed) => -ignore-
-        .headOptionL
+        .head.compile.last
         .map:
           case Some(problem) => Left(problem)
           case None =>
@@ -617,7 +625,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                 Left(Problem.pure("JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
         .guarantee(
-          Task { out.close() })
+          IO { out.close() })
 
   private def writeFailedOverEvent(
     out: FileChannel,
@@ -639,7 +647,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match
-      case (_, HeartbeatMarker, _)
+      case (_, StampedHeartbeatByteArray, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
         logger.warn("TEST: Suppressing the received heartbeat")
         false

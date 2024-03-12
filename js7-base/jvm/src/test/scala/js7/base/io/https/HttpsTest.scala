@@ -11,14 +11,16 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.{withTemporaryDirectory, withTemporaryFile}
 import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process.*
 
 /**
   * @author Joacim Zschimmer
   */
 final class HttpsTest extends OurTestSuite:
+
+  private given ExecutionContext = ioRuntime.compute
+
   private val nullLogger = ProcessLogger(_ => ())
 
   "Read PEM encoded certificate" in:

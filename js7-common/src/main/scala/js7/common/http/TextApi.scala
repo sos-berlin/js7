@@ -7,8 +7,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko
 import scala.concurrent.Await
 
@@ -24,20 +24,20 @@ trait TextApi:
   protected def httpClient: HttpClient
   protected def sessionToken: Option[SessionToken]
 
-  implicit private def implicitSessionToken: Task[Option[SessionToken]] = Task(sessionToken)
+  implicit private def implicitSessionToken: IO[Option[SessionToken]] = IO(sessionToken)
 
-  def executeCommand(command: String): Unit =
+  def executeCommand(command: String)(using IORuntime): Unit =
     val response = awaitResult(
       httpClient.post[Json, Json](uri = commandUri, command.parseJsonOrThrow))
     printer.doPrint(response.toPrettyString)
 
-  def getApi(uri: String): Unit =
+  def getApi(uri: String)(using IORuntime): Unit =
     val u = if uri == "?" then "" else uri
     val whenResponded = httpClient.get[Json](apiUri(u))
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
 
-  def requireIsResponding(): Unit =
+  def requireIsResponding()(using IORuntime): Unit =
     try
       val whenResponded = httpClient.get[Json](apiUri(""))
       awaitResult(whenResponded)
@@ -47,15 +47,15 @@ trait TextApi:
         print(s"$serverName is not responding: ${t.toStringWithCauses}")
         throw t
 
-  def checkIsResponding(): Boolean =
+  def checkIsResponding()(using IORuntime): Boolean =
     try
       requireIsResponding()
       true
     catch
       case ConnectionLost(_) => false
 
-  private def awaitResult[A](task: Task[A]): A =
-    try Await.result(task.runToFuture, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
+  private def awaitResult[A](io: IO[A])(using IORuntime): A =
+    try Await.result(io.unsafeToFuture(), 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
     catch
       case t: Throwable =>
         t.appendCurrentStackTrace

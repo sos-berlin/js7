@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.data.controller.ControllerCommand.ResetSubagent
@@ -19,7 +19,6 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunningTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
 final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
@@ -27,8 +26,6 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent to a Director is prohibited" in:
     val checked = controller.api.executeCommand(ResetSubagent(localSubagentId)).await(99.s)
@@ -42,7 +39,6 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
     var firstSubagentRunId: SubagentRunId = null
 
     runSubagent(bareSubagentItem) { subagent =>
-      eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
 
       controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow

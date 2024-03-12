@@ -10,7 +10,7 @@ import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.tests.testenv.ControllerAgentForScalaTest
 
 final class JSubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {

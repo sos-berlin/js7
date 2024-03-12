@@ -1,29 +1,29 @@
 package js7.cluster
 
-import cats.effect.ExitCase
-import cats.syntax.flatMap.*
+import cats.effect.{FiberIO, IO, Outcome}
+import cats.syntax.option.*
+import fs2.Stream
 import java.util.ConcurrentModificationException
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, prependOne}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, SetOnce}
+import js7.base.utils.{AsyncLock, Atomic, MVar, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
-import js7.common.system.startup.Halt.haltJava
+import js7.base.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
-import monix.catnap.MVar
-import monix.eval.{Fiber, Task}
-import monix.execution.atomic.{Atomic, AtomicAny}
-import monix.reactive.Observable
-import monix.reactive.OverflowStrategy.DropNew
 import org.apache.pekko.pattern.AskTimeoutException
 import scala.annotation.tailrec
 
@@ -35,12 +35,12 @@ private final class ClusterWatchSynchronizer(
   private val suspendNesting = Atomic(0)
   private val suspendNestingLock = AsyncLock()
   private val registerClusterWatchId = SetOnce[RegisterClusterWatchId]
-  private val heartbeat = AtomicAny[Option[Heartbeat]](None)
+  private val heartbeat = Atomic(none[Heartbeat])
 
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
-  def start(currentClusterState: Task[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
-  : Task[Checked[Completed]] =
-    logger.debugTask(Task.defer {
+  def start(currentClusterState: IO[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
+  : IO[Checked[Completed]] =
+    logger.debugIO(IO.defer {
       this.registerClusterWatchId := registerClusterWatchId
       // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
       // This is more to teach a recently started ClusterWatch.
@@ -58,8 +58,9 @@ private final class ClusterWatchSynchronizer(
   private def askClusterWatch(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
-  : Task[Checked[Completed]] =
-    Task.defer:
+  : IO[Checked[Completed]] =
+   logger.traceIO:
+    IO.defer:
       assertThat(clusterState.activeId == ownId)
       val logAsInfo = clusterState.isInstanceOf[HasNodes]
       if logAsInfo then logger.info("Asking ClusterWatch")
@@ -77,17 +78,19 @@ private final class ClusterWatchSynchronizer(
           Completed
       })
 
-  def stop: Task[Unit] =
+  def stop: IO[Unit] =
     stopHeartbeating
 
   def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes,
-    clusterWatchIdChangeAllowed: Boolean = false)
-  : Task[Checked[Option[ClusterWatchConfirmation]]] =
+    clusterWatchIdChangeAllowed: Boolean = false,
+    forceWhenUntaught: Boolean = false)
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
     event match
       case _: ClusterPassiveLost =>
-        suspendHeartbeat(Task.pure(updatedClusterState))(
+        suspendHeartbeat(IO.pure(updatedClusterState))(
           clusterWatch.applyEvent(event, updatedClusterState,
-            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
+            forceWhenUntaught = forceWhenUntaught))
 
       case _ =>
         // ClusterSwitchedOver must be emitted by the passive cluster node,
@@ -97,107 +100,107 @@ private final class ClusterWatchSynchronizer(
         clusterWatch
           .applyEvent(event, updatedClusterState,
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-          .flatTapT(_ => Task
+          .flatTapT(_ => IO
             // ClusterWatchRegistered may be emitted by the background heartbeat, which
             // does not suspend heartbeat (it would suspend/kill itself).
             // So we send the updated ClusterState directly to the heartbeat (if running)
-            .when(event.isInstanceOf[ClusterWatchRegistered])(Task {
+            .whenA(event.isInstanceOf[ClusterWatchRegistered])(IO {
               changeClusterState(updatedClusterState)
             })
             .as(Checked.unit))
 
-  def suspendHeartbeat[A](getClusterState: Task[ClusterState], forEvent: Boolean = false)
-    (task: Task[Checked[A]])
+  def suspendHeartbeat[A](getClusterState: IO[ClusterState], forEvent: Boolean = false)
+    (io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
-  : Task[Checked[A]] =
-    logger.traceTask(
+  : IO[Checked[A]] =
+    logger.traceIO(
       startNestedSuspension *>
-        task
-          .flatTap(taskResult =>
+        io
+          .flatTap(ioResult =>
             endNestedSuspension(
               getClusterState
                 .flatMap {
                   case clusterState: HasNodes if clusterState.activeId == ownId
-                    && taskResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
+                    && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
                     continueHeartbeating(
                       clusterState,
                       registerClusterWatchId.orThrow,
                       forEvent = forEvent
-                    ).tapError(t => Task {
+                    ).tapError(t => IO {
                       logger.warn(
                         s"suspendHeartbeat called by ${enclosing.value}: ${t.toStringWithCauses}",
                         t.nullIfNoStackTrace)
                     })
-                  case _ => Task.unit
+                  case _ => IO.unit
                 }))
           .guaranteeCase {
-            case ExitCase.Completed => Task.unit
-            case _ => endNestedSuspension(Task.unit)
+            case Outcome.Succeeded(_) => IO.unit
+            case _ => endNestedSuspension(IO.unit)
           })
 
-  private def startNestedSuspension(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
-    suspendNestingLock.lock(Task.defer {
+  private def startNestedSuspension(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
+    suspendNestingLock.lock(IO.defer {
       if suspendNesting.getAndIncrement() == 0 then
         stopHeartbeating
       else {
         assertThat(!isHeartbeating)
-        Task.unit
+        IO.unit
       }
     })
 
-  private def endNestedSuspension(onZeroNesting: Task[Unit]): Task[Unit] =
-    suspendNestingLock.lock(Task.defer {
+  private def endNestedSuspension(onZeroNesting: IO[Unit]): IO[Unit] =
+    suspendNestingLock.lock(IO.defer {
       assertThat(!isHeartbeating)
-      Task.when(suspendNesting.decrementAndGet() == 0)(
+      IO.whenA(suspendNesting.decrementAndGet() == 0)(
         onZeroNesting)
     })
 
   private def restartHeartbeat() =
-    suspendNestingLock.lock(Task.defer {
+    suspendNestingLock.lock(IO.defer {
       if suspendNesting.getAndIncrement() == 0 then
         stopHeartbeating
       else {
         assertThat(!isHeartbeating)
-        Task.unit
+        IO.unit
       }
     })
 
   // forEvent = true: do not check and wait ClusterState after an event has applied.
   // We suppress this to simplify testing.
-  def continueHeartbeating(
+  private def continueHeartbeating(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId,
     forEvent: Boolean)
-  : Task[Unit] =
-    logger.traceTask(
+  : IO[Unit] =
+    logger.traceIO(
       doACheckedHeartbeat(clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = false)
         .rightAs(())
         .when(!forEvent && clusterState.setting.clusterWatchId.isDefined)
-        .*>(Task.defer {
+        .*>(IO.defer {
           val h = new Heartbeat(clusterState, registerClusterWatchId)
           heartbeat.getAndSet(Some(h))
-            .fold(Task.unit)(_.stop) /*just in case*/
+            .fold(IO.unit)(_.stop) /*just in case*/
             .*>(h.start.void)
         }))
 
-  def startHeartbeating(
+  private def startHeartbeating(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
-  : Task[Completed] =
-    logger.traceTask(Task.defer {
+  : IO[Completed] =
+    logger.traceIO(IO.defer {
       val h = new Heartbeat(clusterState, registerClusterWatchId)
       heartbeat.getAndSet(Some(h))
-        .fold(Task.completed)(_.stop.as(Completed)) /*just in case*/
+        .fold(IO.completed)(_.stop.as(Completed)) /*just in case*/
         .*>(h.start)
     })
 
-  def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
-    Task.defer:
+  private def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
+    IO.defer:
       logger.trace(s"stopHeartbeating called by ${enclosing.value}")
       heartbeat.getAndSet(None)
-        .fold(Task.unit)(_.stop)
+        .fold(IO.unit)(_.stop)
 
-  def changeClusterState(clusterState: HasNodes): Unit =
+  private def changeClusterState(clusterState: HasNodes): Unit =
     @tailrec def loop(maybeHeartbeat: Option[Heartbeat]): Unit =
       maybeHeartbeat match
         case None =>
@@ -214,118 +217,128 @@ private final class ClusterWatchSynchronizer(
   private final class Heartbeat(
     initialClusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId):
+
     @volatile private var clusterState = initialClusterState
     private val nr = heartbeatSessionNr.next()
-    private val stopping = MVar.empty[Task, Unit]().memoize
-    private val heartbeat = MVar.empty[Task, Fiber[Unit]]().memoize
+    private val stopping = MVar.empty[IO, Unit].unsafeMemoize
+    private val heartbeat = MVar.empty[IO, FiberIO[Unit]].unsafeMemoize
 
-    def start: Task[Completed] =
-      CorrelId.bindNew(logger.debugTask(s"Heartbeat ($nr) fiber")(
-        sendHeartbeats
-          .guaranteeCase {
-            case ExitCase.Error(t) =>
-              logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
-                t.nullIfNoStackTrace)
-              haltJava(
-                s"🔥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
-                restart = true)
+    def start: IO[Completed] =
+      CorrelId
+        .bindNew(logger.debugIO(s"Heartbeat ($nr) fiber")(
+          sendHeartbeats
+            .guaranteeCase {
+              case Outcome.Errored(t) =>
+                logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  t.nullIfNoStackTrace)
+                haltJava(
+                  s"🔥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  restart = true)
 
-            case ExitCase.Canceled =>
-              Task.unit
+              case Outcome.Canceled() =>
+                IO.unit
 
-            case ExitCase.Completed =>
-              stopping.flatMap(_.tryRead).map { maybe =>
-                if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
-              }
-          })
+              case Outcome.Succeeded(_) =>
+                stopping.flatMap(_.tryRead).map { maybe =>
+                  if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
+                }
+            })
         .start
-        .tapEval(fiber =>
+        .flatTap(fiber =>
           heartbeat
             .flatMap(_.tryPut(fiber))
             .flatMap(ok =>
-              Task.when(!ok)(
+              IO.whenA(!ok)(
                 fiber.cancel *>
-                  Task.raiseError(new ConcurrentModificationException(
+                  IO.raiseError(new ConcurrentModificationException(
                     "Tried to start Cluster heartbeating twice")))))
         .as(Completed))
 
-    def stop(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
-      logger.traceTask(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
-        stopping
-          .flatMap(_.tryPut(()))
-          .flatMap(_ => heartbeat)
-          .flatMap(_.tryTake)
-          .flatMap(_.fold(Task.unit)(_.join))
+    def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
+      logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
+        stopping.flatMap(_.tryPut(()))
+          .flatMap(_ => heartbeat).flatMap(_.tryTake)
+          .flatMap(_.fold(IO.unit)(_.joinStd))
           .logWhenItTakesLonger)
 
     def changeClusterState(clusterState: HasNodes): Unit =
       this.clusterState = clusterState
 
-    private def sendHeartbeats: Task[Unit] =
-      Observable.intervalAtFixedRate(timing.clusterWatchHeartbeat)
-        .whileBusyBuffer(DropNew(bufferSize = 2))
+    private def sendHeartbeats: IO[Unit] =
+      Stream
+        .fixedRate[IO](timing.clusterWatchHeartbeat)
+        .prependOne(())
         // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
         // would continue independently and arrive out of order (bad).
-        .takeUntilEval(stopping.flatMap(_.read))
-        .flatMap(_ => Observable.fromTask(
+        .interruptWhenF(stopping.flatMap(_.read))
+        .evalMap: _ =>
           doAHeartbeat
-            .onErrorHandleWith { t =>
+            .handleErrorWith: t =>
               logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
                 if t.isInstanceOf[AskTimeoutException] then null else t.nullIfNoStackTrace)
-              Task.raiseError(t)
-            }))
-        // Again takeUntilEval to cancel a sticking doAHeartbeat
-        .takeUntilEval(stopping.flatMap(_.read))
-        .completedL
+              IO.raiseError(t)
+        // Again interruptWhenF() to cancel a sticking doAHeartbeat
+        .interruptWhenF(stopping.flatMap(_.read))
+        .compile.drain
         .as(Completed)
 
-    private def doAHeartbeat: Task[Completed] =
+    private def doAHeartbeat: IO[Completed] =
       stopping.flatMap(_.tryRead).flatMap:
-        case Some(()) => Task.completed
+        case Some(()) => IO.completed
         case None =>
           val clusterState = this.clusterState
           //logger.trace(s"Heartbeat ($nr) $clusterState")
-          doACheckedHeartbeat(
-            clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true
-          ).flatMap:
-            case Left(problem) =>
-              stopping.flatMap(_.tryRead).map:
-                case Some(()) => Completed
-                case None =>
-                  haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
-                    restart = true)
+          IO
+            .race(
+              stopping.flatMap(_.read),
+              doACheckedHeartbeat(
+                clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true))
+            .flatMap:
+              case Left(()) => IO:
+                logger.trace("⚫️ doACheckedHeartbeat canceled due to `stopping`")
+                Completed
 
-            case Right(_) =>
-              Task.pure(Completed)
+              case Right(Left(problem)) =>
+                stopping.flatMap(_.tryRead).map:
+                  case Some(()) => Completed
+                  case None =>
+                    haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
+                      restart = true)
+
+              case Right(Right(_)) =>
+                IO.pure(Completed)
 
   private def doACheckedHeartbeat(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId,
     clusterWatchIdChangeAllowed: Boolean,
     alreadyLocked: Boolean = false)
-  : Task[Checked[Option[ClusterWatchConfirmation]]] =
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
+   logger.traceIO("doACheckedHeartbeat", clusterState):
     clusterWatch
       .checkClusterState(
         clusterState,
         clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-      .materializeIntoChecked
+      .catchIntoChecked
       .flatMapT:
         case None =>
-          Task.right(None)
+          IO.right(None)
 
         case Some(confirmation: ClusterWatchConfirmation) =>
           if clusterState.setting.clusterWatchId contains confirmation.clusterWatchId then
-            Task.right(Some(confirmation))
+            IO.right(Some(confirmation))
           else if clusterWatchIdChangeAllowed then
+            IO(logger.trace:
+              s"doACheckedHeartbeat: registerClusterWatchId(alreadyLocked=$alreadyLocked)") *>
             registerClusterWatchId(confirmation, alreadyLocked)
               .rightAs(Some(confirmation))
           else
           // Not expected
-            Task.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
+            IO.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
 
 
 object ClusterWatchSynchronizer:
   private val logger = Logger[this.type]
   private val heartbeatSessionNr = Iterator.from(1)
 
-  private type RegisterClusterWatchId = (ClusterWatchConfirmation, Boolean) => Task[Checked[Unit]]
+  private type RegisterClusterWatchId = (ClusterWatchConfirmation, Boolean) => IO[Checked[Unit]]

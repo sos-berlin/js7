@@ -1,7 +1,7 @@
 package js7.data.item
 
 trait SignableSimpleItem extends SimpleItem, SignableItem:
-  
+
   protected type Self <: SignableSimpleItem
 
   //val key: companion.Key

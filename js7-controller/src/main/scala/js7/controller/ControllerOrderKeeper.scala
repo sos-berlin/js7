@@ -1,5 +1,7 @@
 package js7.controller
 
+import cats.effect.IO
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
@@ -11,24 +13,24 @@ import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
+import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
+import js7.base.catsutils.SyncDeadline
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger.ops.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.monixutils.MonixDeadline
-import js7.base.monixutils.MonixDeadline.now
-import js7.base.monixutils.MonixDeadline.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.{AlarmClock, Timestamp, Timezone}
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Collections.implicits.{InsertableMutableMap, RichIterable}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
@@ -79,15 +81,12 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
-import monix.execution.{Cancelable, Scheduler}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.*
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -95,17 +94,20 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
-  journalAllocated: Allocated[Task, FileJournal[ControllerState]],
+  journalAllocated: Allocated[IO, FileJournal[ControllerState]],
   clusterNode: WorkingClusterNode[ControllerState],
   alarmClock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
-  (implicit protected val scheduler: Scheduler)
+  (implicit protected val ioRuntime: IORuntime)
 extends Stash, MainJournalingActor[ControllerState, Event]:
 
   import context.watch
   import controllerConfiguration.config
   import js7.controller.ControllerOrderKeeper.RichIdToOrder
+
+  private given scheduler: Scheduler = ioRuntime.scheduler
+  private given ExecutionContext = ioRuntime.compute
 
   override val supervisorStrategy = SupervisorStrategies.escalate
   private def journal = journalAllocated.allocatedThing
@@ -124,11 +126,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     .optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
   private val deleteOrderDelay = config.getDuration("js7.order.delete-delay").toFiniteDuration
   private val testAddOrderDelay = config
-    .optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
+    .optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(IO.unit)(IO.sleep)
   private var journalTerminated = false
 
   private object notices:
-    private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), Cancelable]
+    private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), SyncCancelable]
 
     def schedule(notice: Notice): Unit =
       schedule(notice.boardPath, notice.id, notice.endOfLife)
@@ -138,17 +140,17 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     private def schedule(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Timestamp): Unit =
       noticeToSchedule += boardPath -> noticeId ->
-        alarmClock.scheduleAt(endOfLife):
+        alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($boardPath, $noticeId)"):
           self ! Internal.NoticeIsDue(boardPath, noticeId)
 
     def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
       noticeToSchedule.remove(boardPath -> noticeId).foreach(_.cancel())
 
   private object shutdown:
-    var delayUntil = now
-    val since = SetOnce[MonixDeadline]
+    var delayUntil = scheduler.now()
+    val since = SetOnce[SyncDeadline]
     private val shutDown = SetOnce[ControllerCommand.ShutDown]
-    private val stillShuttingDownCancelable = SerialCancelable()
+    private val stillShuttingDownCancelable = SerialSyncCancelable()
     private var terminatingAgentDrivers = false
     private var takingSnapshot = false
     private var snapshotTaken = false
@@ -160,7 +162,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def start(shutDown: ControllerCommand.ShutDown): Unit =
       if !shuttingDown then
-        since := now
+        since := scheduler.now()
         this.shutDown := shutDown
         stillShuttingDownCancelable := scheduler
           .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations/*?*/):
@@ -189,10 +191,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             .toVector
             .parTraverse(agentDriver =>
               agentDriver.terminate()
-                .onErrorHandle(t => logger.error(
-                  s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .recoverWith(t => IO(logger.error(
+                  s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                 .logWhenItTakesLonger(s"$agentDriver.terminate"))
-            .runAsyncAndForget // TODO
+            .unsafeRunAndForget() // TODO
         if runningAgentDriverCount == 0 then
           if !takingSnapshot then
             takingSnapshot = true
@@ -203,9 +205,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           if snapshotTaken && !terminatingJournal then
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
-            persistKeyedEventTask(NoKey <-: ControllerShutDown)((_, _) => Completed)
-              .tapEval(_ => journalAllocated.release)
-              .runToFuture
+            persistKeyedEventIO(NoKey <-: ControllerShutDown)((_, _) => Completed)
+              .flatTap(_ => journalAllocated.release)
+              .unsafeToFuture()
               .onComplete:
                 case Success(Right(Completed)) =>
                 case other => logger.error(s"While shutting down: $other")
@@ -248,7 +250,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       .scheduleAtFixedRates(controllerConfiguration.journalConf.ackWarnDurations):
       logger.debug("Still switching over to the other cluster node")
 
-    def start(): Task[Checked[Completed]] =
+    def start(): IO[Checked[Completed]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
         .flatMapT(o => journalAllocated.release.as(Right(o)))
 
@@ -279,7 +281,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         .map(_.orThrow)
         .materialize
         .map(Internal.Activated.apply)
-        .runToFuture
+        .unsafeToFuture()
         .pipeTo(self)
 
     case msg => notYetReady(msg)
@@ -328,7 +330,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           clusterNode.afterJournalingStarted
             .materializeIntoChecked
             .map(Internal.Ready.apply)
-            .runToFuture
+            .unsafeToFuture()
             .pipeTo(self)
 
           for path <- _controllerState.keyToItem(AgentRef).keys do
@@ -342,7 +344,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       _controllerState.keyTo(OrderWatchState).keys foreach proceedWithItem
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
-      orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
+      orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now()))
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
@@ -403,9 +405,14 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     case Internal.Ready(Right(Completed)) =>
       logger.info(ServiceMain.readyMessageWithLine(s"${_controllerState.controllerId} is ready"))
       testEventPublisher.publish(ControllerReadyTestIncident)
-      clusterNode.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
-        self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
-      }
+      clusterNode
+        .onTerminatedUnexpectedly // Happens while isTest suppresses Halt after AckFromActiveClusterNode
+        // Then we must stop ActiveClusterNode which may stick in ClusterWatch confirmation loop
+        // (when ClusterWatch does not access this Controller)
+        .<*(clusterNode.stop)
+        .unsafeToFuture()
+        .onComplete: tried =>
+          self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
       become("Ready")(ready orElse handleExceptionalMessage)
       unstashAll()
 
@@ -440,7 +447,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       agentRegister.checked(agentPath)
         .traverse(_.agentDriver.clusterWatchService)
         .map(_.flatten)
-        .runToFuture
+        .unsafeToFuture()
         .pipeTo(sender())
 
     case Internal.EventsFromAgent(agentPath, agentRunId, stampedAgentEvents, committedPromise) =>
@@ -541,7 +548,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with journal.lock!
-                    // (switch from actors to Task required!)
+                    // (switch from actors to IO required!)
                     Future.successful(None)
                   case _ =>
                     persistTransactionTimestamped(timestampedEvents,
@@ -580,7 +587,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           persistMultiple(keyedEvent :: Nil)(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
-      shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown")
+      shutdown.delayUntil = scheduler.now() + config.getDuration("js7.web.server.delay-shutdown")
         .toFiniteDuration
       shutdown.start(shutDown)
 
@@ -590,7 +597,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     case Internal.AgentDriverStopped(agentPath) if agentRegister contains agentPath =>
       var agentEntry = agentRegister(agentPath)
       agentEntry.actorTerminated = true
-      agentEntry.release.runAsyncAndForget/*???*/ // Release in case there are surrounding Resources
+      agentEntry.release.unsafeRunAndForget()/*???*/ // Release in case there are surrounding Resources
       if switchover.isDefined && journalTerminated && runningAgentDriverCount == 0 then
         val delay = shutdown.delayUntil.timeLeft
         if delay.isPositive then
@@ -611,7 +618,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               logger.debug(s"AgentDriver for $agentPath terminated")
 
   private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit =
-    val t = now
+    val t = scheduler.now()
     (for
       keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState, {
         case calendar: Calendar =>
@@ -659,10 +666,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         agentRegister.values.map(_.agentDriver) foreach { agentDriver =>
           agentDriver
             .terminate(noJournal = true)
-            .onErrorHandle(t => logger.error(
-              s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate")
-            .runAsyncAndForget // TODO
+            .unsafeRunAndForget() // TODO
         }
       else
         context.stop(self)
@@ -790,9 +797,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case ControllerCommand.NoOperation(maybeDuration) =>
         // NoOperation completes only after ControllerOrderKeeper has become ready
         // (can be used to await readiness)
-        Task.pure(Right(ControllerCommand.Response.Accepted))
-          .delayExecution(maybeDuration getOrElse 0.s)
-          .runToFuture
+        IO.pure(Right(ControllerCommand.Response.Accepted))
+          .delayBy(maybeDuration getOrElse 0.s)
+          .unsafeToFuture()
 
       case _: ControllerCommand.EmergencyStop | _: ControllerCommand.Batch =>
         // For completeness. RunningController has handled the command already
@@ -821,10 +828,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           case None =>
             clusterNode.shutDownThisNode
               .flatTap:
-                case Right(Completed) => Task { self ! Internal.ShutDown(shutDown) }
-                case _ => Task.unit
+                case Right(Completed) => IO { self ! Internal.ShutDown(shutDown) }
+                case _ => IO.unit
               .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
-              .runToFuture
+              .unsafeToFuture()
 
       case ControllerCommand.EmitTestEvent =>
         persist(ControllerTestEvent, async = true) { (_, updatedState) =>
@@ -859,7 +866,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                               handleEvents(stampedEvents, updatedState)
                               agentEntry
                                 .agentDriver.reset(force = force)
-                                .tapError(t => Task(
+                                .onError(t => IO(
                                   logger.error("ResetAgent: " + t.toStringWithCauses, t)))
                                 .materializeIntoChecked
                                 .flatMapT(_ =>
@@ -871,7 +878,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                                       case _ => Nil
                                     }))
                                 .rightAs(ControllerCommand.Response.Accepted)
-                                .runToFuture
+                                .unsafeToFuture()
                             }.flatten
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
@@ -915,7 +922,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 .logWhenItTakesLonger(s"$agentDriver.send(ClusterSwitchOver)")
                 .materializeIntoChecked
                 .rightAs(ControllerCommand.Response.Accepted)
-                .runToFuture
+                .unsafeToFuture()
 
       case ControllerCommand.ConfirmClusterNodeLoss(agentPath, lostNodeId, confirmer) =>
         agentRegister.checked(agentPath)
@@ -926,7 +933,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               agentDriver
                 .confirmClusterNodeLoss(lostNodeId, confirmer)
                 .rightAs(ControllerCommand.Response.Accepted)
-                .runToFuture
+                .unsafeToFuture()
 
       case _ =>
         // Handled by ControllerCommandExecutor
@@ -1035,12 +1042,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry =
     val allocated = AgentDriver
       .resource(agent, eventId = eventId,
-        (agentRunId, events) => Task.defer {
+        (agentRunId, events) => IO.defer {
           val promise = Promise[Option[EventId]]()
           self ! Internal.EventsFromAgent(agent.path, agentRunId, events, promise)
-          Task.fromFuture(promise.future)
+          IO.fromFuture(IO.pure(promise.future))
         },
-        orderIdToMarked => Task {
+        orderIdToMarked => IO {
           self ! Internal.OrdersMarked(orderIdToMarked)
           // TODO Asynchronous ?
         },
@@ -1050,9 +1057,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       .awaitInfinite // TODO Blocking
 
     allocated.allocatedThing.untilStopped
-      .*>(Task(
+      .*>(IO(
         self ! Internal.AgentDriverStopped(agent.path)))
-      .runAsyncAndForget // TODO
+      .unsafeRunAndForget() // TODO
 
     val entry = AgentEntry(agent, allocated)
     agentRegister.insert(agent.path, entry)
@@ -1101,7 +1108,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           handleEvents(stamped, updatedState)
           Right(true)
         }
-        .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
+        .flatMap(o => testAddOrderDelay.unsafeToFuture().map(_ => o))  // test only
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
     _controllerState.addOrders(freshOrders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
@@ -1178,20 +1185,22 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         val agentDriver = agentRegister(agentRef.path).agentDriver
         agentDriver
           .changeAgentRef(agentRef)
-          .onErrorHandle(t => logger.error(
-            s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+          .handleErrorWith(t => IO(logger.error(
+            s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
           .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
-          .awaitInfinite // TODO
+          .unsafeRunAndForget() // TODO
+          //.awaitInfinite until v2.7
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
         for agentRef <- journal.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath) do
           val agentDriver = agentRegister(agentRef.path).agentDriver
           agentDriver
             .changeAgentRef(agentRef)
-            .onErrorHandle(t => logger.error(
-              s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
-            .awaitInfinite // TODO
+            .unsafeRunAndForget() // TODO
+            //.awaitInfinite until v2.7
 
       case ItemDetached(itemKey, agentPath: AgentPath) =>
         for agentEntry <- agentRegister.get(agentPath) do
@@ -1202,10 +1211,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           entry.isDeleted = true
           val agentDriver = entry.agentDriver
           agentDriver.terminate(reset = true)
-            .onErrorHandle(t => logger.error(
-              s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate(reset)")
-            .runAsyncAndForget // TODO
+            .unsafeRunAndForget() // TODO
           // Actor terminates asynchronously, so do not add an AgentRef immediately after deletion!
 
       case _ =>
@@ -1227,8 +1236,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do
                           agentDriver
                             .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
-                            .onErrorHandle(t => logger.error(
-                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .recoverWith(t => IO(logger.error(
+                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                             .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
                             .awaitInfinite // TODO
 
@@ -1237,8 +1246,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
                           agentDriver
                             .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
-                            .onErrorHandle(t => logger.error(
-                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .recoverWith(t => IO(logger.error(
+                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                             .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
                             .awaitInfinite // TODO
 
@@ -1247,8 +1256,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                       agentEntry.detachingItems += itemKey
                       agentDriver
                         .send(AgentDriver.Queueable.DetachItem(itemKey))
-                        .onErrorHandle(t => logger.error(
-                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                        .recoverWith(t => IO(logger.error(
+                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                         .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
                         .awaitInfinite // TODO
 
@@ -1264,8 +1273,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               for agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver) do
                 agentDriver
                   .send(AgentDriver.Queueable.ResetSubagent(subagentId, force))
-                  .onErrorHandle(t => logger.error(
-                    s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .recoverWith(t => IO(logger.error(
+                    s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"$agentDriver.send(ResetSubagent)")
                   .awaitInfinite // TODO
             case _ =>
@@ -1319,8 +1328,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             ).toSet
 
   private def updateOrderEntry(orderId: OrderId, event: OrderEvent): Unit =
-    val orderEntry = orderRegister.getOrElseUpdate(orderId, new OrderEntry(now))
-    orderEntry.lastUpdatedAt = now
+    val orderEntry = orderRegister.getOrElseUpdate(orderId, new OrderEntry(scheduler.now()))
+    orderEntry.lastUpdatedAt = scheduler.now()
     event match
       case _: OrderAttachable | _: OrderDetachable =>
         orderEntry.triedToAttached = false
@@ -1345,7 +1354,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             else
               for entry <- orderRegister.get(orderId) do
                 // TODO Cancel timer when unused
-                entry.timer := alarmClock.scheduleAt(until):
+                entry.timer := alarmClock.scheduleAt(until, s"OrderIsDue($orderId)"):
                   self ! Internal.OrderIsDue(orderId)
 
       for mark <- order.mark do
@@ -1358,8 +1367,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             val agentDriver = agentEntry.agentDriver
             agentDriver
               .send(AgentDriver.Queueable.MarkOrder(order.id, mark))
-              .onErrorHandle(t => logger.error(
-                s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+              .recoverWith(t => IO(logger.error(
+                s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
               .logWhenItTakesLonger(s"$agentDriver.send(MarkOrder(${order.id}))")
               .awaitInfinite // TODO
 
@@ -1380,7 +1389,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       keyedEvents.filter:
         case KeyedEvent(orderId: OrderId, OrderDeleted) =>
           orderRegister.get(orderId).fold(false) { orderEntry =>
-            val delay = orderEntry.lastUpdatedAt + deleteOrderDelay - now
+            val delay = orderEntry.lastUpdatedAt + deleteOrderDelay - scheduler.now()
             !delay.isPositive || {
               orderRegister(orderId).timer := scheduler.scheduleOnce(delay):
                 self ! Internal.OrderIsDue(orderId)
@@ -1401,7 +1410,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           import agentEntry.{agentDriver, agentPath}
 
           // Maybe attach Workflow
-          val attachSignedItems: Seq[Task[Unit]] =
+          val attachSignedItems: Seq[IO[Unit]] =
             workflow.referencedAttachableToAgentSignablePaths
               .flatMap(_controllerState.pathToSignedSimpleItem.get)
               .appended(signedWorkflow)
@@ -1410,7 +1419,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)))
 
           // Attach more required Items
-          val attachUnsignedItems: Seq[Task[Unit]] =
+          val attachUnsignedItems: Seq[IO[Unit]] =
             unsignedItemsToBeAttached(workflow, agentPath)
               .toVector
               .map(item =>
@@ -1419,17 +1428,17 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           // TODO AttachOrder mit parent orders!
           // Agent markiert die als bloß gebraucht für Kindaufträge
           // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-          val attachOrder: Task[Unit] =
+          val attachOrder: IO[Unit] =
             agentDriver.send(AgentDriver.Queueable.AttachOrder(order, agentPath))
 
           orderEntry.triedToAttached = true
 
-          // Now, Tasks are calculcated from mutable state and and be started as a sequence:
+          // Now, IOs are calculcated from mutable state and and be started as a sequence:
           (attachSignedItems ++ attachUnsignedItems :+ attachOrder)
             .sequence
             .map(_.combineAll)
-            .onErrorHandle(t => logger.error(
-              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"tryAttachOrderToAgent(${order.id})")
             .awaitInfinite // TODO
 
@@ -1496,8 +1505,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 orderEntry.isDetaching = true
                 agentDriver
                   .send(AgentDriver.Queueable.DetachOrder(orderId))
-                  .onErrorHandle(t => logger.error(
-                    s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .recoverWith(t => IO(logger.error(
+                    s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"detachOrderFromAgent($orderId)")
                   .awaitInfinite // TODO
           }
@@ -1511,23 +1520,23 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     if switchover.isDefined then
       Future.successful(Left(Problem("Already switching over")))
     else
-      Task {
+      IO {
         new Switchover(restart = restart)
       } .bracketCase { so =>
           switchover = Some(so)
           so.start()
             .materialize.flatTap {
-              case Success(Right(_)) => Task.unit  // this.switchover is left for postStop
-              case _ => Task:
+              case Success(Right(_)) => IO.unit  // this.switchover is left for postStop
+              case _ => IO:
                 switchover = None  // Asynchronous!
             }.dematerialize
         } ((so, exitCase) =>
-          Task {
+          IO {
             logger.debug(s"SwitchOver => $exitCase")
             so.close()
           })
         .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
-        .runToFuture
+        .unsafeToFuture()
 
   private def orderEventSource = new OrderEventSource(_controllerState)
 
@@ -1575,7 +1584,7 @@ private[controller] object ControllerOrderKeeper:
 
   private case class AgentEntry(
     agentRef: AgentRef,
-    allocatedAgentDriver: Allocated[Task, AgentDriver]):
+    allocatedAgentDriver: Allocated[IO, AgentDriver]):
     var actorTerminated = false
     var isResetting = false
     var isDeleted = false
@@ -1586,14 +1595,14 @@ private[controller] object ControllerOrderKeeper:
     val agentDriver: AgentDriver =
       allocatedAgentDriver.allocatedThing
 
-    def release: Task[Unit] =
+    def release: IO[Unit] =
       allocatedAgentDriver.release
 
-  private class OrderEntry(now: MonixDeadline):
+  private class OrderEntry(now: SyncDeadline):
     var triedToAttached = false
     var isDetaching = false
-    var lastUpdatedAt: MonixDeadline = now
+    var lastUpdatedAt: SyncDeadline = now
     var agentOrderMark = none[OrderMark]
-    val timer = SerialCancelable()
+    val timer = SerialSyncCancelable()
 
   object ControllerReadyTestIncident

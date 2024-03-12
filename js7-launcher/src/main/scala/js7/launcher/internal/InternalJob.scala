@@ -1,8 +1,9 @@
 package js7.launcher.internal
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.nio.charset.Charset
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
@@ -15,39 +16,39 @@ import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.Task
-import monix.execution.{Ack, Scheduler}
-import monix.reactive.Observer
+import js7.launcher.{OrderProcess, ProcessOrder, StdWriter}
 import scala.collection.MapView
 import scala.collection.immutable.ListMap
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 trait InternalJob:
   protected type Step = InternalJob.Step
 
-  def start: Task[Checked[Unit]] =
-    Task.pure(Right(()))
+  def start: IO[Checked[Unit]] =
+    IO.pure(Right(()))
 
-  def stop: Task[Unit] =
-    Task.unit
+  def stop: IO[Unit] =
+    IO.unit
 
   def toOrderProcess(step: Step): OrderProcess
 
 
 object InternalJob:
+
   final case class JobContext(
     implementationClass: Class[?],
     executable: InternalExecutable,
     jobArguments: NamedValues,
     jobConf: JobConf,
-    js7Scheduler: Scheduler,
+    ioRuntime: IORuntime,
     ioExecutor: IOExecutor,
-    blockingJobScheduler: Scheduler,
+    blockingJobEC: ExecutionContext,
     clock: AlarmClock,
     systemEncoding: Charset):
-    implicit def implicitJs7Scheduler: Scheduler = js7Scheduler
+
+    implicit def implicitJs7Scheduler: IORuntime = ioRuntime
 
   final case class Step private[internal](processOrder: ProcessOrder, arguments: NamedValues):
     self =>
@@ -62,23 +63,22 @@ object InternalJob:
 
     def order = processOrder.order
     def workflow = processOrder.workflow
-    def outObserver = processOrder.stdObservers.out
-    def errObserver = processOrder.stdObservers.err
-    def outTaskObserver = processOrder.stdObservers.outTaskObserver
-    def errTaskObserver = processOrder.stdObservers.errTaskObserver
 
-    def send(outErr: StdoutOrStderr, string: String): Task[Ack] =
-      outErrTaskObserver(outErr).send(string)
+    @deprecated("Use write")
+    def send(outErr: StdoutOrStderr, string: String): IO[Unit] =
+      write(outErr, string).void
 
-    def outErrObserver(stdoutOrStderr: StdoutOrStderr): Observer[String] =
-      stdoutOrStderr match
-        case Stdout => outObserver
-        case Stderr => errObserver
+    def writeOut(string: String): IO[Boolean] =
+      write(Stdout, string)
 
-    private def outErrTaskObserver(outErr: StdoutOrStderr): TaskObserver[String] =
-      outErr match
-        case Stdout => outTaskObserver
-        case Stderr => errTaskObserver
+    def writeErr(string: String): IO[Boolean] =
+      write(Stderr, string)
+
+    def write(outErr: StdoutOrStderr, string: String): IO[Boolean] =
+      writer(outErr).write(string)
+
+    def writer(outErr: StdoutOrStderr): StdWriter =
+      processOrder.stdObservers.writer(outErr)
 
     def jobResourceVariable(jobResourcePath: JobResourcePath, variableName: String): Checked[Value] =
       jobResourceToVariables

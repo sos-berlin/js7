@@ -7,8 +7,8 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
@@ -24,14 +24,14 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.FailoverControllerClusterTest.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 abstract class FailoverControllerClusterTest protected extends ControllerClusterTester:
+
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
@@ -47,7 +47,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val since = now
-      val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
+      val sleepWhileFailing = clusterTiming.activeLostTimeout + 3.s
       val orderId = OrderId("💥")
       primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
         "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
@@ -111,8 +111,8 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
 
-      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
-      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type].runToFuture
+      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type]
+      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type]
       sys.props(testHeartbeatLossPropertyKey) = "true"
 
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover

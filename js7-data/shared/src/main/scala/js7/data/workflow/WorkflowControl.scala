@@ -27,7 +27,7 @@ extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
 
 object WorkflowControl
 extends VersionedControl.Companion[WorkflowControl], UnsignedItemState.Companion[WorkflowControl]:
-  
+
   type Item = WorkflowControl
   val cls = classOf[WorkflowControl]
 

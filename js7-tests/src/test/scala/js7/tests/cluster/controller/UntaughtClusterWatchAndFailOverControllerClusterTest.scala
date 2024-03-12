@@ -2,7 +2,7 @@ package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
@@ -15,7 +15,6 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.UntaughtClusterWatchAndFailOverControllerClusterTest.*
-import monix.execution.Scheduler.Implicits.traced
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchAndFailOverControllerClusterTest extends ControllerClusterTester:
@@ -34,7 +33,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
     runMyTest(stopPrimary = false, restartedClusterWatchId = primaryClusterWatchId)
 
   // FIXME The following three tests do not terminate because ActiveClusterNode is waiting for a
-  //  confirmation for ClusterPassiveLost, delaying forever the acknowledment of SnapshotTaken.
+  //  confirmation for ClusterPassiveLost, delaying forever the acknowledgment of SnapshotTaken.
   //  A deadlock.
 
   "Disturb primary-backup connection and fail-over both Cluster node and ClusterWatch" in:
@@ -65,7 +64,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
 
       backupController.testEventBus
         .whenPF[WaitingForConfirmation, Unit](_.request match {
-          case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _) =>
+          case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
         })
         .await(99.s)
 

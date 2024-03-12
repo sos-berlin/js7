@@ -1,19 +1,19 @@
 package js7.journal.write
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
-import js7.base.monixutils.MonixBase.DefaultBatchSize
-import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
 import js7.journal.write.EventJournalWriter.SerializationException
 import js7.journal.write.JournalWriter.*
-import monix.execution.Scheduler
-import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
@@ -29,7 +29,7 @@ extends AutoCloseable:
   def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
-  protected def scheduler: Scheduler
+  protected def ioRuntime: IORuntime
 
   private var _eventsStarted = append
   private var _lastEventId = after
@@ -71,12 +71,14 @@ extends AutoCloseable:
 
   private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
     // TODO Try to call it asynchronously (in JournalActor)
-    implicit val s = scheduler
-    Observable.fromIterable(seq)
-      .mapParallelBatch(batchSize = JsonBatchSize)(
-        serialize[A])
-      .foreachL(jsonWriter.write)
-      .runSyncUnsafe() /*Blocking !!!*/
+    implicit val s = ioRuntime
+    Stream.iterable[IO, A](seq)
+      .mapParallelBatch():
+        serialize[A]
+      .foreach: byteArray =>
+        IO(jsonWriter.write(byteArray))
+      .compile.drain
+      .unsafeRunSync() /*Blocking !!!*/
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try a.asJson.toByteArray
@@ -109,5 +111,5 @@ extends AutoCloseable:
 
 
 object JournalWriter:
-  private val JsonBatchSize = DefaultBatchSize
+  private val JsonBatchSize = 256
   private val JsonParallelizationThreshold = 3 * JsonBatchSize

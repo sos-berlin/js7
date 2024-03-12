@@ -1,6 +1,6 @@
 package js7.controller.agent
 
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
@@ -14,7 +14,9 @@ import js7.controller.agent.CommandQueue.*
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
 import js7.data.order.OrderId
-import monix.eval.Task
+import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
+import js7.base.monixlike.MonixLikeExtensions.materialize
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -29,9 +31,9 @@ private[agent] abstract class CommandQueue(
   commandErrorDelay: FiniteDuration):
 
   protected def commandParallelism: Int
-  protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
-  protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]): Task[Unit]
-  protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem): Task[Unit]
+  protected def executeCommand(command: AgentCommand.Batch): IO[Checked[command.Response]]
+  protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]): IO[Unit]
+  protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem): IO[Unit]
 
   private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val shortErrorDelay = 1.s min commandErrorDelay
@@ -43,7 +45,7 @@ private[agent] abstract class CommandQueue(
   private var freshlyCoupled = false
   private var openRequestCount = 0
   private val isTerminating = false
-  private val terminated = Deferred.unsafe[Task, Unit]
+  private val terminated = Deferred.unsafe[IO, Unit]
 
   private object queue:
     private val queue = mutable.Queue.empty[Queueable]
@@ -92,8 +94,8 @@ private[agent] abstract class CommandQueue(
 
     override def toString = s"CommandQueue.queue(${queue.map(_.toShortString)})"
 
-  final def onCoupled(attachedOrderIds: Set[OrderId]): Task[Unit] =
-    lock.lock(Task.defer {
+  final def onCoupled(attachedOrderIds: Set[OrderId]): IO[Unit] =
+    lock.lock(IO.defer {
       this.attachedOrderIds.clear()
       this.attachedOrderIds ++= attachedOrderIds
       queue.removeAlreadyAttachedOrders()
@@ -102,41 +104,41 @@ private[agent] abstract class CommandQueue(
       maybeStartSendingLocked
     })
 
-  final def onDecoupled(): Task[Unit] =
-    lock.lock(Task {
+  final def onDecoupled(): IO[Unit] =
+    lock.lock(IO {
       isCoupled = false
     })
 
-  final def enqueue(queueable: Queueable): Task[Boolean] =
-    lock.lock(Task.defer {
+  final def enqueue(queueable: Queueable): IO[Boolean] =
+    lock.lock(IO.defer {
       assertThat(!isTerminating)
       queueable match {
         case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
-          Task.pure(false)
+          IO.pure(false)
         case _ =>
           if queue contains queueable then {
             logger.trace(s"Ignore duplicate $queueable")
-            Task.pure(false)
+            IO.pure(false)
           } else {
             logger.trace(s"enqueue $queueable")
             queue.enqueue(queueable)
-            Task
-              .when(queue.size == batchSize || freshlyCoupled)(
+            IO
+              .whenA(queue.size == batchSize || freshlyCoupled)(
                 maybeStartSendingLocked)
               .as(true)
           }
       }
     })
 
-  final def untilTerminated: Task[Unit] =
+  final def untilTerminated: IO[Unit] =
     terminated.get
 
-  final def maybeStartSending: Task[Unit] =
+  final def maybeStartSending: IO[Unit] =
     lock.lock(maybeStartSendingLocked)
 
-  private def maybeStartSendingLocked: Task[Unit] =
-    /*logger.traceTask*/(Task.defer(Task.when(isCoupled && !isTerminating) {
+  private def maybeStartSendingLocked: IO[Unit] =
+    /*logger.traceIO*/(IO.defer(IO.whenA(isCoupled && !isTerminating) {
       lazy val queueables = queue.view
         .filterNot(isExecuting)
         .take(if freshlyCoupled then 1 else batchSize)  // if freshlyCoupled, send only command to try connection
@@ -146,25 +148,25 @@ private[agent] abstract class CommandQueue(
         && (!freshlyCoupled || openRequestCount == 0)
         && queueables.nonEmpty
 
-      Task.when(canSend)(Task.defer {
+      IO.whenA(canSend)(IO.defer {
         isExecuting ++= queueables
         openRequestCount += 1
         delayNextCommand
           .*>(sendNow(queueables))
-          .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
-          .startAndForget
+          .recover(t => logger.error(t.toStringWithCauses, t))
+          .startAndForget.void
       })
     }))
 
-  private def delayNextCommand: Task[Unit] =
-    Task.defer:
+  private def delayNextCommand: IO[Unit] =
+    IO.defer:
       val delay = delayCommandExecutionAfterErrorUntil.timeLeft
-      Task.when(delay.isPositive):
+      IO.whenA(delay.isPositive):
         logger.debug(s"Delay command after error for ${delay.pretty}")
-        Task.sleep(delay)
+        IO.sleep(delay)
 
-  private def sendNow(queuable: Vector[Queueable]): Task[Unit] =
-    Task.defer:
+  private def sendNow(queuable: Vector[Queueable]): IO[Unit] =
+    IO.defer:
       val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
       executeCommand(Batch(subcmds))
         .map(_.map(response =>
@@ -211,19 +213,19 @@ private[agent] abstract class CommandQueue(
       case Queueable.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
 
-  final def onOrdersDetached(orderIds: View[OrderId]): Task[Unit] =
-    Task.when(orderIds.nonEmpty)(lock.lock(Task[Unit] {
+  final def onOrdersDetached(orderIds: View[OrderId]): IO[Unit] =
+    IO.whenA(orderIds.nonEmpty)(lock.lock(IO[Unit] {
       attachedOrderIds --= orderIds
     }))
 
-  final def onOrdersAttached(orderIds: View[OrderId]): Task[Unit] =
-    Task.when(orderIds.nonEmpty)(lock.lock(Task {
+  final def onOrdersAttached(orderIds: View[OrderId]): IO[Unit] =
+    IO.whenA(orderIds.nonEmpty)(lock.lock(IO {
       attachedOrderIds ++= orderIds
       logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
     }))
 
-  final def handleBatchSucceeded(responses: Seq[QueueableResponse]): Task[Seq[Queueable]] =
-    lock.lock(Task.defer {
+  final def handleBatchSucceeded(responses: Seq[QueueableResponse]): IO[Seq[Queueable]] =
+    lock.lock(IO.defer {
       freshlyCoupled = false
 
       // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
@@ -239,7 +241,7 @@ private[agent] abstract class CommandQueue(
           r.queueable)
         .toSet)
       onQueueableResponded(responses.map(_.queueable).toSet)
-        .*>(Task {
+        .*>(IO {
           responses.flatMap {
             case QueueableResponse(queueable, Right(AgentCommand.Response.Accepted)) =>
               Some(queueable)
@@ -259,8 +261,8 @@ private[agent] abstract class CommandQueue(
         })
     })
 
-  final def handleBatchFailed(queuables: Seq[Queueable], delay: Boolean): Task[Unit] =
-    lock.lock(Task.defer {
+  final def handleBatchFailed(queuables: Seq[Queueable], delay: Boolean): IO[Unit] =
+    lock.lock(IO.defer {
       delayCommandExecutionAfterErrorUntil =
         now + (if delay then commandErrorDelay else shortErrorDelay)
       logger.trace:
@@ -269,12 +271,12 @@ private[agent] abstract class CommandQueue(
       onQueueableResponded(queuables.toSet)
     })
 
-  private def onQueueableResponded(queueables: Set[Queueable]): Task[Unit] =
-    Task.defer:
+  private def onQueueableResponded(queueables: Set[Queueable]): IO[Unit] =
+    IO.defer:
       isExecuting --= queueables
       openRequestCount -= 1
       if isTerminating && isExecuting.isEmpty then
-        terminated.complete(())
+        terminated.complete(()).void
       else
         maybeStartSendingLocked
 

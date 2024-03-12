@@ -1,20 +1,22 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
+import fs2.Stream
 import java.nio.file.Path
+import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.StreamUtils
+import js7.base.fs2utils.StreamUtils.memoryLeakLimitedStreamTailRecM
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
-import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.monixutils.MonixDeadline
-import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.CloseableIterator
 import js7.base.utils.Collections.implicits.RichIterator
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, CloseableIterator}
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.UntilNoneIterator
@@ -22,9 +24,6 @@ import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent,
 import js7.journal.data.JournalLocation
 import js7.journal.recover.JournalReader
 import js7.journal.watch.EventReader.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicAny
-import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -42,9 +41,10 @@ extends AutoCloseable:
   protected def isFlushedAfterPosition(position: Long): Boolean
   protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
-  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline): Task[Boolean]
+  protected def whenDataAvailableAfterPosition(position: Long, until: CatsDeadline): IO[Boolean]
   /** Must be constant if `isHistoric`. */
   protected def config: Config
+  protected def ioRuntime: IORuntime
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   protected lazy val journalIndex = new JournalIndex(PositionAnd(firstEventPosition, fileEventId),
@@ -89,7 +89,7 @@ extends AutoCloseable:
 
   private final class EventIterator(iterator_ : FileEventIterator, after: EventId)
   extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
-    private val iteratorAtomic = AtomicAny(iterator_)
+    private val iteratorAtomic = Atomic(iterator_)
     private var eof = false
     private var _next: Stamped[KeyedEvent[Event]] = null
 
@@ -146,52 +146,64 @@ extends AutoCloseable:
 
     private def iteratorName = iterator_.toString
 
-  final def snapshot: Observable[Any] =
+  final def snapshot: Stream[IO, Any] =
     JournalReader.snapshot(journalLocation.S, journalFile, expectedJournalId)
 
-  final def rawSnapshot: Observable[ByteArray] =
+  final def rawSnapshot: Stream[IO, ByteArray] =
     JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
-  final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
-  : Observable[PositionAnd[ByteArray]] =
-    Observable.deferAction(implicit scheduler =>
-      Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
-        .flatMap { jsonSeqReader =>
-          val until = now + timeout
-          jsonSeqReader.seek(position)
+  final def streamFile(position: Long, timeout: FiniteDuration,
+    markEOF: Boolean = false, onlyAcks: Boolean)
+  : Stream[IO, PositionAnd[ByteArray]] =
+    for
+      jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
+      until <- Stream.eval(SyncDeadline.usingNow(now ?=> now + timeout))
+      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
+    yield
+      o
 
-          memoryLeakLimitedObservableTailRecM(position, limit = limitTailRecM)(position =>
-            Observable.fromTask(whenDataAvailableAfterPosition(position, until))
-              .flatMap {
-                case false =>  // Timeout
-                  Observable.empty
-                case true =>  // Data may be available
-                  var lastPosition = position
-                  var eof = false
-                  var iterator = UntilNoneIterator {
-                    val maybeLine = jsonSeqReader.readRaw().map(_.value)
-                    eof = maybeLine.isEmpty
-                    lastPosition = jsonSeqReader.position
-                    maybeLine.map(PositionAnd(lastPosition, _))
-                  }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
-                  if onlyAcks then {
-                    // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
-                    //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-                    var last = null.asInstanceOf[PositionAnd[ByteArray]]
-                    iterator foreach { last = _ }
-                    iterator = Option(last).iterator
-                  }
-                  iterator = iterator
-                    .tapEach { o =>
-                      if o.value == EndOfJournalFileMarker then sys.error(s"Journal file must not contain a line like $o")
-                    } ++
-                      (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
-                  Observable.fromIteratorUnsafe(iterator map Right.apply) ++
-                    Observable.fromIterable(
-                      !eof ? Left(lastPosition))
-                })
-        })
+  /** Observes a journal file lines and length. */
+  private def streamFile2(jsonSeqReader: InputStreamJsonSeqReader,
+    position: Long, until: SyncDeadline, markEOF: Boolean = false, onlyAcks: Boolean)
+  : Stream[IO, PositionAnd[ByteArray]] =
+    jsonSeqReader.seek(position)
+
+    memoryLeakLimitedStreamTailRecM(position, limit = limitTailRecM)(position =>
+      Stream.eval(whenDataAvailableAfterPosition(position, until.toCatsDeadline))
+        .flatMap:
+          case false =>  // Timeout
+            Stream.empty
+          case true =>  // Data may be available
+            var lastPosition = position
+            var eof = false
+
+            var iterator = UntilNoneIterator {
+              val maybeLine = jsonSeqReader.readRaw().map(_.value)
+              eof = maybeLine.isEmpty
+              lastPosition = jsonSeqReader.position
+              maybeLine.map(PositionAnd(lastPosition, _))
+            }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
+
+            if onlyAcks then {
+              // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
+              //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
+              var last = null.asInstanceOf[PositionAnd[ByteArray]]
+              iterator foreach { last = _ }
+              iterator = Option(last).iterator
+            }
+
+            iterator = iterator
+              .tapEach { o =>
+                if o.value == EndOfJournalFileMarker then
+                  sys.error(s"Journal file must not contain a line like $o")
+              } ++
+                (eof && markEOF).thenIterator:
+                  PositionAnd(lastPosition, EndOfJournalFileMarker)
+
+            Stream.fromIterator[IO](iterator map Right.apply, chunkSize = 1/*???*/) ++
+              Stream.iterable(
+                (!eof).thenList(Left(lastPosition))))
 
   final def lastUsedAt: Long =
     _lastUsed

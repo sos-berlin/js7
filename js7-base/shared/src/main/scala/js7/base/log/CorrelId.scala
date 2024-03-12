@@ -9,9 +9,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
-import monix.execution.Scheduler
-import monix.execution.misc.Local
-import monix.execution.schedulers.TracingScheduler
 
 /** Correlation ID. */
 sealed trait CorrelId extends GenericString:
@@ -46,11 +43,16 @@ sealed trait CorrelId extends GenericString:
 
 
 object CorrelId extends GenericString.Checked_[CorrelId]:
+
   private[log] val longByteCount = 6
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length
   private[log] val bitMask = (1L << (longByteCount * 8)) - 1
   val empty: CorrelId = EmptyCorrelId
-  private[log] val local = Local(CorrelId.empty)
+  private[log] val local = DummyLocal()
+  // TODO Change to monadic IOLocal
+  final class DummyLocal:
+    def apply(): CorrelId = EmptyCorrelId
+    def update(o: CorrelId) = {}
 
   private lazy val nextCorrelId: NextCorrelId =
     if isTest && isIntelliJIdea then
@@ -69,11 +71,11 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   private var generateCount = 0L
   private var asStringCount = 0L
 
-  private val maybeEnabled0 =
-    sys.props.get("js7.log.correlId") match
-      case Some("" | "true") => Some(true)
-      case Some("false") => Some(false)
-      case _ => isTest ? true
+  private val maybeEnabled0 = Some(false)/*until implemented with IOLocal !!!*/
+    //sys.props.get("js7.log.correlId") match
+    //  case Some("" | "true") => Some(true)
+    //  case Some("false") => Some(false)
+    //  case _ => isTest ? true
 
   def couldBeEnabled = maybeEnabled0 getOrElse true
 
@@ -152,11 +154,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   def bindNewNow[R](body: => R): R =
     CanBindCorrelId.synchronous.bind(CorrelId.generate())(body)
 
-  def enableScheduler(scheduler: Scheduler): Scheduler =
-    if !CorrelId.couldBeEnabled then
-      scheduler
-    else
-      TracingScheduler(scheduler)
+  @deprecated
+  def enableScheduler[X](scheduler: X): X =
+    scheduler
 
   private[log] sealed case class LongCorrelId private(long: Long) extends CorrelId:
     import LongCorrelId.*
@@ -171,12 +171,14 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
 
     def toAscii: String =
       string.replace(code62Replacement, code62Original)
+
+
   private[log] object LongCorrelId:
     /** Replacement for Base64 '-' character.
      * For usage in a HTTP header, Non-ASCII must be replaced by ASCII code .
      */
-    val code62Replacement = 'ñ'
-    val code62Original = '-'
+    private val code62Replacement = 'ñ'
+    private val code62Original = '-'
 
     // Similar to the RFC 4648 "URL and Filename safe" Base 64 Alphabet" but replaces "-".
     // Only word characters are used to make a CorrelId selectable with a single mouse click.
@@ -231,15 +233,10 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
         else
           Right(LongCorrelId(long))
 
-  //private sealed case class StringCorrelId(string: String) extends CorrelId {
-  //  def fixedWidthString = string
-  //  override def isEmpty = false
-  //}
-
   private object EmptyCorrelId extends CorrelId:
     val string = ""
     // fixedWidthString should not be empty for easier log file parsing
-    val fixedWidthString = "·" + " " * (width - 1)
+    val fixedWidthString = isEnabled ?? ("·" + " " * (width - 1))
     val toAscii = ""
 
   def logStatisticsIfEnabled(): Unit =

@@ -1,5 +1,8 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
@@ -12,12 +15,13 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -30,8 +34,6 @@ import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -42,6 +44,8 @@ import scala.reflect.ClassTag
 final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
   import TestState.keyedEventJsonCodec
+
+  private given IORuntime = ioRuntime
 
   "JournalId is checked" in {
     withJournalMeta { journalLocation =>
@@ -62,12 +66,12 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.observeFile(journalPosition, timeout = 0.s)
+          eventWatch.streamFile(journalPosition, timeout = 0.s)
             .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJson.orThrow)
             .tail
-            .toListL
+            .compile.toList
             .await(99.s)
 
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
@@ -148,7 +152,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
 
         val anyFuture = eventWatch
           .when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s)))
-          .runToFuture
+          .unsafeToFuture()
         writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
@@ -161,10 +165,10 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
       withJournalEventWatch(lastEventId = EventId(1000)) { (writer, eventWatch) =>
         val anyFuture = eventWatch
           .when(EventRequest.singleClass[MyEvent](after = 1000L, timeout = Some(30.s)))
-          .runToFuture
+          .unsafeToFuture()
         val bFuture = eventWatch
           .when(EventRequest.singleClass[BEvent](after = 1000L, timeout = Some(30.s)))
-          .runToFuture
+          .unsafeToFuture()
 
         writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
@@ -202,7 +206,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
           val EventSeq.NonEmpty(eventIterator) = eventWatch
             .whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key)
             .await(10.s).strict: @unchecked
-          eventIterator.toVector.map(_.value)
+          eventIterator.iterator.to(Vector).map(_.value)
         }
         assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
         assert(eventsForKey[AEvent]("2") == Vector(A2))
@@ -249,11 +253,12 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
       }
     }
 
-    "observe" in {
+    "stream" in {
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
         val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
-        val observed = eventWatch.observe(EventRequest.singleClass[AEvent](limit = 3, timeout = Some(99.s)))
-          .foreach(stampeds += _)
+        val observed = eventWatch.stream(EventRequest.singleClass[AEvent](limit = 3, timeout = Some(99.s)))
+          .foreach(stamped => IO(stampeds += stamped))
+          .compile.drain.unsafeToFuture()
         assert(stampeds.isEmpty)
 
         val stampedSeq = Seq(Stamped(1L, "1" <-: A1), Stamped(2L, "2" <-: B1), Stamped(3L, "3" <-: A1))
@@ -274,20 +279,20 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
       }
     }
 
-    "observe Torn" in {
+    "stream Torn" in {
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
       withJournalEventWatch(lastEventId = EventId(1000)) { (_, eventWatch) =>
         val e = intercept[TornException] {
           eventWatch
-            .observe(EventRequest.singleClass[AEvent](after = EventId(10), timeout = Some(99.s)))
-            .countL
+            .stream(EventRequest.singleClass[AEvent](after = EventId(10), timeout = Some(99.s)))
+            .compile.count
             .await(99.s)
         }
         assert(e.after == 10 && e.tornEventId == 1000)
       }
     }
 
-    "observe after=(unknown EventId)" in {
+    "stream after=(unknown EventId)" in {
       withJournalMeta { journalLocation =>
         withJournal(journalLocation, lastEventId = EventId(100)) { (writer, eventWatch) =>
           writer.writeEvents(MyEvents1)
@@ -295,17 +300,17 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
           writer.onCommitted(writer.fileLengthAndEventId, MyEvents1.length)
 
           val e = intercept[TornException] {
-            eventWatch.observe(EventRequest
+            eventWatch.stream(EventRequest
               .singleClass[AEvent](after = EventId(115), timeout = Some(99.s)))
-              .countL.await(99.s)
+              .compile.count.await(99.s)
           }
           assert(e.after == 115 && e.tornEventId == 100)
 
           val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
           eventWatch
-            .observe(EventRequest.singleClass[AEvent](after = EventId(110), timeout = Some(500.ms)))
-            .foreach(stampeds += _)
-            .await(99.s)
+            .stream(EventRequest.singleClass[AEvent](after = EventId(110), timeout = Some(500.ms)))
+            .foreach(stamped => IO(stampeds += stamped))
+            .compile.drain.await(99.s)
           assert(stampeds == MyEvents1(1) :: Nil)
         }
       }
@@ -320,9 +325,9 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
+          assert(stream.compile.toList.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
       }
 
@@ -335,32 +340,32 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         eventWatch.onJournalingStarted(journalLocation.file(after), journalId,
           lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s)
+          assert(stream.compile.toList.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(99L): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(99L): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s)
+          assert(stream.compile.toList.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(100L): @unchecked
-          assert(observable.map {
+          val Some(stream) = eventWatch.snapshotAfter(100L): @unchecked
+          assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
-          }.toListL.await(99.s) == 100L :: snapshotObjects)
+          }.compile.toList.await(99.s) == 100L :: snapshotObjects)
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(101L): @unchecked
-          assert(observable.map {
+          val Some(stream) = eventWatch.snapshotAfter(101L): @unchecked
+          assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
-          }.toListL.await(99.s) == 100L :: snapshotObjects)
+          }.compile.toList.await(99.s) == 100L :: snapshotObjects)
         }
       }
     }
@@ -371,19 +376,22 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
     // Mit TakeSnapshot prüfen
   }
 
-  "observeFile" in {
+  "streamFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
+      assert(eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      val observing = eventWatch.observeFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
+      val observing = eventWatch.streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
         .await(99.s)
         .orThrow
-        .onErrorRecoverWith {
-          case _: EventReader.TimeoutException => Observable.empty
-        }
-        .foreach(o => jsons += o.value.utf8String.parseJsonOrThrow)
+        .handleErrorWith:
+          case _: EventReader.TimeoutException => Stream.empty
+          case t => Stream.raiseError[IO](t)
+        .foreach(o => IO:
+          jsons += o.value.utf8String.parseJsonOrThrow)
+        .compile.drain
+        .unsafeToCancelableFuture()
       awaitAndAssert { jsons.size == 2 }
       assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.prettyVersion)
       assert(jsons(1) == JournalSeparators.EventHeader)
@@ -401,7 +409,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
       awaitAndAssert { jsons.size == 5 }
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
 
-      observing.cancel()
+      observing.cancelAndForget()
       if isWindows then sleep(100.ms)  // Let observing close the read file to allow deletion
     }
   }

@@ -16,14 +16,14 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.unauthorized
 import js7.common.pekkohttp.web.session.SessionRoute.*
 import js7.data.problems.InvalidLoginProblem
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
   */
 trait SessionRoute extends RouteProvider:
-  private implicit def implictScheduler: Scheduler = scheduler
+  private implicit def implictIORuntime: IORuntime = ioRuntime
   protected[session] val specificLoginRequiredProblem: Problem = InvalidLoginProblem
   protected[session] lazy val preAuthenticate: Directive1[Either[Set[UserId], SimpleUser]] =
     gateKeeper.preAuthenticate
@@ -34,7 +34,7 @@ trait SessionRoute extends RouteProvider:
         sessionTokenOption { tokenOption =>
           preAuthenticate { idsOrUser =>
             entity(as[SessionCommand]) { command =>
-              onSuccess(execute(command, idsOrUser, tokenOption).runToFuture):
+              onSuccess(execute(command, idsOrUser, tokenOption).unsafeToFuture()):
                 case Left(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
                   completeUnauthenticatedLogin(unauthorized, problem)
 
@@ -45,13 +45,14 @@ trait SessionRoute extends RouteProvider:
         }
 
   private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], SimpleUser], sessionTokenOption: Option[SessionToken])
-  : Task[Checked[SessionCommand.Response]] =
+  : IO[Checked[SessionCommand.Response]] =
     command match
       case Login(userAndPasswordOption, version) =>
-        Task(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
-          .flatMapT(user =>
+        IO(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
+          .flatMapT: user =>
             sessionRegister.login(user, version, sessionTokenOption)
-              .map(_.map(Login.LoggedIn(_, Js7Version))))
+              .map(Login.LoggedIn(_, Js7Version))
+              .map(Right(_))
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)

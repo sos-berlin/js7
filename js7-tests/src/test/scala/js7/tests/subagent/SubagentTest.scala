@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.Js7Version
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.command.CancellationMode
@@ -19,15 +19,12 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.execution.Scheduler
 
 final class SubagentTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
-
-  protected implicit val scheduler = Scheduler.traced
 
   "Local Subagent couplingState is Coupled" in:
     val localSubagentId = SubagentId("AGENT-0")

@@ -1,5 +1,6 @@
 package js7.agent.data.orderwatch
 
+import cats.effect.IO
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}
 import js7.agent.data.orderwatch.FileWatchState.{EntrySnapshot, HeaderSnapshot, Snapshot}
@@ -12,7 +13,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.{View, mutable}
 
 final case class FileWatchState(
@@ -60,9 +61,9 @@ extends UnsignedSimpleItemState:
   def estimatedExtraSnapshotSize =
     directoryState.fileToEntry.size
 
-  override def toSnapshotObservable: Observable[Snapshot] =
-    Observable.pure(HeaderSnapshot(fileWatch)) ++
-      Observable.fromIterable(directoryState.fileToEntry.values)
+  override def toSnapshotStream: Stream[IO, Snapshot] =
+    Stream.emit(HeaderSnapshot(fileWatch)) ++
+      Stream.iterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 
 

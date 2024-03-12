@@ -15,9 +15,9 @@ import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
-import monix.eval.Task
-import monix.execution.Scheduler
-import scala.concurrent.Promise
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NoStackTrace
 
 /**
@@ -27,16 +27,17 @@ final class MainActor(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
-  journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
   terminationPromise: Promise[DirectorTermination],
   clock: AlarmClock)
-  (implicit scheduler: Scheduler)
+  (using ioRuntime: IORuntime)
 extends Actor:
 
   import context.{actorOf, watch}
+  private given ExecutionContext = ioRuntime.compute
 
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
 

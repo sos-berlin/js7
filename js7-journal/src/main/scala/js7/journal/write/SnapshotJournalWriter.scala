@@ -10,7 +10,7 @@ import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
-import monix.execution.Scheduler
+import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -22,7 +22,7 @@ final class SnapshotJournalWriter(
   val file: Path,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
-  (implicit protected val scheduler: Scheduler)
+  (implicit protected val ioRuntime: IORuntime)
 extends JournalWriter(S, after = after, append = false):
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
@@ -58,5 +58,6 @@ extends JournalWriter(S, after = after, append = false):
 
 
 object SnapshotJournalWriter:
-  def forTest(journalLocation: JournalLocation, after: EventId)(implicit scheduler: Scheduler) =
-    new SnapshotJournalWriter(journalLocation.S, journalLocation.file(after), after = after, simulateSync = None)
+  def forTest(journalLocation: JournalLocation, after: EventId)(implicit ioRuntime: IORuntime) =
+    new SnapshotJournalWriter(journalLocation.S, journalLocation.file(after), after = after,
+      simulateSync = None)

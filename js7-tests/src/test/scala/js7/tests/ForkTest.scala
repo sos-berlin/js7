@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -23,11 +23,11 @@ import js7.tests.ForkTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕"
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -145,7 +145,7 @@ object ForkTest:
   private class SlowJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
-        Task.sleep(60.s)
+        IO.sleep(60.s)
           .as(Outcome.succeeded))
   private object SlowJob extends InternalJob.Companion[SlowJob]
 
