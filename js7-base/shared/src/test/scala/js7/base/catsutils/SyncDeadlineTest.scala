@@ -1,37 +1,31 @@
 package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
-import js7.base.test.{OurTestControl}
+import js7.base.test.OurTestControl
 import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SyncDeadlineTest extends AnyFreeSpec:
 
-  //private given IORuntime = ioRuntime
-
   "+" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         assert((now + 3.s).nanosSinceZero == now.nanosSinceZero + 3.s.toNanos)
 
   "- FiniteDuration" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         assert((now - 3.s).nanosSinceZero == now.nanosSinceZero - 3.s.toNanos)
 
   "- SyncDeadline" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val a = now + 3.s
         assert(a - now == 3.s)
 
   "isOverdue, hasElapsed" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -42,8 +36,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "hasTimeLeft" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -52,8 +45,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "timeLeftOrZero" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -62,8 +54,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "elapsedOrZero" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -72,8 +63,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "elapsed" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -82,8 +72,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "compare" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         val early = now - 1.h
         val later = now + 1.h
 
@@ -108,8 +97,7 @@ final class SyncDeadlineTest extends AnyFreeSpec:
 
   "toCatsDeadline" in:
     OurTestControl.executeEmbed:
-      SyncDeadline.usingNow:
-        val now = SyncDeadline.now()
+      SyncDeadline.usingNow: now ?=>
         assert(now.toCatsDeadline == CatsDeadline.fromMonotonicNanos(now.nanosSinceZero))
 
   //"toString" in:

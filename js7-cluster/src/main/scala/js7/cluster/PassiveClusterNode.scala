@@ -1,18 +1,9 @@
 package js7.cluster
 
+import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
-import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
-import js7.base.catsutils.SyncDeadline
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.monixutils.RefCountedResource
-import js7.base.monixutils.StreamPauseDetector.detectPauses
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.common.http.PekkoHttpClient
-import js7.data.event.JournalEvent
-import js7.data.event.JournalEvent.StampedHeartbeatByteArray
-import cats.effect.IO
 import fs2.Stream
 import io.circe.syntax.*
 import java.nio.ByteBuffer
@@ -23,24 +14,30 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
+import js7.base.catsutils.SyncDeadline
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.RefCountedResource
+import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.{OneTimeToken, SetOnce}
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.PassiveClusterNode.*
-import js7.common.http.RecouplingStreamReader
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.PassiveClusterNodeResetProblem
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
@@ -48,9 +45,9 @@ import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled
 import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
-import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.*
@@ -292,7 +289,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     activeNodeApi: ClusterNodeApi)
     (implicit ioRuntime: IORuntime)
   : IO[Checked[Continuation.Replicatable]] =
-    IO.defer:
+    SyncDeadline.now.flatMap(startedAt => IO.defer:
       import continuation.file
 
       val maybeTmpFile = locally:
@@ -311,7 +308,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         case None => FileChannel.open(file, APPEND)
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
-      val startedAt = SyncDeadline.now()
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
@@ -625,7 +621,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                 Left(Problem.pure("JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
         .guarantee(
-          IO { out.close() })
+          IO { out.close() }))
 
   private def writeFailedOverEvent(
     out: FileChannel,

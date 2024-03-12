@@ -275,6 +275,9 @@ object StreamExtensions:
         a <- Stream.chunk(chunk)
       yield a
 
+    //def evalStream[F[_]](s: F[Stream[F, A]])(using F: Sync[F]) =
+    //  Stream.eval(s).flatten
+
     // TODO ---> Try fs2.keepAlive <---
     def insertHeartbeatsOnSlowUpstream(delay: FiniteDuration, heartbeat: A): Stream[IO, A] =
       for

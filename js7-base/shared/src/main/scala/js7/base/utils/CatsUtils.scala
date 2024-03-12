@@ -71,11 +71,10 @@ object CatsUtils:
 
       private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
       : IO[A] =
-        CatsDeadline.now.flatMap { now =>
-          val since = now
+        CatsDeadline.now.flatMap: since =>
           var level: LogLevel = LogLevel.LogNone
           underlying
-            .whenItTakesLonger()(duration => IO {
+            .whenItTakesLonger()(duration => IO:
               val m = if duration < InfoWorryDuration then "🟡" else "🟠"
 
               def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
@@ -85,19 +84,17 @@ object CatsUtils:
                 logger.debug(msg)
               else
                 level = LogLevel.Info
-                logger.info(msg)
-            })
-            .guaranteeCaseLazy(exit =>
+                logger.info(msg))
+            .guaranteeCaseLazy: exitCode =>
               IO.whenA(level != LogLevel.LogNone):
                 for elapsed <- since.elapsed yield
-                  exit match
+                  exitCode match
                     case Outcome.Succeeded(_) => logger.log(level,
                       s"🔵 $what $completed after ${elapsed.pretty}")
                     case Outcome.Canceled() => logger.log(level,
                       s"⚫ $what canceled after ${elapsed.pretty}")
                     case Outcome.Errored(t) => logger.log(level,
-                      s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"))
-        }
+                      s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}")
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       @deprecated("Use whenItTakesLongerThan", "v2.7")

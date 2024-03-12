@@ -181,13 +181,13 @@ extends AutoCloseable,
       announcedEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
 
-  def releaseEvents(untilEventId: EventId)(using IORuntime): Unit =
+  def releaseEvents(untilEventId: EventId)(using ioRuntime: IORuntime): Unit =
     val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
     if delay.isZeroOrBelow then
       releaseEventsNow(untilEventId)
     else
       logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")
-      scheduler.scheduleOnce(delay):
+      ioRuntime.scheduler.scheduleOnce(delay):
         releaseEventsNow(untilEventId)
 
   private def releaseEventsNow(untilEventId: EventId): Unit =

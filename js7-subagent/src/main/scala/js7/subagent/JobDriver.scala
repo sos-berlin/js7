@@ -33,7 +33,6 @@ private final class JobDriver(
   fileValueState: FileValueState)
   (using ioRuntime: IORuntime):
 
-  import SyncDeadline.Now.given_Now
   import ioRuntime.scheduler
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
 
@@ -119,16 +118,15 @@ private final class JobDriver(
           .flatMap { runningProcess =>
             val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
             val awaitTermination =
-              //processOrder.stdObservers.closeChannels *>
-                IO.defer:
-                  entry.runningSince = SyncDeadline.now()
-                  scheduleTimeout(entry)
-                  runningProcess.joinStd
-                    .map(entry.modifyOutcome)
-                    .map:
-                      case outcome: Succeeded =>
-                        readErrorLine(processOrder).getOrElse(outcome)
-                      case outcome => outcome
+              SyncDeadline.usingNow: now ?=>
+                entry.runningSince = now
+                scheduleTimeout(entry)
+              .*>(IO.defer:
+                runningProcess.joinStd
+                  .map(entry.modifyOutcome)
+                  .map:
+                    case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome)
+                    case outcome => outcome)
             IO.both(maybeKillAfterStart, awaitTermination)
               .map((_, outcome) => outcome)
           }
@@ -155,7 +153,7 @@ private final class JobDriver(
           jobConf.controllerId, stdObservers,
           fileValueState))
 
-  private def scheduleTimeout(entry: Entry): Unit =
+  private def scheduleTimeout(entry: Entry)(using SyncDeadline.Now): Unit =
     requireNonNull(entry.runningSince)
     for t <- workflowJob.timeout do
       entry.timeoutSchedule := scheduler.scheduleOnce(t):

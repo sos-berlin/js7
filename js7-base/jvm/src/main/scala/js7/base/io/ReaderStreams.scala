@@ -16,24 +16,6 @@ object ReaderStreams:
 
   private val DefaultBufferSize = 8192
 
-  def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize): Stream[IO, Char] =
-    Stream.suspend:
-      val buffer = new Array[Char](bufferSize)
-      Stream
-        .repeatEval:
-          IO
-            .interruptible:
-              reader.read(buffer)
-            .map:
-              case -1 =>
-                null
-              case o if o < 1 =>
-                throw new RuntimeException(s"'$reader'.read returned 0 ?'")
-              case n =>
-                Chunk.array(java.util.Arrays.copyOfRange(buffer, 0, n))
-        .takeWhile(_ != null)
-        .unchunks
-
   def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
     (using IOExecutor)
   : Stream[IO, Byte] =
@@ -44,18 +26,35 @@ object ReaderStreams:
   : Stream[IO, Byte] =
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
-      Stream
-        .repeatEval:
-          IOExecutor.interruptible:
-            buffer.clear()
-            channel.read(buffer)
-          .map:
-            case -1 =>
-              null
-            case o if o < 1 =>
-              throw new RuntimeException(s"'$channel'.read return 0 ?'")
-            case _ =>
-              buffer.flip()
-              ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
-        .takeWhile(_ != null)
-        .unchunks
+      Stream.repeatEval:
+        IOExecutor.interruptible:
+          buffer.clear()
+          channel.read(buffer)
+        .map:
+          case -1 =>
+            null
+          case o if o < 1 =>
+            throw new RuntimeException(s"'$channel'.read return 0 ?'")
+          case _ =>
+            buffer.flip()
+            ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
+      .takeWhile(_ != null)
+      .unchunks
+
+  def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize)
+    (using IOExecutor)
+  : Stream[IO, Char] =
+    Stream.suspend:
+      val buffer = new Array[Char](bufferSize)
+      Stream.repeatEval:
+        IOExecutor.interruptible:
+          reader.read(buffer)
+        .map:
+          case -1 =>
+            null
+          case o if o < 1 =>
+            throw new RuntimeException(s"'$reader'.read returned $o ?'")
+          case n =>
+            Chunk.array(java.util.Arrays.copyOfRange(buffer, 0, n))
+      .takeWhile(_ != null)
+      .unchunks

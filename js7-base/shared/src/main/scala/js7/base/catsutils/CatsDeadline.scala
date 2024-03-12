@@ -6,8 +6,16 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-final case class CatsDeadline private(sinceZero: FiniteDuration)
+sealed class CatsDeadline private(val sinceZero: FiniteDuration)
 extends Ordered[CatsDeadline]:
+
+  override def equals(o: Any) =
+    o match
+      case o: CatsDeadline => nanosSinceZero == o.nanosSinceZero
+      case _ => false
+
+  override def hashCode =
+    nanosSinceZero.hashCode
 
   def nanosSinceZero: Long =
     sinceZero.toNanos
@@ -16,13 +24,13 @@ extends Ordered[CatsDeadline]:
    * Return a deadline advanced (i.e., moved into the future) by the given duration.
    */
   def +(other: FiniteDuration): CatsDeadline =
-    copy(sinceZero = sinceZero + other)
+    CatsDeadline(sinceZero + other)
 
   /**
    * Return a deadline moved backwards (i.e., towards the past) by the given duration.
    */
   def -(other: FiniteDuration): CatsDeadline =
-    copy(sinceZero = sinceZero - other)
+    CatsDeadline(sinceZero - other)
 
   /**
    * Calculate time difference between this and the other deadline, where the result is directed (i.e., may be negative).
@@ -85,8 +93,11 @@ extends Ordered[CatsDeadline]:
 
 object CatsDeadline:
 
-  val now: IO[CatsDeadline] =
-    for o <- IO.monotonic yield CatsDeadline(o)
+  val now: IO[Now] =
+    for o <- IO.monotonic yield Now(o)
+
+  def usingNow[A](body: Now ?=> A): IO[A] =
+    now.flatMap(now => IO(body(using Now(now.sinceZero))))
 
   def fromMonotonicNanos(nanos: Long): CatsDeadline =
     fromMonotonic(nanos.ns)
@@ -104,3 +115,5 @@ object CatsDeadline:
   //  implicit final class DeadlineSchedule(private val scheduler: Scheduler) extends AnyVal:
   //    def now: CatsDeadline =
   //      CatsDeadline.now(scheduler)
+
+  final class Now private[CatsDeadline](sinceZero: FiniteDuration) extends CatsDeadline(sinceZero)

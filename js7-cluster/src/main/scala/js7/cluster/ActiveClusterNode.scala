@@ -1,25 +1,19 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO}
+import cats.effect.{Deferred, FiberIO, IO}
 import cats.syntax.monoid.*
+import fs2.Stream
+import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsExtensions.{tryIt, untry}
 import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onlyNewest}
-import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.utils.CatsUtils
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import scala.util.{Right, Try}
-import cats.effect.IO
-import fs2.Stream
-import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -27,9 +21,10 @@ import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{AsyncLock, Atomic, SetOnce}
+import js7.base.utils.{AsyncLock, Atomic, CatsUtils, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
@@ -47,8 +42,10 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.journal.JournalActor
 import js7.journal.state.FileJournal
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.*
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Right, Success, Try}
 
 /** Active Cluster node active which is part of a cluster (ClusterState != Empty). */
 final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[cluster](
@@ -562,10 +559,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 logger.debug("Stop fetchAndHandleAcknowledgedEventIds2 due to stopAcknowledging")
             .flatMap: // Turn into Stream[,Problem]
               case Left(noHeartbeatSince) =>
-                val problem =
-                  MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
-                logger.debug(s"💥 $problem")
-                Stream.emit(problem)
+                Stream.eval:
+                  SyncDeadline.usingNow:
+                    MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
+                .flatMap: problem =>
+                  logger.debug(s"💥 $problem")
+                  Stream.emit(problem)
 
               case Right(eventId) =>
                 Stream.exec:

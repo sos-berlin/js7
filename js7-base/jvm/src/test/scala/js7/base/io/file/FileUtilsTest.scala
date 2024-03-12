@@ -1,7 +1,6 @@
 package js7.base.io.file
 
 import cats.effect.{IO, SyncIO}
-import fs2.io.IOException
 import io.circe.Json
 import java.io.File.separator
 import java.io.{BufferedReader, File, InputStreamReader}

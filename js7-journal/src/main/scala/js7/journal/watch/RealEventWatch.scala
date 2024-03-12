@@ -39,8 +39,6 @@ trait RealEventWatch extends EventWatch:
 
   protected def isActiveNode: Boolean
 
-  protected def scheduler: Scheduler
-
   // Lazy, initialize only after whenStarted has been called!
   private lazy val committedEventIdSync =
     new IncreasingNumberSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
@@ -60,7 +58,7 @@ trait RealEventWatch extends EventWatch:
         // Access the in previous iteration computed values lastEventId and limit (see below)
         // Timeout is renewed after every fetched event
         getRequest.flatMap: request =>
-         logger.traceIO("### stream unfold", request):
+         //logger.traceIO("### stream unfold", request):
           if request.limit <= 0 then
             IO.none
           else
@@ -68,7 +66,7 @@ trait RealEventWatch extends EventWatch:
               .usingNow: now ?=>
                 request.timeout.map(t => now + (t min EventRequest.LongTimeout))
               .flatMap: deadline =>
-               logger.traceIOWithResult("### stream when", request, body=
+               //logger.traceIOWithResult("### stream when", request, body=
                 when[E](request, predicate).flatMap:
                   case TearableEventSeq.Torn(tornAfter) =>
                     IO.raiseError:
@@ -106,7 +104,7 @@ trait RealEventWatch extends EventWatch:
                       Some((stream,
                         IO(request.copy[E](after = lastEventId, limit = limit,
                           timeout = originalTimeout))))
-               )
+               //)
     streamOfStreams.flatten
 
   final def streamEventIds(maybeTimeout: Option[FiniteDuration])

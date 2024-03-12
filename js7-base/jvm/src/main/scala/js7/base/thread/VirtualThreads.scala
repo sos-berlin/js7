@@ -57,14 +57,6 @@ object VirtualThreads:
     else
       try
         val builder = classOf[Thread].getMethod("ofVirtual").invoke(null)
-
-        //IllegalAccessException:
-        //try builder.getClass
-        //  .getMethod("name", classOf[String])
-        //  .invoke(builder, "virtual")
-        //  .asInstanceOf[ThreadFactory]
-        //catch { case t: Throwable => logger.debug(t.toStringWithCauses)}
-
         val factory = Class
           .forName("java.lang.Thread$Builder")
           .getMethod("factory")
@@ -74,7 +66,7 @@ object VirtualThreads:
         testThreadFactory(factory)
         logger.debug(s"newVirtualThreadFactory => $factory")
         Some(factory)
-      catch(throwableToNone)
+      catch throwableToNone
 
   private def testThreadFactory(factory: ThreadFactory): Unit =
     val newThread: Runnable => Thread = runnable =>

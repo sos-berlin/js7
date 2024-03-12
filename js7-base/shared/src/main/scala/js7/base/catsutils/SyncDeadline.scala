@@ -86,16 +86,13 @@ object SyncDeadline:
   final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
 
   object Now:
-    def apply()(using IORuntime): Now =
-      fromIORuntime()
-
     def apply(nanosSinceZero: Long): Now =
       new Now(nanosSinceZero)
 
-    def fromIORuntime()(using ioRuntime: IORuntime): Now =
+    private def fromIORuntime()(using ioRuntime: IORuntime): Now =
       fromScheduler()(using ioRuntime.scheduler)
 
-    def fromScheduler()(using scheduler: Scheduler): Now =
+    private def fromScheduler()(using scheduler: Scheduler): Now =
       Now(scheduler.monotonicNanos())
 
     given (using ioRuntime: IORuntime): Now =
@@ -105,14 +102,8 @@ object SyncDeadline:
     for d <- IO.monotonic yield
       Now(d.toNanos)
 
-  def now()(using IORuntime): SyncDeadline =
-    fromIORuntime()
-
   def usingNow[A](body: Now ?=> A): IO[A] =
     now.flatMap(now => IO(body(using now)))
-
-  def fromIORuntime()(using ioRuntime: IORuntime): Now =
-    fromScheduler()(using ioRuntime.scheduler)
 
   def fromScheduler()(using scheduler: Scheduler): Now =
     Now(scheduler.monotonicNanos())

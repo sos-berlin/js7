@@ -18,13 +18,16 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
     "guaranteeCaseLazy" - {
       "ERROR: guaranteeCase evaluates the Canceled case eagerly even when not Canceled" in:
         val evaluatedCases = mutable.Buffer.empty[OutcomeIO[Int]]
+        val ioCases = mutable.Buffer.empty[OutcomeIO[Int]]
 
         IO(7)
           .guaranteeCase: outcome =>
             evaluatedCases += outcome
-            IO.unit
+            IO { ioCases += outcome }
           .map: _ =>
-            assert(evaluatedCases.toString == "ArrayBuffer(Canceled(), Succeeded(IO(7)))")
+            assert:
+              evaluatedCases.toString == "ArrayBuffer(Canceled(), Succeeded(IO(7)))" &&
+              ioCases.toString == "ArrayBuffer(Succeeded(IO(7)))"
 
       "guaranteeCaseLazy evalutes the Canceled case only when Canceled" in:
         val outcomes = mutable.Buffer.empty[OutcomeIO[Int]]

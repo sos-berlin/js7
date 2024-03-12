@@ -17,6 +17,7 @@ import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualExecutor
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import org.scalatest.Assertions.succeed
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -46,11 +47,15 @@ final class IOExecutorTest extends OurAsyncTestSuite:
       } await 10.seconds
 
   "interruptible" in:
+    val expectedThreadPrefix = (!VirtualThreads.isEnabled) ? (IOExecutor.globalName + "-")
     val test =
       val exception = Exception("TEST")
       for
         succeedingFiber <-
           IOExecutor.interruptible:
+            expectedThreadPrefix match
+              case None => assert(Thread.currentThread.getName.isEmpty)
+              case Some(prefix) => assert(Thread.currentThread.getName.startsWith(prefix))
             Thread.sleep(Random.nextInt(2))
             3
           .start

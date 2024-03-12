@@ -60,17 +60,18 @@ final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: 
 object IOExecutor:
   private val logger = Logger[this.type]
 
+  val globalName = "JS7 global I/O"
+
   lazy val globalIOX: IOExecutor =
-    val name = "JS7 global I/O"
     new IOExecutor(
       newBlockingExecutorService(
-        name,
+        globalName,
         config"""
           js7.thread-pools.long-blocking.keep-alive = 60s
           js7.thread-pools.long-blocking.virtual = true
           """,
         virtual = true),
-      name)
+      globalName)
 
   object Implicits:
     implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
@@ -117,7 +118,6 @@ object IOExecutor:
               Thread.interrupted() // Clear the interrupted flag and ignore the late interruption (?)
 
         val future = iox.executor.submit(runnable)
-        Some(IO:
-          future.cancel(true))
+        Some(IO(future.cancel(true)))
 
   java17Polyfill()

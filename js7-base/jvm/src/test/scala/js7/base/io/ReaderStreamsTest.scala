@@ -13,34 +13,6 @@ import scala.collection.mutable
 
 final class ReaderStreamsTest extends OurAsyncTestSuite:
 
-  "readerToCharStream" in:
-    val buffer = mutable.Buffer[String]()
-
-    def program(reader: Reader) =
-      readerToCharStream(reader)
-        .chunks
-        .foreach(chunk => IO:
-          buffer += String(chunk.toArray))
-        .compile.drain
-
-    val chunks = List("EINS", "ZWEI", "DREI")
-
-    def test(writer: Writer) = IO:
-      for (chunk, i) <- chunks.zipWithIndex yield
-        writer.write(chunk)
-        writer.flush()
-        awaitAndAssert(buffer.size == i + 1 && buffer.last == chunk)
-      writer.close()
-      assert(buffer == chunks)
-
-    (for
-      w <- Resource.fromAutoCloseable(IO(new PipedWriter))
-      r <- Resource.fromAutoCloseable(IO(new PipedReader(w)))
-    yield (w, r))
-      .use: (writer, reader) =>
-        IO.both(program(reader), test(writer))
-          .map(_._2)
-
   "inputStreamToByteStream" in:
     val buffer = mutable.Buffer[ByteArray]()
 
@@ -67,4 +39,32 @@ final class ReaderStreamsTest extends OurAsyncTestSuite:
     yield (out, in))
       .use: (out, in) =>
         IO.both(program(in), test(out))
+          .map(_._2)
+
+  "readerToCharStream" in :
+    val buffer = mutable.Buffer[String]()
+
+    def program(reader: Reader) =
+      readerToCharStream(reader)
+        .chunks
+        .foreach(chunk => IO:
+          buffer += String(chunk.toArray))
+        .compile.drain
+
+    val chunks = List("EINS", "ZWEI", "DREI")
+
+    def test(writer: Writer) = IO:
+      for (chunk, i) <- chunks.zipWithIndex yield
+        writer.write(chunk)
+        writer.flush()
+        awaitAndAssert(buffer.size == i + 1 && buffer.last == chunk)
+      writer.close()
+      assert(buffer == chunks)
+
+    (for
+      w <- Resource.fromAutoCloseable(IO(new PipedWriter))
+      r <- Resource.fromAutoCloseable(IO(new PipedReader(w)))
+    yield (w, r))
+      .use: (writer, reader) =>
+        IO.both(program(reader), test(writer))
           .map(_._2)
