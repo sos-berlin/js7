@@ -1,6 +1,6 @@
 package js7.common.internet
 
-import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
+import java.net.{InetAddress, InetSocketAddress}
 import js7.base.convert.As.convert
 import js7.base.test.OurTestSuite
 import js7.common.internet.IP.*
@@ -12,7 +12,7 @@ final class IPTest extends OurTestSuite {
 
   "InetAddress" in {
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }
-    intercept[UnknownHostException] { convert[String, InetAddress](" ") }
+    intercept[IllegalArgumentException] { convert[String, InetAddress](" ") }
     assert(convert[String, InetAddress]("1.2.3.4") == InetAddress.getByName("1.2.3.4"))
     assert(convert[String, InetAddress]("localhost") == InetAddress.getByName("localhost"))
   }
