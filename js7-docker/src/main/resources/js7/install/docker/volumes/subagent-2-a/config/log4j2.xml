@@ -68,8 +68,8 @@
       <appenderRef level="info"  ref="file-info"/>
       <appenderRef level="trace" ref="file-debug"/>
     </root>
-    <logger level="warn"  name="pekko.actor.CoordinatedShutdown"/>
-    <logger level="warn"  name="pekko.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
 
     <!-- Change to trace for detailed logging -->
