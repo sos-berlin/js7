@@ -55,7 +55,6 @@ object Dependencies
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
-  val java8Compat         = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 

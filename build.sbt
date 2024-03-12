@@ -579,7 +579,6 @@ lazy val `js7-launcher-for-java` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      java8Compat ++
       "io.vavr" % "vavr" % vavrVersion ++
       hamcrest % "test" ++
       scalaTest % "test" ++
