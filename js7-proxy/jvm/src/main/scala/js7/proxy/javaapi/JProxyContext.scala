@@ -73,4 +73,6 @@ extends HasCloser:
 
 
 object JProxyContext:
+
+  Logger.dontInitialize()
   private val logger = Logger[this.type]

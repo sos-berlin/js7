@@ -1,14 +1,18 @@
 package js7.proxy.javaapi
 
+import cats.effect.unsafe.IORuntime
 import io.vavr.control.Either as VEither
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
@@ -22,9 +26,6 @@ import js7.proxy.data.event.EventAndState
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import reactor.core.publisher.Flux
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.headL
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 
 /** Observes the Controller's event stream and provides the current JControllerState.
   * After use, stop with `stop()`.

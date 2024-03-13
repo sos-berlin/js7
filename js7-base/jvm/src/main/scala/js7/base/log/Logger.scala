@@ -54,6 +54,12 @@ object Logger extends AdHocLogger:
     ifNotInitialized:
       Log4j.initialize(name)
 
+  /** Don't initialize but mark as initialized.
+   * Use this when logging has been initialized by some outer software (like JOC). */
+  def dontInitialize(): Unit =
+    ifNotInitialized:
+      Tests.log()
+
   def isInitialized: Boolean =
     ifNotInitialized.isInitialized
 
