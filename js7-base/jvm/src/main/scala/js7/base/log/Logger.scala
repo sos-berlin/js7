@@ -29,6 +29,7 @@ object Logger extends AdHocLogger:
   type Underlying = ScalaLogger
 
   private val ifNotInitialized = new Once
+  private val ifNotAboutMissingIniatializingWarned = new Once
 
   Slf4jUtils.initialize()
 
@@ -95,11 +96,12 @@ object Logger extends AdHocLogger:
 
   private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = "") =
     if !ifNotInitialized.isInitializing then
-      val classArg = if cls == null then "" else s"[${cls.scalaName}]"
-      val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
-      val t = new Exception("")
-      ScalaLogger[this.type]
-        .warn(s"Logger$classArg$prefixArg before Logger has been initialized", t)
+      ifNotAboutMissingIniatializingWarned:
+        val classArg = if cls == null then "" else s"[${cls.scalaName}]"
+        val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
+        val t = new Exception("")
+        ScalaLogger[this.type]
+          .warn(s"Logger$classArg$prefixArg before Logger has been initialized", t)
 
   /** Removes '$' from Scala's companion object class. */
   private def normalizeClassName(c: Class[?]): String =
