@@ -45,7 +45,7 @@ object ServiceMainTest:
     val resource = Service.resource(IO(new TestService))
 
 
-  private val termination = ProgramTermination(restart = true)
+  private val termination = ProgramTermination.Restart
 
 
   private class TerminatingService extends MainService, StoppableByRequest:

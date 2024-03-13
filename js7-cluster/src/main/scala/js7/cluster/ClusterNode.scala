@@ -86,7 +86,7 @@ extends Service.StoppableByRequest:
         .recover:
           case t: RestartAfterJournalTruncationException =>
             logger.info(t.getMessage)
-            Left(ProgramTermination(restart = true)))
+            Left(ProgramTermination.Restart))
 
   protected def start =
     startService:
@@ -535,7 +535,7 @@ object ClusterNode:
     MainServiceTerminationException,
     NoStackTrace:
 
-    def termination = ProgramTermination(restart = true)
+    def termination = ProgramTermination.Restart
 
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,

@@ -48,7 +48,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
                   after = primaryController.eventWatch.lastFileEventId))
               .await(99.s)
               .match
-                case Left(ProgramTermination(/*restart=*/true)) =>
+                case Left(ProgramTermination.Restart) =>
                 case _ =>
                   restart = false
                   // Restarted Primary should have become passive

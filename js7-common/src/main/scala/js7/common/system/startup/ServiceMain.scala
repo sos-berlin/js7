@@ -17,7 +17,6 @@ import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.base.system.startup.Js7ReturnCodes.terminationToExitCode
 import scala.concurrent.duration.{Deadline, Duration}
 
 object ServiceMain:
@@ -104,7 +103,7 @@ object ServiceMain:
         logger.info(msg)
         printlnWithClock(msg)
 
-        terminationToExitCode(termination)
+        termination.toExitCode
       catch throwableToExitCode
 
     def throwableToExitCode: PartialFunction[Throwable, ExitCode] =

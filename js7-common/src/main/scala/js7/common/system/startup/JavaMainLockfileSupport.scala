@@ -56,22 +56,26 @@ object JavaMainLockfileSupport:
       createDirectory(workDirectory)
 
   // Also write PID to lockFile (Java >= 9)
-  private def lock[R](lockFile: Path)(body: IO[R]): IO[R] =
-    val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
-    Try(lockFileChannel.tryLock()) match
-      case Failure(throwable) =>
-        printlnWithClock(s"tryLock: $throwable")
-        JavaMain.exit1()
+  private def lock(lockFile: Path)(body: IO[ProgramTermination]): IO[ProgramTermination] =
+    IO.defer:
+      val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
+      Try(lockFileChannel.tryLock()) match
+        case Failure(throwable) =>
+          IO:
+            printlnWithClock(s"tryLock: $throwable")
+            ProgramTermination.Failure
 
-      case Success(null) =>
-        lockFileChannel.close()
-        printlnWithClock("Duplicate start of JS7")
-        JavaMain.exit1()
+        case Success(null) =>
+          IO:
+            lockFileChannel.close()
+            printlnWithClock("Duplicate start of JS7")
+            ProgramTermination.Failure
 
-      case Success(_) =>
-        try
-          for pid <- ProcessPidRetriever.maybeOwnPid do
-            lockFileChannel.write(ByteBuffer.wrap(pid.string.getBytes(UTF_8)))
-          body
-        finally lockFileChannel.close()
-        // Do not delete the lockFile, to avoid race condition with concurrent start.
+        case Success(_) =>
+          try
+            for pid <- ProcessPidRetriever.maybeOwnPid do
+              lockFileChannel.write(ByteBuffer.wrap(pid.string.getBytes(UTF_8)))
+            body
+          finally
+            lockFileChannel.close()
+          // Do not delete the lockFile, to avoid race condition with concurrent start.
