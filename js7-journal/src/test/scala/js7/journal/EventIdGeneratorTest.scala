@@ -27,7 +27,7 @@ final class EventIdGeneratorTest extends OurTestSuite:
     assert(eventIds.size == n)  // All EventIds are distinct
 
   "updateLastEventId" in:
-    val eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(epochMilli = 100))
+    val eventIdGenerator = EventIdGenerator.withFixedClock(epochMilli = 100)
     assert(eventIdGenerator.lastUsedEventId == 0)
     assert(eventIdGenerator.next() == 100000)
 

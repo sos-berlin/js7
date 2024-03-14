@@ -41,9 +41,9 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, JournalPosition, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
+import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
-import js7.journal.{EventIdClock, EventIdGenerator}
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
@@ -280,7 +280,7 @@ object ClusterNode:
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
-    eventIdClock: EventIdClock,
+    eventIdGenerator: EventIdGenerator,
     testEventBus: EventPublisher[Any])
     (implicit
       S: ClusterableState.Companion[S],
@@ -296,7 +296,7 @@ object ClusterNode:
         resource(
           recovered,
           clusterNodeApi(_, _, actorSystem),
-          licenseChecker, journalLocation, clusterConf, eventIdClock, testEventBus
+          licenseChecker, journalLocation, clusterConf, eventIdGenerator, testEventBus
         ).orThrow
       }
 
@@ -306,7 +306,7 @@ object ClusterNode:
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
-    eventIdClock: EventIdClock,
+    eventIdGenerator: EventIdGenerator,
     testEventBus: EventPublisher[Any])
     (implicit
       S: ClusterableState.Companion[S],
@@ -334,7 +334,7 @@ object ClusterNode:
           resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
-          new EventIdGenerator(eventIdClock),
+          eventIdGenerator,
           testEventBus)
       yield clusterNode
 

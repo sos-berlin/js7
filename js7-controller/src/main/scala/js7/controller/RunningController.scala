@@ -70,7 +70,7 @@ import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
 import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
-import js7.journal.{EventIdClock, JournalActor}
+import js7.journal.{EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -219,21 +219,21 @@ object RunningController:
           .getDuration("js7.time.clock-setting-check-interval")
           .toFiniteDuration))
 
-    val eventIdClock: EventIdClock =
-      testWiring.eventIdClock getOrElse EventIdClock(alarmClock)
+    val eventIdGenerator: EventIdGenerator =
+      testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
     for
       iox <- IOExecutor.resource[IO](conf.config, conf.name + " I/O")
       runningController <-
         given IOExecutor = iox
-        resource(conf, alarmClock, eventIdClock)
+        resource(conf, alarmClock, eventIdGenerator)
     yield runningController
   }.evalOn(ioRuntime.compute)
 
   private def resource(
     conf: ControllerConfiguration,
     alarmClock: AlarmClock,
-    eventIdClock: EventIdClock)
+    eventIdGenerator: EventIdGenerator)
     (implicit ioRuntime: IORuntime, iox: IOExecutor)
   : Resource[IO, RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
@@ -252,7 +252,7 @@ object RunningController:
         (admission, name, actorSystem) => PekkoHttpControllerApi.resource(
           admission, httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalLocation, clusterConf, eventIdClock, testEventBus)
+        journalLocation, clusterConf, eventIdGenerator, testEventBus)
 
     val resources = 
       Resource.both(
@@ -470,6 +470,6 @@ object RunningController:
 
   final case class TestWiring(
     alarmClock: Option[AlarmClock] = None,
-    eventIdClock: Option[EventIdClock] = None)
+    eventIdGenerator: Option[EventIdGenerator] = None)
   object TestWiring:
     val empty = TestWiring()

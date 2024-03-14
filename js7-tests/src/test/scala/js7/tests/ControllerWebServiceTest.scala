@@ -38,7 +38,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.test.TestSetting.TestAgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.EventIdClock
+import js7.journal.EventIdGenerator
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv}
@@ -81,10 +81,10 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
     IO(Some(SessionToken(SecretString(sessionToken))))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
-    eventIdClock = Some(EventIdClock.fixed(2000)))
+    eventIdGenerator = Some(EventIdGenerator.withFixedClock(epochMilli = 2)))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
-    eventIdClock = Some(EventIdClock.fixed(1000)))
+    eventIdGenerator = Some(EventIdGenerator.withFixedClock(epochMilli = 1)))
 
   private implicit def materializer: Materializer = httpClient.materializer
 

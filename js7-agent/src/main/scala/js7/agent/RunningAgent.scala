@@ -1,15 +1,9 @@
 package js7.agent
 
-import cats.effect.Resource
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
-import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.monixlike.MonixLikeExtensions.tapError
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
-import org.apache.pekko.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.ConfigUtil
 import js7.agent.RunningAgent.*
@@ -23,6 +17,8 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -30,6 +26,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -39,6 +36,7 @@ import js7.base.system.startup.StartUp
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, ProgramTermination}
 import js7.base.web.Uri
@@ -50,13 +48,14 @@ import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.data.subagent.SubagentId
-import js7.journal.EventIdClock
+import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.journal.watch.JournalEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
-import cats.effect.IO
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
@@ -212,7 +211,7 @@ object RunningAgent:
       val clock = testWiring.alarmClock getOrElse AlarmClock(
         Some(config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration))(
         using ioRuntime.scheduler)
-      val eventIdClock = testWiring.eventIdClock getOrElse EventIdClock(clock)
+      val eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
       implicit val nodeNameToPassword: NodeNameToPassword[AgentState] =
         nodeName =>
           Right(config.optionAs[SecretString](
@@ -224,7 +223,7 @@ object RunningAgent:
           (admission, label, actorSystem) => AgentClient.resource(
             admission, label, httpsConfig)(actorSystem),
           licenseChecker,
-          journalLocation, clusterConf, eventIdClock, subagent.testEventBus)
+          journalLocation, clusterConf, eventIdGenerator, subagent.testEventBus)
         director <-
           resource2(forDirector, clusterNode, testWiring, conf, subagent.testEventBus, clock)
       yield director
@@ -423,7 +422,7 @@ object RunningAgent:
 
   final case class TestWiring(
     alarmClock: Option[AlarmClock] = None,
-    eventIdClock: Option[EventIdClock] = None,
+    eventIdGenerator: Option[EventIdGenerator] = None,
     commandHandler: Option[CommandHandler] = None,
     authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None)
   object TestWiring:

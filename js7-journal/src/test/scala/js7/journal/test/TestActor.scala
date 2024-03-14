@@ -7,9 +7,10 @@ import org.apache.pekko.pattern.{ask, pipe}
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.*
+import cats.effect.IO
 import com.typesafe.config.Config
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -19,8 +20,7 @@ import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournal
 import js7.journal.test.TestActor.*
-import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import cats.effect.IO
+import js7.journal.{EventIdGenerator, JournalActor}
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
@@ -53,7 +53,7 @@ extends Actor, Stash:
     val recovered = StateRecoverer.recover[TestState](journalLocation, config)
     journalAllocated = FileJournal
       .resource(recovered, journalConf,
-        new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
+        EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/))
       .toAllocated
       .await(99.s)
 

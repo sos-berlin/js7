@@ -148,7 +148,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
       implicit val timeout: Timeout = Timeout(99.s)
       journalAllocated = FileJournal
         .resource(recovered, JournalConf.fromConfig(TestConfig),
-          new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
+          EventIdGenerator.withFixedClock(epochMilli = 1000/*EventIds start at 1000000*/))
         .toAllocated
         .await(99.s)
       journal
