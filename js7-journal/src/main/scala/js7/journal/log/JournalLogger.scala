@@ -196,4 +196,4 @@ object JournalLogger:
       else if isFirstEvent then '┌'
       else if isLastEvent then '└'
       else if nr == beforeLastEventNr then '┤'
-      else '╷' // ┆╎
+      else '╵' // ┆╎

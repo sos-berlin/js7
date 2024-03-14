@@ -1,7 +1,7 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
@@ -94,7 +94,7 @@ trait RealEventWatch extends EventWatch:
                       val iterator = if onlyAcks then lastOfIterator(events) else events
                       var lastEventId = request.after
                       var limit = request.limit
-                      val stream = closeableIteratorToStream(iterator)
+                      val stream = closeableIteratorToStream(iterator, chunkSize = 1)
                         .map: o =>
                           lastEventId = o.eventId
                           limit -= 1

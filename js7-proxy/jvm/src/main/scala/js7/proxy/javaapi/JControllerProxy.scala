@@ -6,7 +6,6 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem

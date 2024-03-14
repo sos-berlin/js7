@@ -45,7 +45,7 @@ object StartUp:
 
   def startUpLine(name: String): String =
     s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
-       |${"━" * 80}""".stripMargin // Log a bar, in case the previous log file is being appended
+       |${"━" * 80}""".stripMargin // Log a bar, in case we append to an existing log file
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =

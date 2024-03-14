@@ -21,7 +21,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
   @volatile private var _last = initial
 
   def onAdded(a: Long): Unit =
-    //logger.trace(s"onAdded $a")
+   //Logger.traceCall(s"### onAdded $a"):
     synchronized:
       if a < _last then throw new IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
       _last = a
@@ -39,10 +39,9 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
    */
   def whenAvailable(after: Long, until: Option[CatsDeadline], delay: FiniteDuration = ZeroDuration)
   : IO[Boolean] =
-    //def argsString =
-    //  s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
-    //logger.traceIOWithResult("whenAvailable", argsString, task =
+   //Logger.traceIO("### whenAvailable", after):
     IO.defer:
+      //Logger.trace(s"### after=$after _last=$_last")
       if after < _last then
         IO.True // Event already waiting
       else
@@ -52,11 +51,13 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
             if maybeTimeLeft.exists(_.isZero) then
               IO.False // Timeout
             else
+              //Logger.trace(s"### delay=${delay.pretty} maybeTimeLeft=${maybeTimeLeft.map(_.pretty)} ")
               val io = whenAvailable2(after)
-                .andWait(delay min maybeTimeLeft.getOrElse(FiniteDuration.MaxValue))
+                .andWait(delay/* min maybeTimeLeft.getOrElse(FiniteDuration.MaxValue)*/)
               maybeTimeLeft.fold(io)(t => io.timeoutTo(t, IO.False))
 
   private def whenAvailable2(after: Long): IO[true] =
+   //Logger.traceIO("### whenAvailable2", after):
     if after < _last then
       trueIO
     else
@@ -65,10 +66,11 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
           trueIO
         else
           val promise = valueToPromise.getOrElseUpdate(after, Promise())
-          IO.fromFutureCancelable(IO.pure:
-            promise.future ->
-              /*onCancel=*/ IO.unit) // TODO Use Deferred instread of Promise to avoid leaks!
-            .as(true)
+          IO.fromFutureCancelable:
+            // Tiny leak in promise.future, will be garbage collected when the awaited event
+            // arrives or IncreasingNumberSync is being garbage collected
+            IO(promise.future -> /*onCancel=*/ IO.unit)
+          .as(true)
 
   def last = _last
 

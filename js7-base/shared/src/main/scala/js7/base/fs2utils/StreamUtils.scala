@@ -11,7 +11,7 @@ object StreamUtils:
 
   private val logger = Logger[this.type]
 
-  def closeableIteratorToStream[A](iterator: CloseableIterator[A]): Stream[IO, A] =
+  def closeableIteratorToStream[A](iterator: CloseableIterator[A], chunkSize: Int): Stream[IO, A] =
     Stream
       .resource(Resource.makeCase(
         acquire = IO.pure(iterator))(
@@ -19,7 +19,7 @@ object StreamUtils:
           logger.trace(s"Close $iterator $exitCase")
           iterator.close()))
       .flatMap: iterator =>
-        Stream.fromIterator(iterator, chunkSize = 1/*???*/)
+        Stream.fromIterator(iterator, chunkSize = chunkSize)
 
   /** Like Stream tailRecM, but limits the memory leak.
     * After a number of `Left` retured by `f`, the returned `Stream` is truncated.

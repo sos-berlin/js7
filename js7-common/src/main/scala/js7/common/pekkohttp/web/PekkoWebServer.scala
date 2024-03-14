@@ -78,7 +78,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         onHttpsKeyOrCertChanged)
       .void
 
-  private[web] def onHttpsKeyOrCertChanged(implicit iox: IOExecutor): IO[Unit] =
+  private[web] def onHttpsKeyOrCertChanged: IO[Unit] =
     logger.debugIO(IO.defer {
       testEventBus.publish(BeforeRestartEvent)
 
@@ -93,7 +93,6 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   private def checkFilesThenRestart(
     previouslyAllocated: Option[Allocated[IO, SinglePortPekkoWebServer]],
     bindingAndResource: BindingAndResource)
-    (implicit iox: IOExecutor)
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     IO.defer:
       val binding = bindingAndResource.webServerBinding
@@ -115,7 +114,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
           _addrToHttpsFileToTime(binding.address) = prevFileToTime))
       }
 
-  private def startPortWebServer(bindingAndResource: BindingAndResource)(implicit iox: IOExecutor)
+  private def startPortWebServer(bindingAndResource: BindingAndResource)
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     import bindingAndResource.{resource, webServerBinding as binding}
 
@@ -144,7 +143,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
           })
       }
 
-  private def readFileTimes(binding: WebServerBinding)(implicit iox: IOExecutor)
+  private def readFileTimes(binding: WebServerBinding)
   : IO[Map[Path, Try[FileTime]]] =
     IO.interruptible:
       binding.requiredFiles

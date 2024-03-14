@@ -281,7 +281,7 @@ object DirectoryEventDelayer:
 
   object syntax:
     extension(self: Stream[IO, DirectoryEvent])
-      @deprecated("Use .through(DirectoryEventDelayer.pipe(...))", "2.7")
+      @deprecated("Use .through(DirectoryEventDelayer.pipe(...))", "v2.7")
       def delayFileAdded(
         directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
       : Stream[IO, DirectoryEvent] =

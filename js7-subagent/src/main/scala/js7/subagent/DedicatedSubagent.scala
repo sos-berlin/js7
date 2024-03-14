@@ -321,7 +321,7 @@ extends Service.StoppableByRequest:
   : Pipe[IO, String, Nothing] =
     _.chunks
       .map: chunk =>
-        chunk.toIArray.map: string =>
+        chunk.toVector.map: string =>
           orderId <-: OrderStdWritten(outErr)(string)
       .flatMap: events =>
         Stream.exec:
@@ -354,7 +354,7 @@ extends Service.StoppableByRequest:
                   jobLauncherConf.systemEncoding)
                 new JobDriver(
                   jobConf,
-                  id => journal.unsafeCurrentState().pathToJobResource.checked(id)/*live!*/,
+                  id => journal.unsafeCurrentState()/*live!*/.pathToJobResource.checked(id),
                   JobLauncher.checked(jobConf, jobLauncherConf),
                   fileValueState))
             .map(workflowJob -> _))

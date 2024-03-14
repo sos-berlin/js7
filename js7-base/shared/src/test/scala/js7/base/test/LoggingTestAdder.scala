@@ -150,7 +150,7 @@ private object LoggingTestAdder:
           s"""$successMarkup↙ $prefix"$testName"$resetColor $prettyDuration"""
 
         case Failure(_: TestPendingException) =>
-          s"""$""pendingMarkup↙ 🚧 $prefix"$testName" (PENDING)$resetColor $prettyDuration"""
+          s"""$pendingMarkup↙ 🚧 $prefix"$testName" (PENDING)$resetColor $prettyDuration"""
 
         case Failure(t) =>
           s"""$failureMarkup↙ 💥 $prefix"$testName" 💥$resetColor $prettyDuration"""

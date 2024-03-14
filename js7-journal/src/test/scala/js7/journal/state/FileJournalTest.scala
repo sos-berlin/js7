@@ -4,7 +4,6 @@ import cats.effect.unsafe.IORuntime
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
-//diffx import com.softwaremill.diffx.generic.auto.*
 import cats.effect.IO
 import fs2.Stream
 import io.circe.Codec
@@ -35,7 +34,7 @@ import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
+import js7.journal.{EventIdGenerator, JournalActor}
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
