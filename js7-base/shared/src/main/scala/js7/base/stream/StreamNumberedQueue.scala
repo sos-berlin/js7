@@ -87,9 +87,8 @@ final class StreamNumberedQueue[V: Tag]:
         Checked.unit
       else
         for _ <- s.checkAfter(after) yield
-          val q = s.queue
-          val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
-          _state = s.copy(torn = after, queue = q.drop(index + found.toInt)))
+          val (index, found) = s.search(after)
+          _state = s.copy(torn = after, queue = s.queue.drop(index + found.toInt)))
 
   def stop: IO[Vector[Numbered[V]]] =
     mutex.lock:
@@ -124,12 +123,11 @@ final class StreamNumberedQueue[V: Tag]:
       if stopped then
         Left(StoppedProblem)
       else
-        val q = queue
-        val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
+        val (index, found) = search(after)
         if !found && after != torn then
           Left(unknownAfterProblem(after))
         else
-          Right(q.drop(index + found.toInt))
+          Right(queue.drop(index + found.toInt))
 
     def requireValidNumber(after: Long): IO[Unit] =
       IO.defer:
@@ -158,6 +156,9 @@ final class StreamNumberedQueue[V: Tag]:
         Left(StoppedProblem)
       else
         Right(this)
+
+    def search(after: Long): (Int, Boolean) =
+      binarySearch(queue, _.number)(after)
   end State
 
 

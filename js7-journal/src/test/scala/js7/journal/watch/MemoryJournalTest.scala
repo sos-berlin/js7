@@ -1,28 +1,32 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import cats.instances.try_.*
+import cats.instances.vector.*
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
+import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.{materialize, unsafeToCancelableFuture}
 import js7.base.problem.Checked.*
-import js7.base.problem.Problem
-import js7.base.test.{OurTestSuite}
+import js7.base.problem.{Checked, Problem}
+import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
 import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
 import js7.tester.ScalaTestUtils.awaitAndAssert
+import org.scalatest.Assertion
 import scala.collection.mutable
 
-final class MemoryJournalTest extends OurTestSuite:
+final class MemoryJournalTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
-  private given Scheduler = ioRuntime.scheduler
 
   "Initial values" in:
     val journal = newJournal()
@@ -120,10 +124,9 @@ final class MemoryJournalTest extends OurTestSuite:
   "size" in:
     val size = 3
     val journal = newJournal(size = size)
-    import journal.eventWatch
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
-    val observing = eventWatch
+    val observing = journal.eventWatch
       .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
@@ -150,28 +153,106 @@ final class MemoryJournalTest extends OurTestSuite:
 
     persisting.await(9.s)
     observing.cancelAndForget(): Unit
+    succeed
 
   "persist more than size events at once" in:
     val size = 3
     val journal = newJournal(size = size)
-    import journal.eventWatch
 
     val events = (0 until 3 * size).map(_.toString).map(x => x <-: TestEvent.Added(x))
-    journal
-      .persistKeyedEvents(events)
+
+    if true then
+      // Until v2.6: temporary overflow of MemoryJournal's queue counts the semaphore wrongly
+      journal
+        .persistKeyedEvents(events)
+        .await(99.s)
+      assert(journal.queueLength == 3 * size)
+      journal.eventWatch
+        .stream(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst,
+          timeout = Some(0.s/*We get the whole commit immediately*/)))
+        .map(_.value)
+        .compile.toList
+        .map: list =>
+          assert(list == events)
+    else
+      val feed: IO[Unit] =
+        journal.persistKeyedEvents(events).map(_.orThrow).void
+
+      val eat: IO[List[KeyedEvent[TestEvent]]] =
+        journal.eventWatch
+          .stream:
+            EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst, timeout = None)
+          .take(events.size)
+          .chunks
+          .evalTap: chunk =>
+            journal.releaseEvents(untilEventId = chunk.last.get.eventId)
+          .unchunks
+          .map(_.value)
+          .compile.toList
+
+      IO.both(feed, eat)
+        .map(_._2)
+        .map: list =>
+          assert(list == events)
+
+  "Speed test" in:
+    sys.props.get("test.speed").map(_.toInt).fold(IO.pure(pending)): n =>
+      // Test congestion with parallelization > availableProcessors
+      val parallelization = 3 * sys.runtime.availableProcessors
+      testSpeed:
+        (0 until n)
+          .map: i =>
+            val k = i.toString
+            k <-: TestEvent.Added(k)
+          .toVector
+          .grouped((n + parallelization - 1) / parallelization)
+          .toVector
+
+  private def testSpeed(events: Seq[Seq[KeyedEvent[TestEvent.Added]]]): IO[Assertion] =
+    val n = events.view.flatten.size
+    val journal = newJournal(size = 10)
+
+    val feed: IO[Unit] =
+      events.parTraverse: myEvents =>
+        journal
+          .persistKeyedEvents(myEvents)
+          .map(_.orThrow)
+          .void
+      .map(_.combineAll)
+
+    val eat: IO[Set[KeyedEvent[TestEvent]]] =
+      journal.eventWatch
+        .stream:
+          EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst, timeout = None)
+        .take(n)
+        .chunks
+        .evalTap: chunk =>
+          journal.releaseEvents(untilEventId = chunk.last.get.eventId)
+        .unchunks
+        .map(_.value)
+        .compile
+        .fold(Set.newBuilder[KeyedEvent[TestEvent]])(_ += _)
+        .map(_.result())
+
+    IO.both(feed, eat)
+      .map(_._2)
+      .timed
+      .flatMap: (duration, eatenEvents) =>
+        IO:
+          assert(eatenEvents == events.flatten.toSet)
+          logger.info(Stopwatch.itemsPerSecondString(duration, n, "events"))
+          //FIXME Semaphore: assert(journal.semaphoreCount.await(99.s) == 0)
+          succeed
+
+  private def newJournal(size: Int = Int.MaxValue): MemoryJournal[TestState] =
+    MemoryJournal
+      .start(
+        TestState.empty,
+        size = size,
+        infoLogEvents = Set.empty,
+        eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))
       .await(99.s)
-    assert(journal.queueLength == 3 * size)
-    assert(eventWatch
-      .stream(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
-      .map(_.value)
-      .compile.toList
-      .await(99.s) == events)
 
 
 object MemoryJournalTest:
-  private def newJournal(size: Int = Int.MaxValue)(using Scheduler) =
-    new MemoryJournal(
-      TestState.empty,
-      size = size,
-      infoLogEvents = Set.empty,
-      eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))
+  private val logger = Logger[this.type]

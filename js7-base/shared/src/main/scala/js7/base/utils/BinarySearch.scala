@@ -15,10 +15,6 @@ object BinarySearch:
     binarySearchNew(0, indexedSeq.length): i =>
       ordering.compare(value, convert(indexedSeq(i)))
 
-  @deprecated("Use binarySearchNew with reverse comparison")
-  def binarySearch(start: Int, end: Int, compareTo: Int => Int): (Int, Boolean) =
-    binarySearchNew(start, end)(i => -compareTo(i))
-
   /** Binary search in an ordered sequence.
    * `compareTo` with an index as argument should return
    * - 0 if the indexed values equals the searched value.

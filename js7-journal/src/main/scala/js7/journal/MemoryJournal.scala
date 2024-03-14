@@ -1,49 +1,47 @@
 package js7.journal
 
 import cats.effect.std.Semaphore
-import cats.effect.unsafe.Scheduler
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.log.CorrelId
+import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic, CloseableIterator}
+import js7.base.utils.Tests.isTest
+import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
+import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.Journal
 import js7.journal.watch.RealEventWatch
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.Deadline
 
-final class MemoryJournal[S <: JournaledState[S]] private[journal](
+final class MemoryJournal[S <: JournaledState[S]] private(
   initial: S,
-  size: Int,
+  val size: Int,
   waitingFor: String = "releaseEvents",
   infoLogEvents: Set[String],
-  eventIdGenerator: EventIdGenerator = new EventIdGenerator)
-  (implicit protected val S: JournaledState.Companion[S], scheduler: Scheduler)
+  eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+  semaphore: Semaphore[IO])
+  (implicit protected val S: JournaledState.Companion[S])
 extends Journal[S]:
 
   val journalId = JournalId.random()
 
   private val stateLock = AsyncLock("MemoryJournal.state")
   private val queueLock = AsyncLock("MemoryJournal.queue")
-  // TODO Pause journal if queue is events are not released for a long time, despite length of queue?
-  private val semaphore: IO[Semaphore[IO]] = Semaphore[IO](size).unsafeMemoize
-  private val semaMininum = size max 1
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
   @volatile private var _state = initial
   @volatile private var eventWatchStopped = false
   private val _eventCount = Atomic(0L)
 
-  private val journalLogger =
-    new JournalLogger("memory", infoLogEvents, suppressTiming = true)
+  private val journalLogger = new JournalLogger("memory", infoLogEvents, suppressTiming = true)
 
   def isHalted = false
 
@@ -52,7 +50,6 @@ extends Journal[S]:
   val eventWatch: RealEventWatch = new MemoryJournalEventWatch
 
   private class MemoryJournalEventWatch extends RealEventWatch:
-    protected val scheduler = MemoryJournal.this.scheduler
 
     protected def eventsAfter(after: EventId) =
       eventsAfter_(after)
@@ -100,69 +97,83 @@ extends Journal[S]:
     options: CommitOptions = CommitOptions.default)(
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    stateLock.lock(IO.defer {
-      (for
-        keyedEvents <- stateToEvents(_state)
-        updated <- _state.applyEvents(keyedEvents)
-        stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
-      yield
-        semaphore.flatMap(_
-          .acquireN(stampedEvents.length min semaMininum)
-          .logWhenItTakesLonger(waitingFor)
-          .*>(queueLock
-            .lock(IO {
-              var q = queue
-              val qLen = q.events.length
-              q = q.copy(events = q.events ++ stampedEvents)
-              val n = q.events.length - qLen
-              if n > 0 then {
-                _eventCount += n
-                val eventId = q.events.last.eventId
-                q = q.copy(lastEventId = eventId)
-                _state = updated.withEventId(eventId)
-                log(_eventCount.get(), stampedEvents)
-                eventWatch.onEventsCommitted(eventId)
-              }
-              queue = q
-              stampedEvents -> updated
-          })))
-      ).sequence
-    })
+    stateLock.lock:
+      IO.defer:
+        val state = _state
+        (for
+          keyedEvents <- stateToEvents(state)
+          updated <- state.applyEvents(keyedEvents)
+          stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
+        yield
+          // Limit acq to size to allow more stampedEvents than size.
+          // FIXME But then, the late releaseN releases to much, shifting the semaphore limit upwards.
+          // In our reality, this should not happen because size >> stampedEvents.length.
+          // size is >= 1000, and stampedEvents contains some OrderStdWritten or OrderProcessed.
+          // It may happen with big stdout output.
+          // We need a semaphore which allows bigger a acquisition, acquisition of the whole queue.
+          val acq = stampedEvents.length min size
+          semaphore.acquireN(acq)
+            .logWhenItTakesLonger(waitingFor)
+            .*>(
+              enqueue(stampedEvents, updated))
+            .as(stampedEvents -> updated)
+        ).sequence
 
-  private def log(eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
+  private def enqueue[E <: Event](stampedEvents: Seq[Stamped[KeyedEvent[E]]], state: S): IO[Unit] =
+    IO.whenA(stampedEvents.nonEmpty):
+      val since = Deadline.now
+      queueLock.lock:
+        IO:
+          var q = queue
+          val eventId = stampedEvents.last.eventId
+          q = q.copy(
+            events = q.events ++ stampedEvents,
+            lastEventId = eventId)
+          _state = state.withEventId(eventId)
+          val n = _eventCount += stampedEvents.length
+          log(n, stampedEvents, since)
+          eventWatch.onEventsCommitted(eventId)
+          queue = q
+
+  private def log(
+    eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]], since: Deadline)
+  : Unit =
     journalLogger.logCommitted(Vector(new SimpleLoggable(
       CorrelId.current,
       eventNumber = eventNumber,
       stampedEvents,
       isTransaction = false,
-      since = now,
+      since = since,
       isLastOfFlushedOrSynced = true)).view)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
-    queueLock.lock(IO.defer {
+    queueLock.lock(IO.defer:
       val q = queue
-      val (index, found) =
-        binarySearch(0, q.events.length, i => q.events(i).eventId.compare(untilEventId))
+      val (index, found) = queue.search(untilEventId)
       if !found then
-        IO.pure(Left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}")))
-      else {
+        IO.left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}"))
+      else
         val n = index + 1
         queue = q.copy(
           tornEventId = untilEventId,
           events = q.events.drop(n))
-        semaphore
-          .flatMap(_.releaseN(n))
-          .*>(semaphore.flatMap(_.available).map(available => assertThat(available >= 0)))
-          .as(Checked.unit)
-      }
-    })
+
+        semaphore.releaseN(n)
+          .*>(semaphore.available.map(available => assertThat(available >= 0)))
+          .pipeIf(isTest && false/*FIXME*/):
+            _.<*(semaphore.count.flatTap(cnt => IO:
+              if cnt > size then
+                val msg = s"MemoryJournal: Semaphore is greater than queue size: $cnt > $size "
+                logger.error(msg)
+                throw new IllegalStateException(msg)))
+          .as(Checked.unit))
 
   private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] =
     val q = queue
     if after < q.tornEventId then
       None
     else
-      val (index, found) = binarySearch(0, q.events.length, i => q.events(i).eventId.compare(after))
+      val (index, found) = queue.search(after)
       if !found && after != q.tornEventId then
         //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
         None
@@ -180,22 +191,46 @@ extends Journal[S]:
     eventWatchStopped = true
 
   @TestOnly
-  def queueLength = queue.events.size
+  private[journal] def queueLength = queue.events.size
+
+  @TestOnly
+  private[journal] def semaphoreCount: IO[Long] =
+    semaphore.count.flatTap: n =>
+      IO(assertThat(n <= size))
+
 
   private sealed case class EventQueue(
     tornEventId: EventId,
     lastEventId: EventId,
-    events: Vector[Stamped[KeyedEvent[Event]]])
+    events: Vector[Stamped[KeyedEvent[Event]]]):
+
+    def search(after: EventId): (Int, Boolean) =
+      binarySearch(events, _.eventId)(after)
 
 
 object MemoryJournal:
+
+  private val logger = Logger[this.type]
+
   def resource[S <: JournaledState[S]](
     initial: S,
     size: Int,
     waitingFor: String = "releaseEvents",
     infoLogEvents: Set[String] = Set.empty,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
-    (implicit S: JournaledState.Companion[S], scheduler: Scheduler)
-  : Resource[IO, MemoryJournal[S]] =
-    Resource.eval(IO(
-      new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator)))
+    (implicit S: JournaledState.Companion[S])
+  : ResourceIO[MemoryJournal[S]] =
+    Resource.eval:
+      start(initial, size, waitingFor, infoLogEvents, eventIdGenerator)
+
+  def start[S <: JournaledState[S]](
+    initial: S,
+    size: Int,
+    waitingFor: String = "releaseEvents",
+    infoLogEvents: Set[String] = Set.empty,
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    (implicit S: JournaledState.Companion[S])
+  : IO[MemoryJournal[S]] =
+    Semaphore[IO](size).flatMap: semaphore =>
+      IO:
+        new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator, semaphore)
