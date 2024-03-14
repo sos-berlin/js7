@@ -10,6 +10,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.DefaultWorryDurations
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
@@ -26,6 +27,7 @@ final class AsyncLock private(
 
   private val lockM = MVar[IO].empty[Locked].unsafeMemoize
   private val log = if noLog then Logger.empty else logger
+  private val queueLength = Atomic(0)
 
   // IntelliJ cannot locate references:
   //def apply[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
@@ -75,11 +77,13 @@ final class AsyncLock private(
             ().tailRecM: _ =>
               mvar.tryRead.flatMap:
                 case Some(lockedBy) =>
+                  queueLength += 1
                   val sym = new BlockingSymbol
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
                     s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who
-                    } (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ⟲")
+                    } (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId
+                    }) ($queueLength queued) ⟲")
                   cancelable:
                     mvar.put(locked)
                   .whenItTakesLonger(warnTimeouts): _ =>
@@ -88,16 +92,18 @@ final class AsyncLock private(
                       logger.info:
                         s"⟲ $sym${locked.nrString} $name: ${locked.who} is still waiting" +
                           s" for ${waitingSince.elapsed.pretty}," +
-                          s" currently acquired by ${lockedBy getOrElse "None"} ..."
+                          s" currently acquired by ${lockedBy getOrElse "None"} ($queueLength queued) ..."
                   .onCancel(IO:
+                    queueLength -= 1
                     log.debug:
                       s"⚫️${locked.nrString} $name acquisition canceled after ${
-                        waitingSince.elapsed.pretty} ↙")
+                        waitingSince.elapsed.pretty} ($queueLength queued) ↙")
                   .flatMap: _ =>
+                    queueLength -= 1
                     IO:
                       log.log(sym.releasedLogLevel,
                         s"↘ 🟢${locked.nrString} $name acquired by ${locked.who} after ${
-                          waitingSince.elapsed.pretty} ↘")
+                          waitingSince.elapsed.pretty} ($queueLength queued) ↘")
                       locked.startMetering()
                       Right(())
 
