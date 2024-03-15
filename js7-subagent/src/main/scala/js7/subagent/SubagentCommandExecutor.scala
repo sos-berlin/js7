@@ -48,15 +48,19 @@ private[subagent] final class SubagentCommandExecutor(
           //  }
 
           case AttachSignedItem(signed) =>
-            signatureVerifier.verify(signed.signedString) match
-              case Left(problem) => IO.pure(Left(problem))
-              case Right(signerIds) =>
-                // Duplicate with Agent
-                logger.info(Logger.SignatureVerified,
-                  s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
-                journal
-                  .persistKeyedEvent(NoKey <-: SubagentItemAttached(signed.value))
-                  .rightAs(SubagentCommand.Accepted)
+            // Duplicate with Agent
+            journal.state.flatMap: state =>
+              if state.keyToItem.get(signed.value.key).contains(signed.value) then
+                IO.right(SubagentCommand.Accepted)
+              else
+                signatureVerifier.verify(signed.signedString) match
+                  case Left(problem) => IO.pure(Left(problem))
+                  case Right(signerIds) =>
+                    logger.info(Logger.SignatureVerified,
+                      s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
+                    journal
+                      .persistKeyedEvent(NoKey <-: SubagentItemAttached(signed.value))
+                      .rightAs(SubagentCommand.Accepted)
 
           case KillProcess(orderId, signal) =>
             subagent.checkedDedicatedSubagent
