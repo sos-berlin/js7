@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import fs2.Stream
 import java.nio.file.Path
+import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
@@ -201,9 +202,12 @@ extends AutoCloseable:
                 (eof && markEOF).thenIterator:
                   PositionAnd(lastPosition, EndOfJournalFileMarker)
 
-            Stream.fromIterator[IO](iterator map Right.apply, chunkSize = 1/*???*/) ++
-              Stream.iterable(
-                (!eof).thenList(Left(lastPosition))))
+            Stream.fromIterator[IO](
+                iterator map Right.apply,
+                chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit)
+              .append:
+                Stream.iterable:
+                  (!eof).thenList(Left(lastPosition)))
 
   final def lastUsedAt: Long =
     _lastUsed

@@ -11,6 +11,7 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
+import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
@@ -90,6 +91,16 @@ object StreamExtensions:
                   .map(builder => Chunk.from(builder.result())))
                 .filter(_.nonEmpty)
               case _ => Stream.empty
+
+    /** Provisional to group elements into chunks, for better throughput. */
+    def chunkProvisional(using Temporal[F]): Stream[F, O] =
+      import ProvisionalAssumptions.streamChunks.elementsPerChunkLimit
+      chunkProvisional(elementsPerChunkLimit)
+
+    /** Provisional to group elements into chunks, for better throughput. */
+    def chunkProvisional(chunkSize: Int)(using Temporal[F]): Stream[F, O] =
+      import ProvisionalAssumptions.streamChunks.groupWithinDelay
+      stream.groupWithin(chunkSize, groupWithinDelay).unchunks
 
     /** Repeat endlessly the last element, or return the empty Stream iff this is empty. */
     def repeatLast: Stream[F, O] =

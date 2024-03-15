@@ -16,6 +16,7 @@ import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Sna
 import js7.journal.recover.JournalReader.*
 import cats.effect.IO
 import fs2.Stream
+import js7.base.ProvisionalAssumptions
 import js7.base.fs2utils.StreamExtensions.{+:, mapParallelBatch}
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -69,7 +70,9 @@ extends AutoCloseable:
   private[recover] def readSnapshot: Stream[IO, Any] =
     synchronized:
       journalHeader +:
-        Stream.fromIterator[IO](untilNoneIterator(nextSnapshotJson()), chunkSize = 1/*???*/)
+        Stream.fromIterator[IO](
+            untilNoneIterator(nextSnapshotJson()),
+            chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit)
           .mapParallelBatch()(json => S.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
 
   private[recover] def readSnapshotRaw: Stream[IO, ByteArray] =
