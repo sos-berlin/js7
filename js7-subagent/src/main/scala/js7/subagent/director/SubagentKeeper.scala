@@ -7,7 +7,7 @@ import cats.instances.option.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenRight, joinStd, left, materializeIntoChecked, orThrow, right, startAndForget}
@@ -262,7 +262,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         case Right(None) => IO.sleep(reconnectDelayer.next())
         case _ => IO(reconnectDelayer.reset())
       .map(_.sequence)
-      .flatMap(Stream.fromOption(_))
+      .map(Chunk.fromOption)
+      .unchunks
       .headL
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =

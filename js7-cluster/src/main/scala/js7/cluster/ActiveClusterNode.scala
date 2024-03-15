@@ -608,9 +608,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             api.eventIdStream(
                 heartbeat = Some(heartbeat),
                 returnHeartbeatAs = returnHeartbeatAs)
-              .map(_.flatMap:
-                case Left(problem) => Stream.raiseError(problem.throwable)
-                case Right(eventId) => Stream.emit(eventId)),
+              .map(_.evalMapChunk:
+                case Left(problem) => IO.raiseError(problem.throwable)
+                case Right(eventId) => IO.pure(eventId)),
         stopRequested = () => stopRequested)
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): IO[Checked[Unit]] =

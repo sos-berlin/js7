@@ -2,7 +2,7 @@ package js7.base.io.file.watch
 
 import cats.effect.IO
 import cats.syntax.flatMap.*
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.fs2utils.StreamExtensions.tapEach
@@ -80,8 +80,9 @@ object DirectoryWatch:
               DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))
           Stream
             .resource(basicWatch.streamResource)
-            .flatMap(stream =>
+            .flatMap: stream =>
               new DirectoryWatch(readDirectory, stream, hotLoopBrake = options.retryDelays.head)
                 .readDirectoryThenStreamForever(state)
                 .map(_._1)
-                .flatMap(Stream.iterable))
+                .map(Chunk.from)
+                .unchunks

@@ -113,7 +113,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     returnHeartbeatAs: Option[ByteArray] = None)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
-    val heartbeatAsStream = Stream.fromOption[IO](returnHeartbeatAs)
+    val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_
         .entity.withoutSizeLimit.dataBytes.asFs2Stream()
@@ -180,7 +180,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         stream
           .mapParallelBatch(prefetch = jsonPrefetch): a =>
             toNdJson(a).chunkStream(chunkSize).toVector
-          .flatMap(Stream.iterable)
+          .map(fs2.Chunk.from)
+          .unchunks
 
     IO.defer:
       val stop = Deferred.unsafe[IO, Unit]

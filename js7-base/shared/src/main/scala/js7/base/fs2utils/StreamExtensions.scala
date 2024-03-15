@@ -168,10 +168,10 @@ object StreamExtensions:
       for
         last <- Stream.eval(Ref[F].of(none[O]))
         output <-
-          stream.chunks
-            .flatMap(chunk => Stream.fromOption[F](chunk.last))
-            .evalTap: a =>
-              last.set(Some(a))
+          stream
+            .mapChunks(chunk => Chunk.fromOption(chunk.last))
+            .evalTap: o =>
+              last.set(Some(o))
             .noneTerminate
             .hold1
             .flatMap(_.discrete)

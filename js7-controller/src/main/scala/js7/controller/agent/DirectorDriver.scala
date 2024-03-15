@@ -195,13 +195,13 @@ extends Service.StoppableByRequest:
           else
             stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
         .interruptWhenF(untilStopRequested)
-        .flatMap(o => Stream
+        .evalMapChunk(chunk =>
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
           // Avoids "Unknown OrderId" failures due to double activation.
-          .eval(journal.whenNoFailoverByOtherNode
-            .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
-          .map(_ => o))
+          journal.whenNoFailoverByOtherNode
+            .logWhenItTakesLonger("whenNoFailoverByOtherNode")
+            .as(chunk))
         .map(_.asSeq)
         .evalMap(onEventsFetched)
         .completedL
