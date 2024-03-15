@@ -16,7 +16,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ByteSequenceToLinesStream
+import js7.base.utils.LineSplitterPipe
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -64,7 +64,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                     .asFs2Stream(bufferSize = prefetch)
                     .chunks.evalTap(chunk => IO(logger.trace(s"### chunk.size=${chunk.size}"))).unchunks
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                    .flatMap(new ByteSequenceToLinesStream)
+                    .through(LineSplitterPipe())
                     .mapParallelBatch(prefetch = prefetch)(_
                       .parseJsonAs[FreshOrder])
                     .compile
@@ -137,7 +137,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
             httpEntity
               .dataBytes
               .asFs2Stream(bufferSize = prefetch)
-              .flatMap(new ByteSequenceToLinesStream)
+              .through(LineSplitterPipe())
               .mapParallelBatch()(_
                 .parseJsonAs[OrderId].orThrow)
               .compile

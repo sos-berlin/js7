@@ -12,7 +12,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.ByteSequenceToLinesStream
+import js7.base.utils.LineSplitterPipe
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -235,7 +235,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       response.entity.withoutSizeLimit.dataBytes
         .asFs2Stream()
-        .flatMap(ByteSequenceToLinesStream())
+        .through(LineSplitterPipe())
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .compile.toList
         .await(99.s)

@@ -1,25 +1,22 @@
 package js7.base.utils
 
-import cats.effect.IO
 import cats.syntax.monoid.*
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
-import fs2.Stream
 import scala.collection.mutable
 
 /**
-  * Splits a stream of UTF-8-encoded ByteSeqs into lines, separated by LF.
+  * Splits a stream of UTF-8-encoded ByteSeqs into lines separated by LF.
   */
-final class ByteSequenceToLinesStream[ByteSeq](
-  using ByteSeq: ByteSequence[ByteSeq])
-extends (ByteSeq => Stream[IO, ByteArray]):
+final class LineSplitter[ByteSeq](using ByteSeq: ByteSequence[ByteSeq])
+extends (ByteSeq => Vector[ByteArray]):
 
   private val lines = Vector.newBuilder[ByteArray]
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
-  def apply(byteSeq: ByteSeq): Stream[IO, ByteArray] =
+  def apply(byteSeq: ByteSeq): Vector[ByteArray] =
     if byteSeq.isEmpty then
-      Stream.empty
+      Vector.empty
     else
       var p = 0
       val length = byteSeq.length
@@ -31,19 +28,13 @@ extends (ByteSeq => Stream[IO, ByteArray]):
             p = length
 
           case i =>
-            val slice = byteSeq.slice(p, i + 1)  /*For p == 0 && i + 1 == bytes.length, no copy is needed*/
+            // For p == 0 && i + 1 == bytes.length, no copy is needed
+            val slice = byteSeq.slice(p, i + 1)
             startedLine += slice
             lines += ByteArray.combineByteSequences(startedLine)
             startedLine.clear()
             p = i + 1
 
-      val result = Stream.emits(lines.result())
+      val result = lines.result()
       lines.clear()
       result
-
-
-//object ByteSequenceToLinesStream:
-//
-//  extension [F[_], I: ByteSequence](stream: Stream[F, I])
-//    def linesTo[O: ByteSequence]: Stream[F, O] =
-//      stream.through(new ByteSequenceToLinesStream[F, I, O]()) .................

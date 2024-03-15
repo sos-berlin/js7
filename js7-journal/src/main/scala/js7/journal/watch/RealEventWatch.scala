@@ -6,6 +6,7 @@ import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
+import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.SyncDeadline
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.fs2utils.StreamUtils
@@ -94,11 +95,13 @@ trait RealEventWatch extends EventWatch:
                       val iterator = if onlyAcks then lastOfIterator(events) else events
                       var lastEventId = request.after
                       var limit = request.limit
-                      val stream = closeableIteratorToStream(iterator, chunkSize = 1)
-                        .map: o =>
-                          lastEventId = o.eventId
-                          limit -= 1
-                          o
+                      val stream = closeableIteratorToStream(
+                        iterator,
+                        chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit
+                      ).map: o =>
+                        lastEventId = o.eventId
+                        limit -= 1
+                        o
                       // Closed-over lastEventId and limit are updated as stream is consumed,
                       // therefore defer access to final values (see above)
                       Some((stream,

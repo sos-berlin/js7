@@ -28,7 +28,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, ByteSequenceToLinesStream, UseDefault}
+import js7.base.utils.{Atomic, LineSplitterPipe, UseDefault}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
@@ -121,10 +121,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .logTiming(_.size, (d, n, _) => IO:
             if d >= 1.s && n > 10_000_000 then
               logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}")))
-        .flatMap(new ByteSequenceToLinesStream)
-        .flatMap:
-          case HttpHeartbeatByteArray => heartbeatAsStream
-          case o => Stream.emit(o)
+        .through(LineSplitterPipe())
+        .map:
+          case HttpHeartbeatByteArray => heartbeatAsChunk
+          case o => fs2.Chunk.singleton(o)
+        .unchunks
         .recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
       .recover(ignoreIdleTimeout)
 
