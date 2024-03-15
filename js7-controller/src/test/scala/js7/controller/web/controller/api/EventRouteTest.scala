@@ -76,7 +76,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
   }
 
   override def afterAll() =
-    try 
+    try
       eventCollector.close()
     finally
       super.afterAll()

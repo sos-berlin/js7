@@ -135,7 +135,7 @@ trait GenericEventRoute extends RouteProvider:
           case Some(heartbeat) =>
             IO.right:
               eventStream(request, isRelevantEvent, eventWatch)
-                .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
+                .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
                 .keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
                 .prependOne(HttpHeartbeatByteString)
                 .interruptWhenF(shutdownSignaled)
@@ -164,7 +164,7 @@ trait GenericEventRoute extends RouteProvider:
             Right:
               Stream.emit(head)
                 .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
-                .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
+                .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
                 .interruptWhenF(shutdownSignaled)
 
     private def eventStream(
@@ -172,10 +172,9 @@ trait GenericEventRoute extends RouteProvider:
       predicate: AnyKeyedEvent => Boolean,
       eventWatch: EventWatch)
     : Stream[IO, Stamped[AnyKeyedEvent]] =
-      filterStream(
-        eventWatch  // Continue with an Stream, skipping the already read event
-          .stream(request, predicate)
-      ) .recoverWith:
+      filterStream:
+        eventWatch.stream(request, predicate)
+      .recoverWith:
         case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
           if e.getStackTrace.nonEmpty then logger.debug(e.toStringWithCauses, e)

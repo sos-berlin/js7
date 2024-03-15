@@ -32,7 +32,7 @@ trait RouteProvider extends ExceptionHandling:
 
   protected def ioRuntime: IORuntime
 
-  protected final lazy val chunkSize = config.memorySizeAsInt("js7.web.chunk-size").orThrow
+  protected final lazy val httpChunkSize = config.memorySizeAsInt("js7.web.chunk-size").orThrow
   protected final lazy val prefetch = config.getInt("js7.web.server.prefetch")
 
   private implicit def implicitIORuntime: IORuntime = ioRuntime

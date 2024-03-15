@@ -105,9 +105,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[Stream[IO, A]] =
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
     for stream <- getRawLinesStream(uri, returnHeartbeatAs) yield
-      stream
-        .mapParallelBatch(prefetch = myPrefetch):
-          _.parseJsonAs[A].orThrow
+      stream.mapParallelBatch(prefetch = myPrefetch):
+        _.parseJsonAs[A].orThrow
 
   final def getRawLinesStream(
     uri: Uri,

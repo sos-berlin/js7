@@ -48,7 +48,7 @@ trait ClusterWatchRequestRoute extends RouteProvider:
                   Stream.empty
                 .through:
                   encodeAndHeartbeat(
-                    chunkSize = chunkSize,
+                    httpChunkSize = httpChunkSize,
                     prefetch = prefetch,
                     keepAlive = keepAlive)
                 .interruptWhenF(shutdownSignaled)

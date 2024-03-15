@@ -84,9 +84,9 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
     controller.api
       .eventAndStateStream(fromEventId = Some(EventId.BeforeFirst))
       .mapAccumulate(orderIds.map(_ -> Vector.empty[OrderEvent]).toMap):
-        case (idToEvents, eventAndState) =>
-          eventAndState.stampedEvent match
-            case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
+        (idToEvents, eventAndState) =>
+          eventAndState.stampedEvent.value match
+            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
               if !orderIds.contains(orderId) then
                 idToEvents -> (None -> true)
               else

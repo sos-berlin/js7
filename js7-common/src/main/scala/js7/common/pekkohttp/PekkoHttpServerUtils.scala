@@ -253,7 +253,7 @@ object PekkoHttpServerUtils:
   : Route =
     completeWithCheckedStream(`application/x-ndjson`):
       stream.map(_.map:
-        _.through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch)))
+        _.through(encodeParallel(httpChunkSize = chunkSize, prefetch = prefetch)))
 
   def completeWithCheckedStream(contentType: ContentType)
     (checkedStream: IO[Checked[Stream[IO, ByteString]]])
@@ -315,20 +315,20 @@ object PekkoHttpServerUtils:
 
   // Was observableToResponseMarshallable in v2.6
   def encodeAndHeartbeat[A: Encoder : Tag](
-    chunkSize: Int,
+    httpChunkSize: Int,
     keepAlive: FiniteDuration,
     prefetch: Int = 0)
     (using IORuntime)
   : Pipe[IO, A, ByteString] =
-    _.through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
+    _.through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
       .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
 
-  def encodeParallel[A: Encoder : Tag](chunkSize: Int, prefetch: Int = 0)
+  def encodeParallel[A: Encoder : Tag](httpChunkSize: Int, prefetch: Int = 0)
     (using IORuntime)
   : Pipe[IO, A, ByteString] =
-    _.mapParallelBatch(/*responsive = true,*/ prefetch = prefetch)(_
+    _.mapParallelBatch(/*responsive = true,*//* prefetch = prefetch*/)(_
         .asJson
         .toByteSequence[fs2.Chunk[Byte]] ++ fs2.Chunk.singleton('\n'.toByte))
       .unchunks
-      .chunkLimit(chunkSize)
+      .chunkLimit(httpChunkSize)
       .map(_.toByteSequence[ByteString])

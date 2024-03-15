@@ -77,10 +77,10 @@ trait JournalRoute extends RouteProvider:
                           .pipeIf(heartbeat.isDefined)(_
                             .keepAlive(heartbeat.get, IO.pure(PekkoHttpClient.HttpHeartbeatByteArray)))
                           .map(_.toChunk).unchunks
-                          .chunkLimit(chunkSize)
+                          .chunkLimit(httpChunkSize)
                           .map(_.toByteString)
-                          //.splitBigByteSeqs(chunkSize)
-                          //FIXME ? .chunk(chunkSize) --> byteStrings.sum(_.length) <= chunkSize
+                          //.splitBigByteSeqs(httpChunkSize)
+                          //FIXME ? .chunk(httpChunkSize) --> byteStrings.sum(_.length) <= httpChunkSize
                           /*.map(HttpEntity.Chunk(_))
                           .toPekkoSourceForHttpResponse*/))
 

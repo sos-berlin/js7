@@ -49,7 +49,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
 
   private def currentSnapshot(filter: SnapshotFilter)(using IORuntime): Route =
     given Encoder[Any] = ControllerState.snapshotObjectJsonCodec
-    completeWithCheckedJsonStream(chunkSize = chunkSize, prefetch = prefetch):
+    completeWithCheckedJsonStream(chunkSize = httpChunkSize, prefetch = prefetch):
       controllerState.flatMapT: controllerState =>
         IO.right:
           filter(controllerState.toSnapshotStream)
@@ -67,7 +67,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
               stream
                 .map(_.toChunk)
                 .unchunks
-                .chunkLimit(chunkSize)  // TODO Maybe fill-up chunks
+                .chunkLimit(httpChunkSize)  // TODO Maybe fill-up chunks
                 .map(_.toByteString)
                 .interruptWhenF(shutdownSignaled)
 
