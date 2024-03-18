@@ -116,15 +116,19 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     fs2.Chunk.array(unsafeArray(byteSeq))
 
   def show(byteSeq: ByteSeq) =
+    show(byteSeq, maxShowLength)
+
+  def show(byteSeq: ByteSeq, limit: Int) =
+    // TODO Test is missing
     val len = length(byteSeq)
-    val prefix = take(byteSeq, maxShowLength)
+    val prefix = take(byteSeq, limit)
     if iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r') then
       "»" + unsafeArray(byteSeq).map(byteToPrintableChar).mkString + "«" +
-        (len > maxShowLength) ?? (s" ($len bytes)")
+        (len > limit) ?? (s" ($len bytes)")
     else
       typeName + "(" +
-        toStringAndHexRaw(prefix, maxShowLength, withEllipsis = len > maxShowLength) +
-        (len > maxShowLength) ?? (s", $len bytes") +
+        toStringAndHexRaw(prefix, limit, withEllipsis = len > limit) +
+        (len > limit) ?? (s", $len bytes") +
         ")"
 
   def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
@@ -322,6 +326,9 @@ object ByteSequence:
 
     def show =
       typeClassInstance.show(self)
+
+    def show(limit: Int): String =
+      typeClassInstance.show(self, limit = limit)
 
     def toStringAndHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
       typeClassInstance.toStringAndHexRaw(self, n, withEllipsis)
