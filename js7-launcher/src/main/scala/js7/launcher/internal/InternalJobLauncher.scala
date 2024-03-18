@@ -56,11 +56,12 @@ extends JobLauncher:
     .unsafeMemoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    IO.blockingOn(blockingJobEC):
+    IO:
       for
         internalJob <- internalJobLazy()
         step <- toStep(processOrder)
-      yield internalJob.toOrderProcess(step)
+      yield
+        internalJob.toOrderProcess(step)
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
     for args <- evalExpressionMap(executable.arguments, processOrder.scope) yield
