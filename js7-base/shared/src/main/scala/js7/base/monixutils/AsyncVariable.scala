@@ -1,6 +1,6 @@
 package js7.base.monixutils
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import izumi.reflect.Tag
 import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
@@ -53,11 +53,8 @@ final class AsyncVariable[V] private(
           r
         }))
 
-  def use[R](body: V => IO[R])(implicit src: sourcecode.Enclosing): IO[R] =
-    resource.use(body)
-
-  def resource(implicit src: sourcecode.Enclosing): Resource[IO, V] =
-    lock.resource.map(_ => _value)
+  //def use[R](body: V => IO[R])(implicit src: sourcecode.Enclosing): IO[R] =
+  //  lock.lock(body)
 
   private def shieldValue[A](body: => IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
     lock.lock(IO.defer/*shield access to _value in body*/(body))

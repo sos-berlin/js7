@@ -1,8 +1,12 @@
 package js7.base.utils
 
 import cats.effect.IO
+import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch
+import scala.concurrent.duration.Deadline
 import scala.util.Random
 
 final class MVarTest extends OurAsyncTestSuite:
@@ -32,3 +36,20 @@ final class MVarTest extends OurAsyncTestSuite:
         assert(value == 1)
 
     test.replicateA_(1000).as(succeed)
+
+  "Speed test" in:
+    // -Dtest.speed=4000 takes a minute
+    sys.props.get("test.speed").map(_.toInt).fold(IO(pending)): n =>
+      MVar.empty[IO, Int].flatMap: mvar =>
+        val since = Deadline.now
+        (1 to n).toVector
+          .parTraverse: _ =>
+            for
+              x <- IO(Random.nextInt())
+              _ <- mvar.put(x)
+              o <- mvar.take
+            yield
+              assert(o == x)
+          .map(_.combineAll)
+          .flatTap: _ =>
+            IO(Logger.info(Stopwatch.itemsPerSecondString(since.elapsed, n)))
