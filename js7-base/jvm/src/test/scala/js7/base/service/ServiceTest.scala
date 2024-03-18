@@ -96,7 +96,9 @@ final class ServiceTest extends OurAsyncTestSuite:
           IO.never.onCancel(IO:
             canceled := true)
 
-    Service.resource(IO(new CancelableService)).surround(started.get)
+    Service.resource(IO(new CancelableService))
+      .surround:
+        started.get.andWait(10.ms) // Wait for IO.never
       .map: _ =>
         assert(canceled.get)
 
