@@ -40,7 +40,7 @@ final case class SubagentConf(
   defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],
   stdouterr: StdouterrConf,
-  outerrCharBufferSize: Int,
+  outerrByteBufferSize: Int,
   outerrQueueSize: Int,
   eventBufferDelay: FiniteDuration,
   stdoutCommitDelay: FiniteDuration,
@@ -226,7 +226,7 @@ object SubagentConf:
       defaultJobSigkillDelay = config.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
       killScript,
       outErrConf,
-      outerrCharBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size")
+      outerrByteBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.byte-buffer-size")
         .orThrow.min(outErrConf.chunkSize),
       outerrQueueSize = config.memorySizeAsInt("js7.order.stdout-stderr.queue-size")
         .orThrow.max(1),

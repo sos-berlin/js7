@@ -4,7 +4,7 @@ import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
 import cats.syntax.all.*
-import fs2.{Pipe, Stream}
+import fs2.Pipe
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
@@ -280,12 +280,12 @@ extends Service.StoppableByRequest:
 
   private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
   : Resource[IO, StdObservers] =
-    import subagentConf.{outerrCharBufferSize, outerrQueueSize, stdouterr}
+    import subagentConf.{outerrByteBufferSize, outerrQueueSize, stdouterr}
     for
       outErrStatistics <- outErrStatisticsResource
       stdObservers <- StdObservers.resource(
         outErrToJournalSink(order.id, outErrStatistics),
-        charBufferSize = outerrCharBufferSize,
+        byteBufferSize = outerrByteBufferSize,
         chunkSize = stdouterr.chunkSize,
         delay = stdouterr.delay,
         queueSize = outerrQueueSize,

@@ -27,7 +27,7 @@ final class StdObservers private(
   outErrToSink: OutErrToSink,
   outChannel: Channel[IO, String],
   errChannel: Channel[IO, String],
-  charBufferSize: Int,
+  byteBufferSize: Int,
   chunkSize: Int,
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
@@ -82,7 +82,7 @@ final class StdObservers private(
     (using IOExecutor)
   : Stream[IO, String] =
     // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
-    inputStreamToByteStream(in, bufferSize = charBufferSize/*TODO used for bytes*/)
+    inputStreamToByteStream(in, bufferSize = byteBufferSize/*TODO used for bytes*/)
       .onFinalizeCase:
         case exitCase @ ExitCase.Canceled =>
           // FIXME When cancelling the stream, io.blocking happens to block itself.
@@ -127,7 +127,7 @@ object StdObservers:
 
   def resource(
     outErrToSink: OutErrToSink,
-    charBufferSize: Int,
+    byteBufferSize: Int,
     chunkSize: Int,
     delay: FiniteDuration,
     queueSize: Int = 0,
@@ -141,7 +141,7 @@ object StdObservers:
           errChannel <- Channel.bounded[IO, String](capacity = queueSize)
         yield
           StdObservers(outErrToSink, outChannel, errChannel,
-            charBufferSize = charBufferSize,
+            byteBufferSize = byteBufferSize,
             chunkSize = chunkSize, delay,
             useErrorLineLengthMax, name)
       _ <- stdObservers.pumpChannelsToSinkResource
