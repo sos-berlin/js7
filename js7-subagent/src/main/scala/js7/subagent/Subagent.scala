@@ -247,7 +247,7 @@ object Subagent:
         .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       journal <- MemoryJournal.resource(
         SubagentState.empty,
-        size = config.getInt("js7.journal.in-memory.event-count"),
+        size = config.getInt("js7.journal.memory.event-count"),
         waitingFor = "JS7 Agent Director",
         infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
       subagent <- Service.resource(IO(
