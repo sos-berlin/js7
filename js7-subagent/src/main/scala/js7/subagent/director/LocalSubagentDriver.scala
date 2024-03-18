@@ -4,6 +4,7 @@ import cats.effect.kernel.Deferred
 import cats.effect.{FiberIO, IO, Resource}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.fs2utils.StreamExtensions.chunkWithin
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -25,6 +26,7 @@ import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDo
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
+import js7.journal.CommitOptions
 import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.{LocalSubagentApi, Subagent}
@@ -75,7 +77,10 @@ extends SubagentDriver, Service.StoppableByRequest:
       .rightAs(())
 
   def startObserving: IO[Unit] =
-    observe.startAndForget
+    observe
+      .handleErrorWith(t => IO:
+        logger.error(s"startObserving (in background) => ${t.toStringWithCauses}"))
+      .startAndForget
 
   // TODO Similar to SubagentEventListener
   private def observe: IO[Unit] =
@@ -83,6 +88,7 @@ extends SubagentDriver, Service.StoppableByRequest:
       journal.state
         .map(_.idToSubagentItemState(subagentId).eventId)
         .flatMap(observeAfter))
+
 
   // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): IO[Unit] =
@@ -116,6 +122,50 @@ extends SubagentDriver, Service.StoppableByRequest:
       .takeUntilEval(untilStopRequested)
       .completedL
       .handleError(t => logger.error(s"observeEvents => ${t.toStringWithCauses}"))
+
+  // NEW VERSION, a little bit slower despite it should be faster, collects multiple events in a transaction, like the Controller
+  // TODO Similar to SubagentEventListener
+  private def observeAfterNEW(eventId: EventId): IO[Unit] =
+    subagent.journal.eventWatch
+      .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
+      // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
+      .evalMap(handleEvent)
+      .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)
+      .evalMap: chunk =>
+        val keyedEvents = chunk.toVector.flatMap(_._1)
+        val followUpAll = chunk.traverse(_._2).void
+        IO
+          .whenA(keyedEvents.nonEmpty) {
+            keyedEvents
+              .traverse:
+                case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
+                  // After an OrderProcessed event an DetachProcessedOrder must be sent,
+                  // to terminate StartOrderProcess command idempotency detection and
+                  // allow a new StartOrderProcess command for a next process.
+                  subagent.commandExecutor
+                    .executeCommand(
+                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
+                      CommandMeta.System)
+                    .orThrow
+                    .void
+                case _ => IO.unit
+              .flatMap: _ =>
+                val lastEventId = keyedEvents.last.eventId
+                // TODO Save Stamped timestamp
+                val events = keyedEvents.map(_.value)
+                  :+ (subagentId <-: SubagentEventsObserved(lastEventId))
+                journal
+                  .persistKeyedEvents(
+                    events,
+                    CommitOptions(
+                      transaction = true,
+                      alreadyDelayed = subagentConf.eventBufferDelay))
+                  .map(_.orThrow /*???*/)
+                  .*>(releaseEvents(lastEventId))
+          }
+          .*>(followUpAll)
+      .takeUntilEval(untilStopRequested)
+      .completedL
 
   /** Returns optionally the event and a follow-up io. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
