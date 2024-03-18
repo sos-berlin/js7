@@ -189,7 +189,7 @@ trait RealEventWatch extends EventWatch:
         try eventSeq.stamped.next().value
         finally eventSeq.close()
       case _: EventSeq.Empty => throw new TimeoutException(s"Timed out: $request")
-      case _: TearableEventSeq.Torn => throw new IllegalStateException("EventSeq is torn")
+      case TearableEventSeq.Torn(tornEventId) => throw new TornException(request.after, tornEventId)
 
   final def whenKey[E <: Event](using E: Event.KeyCompanion[? >: E])
     (request: EventRequest[E], key: E.Key, predicate: E => Boolean)

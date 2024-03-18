@@ -7,6 +7,7 @@ import fs2.{Chunk, Pipe, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget}
+import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromString}
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
@@ -26,8 +27,8 @@ final class StdObservers private(
   outErrToSink: OutErrToSink,
   outChannel: Channel[IO, String],
   errChannel: Channel[IO, String],
-  chunkSize: Int,
   charBufferSize: Int,
+  chunkSize: Int,
   delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
   name: String):
@@ -80,9 +81,7 @@ final class StdObservers private(
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
     (using IOExecutor)
   : Stream[IO, String] =
-    // Uninterruptible when waiting for next read (does it matter, do we cancel this?)
-    //fs2.io
-    //  .readInputStream(IO.pure(in), chunkSize = charBufferSize /*byte???*/)
+    // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
     inputStreamToByteStream(in, bufferSize = charBufferSize/*TODO used for bytes*/)
       .onFinalizeCase:
         case exitCase @ ExitCase.Canceled =>
@@ -101,29 +100,23 @@ final class StdObservers private(
                   in.close()
                 .logWhenItTakesLonger(s"$name $outErr.close() after cancellation")
         case _ =>
-          IO
-            .blocking:
-              in.close()
-            .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
-      .chunks
-      .through(fs2.text.decodeCWithCharset(encoding))
-      // Waits for LF, bad when LF is delayed: .through(fs2.text.lines)
+          IO.blocking:
+            in.close()
+          .logWhenItTakesLonger(s"$outErr close after cancellation") // Just in case
+      .through:
+        fs2.text.decodeWithCharset(encoding)
 
   private def pumpToSink(outErr: StdoutOrStderr)(stream: Stream[IO, String]): IO[Unit] =
-    outErrToSink(outErr)(
+    outErrToSink(outErr):
       stream
-        //.evalTap(string => IO(logger.info(s"### string =${ByteArray(string)}")))
-        // TODO .grouped tears surrogate pairs apart!
-        .map(string => Chunk.iterator(string.grouped(chunkSize))) // SLOW ???
-        .unchunks
-        //.evalTap(string => IO(logger.info(s"### slice  =${ByteArray(string)}")))
-        .groupWithin(chunkSize, delay)
-        .map(chunk => chunk.toArray.mkString)
-        //.evalTap(string => IO(logger.info(s"### grouped=${ByteArray(string)}")))
         .pipeIf(outErr == Stderr):
-          _.through:
-            lastLineKeeper getOrElse identity
-    ).compile.drain
+          _.through(lastLineKeeper getOrElse identity)
+        .map(Chunk.fromString)
+        .unchunks
+        // TODO Don't cut through surrogates: 🌈
+        .chunkWithin(chunkSize, delay)
+        .map(_.convertToString)
+    .compile.drain
 
 
 object StdObservers:
@@ -148,7 +141,8 @@ object StdObservers:
           errChannel <- Channel.bounded[IO, String](capacity = queueSize)
         yield
           StdObservers(outErrToSink, outChannel, errChannel,
-            charBufferSize, chunkSize, delay,
+            charBufferSize = charBufferSize,
+            chunkSize = chunkSize, delay,
             useErrorLineLengthMax, name)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield

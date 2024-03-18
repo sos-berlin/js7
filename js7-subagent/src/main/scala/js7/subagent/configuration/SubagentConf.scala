@@ -42,6 +42,7 @@ final case class SubagentConf(
   stdouterr: StdouterrConf,
   outerrCharBufferSize: Int,
   outerrQueueSize: Int,
+  eventBufferDelay: FiniteDuration,
   stdoutCommitDelay: FiniteDuration,
   name: String,
   config: Config)
@@ -229,6 +230,7 @@ object SubagentConf:
         .orThrow.min(outErrConf.chunkSize),
       outerrQueueSize = config.memorySizeAsInt("js7.order.stdout-stderr.queue-size")
         .orThrow.max(1),
+      eventBufferDelay = config.finiteDuration("js7.subagent-driver.event-buffer-delay").orThrow,
       stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       config)

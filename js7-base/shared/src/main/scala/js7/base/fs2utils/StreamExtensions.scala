@@ -25,10 +25,27 @@ object StreamExtensions:
   val DefaultBatchSizeMin = 256
   private object Beat
 
+  extension [A](chunk: Chunk[A])
+    def grouped(size: Int): Iterator[Chunk[A]] =
+      if size <= 0 then
+        throw new IllegalArgumentException(s"Chunk.grouped size must be positive: $size")
+      val myGroupSize = size // size is a name in Iterater superclass, too
+      var remainder = chunk
+
+      new Iterator[Chunk[A]]:
+        def hasNext = remainder.nonEmpty
+
+        def next() =
+          if remainder.isEmpty then
+            throw new NoSuchElementException("Chunk.grouped next but !hasNext")
+          val (a, b) = remainder.splitAt(myGroupSize)
+          remainder = b
+          a
+
   extension (chunk: Chunk[Char])
     def convertToString: String =
       chunk match
-        case Chunk.ArraySlice(array, offset, length) =>
+        case Chunk.ArraySlice(array: Array[Char], offset, length) =>
           String(array, offset, length)
         case _ =>
           String(chunk.toArray) // One extra copy
@@ -40,7 +57,7 @@ object StreamExtensions:
 
   extension (x: Chunk.type)
     def fromString(string: String): Chunk[Char] =
-      Chunk.array(string.toCharArray)
+      Chunk.array[Char](string.toCharArray)
 
 
   extension[F[_], A, B >: A](b: B)
@@ -101,6 +118,54 @@ object StreamExtensions:
     def chunkProvisional(chunkSize: Int)(using Temporal[F]): Stream[F, O] =
       import ProvisionalAssumptions.streamChunks.groupWithinDelay
       stream.groupWithin(chunkSize, groupWithinDelay).unchunks
+
+    /** Similar to FS2 groupWithin.
+     *
+     * There was some unexpected behaviour with groupWithin, therefore an own implementation:
+     * <ul>
+     *   <li>The first chunk after a while is not split.
+     *   <li>Always fills chunks, even with timeout == 0s.
+     * </ul>
+     */
+    def chunkWithin(chunkSize: Int, timeout: FiniteDuration)(using F: Temporal[F])
+    : Stream[F, Chunk[O]] =
+      stream.pull
+        .timed: timedPull =>
+          def go(timedPull: Pull.Timed[F, O], queue: Chunk[O], queueSize: Int)
+          : Pull[F, Chunk[O], Unit] =
+            assert(queueSize == queue.size)
+            timedPull.timeout(timeout) >>
+              timedPull.uncons.flatMap:
+
+                case Some((Right(chunk), next)) =>
+                  val nextLength = queueSize + chunk.size
+                  if nextLength < chunkSize then
+                    go(next, queue ++ chunk, nextLength)
+                  else
+                    val chunks = Chunk.iterator((queue ++ chunk).grouped(chunkSize))
+                    if chunks.last.size == chunkSize then
+                      Pull.output(chunks) >> go(next, Chunk.empty, 0)
+                    else
+                      val nextQueue = chunks.last.get
+                      Pull.output(chunks.dropRight(1)) >> go(next, nextQueue, nextQueue.size)
+
+                case Some((Left(_), next)) =>
+                  if queueSize == 0 then
+                    go(next, Chunk.empty, 0)
+                  else
+                    Pull.output(Chunk.iterator(queue.grouped(chunkSize)))
+                      >> go(next, Chunk.empty, 0)
+
+                case None =>
+                  if queueSize == 0 then
+                    Pull.done
+                  else
+                    Pull.output(Chunk.iterator(queue.grouped(chunkSize)))
+                      >> Pull.done
+
+          go(timedPull, Chunk.empty, 0)
+        .stream
+        .filter(_.nonEmpty)
 
     /** Repeat endlessly the last element, or return the empty Stream iff this is empty. */
     def repeatLast: Stream[F, O] =

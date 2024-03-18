@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.IO
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Stdout
 import js7.base.log.Logger
@@ -19,7 +20,7 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.StdoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.IO
+import org.scalatest.Assertion
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
@@ -89,7 +90,6 @@ final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
     runTest()
 
   "InternalJob OrderStdoutWritten event compacting" in:
-    pending // FIXME StdObservers groupWitin
     def runTest() =
       testExecutable(
         TestInternalJob.executable(),
@@ -99,20 +99,13 @@ final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
           "C\n",
           "D-1\n" + "D-2\n" + "D-3\n",
           ".........1........2\n.........3........4\n",
-          // The InternalJob delivers the strings as is (not prepackaged in chunked)
-          // - ".........5........6\n"
-          // - ".........7........8\n"
-          // - ".........9.......10\n"
-          // - "........11........12........13........14........15.......16\n"
-          ".........5........6\n.........7........8\n",
-          // Break because Stream.buffer limit reached
-          ".........9.......10\n",
-          "........11........12........13........14........15",
-          ".......16\n"))
+          ".........5........6\n.........7........8\n.........9",
+          ".......10\n........11........12........13........14",
+          "........15.......16\n"))
     Try(runTest())  // Warm-up
     runTest()
 
-  private def testExecutable(executable: Executable, expectedChunks: Seq[String]): Unit =
+  private def testExecutable(executable: Executable, expectedChunks: Seq[String]): Assertion =
     testWithWorkflow(
       Workflow.of(Execute(WorkflowJob(agentPath, executable))),
       expectedChunks)
@@ -120,7 +113,7 @@ final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     expectedChunks: Seq[String])
-  : Unit =
+  : Assertion =
     val events = runWithWorkflow(anonymousWorkflow).toVector
     val chunks = events.collect { case OrderStdoutWritten(chunk) => chunk }
     assert(chunks == expectedChunks.toVector)

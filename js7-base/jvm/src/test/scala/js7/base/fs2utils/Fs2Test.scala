@@ -1,6 +1,7 @@
 package js7.base.fs2utils
 
 import cats.effect.*
+import cats.effect.testkit.TestControl
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pipe, Pull, Stream}
 import js7.base.test.OurAsyncTestSuite
@@ -58,7 +59,7 @@ final class Fs2Test extends OurAsyncTestSuite:
       assert(list == List("2", "5", "6"))
       succeed
 
-    "chunkMin" in :
+    "chunkMin" in:
       val stream = Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6) ++ Stream(7, 8, 9, 10) ++
         Stream(11, 12) ++ Stream(13) ++ Stream(14, 15)
       assert(stream.chunkMin(3).toList == List(
@@ -66,12 +67,61 @@ final class Fs2Test extends OurAsyncTestSuite:
   }
 
   "Signal" - {
-    if isIntelliJIdea /*time critical*/ then "interruptWhen" in :
+    if isIntelliJIdea /*time critical*/ then "interruptWhen" in:
       for
         signal <- SignallingRef[IO, Boolean](false)
         times <-
           val s1 = Stream.awakeEvery[IO](100.ms).interruptWhen(signal)
           val s2 = Stream.sleep[IO](300.ms) >> Stream.eval(signal.set(true))
           s1.concurrently(s2).compile.toVector
-      yield assert((times: Seq[FiniteDuration]).map(d => d.toMillis / 100) == Seq(1, 2, 3))
+      yield
+        assert((times: Seq[FiniteDuration]).map(d => d.toMillis / 100) == Seq(1, 2, 3))
+  }
+
+  "groupWithin" - {
+    "empty" in:
+      TestControl.executeEmbed:
+        for
+          list <- Stream.empty.covary[IO].groupWithin(3, 2.s).compile.toList
+        yield
+          assert(list.isEmpty)
+
+    "0s" in:
+      TestControl.executeEmbed:
+        val stream = Stream(1, 2, 3, 4, 5, 6, 7) ++ Stream.sleep_[IO](1.s) ++ Stream(8)
+        for
+          list <- stream.groupWithin(3, 0.s).compile.toList
+        yield
+          assert(list == List(
+            Chunk(1, 2, 3),
+            Chunk(4, 5, 6),
+            Chunk(7), // Small chunks are preserved !!!
+            Chunk(8)))
+
+    "standard" in:
+      TestControl.executeEmbed:
+        val stream = Stream(1, 2, 3, 4)
+          .covary[IO]
+          .append:
+            Stream.sleep[IO](1.s) >> Stream(5, 6, 7)
+          .append:
+            Stream.sleep[IO](3.s) >> (Stream(8) ++ Stream.empty)
+          .append:
+            Stream.sleep[IO](10.s) >> Stream(9, 10, 11, 12, 13, 14, 15)
+          .append:
+            Stream.sleep[IO](3.s) >> Stream(16, 17, 18, 19, 20, 21, 22)
+        for
+          list <- stream.groupWithin(3, 2.s).evalMap(o => IO.monotonic.map(_.toCoarsest -> o)).compile.toList
+        yield
+          assert(list == List(
+            0.s -> Chunk(1, 2, 3),
+            1.s -> Chunk(4, 5, 6),
+            3.s -> Chunk(7),
+            5.s/*6s?*/ -> Chunk(8),
+            14.s -> Chunk(9, 10, 11),
+            14.s -> Chunk(12, 13, 14),
+            16.s -> Chunk(15),
+            17.s -> Chunk(16, 17, 18),
+            17.s -> Chunk(19, 20, 21),
+            17.s -> Chunk(22)))
   }

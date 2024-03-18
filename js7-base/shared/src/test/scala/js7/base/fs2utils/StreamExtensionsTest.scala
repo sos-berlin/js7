@@ -247,6 +247,50 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
               Chunk("G"),
               Chunk("H", "I", "J")))
 
+    "chunkWithin" - {
+      "empty" in:
+        TestControl.executeEmbed:
+          for
+            list <- Stream.empty.covary[IO].chunkWithin(3, 2.s).compile.toList
+          yield
+            assert(list.isEmpty)
+
+      "0s" in:
+        TestControl.executeEmbed:
+          val stream = Stream(1, 2, 3, 4, 5, 6, 7) ++ Stream.sleep_[IO](1.s) ++ Stream(8)
+          for
+            list <- stream.chunkWithin(3, 0.s).compile.toList
+          yield
+            assert(list == List(Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8)))
+
+      "standard" in:
+        TestControl.executeEmbed:
+          val stream = Stream(1, 2, 3, 4)
+            .covary[IO]
+            .append:
+              Stream.sleep[IO](1.s) >> Stream(5, 6, 7)
+            .append:
+              Stream.sleep[IO](3.s) >> (Stream(8) ++ Stream.empty)
+            .append:
+              Stream.sleep[IO](10.s) >> Stream(9, 10, 11, 12, 13, 14, 15)
+            .append:
+              Stream.sleep[IO](3.s) >> Stream(16, 17, 18, 19, 20, 21, 22)
+          for
+            list <- stream.chunkWithin(3, 2.s).evalMap(o => IO.monotonic.map(_.toCoarsest -> o)).compile.toList
+          yield
+            assert(list == List(
+              0.s -> Chunk(1, 2, 3),
+              1.s -> Chunk(4, 5, 6),
+              3.s -> Chunk(7),
+              6.s -> Chunk(8),
+              14.s -> Chunk(9, 10, 11),
+              14.s -> Chunk(12, 13, 14),
+              16.s -> Chunk(15),
+              17.s -> Chunk(16, 17, 18),
+              17.s -> Chunk(19, 20, 21),
+              17.s -> Chunk(22)))
+    }
+
     "repeatLast" in:
       val eternal = Stream(1, 2, 3).repeatLast
       assert(eternal.take(7).toList == List(1, 2, 3, 3, 3, 3, 3))
@@ -405,7 +449,19 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       assert(chunk.convertToString == "abcdefg")
 
     "fromString" in:
-      assert(Chunk.fromString("abc") == Chunk('a', 'b', 'c'))
+      val chunk = Chunk.fromString("abc")
+      assert(chunk == Chunk('a', 'b', 'c'))
+      val string = chunk.convertToString
+      assert(string == "abc")
+
+    "grouped" in:
+      val chunk: Chunk[Char] = Chunk.fromString("0123456789")
+      val iterator: Iterator[Chunk[Char]] = chunk.grouped(3)
+      assert(Chunk.iterator(iterator) == Chunk(
+        Chunk('0', '1', '2'),
+        Chunk('3', '4', '5'),
+        Chunk('6', '7', '8'),
+        Chunk('9')))
   }
 
 object StreamExtensionsTest:
