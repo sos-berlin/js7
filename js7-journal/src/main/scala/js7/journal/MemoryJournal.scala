@@ -34,8 +34,8 @@ extends Journal[S]:
 
   val journalId = JournalId.random()
 
-  private val stateLock = AsyncLock("MemoryJournal.state")
-  private val queueLock = AsyncLock("MemoryJournal.queue")
+  private val stateLock = AsyncLock.dontLog() //Slow with many (>100000) acquirers: ("MemoryJournal.state")
+  private val queueLock = AsyncLock.dontLog()
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
   @volatile private var _state = initial
   @volatile private var eventWatchStopped = false

@@ -31,7 +31,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
 
   "Multiple orders" in:
     runSubagent(bareSubagentItem) { _ =>
-      val n = if isIntelliJIdea then 3000 else 100
+      val n = if isIntelliJIdea then 20000 else 100
       val runOrders = runMultipleOrders(
         orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i"),
         assertEvents = (orderId, events) =>

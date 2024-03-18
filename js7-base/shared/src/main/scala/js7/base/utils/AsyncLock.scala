@@ -1,175 +1,39 @@
 package js7.base.utils
 
-import cats.effect.kernel.Poll
-import cats.effect.kernel.Resource.ExitCase
-import cats.effect.{IO, Resource, kernel}
-import cats.syntax.flatMap.*
-import java.lang.System.nanoTime
+import cats.effect.Resource.ExitCase
+import cats.effect.std.Mutex
+import cats.effect.{IO, Resource}
+import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.DefaultWorryDurations
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
-final class AsyncLock private(
-  name: String,
-  warnTimeouts: IterableOnce[FiniteDuration],
-  noLog: Boolean,
-  logMinor: Boolean):
-
-  asyncLock =>
-
-  private val lockM = MVar[IO].empty[Locked].unsafeMemoize
-  private val log = if noLog then Logger.empty else logger
-  private val queueLength = Atomic(0)
-
-  // IntelliJ cannot locate references:
-  //def apply[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
-  //  lock(io)
-  //
-  //def apply[A](acquirer: => String)(io: IO[A]): IO[A] =
-  //  lock(acquirer)(io)
-
-  def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
+trait AsyncLock:
+  final def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
     lock(src.value)(io)
 
-  def lock[A](acquirer: => String)(io: IO[A]): IO[A] =
-    resource(acquirer).use(_ => io)
-
-  def resource(implicit src: sourcecode.Enclosing): Resource[IO, Locked] =
-    resource(src.value)
-
-  def resource(acquirer: => String): Resource[IO, Locked] =
-    Resource.makeCaseFull[IO, Locked](
-      acquire = cancelable =>
-        IO.defer:
-          val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
-          acquire(locked, cancelable).as(locked))(
-      release = (locked, exitCase) =>
-        release(locked, exitCase))
-
-  def isLocked: IO[Boolean] =
-    locked.map(_.isDefined)
-
-  def locked: IO[Option[Locked]] =
-    lockM.flatMap(_.tryRead)
-
-  private def acquire(locked: Locked, cancelable: Poll[IO]): IO[Unit] =
-    lockM.flatMap(mvar => IO.defer:
-      mvar.tryPut(locked).flatMap: hasAcquired =>
-        if hasAcquired then
-          if logMinor then log.trace(s"↘ ⚪️${locked.nrString} $name acquired by ${locked.who} ↘")
-          locked.startMetering()
-          IO.unit
-        else
-          if noLog then
-            cancelable:
-              mvar.put(locked)
-                .as(Right(()))
-          else
-            val waitingSince = now
-            ().tailRecM: _ =>
-              mvar.tryRead.flatMap:
-                case Some(lockedBy) =>
-                  queueLength += 1
-                  val sym = new BlockingSymbol
-                  sym.onDebug()
-                  log.debug(/*spaces are for column alignment*/
-                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who
-                    } (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId
-                    }) ($queueLength queued) ⟲")
-                  cancelable:
-                    mvar.put(locked)
-                  .whenItTakesLonger(warnTimeouts): _ =>
-                    for lockedBy <- mvar.tryRead yield
-                      sym.onInfo()
-                      logger.info:
-                        s"⟲ $sym${locked.nrString} $name: ${locked.who} is still waiting" +
-                          s" for ${waitingSince.elapsed.pretty}," +
-                          s" currently acquired by ${lockedBy getOrElse "None"} ($queueLength queued) ..."
-                  .onCancel(IO:
-                    queueLength -= 1
-                    log.debug:
-                      s"⚫️${locked.nrString} $name acquisition canceled after ${
-                        waitingSince.elapsed.pretty} ($queueLength queued) ↙")
-                  .flatMap: _ =>
-                    queueLength -= 1
-                    IO:
-                      log.log(sym.releasedLogLevel,
-                        s"↘ 🟢${locked.nrString} $name acquired by ${locked.who} after ${
-                          waitingSince.elapsed.pretty} ($queueLength queued) ↘")
-                      locked.startMetering()
-                      Right(())
-
-                case None =>  // Lock has just become available
-                  for hasAcquired <- mvar.tryPut(locked) yield
-                    if !hasAcquired then
-                      Left(())  // Locked again by someone else, so try again
-                    else
-                      // "…" denotes just-in-time availability
-                      if logMinor then log.trace:
-                        s"↘ ⚪️${locked.nrString} $name acquired by…${locked.who} ↘"
-                      locked.startMetering()
-                      Right(()))  // The lock is ours!
-
-  private def release(locked: Locked, exitCase: ExitCase): IO[Unit] =
-    IO.defer:
-      logRelease(locked, exitCase)
-      lockM.flatMap(_.take).void
-
-  private def logRelease(locked: Locked, exitCase: ExitCase): Unit =
-    if logMinor then exitCase match
-      case ExitCase.Succeeded =>
-        log.trace(s"↙ ⚪️${locked.nrString} $name released by ${locked.acquirer} ↙")
-
-      case ExitCase.Canceled =>
-        log.trace(s"↙ ⚫${locked.nrString} $name released by ${locked.acquirer} · Canceled ↙")
-
-      case ExitCase.Errored(t) =>
-        log.trace(s"↙ 💥${locked.nrString} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
-
-  override def toString = s"AsyncLock:$name"
-
-  final class Locked private[AsyncLock](correlId: CorrelId, nr: Int, acquirerToString: => String):
-    private[AsyncLock] lazy val acquirer = acquirerToString
-    private var lockedSince: Long = 0
-
-    private[AsyncLock] def withCorrelId: String =
-      if lockedSince == 0 then
-        acquirer
-      else
-        correlId.fold("", o => s"$o ") + who
-
-    private[AsyncLock] def startMetering(): Unit =
-      lockedSince = nanoTime()
-
-    private[AsyncLock] def who: String =
-      if lockedSince == 0 then
-        acquirer
-      else
-        val duration = (nanoTime() - lockedSince).ns.pretty
-        s"$acquirer $duration ago"
-
-    override def toString =
-      s"$asyncLock $nrString acquired by $who"
-
-    def nrString = s"†$nr"
+  def lock[A](acquirer: => String)(io: IO[A]): IO[A]
 
 
 object AsyncLock:
+
   private val logger = Logger[this.type]
   private val waitCounter = Atomic(0)
 
-  def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
+  def apply()(using sourcecode.Enclosing): AsyncLock =
     apply(logMinor = false)
 
-  def apply(logMinor: Boolean)(implicit enclosing: sourcecode.Enclosing): AsyncLock =
+  def apply(logMinor: Boolean)(using enclosing: sourcecode.Enclosing): AsyncLock =
     apply(name = enclosing.value, logMinor = logMinor)
 
   def apply(
@@ -178,4 +42,112 @@ object AsyncLock:
     suppressLog: Boolean = false,
     logMinor: Boolean = false)
   : AsyncLock =
-    new AsyncLock(name, logWorryDurations, suppressLog, logMinor = logMinor)
+    if suppressLog then
+      new NoLogging(name)
+    else
+      new WithLogging(name, logWorryDurations, logMinor = logMinor)
+
+  def dontLog(): AsyncLock =
+    new NoLogging("AsyncLock")
+
+
+  private final class NoLogging(name: String) extends AsyncLock:
+    private val mutex = Mutex[IO].unsafeMemoize
+
+    def lock[A](acquirer: => String)(io: IO[A]): IO[A] =
+      mutex.flatMap(_.lock.surround(io))
+
+    override def toString = s"AsyncLock:$name"
+
+
+  private[utils] final class WithLogging(
+    name: String,
+    logWorryDurations: IterableOnce[FiniteDuration],
+    logMinor: Boolean)
+  extends AsyncLock:
+    private val mutex = Mutex[IO].unsafeMemoize
+    private val queueLength = Atomic(0)
+
+    @TestOnly
+    private[utils] def isLocked: Boolean =
+      val n = queueLength.get()
+      logger.trace(s"### queueLength=$n")
+      n > 0
+
+    override def lock[A](acquirer: => String)(body: IO[A]): IO[A] =
+      mutex.flatMap: mutex =>
+        logging(acquirer).use: onAcquired =>
+          mutex.lock.surround:
+            onAcquired *> body
+
+
+    private def logging(acquirer: => String): Resource[IO, IO[Unit]] =
+      Resource.defer:
+        val since = Deadline.now
+
+        val nr = waitCounter += 1
+        lazy val nrString = s"†$nr"
+        lazy val acquirer_ = acquirer
+        val sym = new BlockingSymbol
+        var minorRequestLogged = false
+        var acquired = false
+        var firstLogged = !logMinor
+
+        def logBeforeAcquire: IO[Unit] =
+          IO.never
+            .whenItTakesLonger(logMinor.thenView(ZeroDuration) ++ logWorryDurations)(_ => IO:
+              if !firstLogged then
+                if logMinor then
+                  logger.trace(s"⚪️$nrString $name is being acquired by $acquirer_ ...")
+                firstLogged = true
+              else
+                sym.onInfo()
+                logger.info:
+                  s"⟲ $sym$nrString $name: $acquirer_ is still waiting for ${since.elapsed.pretty
+                  } ($queueLength queued)...")
+            .onCancel(IO:
+              if !acquired && sym.called then
+                logger.log(sym.logLevel,
+                  s"⚫️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
+
+        def logAfterAcquire: IO[Unit] =
+          IO:
+            if sym.called then
+              logger.log(sym.releasedLogLevel,
+                s"↘ 🟢$nrString $name acquired by $acquirer_ · $queueLength queued · ${
+                  since.elapsed.pretty} ↘")
+            else if logMinor then
+              minorRequestLogged = true
+              logger.trace(s"↘ ⚪️$nrString $name acquired by $acquirer_ · $queueLength queued · ${
+                since.elapsed.pretty} ↘")
+
+        def logRelease(exitCase: ExitCase): IO[Unit] =
+          IO:
+            if minorRequestLogged || sym.called then
+              val logLevel = if sym.called then sym.logLevel else Trace
+              exitCase match
+                case ExitCase.Succeeded =>
+                  logger.log(logLevel,
+                    s"↙ ⚪️$nrString $name released by $acquirer_ · $queueLength queued · ${since.elapsed.pretty} ↙")
+
+                case ExitCase.Canceled =>
+                  logger.log(logLevel,
+                    s"↙ ⚫$nrString $name released by $acquirer_ · Canceled · $queueLength queued · ${since.elapsed.pretty} ↙")
+
+                case ExitCase.Errored(t) =>
+                  logger.log(sym.logLevel,
+                    s"↙ 💥$nrString $name released by $acquirer_ · $queueLength queued · ${t.toStringWithCauses} ↙")
+
+        Resource
+          .makeCase(
+            acquire =
+              IO(queueLength += 1) *> logBeforeAcquire.start)(
+            release = (fiber, exitCase) =>
+              IO(queueLength -= 1) *> fiber.cancel *> logRelease(exitCase))
+          .map: fiber =>
+            acquired = true
+            // Return an IO to be called after the lock has been acquired
+            fiber.cancel *> logAfterAcquire
+
+    override def toString = s"AsyncLock:$name"
+  end WithLogging
