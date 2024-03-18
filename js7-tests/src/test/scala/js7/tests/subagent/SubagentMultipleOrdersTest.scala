@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.event.{EventId, KeyedEvent, Stamped}
+import js7.data.event.{EventId, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentId

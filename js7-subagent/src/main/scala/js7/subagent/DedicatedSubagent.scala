@@ -323,16 +323,15 @@ extends Service.StoppableByRequest:
       .map: chunk =>
         chunk.toVector.map: string =>
           orderId <-: OrderStdWritten(outErr)(string)
-      .flatMap: events =>
-        Stream.exec:
-          val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
-          outErrStatistics(outErr)
-            .count(n = events.size, totalLength = totalLength):
-              journal.persistKeyedEventsLater(events, stdoutCommitDelayOptions)
-            .map:
-              case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-              case Right(_) =>
-            .void
+      .foreach: events =>
+        val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
+        outErrStatistics(outErr)
+          .count(n = events.size, totalLength = totalLength):
+            journal.persistKeyedEventsLater(events, stdoutCommitDelayOptions)
+          .map:
+            case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
+            case Right(_) =>
+          .void
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
