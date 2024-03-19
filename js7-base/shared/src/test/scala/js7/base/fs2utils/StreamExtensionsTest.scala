@@ -436,17 +436,19 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
   }
 
   "Chunk" - {
-    "convertToString ArraySlice" in:
-      val chunk = Chunk.array("abc".toCharArray)
-      val arraySlice = chunk.asInstanceOf[Chunk.ArraySlice[Char]]
-      assert(arraySlice == Chunk.ArraySlice(Array('a', 'b', 'c'), 0, 3))
-      assert(chunk.convertToString == "abc")
+    "convertToString" - {
+      "ArraySlice" in:
+        val chunk = Chunk.array("abc".toCharArray)
+        val arraySlice = chunk.asInstanceOf[Chunk.ArraySlice[Char]]
+        assert(arraySlice == Chunk.ArraySlice(Array('a', 'b', 'c'), 0, 3))
+        assert(chunk.convertToString == "abc")
 
-    "convertToString other" in:
-      val chunk: Chunk[Char] =
-        Chunk.array("abc".toCharArray) ++ Chunk.array("def".toCharArray) ++ Chunk.singleton('g')
-      chunk.asInstanceOf[Chunk.Queue[Char]]
-      assert(chunk.convertToString == "abcdefg")
+      "Other Chunk" in:
+        val chunk: Chunk[Char] =
+          Chunk.array("abc".toCharArray) ++ Chunk.array("def".toCharArray) ++ Chunk.singleton('g')
+        chunk.asInstanceOf[Chunk.Queue[Char]]
+        assert(chunk.convertToString == "abcdefg")
+    }
 
     "fromString" in:
       val chunk = Chunk.fromString("abc")

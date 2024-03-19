@@ -125,3 +125,27 @@ final class Fs2Test extends OurAsyncTestSuite:
             17.s -> Chunk(19, 20, 21),
             17.s -> Chunk(22)))
   }
+
+  "Beware of Chunk[Char]#asSeq!" - {
+    val charChunk: Chunk[Char] = Chunk.array("abc".toCharArray)
+
+    "Chunk[Char]" in :
+      charChunk match
+        case Chunk.ArraySlice(array, 0, 3) => assert(array(0) == 'a')
+        case _ => fail("ArraySlice expected")
+
+    "💥 .asSeq.grouped(3) yield a unexpectedly typed Chunk" in :
+      val chunk: Chunk[Char] = Chunk.from(charChunk.asSeq.grouped(3).next())
+      val e = intercept[ClassCastException]:
+        chunk match
+          case Chunk.ArraySlice(_, _, _) =>
+          case _ => fail("ArraySlice expected")
+      assert(e.getMessage == "class [Ljava.lang.Object; cannot be cast to class [C" +
+        " ([Ljava.lang.Object; and [C are in module java.base of loader 'bootstrap')")
+
+    ".toArray instead of .asSeq" in :
+      val chunk: Chunk[Char] = Chunk.from(charChunk.toArray.grouped(3).next())
+      chunk match
+        case Chunk.ArraySlice(_, _, _) => succeed
+        case _ => fail("ArraySlice expected")
+  }
