@@ -677,6 +677,77 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderDeleted))
     }
   }
+
+  "Use ResumeOrder to change the argument of a Cycle BranchId call stack entry" in {
+    // See BranchId.cycle() which build a Cycle BranchId with arguments.
+    import BranchId.Then
+    val now = local("2024-03-20T00:00")
+    val cycleEnd = local("2024-03-21T00:00")
+    clock.resetTo(now)
+    val workflow = Workflow(
+      WorkflowPath("RESUME-WITH-CHANGED-CYCLE-ARGUMENTS"),
+      timeZone = timezone,
+      calendarPath = Some(calendar.path),
+      instructions = Seq(
+        If(expr("true"),
+          Workflow.of(
+            Cycle(
+              Schedule(Seq(Scheme(
+                AdmissionTimeScheme(Seq(AlwaysPeriod)),
+                Continuous(1.s)))),
+              Workflow.of(
+                If(expr("true"),
+                  Workflow.of(
+                    TryInstruction(
+                      Workflow.of(Stop()),
+                      Workflow.empty)))))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      locally {
+        val orderId = OrderId("#2024-03-20#RESUME-WITH-CHANGED-CYCLE-ARGUMENTS")
+        controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderStopped](_.key == orderId)
+
+        def toPosition(branchId: BranchId, instrNr: Int) =
+          Position(0) / Then % 0 / branchId % 0 / Then % 0 / BranchId.try_(0) % instrNr
+
+        val suspendBranchId = BranchId.cycle(CycleState(
+          end = clock.now() + 1.day, index = 1, next = Timestamp.Epoch))
+        val resumeBranchId = BranchId.cycle(CycleState(
+          end = clock.now() + 1.day + 1.minute, index = 2, next = clock.now() + 1.minute))
+
+        val suspendPosition = toPosition(suspendBranchId, 0)
+        val resumePosition = toPosition(resumeBranchId, 1)
+
+        assert(controllerState.idToOrder(orderId).position == suspendPosition)
+
+        controllerApi
+          .executeCommand(
+            ResumeOrder(orderId, position = Some(resumePosition)))
+          .await(99.s).orThrow
+        eventWatch.await[OrderCycleFinished](_.key == orderId)
+
+        controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId)
+        eventWatch.await[OrderDeleted](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(0) / Then % 0),
+          OrderStarted,
+          OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
+          OrderCycleStarted,
+          OrderMoved(suspendPosition),
+          OrderStopped,
+          OrderResumed(Some(resumePosition)),
+          OrderMoved(Position(0) / Then % 0 / resumeBranchId % 1),
+          OrderCycleFinished(Some(CycleState(cycleEnd + 1.minute, index = 3, next = clock.now() + 1.s))),
+          OrderCancelled,
+          OrderDeleted))
+      }
+    }
+  }
 }
 
 object CycleTest

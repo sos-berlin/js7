@@ -24,6 +24,10 @@ sealed trait BranchId
 
   final def isIsFailureBoundary = isFork
 
+  /** An order can not be moved through a move boundary. */
+  final def isNotMoveBoundary: Boolean =
+    BranchId.NoMoveBoundary(this) || BranchId.NoMoveBoundaryPrefixes.exists(string.startsWith)
+
   def toCycleState: Checked[CycleState]
 }
 
@@ -32,7 +36,9 @@ object BranchId
   val Then = BranchId("then")
   val Else = BranchId("else")
   val Try_ = BranchId("try")
+  val TryPrefix = "try+"
   val Catch_ = BranchId("catch")
+  val CatchPrefix = "catch+"
   val ForkList = BranchId("fork")
   val ForkPrefix = "fork+"
   val Lock = BranchId("lock")
@@ -42,16 +48,20 @@ object BranchId
   val StickySubagent = BranchId("stickySubagent")
   val Options = BranchId("options")
 
+  /** Set of BranchIds an Order is movable through. */
+  private[BranchId] val NoMoveBoundary = Set[BranchId](Then, Else, Try_, Catch_, Cycle/*???*/, Options)
+  private[BranchId] val NoMoveBoundaryPrefixes = Seq(TryPrefix, CatchPrefix, CyclePrefix/*???*/)
+
   implicit def apply(branchId: String): Named = Named(branchId)
 
   def try_(retry: Int): BranchId.Named = {
     require(retry >= 0)
-    BranchId(Try_.string + "+" + retry)
+    BranchId(TryPrefix + retry)
   }
 
   def catch_(retry: Int): BranchId.Named = {
     require(retry >= 0)
-    BranchId(Catch_.string + "+" + retry)
+    BranchId(CatchPrefix + retry)
   }
 
   def nextTryBranchId(branchId: BranchId): Checked[Option[BranchId]] =
@@ -74,7 +84,7 @@ object BranchId
         (cycleState.next != Timestamp.Epoch) ? ("next=" + cycleState.next.toEpochMilli)
       ).flatten.mkString(",")
 
-    "cycle+" + parameters
+    CyclePrefix + parameters
   }
 
   object IsFailureBoundary
@@ -88,9 +98,9 @@ object BranchId
   final case class Named(string: String) extends BranchId {
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
-      if (string startsWith "try+") "try"
-      else if (string startsWith "catch+") "catch"
-      else if (string startsWith "cycle+") "cycle"
+      if (string startsWith TryPrefix) "try"
+      else if (string startsWith CatchPrefix) "catch"
+      else if (string startsWith CyclePrefix) "cycle"
       else this
 
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
@@ -100,7 +110,7 @@ object BranchId
         var cycleState = emptyCycleState
         if (string == "cycle")
           Right(cycleState)
-        else if (!string.startsWith("cycle+"))
+        else if (!string.startsWith(CyclePrefix))
           Left(Problem.pure(cycleFailed))
         else {
           var checked: Checked[Unit] = Checked.unit
