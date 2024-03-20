@@ -13,13 +13,13 @@ import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.item.UnsignedItemEvent.UnsignedItemAddedOrChanged
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, Execute, Fail, PostNotices, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, Execute, Fail, If, Options, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
@@ -627,6 +627,51 @@ with BlockingItemUpdater
       sleep(3.s)
       controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
+    }
+  }
+
+  "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, with Options" in {
+    val workflow = Workflow(
+      WorkflowPath("OPTION-CONSUME-NOTICE-IF-FAIL"),
+      Seq(
+        Options(stopOnFailure = Some(true),
+          Workflow.of(
+            PostNotices(Seq(aBoard.path)),
+            ConsumeNotices(
+              boardPathExpr(s"'${aBoard.path.string}'"),
+              Workflow.of(
+                If(expr("true"),
+                  Workflow.of(Fail()))))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")
+      controllerApi
+        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStopped](_.key == orderId)
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId)
+    }
+  }
+
+  "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, without Options" in {
+    val workflow = Workflow(
+      WorkflowPath("CONSUME-NOTICE-IF-FAIL"),
+      Seq(
+        PostNotices(Seq(aBoard.path)),
+        ConsumeNotices(
+          boardPathExpr(s"'${aBoard.path.string}'"),
+          Workflow.of(
+            If(expr("true"),
+              Workflow.of(Fail()))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("#2024-03-20#ConsumeNotices-If-Fail")
+      controllerApi
+        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderFailed](_.key == orderId)
     }
   }
 }
