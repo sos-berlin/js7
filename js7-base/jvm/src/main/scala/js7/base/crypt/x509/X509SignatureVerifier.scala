@@ -13,6 +13,7 @@ import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits.*
@@ -123,9 +124,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
           None
         case Right(o) => Some(o)
       })
-    for (problem <- certs.checkUniqueness(_.signersDistinguishedName).left)
-      logger.error(s"Duplicate certificates: $problem")
-    toVerifier(certs.toKeyedMap(_.signersDistinguishedName), origin)
+    toVerifier(
+      X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
+      origin)
   }
 
   private def toVerifier(signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert], origin: String)

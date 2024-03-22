@@ -52,6 +52,12 @@ object JavaTimestamp extends Timestamp.Companion
       def toJavaUtilDate: java.util.Date =
         new java.util.Date(timestamp.toEpochMilli)
     }
+
+    implicit class RichJavaTimestampCompanion(private val x: Timestamp.type) extends AnyVal
+    {
+      def fromJavaUtilDate(date: java.util.Date): Timestamp =
+        Timestamp.ofEpochMilli(date.getTime)
+    }
   }
 
   val MaxValue = ofEpochMilli(Long.MaxValue)
