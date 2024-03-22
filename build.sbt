@@ -50,7 +50,8 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 // BuildUtils reads more properties.
 val isForDevelopment                 = sys.props contains "dev"
 
-addCommandAlias("clean-all"      , "; js7JS/clean; js7-tester/clean; clean")
+addCommandAlias("clean-all"      , "js7-tester/clean; clean")
+//addCommandAlias("clean-all"      , "; js7JS/clean; js7-tester/clean; clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
@@ -68,7 +69,8 @@ addCommandAlias("pack"           , "Universal/packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControllerAgent --agents=2 --nodes-per-agent=3 --tasks=3 --job-duration=1.5s --period=10.s")
-addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
+addCommandAlias("quickPublishLocal", "; compile; publishLocal")
+//addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
 
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
@@ -231,17 +233,8 @@ lazy val js7 = project.in(file("."))
   .settings(
     publish / skip := true)
 
-lazy val js7JS = (project in file("target/project-js7JS"))
-  .aggregate(
-    `js7-base`.js,
-    `js7-common-http`.js,
-    `js7-data`.js,
-    `js7-controller-client`.js,
-    `js7-proxy`.js)
-  .settings(publish / skip := true)
-
 lazy val all = (project in file("target/project-all"))  // Not the default project
-  .aggregate(js7, js7JS)
+  .aggregate(js7)
 
 lazy val `js7-install` = project
   .dependsOn(
@@ -322,7 +315,7 @@ lazy val `js7-docker` = project
       NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/js7/install/docker/")
         .map { case (file, dest) => file -> ("build/" + dest) })
 
-lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-tester` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
   .settings {
@@ -337,7 +330,7 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
       "org.scalactic" %%% "scalactic" % scalaTestVersion
   }
 
-lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-base` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-tester` % "test")
   .settings(commonSettings)
@@ -401,7 +394,7 @@ lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
       Seq(file)
     }.taskValue)
 
-lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-data` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-base`, `js7-base` % "test->test", `js7-tester` % "test")
   .settings(commonSettings)
@@ -456,7 +449,7 @@ lazy val `js7-common` = project
     }
   .enablePlugins(GitVersioning)
 
-lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-common-http` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-data`, `js7-data` % "test->test",
@@ -477,8 +470,6 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
       log4j % "test" ++
       lmaxDisruptor % "test"
   }
-  .jsSettings(
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 lazy val `js7-controller` = project
   .dependsOn(
@@ -516,7 +507,7 @@ lazy val `js7-provider` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-proxy` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-controller-client`,
@@ -542,7 +533,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
       lmaxDisruptor % "test"
     })
 
-lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-controller-client` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-cluster-watch-api`,
@@ -655,7 +646,7 @@ lazy val `js7-cluster` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-cluster-watch-api` = crossProject(JSPlatform, JVMPlatform)
+lazy val `js7-cluster-watch-api` = crossProject(JVMPlatform)
   .dependsOn(
     `js7-data`/*TODO move js7.data.cluster.* here*/,
     `js7-common-http`,
