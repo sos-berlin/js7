@@ -2,6 +2,8 @@ package js7.tests.controller.proxy;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeoutException;
 import js7.data.event.Event;
 import js7.data.order.OrderEvent.OrderFinished;
@@ -16,6 +18,7 @@ import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.vavr.VavrUtils.await;
 
@@ -30,7 +33,9 @@ implements AutoCloseable
     private final JControllerProxy proxy;
     private int orderCounter = 0;
 
-    public JControllerFluxTester(Iterable<JAdmission> admissions, JHttpsConfig httpsConfig)
+    public JControllerFluxTester(
+        Iterable<JAdmission> admissions,
+        JHttpsConfig httpsConfig)
         throws InterruptedException, ExecutionException, TimeoutException {
         api = context.newControllerApi(admissions, httpsConfig);
         proxy = api.startProxy().get(99, SECONDS);
@@ -46,12 +51,18 @@ implements AutoCloseable
     }
 
     private void test1() throws Exception {
+        test1(() -> {});
+    }
+
+    void test1(Runnable onNext) throws Exception {
         orderCounter++;
         OrderId orderId = OrderId.of("ORDER-" + orderCounter);
 
         CompletableFuture<Void> orderFinished = new CompletableFuture<>();
         Flux<JEventAndControllerState<Event>> flux = proxy.flux()
+            .publishOn(Schedulers.fromExecutor(ForkJoinPool.commonPool()))
             .doOnNext(eventAndState -> {
+                onNext.run();
                 if (eventAndState.stampedEvent().value().event() instanceof OrderFinished &&
                     eventAndState.stampedEvent().value().key().equals(orderId)) {
                     orderFinished.complete(null);
