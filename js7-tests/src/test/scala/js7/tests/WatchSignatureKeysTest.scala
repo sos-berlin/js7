@@ -1,6 +1,7 @@
 package js7.tests
 
 import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempDirectory, delete}
 import js7.agent.scheduler.AgentActor
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -18,6 +19,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Labeled
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
@@ -68,7 +70,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     X509Signer.checked(aCertAndKey.privateKey, SHA512withRSA, aSignerId).orThrow
   private lazy val itemSigner = new ItemSigner(signer, ControllerState.signableItemJsonCodec)
   override protected lazy val verifier =
-    X509SignatureVerifier.checked(Seq(aCertAndKey.certificate)).orThrow
+    X509SignatureVerifier.checked(Seq(Labeled(aCertAndKey.certificate, "verifier"))).orThrow
 
   private lazy val controllersKeyDirectory =
     directoryProvider.controller.configDir / "private" / "trusted-x509-keys"
@@ -199,6 +201,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
           assert(!subagentUpdated.isCompleted)
           controllerFile.write(pem, n, pem.length - n)
           agentFile.write(pem, n, pem.length - n)
+          subagentFile.write(pem, n, pem.length - n)
         }
       }
     }
@@ -209,6 +212,32 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     controllerApi.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
 
     testOrder(v)
+  }
+
+  "Ignore invalid certificate (JS-2116)" in {
+    val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
+      .void.runToFuture
+    val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+      .void.runToFuture
+    val subagentUpdated = bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
+      .void.runToFuture
+
+    autoClosing(new FileOutputStream((controllersKeyDirectory / "invalid.pem").toFile)) { controllerFile =>
+      autoClosing(new FileOutputStream((agentsKeyDirectory / "invalid.pem").toFile)) { agentFile =>
+        autoClosing(new FileOutputStream((subagentsKeyDirectory / "invalid.pem").toFile)) { subagentFile =>
+          val invalidPem = "INVALID\n".getBytes(UTF_8)
+          controllerFile.write(invalidPem)
+          agentFile.write(invalidPem)
+          subagentFile.write(invalidPem)
+        }
+      }
+    }
+
+    Future.sequence(Seq[Future[Unit]](controllerUpdated, agentUpdated, subagentUpdated)).await(99.s)
+
+    val v = nextVersion()
+    val checked = controllerApi.updateRepo(v, Seq(itemSigner.sign(workflow.withVersion(v)))).await(99.s)
+    assert(checked == Left(Problem("The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
   }
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =

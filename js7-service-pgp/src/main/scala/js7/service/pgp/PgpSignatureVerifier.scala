@@ -9,9 +9,11 @@ import js7.base.crypt.pgp.PgpSignature
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.log.Logger
+import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.Labeled
 import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
@@ -85,10 +87,14 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   private val logger = Logger(getClass)
 
-  def checked(publicKeys: Seq[ByteArray], origin: String) =
-    Checked.catchNonFatal(
-      new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeys), origin)
-    ).left.map(o => Problem(s"Error while reading public key '$origin'", cause = Some(o)))
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String): Checked[PgpSignatureVerifier] =
+    readPublicKeyRingCollection(publicKeys)
+      .map(new PgpSignatureVerifier(_, origin))
+
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String): PgpSignatureVerifier =
+    new PgpSignatureVerifier(
+      readOrIgnorePublicKeyRingCollection(publicKeys),
+      origin)
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)
@@ -106,7 +112,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   }
 
   private[pgp] def toMutablePGPSignature(signature: PgpSignature): Checked[PGPSignature] =
-    Checked.catchNonFatal(
+    catchNonFatal(
       new JcaPGPObjectFactory(PGPUtil.getDecoderStream(new ByteArrayInputStream(signature.string.getBytes(UTF_8))))
         .nextObject
     ) .leftMap(_.withPrefix("Invalid PGP signature: "))
