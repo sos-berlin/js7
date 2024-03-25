@@ -11,13 +11,19 @@ trait ScheduleSimulator {
   this: ScheduleCalculator =>
 
   def simulate(timeInterval: TimeInterval, actionDuration: FiniteDuration = 0.s): View[Scheduled] =
+    simulateWithCycleState(CycleState.initial(timeInterval), timeInterval.start, actionDuration)
+
+  def simulateWithCycleState(
+    initialCycleState: CycleState,
+    timestamp: Timestamp,
+    actionDuration: FiniteDuration = 0.s)
+  : View[Scheduled] = {
+    val initialTimestamp = timestamp
     View.fromIteratorProvider(() =>
       new Iterator[Scheduled] {
-        var timestamp = timeInterval.start
+        var timestamp = initialTimestamp
 
-        private var _next: Option[Scheduled] = Some(Scheduled(
-          timestamp,
-          CycleState.initial(timeInterval)))
+        private var _next: Option[Scheduled] = Some(Scheduled(timestamp, initialCycleState))
 
         calculateNext()
 
@@ -45,6 +51,7 @@ trait ScheduleSimulator {
             }
           }
       })
+  }
 }
 
 object ScheduleSimulator

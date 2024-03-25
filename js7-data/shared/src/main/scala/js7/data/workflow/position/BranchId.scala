@@ -93,8 +93,6 @@ object BranchId
       branchId.isIsFailureBoundary ? branchId
   }
 
-  private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, 0, Timestamp.Epoch)
-
   final case class Named(string: String) extends BranchId {
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
@@ -105,42 +103,43 @@ object BranchId
 
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
 
-    def toCycleState: Checked[CycleState] =
-      try {
-        var cycleState = emptyCycleState
-        if (string == "cycle")
-          Right(cycleState)
-        else if (!string.startsWith(CyclePrefix))
-          Left(Problem.pure(cycleFailed))
-        else {
-          var checked: Checked[Unit] = Checked.unit
-          string.substring(6)
-            .split(',')
-            .toVector
-            .takeWhile(_ => checked.isRight)
-            .foreach(part =>
-              if (part startsWith "end=")
-                cycleState = cycleState.copy(
-                  end = Timestamp.ofEpochMilli(part.substring(4).toLong))
-              else if (part startsWith "scheme=")
-                cycleState = cycleState.copy(
-                  schemeIndex = part.substring(7).toInt)
-              else if (part startsWith "period=")
-                cycleState = cycleState.copy(
-                  periodIndex = part.substring(7).toInt)
-              else if (part startsWith "i=")
-                cycleState = cycleState.copy(
-                  index = part.substring(2).toInt)
-              else if (part startsWith "next=")
-                cycleState = cycleState.copy(
-                  next = Timestamp.ofEpochMilli(part.substring(5).toLong))
-              else
-                checked = Left(Problem.pure(cycleFailed)))
-          for (_ <- checked) yield cycleState
+    def toCycleState: Checked[CycleState] = {
+      var CycleState(end, schemeIndex, periodIndex, index, next) = CycleState.empty
+      val checked: Checked[Unit] =
+        try {
+          if (string == "cycle")
+            Checked.unit
+          else if (!string.startsWith(CyclePrefix))
+            Left(Problem.pure(cycleFailed))
+          else {
+            var checked: Checked[Unit] = Checked.unit
+            string.substring(6)
+              .split(',')
+              .toVector
+              .takeWhile(_ => checked.isRight)
+              .foreach(part =>
+                if (part startsWith "end=")
+                  end = Timestamp.ofEpochMilli(part.substring(4).toLong)
+                else if (part startsWith "scheme=")
+                  schemeIndex = part.substring(7).toInt
+                else if (part startsWith "period=")
+                  periodIndex = part.substring(7).toInt
+                else if (part startsWith "i=")
+                  index = part.substring(2).toInt
+                else if (part startsWith "next=")
+                  next = Timestamp.ofEpochMilli(part.substring(5).toLong)
+                else
+                  checked = Left(Problem.pure(cycleFailed)))
+            checked
+          }
+        } catch { case NonFatal(t) =>
+          Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
         }
-      } catch { case NonFatal(t) =>
-        Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
-      }
+      for {
+        _ <- checked
+        _ <- (end != null) !! Problem("Invalid ")
+      } yield CycleState(end, schemeIndex, periodIndex, index, next)
+    }
 
     private def cycleFailed =
       "Expected a Cycle BranchId but got: " + toString
