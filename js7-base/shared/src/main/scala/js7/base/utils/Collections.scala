@@ -51,7 +51,7 @@ object Collections
           factory.fromSpecific(Nil)
     }
 
-    implicit final class RichIterable[CC[x] <: Iterable[x], A](private val underlying: CC[A])
+    implicit final class RichIterable[CC[+x] <: Iterable[x], A](private val underlying: CC[A])
     extends AnyVal
     {
       /**
@@ -79,7 +79,7 @@ object Collections
       def uniqueToSet: Set[A] =
         underlying.requireUniqueness.toSet
 
-      def checkUniqueness: Checked[Iterable[A]] =
+      def checkUniqueness: Checked[CC[A]] =
         checkUniqueness(identity[A])
 
       def checkUniqueness[K](key: A => K): Checked[CC[A]] =
@@ -97,11 +97,12 @@ object Collections
           case None => Right(underlying)
         }
 
-      def requireUniqueness: Iterable[A] =
+      def requireUniqueness: CC[A] =
         requireUniqueness(identity[A])
 
-      def requireUniqueness[K](key: A => K): Iterable[A] =
-        ifNotUnique[K, A](key, keys => throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
+      def requireUniqueness[K](key: A => K): CC[A] =
+        ifNotUnique[K, A](key, keys =>
+          throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
       def areUnique: Boolean =
         areUniqueBy[A](identity)
@@ -109,7 +110,7 @@ object Collections
       def areUniqueBy[K](key: A => K): Boolean =
         duplicateKeys(key).isEmpty
 
-      def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Iterable[B]): Iterable[B] =
+      def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => CC[B]): CC[B] =
         duplicateKeys(key) match {
           case Some(o) => then_(o.keys)
           case None => underlying
