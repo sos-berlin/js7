@@ -10,6 +10,7 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.utils.Labeled
 import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
@@ -82,13 +83,17 @@ object PgpSigner extends DocumentSigner.Companion
     val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
     PgpSigner(pgpSecretKey, pgpPassword).orThrow ->
-      PgpSignatureVerifier.checked(pgpSecretKey.getPublicKey.toArmoredAsciiBytes :: Nil, origin = "PgpSigner").orThrow
+      PgpSignatureVerifier
+        .checked(
+          Seq(Labeled(pgpSecretKey.getPublicKey.toArmoredAsciiBytes, "PgpSigner.forTest")),
+          origin = "PgpSigner")
+        .orThrow
   }
 
   private def readSecretKeyRingCollection(byteArray: ByteArray): PGPSecretKeyRingCollection =
     new PGPSecretKeyRingCollection(
       PGPUtil.getDecoderStream(byteArray.toInputStream),
-      newFingerPrintCalculator)
+      newFingerPrintCalculator())
 
   private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
     val keys = keyRings

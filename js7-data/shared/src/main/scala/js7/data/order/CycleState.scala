@@ -28,6 +28,8 @@ final case class CycleState(
 
 object CycleState
 {
+  val empty = CycleState(Timestamp.Epoch, 0, 0, 0, Timestamp.Epoch)
+
   def initial(timeInterval: TimeInterval): CycleState =
     CycleState(
       next = timeInterval.start,

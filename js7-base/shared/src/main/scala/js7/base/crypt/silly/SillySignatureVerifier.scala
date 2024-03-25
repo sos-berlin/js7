@@ -5,6 +5,7 @@ import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Labeled
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -48,11 +49,13 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   private val SillySignerId = SignerId("Silly")
 
-  def checked(publicKeys: Seq[ByteArray], origin: String = "Silly") =
-    Right(
-      new SillySignatureVerifier(
-        publicKeys.map(o => SillySignature(o.utf8String)),
-        publicKeyOrigin = origin))
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly") =
+    Right(ignoreInvalid(publicKeys))
+
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly") =
+    new SillySignatureVerifier(
+      publicKeys.map(o => SillySignature(o.value.utf8String)),
+      publicKeyOrigin = origin)
 
   def genericSignatureToSignature(signature: GenericSignature) = {
     assertThat(signature.typeName == typeName)

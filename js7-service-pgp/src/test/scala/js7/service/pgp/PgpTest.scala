@@ -12,6 +12,7 @@ import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.utils.Labeled
 import js7.service.pgp.PgpCommons.*
 import js7.service.pgp.PgpTest.*
 import org.bouncycastle.openpgp.PGPSignature
@@ -20,7 +21,8 @@ final class PgpTest extends OurTestSuite
 {
   private lazy val verifier =
     new PgpSignatureVerifier(
-      readPublicKeyRingCollection(publicKeyResource.readAs[ByteArray] :: Nil),
+      readPublicKeyRingCollection(Seq(Labeled(publicKeyResource.readAs[ByteArray], publicKeyResource.toString)))
+        .orThrow,
       publicKeyOrigin = "PgpTest")
 
   "Invalid password for secret key" in {
@@ -149,7 +151,9 @@ final class PgpTest extends OurTestSuite
       assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
       assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
 
-      val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(ByteArray(publicKeyAscii) :: Nil), "PgpTest")
+      val verifier = new PgpSignatureVerifier(
+        readPublicKeyRingCollection(Seq(Labeled(ByteArray(publicKeyAscii), "PgpTest"))).orThrow,
+        "PgpTest")
       assert(verifier.verifyString(TestMessage + "X", signature).isLeft)
       assert(verifier.verifyString(TestMessage, signature).isRight)
     }

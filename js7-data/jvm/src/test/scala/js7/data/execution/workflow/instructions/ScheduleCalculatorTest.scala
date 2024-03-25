@@ -265,4 +265,16 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
       assert(result == expected)
     }
   }
+
+  "CycleState.empty" in {
+    // CycleState.empty is only used when throwing an Order into a cycle block,
+    // with a "cycle" BranchId without parameters. This should not be possible.
+    implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
+    val schedule = Schedule(Seq(Scheme(
+      AdmissionTimeScheme(Seq(AlwaysPeriod)),
+      Periodic(1.h, Seq(1.minute)))))
+    assert(ScheduleCalculator(schedule, zone, dateOffset = 0.s)
+      .simulateWithCycleState(CycleState.empty, local("2024-03-25T12:00"), 24.h)
+      .isEmpty)
+  }
 }

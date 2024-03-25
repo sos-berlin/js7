@@ -13,9 +13,11 @@ import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits.*
+import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable}
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
@@ -107,27 +109,43 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
   implicit val x509CertificateShow: Show[X509Certificate] =
     _.getIssuerX500Principal.toString
 
-  def checked(trustedCertificates: Seq[ByteArray], origin: String): Checked[X509SignatureVerifier] =
-    trustedCertificates.toVector
-      .traverse(publicKey => X509Cert.fromPem(publicKey.utf8String))
-      .flatMap(trustedCertificates =>
-        trustedCertificates
-          // Openssl 1.1.1i always sets the CA critical extension
-          // to allow self-signed certificates (?)
-          //.filterNot(_.isCA)
-          .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
-          .map { signerDNToTrustedCertificate =>
-            val rootCertificates = trustedCertificates.filter(_.isCA)
-            for (o <- rootCertificates) logger.debug(
-              s"Trusting signatures signed with a certificate which is signed with root $o")
-            for (o <- signerDNToTrustedCertificate.values) logger.debug(
-              s"Trusting signatures signed with $o")
-            new X509SignatureVerifier(
-              trustedCertificates,
-              rootCertificates,
-              signerDNToTrustedCertificate,
-              origin)
-          })
+  def checked(pems: Seq[Labeled[ByteArray]], origin: String): Checked[X509SignatureVerifier] =
+    pems.toVector
+      .traverse(labeledPem => X509Cert.fromPem(labeledPem.value.utf8String))
+      .flatMap(_
+        .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
+        .map(toVerifier(_, origin)))
+
+  def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier = {
+    val certs = pems.flatMap(labeledPem =>
+      X509Cert.fromPem(labeledPem.value.utf8String) match {
+        case Left(problem) =>
+          logger.error(s"Ignoring X.509 certificate '${labeledPem.label}' due to: $problem")
+          None
+        case Right(o) => Some(o)
+      })
+    toVerifier(
+      X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
+      origin)
+  }
+
+  private def toVerifier(signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert], origin: String)
+  : X509SignatureVerifier = {
+    val trustedCertificates = signerDNToTrustedCertificate.values.toVector
+    // Openssl 1.1.1i always sets the CA critical extension
+    // to allow self-signed certificates (?)
+    //.filterNot(_.isCA)
+    val rootCertificates = trustedCertificates.filter(_.isCA)
+    for (o <- rootCertificates) logger.debug(
+      s"Trusting signatures signed with a certificate which is signed with root $o")
+    for (o <- signerDNToTrustedCertificate.values) logger.debug(
+      s"Trusting signatures signed with $o")
+    new X509SignatureVerifier(
+      trustedCertificates,
+      rootCertificates,
+      signerDNToTrustedCertificate,
+      origin)
+  }
 
   private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[?]]) =
     duplicatesToProblem("Duplicate X.509 certificates", duplicates)

@@ -2,6 +2,7 @@ package js7.base.crypt
 
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
+import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.jetbrains.annotations.TestOnly
 
@@ -48,8 +49,10 @@ object SignatureVerifier
 
     def recommendedKeyDirectoryName: String
 
-    def checked(publicKeys: Seq[ByteArray], origin: String = "(unknown source)")
+    def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "(unknown source)")
     : Checked[MySignatureVerifier]
+
+    def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): MySignatureVerifier
 
     def genericSignatureToSignature(signature: GenericSignature): Checked[MySignature]
 

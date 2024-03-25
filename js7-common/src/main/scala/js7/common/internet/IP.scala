@@ -14,7 +14,8 @@ object IP
 {
   implicit object StringToInetAddress extends As[String, InetAddress] {
     def apply(o: String) = {
-      if (o.isEmpty) throw new IllegalArgumentException("Missing IP address")
+      // getByName resolves a blank " " name, too (MacOS).
+      if (o.trim.isEmpty) throw new IllegalArgumentException("Missing IP address")
       InetAddress.getByName(o)
     }
   }

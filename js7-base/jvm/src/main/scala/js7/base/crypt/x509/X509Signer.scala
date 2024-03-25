@@ -9,6 +9,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Labeled
 
 final class X509Signer private(
   x509PrivateKey: PrivateKey,
@@ -62,7 +63,9 @@ object X509Signer extends DocumentSigner.Companion
       for {
         certWithPrivateKey <- openssl.generateCertWithPrivateKey("X509Signer", s"/${signerId.string}")
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
-        verifier <- X509SignatureVerifier.checked(certWithPrivateKey.certificate :: Nil, origin)
+        verifier <- X509SignatureVerifier.checked(
+          Seq(Labeled(certWithPrivateKey.certificate, s"signer=$signerId")),
+          origin)
       } yield signer -> verifier
     }
 }

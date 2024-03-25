@@ -19,6 +19,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.Labeled
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
@@ -61,7 +62,9 @@ final class X509Test extends OurTestSuite
       runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
-      val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
+      val verifier = X509SignatureVerifier.checked(
+        Seq(Labeled(certificateBytes, "X509Test")),
+        origin = certificateFile.toString).orThrow
       val signerCert = X509Cert.fromPem(certificateBytes.utf8String).orThrow
       logger.info(signerCert.toLongString)
       val signerId = signerCert.signerId
@@ -148,7 +151,9 @@ final class X509Test extends OurTestSuite
           .toListL.await(999.s)
         logger.info(itemsPerSecondString(t.elapsed, n, "signs"))
 
-        val verifier = X509SignatureVerifier.checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
+        val verifier = X509SignatureVerifier.checked(
+            Seq(ca.certificateFile.labeledByteArray),
+            origin = ca.certificateFile.toString)
           .orThrow
         for (_ <- 1 to 10) {
           t = now
@@ -168,7 +173,7 @@ object X509Test
   private val logger = Logger[this.type]
 
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
-    lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
+    lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.labeledByteArray), origin = certificateFile.toString).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
     if (verified.isRight) {
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
