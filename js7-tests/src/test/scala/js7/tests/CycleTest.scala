@@ -619,7 +619,100 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       assert(checked == Left(Problem(
         "JSON DecodingFailure at : Break instruction at 0/cycle:0/fork+A:0/then:0 without Cycle")))
     }
-  }
+
+    "JS-2115 Order without cycle arguments placed into a Cycle block" in {
+      clock.resetTo(local("2025-03-25T12:00"))
+      val workflow = Workflow(
+        WorkflowPath("PLACED-ORDER"),
+        timeZone = timezone,
+        calendarPath = Some(calendar.path),
+        instructions = Seq(
+          Cycle(
+            Schedule(Seq(Scheme(
+              AdmissionTimeScheme(Seq(AlwaysPeriod)),
+              Continuous(1.s)))),
+            Workflow.of(
+              EmptyJob.execute(agentPath)))))
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId("#2024-03-25#PLACED-ORDER")
+
+        controllerApi
+          .addOrder(FreshOrder(
+            orderId, workflow.path, deleteWhenTerminated = true,
+            startPosition = Some(Position(0) / "cycle" % 0)))
+          .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId)
+          .filter {
+            case _: OrderCyclingPrepared => false
+            case _: OrderMoved => false
+            case _ => true
+          } ==
+          Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true,
+              startPosition = Some(Position(0) / "cycle" % 0)),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderStarted,
+            OrderProcessingStarted(Some(subagentId)),
+            OrderProcessed(Outcome.succeeded),
+            OrderCycleFinished(None),
+            OrderDetachable,
+            OrderDetached,
+            OrderFinished(None),
+            OrderDeleted))
+      }
+    }
+
+    "JS-2115 Order without cycle arguments placed into a Cycle block with Break" in {
+      clock.resetTo(local("2025-03-25T00:00"))
+      val workflow = Workflow(
+        WorkflowPath("PLACED-ORDER-WITHOUT-ARGUMENTS"),
+        timeZone = timezone,
+        calendarPath = Some(calendar.path),
+        instructions = Seq(
+          Cycle(
+            Schedule(Seq(Scheme(
+              AdmissionTimeScheme(Seq(AlwaysPeriod)),
+              Continuous(1.s)))),
+            Workflow.of(
+              If(expr("true"),
+                Workflow.of(
+                  EmptyJob.execute(agentPath),
+                  Break()))))))
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId("#2024-03-25#PLACED-ORDER-WITHOUT-ARGUMENTS")
+
+        controllerApi
+          .addOrder(FreshOrder(
+            orderId, workflow.path, deleteWhenTerminated = true,
+            startPosition = Some(Position(0) / "cycle" % 0)))
+          .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId)
+          .filter {
+            case _: OrderCyclingPrepared => false
+            case _: OrderMoved => false
+            case _ => true
+          } ==
+          Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true,
+              startPosition = Some(Position(0) / "cycle" % 0)),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderStarted,
+            OrderProcessingStarted(Some(subagentId)),
+            OrderProcessed(Outcome.succeeded),
+            OrderCycleFinished(None),
+            OrderDetachable,
+            OrderDetached,
+            OrderFinished(None),
+            OrderDeleted))
+      }
+    }
+  } // "Break"
 
   "Resume with invalid Cycle BranchId lets the Order fail" in {
     clock.resetTo(local("2023-03-21T00:00"))
