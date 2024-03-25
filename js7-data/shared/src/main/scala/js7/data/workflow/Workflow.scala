@@ -29,6 +29,7 @@ import js7.data.workflow.instructions.{BoardInstruction, Break, Cycle, End, Exec
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.{BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
@@ -428,22 +429,16 @@ extends VersionedItem, TrivialItemState[Workflow]:
     else
       flattenedInstructions.view
         .map(_._1)
-        .filter(isMoveablePrechecked(from, _))
+        .filter(pos => isMoveable(from.branchPath, pos.branchPath))
 
   def isMoveable(from: Position, to: Position): Boolean =
-    isDefinedAt(from) && isDefinedAt(to) && isMoveablePrechecked(from, to)
-
-  private def isMoveablePrechecked(from: Position, to: Position): Boolean =
-    isMoveable(from.branchPath, to.branchPath)
+    isDefinedAt(from) && isDefinedAt(to) && isMoveable(from.branchPath, to.branchPath)
 
   private def isMoveable(from: BranchPath, to: BranchPath): Boolean =
     from == to || {
-      def isMoveBoundary(segment: Segment) =
-        segment.branchId.isFork || segment.branchId == BranchId.Lock
-
       val prefix = BranchPath.commonBranchPath(from, to).length
-      !from.drop(prefix).exists(isMoveBoundary) &&
-        !to.drop(prefix).exists(isMoveBoundary)
+      from.drop(prefix).forall(_.branchId.isNotMoveBoundary) &&
+        to.drop(prefix).forall(_.branchId.isNotMoveBoundary)
     }
 
   def instruction(position: Position): Instruction =
@@ -468,7 +463,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
       case o if implicitClass[A] isAssignableFrom o.getClass =>
         Right(o.asInstanceOf[A])
       case o =>
-        Left(Problem(s"A '${Instructions.jsonCodec.classToName(implicitClass[A])}' Instruction " +
+        Left(Problem(s"'${Instructions.jsonCodec.classToName(implicitClass[A])}' Instruction " +
           s"is expected at position ${id /: position}, not: ${Instructions.jsonCodec.typeName(o)}"))
 
   def checkPosition(position: Position): Checked[Unit] =

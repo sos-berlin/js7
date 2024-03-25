@@ -16,11 +16,11 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.{Closer, Labeled}
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
@@ -107,6 +107,10 @@ object FileUtils:
       def ++=[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
           writable.writeToStream(_))
+
+      def labeledByteArray: Labeled[ByteArray] =
+        // Do not publish the complete path. We use only the filename.
+        Labeled(readAs[ByteArray], delegate.getFileName.toString)
 
       def byteArray: ByteArray =
         readAs[ByteArray]

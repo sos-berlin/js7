@@ -7,11 +7,15 @@ import js7.base.crypt.SignerId
 import js7.base.crypt.x509.X509Cert.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.time.JavaTimestamp.specific.RichJavaTimestampCompanion
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
-private[x509] final case class X509Cert(x509Certificate: X509Certificate):
+private[x509] final case class X509Cert(x509Certificate: X509Certificate)
+extends X509CertInterface:
 
   import x509Certificate.*
 
@@ -26,6 +30,12 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate):
   lazy val isCA =
     containsCA(getCriticalExtensionOIDs) ||
       containsCA(getNonCriticalExtensionOIDs)
+
+  val notBefore: Timestamp =
+    Timestamp.fromJavaUtilDate(getNotBefore)
+
+  val notAfter: Timestamp =
+    Timestamp.fromJavaUtilDate(getNotAfter)
 
   private def containsCA(strings: java.util.Set[String]) =
     Option(strings).fold(false)(_.contains(MayActAsCA))
@@ -48,6 +58,9 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate):
 
 
 object X509Cert:
+
+  private val logger = Logger[this.type]
+
   private val MayActAsCA = "2.5.29.19"
   val CertificatePem = Pem("CERTIFICATE")
   val PrivateKeyPem = Pem("PRIVATE KEY")
@@ -62,6 +75,45 @@ object X509Cert:
         .asInstanceOf[X509Certificate]
       certificate.checkValidity()  // throws
       X509Cert(certificate)
+
+  /** Remove X509Cert with duplicate DN, keep the currently valid one. */
+  def removeDuplicates[A <: X509CertInterface](certs: Seq[A], timestamp: Timestamp): Seq[A] =
+    certs
+      .groupBy(_.signersDistinguishedName)
+      .values
+      .toVector
+      .flatMap(selectBestCert(_, timestamp))
+
+  private def selectBestCert[A <: X509CertInterface](certs: Seq[A], timestamp: Timestamp)
+  : Option[A] =
+    if (certs.sizeIs <= 1)
+      certs.headOption
+    else {
+      val notExpiredCerts = certs.flatMap(cert =>
+        if (cert.notAfter < timestamp) {
+          logger.error(s"Ignoring $cert because it expired at ${cert.notAfter}")
+          None
+        } else
+          Some(cert))
+
+      if (notExpiredCerts.sizeIs <= 1)
+        notExpiredCerts.headOption
+      else {
+        val latestStillValid = notExpiredCerts
+          .filter(_.notBefore <= timestamp)
+          .sortBy(_.notAfter)
+          .lastOption
+
+        val result = latestStillValid.orElse(
+          // No cert is still valid? Then take the coming one with the earliest notBefore
+          notExpiredCerts.sortBy(_.notBefore).headOption)
+
+        for (selected <- result) for (cert <- notExpiredCerts.filter(selected.ne))
+          logger.error(s"Ignoring duplicate $cert")
+
+        result
+      }
+  }
 
   private val keyUsages = Vector(
     "digitalSignature",
@@ -104,3 +156,11 @@ object X509Cert:
     6 -> "uniformResourceIdentifier",
     7 -> "IP",
     8 -> "registeredID")
+
+
+/** Used for testing. */
+transparent trait X509CertInterface {
+  def signersDistinguishedName: DistinguishedName
+  def notBefore: Timestamp
+  def notAfter: Timestamp
+}

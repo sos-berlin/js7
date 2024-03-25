@@ -15,6 +15,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.JavaCollections.syntax.*
+import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import scala.collection.immutable
@@ -86,7 +87,9 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
                     logger.warn(
                       s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
                   }
-                  companion.checked(files.map(_.byteArray), origin = directory.toString)
+                  companion.checked(
+                    files.map(_.labeledByteArray),
+                    origin = directory.toString)
                 }))
       }
       .toVector
@@ -103,8 +106,12 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
       }
 
   @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[ByteArray], origin: String) =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
     throw new NotImplementedError("GenericSignatureVerifier.checked?")
+
+  @deprecated("Not implemented", "")
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+    throw new NotImplementedError("GenericSignatureVerifier.ignoreInvalid?")
 
   def genericSignatureToSignature(signature: GenericSignature) =
     Right(signature)

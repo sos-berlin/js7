@@ -208,6 +208,12 @@ final class JavaTimeTest extends OurTestSuite
     assert(Timestamp("2018-11-21T12:34:56Z").toJavaUtilDate.show == "2018-11-21T12:34:56Z")
     assert(Timestamp("2018-11-21T12:34:56.987Z").toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
   }
+
+  "Timestamp.fromJavaTime, toJavaUtilDate" in {
+    val timestamp = Timestamp("2018-11-21T12:34:56Z")
+    val date = timestamp.toJavaUtilDate
+    assert(Timestamp.fromJavaUtilDate(date) == timestamp)
+  }
 }
 
 

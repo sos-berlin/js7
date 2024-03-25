@@ -8,6 +8,7 @@ import js7.base.crypt.{Signed, SignedString, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
+import js7.base.utils.Labeled
 import js7.core.item.SignableItemVerifierTest.*
 import js7.data.crypt.SignedItemVerifier
 import js7.data.item.{ItemSigner, VersionedItem}
@@ -58,7 +59,8 @@ object SignableItemVerifierTest:
   private val (signer, verifier) =
     val password = SecretString("TEST-PASSWORD")
     val secretKey = PgpKeyGenerator.generateSecretKey(signerIds.head, password, keySize = 1024/*fast*/)
-    val verifier = PgpSignatureVerifier.checked(secretKey.getPublicKey.toArmoredAsciiBytes :: Nil).orThrow
+    val verifier = PgpSignatureVerifier.checked(Seq(Labeled(secretKey.getPublicKey.toArmoredAsciiBytes, "secret")))
+      .orThrow
     val signer = PgpSigner(secretKey, password).orThrow
     (signer, verifier)
 

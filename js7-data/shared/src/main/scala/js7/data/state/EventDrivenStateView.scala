@@ -9,7 +9,10 @@ import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.ConsumeNotices
+import js7.data.workflow.position.WorkflowPosition
+import scala.reflect.ClassTag
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
 trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
@@ -175,16 +178,28 @@ extends EventDrivenState[Self, E], StateView:
                 .flatMap(_.addConsumption(consumption.noticeId, previousOrder, consumption)))
 
         case OrderNoticesConsumed(failed) =>
-          previousOrder.workflowPosition.checkedParent
-            .flatMap(consumeNoticesPosition =>
-              instruction_[ConsumeNotices](consumeNoticesPosition)
-                .traverse(_.referencedBoardPaths.toSeq
-                  .traverse(keyTo(BoardState).checked))
-                .flatten
-                .flatMap(_.traverse(_
-                  .removeConsumption(previousOrder.id, succeeded = !failed))))
+          val consumeNotices: Checked[ConsumeNotices] =
+            if (failed)
+              findInstructionInCallStack[ConsumeNotices](previousOrder.workflowPosition)
+            else
+              // When succeeding we are pedantic and expect the ConsumeNotice one level up
+              previousOrder.workflowPosition.checkedParent.flatMap(instruction_[ConsumeNotices])
+          consumeNotices.flatMap(_
+            .referencedBoardPaths.toSeq
+            .traverse(keyTo(BoardState).checked)
+            .flatMap(_.traverse(_
+              .removeConsumption(previousOrder.id, succeeded = !failed))))
     .flatMap(o => update(
       addItemStates = o))
+
+  private def findInstructionInCallStack[I <: Instruction: ClassTag](
+    workflowPosition: WorkflowPosition)
+  : Checked[I] =
+    for {
+      pos <- workflowPosition.checkedParent
+      instr <- instruction_[I](pos).orElse(findInstructionInCallStack[I](pos))
+    } yield instr
+
 
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
     order.ifState[Order.ExpectingNotices] match

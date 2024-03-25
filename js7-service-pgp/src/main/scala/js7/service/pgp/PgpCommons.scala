@@ -5,12 +5,16 @@ import cats.effect.{Resource, SyncIO}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.show.*
+import cats.syntax.traverse.*
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.Security
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.log.Logger
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTime.*
+import js7.base.utils.Labeled
 import js7.base.utils.SyncResource.syntax.*
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -25,6 +29,9 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 object PgpCommons:
+
+  private val logger = Logger[this.type]
+
   Security.addProvider(new BouncyCastleProvider)
 
   private val BufferSize = 4096
@@ -163,13 +170,36 @@ object PgpCommons:
     publicKey.encode(armored)
     armored.close()
 
-  def readPublicKeyRingCollection(keys: Seq[ByteArray]): PGPPublicKeyRingCollection =
-    new PGPPublicKeyRingCollection(
-      keys.map(key =>
-        new PGPPublicKeyRing(PGPUtil.getDecoderStream(key.toInputStream), newFingerPrintCalculator)
-      ).asJava)
+  def readPublicKeyRingCollection(keys: Seq[Labeled[ByteArray]])
+  : Checked[PGPPublicKeyRingCollection] =
+    keys.traverse(toPGPPublicKeyRing)
+      .map(keyRings =>
+        new PGPPublicKeyRingCollection(keyRings.asJava))
 
-  def newFingerPrintCalculator: KeyFingerPrintCalculator =
+  def readOrIgnorePublicKeyRingCollection(keys: Seq[Labeled[ByteArray]])
+  : PGPPublicKeyRingCollection =
+    new PGPPublicKeyRingCollection(
+      keys
+        .flatMap(key =>
+          toPGPPublicKeyRing(key) match {
+            case Left(problem) =>
+              logger.error(s"Ignoring PGP public key due to: $problem")
+              None
+            case Right(o) => Some(o)
+          })
+        .asJava)
+
+  private def toPGPPublicKeyRing(labeledKey: Labeled[ByteArray]): Checked[PGPPublicKeyRing] =
+    try
+      Right(
+        new PGPPublicKeyRing(
+          PGPUtil.getDecoderStream(labeledKey.value.toInputStream),
+            newFingerPrintCalculator()))
+    catch {
+      case NonFatal(t) => Left(Problem.fromThrowable(t).withKey(labeledKey.label))
+    }
+
+  def newFingerPrintCalculator(): KeyFingerPrintCalculator =
     new JcaKeyFingerprintCalculator  // or BcKeyFingerprintCalculator
 
   def toPublicKeyRingCollection(publicKey: PGPPublicKey): PGPPublicKeyRingCollection =

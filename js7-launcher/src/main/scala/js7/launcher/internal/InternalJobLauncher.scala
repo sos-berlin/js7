@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
-import js7.base.catsutils.CatsEffectExtensions.blockingOn
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*

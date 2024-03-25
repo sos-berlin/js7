@@ -49,8 +49,8 @@ final class ForkListRecoveryTest extends OurTestSuite, DirectoryProviderForScala
             .awaitAsync[OrderPrompted](_.key ==  childOrderId)
             .*>(controller.api.executeCommand(AnswerOrderPrompt(childOrderId))))
         .await(99.s)
-        .combineProblems
-        .orThrow
+          .combineProblems
+          .orThrow
       assert(controller.eventWatch.await[OrderTerminated](_.key == parentOrderId)
         .head.value.event == OrderFinished())
       controller.eventWatch.await[OrderDeleted](_.key == parentOrderId)

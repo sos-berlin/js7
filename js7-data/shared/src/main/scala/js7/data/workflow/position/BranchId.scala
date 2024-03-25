@@ -23,6 +23,10 @@ sealed trait BranchId:
 
   final def isIsFailureBoundary = isFork
 
+  /** An order can not be moved through a move boundary. */
+  final def isNotMoveBoundary: Boolean =
+    BranchId.NoMoveBoundary(this) || BranchId.NoMoveBoundaryPrefixes.exists(string.startsWith)
+
   def toCycleState: Checked[CycleState]
 
 
@@ -30,7 +34,9 @@ object BranchId:
   val Then = BranchId("then")
   val Else = BranchId("else")
   val Try_ = BranchId("try")
+  val TryPrefix = "try+"
   val Catch_ = BranchId("catch")
+  val CatchPrefix = "catch+"
   val ForkList = BranchId("fork")
   val ForkPrefix = "fork+"
   val Lock = BranchId("lock")
@@ -40,15 +46,19 @@ object BranchId:
   val StickySubagent = BranchId("stickySubagent")
   val Options = BranchId("options")
 
+  /** Set of BranchIds an Order is movable through. */
+  private[BranchId] val NoMoveBoundary = Set[BranchId](Then, Else, Try_, Catch_, Cycle/*???*/, Options)
+  private[BranchId] val NoMoveBoundaryPrefixes = Seq(TryPrefix, CatchPrefix, CyclePrefix/*???*/)
+
   implicit def apply(branchId: String): Named = Named(branchId)
 
   def try_(retry: Int): BranchId.Named =
     require(retry >= 0)
-    BranchId(Try_.string + "+" + retry)
+    BranchId(TryPrefix + retry)
 
   def catch_(retry: Int): BranchId.Named =
     require(retry >= 0)
-    BranchId(Catch_.string + "+" + retry)
+    BranchId(CatchPrefix + retry)
 
   def nextTryBranchId(branchId: BranchId): Checked[Option[BranchId]] =
     branchId match
@@ -69,59 +79,57 @@ object BranchId:
         (cycleState.next != Timestamp.Epoch) ? ("next=" + cycleState.next.toEpochMilli)
       ).flatten.mkString(",")
 
-    "cycle+" + parameters
+    CyclePrefix + parameters
 
   object IsFailureBoundary:
     def unapply(branchId: BranchId): Option[BranchId] =
       branchId.isIsFailureBoundary ? branchId
 
-  private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, 0, Timestamp.Epoch)
-
   final case class Named(string: String) extends BranchId:
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
-      if string startsWith "try+" then "try"
-      else if string startsWith "catch+" then "catch"
-      else if string startsWith "cycle+" then "cycle"
+      if string startsWith TryPrefix then "try"
+      else if string startsWith CatchPrefix then "catch"
+      else if string startsWith CyclePrefix then "cycle"
       else this
 
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
 
     def toCycleState: Checked[CycleState] =
-      try
-        var cycleState = emptyCycleState
-        if string == "cycle" then
-          Right(cycleState)
-        else if !string.startsWith("cycle+") then
-          Left(Problem.pure(cycleFailed))
-        else
-          var checked: Checked[Unit] = Checked.unit
-          string.substring(6)
-            .split(',')
-            .toVector
-            .takeWhile(_ => checked.isRight)
-            .foreach(part =>
-              if part startsWith "end=" then
-                cycleState = cycleState.copy(
-                  end = Timestamp.ofEpochMilli(part.substring(4).toLong))
-              else if part startsWith "scheme=" then
-                cycleState = cycleState.copy(
-                  schemeIndex = part.substring(7).toInt)
-              else if part startsWith "period=" then
-                cycleState = cycleState.copy(
-                  periodIndex = part.substring(7).toInt)
-              else if part startsWith "i=" then
-                cycleState = cycleState.copy(
-                  index = part.substring(2).toInt)
-              else if part startsWith "next=" then
-                cycleState = cycleState.copy(
-                  next = Timestamp.ofEpochMilli(part.substring(5).toLong))
-              else
-                checked = Left(Problem.pure(cycleFailed)))
-          for _ <- checked yield cycleState
-      catch { case NonFatal(t) =>
-        Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
-      }
+      var CycleState(end, schemeIndex, periodIndex, index, next) = CycleState.empty
+      val checked: Checked[Unit] =
+        try
+          if string == "cycle" then
+            Checked.unit
+          else if !string.startsWith(CyclePrefix) then
+            Left(Problem.pure(cycleFailed))
+          else
+            var checked: Checked[Unit] = Checked.unit
+            string.substring(6)
+              .split(',')
+              .toVector
+              .takeWhile(_ => checked.isRight)
+              .foreach(part =>
+                if (part startsWith "end=")
+                  end = Timestamp.ofEpochMilli(part.substring(4).toLong)
+                else if (part startsWith "scheme=")
+                  schemeIndex = part.substring(7).toInt
+                else if (part startsWith "period=")
+                  periodIndex = part.substring(7).toInt
+                else if (part startsWith "i=")
+                  index = part.substring(2).toInt
+                else if (part startsWith "next=")
+                  next = Timestamp.ofEpochMilli(part.substring(5).toLong)
+                else
+                  checked = Left(Problem.pure(cycleFailed)))
+            checked
+        catch
+          case NonFatal(t) =>
+            Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
+      for
+        _ <- checked
+        _ <- (end != null) !! Problem("Invalid ")
+      yield CycleState(end, schemeIndex, periodIndex, index, next)
 
     private def cycleFailed =
       "Expected a Cycle BranchId but got: " + toString

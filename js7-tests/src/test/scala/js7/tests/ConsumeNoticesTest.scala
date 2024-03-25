@@ -11,16 +11,18 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteNotice, PostNotice}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
+import js7.data.item.UnsignedItemEvent.UnsignedItemAddedOrChanged
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, PostNotices, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, Execute, Fail, If, Options, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ConsumeNoticesTest.*
@@ -586,6 +588,80 @@ final class ConsumeNoticesTest
         OrderFailed(Position(1) / "try+1" % 0)))
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     }
+
+  "ResumeOrder into ConsumeNotices block is rejected (JS-2121)" in:
+    val workflow = Workflow(
+      WorkflowPath("RESUME-INTO-CONSUME-NOTICES"),
+      Seq(
+        ConsumeNotices(
+          boardPathExpr(s"'${aBoard.path.string}'"),
+          Workflow.of(
+            EmptyInstruction()))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val eventId = eventWatch.lastAddedEventId
+      controller.api
+        .executeCommand(
+          ControlWorkflow(workflow.id, addBreakpoints = Set(Position(0))))
+        .await(99.s).orThrow
+      eventWatch.await[UnsignedItemAddedOrChanged](after = eventId)
+
+      val orderId = OrderId("#2024-03-19#")
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+
+      eventWatch.await[OrderSuspended](_.key == orderId)
+
+      val checked = controller.api
+        .executeCommand(
+          ResumeOrder(orderId, position = Some(Position(0) / BranchId.ConsumeNotices % 0)))
+        .await(99.s)
+      assert(checked == Left(UnreachableOrderPositionProblem))
+
+      sleep(3.s)
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == orderId)
+    }
+
+  "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, with Options" in:
+    val workflow = Workflow(
+      WorkflowPath("OPTION-CONSUME-NOTICE-IF-FAIL"),
+      Seq(
+        Options(stopOnFailure = Some(true),
+          Workflow.of(
+            PostNotices(Seq(aBoard.path)),
+            ConsumeNotices(
+              boardPathExpr(s"'${aBoard.path.string}'"),
+              Workflow.of(
+                If(expr("true"),
+                  Workflow.of(Fail()))))))))
+
+    withTemporaryItem(workflow): workflow =>
+      val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")
+      controller.api
+        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStopped](_.key == orderId)
+
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId)
+
+  "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, without Options" in:
+    val workflow = Workflow(
+      WorkflowPath("CONSUME-NOTICE-IF-FAIL"),
+      Seq(
+        PostNotices(Seq(aBoard.path)),
+        ConsumeNotices(
+          boardPathExpr(s"'${aBoard.path.string}'"),
+          Workflow.of(
+            If(expr("true"),
+              Workflow.of(Fail()))))))
+
+    withTemporaryItem(workflow): workflow =>
+      val orderId = OrderId("#2024-03-20#ConsumeNotices-If-Fail")
+      controller.api
+        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderFailed](_.key == orderId)
 
 
 object ConsumeNoticesTest:

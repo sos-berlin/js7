@@ -20,7 +20,7 @@ extends EventInstructionExecutor:
       workflow <- state.idToWorkflow.checked(order.workflowId)
       events <- leaveBlocks(
         workflow, order,
-        until = _.string startsWith BranchId.CyclePrefix,
+        until = branchId => branchId.string.startsWith(BranchId.CyclePrefix) || branchId == BranchId.Cycle,
         events = OrderCycleFinished(None) :: Nil)
     yield
       events.map(order.id <-: _)

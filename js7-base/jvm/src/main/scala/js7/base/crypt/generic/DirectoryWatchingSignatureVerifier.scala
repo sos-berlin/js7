@@ -20,11 +20,12 @@ import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatch
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
+import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
@@ -117,9 +118,9 @@ extends SignatureVerifier, Service.StoppableByCancel:
     directoryState: DirectoryState)
   : Checked[SignatureVerifier] =
     val files = directoryState.files.toVector
-    val checked = catchNonFatalFlatten(
-      companion.checked(
-        files.map(file => directory.resolve(file).byteArray),
+    val checked = catchNonFatal(
+      companion.ignoreInvalid(
+        files.map(file => directory.resolve(file).labeledByteArray),
         origin = directory.toString))
 
     checked match
@@ -208,8 +209,12 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
           companionToDirectory, settings, onUpdated)))
 
   @deprecated("Not implemented", "")
-  def checked(publicKeys: Seq[ByteArray], origin: String) =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.checked?")
+
+  @deprecated("Not implemented", "")
+  def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
+    throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
 
   def genericSignatureToSignature(signature: GenericSignature) =
     Right(signature)
