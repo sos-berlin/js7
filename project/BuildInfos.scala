@@ -1,4 +1,4 @@
-import com.typesafe.sbt.GitPlugin.autoImport.git
+import com.github.sbt.git.GitPlugin.autoImport.git
 import java.nio.ByteBuffer
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.format.DateTimeFormatterBuilder

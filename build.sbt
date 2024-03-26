@@ -810,10 +810,10 @@ val release = sys.props.contains("js7.release")
 releaseVersion := (v =>
   Version(v).fold(versionFormatError(v)) { currentVersion =>
     if (release) {
-      if (!currentVersion.string.endsWith("-SNAPSHOT")) {
+      if (!currentVersion.unapply.endsWith("-SNAPSHOT")) {
         sys.error(s"Current version must end with -SNAPSHOT: $currentVersion")
       }
-      currentVersion.withoutQualifier.string
+      currentVersion.withoutQualifier.unapply
     } else {
       val prerelease = {
         val commitDate = BuildInfos.committedAt.value
@@ -824,7 +824,7 @@ releaseVersion := (v =>
         val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
         "beta." + yyyymmdd
       }
-      val version = currentVersion.withoutQualifier.string + "-" + prerelease
+      val version = currentVersion.withoutQualifier.unapply + "-" + prerelease
       var v = version
       var i = 0
       val tags = runProcess("git", "tag").toSet
@@ -840,7 +840,7 @@ val VersionPattern = """([0-9]+)\.([0-9]+)\.([0-9]+)(?:-.*)?""".r
 
 releaseNextVersion := {
   case v if !release =>
-    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT")
+    Version(v).fold(versionFormatError(v))(_.withoutQualifier.unapply + "-SNAPSHOT")
 
   case VersionPattern(major, minor, patch) =>
     s"$major.$minor.${patch.toInt + 1}-SNAPSHOT"
