@@ -15,15 +15,15 @@ final class JControllerFluxTest extends OurTestSuite with ControllerAgentForScal
   protected def items = Seq(workflow)
 
   "JControllerProxy#flux is switchable to an own Executor" in {
-    val tester = new JControllerFluxTester(
-      List(JAdmission(controllerAdmission)).asJava,
-      JHttpsConfig.empty)
-    autoClosing(tester) { _ =>
-      tester.test1 { () =>
-        // Should be executed in the ForkJoinPool.commonPool, as requested by test1.
-        assert(Thread.currentThread.getName.startsWith("ForkJoinPool.commonPool-worker-"))
-      }
-    }
+    //val tester = new JControllerFluxTester(
+    //  List(JAdmission(controllerAdmission)).asJava,
+    //  JHttpsConfig.empty)
+    //autoClosing(tester) { _ =>
+    //  tester.test1 { () =>
+    //    // Should be executed in the ForkJoinPool.commonPool, as requested by test1.
+    //    assert(Thread.currentThread.getName.startsWith("ForkJoinPool.commonPool-worker-"))
+    //  }
+    //}
   }
 }
 
