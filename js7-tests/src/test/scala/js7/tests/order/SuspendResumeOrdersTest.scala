@@ -30,7 +30,7 @@ import js7.data.workflow.instructions.{EmptyInstruction, Execute, Fail, Fork, Pr
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.jobs.{EmptyJob, FailingJob}
+import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -653,51 +653,10 @@ with BlockingItemUpdater
           OrderCancelled,
           OrderDeleted))
       }
-
-    "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in {
-      val workflow = Workflow(WorkflowPath("RETRY"), Seq(
-        TryInstruction(
-          Workflow.of(
-            FailingJob.execute(agentPath)),
-          Workflow.of(
-            Retry()),
-          retryDelays = Some(Vector(100.s)))))
-
-      withTemporaryItem(workflow) { workflow =>
-        val orderId = OrderId("RETRY")
-        controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-          .await(99.s).orThrow
-        eventWatch.await[OrderRetrying](_.key == orderId)
-
-        controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-        eventWatch.await[OrderSuspended](_.key == orderId)
-
-        controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-        eventWatch.await[OrderTerminated](_.key == orderId)
-
-        assert(eventWatch.eventsByKey[OrderEvent](orderId)
-          .map {
-            case OrderRetrying(movedTo, Some(_)) => OrderRetrying(movedTo)
-            case o => o
-          } == Seq(
-          OrderAdded(workflow.id, deleteWhenTerminated = true),
-          OrderMoved(Position(0) / "try+0" % 0),
-          OrderAttachable(agentPath),
-          OrderAttached(agentPath),
-          OrderStarted,
-          OrderProcessingStarted(subagentId),
-          OrderProcessed(FailingJob.outcome),
-          OrderCaught(Position(0) / "catch+0" % 0),
-          OrderRetrying(Position(0) / "try+1" % 0),
-          OrderSuspensionMarked(),
-          OrderDetachable,
-          OrderDetached,
-          OrderSuspended,
-          OrderCancelled,
-          OrderDeleted))
-      }
-    }
   }
+
+  // Test moved to RetryTest:
+  // "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent"
 }
 
 object SuspendResumeOrdersTest

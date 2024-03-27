@@ -13,10 +13,10 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.CancelOrders
+import js7.data.controller.ControllerCommand.{CancelOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
@@ -383,6 +383,50 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
       logger.debugCall(s"#$i")(
         withClue(s"#$i: ")(
           body(i)))
+    }
+  }
+
+  "JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in {
+    val workflow = Workflow(WorkflowPath("RETRY"), Seq(
+      TryInstruction(
+        Workflow.of(
+          FailingJob.execute(agentPath)),
+        Workflow.of(
+          Retry()),
+        retryDelays = Some(Vector(100.s)))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("RETRY")
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderRetrying](_.key == orderId)
+
+      controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderSuspended](_.key == orderId)
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId)
+        .map {
+          case OrderRetrying(movedTo, Some(_)) => OrderRetrying(movedTo)
+          case o => o
+        } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / "try+0" % 0),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderRetrying(Position(0) / "try+1" % 0),
+        OrderSuspensionMarked(),
+        OrderDetachable,
+        OrderDetached,
+        OrderSuspended,
+        OrderCancelled,
+        OrderDeleted))
     }
   }
 
