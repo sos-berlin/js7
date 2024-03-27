@@ -13,10 +13,10 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.{CancelOrders, SuspendOrders}
+import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
@@ -402,7 +402,8 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
       eventWatch.await[OrderRetrying](_.key == orderId)
 
       controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-      eventWatch.await[OrderSuspended](_.key == orderId)
+      eventWatch.await[OrderDetached](_.key == orderId)
+      //eventWatch.await[OrderSuspended](_.key == orderId)
 
       controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
@@ -424,7 +425,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
         OrderSuspensionMarked(),
         OrderDetachable,
         OrderDetached,
-        OrderSuspended,
+        //OrderSuspended,
         OrderCancelled,
         OrderDeleted))
     }
@@ -470,6 +471,109 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
           OrderRetrying(Position(0) / try_(1) % 0)))
       }
     }
+
+  "JS-2117 Suspend and resume while retrying" in {
+    // No more InapplicableEventProblem!
+    val workflow = Workflow(WorkflowPath("SUSPEND-WHILE-RETRYING"), Seq(
+      TryInstruction(
+        Workflow.of(
+          FailingJob.execute(agentPath)),
+        Workflow.of(
+          Retry()),
+        retryDelays = Some(Vector(500.ms/*time-critical !!!*/)))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("🟩")
+      var eventId = eventWatch.lastAddedEventId
+
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
+      eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+
+      /// Suspend, then resume before retry time as elapsed ///
+
+      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
+      eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
+
+      controller.executeCommandForTest(ResumeOrders(Seq(orderId))).orThrow
+      eventWatch.await[OrderResumptionMarked](_.key == orderId)
+      eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+
+      /// Suspend, wait until retry time as elapsed, await OrderSuspended ///
+
+      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
+      eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
+      eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
+
+      controller.executeCommandForTest(ResumeOrders(Seq(orderId))).orThrow
+      eventWatch.await[OrderResumed](_.key == orderId)
+      eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+
+      /// Suspend, then cancel ///
+
+      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
+      eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
+
+      controller
+        .executeCommandForTest(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+        .orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId)
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      assert(eventWatch
+        .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
+        //.take(9)
+        .map(_.event)
+        .map {
+          case e: OrderRetrying => e.copy(delayedUntil = None)
+          case e => e
+        } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / try_(0) % 0),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderRetrying(Position(0) / "try+1" % 0),
+
+        OrderSuspensionMarked(),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderResumptionMarked(),
+        OrderAwoke,
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+1" % 0),
+        OrderRetrying(Position(0) / "try+2" % 0),
+        OrderSuspensionMarked(),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderAwoke,
+        OrderSuspended,
+        OrderResumed(),
+
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+2" % 0),
+        OrderRetrying(Position(0) / "try+3" % 0),
+        OrderSuspensionMarked(),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderCancelled,
+        OrderDeleted))
+    }
+  }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
   {
