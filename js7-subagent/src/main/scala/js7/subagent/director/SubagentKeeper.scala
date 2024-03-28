@@ -256,21 +256,24 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
           release = _ => orderToWaitForSubagent.remove(orderId).void))
 
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
-  : Task[Checked[SubagentDriver]] =
-    Observable
-      .repeatEvalF(Coeval { stateVar.get.selectNext(maybeSelectionId) }
-        .flatTap(o => Coeval(
-          logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
-      .delayOnNextBySelector {
-        // TODO Do not poll (for each Order)
-        case Right(None) => Observable.unit.delayExecution(reconnectDelayer.next())
-        case _ =>
-          reconnectDelayer.reset()
-          Observable.empty
-      }
-      .map(_.sequence)
-      .flatMap(Observable.fromIterable(_))
-      .headL
+  : Task[Checked[SubagentDriver]] = {
+    logger.traceTask {
+      Observable
+        .repeatEvalF(Coeval { stateVar.get.selectNext(maybeSelectionId) }
+          .flatTap(o => Coeval(
+            logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
+        .delayOnNextBySelector {
+          // TODO Do not poll (for each Order)
+          case Right(None) => Observable.unit.delayExecution(reconnectDelayer.next())
+          case _ =>
+            reconnectDelayer.reset()
+            Observable.empty
+        }
+        .map(_.sequence)
+        .flatMap(Observable.fromIterable(_))
+        .headL
+    }
+  }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     Task.defer {

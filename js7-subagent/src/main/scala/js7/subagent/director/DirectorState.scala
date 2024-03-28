@@ -19,38 +19,71 @@ private final case class DirectorState(
     insertSubagentDriver(driver, subagentItem.disabled)
 
   def insertSubagentDriver(driver: SubagentDriver, disabled: Boolean = false)
-  : Checked[DirectorState] =
+  : Checked[DirectorState] = {
+    logger.trace("insertSubagentDriver", s"$driver, disabled=$disabled")
     subagentToEntry.insert(driver.subagentId -> Entry(driver, disabled))
-      .map(idToE => copy(
+      .map(idToE => update(
         subagentToEntry = idToE,
-        selectionToPrioritized =
-          if (disabled)
-            selectionToPrioritized
-          else
-          // Add SubagentId to default SubagentSelection
-            selectionToPrioritized
-              .updated(
-                None,
-                selectionToPrioritized(None).add(driver.subagentId))))
+        driver.subagentId,
+        disabled))
+  }
 
   def replaceSubagentDriver(driver: SubagentDriver, subagentItem: SubagentItem)
-  : Checked[DirectorState] =
+  : Checked[DirectorState] = {
+    logger.trace("replaceSubagentDriver", s"$driver, $subagentItem")
     if (!subagentToEntry.contains(driver.subagentId))
       Left(Problem(s"Replacing unknown ${driver.subagentId} SubagentDriver"))
     else
-      Right(copy(
+      Right(update(
         subagentToEntry = subagentToEntry.updated(
           driver.subagentId,
-          Entry(driver, subagentItem.disabled))))
+          Entry(driver, subagentItem.disabled)),
+        driver.subagentId,
+        subagentItem.disabled))
+  }
 
-  def removeSubagent(subagentId: SubagentId): DirectorState =
-    copy(
+  def removeSubagent(subagentId: SubagentId): DirectorState = {
+    logger.trace("removeSubagent", subagentId)
+    update(
       subagentToEntry = subagentToEntry.removed(subagentId),
       // Remove SubagentId from default SubagentSelection
-      selectionToPrioritized =
-        selectionToPrioritized.updated(None, selectionToPrioritized(None).remove(subagentId)))
+      subagentId,
+      disabled = true/*remove from selectionToPrioritized*/)
+  }
 
-  def insertOrReplaceSelection(selection: SubagentSelection): Checked[DirectorState] =
+  def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] = {
+    logger.trace("setDisabled", s"$id, disabled=$disabled")
+    Right(
+      subagentToEntry
+        .get(id)
+        .filter(_.disabled != disabled)
+        .fold(this)(entry =>
+          update(
+            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
+            id,
+            disabled)))
+  }
+
+  private def update(
+    subagentToEntry: Map[SubagentId, Entry],
+    subagentId: SubagentId,
+    disabled: Boolean)
+  : DirectorState =
+    copy(
+      subagentToEntry = subagentToEntry,
+      selectionToPrioritized = updateSelectionToPrioritized(subagentId, disabled))
+
+  private def updateSelectionToPrioritized(subagentId: SubagentId, disabled: Boolean)
+  : Map[Option[SubagentSelectionId], Prioritized[SubagentId]] =
+    selectionToPrioritized.updated(None,
+      if (disabled)
+        selectionToPrioritized(None).remove(subagentId)
+      else
+        // Add SubagentId to default SubagentSelection
+        selectionToPrioritized(None).add(subagentId))
+
+  def insertOrReplaceSelection(selection: SubagentSelection): Checked[DirectorState] = {
+    logger.trace("insertOrReplaceSelection", selection)
     Right(copy(
       selectionToPrioritized = selectionToPrioritized.updated(
         Some(selection.id),
@@ -60,23 +93,19 @@ private final case class DirectorState(
             logger.error(s"${selection.id} uses unknown $id. Assuming priority=$DefaultPriority")
             DefaultPriority
           })))))
+  }
 
-  def removeSelection(selectionId: SubagentSelectionId): DirectorState =
+  def removeSelection(selectionId: SubagentSelectionId): DirectorState = {
+    logger.trace("removeSelection", selectionId)
     copy(selectionToPrioritized = selectionToPrioritized - Some(selectionId))
+  }
 
-  def clear: DirectorState =
+  def clear: DirectorState = {
+    logger.trace("clear")
     copy(
       subagentToEntry = Map.empty,
       selectionToPrioritized = Map.empty)
-
-  def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
-    Right(
-      subagentToEntry
-        .get(id)
-        .filter(_.disabled != disabled)
-        .fold(this)(entry =>
-          copy(
-            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)))))
+  }
 
   def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
     maybeSelectionId match {
