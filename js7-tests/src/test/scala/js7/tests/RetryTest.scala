@@ -397,15 +397,15 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
 
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("RETRY")
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderRetrying](_.key == orderId)
 
-      controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDetached](_.key == orderId)
       //eventWatch.await[OrderSuspended](_.key == orderId)
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)
@@ -492,34 +492,34 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
 
       /// Suspend, then resume before retry time as elapsed ///
 
-      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
 
-      controller.executeCommandForTest(ResumeOrders(Seq(orderId))).orThrow
+      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderResumptionMarked](_.key == orderId)
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
 
       /// Suspend, wait until retry time as elapsed, await OrderSuspended ///
 
-      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
       eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
 
-      controller.executeCommandForTest(ResumeOrders(Seq(orderId))).orThrow
+      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderResumed](_.key == orderId)
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
 
       /// Suspend, then cancel ///
 
-      controller.executeCommandForTest(SuspendOrders(Seq(orderId))).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
 
       controller
-        .executeCommandForTest(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
-        .orThrow
+        .api.executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+        .await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 

@@ -3,9 +3,9 @@ package js7.tests.subagent
 import cats.syntax.option.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurAsyncTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
@@ -50,48 +50,46 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
 
   private def testDisabledSubagentAtAgentState(restartAgent: Boolean): Assertion = {
     val controller = directoryProvider
-      .startController(controllerModule, httpPort = findFreeTcpPort().some)
-      .await(99.s)
+      .newController(httpPort = findFreeTcpPort().some)
 
     try {
-      val controllerApi = directoryProvider.newControllerApi(controller)
-      var agent = directoryProvider.startAgent(agentPath).await(99.s)
-      val eventWatch = controller.eventWatch
+      directoryProvider
+        .controllerApiResource(controller.runningController)
+        .blockingUse(99.s) { controllerApi =>
+          var agent = directoryProvider.startAgent(agentPath).await(99.s)
+          val eventWatch = controller.eventWatch
 
-      def enableOrDisableSubagent(enabled: Boolean): Unit =
-        eventWatch.expect[ItemAttached](_.event.key == localSubagentItem.id).apply {
-          controllerApi
-            .updateItems(Observable.pure(
-              AddOrChangeSimple(
-                localSubagentItem.withRevision(None).copy(
-                  disabled = !enabled))))
-            .await(99.s).orThrow
+          def enableOrDisableSubagent(enabled: Boolean): Unit =
+            eventWatch.expect[ItemAttached](_.event.key == localSubagentItem.id).apply {
+              controllerApi
+                .updateItems(Observable.pure(
+                  AddOrChangeSimple(
+                    localSubagentItem.withRevision(None).copy(
+                      disabled = !enabled))))
+                .await(99.s).orThrow
+            }
+
+          try {
+            enableOrDisableSubagent(enabled = false)
+
+            if (restartAgent) {
+              agent.stop.await(99.s)
+
+              agent = directoryProvider.startAgent(agentPath).await(99.s)
+            }
+
+            enableOrDisableSubagent(enabled = true)
+
+            val orderId = orderIds.next()
+            controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+            eventWatch.await[OrderProcessingStarted](_.key == orderId)
+            eventWatch.await[OrderFinished](_.key == orderId)
+            succeed
+          } finally
+            agent.stop.await(99.s)
         }
-
-      try {
-        enableOrDisableSubagent(enabled = false)
-
-        if (restartAgent) {
-          agent.terminate().await(99.s)
-          agent.close()
-
-          agent = directoryProvider.startAgent(agentPath).await(99.s)
-        }
-
-        enableOrDisableSubagent(enabled = true)
-
-        val orderId = orderIds.next()
-        controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-        eventWatch.await[OrderProcessingStarted](_.key == orderId)
-        eventWatch.await[OrderFinished](_.key == orderId)
-        succeed
-      } finally {
-        agent.terminate().await(99.s)
-      }
-    } finally {
-      controller.terminate().await(15.s)
-      controller.close()
-    }
+    } finally
+      controller.stop.await(99.s)
   }
 }
 
