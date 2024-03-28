@@ -109,12 +109,12 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def expect[E <: Event : ClassTag, A](
+  def expect[E <: Event : ClassTag : Tag](
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: Tag[E])
+    (implicit s: Scheduler)
   : Expect[E] = {
-    val eventId = this._lastWatchedEventId
+    val eventId = lastAddedEventId
     new Expect(await(predicate, after = eventId, timeout))
   }
 
