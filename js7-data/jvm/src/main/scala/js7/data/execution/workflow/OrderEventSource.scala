@@ -146,7 +146,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             logger.debug(s"WARN ${order.id}: $prblm")
             OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
               OrderBroken() ::
-              (order.isAttached && order.isInDetachableState).thenList(
+              order.canBecomeDetachable.thenList(
                 OrderDetachable)
           case Right(events) => events
       else
@@ -310,8 +310,15 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             else
               Right(
                 (!order.isSuspended || order.isResuming) ?
-                  (trySuspend(order).getOrElse(OrderSuspensionMarked(mode))
-                    :: Nil))
+                  (trySuspend(order) match {
+                    case Some(event) => event :: Nil
+                    case None =>
+                      val events = OrderSuspensionMarked(mode) :: Nil
+                      if (order.canBecomeDetachable) // For example, Order.DelayedAfterError (retry)
+                        atController(events)
+                      else
+                        events
+                  }))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =

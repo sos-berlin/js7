@@ -665,6 +665,9 @@ final case class Order[+S <: Order.State](
       case Some(Detaching(`agentPath`)) => true
       case _ => false
 
+  def canBecomeDetachable: Boolean =
+    isAttached && isInDetachableState
+
   def isInDetachableState =
     isState[Fresh] ||
       isState[Ready] ||
@@ -706,7 +709,6 @@ final case class Order[+S <: Order.State](
 
   def isSuspendible =
     (isState[IsFreshOrReady]
-      || isState[DelayedAfterError]
       || isState[ProcessingKilled] && isSuspendingWithKill
     ) && (isDetached || isAttached)
 

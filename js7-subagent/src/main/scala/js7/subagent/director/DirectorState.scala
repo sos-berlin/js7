@@ -24,45 +24,73 @@ private final case class DirectorState(
     allocatedDriver: Allocated[IO, SubagentDriver],
     disabled: Boolean = false)
   : Checked[DirectorState] =
-    val subagentId = allocatedDriver.allocatedThing.subagentId
+    logger.trace("insertSubagentDriver", s"$allocatedDriver, disabled=$disabled")
+    val driver = allocatedDriver.allocatedThing
+    val subagentId = driver.subagentId
     subagentToEntry
       .insert(subagentId -> Entry(allocatedDriver, disabled))
-      .map(idToE => copy(
-        subagentToEntry = idToE,
-        selectionToPrioritized =
-          if disabled then
-            selectionToPrioritized
-          else
-            // Add SubagentId to default SubagentSelection
-            selectionToPrioritized
-              .updated(
-                None,
-                if allocatedDriver.allocatedThing.isInstanceOf[LocalSubagentDriver] then
-                  selectionToPrioritized(None).insertFirst(subagentId)
-                else
-                  selectionToPrioritized(None).add(subagentId))))
+      .map: idToE =>
+        update(idToE, driver, disabled)
 
   def replaceSubagentDriver(
     allocatedDriver: Allocated[IO, SubagentDriver],
     subagentItem: SubagentItem)
   : Checked[DirectorState] =
-    val subagentId = allocatedDriver.allocatedThing.subagentId
+    logger.trace("replaceSubagentDriver", s"$allocatedDriver, $subagentItem")
+    val driver = allocatedDriver.allocatedThing
+    val subagentId = driver.subagentId
     if !subagentToEntry.contains(subagentId) then
       Left(Problem(s"Replacing unknown $subagentId SubagentDriver"))
     else
-      Right(copy(
+      Right(update(
         subagentToEntry = subagentToEntry.updated(
           subagentId,
-          Entry(allocatedDriver, subagentItem.disabled))))
+          Entry(allocatedDriver, subagentItem.disabled)),
+        driver,
+        subagentItem.disabled))
 
-  def removeSubagent(subagentId: SubagentId): DirectorState =
+  def removeSubagent(subagentId: SubagentId): DirectorState = {
+    logger.trace("removeSubagent", subagentId)
     copy(
       subagentToEntry = subagentToEntry.removed(subagentId),
-      // Remove SubagentId from default SubagentSelection
-      selectionToPrioritized =
-        selectionToPrioritized.updated(None, selectionToPrioritized(None).remove(subagentId)))
+      selectionToPrioritized = selectionToPrioritized
+        .updated(None, selectionToPrioritized(None).remove(subagentId)))
+  }
+
+  def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
+    logger.trace("setDisabled", s"$id, disabled=$disabled")
+    Right(
+      subagentToEntry
+        .get(id)
+        .filter(_.disabled != disabled)
+        .fold(this): entry =>
+          update(
+            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
+            entry.driver,
+            disabled))
+
+  private def update(
+    subagentToEntry: Map[SubagentId, Entry],
+    driver: SubagentDriver,
+    disabled: Boolean)
+  : DirectorState =
+    copy(
+      subagentToEntry = subagentToEntry,
+      selectionToPrioritized = updatePriorization(driver, disabled))
+
+  private def updatePriorization(driver: SubagentDriver, disabled: Boolean)
+  : Map[Option[SubagentSelectionId], Prioritized[SubagentId]] =
+    val subagentId = driver.subagentId
+    selectionToPrioritized.updated(None,
+      if disabled then
+        selectionToPrioritized(None).remove(subagentId)
+      else if driver.isInstanceOf[LocalSubagentDriver] then
+        selectionToPrioritized(None).insertFirst(subagentId)
+      else
+        selectionToPrioritized(None).add(subagentId))
 
   def insertOrReplaceSelection(selection: SubagentSelection): Checked[DirectorState] =
+    logger.trace("insertOrReplaceSelection", selection)
     Right(copy(
       selectionToPrioritized = selectionToPrioritized.updated(
         Some(selection.id),
@@ -74,21 +102,14 @@ private final case class DirectorState(
           })))))
 
   def removeSelection(selectionId: SubagentSelectionId): DirectorState =
+    logger.trace("removeSelection", selectionId)
     copy(selectionToPrioritized = selectionToPrioritized - Some(selectionId))
 
   def clear: DirectorState =
+    logger.trace("clear")
     copy(
       subagentToEntry = Map.empty,
       selectionToPrioritized = Map.empty)
-
-  def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
-    Right(
-      subagentToEntry
-        .get(id)
-        .filter(_.disabled != disabled)
-        .fold(this)(entry =>
-          copy(
-            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)))))
 
   def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
     maybeSelectionId match
@@ -106,6 +127,7 @@ private final case class DirectorState(
               subagentToEntry.get(subagentId).fold(false)(_.isAvailable)))
           .flatMap(subagentId =>
             subagentToEntry.get(subagentId).map(_.driver)))
+
 
 private object DirectorState:
   private val logger = Logger[this.type]
