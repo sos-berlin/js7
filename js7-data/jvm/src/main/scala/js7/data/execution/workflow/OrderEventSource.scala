@@ -310,15 +310,14 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             else
               Right(
                 (!order.isSuspended || order.isResuming) ?
-                  (trySuspend(order) match {
+                  trySuspend(order).match
                     case Some(event) => event :: Nil
                     case None =>
                       val events = OrderSuspensionMarked(mode) :: Nil
-                      if (order.canBecomeDetachable) // For example, Order.DelayedAfterError (retry)
+                      if order.canBecomeDetachable then // For example, Order.DelayedAfterError (retry)
                         atController(events)
                       else
-                        events
-                  }))
+                        events)
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =

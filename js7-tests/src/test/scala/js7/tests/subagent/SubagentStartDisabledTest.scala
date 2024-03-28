@@ -1,11 +1,12 @@
 package js7.tests.subagent
 
 import cats.syntax.option.*
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurAsyncTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
@@ -17,13 +18,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentStartDisabledTest.*
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.global
-import monix.reactive.Observable
 import org.scalatest.Assertion
 
 /** Test for JS-2114 . */
 final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryProviderForScalaTest
 {
+  private given IORuntime = ioRuntime
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -52,43 +53,38 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
     val controller = directoryProvider
       .newController(httpPort = findFreeTcpPort().some)
 
-    try {
-      directoryProvider
-        .controllerApiResource(controller.runningController)
-        .blockingUse(99.s) { controllerApi =>
-          var agent = directoryProvider.startAgent(agentPath).await(99.s)
-          val eventWatch = controller.eventWatch
+    try
+      var agent = directoryProvider.startAgent(agentPath).await(99.s)
+      val eventWatch = controller.eventWatch
 
-          def enableOrDisableSubagent(enabled: Boolean): Unit =
-            eventWatch.expect[ItemAttached](_.event.key == localSubagentItem.id).apply {
-              controllerApi
-                .updateItems(Observable.pure(
-                  AddOrChangeSimple(
-                    localSubagentItem.withRevision(None).copy(
-                      disabled = !enabled))))
-                .await(99.s).orThrow
-            }
+      def enableOrDisableSubagent(enabled: Boolean): Unit =
+        eventWatch.expect[ItemAttached](_.event.key == localSubagentItem.id):
+          controller.api
+            .updateItems(Stream.emit(
+              AddOrChangeSimple(
+                localSubagentItem.withRevision(None).copy(
+                  disabled = !enabled))))
+            .await(99.s).orThrow
 
-          try {
-            enableOrDisableSubagent(enabled = false)
+      try
+        enableOrDisableSubagent(enabled = false)
 
-            if (restartAgent) {
-              agent.stop.await(99.s)
+        if (restartAgent) {
+          agent.stop.await(99.s)
 
-              agent = directoryProvider.startAgent(agentPath).await(99.s)
-            }
-
-            enableOrDisableSubagent(enabled = true)
-
-            val orderId = orderIds.next()
-            controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-            eventWatch.await[OrderProcessingStarted](_.key == orderId)
-            eventWatch.await[OrderFinished](_.key == orderId)
-            succeed
-          } finally
-            agent.stop.await(99.s)
+          agent = directoryProvider.startAgent(agentPath).await(99.s)
         }
-    } finally
+
+        enableOrDisableSubagent(enabled = true)
+
+        val orderId = orderIds.next()
+        controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        eventWatch.await[OrderProcessingStarted](_.key == orderId)
+        eventWatch.await[OrderFinished](_.key == orderId)
+        succeed
+      finally
+        agent.stop.await(99.s)
+    finally
       controller.stop.await(99.s)
   }
 }

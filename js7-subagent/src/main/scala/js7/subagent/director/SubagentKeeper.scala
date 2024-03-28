@@ -253,16 +253,16 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
   : IO[Checked[SubagentDriver]] =
-    logger.traceTask:
+    logger.traceIO:
       Stream
         .repeatEval(IO { stateVar.get.selectNext(maybeSelectionId) }
           .flatTap(o => IO(
               logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
         .evalTap:
-            // TODO Do not poll (for each Order)
+          // TODO Do not poll (for each Order)
           case Right(None) => IO.sleep(reconnectDelayer.next())
           case _ => IO(reconnectDelayer.reset())
-          .map(_.sequence)
+        .map(_.sequence)
         .map(Chunk.fromOption)
         .unchunks
           .headL
