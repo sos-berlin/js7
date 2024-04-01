@@ -479,6 +479,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderKillingMarked:
     def kill = mode.kill
 
+  final case class OrderGoMarked(position: Position)
+  extends OrderActorEvent
+
+  type OrderGoes = OrderGoes.type
+  case object OrderGoes
+  extends OrderActorEvent
+
   type OrderSuspensionMarkedOnAgent = OrderSuspensionMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderSuspensionMarkedOnAgent extends OrderActorEvent
@@ -638,6 +645,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),
     Subtype(OrderStopped),
+    Subtype(deriveConfiguredCodec[OrderGoMarked]),
+    Subtype(OrderGoes),
     Subtype(deriveConfiguredCodec[OrderResumptionMarked]),
     Subtype(deriveConfiguredCodec[OrderResumed]),
     Subtype(deriveConfiguredCodec[OrderFinished]),

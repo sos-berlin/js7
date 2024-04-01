@@ -29,6 +29,7 @@ import scala.concurrent.duration.*
   */
 //@nowarn("msg=method apply in object Order.* is deprecated")
 final class OrderEventTest extends OurTestSuite:
+
   "OrderAdded" in:
     testJson[OrderEvent](
       OrderAdded(
@@ -551,6 +552,19 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderSuspended, json"""
       {
         "TYPE": "OrderSuspended"
+      }""")
+
+  "OrderGoMarked" in:
+    testJson[OrderEvent](OrderGoMarked(Position(1)), json"""
+      {
+        "TYPE": "OrderGoMarked",
+        "position": [ 1 ]
+      }""")
+
+  "OrderGoes" in:
+    testJson[OrderEvent](OrderGoes, json"""
+      {
+        "TYPE": "OrderGoes"
       }""")
 
   "OrderResumptionMarked" in:

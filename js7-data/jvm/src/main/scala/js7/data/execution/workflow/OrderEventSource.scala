@@ -10,21 +10,21 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.CancelStartedOrderProblem
+import js7.data.Problems.{CancelStartedOrderProblem, GoOrderNotAtPositionProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
+import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.*
 import js7.data.workflow.{Instruction, Workflow}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
@@ -247,6 +247,12 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
             tryResume(order, position, historyOperations, asSucceeded)
               .map(_ :: Nil)
+
+          case OrderMark.Go(_) =>
+            // OrderMark.go is used only at the Controller to remember sending a MarkOrder command
+            // to the Agent.
+            // The Agent executes the MarkOrder command immediately
+            None
         })
 
   def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[List[OrderActorEvent]]] =
@@ -261,6 +267,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 
         case OrderMark.Resuming(position, historicOutcomes, asSucceeded) =>
           resume(orderId, position, historicOutcomes, asSucceeded)
+
+        case OrderMark.Go(position/*dynamic*/) =>
+          go(orderId, position)
 
   /** Returns `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelling. */
   def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[List[OrderActorEvent]]] =
@@ -304,7 +313,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             Left(CannotSuspendOrderProblem)
           case Some(_: OrderMark.Suspending) =>  // Already marked
             Right(None)
-          case None | Some(_: OrderMark.Resuming) =>
+          case None | Some(_: OrderMark.Resuming) | Some(_: OrderMark.Go) =>
             if order.isState[Failed] || order.isState[IsTerminated] then
               Left(CannotSuspendOrderProblem)
             else
@@ -329,6 +338,25 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       Some(OrderSuspended)
     else
       None
+
+  def go(orderId: OrderId, position: Position): Checked[Option[List[OrderActorEvent]]] =
+    idToOrder.checked(orderId).flatMap: order =>
+      if weHave(order) then
+        if order.position != position then
+          Left(GoOrderNotAtPositionProblem(order.id))
+        else if order.isState[Order.BetweenCycles] then
+          Right(Some(OrderGoes :: OrderCycleStarted :: Nil))
+        else if order.isState[Order.DelayedAfterError] then
+          Right(Some(OrderGoes :: OrderAwoke :: Nil))
+        else if order.isState[Order.Fresh] && order.maybeDelayedUntil.isDefined then
+          Right(Some(OrderGoes :: OrderStarted :: Nil))
+        else
+          Left(GoOrderNotAtPositionProblem(order.id))
+      else if order.isAttached then
+        Right:
+          !order.mark.contains(OrderMark.Go(position)) ? (OrderGoMarked(position) :: Nil)
+      else
+        Left(GoOrderNotAtPositionProblem(order.id))
 
   /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))`
    * iff order is not already marked as resuming. */
@@ -368,6 +396,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                     asSucceeded)))
 
               case Some(OrderMark.Resuming(_, _, _)) =>
+                 Left(CannotResumeOrderProblem)
+
+              case Some(OrderMark.Go(_)) =>
                  Left(CannotResumeOrderProblem)
 
               case Some(OrderMark.Suspending(_)) if position.isDefined || historyOperations.nonEmpty =>

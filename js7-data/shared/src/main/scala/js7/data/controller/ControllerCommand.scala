@@ -166,6 +166,11 @@ object ControllerCommand extends CommonCommand.Companion:
         dontNotifyActiveNode <- c.getOrElse[Boolean]("dontNotifyActiveNode")(false)
       yield ShutDown(restart, clusterAction, suppressSnapshot, dontNotifyActiveNode)
 
+  /** Go, Order! */
+  final case class GoOrder(orderId: OrderId, position: Position)
+  extends ControllerCommand:
+    type Response = Response.Accepted
+
   final case class ResumeOrder(
     orderId: OrderId,
     position: Option[Position] = None,
@@ -261,6 +266,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype[EmergencyStop],
     Subtype(deriveConfiguredCodec[ReleaseEvents]),
     Subtype[ShutDown],
+    Subtype(deriveConfiguredCodec[GoOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),

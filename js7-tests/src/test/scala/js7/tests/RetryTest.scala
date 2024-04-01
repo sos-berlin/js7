@@ -10,13 +10,14 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
+import js7.data.Problems.GoOrderNotAtPositionProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrders, SuspendOrders}
+import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
@@ -559,6 +560,135 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDeleted))
     }
   }
+
+  "GoOrder when waiting in Retry at Controller" in:
+    val workflow = Workflow.of(
+      TryInstruction(
+        Workflow.of(
+          Fail()),
+        Workflow.of(
+          Retry()),
+        retryDelays = Some(Vector(1.h)),
+        maxTries = Some(2)))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("◾️")
+      var eventId = eventWatch.lastAddedEventId
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
+      eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+
+      // Order is not at the required Position
+      locally:
+        controller.api
+          .executeCommand(GoOrder(orderId, position = Position(0)))
+          .await(99.s)
+        sleep(200.ms)
+        assert(controllerState.idToOrder(orderId).isState[Order.DelayedAfterError])
+
+      locally:
+        val checked = controller.api
+          .executeCommand(GoOrder(orderId, position = Position(0) / "try+999" % 0))
+          .await(99.s)
+        assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
+
+      // GoOrder
+      controller.api
+        .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
+        .await(99.s)
+        .orThrow
+
+      assert(eventWatch
+        .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
+        .map(_.event)
+        .map {
+          case e: OrderRetrying => e.copy(delayedUntil = None)
+          case e => e
+        } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / try_(0) % 0),
+        OrderStarted,
+
+        OrderOutcomeAdded(Outcome.failed),
+        OrderCaught(Position(0) / catch_(0) % 0),
+        OrderRetrying(Position(0) / try_(1) % 0),
+        OrderGoes,
+        OrderAwoke,
+        OrderOutcomeAdded(Outcome.failed),
+        OrderFailed(Position(0) / try_(1) % 0)))
+    }
+
+  "GoOrder when waiting in Retry at Agent" in:
+    val workflow = Workflow.of(
+      TryInstruction(
+        Workflow.empty,
+        Workflow.of(
+          Retry())),  // Only used for a wrong GoOrder Position
+      TryInstruction(
+        Workflow.of(
+          FailingJob.execute(agentPath)),
+        Workflow.of(
+          Retry()),
+        retryDelays = Some(Vector(1.h)),
+        maxTries = Some(2)))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("⬛️")
+      var eventId = eventWatch.lastAddedEventId
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
+      eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+
+      val retryPosition = Position(1) / "try+1" % 0
+
+      assert(controllerState.idToOrder(orderId).isState[Order.DelayedAfterError]
+        && controllerState.idToOrder(orderId).position == retryPosition)
+
+      // Position cannot be statically checked because OrderRetrying has moved
+      // the Order to the try block.
+      //val checked = controller.api
+      //  .executeCommand(GoOrder(orderId, position = Position(0)))
+      //  .await(99.s)
+      //assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
+
+      // Not rejected because Order is leased to Agent
+      controller.api
+        .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
+        .await(99.s)
+        .orThrow
+      sleep(200.ms)
+
+      // GoOrder
+      controller.api
+        .executeCommand(GoOrder(orderId, position = retryPosition))
+        .await(99.s)
+        .orThrow
+      eventWatch.await[OrderFailed](_.key == orderId)
+
+      assert(eventWatch
+        .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
+        .map(_.event)
+        .map {
+          case e: OrderRetrying => e.copy(delayedUntil = None)
+          case e => e
+        } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(1) / try_(0) % 0),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(1) / catch_(0) % 0),
+        OrderRetrying(Position(1) / try_(1) % 0),
+        OrderGoMarked(Position(0) / "try+1" % 0),
+        OrderGoMarked(Position(1) / "try+1" % 0),
+        OrderGoes,
+        OrderAwoke,
+        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessed(FailingJob.outcome),
+        OrderDetachable,
+        OrderDetached,
+        OrderFailed(Position(1) / try_(1) % 0)))
+    }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
     eventWatch.await[E](_.key == orderId, after = after)

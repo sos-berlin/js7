@@ -12,6 +12,7 @@ import js7.data.order.OrderId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable.Map.Map1
 
 object Problems:
   case object PassiveClusterNodeShutdownNotAllowedProblem extends Problem.ArgumentlessCoded
@@ -124,3 +125,6 @@ object Problems:
   case object PassiveClusterNodeResetProblem extends Problem.ArgumentlessCoded
 
   case object AckFromActiveClusterNodeProblem extends Problem.ArgumentlessCoded
+
+  final case class GoOrderNotAtPositionProblem(orderId: OrderId) extends Problem.Coded:
+    def arguments = Map1("orderId", orderId.toString)

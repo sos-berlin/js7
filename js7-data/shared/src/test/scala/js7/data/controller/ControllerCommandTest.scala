@@ -309,6 +309,15 @@ final class ControllerCommandTest extends OurTestSuite
       }""")
   }
 
+  "GoOrder" in:
+    testJsonDecoder[ControllerCommand](
+      GoOrder(OrderId("ORDER"), Position(1)),
+      json"""{
+        "TYPE": "GoOrder",
+        "orderId": "ORDER",
+        "position": [ 1 ]
+      }""")
+
   "ResumeOrder" in {
     testJson[ControllerCommand](
       ResumeOrder(

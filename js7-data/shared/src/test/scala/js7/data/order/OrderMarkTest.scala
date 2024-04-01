@@ -48,3 +48,10 @@ final class OrderMarkTest extends OurTestSuite:
         "position": [ 1 ],
         "historicOperations": []
       }""")
+
+  "Go" in:
+    testJson[OrderMark](OrderMark.Go(Position(1)), json"""
+      {
+        "TYPE": "Go",
+        "position": [ 1 ]
+      }""")

@@ -1,13 +1,20 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
+import java.time.ZoneId
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.await
+import js7.base.time.JavaTimestamp.local
+import js7.base.time.ScalaTime.*
 import js7.base.time.{TestAlarmClock, Timestamp}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.controller.ControllerCommand.GoOrder
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{AddOrder, Fail, Prompt}
@@ -15,13 +22,10 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
-final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
-
-  private given Scheduler = ioRuntime.scheduler
+final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -104,6 +108,42 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderDetachable,
         OrderDetached,
         OrderFinished(None),
+        OrderDeleted))
+
+  "GoOrder a waiting Fresh Order" in:
+    val workflow = Workflow(
+      WorkflowPath("KICK-FRESH"),
+      instructions = Seq(EmptyJob.execute(agentPath)))
+
+    withTemporaryItem(workflow): workflow =>
+      val orderId = OrderId("#2024-04-02#KICK-FRESH")
+      given ZoneId = ZoneId.of("UTC")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+          scheduledFor = Some(local("2100-01-01T00:00"))))
+        .await(99.s).orThrow
+      var eventId = eventWatch.await[OrderAdded](_.key == orderId).head.eventId
+      sleep(200.ms)
+      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
+
+      controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
+        .await(99.s).orThrow
+      eventId = eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+        .head.eventId
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true,
+          scheduledFor = Some(local("2100-01-01T00:00"))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderGoMarked(Position(0)),
+        OrderGoes,
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished(),
         OrderDeleted))
 
 

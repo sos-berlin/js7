@@ -19,17 +19,17 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
-import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrder}
+import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrder}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
-import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
+import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
+import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
 import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Options, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -820,6 +820,97 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       }
     }
   }
+
+  "GoOrder at Controller" in:
+    val now = local("2024-04-01T00:00")
+    val cycleEnd = local("2024-04-02T00:00")
+    clock.resetTo(now)
+    val workflow = Workflow(
+      WorkflowPath("KICK-CYCLE"),
+      timeZone = timezone,
+      calendarPath = Some(calendar.path),
+      instructions = Seq(
+        Cycle(
+          Schedule.continuous(1.h),
+          Workflow.empty)))
+
+    withTemporaryItem(workflow): workflow =>
+      val orderId = OrderId("#2024-04-01#KICK-CYCLE")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
+      assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
+
+      controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
+        .await(99.s).orThrow
+      eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
+        .head.eventId
+
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId)
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      // No time elapsed, because clock has not been changed.
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h))),
+        OrderGoes,
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h))),
+        OrderCancelled,
+        OrderDeleted))
+
+
+  if false then "GoOrder at Agent" in:
+    // Inactive, because (for now) Cycle is always executed at Controller !!!
+    val now = local("2024-04-02T00:00")
+    val cycleEnd = local("2024-04-03T00:00")
+    clock.resetTo(now)
+    val workflow = Workflow(
+      WorkflowPath("KICK-CYCLE"),
+      timeZone = timezone,
+      calendarPath = Some(calendar.path),
+      instructions = Seq(
+        EmptyJob.execute(agentPath),  // Lease Order to Agent
+        Cycle(
+          Schedule.continuous(1.h),
+          Workflow.empty)))
+
+    withTemporaryItem(workflow): workflow =>
+      val orderId = OrderId("#2024-04-02#KICK-CYCLE")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
+      assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
+
+      controller.api.executeCommand(GoOrder(orderId, position = Position(1)))
+        .await(99.s).orThrow
+      eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
+        .head.eventId
+
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId)
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      // No time elapsed, because clock has not been changed.
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h))),
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h))),
+        OrderCancelled,
+        OrderDeleted))
 }
 
 

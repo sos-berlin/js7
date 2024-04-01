@@ -12,6 +12,7 @@ sealed trait OrderMark
 
 
 object OrderMark:
+
   final case class Cancelling(mode: CancellationMode)
   extends OrderMark
 
@@ -24,7 +25,14 @@ object OrderMark:
     asSucceeded: Boolean = false)
   extends OrderMark, Big
 
+  /** Order shall no longer wait but resume, if at the requested Position.
+   * @param position is the dynamic Order Position (with arguments).
+   */
+  final case class Go(position: Position)
+  extends OrderMark
+
   implicit val jsonCodec: TypedJsonCodec[OrderMark] = TypedJsonCodec(
     Subtype(deriveCodec[Cancelling]),
     Subtype(deriveCodec[Suspending]),
-    Subtype(deriveConfiguredCodec[Resuming]))
+    Subtype(deriveConfiguredCodec[Resuming]),
+    Subtype(deriveCodec[Go]))

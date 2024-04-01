@@ -305,6 +305,23 @@ final case class Order[+S <: Order.State](
           copy(
             state = if isState[Fresh] then StoppedWhileFresh else Stopped))
 
+      case OrderGoMarked(position) =>
+        if isGoCommandable && isAttached then
+          Right(copy(
+            mark = Some(OrderMark.Go(position))))
+        else
+          inapplicable
+
+      case OrderGoes =>
+        if isGoCommandable then
+          Right:
+            if mark.exists(_.isInstanceOf[OrderMark.Go]) then
+              copy(mark = None)
+            else
+              this
+        else
+          inapplicable
+
       case OrderResumptionMarked(position, historyOperations, asSucceeded) =>
         if !force && !isMarkable then
           inapplicable
@@ -681,6 +698,11 @@ final case class Order[+S <: Order.State](
       isState[FailedInFork] ||
       isState[Broken]
 
+  private def isGoCommandable =
+    isState[BetweenCycles] ||
+      isState[DelayedAfterError] ||
+      (isState[Fresh] && maybeDelayedUntil.isDefined)
+
   private def isMarkable =
     !isState[IsTerminated] && !isState[Deleted] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
@@ -824,7 +846,7 @@ object Order:
     override def toString = s"Detaching from $agentPath"
 
   sealed trait State:
-    def maybeDelayedUntil: Option[Timestamp] = None
+    private[Order] def maybeDelayedUntil: Option[Timestamp] = None
 
     /** Only if OrderOperationCancellable applies. */
     def isOperationCancelable = false
@@ -867,7 +889,7 @@ object Order:
   case object Ready extends IsStarted, IsFreshOrReady
 
   final case class DelayedAfterError(until: Timestamp) extends IsStarted:
-    override def maybeDelayedUntil = Some(until)
+    override private[Order] def maybeDelayedUntil = Some(until)
 
   final case class Broken(problem: Option[Problem]) extends IsStarted/*!!!*/
   object Broken:
@@ -916,7 +938,7 @@ object Order:
 
   final case class BetweenCycles(cycleState: Option[CycleState])
   extends IsStarted:
-    override def maybeDelayedUntil =
+    override private[Order] def maybeDelayedUntil =
       cycleState.map(_.next)
 
   type Failed = Failed.type
