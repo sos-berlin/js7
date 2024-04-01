@@ -91,7 +91,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 
 ThisBuild / scalacOptions ++= Seq(
   //"-explain",
-  "-target:17", // Java 17
+  "-java-output-version:17",
   "-feature",
   "-deprecation",
   "-Yretain-trees", // Required for Circe derived default values
