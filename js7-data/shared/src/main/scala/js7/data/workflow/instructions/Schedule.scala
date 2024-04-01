@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
-import io.circe.{Codec, Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -18,6 +18,19 @@ final case class Schedule(schemes: Seq[Scheme])
 
 
 object Schedule:
+
+  val never: Schedule = Schedule(Nil)
+
+  def continuous(pause: FiniteDuration, limit: Option[Int] = None): Schedule =
+    Schedule(Seq(Scheme(
+      AdmissionTimeScheme.always,
+      Continuous(pause, limit = limit))))
+
+  def ticking(interval: FiniteDuration): Schedule =
+    Schedule(Seq(Scheme(
+      AdmissionTimeScheme.always,
+      Ticking(interval))))
+
   sealed trait Repeat
 
   final case class Periodic(period: FiniteDuration, offsets: Seq[FiniteDuration])

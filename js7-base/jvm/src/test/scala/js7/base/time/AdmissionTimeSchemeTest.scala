@@ -35,7 +35,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
       }""")
 
     testJson(
-      AdmissionTimeScheme(Seq(AlwaysPeriod)),
+      AdmissionTimeScheme.always,
       json"""{
         "periods": [
           {

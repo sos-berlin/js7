@@ -5,7 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TimeInterval, Timestamp}
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
@@ -213,7 +213,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester
     implicit val zone = ZoneId.of("Europe/Mariehamn")
 
     val schedule = Schedule(Seq(Scheme(
-      AdmissionTimeScheme(Seq(AlwaysPeriod)),
+      AdmissionTimeScheme.always,
       Periodic(1.h, Seq(0.minute, 30.minute)))))
 
     val calculator = ScheduleCalculator(schedule, zone, dateOffset = 0.s)
@@ -271,7 +271,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester
     // with a "cycle" BranchId without parameters. This should not be possible.
     implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
     val schedule = Schedule(Seq(Scheme(
-      AdmissionTimeScheme(Seq(AlwaysPeriod)),
+      AdmissionTimeScheme.always,
       Periodic(1.h, Seq(1.minute)))))
     assert(ScheduleCalculator(schedule, zone, dateOffset = 0.s)
       .simulateWithCycleState(CycleState.empty, local("2024-03-25T12:00"), 24.h)

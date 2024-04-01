@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, TestAlarmClock, Timestamp, Timezone}
+import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -123,9 +123,7 @@ object CalendarTest:
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
       Cycle(
-        Schedule(Seq(Scheme(
-          AdmissionTimeScheme(Seq(AlwaysPeriod)),
-          Schedule.Continuous(pause = 1.s, limit = Some(1))))),
+        Schedule.continuous(pause = 1.s, limit = Some(1)),
         Workflow.of(EmptyJob.execute(agentPath)))),
     timeZone = Timezone(zone.toString),
     calendarPath = Some(calendar.path))

@@ -8,4 +8,6 @@ final case class AdmissionTimeScheme(periods: Seq[AdmissionPeriod])
 object AdmissionTimeScheme:
   implicit val jsonCodec: Codec.AsObject[AdmissionTimeScheme] = deriveCodec
 
-  val always = AdmissionTimeScheme(AlwaysPeriod :: Nil)
+  val always: AdmissionTimeScheme = AdmissionTimeScheme(AlwaysPeriod :: Nil)
+
+  val never: AdmissionTimeScheme = AdmissionTimeScheme(Nil)

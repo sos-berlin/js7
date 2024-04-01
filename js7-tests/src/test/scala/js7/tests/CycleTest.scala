@@ -94,10 +94,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       Seq(
         EmptyJob.execute(agentPath),  // Let start Cycle at Agent
         Cycle(
-          Schedule(Seq(
-            Scheme(
-              AdmissionTimeScheme(Seq(AlwaysPeriod)),
-              Continuous(pause = 0.s, limit = Some(3))))),
+          Schedule.continuous(0.s, limit = Some(3)),
           cycleWorkflow = Workflow.of(
             EmptyJob.execute(agentPath)))),
       timeZone = timezone,
@@ -152,9 +149,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       WorkflowPath("ENDLESS"),
       Seq(
         Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Continuous(pause = 0.s, limit = Some(Int.MaxValue))))),
+          Schedule.continuous(0.s, limit = Some(Int.MaxValue)),
           Workflow.empty)),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
@@ -167,9 +162,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       WorkflowPath("FAILING"),
       Seq(
         Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Continuous(pause = 0.s, limit = Some(1))))),
+          Schedule.continuous(0.s, limit = Some(1)),
           Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
@@ -197,9 +190,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         TryInstruction(
           Workflow.of(
             Cycle(
-              Schedule(Seq(Scheme(
-                AdmissionTimeScheme(Seq(AlwaysPeriod)),
-                Continuous(pause = 0.s, limit = Some(1))))),
+              Schedule.continuous(0.s, limit = Some(1)),
               Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
           Workflow.empty)),
       timeZone = timezone,
@@ -437,9 +428,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       WorkflowPath("ONCE-AN-HOUR"),
       Seq(
         Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Ticking(1.h)))),
+          Schedule.ticking(1.h),
           Workflow.empty)),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
@@ -478,9 +467,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         calendarPath = Some(calendar.path),
         instructions = Seq(
           Cycle(
-            Schedule(Seq(Scheme(
-              AdmissionTimeScheme(Seq(AlwaysPeriod)),
-              Continuous(pause = 0.s, limit = Some(1))))),
+            Schedule.continuous(0.s, limit = Some(1)),
             Workflow.of(
               If(
                 expr("true"),
@@ -544,9 +531,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           Options(stopOnFailure = Some(true),
             block = Workflow.of(
               Cycle(
-                Schedule(Seq(Scheme(
-                  AdmissionTimeScheme(Seq(AlwaysPeriod)),
-                  Continuous(pause = 0.s, limit = Some(1))))),
+                Schedule.continuous(0.s, limit = Some(1)),
                 Workflow.of(
                   EmptyJob.execute(agentPath),
                   If(expr("true"), Workflow.of(
@@ -630,9 +615,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         calendarPath = Some(calendar.path),
         instructions = Seq(
           Cycle(
-            Schedule(Seq(Scheme(
-              AdmissionTimeScheme(Seq(AlwaysPeriod)),
-              Continuous(1.s)))),
+            Schedule.continuous(pause = 1.s),
             Workflow.of(
               EmptyJob.execute(agentPath)))))
       withTemporaryItem(workflow) { workflow =>
@@ -675,9 +658,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         calendarPath = Some(calendar.path),
         instructions = Seq(
           Cycle(
-            Schedule(Seq(Scheme(
-              AdmissionTimeScheme(Seq(AlwaysPeriod)),
-              Continuous(1.s)))),
+            Schedule.continuous(pause = 1.s),
             Workflow.of(
               If(expr("true"),
                 Workflow.of(
@@ -724,9 +705,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       calendarPath = Some(calendar.path),
       instructions = Seq(
         Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Continuous(1.s)))),
+          Schedule.continuous(1.s),
           Workflow.of(
             EmptyJob.execute(agentPath),
             Stop()))))
@@ -787,9 +766,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         If(expr("true"),
           Workflow.of(
             Cycle(
-              Schedule(Seq(Scheme(
-                AdmissionTimeScheme(Seq(AlwaysPeriod)),
-                Continuous(1.s)))),
+              Schedule.continuous(1.s),
               Workflow.of(
                 If(expr("true"),
                   Workflow.of(

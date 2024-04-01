@@ -406,9 +406,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       WorkflowPath("NO-DOUBLE-EXECUTION") ~ "1",
       Seq(
         Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Ticking(1.h)))),
+          Schedule.ticking(1.h),
           Workflow.empty)),
       timeZone = Timezone(zone.toString),
       calendarPath = Some(calendar.path))
