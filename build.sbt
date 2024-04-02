@@ -420,7 +420,6 @@ lazy val `js7-common` = project
       log4j % "test" ++
       lmaxDisruptor % "test"
     }
-  .enablePlugins(GitVersioning)
 
 lazy val `js7-common-http` = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
