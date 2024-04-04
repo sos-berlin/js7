@@ -21,6 +21,7 @@ import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
+import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
@@ -541,22 +542,26 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         workflow.instruction(workflowPosition.position)
 
   private def atController(events: => List[OrderActorEvent]): List[OrderActorEvent] =
-    if isAgent then
-      OrderDetachable :: Nil
-    else
-      events
+    state.atController(events)
 
 
 object OrderEventSource:
   private val logger = Logger[this.type]
 
   def leaveBlocks(
+    workflow: Workflow,
+    order: Order[Order.State],
+    events: List[OrderActorEvent])
+  : Checked[List[OrderActorEvent]] =
+    leaveBlocks(workflow, order, _ => events, until = _ => false)
+
+  def leaveBlocks(
     workflow: Workflow, order: Order[Order.State],
-    events: List[OrderActorEvent],
-    until: BranchId => Boolean = _ => false)
+    events: Option[BranchId] => List[OrderActorEvent],
+    until: BranchId => Boolean)
   : Checked[List[OrderActorEvent]] =
     leaveBlocksThen(workflow, order, catchable = false, until = until):
-      case _ => events
+      case (maybeBranchId, _) => events(maybeBranchId)
 
   private def leaveBlocksThen(
     workflow: Workflow, order: Order[Order.State],

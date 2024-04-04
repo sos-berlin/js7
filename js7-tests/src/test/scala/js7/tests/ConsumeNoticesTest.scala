@@ -12,7 +12,6 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
-import js7.data.item.UnsignedItemEvent.UnsignedItemAddedOrChanged
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -20,13 +19,13 @@ import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, Execute, Fail, If, Options, PostNotices, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, If, Options, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ConsumeNoticesTest.*
-import js7.tests.jobs.{FailingJob, SemaphoreJob}
+import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
@@ -596,19 +595,16 @@ final class ConsumeNoticesTest
         ConsumeNotices(
           boardPathExpr(s"'${aBoard.path.string}'"),
           Workflow.of(
-            EmptyInstruction()))))
+            EmptyJob.execute(agentPath)))))
 
     withTemporaryItem(workflow) { workflow =>
-      val eventId = eventWatch.lastAddedEventId
       controller.api
         .executeCommand(
           ControlWorkflow(workflow.id, addBreakpoints = Set(Position(0))))
         .await(99.s).orThrow
-      eventWatch.await[UnsignedItemAddedOrChanged](after = eventId)
 
       val orderId = OrderId("#2024-03-19#")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-
       eventWatch.await[OrderSuspended](_.key == orderId)
 
       val checked = controller.api
@@ -617,7 +613,6 @@ final class ConsumeNoticesTest
         .await(99.s)
       assert(checked == Left(UnreachableOrderPositionProblem))
 
-      sleep(3.s)
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }

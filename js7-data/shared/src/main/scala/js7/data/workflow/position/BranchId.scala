@@ -21,6 +21,8 @@ sealed trait BranchId:
 
   def isFork: Boolean
 
+  def isCycle: Boolean
+
   final def isIsFailureBoundary = isFork
 
   /** An order can not be moved through a move boundary. */
@@ -94,6 +96,9 @@ object BranchId:
       else this
 
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
+
+    def isCycle =
+      string.startsWith(BranchId.CyclePrefix) || this == Cycle
 
     def toCycleState: Checked[CycleState] =
       var CycleState(end, schemeIndex, periodIndex, index, next) = CycleState.empty

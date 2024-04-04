@@ -30,7 +30,7 @@ import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
-import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Options, Schedule, Stop, TryInstruction}
+import js7.data.workflow.instructions.{Break, Cycle, EmptyInstruction, Fail, Fork, If, LockInstruction, Options, Retry, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -607,93 +607,182 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         "JSON DecodingFailure at : Break instruction at 0/cycle:0/fork+A:0/then:0 without Cycle")))
     }
 
-    "JS-2115 Order without cycle arguments placed into a Cycle block" in {
-      clock.resetTo(local("2025-03-25T12:00"))
-      val workflow = Workflow(
-        WorkflowPath("PLACED-ORDER"),
-        timeZone = timezone,
-        calendarPath = Some(calendar.path),
-        instructions = Seq(
-          Cycle(
+    "Place an Order into a Cycle block containing a Break" - {
+      "Order without cycle arguments placed into a Cycle block (JS-2115)" in:
+        clock.resetTo(local("2025-03-25T12:00"))
+        val workflow = Workflow(
+          WorkflowPath("PLACED-ORDER"),
+          timeZone = timezone,
+          calendarPath = Some(calendar.path),
+          instructions = Seq(
+            Cycle(
             Schedule.continuous(pause = 1.s),
-            Workflow.of(
-              EmptyJob.execute(agentPath)))))
-      withTemporaryItem(workflow) { workflow =>
-        val orderId = OrderId("#2024-03-25#PLACED-ORDER")
+              Workflow.of(
+                EmptyJob.execute(agentPath)))))
+        withTemporaryItem(workflow): workflow =>
+          val orderId = OrderId("#2024-03-25#PLACED-ORDER")
 
-        controller.api
-          .addOrder(FreshOrder(
-            orderId, workflow.path, deleteWhenTerminated = true,
-            startPosition = Some(Position(0) / "cycle" % 0)))
-          .await(99.s).orThrow
-        eventWatch.await[OrderTerminated](_.key == orderId)
+          controller.api
+              .addOrder(FreshOrder(
+                orderId, workflow.path, deleteWhenTerminated = true,
+                startPosition = Some(Position(0) / "cycle" % 0)))
+              .await(99.s).orThrow
+          eventWatch.await[OrderTerminated](_.key == orderId)
 
-        assert(eventWatch.eventsByKey[OrderEvent](orderId)
-          .filter {
-            case _: OrderCyclingPrepared => false
-            case _: OrderMoved => false
-            case _ => true
-          } ==
-          Seq(
-            OrderAdded(workflow.id, deleteWhenTerminated = true,
-              startPosition = Some(Position(0) / "cycle" % 0)),
-            OrderAttachable(agentPath),
-            OrderAttached(agentPath),
-            OrderStarted,
-            OrderProcessingStarted(Some(subagentId)),
-            OrderProcessed(Outcome.succeeded),
-            OrderCycleFinished(None),
-            OrderDetachable,
-            OrderDetached,
-            OrderFinished(None),
-            OrderDeleted))
-      }
-    }
+          assert(eventWatch.eventsByKey[OrderEvent](orderId)
+            .filter {
+              case _: OrderCyclingPrepared => false
+              case _: OrderMoved => false
+              case _ => true
+            } ==
+            Seq(
+              OrderAdded(workflow.id, deleteWhenTerminated = true,
+                startPosition = Some(Position(0) / "cycle" % 0)),
+              OrderAttachable(agentPath),
+              OrderAttached(agentPath),
+              OrderStarted,
+              OrderProcessingStarted(Some(subagentId)),
+              OrderProcessed(Outcome.succeeded),
+              OrderCycleFinished(None),
+              OrderDetachable,
+              OrderDetached,
+              OrderFinished(None),
+              OrderDeleted))
 
-    "JS-2115 Order without cycle arguments placed into a Cycle block with Break" in {
-      clock.resetTo(local("2025-03-25T00:00"))
-      val workflow = Workflow(
-        WorkflowPath("PLACED-ORDER-WITHOUT-ARGUMENTS"),
-        timeZone = timezone,
-        calendarPath = Some(calendar.path),
-        instructions = Seq(
-          Cycle(
+      "Order whose innerBlock is a Cycle block with Break (JS-2115)" in:
+        val workflow = Workflow(
+          WorkflowPath("PLACED-ORDER-INNER-BLOCK"),
+          calendarPath = Some(calendar.path),
+          instructions = Seq(
+            Cycle(
+              Schedule.continuous(1.s),
+              Workflow.of(
+                Break())),
+            EmptyInstruction()))
+        withTemporaryItem(workflow): workflow =>
+          val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK")
+
+          controller.api
+            .addOrder(FreshOrder(
+              orderId, workflow.path, deleteWhenTerminated = true,
+              innerBlock = Position(0) / "cycle"))
+            .await(99.s).orThrow
+          eventWatch.await[OrderTerminated](_.key == orderId)
+
+          assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+            Seq(
+              OrderAdded(workflow.id, deleteWhenTerminated = true,
+                innerBlock = Position(0) / "cycle"),
+              OrderStarted,
+              OrderFinished(None),
+              OrderDeleted))
+
+      "Order whose innerBlock is a Cycle block with Break in If (JS-2115)" in:
+        val workflow = Workflow(
+          WorkflowPath("PLACED-ORDER-INNER-BLOCK-IF"),
+          calendarPath = Some(calendar.path),
+          instructions = Seq(
+            Cycle(
+              Schedule.continuous(1.s),
+              Workflow.of(
+                If(expr("true"),
+                  Workflow.of(
+                    Break()))))))
+        withTemporaryItem(workflow): workflow =>
+          val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-IF")
+
+          controller.api
+            .addOrder(FreshOrder(
+              orderId, workflow.path, deleteWhenTerminated = true,
+              innerBlock = Position(0) / "cycle"))
+            .await(99.s).orThrow
+          eventWatch.await[OrderTerminated](_.key == orderId)
+
+          assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+            Seq(
+              OrderAdded(workflow.id, deleteWhenTerminated = true,
+                innerBlock = Position(0) / "cycle"),
+              OrderMoved(Position(0) / "cycle" % 0 / "then" % 0),
+              OrderStarted,
+              OrderFinished(None),
+              OrderDeleted))
+
+      "Order whose innerBlock is a Cycle block with Break after Execute in If (JS-2115)" in:
+        val workflow = Workflow(
+          WorkflowPath("PLACED-ORDER-INNER-BLOCK-IF-EXECUTE"),
+          calendarPath = Some(calendar.path),
+          instructions = Seq(
+            Cycle(
             Schedule.continuous(pause = 1.s),
-            Workflow.of(
-              If(expr("true"),
-                Workflow.of(
-                  EmptyJob.execute(agentPath),
-                  Break()))))))
-      withTemporaryItem(workflow) { workflow =>
-        val orderId = OrderId("#2024-03-25#PLACED-ORDER-WITHOUT-ARGUMENTS")
+              Workflow.of(
+                If(expr("true"),
+                  Workflow.of(
+                    EmptyJob.execute(agentPath),
+                    Break()))))))
+        withTemporaryItem(workflow): workflow =>
+          val orderId = OrderId("#2024-03-25#PLACED-ORDER-INNER-BLOCK-IF-EXECUTE")
 
-        controller.api
-          .addOrder(FreshOrder(
-            orderId, workflow.path, deleteWhenTerminated = true,
-            startPosition = Some(Position(0) / "cycle" % 0)))
-          .await(99.s).orThrow
-        eventWatch.await[OrderTerminated](_.key == orderId)
+          controller.api
+              .addOrder(FreshOrder(
+                orderId, workflow.path, deleteWhenTerminated = true,
+                innerBlock = Position(0) / "cycle"))
+              .await(99.s).orThrow
+            eventWatch.await[OrderTerminated](_.key == orderId)
 
-        assert(eventWatch.eventsByKey[OrderEvent](orderId)
-          .filter {
-            case _: OrderCyclingPrepared => false
-            case _: OrderMoved => false
-            case _ => true
-          } ==
-          Seq(
-            OrderAdded(workflow.id, deleteWhenTerminated = true,
-              startPosition = Some(Position(0) / "cycle" % 0)),
-            OrderAttachable(agentPath),
-            OrderAttached(agentPath),
-            OrderStarted,
-            OrderProcessingStarted(Some(subagentId)),
-            OrderProcessed(Outcome.succeeded),
-            OrderCycleFinished(None),
-            OrderDetachable,
-            OrderDetached,
-            OrderFinished(None),
-            OrderDeleted))
-      }
+            assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+              Seq(
+                OrderAdded(workflow.id, deleteWhenTerminated = true,
+                  innerBlock = Position(0) / "cycle"),
+                OrderMoved(Position(0) / "cycle" % 0 / "then" % 0),
+                OrderAttachable(agentPath),
+                OrderAttached(agentPath),
+                OrderStarted,
+                OrderProcessingStarted(Some(subagentId)),
+                OrderProcessed(Outcome.succeeded),
+                OrderMoved(Position(0) / "cycle" % 0 / "then" % 1),
+                OrderDetachable,
+                OrderDetached,
+                OrderFinished(None),
+                OrderDeleted))
+
+      "Order whose innerBlock is a Cycle block with Break after Execute in Retry (JS-2115)" in:
+        val workflow = Workflow(
+          WorkflowPath("PLACED-ORDER-INNER-BLOCK-RETRY-EXECUTE"),
+          calendarPath = Some(calendar.path),
+          instructions = Seq(
+            Cycle(
+              Schedule.continuous(1.s),
+              Workflow.of(
+                TryInstruction(
+                  Workflow.of(
+                    EmptyJob.execute(agentPath),
+                    Break()),
+                  Workflow.of(Retry()))))))
+        withTemporaryItem(workflow): workflow =>
+          val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-RETRY-EXECUTE")
+
+          controller.api
+            .addOrder(FreshOrder(
+              orderId, workflow.path, deleteWhenTerminated = true,
+              innerBlock = Position(0) / "cycle"))
+            .await(99.s).orThrow
+          eventWatch.await[OrderTerminated](_.key == orderId)
+
+          assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+            Seq(
+              OrderAdded(workflow.id, deleteWhenTerminated = true,
+                innerBlock = Position(0) / "cycle"),
+              OrderMoved(Position(0) / "cycle" % 0 / "try+0" % 0),
+              OrderAttachable(agentPath),
+              OrderAttached(agentPath),
+              OrderStarted,
+              OrderProcessingStarted(Some(subagentId)),
+              OrderProcessed(Outcome.succeeded),
+              OrderMoved(Position(0) / "cycle" % 0 / "try+0" % 1),
+              OrderDetachable,
+              OrderDetached,
+              OrderFinished(None),
+              OrderDeleted))
     }
   } // "Break"
 
