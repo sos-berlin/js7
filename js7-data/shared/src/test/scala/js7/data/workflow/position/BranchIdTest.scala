@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.order.CycleState
-import js7.data.workflow.position.BranchId.{Else, Then, catch_, fork, try_}
+import js7.data.workflow.position.BranchId.{Else, Then, catch_, cycle, fork, try_}
 
 /**
   * @author Joacim Zschimmer
@@ -35,6 +35,12 @@ final class BranchIdTest extends OurTestSuite
     assert(fork("A") == BranchId.Named("fork+A"))
   }
 
+  "isFork" in {
+    assert(BranchId("fork").isFork)
+    assert(!BranchId("cycle").isFork)
+    assert(fork("A").isFork)
+  }
+
   "cycle" - {
     "invalid" in {
       assert(BranchId("cycle+x").toCycleState == Left(Problem(
@@ -42,6 +48,12 @@ final class BranchIdTest extends OurTestSuite
       assert(BranchId("cycle+end=11122233344455566677").toCycleState == Left(Problem(
         "Expected a Cycle BranchId but got: cycle+end=11122233344455566677" +
           " - NumberFormatException: For input string: \"11122233344455566677\"")))
+    }
+
+    "isCycle" in {
+      assert(BranchId("cycle").isCycle)
+      assert(!BranchId("fork").isCycle)
+      assert(cycle(CycleState.empty).isCycle)
     }
 
     "scheme" in {
