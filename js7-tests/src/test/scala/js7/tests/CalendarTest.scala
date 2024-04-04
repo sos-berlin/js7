@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, Timestamp, Timezone}
+import js7.base.time.{TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -20,7 +20,6 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{CycleState, FreshOrder, OrderId, Outcome}
-import js7.data.workflow.instructions.Schedule.Scheme
 import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
