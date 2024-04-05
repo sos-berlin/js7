@@ -145,6 +145,10 @@ final case class Order[+S <: Order.State](
           copy(
             state = if (isState[Fresh]) FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
+            mark = mark match {
+              case Some(_: OrderMark.Suspending) => None
+              case o => o
+            },
             historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderFailedInFork(movedTo, outcome) =>
@@ -154,6 +158,12 @@ final case class Order[+S <: Order.State](
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),
+            //Same as for OrderFailed? How to suspend a failed child order???
+            // See SuspendResumeOrdersTest
+            // mark = mark match {
+            //   case Some(_: OrderMark.Suspending) => None
+            //   case o => o
+            // },
             isResumed = false,
             historicOutcomes =
               outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))

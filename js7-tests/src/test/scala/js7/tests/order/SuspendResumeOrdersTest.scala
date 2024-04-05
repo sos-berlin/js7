@@ -16,11 +16,11 @@ import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
+import js7.data.controller.ControllerCommand.{AddOrder, AnswerOrderPrompt, Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.ExpressionParser.expr
@@ -28,12 +28,16 @@ import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import monix.catnap.Semaphore
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
 final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
@@ -657,6 +661,185 @@ with BlockingItemUpdater
 
   // Test moved to RetryTest:
   // "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent"
+
+  "Suspend a processing Order that will fail" in {
+    // The failed order will not be suspended, because it failed.
+    val workflow = Workflow.of(WorkflowPath("FAIL"),
+      FailingSemaJob.execute(agentPath),
+      EmptyInstruction())
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("SUSPEND-FAILING-JOB")
+      var eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .executeCommand(AddOrder(
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+
+      controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == orderId, after = eventId)
+
+      FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
+      eventWatch.await[OrderFailed](_.key == orderId, after = eventId)
+
+      // OrderFailed event has reset OrderMark.Suspending
+      assert(controllerState.idToOrder(orderId).mark == None)
+
+      eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .executeCommand(
+          ResumeOrder(orderId, Some(Position(1)), asSucceeded = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderStdoutWritten("FailingJob\n"),
+        OrderSuspensionMarked(),
+        OrderSuspensionMarkedOnAgent,
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderFailed(Position(0)),
+        OrderResumed(Some(Position(1)), asSucceeded = true),
+        OrderMoved(Position(2)),
+        OrderFinished(),
+        OrderDeleted))
+    }
+  }
+
+  "Suspend a forked processing Order that will fail" in {
+    val workflow = Workflow.of(WorkflowPath("FAIL-IN-FORK"),
+      Fork(
+        Vector(
+          "BRANCH" -> Workflow.of(
+            FailingSemaJob.execute(agentPath),
+            EmptyInstruction())),
+        joinIfFailed = false))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("SUSPEND-FORKED-FAILING-JOB")
+      val childOrderId = OrderId("SUSPEND-FORKED-FAILING-JOB|BRANCH")
+      var eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .executeCommand(AddOrder(
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](_.key == childOrderId, after = eventId)
+
+      controllerApi.executeCommand(SuspendOrders(Seq(childOrderId))).await(99.s).orThrow
+      eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == childOrderId, after = eventId)
+
+      FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
+      eventWatch.await[OrderFailed](_.key == childOrderId, after = eventId)
+
+      // OrderFailed event has reset OrderMark.Suspending
+      assert(controllerState.idToOrder(childOrderId).mark == None)
+
+      eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .executeCommand(
+          ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
+            asSucceeded = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderForked(Vector(
+          "BRANCH" -> childOrderId)),
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderFinished(),
+        OrderDeleted))
+
+      assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderStdoutWritten("FailingJob\n"),
+        OrderSuspensionMarked(),
+        OrderSuspensionMarkedOnAgent,
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderFailed(Position(0) / BranchId.fork("BRANCH") % 0),
+        OrderResumed(Some(Position(0) / BranchId.fork("BRANCH") % 1), asSucceeded = true),
+        OrderMoved(Position(0) / BranchId.fork("BRANCH") % 2)))
+    }
+  }
+
+  "Suspend a forked processing Order that will fail, joinIfFailed = true" in {
+    val workflow = Workflow.of(WorkflowPath("FAIL-IN-FORK-JOIN-IF-FAILED"),
+      Fork(
+        Vector(
+          "BRANCH" -> Workflow.of(
+            FailingSemaJob.execute(agentPath),
+            EmptyInstruction())),
+        joinIfFailed = true))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("SUSPEND-FORKED-FAILING-JOB-JOIN-IF-FAILED")
+      val childOrderId = OrderId("SUSPEND-FORKED-FAILING-JOB-JOIN-IF-FAILED|BRANCH")
+      var eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .executeCommand(AddOrder(
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](_.key == childOrderId, after = eventId)
+
+      controllerApi.executeCommand(SuspendOrders(Seq(childOrderId))).await(99.s).orThrow
+      eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == childOrderId, after = eventId)
+
+      FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
+      eventWatch.await[OrderFailedInFork](_.key == childOrderId, after = eventId)
+
+      if (true) {
+        eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+        pending // TODO Allow to suspend a failing child order before join?
+      } else {
+        // OrderFailed event has reset OrderMark.Suspending
+        assert(controllerState.idToOrder(childOrderId).mark == None)
+
+        eventId = eventWatch.lastAddedEventId
+          controllerApi
+            .executeCommand(
+              ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
+                asSucceeded = true))
+            .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderStarted,
+          OrderForked(Vector(
+            "BRANCH" -> childOrderId)),
+          OrderJoined(Outcome.succeeded),
+          OrderMoved(Position(1)),
+          OrderFinished(),
+          OrderDeleted))
+
+        assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(subagentId),
+          OrderStdoutWritten("FailingJob\n"),
+          OrderSuspensionMarked(),
+          OrderSuspensionMarkedOnAgent,
+          OrderProcessed(Outcome.failed),
+          OrderDetachable,
+          OrderDetached,
+          OrderFailedInFork(Position(0) / BranchId.fork("BRANCH") % 0),
+          OrderResumed(Some(Position(0) / BranchId.fork("BRANCH") % 1), asSucceeded = true),
+          OrderMoved(Position(0) / BranchId.fork("BRANCH") % 2)))
+      }
+    }
+  }
 }
 
 object SuspendResumeOrdersTest
@@ -698,4 +881,16 @@ object SuspendResumeOrdersTest
     WorkflowPath("FAILING") ~ versionId,
     EmptyJob.execute(agentPath),
     Fail())
+
+  final class FailingSemaJob extends InternalJob {
+    def toOrderProcess(step: Step) =
+      OrderProcess(
+        step.outTaskObserver.send("FailingJob\n")
+          .*>(FailingSemaJob.semaphore)
+          .flatMap(_.acquire)
+          .as(Outcome.failed))
+  }
+  private object FailingSemaJob extends InternalJob.Companion[FailingSemaJob] {
+    val semaphore = Semaphore[Task](0).memoize
+  }
 }
