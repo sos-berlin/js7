@@ -15,7 +15,6 @@ import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
 import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
-import js7.data.workflow.WorkflowPathControlPath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.util.Try
@@ -112,18 +111,8 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
   private def skippedReason(order: Order[Order.State], job: WorkflowJob, state: StateView)
   : Option[OrderMoved.Reason] =
-    (isSkippedDueToWorkflowPathControl(order, state) ? OrderMoved.SkippedDueToWorkflowPathControl)
-      .orElse(
-        isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
-          OrderMoved.NoAdmissionPeriodStart)
-
-  private def isSkippedDueToWorkflowPathControl(order: Order[Order.State], state: StateView)
-  : Boolean =
-    state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
-      .exists(control => state.workflowPositionToLabel(order.workflowPosition)
-        .toOption
-        .flatten
-        .exists(control.skip.contains))
+    isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
+      OrderMoved.NoAdmissionPeriodStart
 
   private def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
     order: Order[Order.State],

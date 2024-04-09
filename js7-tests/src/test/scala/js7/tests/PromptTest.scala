@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -7,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflowPath, ResumeOrder, SuspendOrders}
+import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -18,7 +20,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.PromptTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.unsafe.IORuntime
 
 final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -72,8 +73,9 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
+      OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
       OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
-      OrderFailed(Position(1)/*???*/)))
+      OrderFailed(Position(2))))
 
   "Order.Prompting is suspendible" in:
     val orderId = OrderId("PROMPT-SUSPENDIBLE")

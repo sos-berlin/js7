@@ -5,6 +5,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
@@ -14,21 +15,22 @@ import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.{ItemRevision, VersionId}
+import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, If}
+import js7.data.workflow.instructions.{EmptyInstruction, Execute, If}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.ControlWorkflowPathSkipJobTest.*
+import js7.tests.ControlWorkflowPathSkipTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
-final class ControlWorkflowPathSkipJobTest
+final class ControlWorkflowPathSkipTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   override protected val controllerConfig = config"""
@@ -161,8 +163,67 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
 
+  "Skip any instruction (JS-2112)" - {
+    "Skip first instruction" in:
+      val label = Label("LABEL")
+      val workflow = Workflow.of(WorkflowPath("SKIP-FIRST-INSTRUCTION"),
+        label @: If(expr("true"),
+          Workflow.of(EmptyJob.execute(agentPath))),
+        EmptyInstruction())
+      withTemporaryItem(workflow): workflow =>
+        controller.api
+          .executeCommand(ControlWorkflowPath(workflow.path, skip = Map(
+            label -> true)))
+          .await(99.s).orThrow
 
-object ControlWorkflowPathSkipJobTest:
+        locally:
+          val orderId = OrderId("SKIP-FIRST-INSTRUCTION")
+          val events = controller
+            .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+            .map(_.value)
+          assert(events == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderMoved(Position(1), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+            OrderMoved(Position(2)),
+            OrderStarted,
+            OrderFinished(),
+            OrderDeleted))
+
+    "Skip instruction after Execute" in:
+      val label = Label("LABEL")
+      val workflow = Workflow.of(WorkflowPath("SKIP-AFTER-EXECUTE"),
+        EmptyJob.execute(agentPath),
+        label @: If(expr("true"),
+          Workflow.of(
+            EmptyInstruction())))
+      withTemporaryItem(workflow): workflow =>
+        controller.api
+          .executeCommand(ControlWorkflowPath(workflow.path, skip = Map(
+            label -> true)))
+          .await(99.s).orThrow
+
+        locally:
+          val orderId = OrderId("SKIP-AFTER-EXECUTE")
+          val events = controller
+            .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+            .map(_.value)
+          assert(events == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderStarted,
+            OrderProcessingStarted(subagentId),
+            OrderProcessed(Outcome.succeeded),
+            OrderMoved(Position(1)),
+            OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+            OrderDetachable,
+            OrderDetached,
+            OrderFinished(),
+            OrderDeleted))
+  }
+
+
+object ControlWorkflowPathSkipTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 

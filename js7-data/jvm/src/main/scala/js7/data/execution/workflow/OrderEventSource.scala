@@ -26,7 +26,7 @@ import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockIn
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.{Instruction, Workflow}
+import js7.data.workflow.{Instruction, Workflow, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
@@ -80,29 +80,32 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
               if state.isOrderAtStopPosition(order) then
                 executorService.finishExecutor.toEvents(Finish(), order, state)
               else
-                executorService.toEvents(instruction(order.workflowPosition), order, state)
-                  // Multiple returned events are expected to be independent
-                  // and are applied to the same order !!!
-                  .flatMap { events =>
-                    val (first, maybeLast) = events.splitAt(events.length - 1)
-                    updateIdToOrder(first) >>
-                      maybeLast
-                        .flatTraverse {
-                          case orderId <-: (moved: OrderMoved) =>
-                            applyMoveInstructions(idToOrder(orderId), moved)
-                              .map(_.map(orderId <-: _))
+                ifSkippedMoved(order) match
+                  case Some(orderMoved) =>
+                    Right((order.id <-: orderMoved) :: Nil)
+                  case None =>
+                    executorService.toEvents(instruction(order.workflowPosition), order, state)
+                      // Multiple returned events are expected to be independent
+                      // and are applied to the same order !!!
+                      .flatMap { events =>
+                        val (first, maybeLast) = events.splitAt(events.length - 1)
+                        updateIdToOrder(first) >>
+                          maybeLast
+                            .flatTraverse {
+                              case orderId <-: (moved: OrderMoved) =>
+                                applyMoveInstructions(idToOrder(orderId), moved)
+                                  .map(_.map(orderId <-: _))
 
-                          case orderId <-: OrderFailedIntermediate_(outcome) =>
-                            // OrderFailedIntermediate_ is used internally only
-                            fail(idToOrder(orderId), outcome)
-                              .map(_.map(orderId <-: _))
+                              case orderId <-: OrderFailedIntermediate_(outcome) =>
+                                // OrderFailedIntermediate_ is used internally only
+                                fail(idToOrder(orderId), outcome)
+                                  .map(_.map(orderId <-: _))
 
-                          case o => Right(o :: Nil)
-                        }
-                        .flatTap(updateIdToOrder)
-                        .map(first ::: _)
-                  }
-
+                              case o => Right(o :: Nil)
+                            }
+                            .flatTap(updateIdToOrder)
+                            .map(first ::: _)
+                      }
             case Right(events) => Right(events)
           }
         ).flatMap(checkEvents)
@@ -517,8 +520,27 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         if workflow.isOrderAtStopPosition(order) then
           Right(None)
         else
-          executorService.nextMove(workflow.instruction(order.position), order, state)
+          ifSkippedMoved(order) match
+            case Some(orderMoved) =>
+              Right(Some(orderMoved))
+            case None =>
+              executorService.nextMove(workflow.instruction(order.position), order, state)
     yield maybeMoved
+
+  private def ifSkippedMoved(order: Order[Order.State]): Option[OrderMoved] =
+    skippedReason(order).map: reason =>
+      OrderMoved(order.position.increment, Some(reason))
+
+  private def skippedReason(order: Order[Order.State]): Option[OrderMoved.Reason] =
+    isSkippedDueToWorkflowPathControl(order) ?
+      OrderMoved.SkippedDueToWorkflowPathControl
+
+  private def isSkippedDueToWorkflowPathControl(order: Order[Order.State]): Boolean =
+    state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
+      .exists(control => state.workflowPositionToLabel(order.workflowPosition)
+        .toOption
+        .flatten
+        .exists(control.skip.contains))
 
   private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] =
     for
