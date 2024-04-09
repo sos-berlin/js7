@@ -6,7 +6,7 @@ import java.nio.file.Files.deleteIfExists
 import java.nio.file.{Path, Paths}
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
@@ -22,8 +22,8 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
         .traverse(deleteFile(_, step.writeErr(_).void))
-        .rightAs(Outcome.succeeded)
-        .map(Outcome.Completed.fromChecked))
+        .rightAs(OrderOutcome.succeeded)
+        .map(OrderOutcome.Completed.fromChecked))
 
   private def deleteFile(file: Path, out: String => IO[Unit]): IO[Unit] =
     IO.interruptible(deleteIfExists(file))

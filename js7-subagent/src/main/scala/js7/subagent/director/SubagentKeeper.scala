@@ -32,7 +32,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
@@ -109,7 +109,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
               // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
               OrderProcessingStarted(None) ::
-              OrderProcessed(Outcome.Disrupted(problem)) :: Nil
+              OrderProcessed(OrderOutcome.Disrupted(problem)) :: Nil
             persist(order.id, events, onEvents)
               .rightAs(())
 
@@ -156,7 +156,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       stateVar.get.idToDriver.get(subagentId)
         .match {
           case None =>
-            val orderProcessed = OrderProcessed(Outcome.Disrupted(Problem.pure(
+            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure(
               s"$subagentId is missed")))
             persist(order.id, orderProcessed :: Nil, onEvents)
               .flatMapT(_ => IO.pure(orderProcessed).start.map(Right(_)))

@@ -9,7 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ResumeOrder
 import js7.data.order.Order.Stopped
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.Stop
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -83,7 +83,7 @@ final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,

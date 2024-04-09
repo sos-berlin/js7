@@ -25,7 +25,7 @@ import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
-import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
@@ -109,7 +109,7 @@ final class SuspendResumeOrdersTest
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -133,7 +133,7 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -161,10 +161,10 @@ final class SuspendResumeOrdersTest
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten])
       .map {
-        case OrderProcessed(Outcome.Killed(failed: Outcome.Failed)) if failed.namedValues == NamedValues.rc(SIGKILL) =>
+        case OrderProcessed(OrderOutcome.Killed(failed: OrderOutcome.Failed)) if failed.namedValues == NamedValues.rc(SIGKILL) =>
           // Sometimes, SIGTERM does not work and SIGKILL be sent. Something wrong with the bash script ????
           logger.error("SIGTERM did not work")
-          OrderProcessed(Outcome.Killed(failed.copy(namedValues = NamedValues.rc(SIGTERM))))  // Repair, to let test succceed
+          OrderProcessed(OrderOutcome.Killed(failed.copy(namedValues = NamedValues.rc(SIGTERM))))  // Repair, to let test succceed
         case o => o
       }
 
@@ -176,11 +176,11 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(SuspensionMode(Some(CancellationMode.Kill()))),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(
+      OrderProcessed(OrderOutcome.Killed(
         if isWindows then
-          Outcome.Failed.rc(1)
+          OrderOutcome.Failed.rc(1)
         else
-          Outcome.Failed(NamedValues.rc(SIGTERM)))),
+          OrderOutcome.Failed(NamedValues.rc(SIGTERM)))),
       OrderProcessingKilled,
       OrderDetachable,
       OrderDetached,
@@ -196,7 +196,7 @@ final class SuspendResumeOrdersTest
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -222,7 +222,7 @@ final class SuspendResumeOrdersTest
         OrderProcessingStarted(subagentId),
         OrderSuspensionMarked(),
         OrderSuspensionMarkedOnAgent,
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(OrderOutcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -238,7 +238,7 @@ final class SuspendResumeOrdersTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(OrderOutcome.succeededRC0),
         OrderMoved(Position(2)),
         OrderDetachable,
         OrderDetached,
@@ -288,11 +288,11 @@ final class SuspendResumeOrdersTest
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("FORK") <-: OrderSuspensionMarked(),
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
+        OrderId("FORK|🥕") <-: OrderProcessed(OrderOutcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK|🥕") <-: OrderDetachable,
         OrderId("FORK|🥕") <-: OrderDetached,
-        OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
+        OrderId("FORK") <-: OrderJoined(OrderOutcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderSuspended))
   }
@@ -342,7 +342,7 @@ final class SuspendResumeOrdersTest
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderResumptionMarked(),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
 
       // AgentOrderKeeper does not properly handle simulataneous ExecuteMarkOrder commands
@@ -353,7 +353,7 @@ final class SuspendResumeOrdersTest
       OrderAttached(agentPath),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
@@ -382,7 +382,7 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -424,7 +424,7 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -436,7 +436,7 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
@@ -462,11 +462,11 @@ final class SuspendResumeOrdersTest
         Left(UnreachableOrderPositionProblem))
 
     val invalidOps = Seq(
-      ReplaceHistoricOutcome(Position(99), Outcome.succeeded),
-      InsertHistoricOutcome(Position(99), Position(0), Outcome.succeeded),
-      InsertHistoricOutcome(Position(0), Position(99), Outcome.succeeded),
+      ReplaceHistoricOutcome(Position(99), OrderOutcome.succeeded),
+      InsertHistoricOutcome(Position(99), Position(0), OrderOutcome.succeeded),
+      InsertHistoricOutcome(Position(0), Position(99), OrderOutcome.succeeded),
       DeleteHistoricOutcome(Position(99)),
-      AppendHistoricOutcome(Position(99), Outcome.succeeded))
+      AppendHistoricOutcome(Position(99), OrderOutcome.succeeded))
     for op <- invalidOps do assert(
       executeCommand(ResumeOrder(order.id, historyOperations = Seq(op))).await(99.s) ==
         Left(Problem("Unknown position 99 in Workflow:TRY~INITIAL")))
@@ -494,7 +494,7 @@ final class SuspendResumeOrdersTest
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -503,8 +503,8 @@ final class SuspendResumeOrdersTest
     val lastEventId = eventWatch.lastAddedEventId
     val newPosition = Position(2) / Try_ % 0
     val historicOutcomeOps = Seq(
-      ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> NumberValue(1)))),
-      AppendHistoricOutcome(Position(1), Outcome.Succeeded(Map("NEW" -> NumberValue(2)))))
+      ReplaceHistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
+      AppendHistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))))
 
     executeCommand(ResumeOrder(order.id, Some(newPosition), historicOutcomeOps))
       .await(99.s).orThrow
@@ -513,21 +513,21 @@ final class SuspendResumeOrdersTest
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(Some(newPosition), historicOutcomeOps),
-        OrderOutcomeAdded(Outcome.Failed(Some("FAILURE"))),
+        OrderOutcomeAdded(OrderOutcome.Failed(Some("FAILURE"))),
         OrderCaught(Position(2) / catch_(0) % 0),
         OrderRetrying(Position(2) / try_(1) % 0, None),
-        OrderOutcomeAdded(Outcome.Failed(Some("FAILURE"))),
+        OrderOutcomeAdded(OrderOutcome.Failed(Some("FAILURE"))),
         OrderFailed(Position(2) / try_(1) % 0)))
 
     assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
       order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
       Order.Failed,
       historicOutcomes = Vector(
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> NumberValue(1)))),
-        HistoricOutcome(Position(1), Outcome.Succeeded(Map("NEW" -> NumberValue(2)))),
-        HistoricOutcome(Position(2) / Try_ % 0, Outcome.Failed(Some("FAILURE"))),
-        HistoricOutcome(Position(2) / catch_(0) % 0, Outcome.succeeded),
-        HistoricOutcome(Position(2) / try_(1) % 0, Outcome.Failed(Some("FAILURE"))))))))
+        HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
+        HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))),
+        HistoricOutcome(Position(2) / Try_ % 0, OrderOutcome.Failed(Some("FAILURE"))),
+        HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.succeeded),
+        HistoricOutcome(Position(2) / try_(1) % 0, OrderOutcome.Failed(Some("FAILURE"))))))))
   }
 
   "Resume when Failed" in {
@@ -540,19 +540,19 @@ final class SuspendResumeOrdersTest
     executeCommand(ResumeOrder(order.id, asSucceeded = true)).await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
     assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1), Outcome.failed),
-      HistoricOutcome(Position(1), Outcome.succeeded)/*Resume asSucceeded*/,
-      HistoricOutcome(Position(1), Outcome.failed)))
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1), OrderOutcome.failed),
+      HistoricOutcome(Position(1), OrderOutcome.succeeded)/*Resume asSucceeded*/,
+      HistoricOutcome(Position(1), OrderOutcome.failed)))
 
     eventId = eventWatch.lastAddedEventId
     executeCommand(ResumeOrder(order.id, Some(Position(0)), asSucceeded = true)).await(99.s).orThrow
 
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
     assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
-      HistoricOutcome(Position(1), Outcome.succeeded)/*Resume asSucceeded*/,
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1), Outcome.failed)))
+      HistoricOutcome(Position(1), OrderOutcome.succeeded)/*Resume asSucceeded*/,
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1), OrderOutcome.failed)))
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
       OrderAdded(failingWorkflow.id, order.arguments, order.scheduledFor),
@@ -561,25 +561,25 @@ final class SuspendResumeOrdersTest
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderDetachable,
       OrderDetached,
 
       OrderFailed(Position(1)),
 
       OrderResumed(asSucceeded = true),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderFailed(Position(1)),
 
       OrderResumed(Some(Position(0)), asSucceeded = true),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(1))))
@@ -702,7 +702,7 @@ final class SuspendResumeOrdersTest
         OrderStdoutWritten("FailingJob\n"),
         OrderSuspensionMarked(),
         OrderSuspensionMarkedOnAgent,
-        OrderProcessed(Outcome.failed),
+        OrderProcessed(OrderOutcome.failed),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0)),
@@ -752,7 +752,7 @@ final class SuspendResumeOrdersTest
         OrderStarted,
         OrderForked(Vector(
           "BRANCH" -> childOrderId)),
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished(),
         OrderDeleted))
@@ -764,7 +764,7 @@ final class SuspendResumeOrdersTest
         OrderStdoutWritten("FailingJob\n"),
         OrderSuspensionMarked(),
         OrderSuspensionMarkedOnAgent,
-        OrderProcessed(Outcome.failed),
+        OrderProcessed(OrderOutcome.failed),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0) / BranchId.fork("BRANCH") % 0),
@@ -816,7 +816,7 @@ final class SuspendResumeOrdersTest
           OrderStarted,
           OrderForked(Vector(
             "BRANCH" -> childOrderId)),
-          OrderJoined(Outcome.succeeded),
+          OrderJoined(OrderOutcome.succeeded),
           OrderMoved(Position(1)),
           OrderFinished(),
           OrderDeleted))
@@ -828,7 +828,7 @@ final class SuspendResumeOrdersTest
           OrderStdoutWritten("FailingJob\n"),
           OrderSuspensionMarked(),
           OrderSuspensionMarkedOnAgent,
-          OrderProcessed(Outcome.failed),
+          OrderProcessed(OrderOutcome.failed),
           OrderDetachable,
           OrderDetached,
           OrderFailedInFork(Position(0) / BranchId.fork("BRANCH") % 0),
@@ -884,7 +884,7 @@ object SuspendResumeOrdersTest
         step.writeOut("FailingJob\n")
           .*>(FailingSemaJob.semaphore)
           .flatMap(_.acquire)
-          .as(Outcome.failed)
+          .as(OrderOutcome.failed)
 
   private object FailingSemaJob extends InternalJob.Companion[FailingSemaJob]:
     val semaphore = Semaphore[IO](0).unsafeMemoize

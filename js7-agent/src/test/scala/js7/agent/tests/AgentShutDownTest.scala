@@ -101,7 +101,7 @@ final class AgentShutDownTest
     //TestAgent.blockingRun(agentConfiguration, 99.s) { agent =>
     //  for (orderId <- orderIds) {
     //    val processed = agent.eventWatch.await[OrderProcessed](_.key == orderId)
-    //    assert(processed.head.value.event.outcome.isInstanceOf[Outcome.Killed])
+    //    assert(processed.head.value.event.outcome.isInstanceOf[OrderOutcome.Killed])
     //  }
     //}
 

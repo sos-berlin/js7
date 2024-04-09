@@ -3,7 +3,7 @@ package js7.tests.controller.proxy.history
 import java.time.Instant
 import java.util.Optional
 import js7.base.io.process.StdoutOrStderr
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.Value
 import js7.data_for_java.workflow.position.JWorkflowPosition
 import js7.tests.controller.proxy.history.OrderEntry.*
@@ -22,7 +22,7 @@ final case class OrderEntry(
   endWorkflowPosition: Optional[JWorkflowPosition] = Optional.empty,
   steps: java.util.List[OrderStepEntry] = Vector.empty.asJava):
 
-  def updateLastStep(endedAt: Instant, outcome: Outcome, namedValues: java.util.Map[String, Value]): OrderEntry =
+  def updateLastStep(endedAt: Instant, outcome: OrderOutcome, namedValues: java.util.Map[String, Value]): OrderEntry =
     val lastStep = steps.asScala.last
     copy(steps = (steps.asScala.take(steps.size - 1) :+
       lastStep.copy(

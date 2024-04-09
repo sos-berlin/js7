@@ -9,7 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, If, TryInstruction}
@@ -75,22 +75,22 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed.rc(1)),
+      OrderProcessed(OrderOutcome.Failed.rc(1)),
       OrderCaught(Position(0) / "try+0" % 0 / "catch+0" % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed.rc(2)),
+      OrderProcessed(OrderOutcome.Failed.rc(2)),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded.rc(0)),
+      OrderProcessed(OrderOutcome.Succeeded.rc(0)),
       OrderMoved(Position(2)),
 
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.succeededRC0)
 
   "Nested try catch with failing catch, OrderFailed" in:
     val workflowPath = WorkflowPath("STOPPING")
@@ -111,11 +111,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderAdded(workflowPath ~ v),
         OrderMoved(Position(0) / "try+0" % 0),
         OrderStarted,
-        OrderOutcomeAdded(Outcome.failed),
+        OrderOutcomeAdded(OrderOutcome.failed),
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderOutcomeAdded(Outcome.failed),
+        OrderOutcomeAdded(OrderOutcome.failed),
         OrderFailed(Position(0) / "catch+0" % 0)))
-    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.failed)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.failed)
 
   "Empty catch" in:
     val workflowPath = WorkflowPath("TRY-IF")
@@ -134,11 +134,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAdded(workflowPath ~ v),
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished()))
-    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.succeeded)
 
   "try - if - fail" in:
     val workflow = Workflow(
@@ -165,20 +165,20 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.succeeded)
 
   "fork - fail" in:
     val workflow = WorkflowParser.parse(WorkflowPath("FORK-FAIL"),
@@ -212,12 +212,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         "🌶" -> OrderId("♠️|🌶"))),
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.Failed(Some("Order:♠️|🍋 Failed;\nOrder:♠️|🌶 Failed"))),
+      OrderJoined(OrderOutcome.Failed(Some("Order:♠️|🍋 Failed;\nOrder:♠️|🌶 Failed"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
+      OrderProcessed(OrderOutcome.Succeeded(NamedValues.rc(0))),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -225,12 +225,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
     checkEventSeq(OrderId("♠️|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(None, NamedValues.rc(1))),
       OrderDetachable,
       OrderDetached,
       OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0)))
 
-    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.succeededRC0)
 
   private def checkEventSeq(
     orderId: OrderId,

@@ -18,7 +18,7 @@ import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, If, Prompt, Retry, Schedule, TryInstruction}
@@ -73,13 +73,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "then" % 0),
       OrderMoved(Position(1) / "then" % 1, reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
       OrderMoved(Position(2)),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(3)),
 
       OrderDetachable,
@@ -111,18 +111,18 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1) / "then" % 0),
         OrderMoved(Position(1) / "then" % 1,
           reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
         OrderMoved(Position(2)),
 
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(3)),
 
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(4)),
 
         OrderDetachable,
@@ -205,7 +205,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(1)),
           OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
           OrderDetachable,

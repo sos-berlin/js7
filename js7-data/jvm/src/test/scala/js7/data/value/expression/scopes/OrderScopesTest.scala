@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable}
-import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -415,10 +415,10 @@ object OrderScopesTest
       .orThrow,
     scheduledFor = freshOrder.scheduledFor,
     historicOutcomes = Vector(
-      HistoricOutcome(Position(0), Outcome.Succeeded(Map(
+      HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map(
         "d" -> StringValue("d from position 0"),
         "e" -> StringValue("e from position 0")))),
-      HistoricOutcome(Position(1), Outcome.Succeeded(Map(
+      HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map(
         "e" -> StringValue("e from position 1"),
         "f" -> StringValue("f from position 1"))))))
 }

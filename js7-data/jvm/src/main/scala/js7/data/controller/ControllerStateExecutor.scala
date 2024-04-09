@@ -23,7 +23,7 @@ import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderMoved, OrderOrderAdded, OrderProcessed, OrderTransferred}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
@@ -124,7 +124,7 @@ final case class ControllerStateExecutor private(
 
   private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
   : Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
-    val outcome = Outcome.Disrupted(AgentResetProblem(agentPath))
+    val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
     val stateEvents = (order.state: State) match
       case _: Order.Processing =>
         Vector(order.id <-: OrderProcessed(outcome))

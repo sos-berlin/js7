@@ -25,7 +25,7 @@ import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
@@ -83,7 +83,9 @@ final class AgentTest extends OurTestSuite, AgentTester:
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event
-            assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
+            assert(orderProcessed.outcome == OrderOutcome.Succeeded(Map(
+              "returnCode" -> NumberValue(0),
+              "WORKDIR" -> StringValue(workingDirectory.toString))))
             agent.terminate() await 99.s
           }
         }

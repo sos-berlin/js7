@@ -18,7 +18,7 @@ import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.*
-import js7.data.order.{Order, OrderId, OrderMark, Outcome}
+import js7.data.order.{Order, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
 import js7.data.state.StateViewForEvents.atController
@@ -145,21 +145,21 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     val events =
       if order.isFailable then
         // Before v2.5.6, due to JS-2087 uncatchable got lost in transfer back to Controller !!!
-        fail(order, Some(Outcome.Disrupted(problem/*, uncatchable = true*/))) match
+        fail(order, Some(OrderOutcome.Disrupted(problem/*, uncatchable = true*/))) match
           case Left(prblm) =>
             logger.debug(s"WARN ${order.id}: $prblm")
-            OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
+            OrderOutcomeAdded(OrderOutcome.Disrupted(problem)) ::
               OrderBroken() ::
               order.canBecomeDetachable.thenList(
                 OrderDetachable)
           case Right(events) => events
       else
-        OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderBroken() :: Nil
+        OrderOutcomeAdded(OrderOutcome.Disrupted(problem)) :: OrderBroken() :: Nil
     events.map(order.id <-: _)
 
   private[data] def fail(
     order: Order[Order.State],
-    outcome: Option[Outcome.NotSucceeded] = None,
+    outcome: Option[OrderOutcome.NotSucceeded] = None,
     uncatchable: Boolean = false)
   : Checked[List[OrderActorEvent]] =
     for
@@ -171,7 +171,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private[workflow] def fail(
     workflow: Workflow,
     order: Order[Order.State],
-    outcome: Option[Outcome.NotSucceeded],
+    outcome: Option[OrderOutcome.NotSucceeded],
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] =
     val outcomeAdded = outcome.map(OrderOutcomeAdded(_)).toList
@@ -671,7 +671,7 @@ object OrderEventSource:
         })
 
   /** Used in combination with `isFailed` to handle failed Orders transferred back to Controller. */
-  private def isUncatchable(outcome: Outcome): Boolean =
+  private def isUncatchable(outcome: OrderOutcome): Boolean =
     outcome match
-      case o: Outcome.NotSucceeded => o.uncatchable
+      case o: OrderOutcome.NotSucceeded => o.uncatchable
       case _ => false

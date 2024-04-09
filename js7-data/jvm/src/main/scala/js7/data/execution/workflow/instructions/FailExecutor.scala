@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.order.OrderEvent.OrderFailedIntermediate_
-import js7.data.order.{Order, Outcome}
+import js7.data.order.{Order, OrderOutcome}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Fail
 
@@ -21,7 +21,7 @@ extends EventInstructionExecutor:
                 .flatMap(messageExpr.evalAsString(_))
                 .fold(_.toString, identity))
             val outcome =
-              Outcome.Failed(maybeErrorMessage, fail.namedValues, uncatchable = fail.uncatchable)
+              OrderOutcome.Failed(maybeErrorMessage, fail.namedValues, uncatchable = fail.uncatchable)
             val event = OrderFailedIntermediate_(Some(outcome))
             Right((order.id <-: event) :: Nil)
 

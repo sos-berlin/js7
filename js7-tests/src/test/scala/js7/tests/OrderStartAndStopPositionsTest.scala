@@ -7,7 +7,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -88,7 +88,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite, ControllerAgent
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(2)),
 
       OrderDetachable,
@@ -110,11 +110,11 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite, ControllerAgent
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(2)),
 
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(3)),
 
       OrderDetachable,
@@ -137,15 +137,15 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite, ControllerAgent
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "try+0" % 0),
 
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "try+0" % 1),
 
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "try+0" % 2 / "then" % 0),
       // LABEL reached
 
@@ -169,10 +169,10 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite, ControllerAgent
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "try" % 3 / "then" % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(1) / "catch+0" % 0),
 
       OrderDetachable,

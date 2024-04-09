@@ -20,7 +20,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression.{ListExpr, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -132,7 +132,7 @@ final class ForkListTest
             "element" -> StringValue("ELEMENT-3"))))),
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.Succeeded(Map("resultList" -> ListValue(Seq(
+      OrderJoined(OrderOutcome.Succeeded(Map("resultList" -> ListValue(Seq(
         StringValue("🔹" + (orderId / "ELEMENT-1").string),
         StringValue("🔹" + (orderId / "ELEMENT-2").string),
         StringValue("🔹" + (orderId / "ELEMENT-3").string)))))),
@@ -162,7 +162,7 @@ final class ForkListTest
         Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
       //OrderStarted,
-      OrderOutcomeAdded(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
         "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
       OrderFailed(Position(0))))
 
@@ -190,7 +190,7 @@ final class ForkListTest
           Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
         //OrderStarted,
-        OrderOutcomeAdded(Outcome.Disrupted(problem)),
+        OrderOutcomeAdded(OrderOutcome.Disrupted(problem)),
         OrderFailed(Position(0))))
 
   "ForkList with index" in:
@@ -211,7 +211,7 @@ final class ForkListTest
       assert(eventWatch.eventsByKey[OrderEvent](orderId / i.toString) == Seq(
         OrderMoved(Position(0) / "fork" % 1),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 2),
         OrderDetachable,
         OrderDetached))
@@ -241,7 +241,7 @@ final class ForkListTest
       expectedChildOrderEvent = _ => OrderFailedInFork(Position(0) / "fork" % 1),
       expectedTerminationEvent = OrderFailed(Position(0)))
 
-    assert(order.lastOutcome == Outcome.Failed(Some(
+    assert(order.lastOutcome == OrderOutcome.Failed(Some(
       """Order:FAIL-THEN-JOIN|ELEMENT-1 Failed(TEST FAILURE);
         |Order:FAIL-THEN-JOIN|ELEMENT-2 Failed(TEST FAILURE)"""
         .stripMargin)))
@@ -252,7 +252,7 @@ final class ForkListTest
       cancelChildOrders = true,
       expectedTerminationEvent = OrderFailed(Position(0)))
 
-    assert(order.lastOutcome == Outcome.Failed(Some(
+    assert(order.lastOutcome == OrderOutcome.Failed(Some(
       """Order:FAIL-THEN-STOP|ELEMENT-1 has been cancelled;
         |Order:FAIL-THEN-STOP|ELEMENT-2 has been cancelled"""
         .stripMargin)))
@@ -290,7 +290,7 @@ final class ForkListTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
 
         OrderForked(Vector(
@@ -300,7 +300,7 @@ final class ForkListTest
         OrderDetachable,
         OrderDetached,
 
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(2)),
 
         OrderFinished(None)))
@@ -313,14 +313,14 @@ final class ForkListTest
             OrderDetachable,
             OrderDetached,
             OrderForked(Vector.empty),
-            OrderJoined(Outcome.succeeded),
+            OrderJoined(OrderOutcome.succeeded),
             OrderMoved(Position(1) / "fork" % 1)))
     finally
       deleteItems(workflow.path, subagentSelection.path)
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =
-      orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
+      orderId => OrderProcessed(OrderOutcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
     expectedTerminationEvent: OrderTerminated = OrderFinished(),
     cancelChildOrders: Boolean = false)
   : Order[Order.State] =
@@ -387,32 +387,32 @@ final class ForkListTest
       orderForked,
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
 
       // Each child order starts at a different Agent. So let forking order detached.
       orderForked,
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(OrderOutcome.succeeded),
       OrderMoved(Position(2)),
 
       // Attach to bAgentPath
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(3)),
 
       // Each child order starts at a different Agent. So detach forking order (should we?)
       OrderDetachable,
       OrderDetached,
       orderForked,
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(OrderOutcome.succeeded),
       OrderMoved(Position(4)),
 
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(5)),
       // Each child order starts at bAgentPath. So detach and then attach forking order to bAgentPath.
       OrderDetachable,
@@ -422,7 +422,7 @@ final class ForkListTest
       orderForked,
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(OrderOutcome.succeeded),
       OrderMoved(Position(6)),
       OrderFinished(),
       OrderDeleted))
@@ -448,8 +448,8 @@ final class ForkListTest
         Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
       //Until v2.5.0: OrderStarted,
-      //Until v2.5.0: OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
+      //Until v2.5.0: OrderOutcomeAdded(OrderOutcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
 
   "Example with a simple script" in:
@@ -481,7 +481,7 @@ final class ForkListTest
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten(s"ELEMENT_ID=$elementId$nl"),
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(OrderOutcome.succeededRC0),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
@@ -519,7 +519,7 @@ object ForkListTest:
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
         step.order.arguments("myList").as[ListValue].orThrow
-        Outcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
+        OrderOutcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
       })
   private object TestJob extends InternalJob.Companion[TestJob]
 

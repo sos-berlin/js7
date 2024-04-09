@@ -26,7 +26,7 @@ import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.OrderObstacle.{agentProcessLimitReached, jobProcessLimitReached}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -85,10 +85,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   }
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(0)))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.rc(0)))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(0)))
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(1)))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(1)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(1)))
 
   addExecuteTest(
     Execute(
@@ -97,7 +97,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         ShellScriptExecutable(
           returnCodeScript(2),
           returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(2)))))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(2)))
 
   addExecuteTest(
     Execute(
@@ -108,10 +108,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           returnCodeMeaning = ReturnCodeMeaning.Success(
             RangeSet.fromRanges(Seq(
               RangeSet.Interval(ReturnCode(1), ReturnCode(5)))))))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.rc(3)))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(3)))
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(44)))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -119,7 +119,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NumericConstant(44))))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -128,7 +128,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NamedValue("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -137,7 +137,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NamedValue("defaultArg"))),
       defaultArguments = Map("defaultArg" -> NumericConstant(44)))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -147,7 +147,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         env = Map("myExitCode" -> NamedValue("NAME"))),
       defaultArguments = Map("NAME" -> NumericConstant(99)))),  // ignored
     orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -155,7 +155,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       RelativePathExecutable(
         "TEST-SCRIPT.cmd",
         env = Map("myExitCode" -> NumericConstant(44))))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -163,14 +163,14 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       AbsolutePathExecutable(
         myReturnCodeScriptFile.toString,
         env = Map("myExitCode" -> NumericConstant(44))))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
       agentPath,
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -179,7 +179,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
         env = Map("myExitCode" -> NamedValue("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -188,7 +188,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         returnCodeScript("SCHEDULER_PARAM_MYEXITCODE"),
         v1Compatible = true))),
     orderArguments = Map("myExitCode" -> NumberValue(44)),
-    expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
+    expectedOutcome = OrderOutcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
@@ -196,7 +196,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NamedValue("UNKNOWN"))))),
-    expectedOutcome = Outcome.Disrupted(Problem("No such named value: UNKNOWN")))
+    expectedOutcome = OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN")))
 
   addExecuteTest(
     Execute(
@@ -207,7 +207,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           env = Map("myExitCode" -> NamedValue("myExitCode")),
           returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(1)))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
-    expectedOutcome = Outcome.Succeeded.rc(1))
+    expectedOutcome = OrderOutcome.Succeeded.rc(1))
 
   "Argument precedence" in {
     val executable = ShellScriptExecutable(
@@ -232,9 +232,9 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
                 ReturnCode(11), ReturnCode(22)))),
             Map("myExitCode" -> NumericConstant(11))))),
       expectedOutcomes = Seq(
-        Outcome.Succeeded.rc(11),
-        Outcome.Succeeded.rc(22),
-        Outcome.Succeeded.rc(33)),
+        OrderOutcome.Succeeded.rc(11),
+        OrderOutcome.Succeeded.rc(22),
+        OrderOutcome.Succeeded.rc(33)),
       orderArguments = Map("orderExitCode" -> NumberValue(44)))
   }
 
@@ -263,8 +263,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       orderArguments = Map(
         "orderExitCode" -> NumberValue(44)),
       expectedOutcomes = Seq(
-        Outcome.Succeeded.rc(44),
-        Outcome.Succeeded.rc(44)))
+        OrderOutcome.Succeeded.rc(44),
+        OrderOutcome.Succeeded.rc(44)))
   }
 
   "Arguments when v1Compatible include workflow defaults" in {
@@ -297,13 +297,13 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       orderArguments = Map(
         "A" -> NumberValue(4711)),
       expectedOutcomes = Seq(
-        Outcome.Succeeded(NamedValues(
+        OrderOutcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
           "C" ->  StringValue("FROM FIRST JOB"))),
-        Outcome.Succeeded(NamedValues(
+        OrderOutcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
           "C" ->  StringValue("FROM SECOND JOB"))),
-        Outcome.Succeeded(NamedValues(
+        OrderOutcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
           "A" -> StringValue("4711"),
           "B" -> StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
@@ -316,7 +316,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         agentPath,
         TestInternalJob.executable(arguments = Map("ARG" -> NamedValue("ARG"))))),
     orderArguments = Map("ARG" -> NumberValue(100)),
-    expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
   private val deletedEnvName =
     if isWindows then "USERNAME" else if sys.env contains "USER" then "USER" else "LANG"
@@ -412,7 +412,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
 
       val namedValues = events.collect { case OrderProcessed(outcome) => outcome }
         .head
-        .asInstanceOf[Outcome.Succeeded]
+        .asInstanceOf[OrderOutcome.Succeeded]
         .namedValues
 
       assert(namedValues contains "SCHEDULED_DATE")
@@ -459,11 +459,11 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       val processed = controller.runOrder(order).map(_.value)
         .collect { case o: OrderProcessed => o }
       assert(processed == Seq(
-        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("1"),
+        OrderProcessed(OrderOutcome.Succeeded(Map("jobExecutionCount" -> StringValue("1"),
           "returnCode" -> NumberValue(0)))),
-        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("2"),
+        OrderProcessed(OrderOutcome.Succeeded(Map("jobExecutionCount" -> StringValue("2"),
           "returnCode" -> NumberValue(0)))),
-        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("3"),
+        OrderProcessed(OrderOutcome.Succeeded(Map("jobExecutionCount" -> StringValue("3"),
           "returnCode" -> NumberValue(0))))))
     }
   }
@@ -490,10 +490,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           }
         }""").orThrow,
       expectedOutcomes = Seq(
-        Outcome.Succeeded(NamedValues.rc(1)),
-        Outcome.Succeeded(NamedValues.rc(2)),
-        Outcome.Succeeded(NamedValues.rc(11)),
-        Outcome.Succeeded(NamedValues.rc(2))))
+        OrderOutcome.Succeeded(NamedValues.rc(1)),
+        OrderOutcome.Succeeded(NamedValues.rc(2)),
+        OrderOutcome.Succeeded(NamedValues.rc(11)),
+        OrderOutcome.Succeeded(NamedValues.rc(2))))
   }
 
   "Command line arguments" in {
@@ -630,7 +630,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   private def addExecuteTest(
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
-    expectedOutcome: Outcome)
+    expectedOutcome: OrderOutcome)
     (using source.Position)
   : Unit =
     WorkflowPrinter.instructionToString(execute) in {
@@ -640,7 +640,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty,
-    expectedOutcomes: Seq[Outcome])
+    expectedOutcomes: Seq[OrderOutcome])
     (using source.Position)
   : Unit = {
     val events = runWithWorkflow(anonymousWorkflow, orderArguments)
@@ -704,9 +704,9 @@ object ExecuteTest
     def toOrderProcess(step: Step) =
       OrderProcess(
         IO {
-          Outcome.Completed.fromChecked(
+          OrderOutcome.Completed.fromChecked(
             for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
-              Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
+              OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]

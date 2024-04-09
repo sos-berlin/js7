@@ -19,7 +19,7 @@ import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.data.event.tests.CirceParallelizationSpeedTest.*
-import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.Then
@@ -37,7 +37,8 @@ final class CirceParallelizationSpeedTest extends OurAsyncTestSuite:
     lazy val big: Seq[Big] =
       val workflowPosition = WorkflowPath("WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
       val namedValues = Map("A" -> StringValue("a"), "B" -> ListValue((1 to 10).map(_.toString).map(StringValue(_))))
-      val historicOutcome = HistoricOutcome(workflowPosition.position, Outcome.Succeeded(namedValues))
+      val historicOutcome = 
+        HistoricOutcome(workflowPosition.position, OrderOutcome.Succeeded(namedValues))
       val fakeOrder = Order[Order.State](
         OrderId("?"),
         workflowPosition,

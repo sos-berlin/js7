@@ -11,7 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.SetOnce
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
 import scala.concurrent.ExecutionContext
@@ -43,7 +43,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag](
   def callProcessOrder(call: J => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match
       case Left(problem) =>
-        OrderProcess(IO.pure(Outcome.Failed.fromProblem(problem)))
+        OrderProcess(IO.pure(OrderOutcome.Failed.fromProblem(problem)))
 
       case Right(jInternalJob) =>
         call(jInternalJob)

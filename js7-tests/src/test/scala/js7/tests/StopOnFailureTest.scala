@@ -11,7 +11,7 @@ import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrder}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.Order.{Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
-import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.BooleanValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, If, LockInstruction, Options}
@@ -63,7 +63,7 @@ final class StopOnFailureTest
         OrderAdded(workflow.id),
         OrderMoved(Position(0) / "options" % 0),
         OrderStarted,
-        OrderOutcomeAdded(Outcome.Failed(Some("TEST-FAILURE"))),
+        OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST-FAILURE"))),
         OrderStopped,
         OrderResumed(Some(Position(0) / "options" % 1), asSucceeded = true),
         OrderMoved(Position(1)),
@@ -88,7 +88,7 @@ final class StopOnFailureTest
         OrderMoved(Position(0) / "options" % 0),
         OrderMoved(Position(0) / "options" % 0 / "options" % 0),
         OrderStarted,
-        OrderOutcomeAdded(Outcome.Failed(Some("TEST-FAILURE"))),
+        OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST-FAILURE"))),
         OrderFailed(Position(0) / "options" % 0 / "options" % 0)))
     }
 
@@ -128,7 +128,7 @@ final class StopOnFailureTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "options" % 0 / "lock" % 1),
         OrderDetachable,
         OrderDetached,
@@ -137,7 +137,7 @@ final class StopOnFailureTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderStopped,
@@ -182,7 +182,7 @@ final class StopOnFailureTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderStopped,
@@ -218,7 +218,7 @@ final class StopOnFailureTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderStopped,
@@ -245,7 +245,7 @@ final class StopOnFailureTest
         OrderResumed.AppendHistoricOutcome(
           HistoricOutcome(
             order.position,
-            Outcome.Succeeded(Map(
+            OrderOutcome.Succeeded(Map(
               "param" -> BooleanValue(true))))))
       controller.api
         .executeCommand(
@@ -255,7 +255,7 @@ final class StopOnFailureTest
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
         OrderAdded(workflow.id),
-        OrderOutcomeAdded(Outcome.Disrupted(Outcome.Disrupted.Other(Problem(
+        OrderOutcomeAdded(OrderOutcome.Disrupted(OrderOutcome.Disrupted.Other(Problem(
           "No such named value: param")))),
         OrderStopped,
         OrderResumed(historyOperations = historyOperations),

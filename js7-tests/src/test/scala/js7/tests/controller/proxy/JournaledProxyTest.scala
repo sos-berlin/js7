@@ -24,7 +24,7 @@ import js7.data.item.VersionId
 import js7.data.item.VersionedEvent.VersionedItemAdded
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.Outcome.Succeeded
+import js7.data.order.OrderOutcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.Position

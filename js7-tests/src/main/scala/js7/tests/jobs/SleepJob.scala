@@ -4,7 +4,7 @@ import cats.syntax.traverse.*
 import js7.base.time.ScalaTime.{DurationRichInt, RichFiniteDuration}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data.value.expression.Expression.NumericConstant
 import js7.data.workflow.instructions.Execute
 import js7.launcher.OrderProcess
@@ -22,8 +22,8 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
         .fold_(Right(0.s), _.asDuration)
         .traverse(duration =>
           clock.sleep(duration, "SleepJob").when(duration.isPositive)
-            .as(Outcome.succeeded))
-        .map(Outcome.Completed.fromChecked))
+            .as(OrderOutcome.succeeded))
+        .map(OrderOutcome.Completed.fromChecked))
 
 
 object SleepJob extends InternalJob.Companion[SleepJob]:

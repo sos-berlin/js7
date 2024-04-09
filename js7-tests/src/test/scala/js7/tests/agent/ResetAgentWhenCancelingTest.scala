@@ -11,7 +11,7 @@ import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, ResetAgent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.workflow.position.{InstructionNr, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.ResetAgentWhenCancelingTest.*
@@ -77,10 +77,10 @@ final class ResetAgentWhenCancelingTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("TestJob\n"),
-        OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
-        //OrderProcessed(Outcome.succeeded), // Until v2.6 (Monix), only when non-parallel tested
+        OrderProcessed(OrderOutcome.Disrupted(AgentResetProblem(agentPath))),
+        //OrderProcessed(OrderOutcome.succeeded), // Until v2.6 (Monix), only when non-parallel tested
         OrderDetached,
-        OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
+        OrderOutcomeAdded(OrderOutcome.Disrupted(AgentResetProblem(agentPath))),
         OrderFailed(Position(0)),
         OrderCancelled))
 

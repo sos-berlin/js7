@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -71,7 +71,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
       val a2Processed = eventWatch
         .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
         .head.value.event
-      assert(a2Processed == OrderProcessed(Outcome.succeeded))
+      assert(a2Processed == OrderProcessed(OrderOutcome.succeeded))
 
       eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
@@ -90,7 +90,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
         eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
         val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
           .head.value.event
-        assert(bProcessed == OrderProcessed(Outcome.succeeded))
+        assert(bProcessed == OrderProcessed(OrderOutcome.succeeded))
         eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
     }
 

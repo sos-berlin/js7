@@ -219,14 +219,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   object OrderStderrWritten:
     implicit val jsonCodec: Codec.AsObject[OrderStderrWritten] = deriveCodec[OrderStderrWritten]
 
-  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent:
+  final case class OrderProcessed(outcome: OrderOutcome) extends OrderCoreEvent:
     override def isSucceeded = outcome.isSucceeded
   object OrderProcessed:
     val processLostDueToRestart = processLost(ProcessLostDueToRestartProblem)
     val processLostDueToReset = processLost(ProcessLostDueToResetProblem)
 
     def processLost(problem: Problem) =
-      OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.ProcessLost(problem)))
+      OrderProcessed(OrderOutcome.Disrupted(OrderOutcome.Disrupted.ProcessLost(problem)))
 
     implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
 
@@ -257,7 +257,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
           branchId <- c.get[Option[Fork.Branch.Id]]("branchId")
         yield Child(orderId, arguments, branchId)
 
-  final case class OrderJoined(outcome: Outcome)
+  final case class OrderJoined(outcome: OrderOutcome)
   extends OrderActorEvent:
     override def isSucceeded = outcome.isSucceeded
 
@@ -352,18 +352,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     def movedTo: Position
 
-  final case class OrderOutcomeAdded(outcome: Outcome)
+  final case class OrderOutcomeAdded(outcome: OrderOutcome)
   extends OrderActorEvent
 
   final case class OrderFailed(
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
-    outcome: Option[Outcome.NotSucceeded])
+    outcome: Option[OrderOutcome.NotSucceeded])
   extends OrderFailedEvent, OrderTerminated:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   object OrderFailed:
     @deprecated("outcome is deprecated", "v2.5")
-    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+    private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
       new OrderFailed(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderFailed(movedTo, None)
@@ -371,12 +371,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderFailedInFork(
     movedTo: Position,
     // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
-    outcome: Option[Outcome.NotSucceeded] = None)
+    outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   object OrderFailedInFork:
     @deprecated("outcome is deprecated", "v2.5")
-    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+    private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
       new OrderFailedInFork(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderFailedInFork(movedTo, None)
@@ -384,26 +384,26 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   // COMPATIBLE with v2.4
   final case class OrderCatched(
     movedTo: Position,
-    outcome: Option[Outcome.NotSucceeded] = None)
+    outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
 
   final case class OrderCaught(
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
-    outcome: Option[Outcome.NotSucceeded] = None)
+    outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   object OrderCaught:
     @deprecated("outcome is deprecated", "v2.5")
-    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+    private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
       new OrderCaught(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderCaught(movedTo, None)
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
    * `OrderStopped`,  */
-  final case class OrderFailedIntermediate_(outcome: Option[Outcome.NotSucceeded] = None)
+  final case class OrderFailedIntermediate_(outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderActorEvent
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
@@ -441,7 +441,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     */
   case object OrderDetached extends OrderCoreEvent
 
-  final case class OrderFinished(outcome: Option[Outcome.Completed] = None)
+  final case class OrderFinished(outcome: Option[OrderOutcome.Completed] = None)
   extends OrderActorEvent, OrderTerminated
 
   type OrderDeletionMarked = OrderDeletionMarked.type
@@ -511,14 +511,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     sealed trait HistoryOperation:
       def positions: Iterable[Position]
 
-    final case class ReplaceHistoricOutcome(position: Position, outcome: Outcome)
+    final case class ReplaceHistoricOutcome(position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
       def positions = position :: Nil
     object ReplaceHistoricOutcome:
       def apply(historicOutcome: HistoricOutcome) =
         new ReplaceHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
 
-    final case class InsertHistoricOutcome(before: Position, position: Position, outcome: Outcome)
+    final case class InsertHistoricOutcome(before: Position, position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
       def positions = before :: position :: Nil
     object InsertHistoricOutcome:
@@ -529,7 +529,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     extends HistoryOperation:
       def positions = position :: Nil
 
-    final case class AppendHistoricOutcome(position: Position, outcome: Outcome)
+    final case class AppendHistoricOutcome(position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
       def positions = position :: Nil
     object AppendHistoricOutcome:
@@ -606,7 +606,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderPrompted(question: Value)
   extends OrderActorEvent
 
-  final case class OrderPromptAnswered(/*outcome: Outcome.Completed*/)
+  final case class OrderPromptAnswered(/*outcome: OrderOutcome.Completed*/)
   extends OrderCoreEvent
 
   final case class OrderCyclingPrepared(cycleState: CycleState)

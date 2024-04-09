@@ -11,8 +11,8 @@ import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, o
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached}
-import js7.data.order.Outcome.Disrupted.ProcessLost
-import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
+import js7.data.order.OrderOutcome.Disrupted.ProcessLost
+import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
 import js7.data.state.StateView
 import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
@@ -54,7 +54,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
               yield Nil
               Some(
                 checked.left.flatMap(problem => Right(
-                  (order.id <-: OrderFailedIntermediate_(Some(Outcome.Disrupted(problem)))) :: Nil)))
+                  (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem)))) :: Nil)))
             }))
         .orElse(
           // Order.Ready: Execution has to be started by the caller
@@ -65,16 +65,16 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
             .ifState[Processed]
             .map { order =>
               val event = order.lastOutcome match {
-                case Outcome.Disrupted(_: ProcessLost, _) =>
+                case OrderOutcome.Disrupted(_: ProcessLost, _) =>
                   OrderMoved(order.position) // Repeat
 
-                case _: Outcome.Killed =>
+                case _: OrderOutcome.Killed =>
                   OrderProcessingKilled
 
-                case _: Outcome.NotSucceeded | _: Outcome.TimedOut =>
+                case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
                   OrderFailedIntermediate_()
 
-                case _: Outcome.Succeeded =>
+                case _: OrderOutcome.Succeeded =>
                   OrderMoved(order.position.increment)
               }
               Right((order.id <-: event) :: Nil)

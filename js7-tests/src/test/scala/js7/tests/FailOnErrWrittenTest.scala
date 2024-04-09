@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderProcessed, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -39,9 +39,9 @@ final class FailOnErrWrittenTest extends OurTestSuite, ControllerAgentForScalaTe
     ))).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderProcessed](orderId) == Seq(
-      OrderProcessed(Outcome.succeededRC0),
-      OrderProcessed(Outcome.succeededRC0),
-      OrderProcessed(Outcome.Failed(Some("The job's error channel: ERROR"))),
+      OrderProcessed(OrderOutcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
+      OrderProcessed(OrderOutcome.Failed(Some("The job's error channel: ERROR"))),
     ))
 
 

@@ -10,7 +10,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.data.job.JobKey
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.{OrderId, OrderOutcome}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.Await
 import scala.util.Try
@@ -20,11 +20,11 @@ final class OrderProcessTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   "Run an OrderProcess" in:
-    val orderProcess = OrderProcess(IO(Outcome.succeeded))
+    val orderProcess = OrderProcess(IO(OrderOutcome.succeeded))
     for
       running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
       outcome <- running.joinStd
-    yield assert(outcome == Outcome.succeeded)
+    yield assert(outcome == OrderOutcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
     val semaphore = Semaphore[IO](0).unsafeMemoize
@@ -55,7 +55,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
-    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))
+    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(OrderOutcome.succeeded))
 
     val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
       .flatMap(_.joinStd)
@@ -65,7 +65,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     awaitAndAssert(count == -1)
 
     orderProcess.cancel(false).await(99.s)
-    assert(future.await(99.s) == Outcome.Failed(Some("Canceled")))
+    assert(future.await(99.s) == OrderOutcome.Failed(Some("Canceled")))
 
     // No waiting acquirer
     awaitAndAssert(count == 0)

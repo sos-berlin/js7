@@ -14,7 +14,7 @@ import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
@@ -324,8 +324,8 @@ final class ControllerCommandTest extends OurTestSuite
         OrderId("ORDER"),
         Some(Position(1)),
         Seq(
-          OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
-          OrderResumed.ReplaceHistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1)))),
+          OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))),
+          OrderResumed.ReplaceHistoricOutcome(Position(1), OrderOutcome.Failed(NamedValues.rc(1)))),
         asSucceeded = true),
       json"""{
         "TYPE": "ResumeOrder",

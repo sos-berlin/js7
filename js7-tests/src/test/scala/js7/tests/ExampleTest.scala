@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.*
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.tests.ExampleTest.*
@@ -43,7 +43,7 @@ final class ExampleTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,

@@ -12,7 +12,7 @@ import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventId, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -47,7 +47,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
               OrderStarted,
               OrderProcessingStarted(anySubagentId),
               OrderStdoutWritten("STDOUT 1\nSTDOUT 2\n"),
-              OrderProcessed(Outcome.succeeded),
+              OrderProcessed(OrderOutcome.succeeded),
               OrderMoved(Position(1)),
               OrderDetachable,
               OrderDetached,
@@ -121,5 +121,5 @@ object SubagentMultipleOrdersTest:
       OrderProcess(
         step.writeOut("STDOUT 1\n") *>
         step.writeOut("STDOUT 2\n") *>
-        IO.pure(Outcome.succeeded))
+        IO.pure(OrderOutcome.succeeded))
   object TestJob extends InternalJob.Companion[TestJob]

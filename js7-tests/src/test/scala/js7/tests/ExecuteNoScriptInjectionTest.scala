@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.tests.ExecuteNoScriptInjectionTest.*
@@ -41,7 +41,7 @@ final class ExecuteNoScriptInjectionTest extends OurTestSuite, ControllerAgentFo
     def testInjectionNotAllowed(orderId: OrderId, workflowPath: WorkflowPath): Unit = {
       controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
       val orderProcessed = eventWatch.await[OrderProcessed](_.key == orderId).head
-      assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem ==
+      assert(orderProcessed.value.event.outcome.asInstanceOf[OrderOutcome.Disrupted].reason.problem ==
         SignedInjectionNotAllowed)
     }
   }

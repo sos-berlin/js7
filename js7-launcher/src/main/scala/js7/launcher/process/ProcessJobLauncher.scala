@@ -5,7 +5,7 @@ import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data.value.StringValue
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.internal.JobLauncher
@@ -32,14 +32,14 @@ trait ProcessJobLauncher extends JobLauncher:
       jobLauncherConf)
 
     new OrderProcess:
-      def run: IO[FiberIO[Outcome.Completed]] =
+      def run: IO[FiberIO[OrderOutcome.Completed]] =
         val checkedEnv = for
           jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
         yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
         checkedEnv match
           case Left(problem) =>
-            IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
+            IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed).start
           case Right(env) =>
             processDriver.runProcess(env, processOrder.stdObservers).start
 

@@ -18,7 +18,7 @@ import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
-import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, TestStateView}
@@ -46,7 +46,7 @@ final class OrderEventSourceTest extends OurTestSuite
     val rawOrder = Order(OrderId("PROCESS-LOST"), TestWorkflowId /: Position(2),
       Order.Processed,
       historicOutcomes = Vector(
-        HistoricOutcome(Position(0), Outcome.processLost(ProcessLostDueToRestartProblem))))
+        HistoricOutcome(Position(0), OrderOutcome.processLost(ProcessLostDueToRestartProblem))))
 
     for isAgent <- Seq(false, true) do s"isAgent=$isAgent" in {
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
@@ -69,11 +69,11 @@ final class OrderEventSourceTest extends OurTestSuite
       executeScript)                                  // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.Succeeded(NamedValues.rc(0))) == Seq(OrderMoved(Position(1) / Then % 0)))
+      assert(step(workflow, OrderOutcome.Succeeded(NamedValues.rc(0))) == Seq(OrderMoved(Position(1) / Then % 0)))
     }
 
     "then branch skipped" in {
-      assert(step(workflow, Outcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(2))))
+      assert(step(workflow, OrderOutcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(2))))
     }
 
     "again, all events" in {
@@ -92,7 +92,7 @@ final class OrderEventSourceTest extends OurTestSuite
     }
 
     "then branch not executed" in {
-      assert(step(workflow, Outcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(2))))
+      assert(step(workflow, OrderOutcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(2))))
     }
   }
 
@@ -105,11 +105,11 @@ final class OrderEventSourceTest extends OurTestSuite
       executeScript)                                        // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.succeededRC0) == Seq(OrderMoved(Position(1) / Then % 0)))
+      assert(step(workflow, OrderOutcome.succeededRC0) == Seq(OrderMoved(Position(1) / Then % 0)))
     }
 
     "else branch executed" in {
-      assert(step(workflow, Outcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(1) / Else % 0)))
+      assert(step(workflow, OrderOutcome.Succeeded(NamedValues.rc(1))) == Seq(OrderMoved(Position(1) / Else % 0)))
     }
   }
 
@@ -132,7 +132,7 @@ final class OrderEventSourceTest extends OurTestSuite
       orderId / "🥕" <-: OrderAttachable(TestAgentPath),
       orderId / "🥕" <-: OrderAttached(TestAgentPath),
       orderId / "🥕" <-: OrderProcessingStarted(subagentId),
-      orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🥕" <-: OrderProcessed(OrderOutcome.succeededRC0),
       orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
       orderId / "🥕" <-: OrderDetached))
@@ -143,11 +143,11 @@ final class OrderEventSourceTest extends OurTestSuite
       orderId / "🍋" <-: OrderAttachable(TestAgentPath),
       orderId / "🍋" <-: OrderAttached(TestAgentPath),
       orderId / "🍋" <-: OrderProcessingStarted(subagentId),
-      orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🍋" <-: OrderProcessed(OrderOutcome.succeededRC0),
       orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
       orderId / "🍋" <-: OrderDetached,
-      orderId <-: OrderJoined(Outcome.succeeded)))
+      orderId <-: OrderJoined(OrderOutcome.succeeded)))
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(1))))
 
     assert(process.step(orderId) == Seq(orderId <-: OrderForked(Vector(
@@ -158,7 +158,7 @@ final class OrderEventSourceTest extends OurTestSuite
       orderId / "🥕" <-: OrderAttachable(TestAgentPath),
       orderId / "🥕" <-: OrderAttached(TestAgentPath),
       orderId / "🥕" <-: OrderProcessingStarted(subagentId),
-      orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🥕" <-: OrderProcessed(OrderOutcome.succeededRC0),
       orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
       orderId / "🥕" <-: OrderDetached))
@@ -169,11 +169,11 @@ final class OrderEventSourceTest extends OurTestSuite
       orderId / "🍋" <-: OrderAttachable(TestAgentPath),
       orderId / "🍋" <-: OrderAttached(TestAgentPath),
       orderId / "🍋" <-: OrderProcessingStarted(subagentId),
-      orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🍋" <-: OrderProcessed(OrderOutcome.succeededRC0),
       orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
       orderId / "🍋" <-: OrderDetached,
-      orderId <-: OrderJoined(Outcome.succeeded)))
+      orderId <-: OrderJoined(OrderOutcome.succeeded)))
 
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(2))))
     assert(process.step(orderId) == Seq(orderId <-: OrderAttachable(TestAgentPath)))
@@ -203,7 +203,7 @@ final class OrderEventSourceTest extends OurTestSuite
     val attached = Some(Order.Attached(TestAgentPath))
     val detaching = Some(Order.Detaching(TestAgentPath))
 
-    val historicOps = Seq(OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.failed))
+    val historicOps = Seq(OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.failed))
 
     "Order.mark.isEmpty" - {
       val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh)
@@ -652,10 +652,10 @@ final class OrderEventSourceTest extends OurTestSuite
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
           }
           testController(readyOrder, detached) { (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Seq(ReplaceHistoricOutcome(Position(0), Outcome.succeeded)), false) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, Some(Position(1)), Seq(ReplaceHistoricOutcome(Position(0), OrderOutcome.succeeded)), false) == Left(CannotResumeOrderProblem))
           }
           testController(readyOrder, detached) { (order, controller) =>
-            assert(controller.resume(order.id, None, Seq(ReplaceHistoricOutcome(Position(0), Outcome.succeeded)), false) == Left(CannotResumeOrderProblem))
+            assert(controller.resume(order.id, None, Seq(ReplaceHistoricOutcome(Position(0), OrderOutcome.succeeded)), false) == Left(CannotResumeOrderProblem))
           }
         }
 
@@ -1289,7 +1289,7 @@ final class OrderEventSourceTest extends OurTestSuite
         orders = Some(Seq(order)),
         workflows = Some(Seq(workflow))))
 
-    val failed7 = Outcome.Failed(NamedValues.rc(7))
+    val failed7 = OrderOutcome.Failed(NamedValues.rc(7))
 
     "fail" in {
       val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
@@ -1425,7 +1425,7 @@ final class OrderEventSourceTest extends OurTestSuite
       bChild = bChild.applyEvent(orderFailedInFork).orThrow
       // TODO Is FailedInFork replaceable by Ready and !lastOutcome.isSucceeded?
 
-      val orderJoined = OrderJoined(Outcome.Failed(Some(
+      val orderJoined = OrderJoined(OrderOutcome.Failed(Some(
         """Order:ORDER|🥕 Failed;
           |Order:ORDER|🍋 Failed"""
           .stripMargin)))
@@ -1506,16 +1506,16 @@ object OrderEventSourceTest
   private val subagentId = SubagentId("SUBAGENT")
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId /: Position(0), Order.Processed,
-    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0)))))
+    historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0)))))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId /: Position(0), Order.Processed,
-    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1)))))
+    historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1)))))
   private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
   private val executeScript = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("executable")))
 
-  private def step(workflow: Workflow, outcome: Outcome): Seq[OrderEvent] = {
+  private def step(workflow: Workflow, outcome: OrderOutcome): Seq[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
     process.transferToAgent(TestAgentPath)
@@ -1537,7 +1537,7 @@ object OrderEventSourceTest
       update(OrderDetached)
     }
 
-    def jobStep(outcome: Outcome = Outcome.Succeeded(NamedValues.rc(0))) =
+    def jobStep(outcome: OrderOutcome = OrderOutcome.Succeeded(NamedValues.rc(0))) =
       process.jobStep(orderId, outcome)
 
     def step(): Seq[OrderEvent] =
@@ -1558,7 +1558,7 @@ object OrderEventSourceTest
         orders = Some(idToOrder.values),
         workflows = Some(idToWorkflow.values)))
 
-    def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
+    def jobStep(orderId: OrderId, outcome: OrderOutcome = OrderOutcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted(subagentId))
       update(orderId <-: OrderProcessed(outcome))
     }
@@ -1591,7 +1591,7 @@ object OrderEventSourceTest
               Seq(order.id <-: OrderProcessingStarted(subagentId))
 
           case _ if inProcess contains orderId =>
-            Seq(orderId <-: OrderProcessed(Outcome.succeededRC0))
+            Seq(orderId <-: OrderProcessed(OrderOutcome.succeededRC0))
 
           case _ =>
             eventSource(isAgent = order.isAttached).nextEvents(orderId)

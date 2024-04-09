@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
 import js7.data.workflow.Instruction
@@ -23,7 +23,7 @@ final class FinishTest extends OurTestSuite
         }""")
 
       testJsonDecoder[Instruction.Labeled](
-        Finish(Some(Outcome.failed)),
+        Finish(Some(OrderOutcome.failed)),
         json"""{
           "TYPE": "Finish",
           "outcome": {
@@ -32,7 +32,7 @@ final class FinishTest extends OurTestSuite
         }""")
 
       testJsonDecoder[Instruction.Labeled](
-        Finish(Some(Outcome.succeeded)),
+        Finish(Some(OrderOutcome.succeeded)),
         json"""{
           "TYPE": "Finish",
           "outcome": {
@@ -46,7 +46,7 @@ final class FinishTest extends OurTestSuite
       testJson[Instruction.Labeled](
         Finish(
           Some(
-            Outcome.Failed(
+            OrderOutcome.Failed(
               Some("MESSAGE"),
               Map("A" -> NumberValue(7)))),
           Some(SourcePos(1, 2))),

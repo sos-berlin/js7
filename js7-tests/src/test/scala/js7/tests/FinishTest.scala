@@ -11,7 +11,7 @@ import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Finish, Fork, If, TryInstruction}
@@ -53,14 +53,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
         OrderFinished()))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.succeeded)))
+      HistoricOutcome(Position(0), OrderOutcome.succeeded)))
   }
 
   "Successful Finish in catch (JS-2073)" in {
@@ -71,7 +71,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           Workflow.of(
             FailingJob.execute(agentPath)),
           Workflow.of(
-            Finish(Some(Outcome.Succeeded(Map("result" -> StringValue("SUCCESS"))))))),
+            Finish(Some(OrderOutcome.Succeeded(Map("result" -> StringValue("SUCCESS"))))))),
         Fail()),
       orderId,
       Vector(
@@ -84,12 +84,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderCaught(Position(0) / "catch+0" % 0),
         OrderDetachable,
         OrderDetached,
-        OrderFinished(Some(Outcome.Succeeded(Map("result" -> StringValue("SUCCESS")))))))
+        OrderFinished(Some(OrderOutcome.Succeeded(Map("result" -> StringValue("SUCCESS")))))))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0) / "try+0" % 0, FailingJob.outcome),
-      HistoricOutcome(Position(0) / "catch+0" % 0, Outcome.succeeded),
-      HistoricOutcome(Position(0) / "catch+0" % 0, Outcome.Succeeded(Map(
+      HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.succeeded),
+      HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Succeeded(Map(
         "result" -> StringValue("SUCCESS"))))))
   }
 
@@ -101,7 +101,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         If(expr("true"),
           Workflow.of(
             EmptyJob.execute(agentPath),
-            Finish(Some(Outcome.Failed(Some("FAIL WITH FINISH")))))),
+            Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH")))))),
         Fail()),
       orderId,
       Vector(
@@ -109,19 +109,19 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1) / "then" % 0),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1) / "then" % 1),
         OrderDetachable,
         OrderDetached,
-        OrderFinished(Some(Outcome.Failed(Some("FAIL WITH FINISH"))))))
+        OrderFinished(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH"))))))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1) / "then" % 0, Outcome.succeeded),
-      HistoricOutcome(Position(1) / "then" % 1, Outcome.Failed(Some("FAIL WITH FINISH")))))
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1) / "then" % 0, OrderOutcome.succeeded),
+      HistoricOutcome(Position(1) / "then" % 1, OrderOutcome.Failed(Some("FAIL WITH FINISH")))))
   }
 
   "finish in fork, finish first" in {
@@ -138,7 +138,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
               EmptyJob.execute(agentPath)),
             "🍋" -> Workflow.of(
               SleepJob.sleep(agentPath, 100.ms),
-              Finish(Some(Outcome.Succeeded(Map(
+              Finish(Some(OrderOutcome.Succeeded(Map(
                 "result" -> StringValue("FINISH"))))))))),
       orderId)
 
@@ -147,7 +147,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
         OrderDetached,
@@ -158,11 +158,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
         OrderDetached,
-        OrderOutcomeAdded(Outcome.Succeeded(Map(
+        OrderOutcomeAdded(OrderOutcome.Succeeded(Map(
           "result" -> StringValue("FINISH")))),
         OrderMoved(Position(0) / "fork+🍋" % 2)))
 
@@ -172,12 +172,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         OrderForked(Vector(
           "🥕" -> orderId / "🥕",
           "🍋" -> orderId / "🍋")),
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished()))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.succeeded)))
+      HistoricOutcome(Position(0), OrderOutcome.succeeded)))
   }
 
   "JS-2067 is not a bug" - {
@@ -191,10 +191,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
                 EmptyJob.execute(agentPath),
                 If(expr("true"),
                   Workflow.of(
-                    Finish(Some(Outcome.Failed(Some("FINISH WITH FAILURE")))))),
+                    Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))))),
                 EmptyJob.execute(agentPath)),
               "🍋" -> Workflow.of(
-                Finish(Some(Outcome.Succeeded(Map(
+                Finish(Some(OrderOutcome.Succeeded(Map(
                   "result" -> StringValue("FINISH"))))))),
             joinIfFailed = true)),
         orderId)
@@ -204,16 +204,16 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
           OrderDetachable,
           OrderDetached,
-          OrderOutcomeAdded(Outcome.Failed(Some("FINISH WITH FAILURE"))),
+          OrderOutcomeAdded(OrderOutcome.Failed(Some("FINISH WITH FAILURE"))),
           OrderFailedInFork(Position(0) / "fork+🥕" %  1 / "then" % 0)))
 
       assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
         Vector(
-          OrderOutcomeAdded(Outcome.Succeeded(Map(
+          OrderOutcomeAdded(OrderOutcome.Succeeded(Map(
             "result" -> StringValue("FINISH")))),
           OrderMoved(Position(0) / "fork+🍋" % 1)))
 
@@ -223,11 +223,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           OrderForked(Vector(
             "🥕" -> orderId / "🥕",
             "🍋" -> orderId / "🍋")),
-          OrderJoined(Outcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)"))),
+          OrderJoined(OrderOutcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)"))),
           OrderFailed(Position(0))))
 
       assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-        HistoricOutcome(Position(0), Outcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)")))))
+        HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)")))))
     }
 
     "Failing Finish in fork, without joinIfFailed" in {
@@ -238,10 +238,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
               EmptyJob.execute(agentPath),
               If(expr("true"),
                 Workflow.of(
-                  Finish(Some(Outcome.Failed(Some("FINISH WITH FAILURE")))))),
+                  Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))))),
               EmptyJob.execute(agentPath)),
             "🍋" -> Workflow.of(
-              Finish(Some(Outcome.Succeeded(Map(
+              Finish(Some(OrderOutcome.Succeeded(Map(
                 "result" -> StringValue("FINISH")))))))))
 
       val orderId = OrderId("🔔")
@@ -267,17 +267,17 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
             OrderAttachable(agentPath),
             OrderAttached(agentPath),
             OrderProcessingStarted(subagentId),
-            OrderProcessed(Outcome.succeeded),
+            OrderProcessed(OrderOutcome.succeeded),
             OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0), // Position of Finish
             OrderDetachable,
             OrderDetached,
-            OrderOutcomeAdded(Outcome.Failed(Some("FINISH WITH FAILURE"))),
+            OrderOutcomeAdded(OrderOutcome.Failed(Some("FINISH WITH FAILURE"))),
             OrderFailed(Position(0) / "fork+🥕" % 1 / "then" % 0),
             OrderCancelled))
 
         assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
           Vector(
-            OrderOutcomeAdded(Outcome.Succeeded(Map(
+            OrderOutcomeAdded(OrderOutcome.Succeeded(Map(
               "result" -> StringValue("FINISH")))),
             OrderMoved(Position(0) / "fork+🍋" % 1),
             OrderCancellationMarked(FreshOrStarted())))
@@ -289,12 +289,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
               "🥕" -> orderId / "🥕",
               "🍋" -> orderId / "🍋")),
             OrderCancellationMarked(FreshOrStarted()),
-            OrderJoined(Outcome.Failed(Some("Order:🔔|🥕 has been cancelled"))),
+            OrderJoined(OrderOutcome.Failed(Some("Order:🔔|🥕 has been cancelled"))),
             OrderFailed(Position(0)),
             OrderCancelled))
 
         assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-          HistoricOutcome(Position(0), Outcome.Failed(Some("Order:🔔|🥕 has been cancelled")))))
+          HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:🔔|🥕 has been cancelled")))))
       }
     }
   }
@@ -307,7 +307,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
             SleepJob.sleep(agentPath, 100.ms),
             If(expr("true"),
               Workflow.of(
-                Finish(Some(Outcome.Failed(Some("FAIL WITH FINISH")))))),
+                Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH")))))),
             FailingJob.execute(agentPath)),
           "🍋" -> Workflow.of(
             EmptyJob.execute(agentPath)))))
@@ -324,17 +324,17 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0), // Position of Finish
           OrderDetachable,
           OrderDetached,
-          OrderOutcomeAdded(Outcome.Failed(Some("FAIL WITH FINISH"))),
+          OrderOutcomeAdded(OrderOutcome.Failed(Some("FAIL WITH FINISH"))),
           OrderFailed(Position(0) / "fork+🥕" % 1 / Then % 0)))
 
       assert(controllerState.idToOrder(orderId / "🥕").historicOutcomes == Seq(
-        HistoricOutcome(Position(0) / "fork+🥕" % 0, Outcome.succeeded),
+        HistoricOutcome(Position(0) / "fork+🥕" % 0, OrderOutcome.succeeded),
         HistoricOutcome(Position(0) / "fork+🥕" % 1 / "then" % 0,
-          Outcome.Failed(Some("FAIL WITH FINISH")))))
+          OrderOutcome.Failed(Some("FAIL WITH FINISH")))))
 
       controller.api.executeCommand(CancelOrders(Seq(orderId / "🥕"))).await(99.s).orThrow
       eventWatch.await[OrderFailed](_.key == orderId)
@@ -350,7 +350,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "fork+🍋" % 1),
           OrderDetachable,
           OrderDetached))
@@ -361,11 +361,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
           OrderForked(Vector(
             "🥕" -> orderId / "🥕",
             "🍋" -> orderId / "🍋")),
-          OrderJoined(Outcome.Failed(Some("Order:🟪|🥕 has been cancelled"))),
+          OrderJoined(OrderOutcome.Failed(Some("Order:🟪|🥕 has been cancelled"))),
           OrderFailed(Position(0))))
 
       assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-        HistoricOutcome(Position(0), Outcome.Failed(Some("Order:🟪|🥕 has been cancelled")))))
+        HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:🟪|🥕 has been cancelled")))))
     }
   }
 

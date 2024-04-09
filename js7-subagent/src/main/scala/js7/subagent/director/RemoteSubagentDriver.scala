@@ -31,7 +31,7 @@ import js7.data.event.EventId
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
@@ -330,8 +330,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                       val orderProcessed = OrderProcessed(
                         problem match {
                           case SubagentIsShuttingDownProblem =>
-                            Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
-                          case _ => Outcome.Disrupted(problem)
+                            OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
+                          case _ => OrderOutcome.Disrupted(problem)
                         })
 
                       journal

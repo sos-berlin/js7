@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.NumberValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -51,7 +51,7 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map(
+        OrderProcessed(OrderOutcome.TimedOut(OrderOutcome.Failed(Map(
           "returnCode" -> NumberValue(if isWindows then 1 else 128 + SIGTERM.number))))),
         OrderDetachable,
         OrderDetached,

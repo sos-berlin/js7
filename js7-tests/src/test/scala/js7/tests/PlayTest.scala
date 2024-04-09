@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
@@ -51,7 +51,7 @@ final class PlayTest extends OurTestSuite, ControllerAgentForScalaTest:
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutput: String,
-    expectedOutcomes: Seq[Outcome])
+    expectedOutcomes: Seq[OrderOutcome])
   : Unit =
     val events = runWithWorkflow(anonymousWorkflow, orderArguments)
     val output = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold("")(_ + _)
@@ -81,4 +81,4 @@ object PlayTest:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number) yield
-          Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
+          OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))

@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.MissingOrderArgumentProblem
@@ -52,7 +52,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Disrupted(Problem("No such named value: unknownString"))),
+        OrderProcessed(OrderOutcome.Disrupted(Problem("No such named value: unknownString"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
@@ -75,7 +75,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("STRING=DEFAULT\n" + "NUMBER=7\n"),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -102,7 +102,7 @@ object AddOrderTest:
           Stdout,
           s"STRING=${step.arguments("STRING").convertToString}\n" +
             s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
-        .as(Outcome.succeeded))
+        .as(OrderOutcome.succeeded))
   private object EchoJob extends InternalJob.Companion[EchoJob]
 
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),

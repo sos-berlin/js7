@@ -5,7 +5,7 @@ import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.FailExecutorTest.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.state.TestStateView
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
@@ -51,12 +51,12 @@ final class FailExecutorTest extends OurTestSuite
     "Catchable Fail" - {
       "Detached order" in {
         assert(failExecutor.toEvents(Fail(), TestOrder, stateView) ==
-          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
+          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
       }
 
       "Attached order" in {
         assert(failExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), stateView) ==
-          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
+          Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
       }
     }
   }

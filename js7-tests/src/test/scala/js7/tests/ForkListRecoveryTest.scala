@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.instructions.{ForkList, Prompt}
@@ -81,7 +81,7 @@ final class ForkListRecoveryTest extends OurTestSuite, DirectoryProviderForScala
               "id" -> StringValue("CHILD-3"))))),
         OrderDetachable,
         OrderDetached,
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished(),
         OrderDeleted))
@@ -89,7 +89,7 @@ final class ForkListRecoveryTest extends OurTestSuite, DirectoryProviderForScala
       for orderId <- childOrderIds do
         assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "fork" % 1),
           OrderDetachable,
           OrderDetached,

@@ -185,7 +185,7 @@ final case class Order[+S <: Order.State](
           (isAttached | isDetached), {
           var h = outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
           if !h.lastOption.exists(_.outcome.isSucceeded) then
-            h :+= HistoricOutcome(movedTo, Outcome.succeeded)
+            h :+= HistoricOutcome(movedTo, OrderOutcome.succeeded)
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -245,7 +245,7 @@ final case class Order[+S <: Order.State](
           copy(
             state = Broken(maybeProblem),
             historicOutcomes = maybeProblem.fold(historicOutcomes)(problem =>
-              historicOutcomes :+ HistoricOutcome(position, Outcome.Disrupted(problem)))))
+              historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem)))))
 
       case OrderAttachable(agentPath) =>
         check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
@@ -411,7 +411,7 @@ final case class Order[+S <: Order.State](
         updatedHistoryOutcomes.flatMap { updatedHistoricOutcomes =>
           val maybeSucceeded =
             (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
-              HistoricOutcome(position, Outcome.succeeded)
+              HistoricOutcome(position, OrderOutcome.succeeded)
           check(isResumable,
             withPosition(maybePosition getOrElse position)
               .copy(
@@ -569,15 +569,15 @@ final case class Order[+S <: Order.State](
   def isFailed: Boolean =
     lastOutcome match
       // Do not fail but let ExecuteExecutor repeat the job:
-      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_), _) => false
+      case OrderOutcome.Disrupted(OrderOutcome.Disrupted.ProcessLost(_), _) => false
 
       // Let ExecuteExecutor handle this case (and fail then):
-      case Outcome.Killed(_) => !isState[Processed]
+      case OrderOutcome.Killed(_) => !isState[Processed]
 
       case o => !o.isSucceeded
 
-  def lastOutcome: Outcome =
-    historicOutcomes.lastOption.fold_(Outcome.succeeded, _.outcome)
+  def lastOutcome: OrderOutcome =
+    historicOutcomes.lastOption.fold_(OrderOutcome.succeeded, _.outcome)
 
   def isFailable =
     !isSuspendedOrStopped &&
@@ -611,14 +611,14 @@ final case class Order[+S <: Order.State](
         historicOutcomes.view
           .reverse
           .collect:
-            case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues.get(key)
+            case HistoricOutcome(_, o: OrderOutcome.Completed) => o.namedValues.get(key)
           .flatten
           .headOption
 
       private lazy val nameToValue =
         historicOutcomes.view
           .collect:
-            case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues
+            case HistoricOutcome(_, o: OrderOutcome.Completed) => o.namedValues
           .flatten
           .toMap
 

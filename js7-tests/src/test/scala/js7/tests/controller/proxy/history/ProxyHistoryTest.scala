@@ -24,7 +24,7 @@ import js7.data.controller.ControllerState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.Outcome.{Succeeded, succeeded}
+import js7.data.order.OrderOutcome.{Succeeded, succeeded}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowParser

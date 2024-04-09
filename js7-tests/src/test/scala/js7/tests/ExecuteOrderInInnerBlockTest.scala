@@ -7,7 +7,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.BooleanValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fork, If, TryInstruction}
@@ -72,7 +72,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(innerBlock % 1),
 
       OrderDetachable,
@@ -93,7 +93,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(toLocalSubagentId(agentPath)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(innerBlock % 1),
 
       OrderDetachable,

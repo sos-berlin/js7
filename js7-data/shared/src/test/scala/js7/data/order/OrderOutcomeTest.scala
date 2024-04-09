@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.order.Outcome.Completed
+import js7.data.order.OrderOutcome.Completed
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, ProcessLostDueToUnknownReasonProblem}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -12,13 +12,13 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class OutcomeTest extends OurTestSuite
+final class OrderOutcomeTest extends OurTestSuite
 {
   "isSucceeded" in {
-    assert(Outcome.Succeeded(NamedValues.rc(0)).isSucceeded)
-    assert(Outcome.Succeeded(NamedValues.rc(1)).isSucceeded)
-    assert(!Outcome.Disrupted(Problem("error")).isSucceeded)
-    assert(Outcome.Disrupted(Problem("error")) == Outcome.Disrupted(Problem("error")))
+    assert(OrderOutcome.Succeeded(NamedValues.rc(0)).isSucceeded)
+    assert(OrderOutcome.Succeeded(NamedValues.rc(1)).isSucceeded)
+    assert(!OrderOutcome.Disrupted(Problem("error")).isSucceeded)
+    assert(OrderOutcome.Disrupted(Problem("error")) == OrderOutcome.Disrupted(Problem("error")))
   }
 
   "Completed" in {
@@ -26,17 +26,17 @@ final class OutcomeTest extends OurTestSuite
       "returnCode" -> NumberValue(1),
       "K" -> StringValue("V"))
 
-    assert(Completed(true, namedValues) == Outcome.Succeeded(namedValues))
-    assert(Completed(false, namedValues) == Outcome.Failed(namedValues))
-    assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
-      case _: Outcome.Completed => false
+    assert(Completed(true, namedValues) == OrderOutcome.Succeeded(namedValues))
+    assert(Completed(false, namedValues) == OrderOutcome.Failed(namedValues))
+    assert((OrderOutcome.Disrupted(Problem("PROBLEM")): OrderOutcome) match {
+      case _: OrderOutcome.Completed => false
       case _ => true
     })
   }
 
   "JSON" - {
     "Succeeded" in {
-      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumberValue(0))), json"""
+      testJson[OrderOutcome](OrderOutcome.Succeeded(Map("returnCode" -> NumberValue(0))), json"""
         {
           "TYPE": "Succeeded",
           "namedValues": {
@@ -46,8 +46,8 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Succeeded with namedValues" in {
-      testJson[Outcome](
-        Outcome.Succeeded(
+      testJson[OrderOutcome](
+        OrderOutcome.Succeeded(
           Map(
             "returnCode" -> NumberValue(0),
             "KEY" -> StringValue("VALUE"))),
@@ -61,18 +61,18 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Failed" in {
-      testJson[Outcome](Outcome.failed, json"""
+      testJson[OrderOutcome](OrderOutcome.failed, json"""
         {
           "TYPE": "Failed"
         }""")
 
-      testJsonDecoder[Outcome](Outcome.failed, json"""
+      testJsonDecoder[OrderOutcome](OrderOutcome.failed, json"""
         {
           "TYPE": "Failed",
           "namedValues": {}
         }""")
 
-      testJsonDecoder[Outcome](Outcome.Failed(None, Map.empty, uncatchable = true), json"""
+      testJsonDecoder[OrderOutcome](OrderOutcome.Failed(None, Map.empty, uncatchable = true), json"""
         {
           "TYPE": "Failed",
           "uncatchable": true,
@@ -81,8 +81,8 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Failed complete" in {
-      testJson[Outcome](
-        Outcome.Failed(
+      testJson[OrderOutcome](
+        OrderOutcome.Failed(
           Some("MESSAGE"),
           Map(
             "returnCode" -> NumberValue(1),
@@ -98,9 +98,9 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "TimedOut with Failed" in {
-      testJson[Outcome](
-        Outcome.TimedOut(
-          Outcome.Failed(
+      testJson[OrderOutcome](
+        OrderOutcome.TimedOut(
+          OrderOutcome.Failed(
             Map(
               "returnCode" -> NumberValue(128+15)))),
         json"""{
@@ -115,9 +115,9 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Killed with Succeeded and namedValues" in {
-      testJson[Outcome](
-        Outcome.Killed(
-          Outcome.Succeeded(
+      testJson[OrderOutcome](
+        OrderOutcome.Killed(
+          OrderOutcome.Succeeded(
             Map(
               "returnCode" -> NumberValue(0),
               "KEY" -> StringValue("VALUE")))),
@@ -134,7 +134,7 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Disrupted(ProcessLost)" in {
-      testJson[Outcome](Outcome.processLost(ProcessLostDueToRestartProblem), json"""
+      testJson[OrderOutcome](OrderOutcome.processLost(ProcessLostDueToRestartProblem), json"""
         {
           "TYPE": "Disrupted",
           "reason": {
@@ -146,7 +146,7 @@ final class OutcomeTest extends OurTestSuite
           }
         }""")
 
-      testJson[Outcome](Outcome.processLost(ProcessLostDueToRestartProblem), json"""
+      testJson[OrderOutcome](OrderOutcome.processLost(ProcessLostDueToRestartProblem), json"""
         {
           "TYPE": "Disrupted",
           "reason": {
@@ -159,7 +159,7 @@ final class OutcomeTest extends OurTestSuite
         }""")
 
       // COMPATIBLE with v2.3
-      testJsonDecoder[Outcome](Outcome.processLost(ProcessLostDueToUnknownReasonProblem), json"""
+      testJsonDecoder[OrderOutcome](OrderOutcome.processLost(ProcessLostDueToUnknownReasonProblem), json"""
         {
           "TYPE": "Disrupted",
           "reason": {
@@ -169,7 +169,7 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Disrupted(Other)" in {
-      testJson[Outcome](Outcome.Disrupted(Problem("OTHER"), uncatchable = true), json"""
+      testJson[OrderOutcome](OrderOutcome.Disrupted(Problem("OTHER"), uncatchable = true), json"""
         {
           "TYPE": "Disrupted",
           "uncatchable": true,
@@ -184,10 +184,10 @@ final class OutcomeTest extends OurTestSuite
   }
 
   "Constant pool for memory reuse" in {
-    assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.succeeded)
-    assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.Completed(true))
-    assert(Outcome.Succeeded.rc(0) eq Outcome.Succeeded.rc(ReturnCode(0)))
-    assert(Outcome.Succeeded.rc(ReturnCode(0)) eq
-      Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
+    assert(OrderOutcome.Succeeded(NamedValues.empty) eq OrderOutcome.succeeded)
+    assert(OrderOutcome.Succeeded(NamedValues.empty) eq OrderOutcome.Completed(true))
+    assert(OrderOutcome.Succeeded.rc(0) eq OrderOutcome.Succeeded.rc(ReturnCode(0)))
+    assert(OrderOutcome.Succeeded.rc(ReturnCode(0)) eq
+      OrderOutcome.Completed(true, Map("returnCode" -> NumberValue(0))))
   }
 }

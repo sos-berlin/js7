@@ -31,7 +31,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{ItemOperation, VersionId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
@@ -74,7 +74,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
         val processed = whenProcessed.await(99.s)
-        assert(processed.stampedEvent.value.event == OrderProcessed(Outcome.succeededRC0))
+        assert(processed.stampedEvent.value.event == OrderProcessed(OrderOutcome.succeededRC0))
         assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
 
         whenFinished await 99.s  // Await order termination before shutting down the JS7

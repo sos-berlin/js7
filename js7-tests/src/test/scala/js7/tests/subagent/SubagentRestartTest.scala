@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentRestartTest.*
@@ -49,7 +49,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event
-      assert(processed == OrderProcessed(Outcome.Disrupted(MessageSignedByUnknownProblem)))
+      assert(processed == OrderProcessed(OrderOutcome.Disrupted(MessageSignedByUnknownProblem)))
     }
 
   "Restart Director" in:

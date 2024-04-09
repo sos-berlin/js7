@@ -15,7 +15,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
 import js7.data.job.{ProcessExecutable, TaskId}
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.launcher.StdObservers
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
@@ -43,10 +43,10 @@ final class ProcessDriver(
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
   def runProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : IO[Outcome.Completed] =
+  : IO[OrderOutcome.Completed] =
     startProcess(env, stdObservers)
       .flatMap:
-        case Left(problem) => IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed)
+        case Left(problem) => IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed)
         case Right(richProcess) => outcomeOf(richProcess)
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
@@ -96,7 +96,7 @@ final class ProcessDriver(
                 }))
     }
 
-  private def outcomeOf(richProcess: RichProcess): IO[Outcome.Completed] =
+  private def outcomeOf(richProcess: RichProcess): IO[OrderOutcome.Completed] =
     richProcess
       .terminated
       .materialize.flatMap { tried =>
@@ -108,7 +108,7 @@ final class ProcessDriver(
       .flatMap { returnCode =>
         fetchReturnValuesThenDeleteFile.map:
           case Left(problem) =>
-            Outcome.Failed.fromProblem(
+            OrderOutcome.Failed.fromProblem(
               problem.withPrefix("Reading return values failed:"),
               Map(ProcessExecutable.toNamedValue(returnCode)))
 

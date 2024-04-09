@@ -23,7 +23,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancellationMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.WorkflowPrinter.instructionToString
@@ -74,7 +74,7 @@ final class InternalJobTest
         val events = controller.runOrder(order).map(_.value)
 
         val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
-        assert(outcomes == Vector(Outcome.Succeeded(
+        assert(outcomes == Vector(OrderOutcome.Succeeded(
           NamedValues(
             "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
             "PROCESS" -> NumberValue(processNumber),
@@ -84,7 +84,7 @@ final class InternalJobTest
   addInternalJobTest(
     execute_[AddOneJob],
     orderArguments = Map("ORDER_ARG" -> NumberValue(100)),
-    expectedOutcome = Outcome.Succeeded(NamedValues(
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
       "PROCESS" -> NumberValue(1),
       "RESULT" -> NumberValue(101))))
@@ -92,29 +92,29 @@ final class InternalJobTest
   addInternalJobTest(
     execute_[AddOneJob],
     orderArguments = Map("ORDER_ARG" -> NumberValue(200)),
-    expectedOutcome = Outcome.Succeeded(NamedValues(
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
       "PROCESS" -> NumberValue(1),  // 1 again, because it is a different WorkflowJob
       "RESULT" -> NumberValue(201))))
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SimpleJob.type].getName))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.empty))
 
   "When workflow of last test has been deleted, the SimpleJob is stopped" in:
     awaitAndAssert(SimpleJob.stopped)
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJob].getName))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.empty))
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJInternalJob].getName))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.empty))
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
-    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+    expectedOutcome = OrderOutcome.Succeeded(NamedValues.empty))
 
   for jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     jobClass.getName - {
@@ -134,7 +134,7 @@ final class InternalJobTest
           .toMap,
         expectedOutcomes = indexedOrderIds
           .map { case (i, orderId) =>
-            orderId -> Seq(Outcome.Succeeded(Map("RESULT" -> NumberValue(i + 1))))
+            orderId -> Seq(OrderOutcome.Succeeded(Map("RESULT" -> NumberValue(i + 1))))
           }
           .toMap)
     }
@@ -166,7 +166,7 @@ final class InternalJobTest
     controller.api.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
     val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
-    assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))
+    assert(outcome == OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled"))))
     eventWatch.await[OrderProcessingKilled](_.key == order.id)
 
   "stop" in:
@@ -180,7 +180,7 @@ final class InternalJobTest
   private def addInternalJobTest(
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
-    expectedOutcome: Outcome)
+    expectedOutcome: OrderOutcome)
     (using source.Position)
   : Unit =
     val orderId = orderIdIterator.next()
@@ -191,7 +191,7 @@ final class InternalJobTest
   private def addInternalJobTestWithMultipleOrders(
     execute: Execute,
     orderArguments: Map[OrderId, Map[String, Value]],
-    expectedOutcomes: Map[OrderId, Seq[Outcome]])
+    expectedOutcomes: Map[OrderId, Seq[OrderOutcome]])
     (using source.Position)
   : Unit =
     val testName = testCounter.incrementAndGet().toString + ") " + instructionToString(execute)
@@ -201,7 +201,7 @@ final class InternalJobTest
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     ordersArguments: Map[OrderId, Map[String, Value]],
-    expectedOutcomes: Map[OrderId, Seq[Outcome]])
+    expectedOutcomes: Map[OrderId, Seq[OrderOutcome]])
     (using source.Position)
   : Unit =
     val orderToEvents = runMultipleOrdersWithWorkflow(anonymousWorkflow, ordersArguments)
@@ -289,7 +289,7 @@ object InternalJobTest:
 
     def toOrderProcess(step: Step) =
       assert(started)
-      OrderProcess(IO(Outcome.succeeded))
+      OrderProcess(IO(OrderOutcome.succeeded))
 
   private final class AddOneJob(jobContext: JobContext) extends InternalJob:
     assertThat(jobContext.implementationClass == getClass)
@@ -308,11 +308,11 @@ object InternalJobTest:
     def toOrderProcess(step: Step) =
       OrderProcess(IO {
         processCount += 1
-        Outcome.Completed.fromChecked(
+        OrderOutcome.Completed.fromChecked(
           step.arguments
             .checked("STEP_ARG")
             .flatMap(_.toNumberValue)
-            .map(value => Outcome.Succeeded(NamedValues(
+            .map(value => OrderOutcome.Succeeded(NamedValues(
               "START" -> NumberValue(startCount.get()),
               "PROCESS" -> NumberValue(processCount.get()),
               "RESULT" -> NumberValue(value.number + 1)))))
@@ -324,7 +324,7 @@ object InternalJobTest:
          def run =
            CancelableJob.semaphore
              .flatMap(_.acquire)
-             .as(Outcome.succeeded)
+             .as(OrderOutcome.succeeded)
              .start
 
          override def cancel(immediately: Boolean) =

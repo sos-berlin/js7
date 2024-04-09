@@ -11,7 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{Executable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.Value
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -176,5 +176,5 @@ object StdoutTest:
           step.write(Stdout, ".........7........8\n") *>
           step.write(Stdout, ".........9.......10\n") *>
           step.write(Stdout, "........11........12........13........14........15.......16\n") *>
-          IO.pure(Outcome.succeeded))
+          IO.pure(OrderOutcome.succeeded))
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]

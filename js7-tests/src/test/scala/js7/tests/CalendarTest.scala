@@ -19,7 +19,7 @@ import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{CycleState, FreshOrder, OrderId, Outcome}
+import js7.data.order.{CycleState, FreshOrder, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
@@ -138,7 +138,7 @@ object CalendarTest:
     OrderAttachable(agentPath),
     OrderAttached(agentPath),
     OrderProcessingStarted(subagentId),
-    OrderProcessed(Outcome.succeeded),
+    OrderProcessed(OrderOutcome.succeeded),
     OrderMoved(Position(0) / "cycle+end=1633122000000,i=1" %  1),
     OrderCycleFinished(None),
     OrderMoved(Position(1)),

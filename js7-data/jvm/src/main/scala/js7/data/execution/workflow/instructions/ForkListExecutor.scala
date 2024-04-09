@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
 import js7.data.order.OrderEvent.OrderForked
-import js7.data.order.{Order, Outcome}
+import js7.data.order.{Order, OrderOutcome}
 import js7.data.state.{AgentsSubagentIdsScope, StateView}
 import js7.data.value.{ListValue, NumberValue, ObjectValue}
 import js7.data.workflow.instructions.ForkList
@@ -49,13 +49,13 @@ extends ForkInstructionExecutor:
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =
-    Outcome.Completed.fromChecked(
+    OrderOutcome.Completed.fromChecked(
       for
         results <- order.state.children
           .map(_.orderId)
           .traverse(childOrderId =>
             calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now))
-      yield Outcome.Succeeded(results.view
+      yield OrderOutcome.Succeeded(results.view
         .flatten
         .groupMap(_._1)(_._2).view
         .mapValues(values => ListValue(values.toVector)).toMap))

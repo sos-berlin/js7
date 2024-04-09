@@ -13,7 +13,7 @@ import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor.*
 import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved, OrderStarted}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.state.StateView
 import js7.data.value.Value
 import js7.data.value.expression.Expression
@@ -30,7 +30,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   : Checked[OrderForked]
 
   protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
-    now: Timestamp): Outcome.Completed
+    now: Timestamp): OrderOutcome.Completed
 
   final def toEvents(fork: Instr, order: Order[Order.State], state: StateView) =
     readyOrStartable(order)
@@ -146,7 +146,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
           val now = clock.now()
           order.id <-: OrderJoined(
             if failedChildren.nonEmpty then
-              Outcome.Failed(Some(toJoinFailedMessage(failedChildren)))
+              OrderOutcome.Failed(Some(toJoinFailedMessage(failedChildren)))
             else
               forkResult(fork, order, state, now))
         }

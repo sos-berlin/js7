@@ -23,7 +23,7 @@ import js7.common.system.ThreadPools.newUnlimitedNonVirtualExecutionContext
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey, ShellScriptExecutable}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
@@ -92,7 +92,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
       "orderProcess" in {
         val (outcomeIO, out, err) = processOrder(NumericConstant(1000)).await(99.s).orThrow
-        assert(outcomeIO == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
+        assert(outcomeIO == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
       }
 
@@ -102,8 +102,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           processOrder(NumericConstant(i))
             .map(_.orThrow)
             .flatMap {
-              case (outcome: Outcome.Succeeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
-              case (outcome: Outcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
+              case (outcome: OrderOutcome.Succeeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
+              case (outcome: OrderOutcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
               case (outcome, _, _) => IO(fail(s"UNEXPECTED: $outcome"))
             }
         }
@@ -113,7 +113,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
       "Exception is caught and returned as Left" in {
         val (outcome, out, err) = processOrder(StringConstant("INVALID TYPE")).await(99.s).orThrow
-        assert(outcome.asInstanceOf[Outcome.Failed]
+        assert(outcome.asInstanceOf[OrderOutcome.Failed]
           .errorMessage.get startsWith "java.lang.ClassCastException")
         assertOutErr(out, err)
       }
@@ -135,7 +135,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
     }
 
   private def processOrder(arg: Expression)(implicit launcher: InternalJobLauncher)
-  : IO[Checked[(Outcome, String, String)]] =
+  : IO[Checked[(OrderOutcome, String, String)]] =
     val orderId = OrderId("TEST")
     val jobKey = launcher.jobConf.jobKey
 

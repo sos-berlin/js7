@@ -19,7 +19,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
 import js7.data.value.expression.Expression.NamedValue
@@ -86,7 +86,7 @@ final class CancelOrdersTest
       OrderProcessingStarted(subagentId),
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderFinished()))
   }
@@ -120,7 +120,7 @@ final class CancelOrdersTest
       OrderProcessingStarted(subagentId),
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderCancelled))
   }
@@ -137,7 +137,7 @@ final class CancelOrdersTest
         OrderProcessingStarted(subagentId),
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(OrderOutcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderCancelled))
   }
@@ -162,7 +162,7 @@ final class CancelOrdersTest
           OrderProcessingStarted(subagentId),
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
-          OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
+          OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
           OrderCancelled))
       assert(t.elapsed > sigkillDelay)
@@ -175,7 +175,7 @@ final class CancelOrdersTest
           OrderProcessingStarted(subagentId),
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
-          OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
+          OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
           OrderCancelled))
     }
@@ -191,9 +191,9 @@ final class CancelOrdersTest
         OrderCancellationMarkedOnAgent,
         OrderProcessed(
           if isWindows then
-            Outcome.Killed(Outcome.Failed.rc(1))
+            OrderOutcome.Killed(OrderOutcome.Failed.rc(1))
           else
-            Outcome.killed(if immediately then SIGKILL else SIGTERM)),
+            OrderOutcome.killed(if immediately then SIGKILL else SIGTERM)),
         OrderProcessingKilled,
         OrderCancelled))
 
@@ -219,11 +219,11 @@ final class CancelOrdersTest
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("FORK") <-: OrderCancellationMarked(mode),
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
+        OrderId("FORK|🥕") <-: OrderProcessed(OrderOutcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK|🥕") <-: OrderDetachable,
         OrderId("FORK|🥕") <-: OrderDetached,
-        OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
+        OrderId("FORK") <-: OrderJoined(OrderOutcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderCancelled))
   }
@@ -256,15 +256,15 @@ final class CancelOrdersTest
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarkedOnAgent,
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessed(
           if isWindows then
-            Outcome.Killed(Outcome.Failed.rc(1))
+            OrderOutcome.Killed(OrderOutcome.Failed.rc(1))
           else
-            Outcome.killed(SIGTERM)),
+            OrderOutcome.killed(SIGTERM)),
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingKilled,
         OrderId("CANCEL-CHILD|🥕") <-: OrderDetachable,
         OrderId("CANCEL-CHILD|🥕") <-: OrderDetached,
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancelled,
         OrderId("CANCEL-CHILD") <-: OrderJoined(
-          Outcome.Failed(Some("Order:CANCEL-CHILD|🥕 has been cancelled"))),
+          OrderOutcome.Failed(Some("Order:CANCEL-CHILD|🥕 has been cancelled"))),
         OrderId("CANCEL-CHILD") <-: OrderFailed(Position(0))))
   }
 
@@ -291,7 +291,7 @@ final class CancelOrdersTest
       val events = controller.eventWatch.await[OrderTerminated](_.key == orderId)
       assert(events.head.value.event.isInstanceOf[OrderFailed])
       assert(controllerState.idToOrder(orderId).lastOutcome ==
-        Outcome.Failed(Some("Order:🔔|🥕 has been cancelled")))
+        OrderOutcome.Failed(Some("Order:🔔|🥕 has been cancelled")))
     }
   }
 
@@ -413,7 +413,7 @@ final class CancelOrdersTest
           |TRAP 2
           |TRAP 3
           |""".stripMargin),
-      OrderProcessed(Outcome.Killed(Outcome.succeededRC0)),
+      OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
       OrderProcessingKilled,
       OrderCancelled))
   }
@@ -468,7 +468,7 @@ final class CancelOrdersTest
         //"""CHILD SIGTERM
         //  |CHILD EXIT
         //  |""".stripMargin),
-      OrderProcessed(Outcome.killed(SIGTERM)),
+      OrderProcessed(OrderOutcome.killed(SIGTERM)),
       OrderProcessingKilled,
       OrderCancelled))
   }
@@ -511,7 +511,7 @@ final class CancelOrdersTest
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.killed(SIGKILL)),
+      OrderProcessed(OrderOutcome.killed(SIGKILL)),
       OrderProcessingKilled,
       OrderCancelled))
   }
@@ -568,7 +568,7 @@ final class CancelOrdersTest
         OrderStdoutWritten("READY\n"),
         OrderCancellationMarked(CancellationMode.kill()),
         OrderCancellationMarkedOnAgent,
-        OrderProcessed(Outcome.killed(expectedSignal)),
+        OrderProcessed(OrderOutcome.killed(expectedSignal)),
         OrderProcessingKilled,
         OrderCancelled))
     }
@@ -627,7 +627,7 @@ final class CancelOrdersTest
         OrderStdoutWritten("READY\n"),
         OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
         OrderCancellationMarkedOnAgent,
-        OrderProcessed(Outcome.killed(expectedSignal)),
+        OrderProcessed(OrderOutcome.killed(expectedSignal)),
         OrderProcessingKilled,
         OrderCancelled))
     }
@@ -676,7 +676,7 @@ final class CancelOrdersTest
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.killed(SIGKILL)),
+      OrderProcessed(OrderOutcome.killed(SIGKILL)),
       OrderProcessingKilled,
       OrderCancelled))
   }
@@ -702,7 +702,7 @@ final class CancelOrdersTest
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(Some(subagentId)),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(1)),
           OrderBroken(None),
           OrderCancellationMarked(),

@@ -26,7 +26,7 @@ import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.ValueType.UnknownNameInExpressionProblem
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
@@ -107,7 +107,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
 
     // JobResource must not use order variables
     val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
-    assert(orderProcessed.outcome == Outcome.Failed(Some("No such named value: E")))
+    assert(orderProcessed.outcome == OrderOutcome.Failed(Some("No such named value: E")))
   }
 
   "JobResource with environment variable access" in {
@@ -130,7 +130,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       assert(terminated.value.event.isInstanceOf[OrderFinished])
 
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
-        Outcome.succeededRC0)
+        OrderOutcome.succeededRC0)
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       logger.info(stdouterr.trim)
@@ -158,7 +158,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       assert(terminated.value.event.isInstanceOf[OrderFinished])
 
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
-        Outcome.succeededRC0)
+        OrderOutcome.succeededRC0)
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       logger.info(stdouterr.trim)
@@ -199,7 +199,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       val workflow = addUnknownJobResourceVariableWorkflow("MISSING", "JobResource:JOB-RESOURCE-A:UNKNOWN")
       val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN"), workflow.path))
       assert(events.map(_.value).contains(
-        OrderProcessed(Outcome.Disrupted(
+        OrderProcessed(OrderOutcome.Disrupted(
           UnknownNameInExpressionProblem("JobResource:JOB-RESOURCE-A:UNKNOWN")))))
     }
 
@@ -208,7 +208,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
     //  assert(existingValue != "", s"Expecting the $existingName environment variable")
     //  val workflow = addUnknownJobResourceVariableWorkflow("NONE", "JobResource:JOB-RESOURCE-A:UNKNOWN ?")
     //  val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-2"), workflow.path))
-    //  assert(events.map(_.value) contains OrderProcessed(Outcome.succeededRC0))
+    //  assert(events.map(_.value) contains OrderProcessed(OrderOutcome.succeededRC0))
     //  val stdout = events.map(_.value).collect { case OrderStdoutWritten(chunk) => chunk }.mkString
     //  assert(stdout contains s"$existingName=/$existingValue/")
     //}
@@ -524,7 +524,7 @@ object JobResourceTest
         assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
         assert(step.jobResourceVariable(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("JobResource variable", "UNKNOWN")))
         assert(step.jobResourceVariable(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
-        Outcome.succeeded
+        OrderOutcome.succeeded
       })
   }
   private object TestJob extends InternalJob.Companion[TestJob]

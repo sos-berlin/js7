@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.TryExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
-import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.state.TestStateView
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -58,7 +58,7 @@ final class TryExecutorTest extends OurTestSuite
 object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh,
-    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1)))))
+    historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1)))))
   private val TryJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
   private val CatchJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))

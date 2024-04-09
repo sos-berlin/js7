@@ -21,7 +21,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
-import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
@@ -282,11 +282,11 @@ extends SubagentDriver, Service.StoppableByRequest:
                       val orderProcessed = OrderProcessed(
                         problem match {
                           case SubagentIsShuttingDownProblem =>
-                            Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
-                          case _ => Outcome.Disrupted(problem)
+                            OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
+                          case _ => OrderOutcome.Disrupted(problem)
                         })
 
-                      if _testFailover && orderProcessed.outcome.isInstanceOf[Outcome.Killed] then
+                      if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed] then
                         IO(logger.warn(
                           s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed")
                         ).start

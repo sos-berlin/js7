@@ -17,7 +17,7 @@ import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrder
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
@@ -75,14 +75,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderStarted,
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
 
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / catch_(1) % 0),   // Retry limit reached
       OrderMoved(Position(1)),
 
@@ -120,64 +120,64 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderStarted,
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
+      OrderProcessed(OrderOutcome.Succeeded(NamedValues.rc(0))),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(0) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0),   // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
+      OrderProcessed(OrderOutcome.Succeeded(NamedValues.rc(0))),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(0) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0),  // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderOutcomeAdded(Outcome.failed),  // Retry limit reached
+      OrderOutcomeAdded(OrderOutcome.failed),  // Retry limit reached
       OrderCaught(Position(0) / try_(0) % 0 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
 
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
 
       OrderDetachable,
@@ -205,16 +205,16 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      // No OrderCaught here! OrderFailed has Outcome of last failed instruction in try block
-      OrderOutcomeAdded(Outcome.failed),
+      // No OrderCaught here! OrderFailed has OrderOutcome of last failed instruction in try block
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderFailed(Position(0) / try_(2) % 0))
 
     val orderId = OrderId("🔶")
@@ -236,17 +236,17 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
       OrderMoved(Position(0) / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(2) % 0),
       OrderMoved(Position(0) / catch_(2) % 0 / Then % 0),
       OrderFailed(Position(0) / catch_(2) % 0 / Then % 0))
@@ -287,23 +287,23 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderMoved(Position(0) / try_(0) % 0),
           OrderStarted,
 
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(0) % 0),
           OrderRetrying(Position(0) / try_(1) % 0),
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(1) % 0),
           OrderRetrying(Position(0) / try_(2) % 0),
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(2) % 0),
           OrderRetrying(Position(0) / try_(3) % 0),
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(3) % 0),
           OrderRetrying (Position(0) / try_(4) % 0),
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed)))
+          OrderOutcomeAdded(OrderOutcome.failed)))
       }
     }
 
@@ -340,28 +340,28 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderMoved(Position(0) / try_(0) % 0),
           OrderStarted,
 
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(0) % 0),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(0) % 1),
           OrderRetrying(Position(0) / try_(1) % 0),
 
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(1) % 0),
           OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(1) % 1),
           OrderRetrying(Position(0) / try_(2) % 0),
 
           OrderAwoke,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(2) % 0),
           OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(2) % 1),
           OrderRetrying(Position(0) / try_(3) % 0)))
 
@@ -608,12 +608,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderMoved(Position(0) / try_(0) % 0),
         OrderStarted,
 
-        OrderOutcomeAdded(Outcome.failed),
+        OrderOutcomeAdded(OrderOutcome.failed),
         OrderCaught(Position(0) / catch_(0) % 0),
         OrderRetrying(Position(0) / try_(1) % 0),
         OrderGoes,
         OrderAwoke,
-        OrderOutcomeAdded(Outcome.failed),
+        OrderOutcomeAdded(OrderOutcome.failed),
         OrderFailed(Position(0) / try_(1) % 0)))
     }
 

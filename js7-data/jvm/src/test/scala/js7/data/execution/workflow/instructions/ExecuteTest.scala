@@ -9,7 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.{InternalExecutable, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
-import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.state.TestStateView
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
@@ -34,17 +34,17 @@ final class ExecuteTest extends OurTestSuite:
 
   "toOutcome" in:
     val namedValues = Map("a" -> StringValue("A"))
-    assert(executable.toOutcome(namedValues, ReturnCode(0)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(0))))
-    assert(executable.toOutcome(namedValues, ReturnCode(1)) == Outcome.Failed   (namedValues + ("returnCode" -> NumberValue(1))))
-    assert(executable.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(3))))
+    assert(executable.toOutcome(namedValues, ReturnCode(0)) == OrderOutcome.Succeeded(namedValues + ("returnCode" -> NumberValue(0))))
+    assert(executable.toOutcome(namedValues, ReturnCode(1)) == OrderOutcome.Failed   (namedValues + ("returnCode" -> NumberValue(1))))
+    assert(executable.toOutcome(namedValues, ReturnCode(3)) == OrderOutcome.Succeeded(namedValues + ("returnCode" -> NumberValue(3))))
 
   "toEvents" in:
-    assert(toEvents(Outcome.Succeeded(NamedValues.rc(0))) == Seq(orderId <-: OrderMoved(Position(1))))
-    assert(toEvents(Outcome.Succeeded(NamedValues.rc(1))) == Seq(orderId <-: OrderMoved(Position(1))))
-    assert(toEvents(Outcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailedIntermediate_()))
-    assert(toEvents(Outcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailedIntermediate_()))
+    assert(toEvents(OrderOutcome.Succeeded(NamedValues.rc(0))) == Seq(orderId <-: OrderMoved(Position(1))))
+    assert(toEvents(OrderOutcome.Succeeded(NamedValues.rc(1))) == Seq(orderId <-: OrderMoved(Position(1))))
+    assert(toEvents(OrderOutcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailedIntermediate_()))
+    assert(toEvents(OrderOutcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailedIntermediate_()))
 
-  private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] =
+  private def toEvents(outcome: OrderOutcome): Seq[KeyedEvent[OrderActorEvent]] =
     val order = Order(orderId, workflow.id /: (Position(0)), Order.Processed,
       historicOutcomes = Vector(HistoricOutcome(Position(0), outcome)))
     executeExecutor.toEvents(executeAnonymous, order, stateView).orThrow

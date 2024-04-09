@@ -11,7 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp.specific.*
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import js7.data.order.{OrderEvent, OrderId, Outcome}
+import js7.data.order.{OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
@@ -93,7 +93,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
     type AsScala = OrderProcessed
 
     @Nonnull
-    def outcome: Outcome =
+    def outcome: OrderOutcome =
       asScala.outcome
 
   final case class JOrderForked(asScala: OrderForked)
@@ -119,7 +119,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
   extends JOrderEvent:
     type AsScala = OrderJoined
 
-    def outcome: Outcome =
+    def outcome: OrderOutcome =
       asScala.outcome
 
   final case class JOrderFailed(asScala: OrderFailed)
@@ -127,7 +127,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
     type AsScala = OrderFailed
 
     @Nonnull
-    def outcome: Option[Outcome.NotSucceeded] =
+    def outcome: Option[OrderOutcome.NotSucceeded] =
       asScala.outcome
 
   final case class JOrderFinished private(asScala: OrderFinished)

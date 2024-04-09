@@ -5,13 +5,13 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -67,8 +67,8 @@ final class IfTest extends OurTestSuite:
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeededRC0),
-          OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: MISSING"))),
+          OrderProcessed(OrderOutcome.succeededRC0),
+          OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: MISSING"))),
           OrderDetachable,
           OrderDetached,
           OrderFailed(Position(0))))
@@ -129,13 +129,13 @@ object IfTest:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(0)))),
+      OrderProcessed(OrderOutcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(0)))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded.rc(0)),
+      OrderProcessed(OrderOutcome.Succeeded.rc(0)),
       OrderMoved(Position(2)),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded.rc(0)),
+      OrderProcessed(OrderOutcome.Succeeded.rc(0)),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
@@ -147,13 +147,13 @@ object IfTest:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(1)))),
+      OrderProcessed(OrderOutcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(1)))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded.rc(0)),
+      OrderProcessed(OrderOutcome.Succeeded.rc(0)),
       OrderMoved(Position(2)),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded.rc(0)),
+      OrderProcessed(OrderOutcome.Succeeded.rc(0)),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
@@ -165,7 +165,7 @@ object IfTest:
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(2)))),
+      OrderProcessed(OrderOutcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(2)))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0) / Then % 0 / Then % 0)))

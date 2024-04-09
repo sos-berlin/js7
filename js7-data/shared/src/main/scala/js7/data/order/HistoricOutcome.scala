@@ -4,7 +4,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.workflow.position.Position
 
-final case class HistoricOutcome(position: Position, outcome: Outcome)
+final case class HistoricOutcome(position: Position, outcome: OrderOutcome)
 
 
 object HistoricOutcome:

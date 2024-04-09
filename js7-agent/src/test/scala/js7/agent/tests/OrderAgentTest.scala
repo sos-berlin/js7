@@ -20,7 +20,7 @@ import js7.base.monixlike.MonixLikeExtensions.{headL, toListL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -34,7 +34,7 @@ import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{Event, EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
-import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
@@ -223,9 +223,9 @@ private object OrderAgentTest:
       attachedState = Some(Order.Detaching(TestAgentPath)),
       arguments = Map("x" -> StringValue("X")),
       historicOutcomes = Vector(
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map(
+        HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map(
           "returnCode" -> NumberValue(0),
           "result" -> StringValue("TEST-RESULT-")))),
-        HistoricOutcome(Position(1), Outcome.Succeeded(Map(
+        HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map(
           "returnCode" -> NumberValue(0),
           "result" -> StringValue("TEST-RESULT-B-VALUE"))))))

@@ -20,7 +20,7 @@ import js7.data.item.{ItemRevision, Repo, VersionId}
 import js7.data.lock.Acquired.{Available, Exclusive}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.*
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
@@ -97,7 +97,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.succeededRC0),
+          OrderProcessed(OrderOutcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 1),
           OrderDetachable,
           OrderDetached,
@@ -105,7 +105,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           OrderAttachable(bAgentPath),
           OrderAttached(bAgentPath),
           OrderProcessingStarted(bSubagentId),
-          OrderProcessed(Outcome.succeededRC0),
+          OrderProcessed(OrderOutcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 2),
           OrderDetachable,
           OrderDetached,
@@ -124,7 +124,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderAttachable(agentPath),
             OrderAttached(agentPath),
             OrderProcessingStarted(subagentId),
-            OrderProcessed(Outcome.succeededRC0),
+            OrderProcessed(OrderOutcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 1),
             OrderDetachable,
             OrderDetached,
@@ -132,7 +132,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderAttachable(bAgentPath),
             OrderAttached(bAgentPath),
             OrderProcessingStarted(bSubagentId),
-            OrderProcessed(Outcome.succeededRC0),
+            OrderProcessed(OrderOutcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 2),
             OrderDetachable,
             OrderDetached,
@@ -270,7 +270,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -280,13 +280,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "lock" % 1),
       OrderDetachable,
       OrderDetached,
 
       OrderLocksAcquired(List(LockDemand(lock2Path))),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderLocksReleased(List(lock2Path)),
       OrderLocksReleased(List(lockPath)),
       OrderFailed(Position(1)),
@@ -322,13 +322,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLocksAcquired(List(LockDemand(lock2Path))),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderLocksReleased(List(lock2Path)),
       OrderCaught(Position(0) / "lock" % 0 / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(0) / "lock" % 1),
       OrderDetachable,
       OrderDetached,
@@ -366,14 +366,14 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderForked(Vector("BRANCH" -> orderId / "BRANCH")),
-      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH Failed"))),
+      OrderJoined(OrderOutcome.Failed(Some("Order:🟩|BRANCH Failed"))),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
       OrderLocksAcquired(List(LockDemand(lockPath))),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderLocksReleased(List(lockPath)),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0)))
 
@@ -408,14 +408,14 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderForked(Vector("BRANCH" -> orderId / "BRANCH")),
       OrderCancellationMarked(),
-      OrderJoined(Outcome.Failed(Some("Order:🟪|BRANCH has been cancelled"))),
+      OrderJoined(OrderOutcome.Failed(Some("Order:🟪|BRANCH has been cancelled"))),
       OrderLocksReleased(List(lockPath)),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
-      OrderOutcomeAdded(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
         "Lock:LOCK has already been acquired by parent Order:🟪"))),
       OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0),
       OrderCancelled))
@@ -449,7 +449,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -521,7 +521,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderOutcomeAdded(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
         "Cannot fulfill lock count=2 with Lock:LOCK limit=1"))),
       OrderFailed(Position(0)),
       OrderCancelled,
@@ -593,7 +593,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("ASemaphoreJob\n"),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "lock" % 1),
         OrderDetachable,
         OrderDetached,
@@ -700,7 +700,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("ASemaphoreJob\n"),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "lock" % 1),
         OrderDetachable,
         OrderDetached,
@@ -724,7 +724,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "lock" % 1),
         OrderDetachable,
         OrderDetached,
@@ -921,7 +921,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderLocksReleased(List(lockPath)),
@@ -933,7 +933,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderLocksReleased(List(lockPath)),
@@ -977,7 +977,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderLocksReleased(List(lockPath)),
@@ -990,7 +990,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderLocksReleased(List(lockPath)),

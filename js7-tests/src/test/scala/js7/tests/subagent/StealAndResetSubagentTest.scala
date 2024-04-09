@@ -11,7 +11,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentReset, SubagentResetStarted}
 import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -82,7 +82,7 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       // The stolen orders are killed
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
       assert(processed.value.event ==
-        OrderProcessed(Outcome.Killed(Outcome.Failed(Some("Canceled")))))
+        OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))))
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted

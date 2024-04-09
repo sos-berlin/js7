@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentReset, SubagentResetStarted, SubagentResetStartedByController}
 import js7.data.subagent.SubagentRunId
@@ -85,7 +85,7 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
       TestSemaphoreJob.continue()
       val processed2 = eventWatch.await[OrderProcessed](_.key == orderId, after = processed1.eventId)
         .head.value.event
-      assert(processed2 == OrderProcessed(Outcome.succeeded))
+      assert(processed2 == OrderProcessed(OrderOutcome.succeeded))
       eventWatch.await[OrderFinished](_.key == orderId).head.value.event
     }
 

@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problems.DuplicateKey
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.state.StateView
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.workflow.instructions.AddOrder
@@ -28,7 +28,7 @@ extends EventInstructionExecutor:
             yield
               if state.idToOrder.isDefinedAt(addedOrderId) then
                 View(OrderFailedIntermediate_(
-                  Some(Outcome.Failed.fromProblem(
+                  Some(OrderOutcome.Failed.fromProblem(
                     DuplicateKey("OrderId", addedOrderId.string)))))
               else
                 View(

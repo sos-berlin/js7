@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -36,7 +36,7 @@ final class OrderParameterTest extends OurTestSuite, ControllerAgentForScalaTest
       orderArguments = Map(
         "myRequired" -> NumberValue(123)),
       expectedOutcomes = Seq(
-        Outcome.Succeeded(NamedValues(
+        OrderOutcome.Succeeded(NamedValues(
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("DEFAULT VALUE"),
           "myOptionalAny" -> StringValue("DEFAULT VALUE"),
@@ -50,7 +50,7 @@ final class OrderParameterTest extends OurTestSuite, ControllerAgentForScalaTest
         "myRequired" -> NumberValue(123),
         "myOptional" -> StringValue("myOptional from order")),
       expectedOutcomes = Seq(
-        Outcome.Succeeded(NamedValues(
+        OrderOutcome.Succeeded(NamedValues(
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("myOptional from order"),
           "myOptionalAny" -> StringValue("myOptional from order"),
@@ -60,7 +60,7 @@ final class OrderParameterTest extends OurTestSuite, ControllerAgentForScalaTest
   private def runWithWorkflowPath(
     workflowPath: WorkflowPath,
     orderArguments: Map[String, Value] = Map.empty,
-    expectedOutcomes: Seq[Outcome])
+    expectedOutcomes: Seq[OrderOutcome])
   : Unit =
     val order = FreshOrder(orderIdIterator.next(), workflowPath, arguments = orderArguments)
     val events = controller.runOrder(order).map(_.value)
@@ -99,7 +99,7 @@ object OrderParameterTest:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
-          Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
+          OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
 
   private final class ReturnArgumentsInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =

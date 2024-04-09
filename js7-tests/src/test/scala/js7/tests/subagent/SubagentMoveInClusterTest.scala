@@ -15,7 +15,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -142,7 +142,7 @@ final class SubagentMoveInClusterTest
           val a2Processed = eventWatch
             .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
             .head.value.event
-          assert(a2Processed == OrderProcessed(Outcome.succeeded))
+          assert(a2Processed == OrderProcessed(OrderOutcome.succeeded))
 
           eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
@@ -160,7 +160,7 @@ final class SubagentMoveInClusterTest
             eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
             val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
               .head.value.event
-            assert(bProcessed == OrderProcessed(Outcome.succeeded))
+            assert(bProcessed == OrderProcessed(OrderOutcome.succeeded))
             eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
         }
       }

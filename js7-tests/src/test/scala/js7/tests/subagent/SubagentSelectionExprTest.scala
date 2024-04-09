@@ -7,7 +7,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderOutcomeAdded, OrderProcessingStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -45,7 +45,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
     bareSubagent
 
   override def afterAll() =
-    try 
+    try
       bareSubagentRelease.await(99.s)
     finally
       super.afterAll()
@@ -57,7 +57,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
       OrderAdded(workflowPath ~ "INITIAL"),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: subagentSelectionId"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: subagentSelectionId"))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))
@@ -72,7 +72,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
         "subagentSelectionId" -> StringValue("UNKNOWN-SUBAGENT-SELECTION"))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderOutcomeAdded(Outcome.Disrupted(UnknownKeyProblem("SubagentId", "Subagent:UNKNOWN-SUBAGENT-SELECTION"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentId", "Subagent:UNKNOWN-SUBAGENT-SELECTION"))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))

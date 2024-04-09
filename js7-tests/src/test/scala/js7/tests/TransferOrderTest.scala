@@ -12,7 +12,7 @@ import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, Fork, Prompt}
@@ -118,7 +118,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderStdoutWritten("ASemaphoreJob\n"),
         OrderSuspensionMarked(SuspensionMode(None)),
         OrderSuspensionMarkedOnAgent,
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(2)),
         OrderDetachable,
         OrderDetached,

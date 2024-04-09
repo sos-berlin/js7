@@ -14,7 +14,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemAddedOrChanged, UnsignedItemChanged}
 import js7.data.item.{ItemRevision, UnsignedItemEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderStarted, OrderSuspended}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{If, Prompt, TryInstruction}
@@ -134,10 +134,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(2)),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
@@ -146,7 +146,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(4)),
       OrderDetachable,
       OrderDetached,

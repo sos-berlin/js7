@@ -134,7 +134,7 @@ final class OrderEventTest extends OurTestSuite:
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
-        Vector(HistoricOutcome(Position(123), Outcome.succeeded)),
+        Vector(HistoricOutcome(Position(123), OrderOutcome.succeeded)),
         AgentPath("AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),
@@ -267,7 +267,7 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderProcessed" in:
-    testJson[OrderEvent](OrderProcessed(Outcome.Succeeded(Map("KEY" -> StringValue("VALUE")))), json"""
+    testJson[OrderEvent](OrderProcessed(OrderOutcome.Succeeded(Map("KEY" -> StringValue("VALUE")))), json"""
       {
         "TYPE": "OrderProcessed",
         "outcome": {
@@ -288,7 +288,7 @@ final class OrderEventTest extends OurTestSuite:
   "OrderCatched complete" in:
     testJson[OrderEvent](OrderCatched(
       Position(1),
-      Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
+      Some(OrderOutcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
       json"""
       {
         "TYPE": "OrderCatched",
@@ -313,7 +313,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderCaught(
         Position(1),
-        Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))
+        Some(OrderOutcome.Failed(Some("FAILED"), NamedValues.rc(1)))
       ): @nowarn("msg=deprecated"),
       json"""
       {
@@ -340,7 +340,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderFailed(
         Position(1),
-        Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
+        Some(OrderOutcome.Failed(Some("ERROR"), NamedValues.rc(1)))
       ): @nowarn("msg=deprecated"),
       json"""
       {
@@ -359,7 +359,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderFailed(
         Position(1),
-        Some(Outcome.Disrupted(Problem("PROBLEM")))
+        Some(OrderOutcome.Disrupted(Problem("PROBLEM")))
       ): @nowarn("msg=deprecated"),
       json"""{
         "TYPE": "OrderFailed",
@@ -386,7 +386,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderFailedInFork(
         Position(1),
-        Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
+        Some(OrderOutcome.Failed(Some("ERROR"), NamedValues.rc(1)))
       ): @nowarn("msg=deprecated"),
       json"""{
         "TYPE": "OrderFailedInFork",
@@ -433,7 +433,7 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderJoined" in:
-    testJson[OrderEvent](OrderJoined(Outcome.succeeded), json"""
+    testJson[OrderEvent](OrderJoined(OrderOutcome.succeeded), json"""
       {
         "TYPE": "OrderJoined",
         "outcome": {
@@ -484,7 +484,7 @@ final class OrderEventTest extends OurTestSuite:
         "TYPE": "OrderFinished"
       }""")
 
-    testJson[OrderEvent](OrderFinished(Some(Outcome.failed)), json"""
+    testJson[OrderEvent](OrderFinished(Some(OrderOutcome.failed)), json"""
       {
         "TYPE": "OrderFinished",
         "outcome": {
@@ -571,7 +571,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderResumptionMarked(
       Some(Position(1)),
       Seq(
-        OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.succeeded)),
+        OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.succeeded)),
       asSucceeded = true),
       json"""
         {
@@ -599,10 +599,10 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderResumed(
       Some(Position(1)),
       Seq(
-        ReplaceHistoricOutcome(Position(0), Outcome.succeeded),
-        InsertHistoricOutcome(Position(2), Position(1) / BranchId.Then % 0, Outcome.succeeded),
+        ReplaceHistoricOutcome(Position(0), OrderOutcome.succeeded),
+        InsertHistoricOutcome(Position(2), Position(1) / BranchId.Then % 0, OrderOutcome.succeeded),
         DeleteHistoricOutcome(Position(3)),
-        AppendHistoricOutcome(Position(4), Outcome.succeeded)),
+        AppendHistoricOutcome(Position(4), OrderOutcome.succeeded)),
       asSucceeded = true),
       json"""{
         "TYPE": "OrderResumed",

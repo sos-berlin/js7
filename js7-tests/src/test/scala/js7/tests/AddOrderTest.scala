@@ -14,7 +14,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.GoOrder
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{AddOrder, Fail, Prompt}
@@ -66,7 +66,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderOutcomeAdded(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
       OrderFailed(Position(0))))
 
   "AddOrder with access to clock" in:
@@ -75,7 +75,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderOutcomeAdded(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
       OrderFailed(Position(0))))
 
   "AddOrder with startPosition and stopPositions (JS-2029)" in:
@@ -103,7 +103,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId), false),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(2)),
         OrderDetachable,
         OrderDetached,
@@ -139,7 +139,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
         OrderGoes,
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,

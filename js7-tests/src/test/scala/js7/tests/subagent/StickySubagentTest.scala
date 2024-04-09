@@ -9,8 +9,8 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
-import js7.data.order.Outcome.Disrupted.ProcessLost
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderOutcome.Disrupted.ProcessLost
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
@@ -75,11 +75,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted(Some(a2SubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
       OrderProcessingStarted(Some(aSubagentId), stick = true),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 2),
       OrderDetachable,
       OrderDetached,
@@ -91,11 +91,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderProcessingStarted(Some(aSubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 4),
 
       OrderProcessingStarted(Some(a2SubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 5),
       OrderDetachable,
       OrderDetached,
@@ -103,7 +103,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttachable(bAgentPath),
       OrderAttached(bAgentPath),
       OrderProcessingStarted(Some(bSubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 6),
       OrderDetachable,
       OrderDetached,
@@ -111,11 +111,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderProcessingStarted(Some(a2SubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 7),
 
       OrderProcessingStarted(Some(aSubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 8),
 
       OrderStickySubagentLeaved,
@@ -160,8 +160,8 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
     assert(eventWatch.eventsByKey[OrderEvent](orderId)
       .map {
-        case OrderProcessed(Outcome.Disrupted(ProcessLost(ProcessLostDueToRestartProblem), _)) =>
-          OrderProcessed(Outcome.processLost(SubagentNotDedicatedProblem))
+        case OrderProcessed(OrderOutcome.Disrupted(ProcessLost(ProcessLostDueToRestartProblem), _)) =>
+          OrderProcessed(OrderOutcome.processLost(SubagentNotDedicatedProblem))
         case o => o
       } == Seq(
       OrderAdded(withoutSubagentSelectionWorkflow.id),
@@ -171,17 +171,17 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted(Some(a1SubagentId), stick = true),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
       OrderProcessingStarted(Some(a1SubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 2),
 
       OrderDetachable,
       OrderDetached,
       OrderForked(Vector("BRANCH" -> childOrderId)),
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 3),
 
       OrderStickySubagentLeaved,
@@ -218,7 +218,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted(Some(aSubagentId), stick = true),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
       OrderDetachable,
       OrderDetached,
@@ -230,11 +230,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderProcessingStarted(Some(aSubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 3),
 
       OrderProcessingStarted(Some(aSubagentId)),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 4),
 
       OrderStickySubagentLeaved,
@@ -251,7 +251,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAdded(failAtControllerWorkflow.id),
       OrderStickySubagentEntered(aAgentPath),
       OrderStarted,
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderStickySubagentLeaved,
       OrderFailed(Position(0))))
 
@@ -268,10 +268,10 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderStarted,
 
       OrderProcessingStarted(Some(aSubagentId), stick = true),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderStickySubagentLeaved,
       OrderDetachable,
       OrderDetached,

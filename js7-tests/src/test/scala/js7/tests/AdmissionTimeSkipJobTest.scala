@@ -15,7 +15,7 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -75,13 +75,13 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
 
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderMoved(Position(2), Some(OrderMoved.NoAdmissionPeriodStart)),
         OrderMoved(Position(3), Some(OrderMoved.NoAdmissionPeriodStart)),
 
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(4)),
 
         OrderDetachable,

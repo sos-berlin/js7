@@ -27,7 +27,7 @@ import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
-import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, Outcome}
+import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
 import js7.data.workflow.instructions.{Break, Cycle, EmptyInstruction, Fail, Fork, If, LockInstruction, Options, Retry, Schedule, Stop, TryInstruction}
@@ -111,26 +111,26 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1)),
 
       OrderCyclingPrepared(cycleState),
 
       OrderCycleStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=1" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 2))),
 
       OrderCycleStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=2" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 3))),
 
       OrderCycleStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=3" % 1),
       OrderCycleFinished(None),
       OrderMoved(Position(2)),
@@ -179,7 +179,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderStarted,
       OrderCyclingPrepared(cycleState),
       OrderCycleStarted,
-      OrderOutcomeAdded(Outcome.Failed(Some("TEST FAILURE"))),
+      OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST FAILURE"))),
       OrderFailed(Position(0) / BranchId.cycle(cycleState) % 0)))
   }
 
@@ -209,7 +209,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderStarted,
       OrderCyclingPrepared(cycleState),
       OrderCycleStarted,
-      OrderOutcomeAdded(Outcome.Failed(Some("TEST FAILURE"))),
+      OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST FAILURE"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished()))
@@ -505,7 +505,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(Some(subagentId)),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0 / "lock" % 0 / "try+0" % 1 / "then" % 0),
           OrderDetachable,
           OrderDetached,
@@ -557,7 +557,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(Some(subagentId)),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / "options" % 0 / "cycle+end=1679436000000,i=1" % 1 / "then" % 0),
           OrderMoved(Position(0) / "options" % 0 / "cycle+end=1679436000000,i=1" % 1),
 
@@ -642,7 +642,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
               OrderAttached(agentPath),
               OrderStarted,
               OrderProcessingStarted(Some(subagentId)),
-              OrderProcessed(Outcome.succeeded),
+              OrderProcessed(OrderOutcome.succeeded),
               OrderCycleFinished(None),
               OrderDetachable,
               OrderDetached,
@@ -738,7 +738,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
                 OrderAttached(agentPath),
                 OrderStarted,
                 OrderProcessingStarted(Some(subagentId)),
-                OrderProcessed(Outcome.succeeded),
+                OrderProcessed(OrderOutcome.succeeded),
                 OrderMoved(Position(0) / "cycle" % 0 / "then" % 1),
                 OrderDetachable,
                 OrderDetached,
@@ -777,7 +777,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
               OrderAttached(agentPath),
               OrderStarted,
               OrderProcessingStarted(Some(subagentId)),
-              OrderProcessed(Outcome.succeeded),
+              OrderProcessed(OrderOutcome.succeeded),
               OrderMoved(Position(0) / "cycle" % 0 / "try+0" % 1),
               OrderDetachable,
               OrderDetached,
@@ -827,14 +827,16 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(Some(subagentId)),
-          OrderProcessed(Outcome.succeeded),
+          OrderProcessed(OrderOutcome.succeeded),
           OrderDetachable,
           OrderDetached,
           OrderStopped,
           OrderResumed(Some(Position(0) / "cycle+💣" % 2)),
-          OrderOutcomeAdded(Outcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣"))),
+          OrderOutcomeAdded:
+            OrderOutcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣")),
           OrderFailed(Position(0) / "cycle+💣" % 2),
-          OrderOutcomeAdded(Outcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣"))),
+          OrderOutcomeAdded:
+            OrderOutcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣")),
           OrderBroken(None),
           OrderCancelled,
           OrderDeleted))
@@ -991,7 +993,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
         OrderCycleStarted,
@@ -1044,7 +1046,7 @@ object CycleTest
       IO {
         val now = clock.now()
         logger.info(s"🔹 $now  ${LocalDateTime.ofInstant(now.toInstant, zone)}")
-        Outcome.succeeded
+        OrderOutcome.succeeded
       }
   }
   private object TestJob extends SemaphoreJob.Companion[TestJob]

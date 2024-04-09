@@ -4,13 +4,13 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -95,7 +95,7 @@ object ExpressionsTest:
   private val ExpectedEvents = Map(
     OrderId("🟧") -> Vector(
       OrderAdded(TestWorkflow.id),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: ARG"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: ARG"))),
       OrderFailed(Position(0))),
     OrderId("🟩") -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"))),
@@ -104,8 +104,8 @@ object ExpressionsTest:
       OrderAttached(TestAgentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: ARG2"))),
+      OrderProcessed(OrderOutcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: ARG2"))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0) / Then % 0)),
@@ -119,13 +119,13 @@ object ExpressionsTest:
       OrderAttached(TestAgentPath),
       OrderStarted,
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),
+      OrderProcessed(OrderOutcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(2) / Then % 0),
       OrderProcessingStarted(subagentId),
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,

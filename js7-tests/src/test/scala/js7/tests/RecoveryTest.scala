@@ -5,7 +5,7 @@ import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -18,7 +18,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
@@ -171,15 +171,21 @@ private object RecoveryTest:
     OrderStarted,
     OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(OrderOutcome.Succeeded(Map(
+      "returnCode" -> NumberValue(0),
+      "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(1)),
     OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(OrderOutcome.Succeeded(Map(
+      "returnCode" -> NumberValue(0),
+      "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(2)),
     OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(OrderOutcome.Succeeded(Map(
+      "returnCode" -> NumberValue(0),
+      "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderDetached,
@@ -187,11 +193,15 @@ private object RecoveryTest:
     OrderAttached(AgentPaths(1)),
     OrderProcessingStarted(subagentIds(1)),
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
+    OrderProcessed(OrderOutcome.Succeeded(Map(
+      "returnCode" -> NumberValue(0),
+      "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(4)),
     OrderProcessingStarted(subagentIds(1)),
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
+    OrderProcessed(OrderOutcome.Succeeded(Map(
+      "returnCode" -> NumberValue(0),
+      "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderDetached,

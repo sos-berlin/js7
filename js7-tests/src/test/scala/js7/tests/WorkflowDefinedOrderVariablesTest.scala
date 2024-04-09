@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderFinished
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
@@ -113,6 +113,6 @@ object WorkflowDefinedOrderVariablesTest:
       OrderProcess(IO {
         assert(step.arguments("myONE") == NumberValue(1))
         assert(step.arguments("myPLANT") == step.arguments("myExpected"))
-        Outcome.succeeded
+        OrderOutcome.succeeded
       })
   private object TestJob extends InternalJob.Companion[TestJob]

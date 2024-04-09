@@ -19,7 +19,7 @@ import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.NumberValue
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
@@ -83,7 +83,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         simpleOrderId <-: OrderStarted,
         simpleOrderId <-: OrderProcessingStarted(subagentId),
         simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-        simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+        simpleOrderId <-: OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(namedValues = Map(
           "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
         agentPath <-: AgentShutDown,
 
@@ -104,7 +104,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         caughtOrderId <-: OrderStarted,
         caughtOrderId <-: OrderProcessingStarted(subagentId),
         caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-        caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+        caughtOrderId <-: OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(namedValues = Map(
           "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
         agentPath <-: AgentShutDown,
 

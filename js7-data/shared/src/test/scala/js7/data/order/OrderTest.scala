@@ -45,7 +45,7 @@ final class OrderTest extends OurTestSuite
       "key1" -> StringValue("value1"),
       "key2" -> StringValue("value2")),
     historicOutcomes = Vector(
-      HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0)))))
+      HistoricOutcome(Position(123), OrderOutcome.Succeeded(NamedValues.rc(0)))))
 
   private val subagentId = SubagentId("SUBAGENT")
 
@@ -411,9 +411,9 @@ final class OrderTest extends OurTestSuite
       OrderProcessingStarted(subagentId),
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
-      OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
+      OrderProcessed(OrderOutcome.Succeeded(NamedValues.rc(0))),
       OrderProcessingKilled,
-      OrderOutcomeAdded(Outcome.Failed(NamedValues.rc(1))),
+      OrderOutcomeAdded(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderStopped,
       OrderFailed(Position(1)),
       OrderCatched(Position(1)),
@@ -422,7 +422,7 @@ final class OrderTest extends OurTestSuite
       OrderAwoke,
       OrderMoved(Position(1)),
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
-      OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
+      OrderJoined(OrderOutcome.Succeeded(NamedValues.rc(0))),
       OrderFailedInFork(Position(1)),
       OrderFinished(),
 
@@ -613,7 +613,7 @@ final class OrderTest extends OurTestSuite
 
     "Processed" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), Processed,
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
@@ -634,7 +634,7 @@ final class OrderTest extends OurTestSuite
 
     "ProcessingKilled" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), ProcessingKilled,
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[ProcessingKilled] orElse
         markable[ProcessingKilled] orElse
         detachingAllowed[ProcessingKilled] orElse {
@@ -655,7 +655,7 @@ final class OrderTest extends OurTestSuite
 
     "Prompting" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), Prompting(StringValue("QUESTION")),
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Prompting] orElse
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
@@ -671,7 +671,7 @@ final class OrderTest extends OurTestSuite
 
     "BetweenCycles" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), BetweenCycles(Some(cycleState)),
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[BetweenCycles] orElse
         markable[BetweenCycles] orElse
         cancelMarkedAllowed[BetweenCycles] orElse
@@ -693,7 +693,7 @@ final class OrderTest extends OurTestSuite
 
     "FailedWhileFresh" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedWhileFresh,
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
         deletionMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
@@ -708,7 +708,7 @@ final class OrderTest extends OurTestSuite
 
     "Failed" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), Failed,
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.failed))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.failed))),
         deletionMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
@@ -723,7 +723,7 @@ final class OrderTest extends OurTestSuite
 
     "FailedInFork" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedInFork, parent = Some(OrderId("PARENT")),
-          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
         detachingAllowed[FailedInFork] orElse
         deletionMarkable[FailedInFork] orElse
         cancelMarkedAllowed[FailedInFork] orElse {
@@ -959,9 +959,9 @@ final class OrderTest extends OurTestSuite
 
       lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
         historicOutcomes = Vector(
-          HistoricOutcome(Position(0), Outcome.succeeded),
-          HistoricOutcome(Position(1), Outcome.succeeded),
-          HistoricOutcome(Position(2), Outcome.succeeded)),
+          HistoricOutcome(Position(0), OrderOutcome.succeeded),
+          HistoricOutcome(Position(1), OrderOutcome.succeeded),
+          HistoricOutcome(Position(2), OrderOutcome.succeeded)),
         isSuspended = true)
 
       "Truncate history at position" in {
@@ -978,53 +978,53 @@ final class OrderTest extends OurTestSuite
 
       "ReplaceHistoricOutcome" in {
         assert(resume(Seq(
-          ReplaceHistoricOutcome(Position(1), Outcome.failed))) ==
+          ReplaceHistoricOutcome(Position(1), OrderOutcome.failed))) ==
           Seq(
-            HistoricOutcome(Position(0), Outcome.succeeded),
-            HistoricOutcome(Position(1), Outcome.failed),
-            HistoricOutcome(Position(2), Outcome.succeeded)))
+            HistoricOutcome(Position(0), OrderOutcome.succeeded),
+            HistoricOutcome(Position(1), OrderOutcome.failed),
+            HistoricOutcome(Position(2), OrderOutcome.succeeded)))
       }
 
       "DeletedHistoricOutcome" in {
         assert(resume(Seq(
           DeleteHistoricOutcome(Position(1)))) ==
           Seq(
-            HistoricOutcome(Position(0), Outcome.succeeded),
-            HistoricOutcome(Position(2), Outcome.succeeded)))
+            HistoricOutcome(Position(0), OrderOutcome.succeeded),
+            HistoricOutcome(Position(2), OrderOutcome.succeeded)))
       }
 
       "InsertHistoricOutcome" in {
         assert(resume(Seq(
-          InsertHistoricOutcome(Position(1), Position(1) / Then % 0, Outcome.failed),
-          InsertHistoricOutcome(Position(1), Position(1) / Then % 1, Outcome.failed))) ==
+          InsertHistoricOutcome(Position(1), Position(1) / Then % 0, OrderOutcome.failed),
+          InsertHistoricOutcome(Position(1), Position(1) / Then % 1, OrderOutcome.failed))) ==
           Seq(
-            HistoricOutcome(Position(0), Outcome.succeeded),
-            HistoricOutcome(Position(1) / Then % 0, Outcome.failed),
-            HistoricOutcome(Position(1) / Then % 1, Outcome.failed),
-            HistoricOutcome(Position(1), Outcome.succeeded),
-            HistoricOutcome(Position(2), Outcome.succeeded)))
+            HistoricOutcome(Position(0), OrderOutcome.succeeded),
+            HistoricOutcome(Position(1) / Then % 0, OrderOutcome.failed),
+            HistoricOutcome(Position(1) / Then % 1, OrderOutcome.failed),
+            HistoricOutcome(Position(1), OrderOutcome.succeeded),
+            HistoricOutcome(Position(2), OrderOutcome.succeeded)))
       }
 
       "AppendHistoricOutcome" in {
         assert(resume(Seq(
-          AppendHistoricOutcome(Position(3), Outcome.failed),
-          AppendHistoricOutcome(Position(4), Outcome.failed))) ==
+          AppendHistoricOutcome(Position(3), OrderOutcome.failed),
+          AppendHistoricOutcome(Position(4), OrderOutcome.failed))) ==
           Seq(
-            HistoricOutcome(Position(0), Outcome.succeeded),
-            HistoricOutcome(Position(1), Outcome.succeeded),
-            HistoricOutcome(Position(2), Outcome.succeeded),
-            HistoricOutcome(Position(3), Outcome.failed),
-            HistoricOutcome(Position(4), Outcome.failed)))
+            HistoricOutcome(Position(0), OrderOutcome.succeeded),
+            HistoricOutcome(Position(1), OrderOutcome.succeeded),
+            HistoricOutcome(Position(2), OrderOutcome.succeeded),
+            HistoricOutcome(Position(3), OrderOutcome.failed),
+            HistoricOutcome(Position(4), OrderOutcome.failed)))
       }
 
       "Mixed" in {
         assert(resume(Seq(
-          InsertHistoricOutcome(Position(2), Position(2) / Then % 0, Outcome.failed),
+          InsertHistoricOutcome(Position(2), Position(2) / Then % 0, OrderOutcome.failed),
           DeleteHistoricOutcome(Position(1)),
           DeleteHistoricOutcome(Position(2)))) ==
           Seq(
-            HistoricOutcome(Position(0), Outcome.succeeded),
-            HistoricOutcome(Position(2) / Then % 0, Outcome.failed)))
+            HistoricOutcome(Position(0), OrderOutcome.succeeded),
+            HistoricOutcome(Position(2) / Then % 0, OrderOutcome.failed)))
       }
     }
   }
@@ -1051,11 +1051,11 @@ final class OrderTest extends OurTestSuite
         jobName ->
           WorkflowJob(AgentPath("AGENT"), InternalExecutable(classOf[OrderTest].getName))))
     val order = testOrder.copy(historicOutcomes = Vector(
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1), Outcome.succeeded),
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1), Outcome.succeeded),
-      HistoricOutcome(Position(0), Outcome.succeeded)))
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1), OrderOutcome.succeeded),
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1), OrderOutcome.succeeded),
+      HistoricOutcome(Position(0), OrderOutcome.succeeded)))
 
     assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(0)), workflow) == 3)
     assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(1)), workflow) == 0)

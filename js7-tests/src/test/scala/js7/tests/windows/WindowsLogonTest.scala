@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStderrWritten, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConstant}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -50,7 +50,7 @@ final class WindowsLogonTest extends OurTestSuite, ControllerAgentForScalaTest:
       val stderr = events.collect { case OrderStderrWritten(chunk) => chunk }.fold_
       logger.info(s"stdout:\n$stdout")
       logger.info(s"stderr:\n$stderr")
-      assert(events.collect { case o: OrderProcessed => o } == Seq(OrderProcessed(Outcome.succeededRC0)))
+      assert(events.collect { case o: OrderProcessed => o } == Seq(OrderProcessed(OrderOutcome.succeededRC0)))
       assert(events.last == OrderFinished())
 
       val userName = targetKey.map(key => WindowsProcessCredential.keyToUser(key).orThrow.string)

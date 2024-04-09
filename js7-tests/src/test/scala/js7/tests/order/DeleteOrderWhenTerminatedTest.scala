@@ -10,7 +10,7 @@ import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -44,7 +44,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
       OrderStarted,
       OrderProcessingStarted(subagentId),
       OrderDeletionMarked,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
@@ -64,7 +64,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
       OrderStarted,
       OrderProcessingStarted(subagentId),
       OrderDeletionMarked,
-      OrderProcessed(Outcome.succeededRC0),
+      OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,

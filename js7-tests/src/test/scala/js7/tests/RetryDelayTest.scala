@@ -12,7 +12,7 @@ import js7.base.time.TestAlarmClock
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderCaught, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderRetrying, OrderStarted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
@@ -95,26 +95,26 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           start -> OrderAdded(workflow.id),
           start -> OrderMoved(Position(0) / "try+0" % 0),
           start -> OrderStarted,
-          start -> OrderOutcomeAdded(Outcome.failed),
+          start -> OrderOutcomeAdded(OrderOutcome.failed),
           start -> OrderCaught(Position(0) / "catch+0" % 0),
           start -> OrderRetrying(Position(0) / "try+1" % 0),
 
-          start -> OrderOutcomeAdded(Outcome.failed),
+          start -> OrderOutcomeAdded(OrderOutcome.failed),
           start -> OrderCaught(Position(0) / "catch+1" % 0),
           start -> OrderRetrying(Position(0) / "try+2" % 0, Some(start + 1.s)),
 
           start + 1.s -> OrderAwoke,
-          start + 1.s -> OrderOutcomeAdded(Outcome.failed),
+          start + 1.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 1.s -> OrderCaught(Position(0) / "catch+2" % 0),
           start + 1.s -> OrderRetrying(Position(0) / "try+3" % 0, Some(start + 3.s)),
 
           start + 3.s -> OrderAwoke,
-          start + 3.s -> OrderOutcomeAdded(Outcome.failed),
+          start + 3.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 3.s -> OrderCaught(Position(0) / "catch+3" % 0),
           start + 3.s -> OrderRetrying(Position(0) / "try+4" % 0, Some(start + 5.s)),
 
           start + 5.s -> OrderAwoke,
-          start + 5.s -> OrderOutcomeAdded(Outcome.failed),
+          start + 5.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 5.s -> OrderFailed(Position(0) / "try+4" % 0)))
     }
 

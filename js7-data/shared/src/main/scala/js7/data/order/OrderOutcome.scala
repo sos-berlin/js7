@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
-import js7.data.order.Outcome.Disrupted.ProcessLost
+import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
 import js7.data.value.{NamedValues, NumberValue}
 import org.jetbrains.annotations.TestOnly
@@ -19,28 +19,24 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Outcome:
-  final def isSucceeded = isInstanceOf[Outcome.Succeeded]
+sealed trait OrderOutcome:
+  final def isSucceeded = isInstanceOf[OrderOutcome.Succeeded]
 
   def show: String
 
-// TODO Rename Outcome as OrderOutcome
-type OrderOutcome = Outcome
-val OrderOutcome = Outcome
-
-object Outcome:
+object OrderOutcome:
   val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0
   val failed = Failed(None, Map.empty)
 
-  def leftToFailed(checked: Checked[Outcome]): Outcome =
+  def leftToFailed(checked: Checked[OrderOutcome]): OrderOutcome =
     checked match
-      case Left(problem) => Outcome.Failed.fromProblem(problem)
+      case Left(problem) => OrderOutcome.Failed.fromProblem(problem)
       case Right(o) => o
 
-  def leftToDisrupted(checked: Checked[Outcome]): Outcome =
+  def leftToDisrupted(checked: Checked[OrderOutcome]): OrderOutcome =
     checked match
-      case Left(problem) => Outcome.Disrupted(problem)
+      case Left(problem) => OrderOutcome.Disrupted(problem)
       case Right(o) => o
 
   @TestOnly
@@ -48,7 +44,7 @@ object Outcome:
     Failed(Map("returnCode" -> NumberValue(if isWindows then 0 else 128 + signal.number)))
 
   /** The job has terminated. */
-  sealed trait Completed extends Outcome:
+  sealed trait Completed extends OrderOutcome:
     def namedValues: NamedValues
   object Completed:
     def apply(success: Boolean): Completed =
@@ -60,17 +56,17 @@ object Outcome:
       else
         Failed(namedValues)
 
-    def fromChecked(checked: Checked[Outcome.Completed]): Outcome.Completed =
+    def fromChecked(checked: Checked[OrderOutcome.Completed]): OrderOutcome.Completed =
       checked match
-        case Left(problem) => Outcome.Failed.fromProblem(problem)
+        case Left(problem) => OrderOutcome.Failed.fromProblem(problem)
         case Right(o) => o
 
-    def fromTry(tried: Try[Outcome.Completed]): Completed =
+    def fromTry(tried: Try[OrderOutcome.Completed]): Completed =
       tried match
         case Failure(t) => Failed.fromThrowable(t)
         case Success(o) => o
 
-    private[Outcome] sealed trait Companion[A <: Completed]:
+    private[OrderOutcome] sealed trait Companion[A <: Completed]:
       protected def make(namedValues: NamedValues): A
 
       def rc(returnCode: Int): A =
@@ -159,27 +155,27 @@ object Outcome:
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
       yield Failed(errorMessage, namedValues, uncatchable)
 
-  final case class TimedOut(outcome: Outcome.Completed)
-  extends Outcome:
+  final case class TimedOut(outcome: OrderOutcome.Completed)
+  extends OrderOutcome:
     def show = s"TimedOut($outcome)"
     override def toString = "⚠️ " + show
 
-  final case class Killed(outcome: Outcome.Completed)
-  extends Outcome:
+  final case class Killed(outcome: OrderOutcome.Completed)
+  extends OrderOutcome:
     def show = s"Killed($outcome)"
     override def toString = "⚠️ " + show
 
   @TestOnly
   def killed(signal: ProcessSignal): Killed =
-    Killed(Outcome.failedWithSignal(signal))
+    Killed(OrderOutcome.failedWithSignal(signal))
 
   @TestOnly
   val killedInternal: Killed =
-    Killed(Outcome.Failed(Some("Canceled")))
+    Killed(OrderOutcome.Failed(Some("Canceled")))
 
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason, uncatchable: Boolean = false)
-  extends Outcome, NotSucceeded:
+  extends OrderOutcome, NotSucceeded:
     def show = s"Disrupted($reason)"
     override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
 
@@ -226,7 +222,7 @@ object Outcome:
   def processLost(problem: Problem): Disrupted =
     Disrupted(ProcessLost(problem))
 
-  sealed trait NotSucceeded extends Outcome:
+  sealed trait NotSucceeded extends OrderOutcome:
     def uncatchable: Boolean
 
   object NotSucceeded:
@@ -234,7 +230,7 @@ object Outcome:
       Subtype[Failed],
       Subtype[Disrupted])
 
-  private val typedJsonCodec = TypedJsonCodec[Outcome](
+  private val typedJsonCodec = TypedJsonCodec[OrderOutcome](
     Subtype[Succeeded],
     Subtype[Failed],
     Subtype(deriveCodec[TimedOut]),
@@ -244,11 +240,11 @@ object Outcome:
   private val predefinedRC0SucceededJson: JsonObject =
     TypedJsonCodec.typeField[Succeeded] +: Succeeded.returnCode0.asJsonObject
 
-  implicit val jsonEncoder: Encoder.AsObject[Outcome] = outcome =>
+  implicit val jsonEncoder: Encoder.AsObject[OrderOutcome] = outcome =>
     if outcome eq Succeeded.returnCode0 then
       predefinedRC0SucceededJson
     else
       typedJsonCodec.encodeObject(outcome)
 
-  implicit val jsonDecoder: Decoder[Outcome] =
+  implicit val jsonDecoder: Decoder[OrderOutcome] =
     typedJsonCodec

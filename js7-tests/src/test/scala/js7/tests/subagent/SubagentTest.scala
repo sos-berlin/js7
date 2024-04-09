@@ -11,7 +11,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItemState}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -47,7 +47,7 @@ final class SubagentTest extends OurTestSuite, SubagentTester:
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event
-      assert(processed == OrderProcessed(Outcome.Disrupted(MessageSignedByUnknownProblem)))
+      assert(processed == OrderProcessed(OrderOutcome.Disrupted(MessageSignedByUnknownProblem)))
     }
 
   "CancelOrder" in:
@@ -80,7 +80,7 @@ final class SubagentTest extends OurTestSuite, SubagentTester:
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event
-      assert(processed == OrderProcessed(Outcome.killedInternal))
+      assert(processed == OrderProcessed(OrderOutcome.killedInternal))
       eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
     }
 

@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -78,7 +78,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
       val events = controller.runOrder(freshOrder)
       assert(events.map(_.value) == Seq(
         OrderAdded(workflow.id, Map("arg" -> StringValue("CONTROLLER"))),
-        OrderOutcomeAdded(Outcome.Disrupted(Problem(
+        OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
           "The subagentIds function is available only for ForkList statement running at an Agent" +
             " — use the agentPath argument!"))),
         OrderFailed(Position(0))
@@ -108,7 +108,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
         OrderAdded(workflow.id, Map("arg" -> StringValue("UNKNOWN"))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderOutcomeAdded(Outcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
+        OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))
@@ -149,20 +149,20 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
             "subagentId" -> StringValue("BARE-SUBAGENT"))))),
         OrderDetachable,
         OrderDetached,
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished()))
 
       assert(eventWatch.eventsByKey[OrderEvent](localSubagentOrderId) == Seq(
         OrderProcessingStarted(localSubagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
 
       assert(eventWatch.eventsByKey[OrderEvent](bareSubagentOrderId) == Seq(
         OrderProcessingStarted(bareSubagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
@@ -203,26 +203,26 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
             "subagentId" -> StringValue("BARE-SUBAGENT"))))),
         OrderDetachable,
         OrderDetached,
-        OrderJoined(Outcome.succeeded),
+        OrderJoined(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished()))
 
       assert(eventWatch.eventsByKey[OrderEvent](localSubagentOrderId) == Seq(
         OrderProcessingStarted(localSubagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
 
       assert(eventWatch.eventsByKey[OrderEvent](bareSubagentOrderId) == Seq(
         OrderProcessingStarted(bareSubagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
       assert(eventWatch.eventsByKey[OrderEvent](bSubagentOrderId) == Seq(
         OrderProcessingStarted(bSubagentId),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))

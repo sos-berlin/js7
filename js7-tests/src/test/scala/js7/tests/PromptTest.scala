@@ -10,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflowPath, ResumeOrder, SuspendOrders}
 import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -36,7 +36,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       Order.Prompting(StringValue("MY QUESTION")))
 
     controller.api.executeCommand(
-      AnswerOrderPrompt(orderId/*, Outcome.Succeeded(NamedValues("myAnswer" -> StringValue("MY ANSWER")))*/)
+      AnswerOrderPrompt(orderId/*, OrderOutcome.Succeeded(NamedValues("myAnswer" -> StringValue("MY ANSWER")))*/)
     ).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
 
@@ -52,7 +52,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(1))))
 
   "Prompt followed by a skipped statement" in:
@@ -74,7 +74,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
       OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
-      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(2))))
 
   "Order.Prompting is suspendible" in:

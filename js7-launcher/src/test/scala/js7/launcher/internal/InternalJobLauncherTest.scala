@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
-import js7.data.order.{Order, OrderId, OrderOutcome, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.expression.Scope
@@ -92,8 +92,8 @@ object InternalJobLauncherTest:
           *> step.write(Stdout, "OUT 2")
           *> step.write(Stderr, "ERR 2")
           *> IO:
-          Outcome.Completed.fromChecked(
+          OrderOutcome.Completed.fromChecked(
             step.arguments.checked("ARG")
               .flatMap(_.as[NumberValue])
               .map(_.number + 1)
-              .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))
+              .map(result => OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))

@@ -10,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
 import js7.data.order.OrderEvent.*
-import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.{Fail, Fork}
@@ -50,13 +50,13 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
 
     assert(controllerState.idToOrder(TestOrder.id).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.succeeded),
-      HistoricOutcome(Position(1), Outcome.succeeded),
-      HistoricOutcome(Position(2), Outcome.succeeded),
-      HistoricOutcome(Position(3), Outcome.Succeeded(Map(
+      HistoricOutcome(Position(0), OrderOutcome.succeeded),
+      HistoricOutcome(Position(1), OrderOutcome.succeeded),
+      HistoricOutcome(Position(2), OrderOutcome.succeeded),
+      HistoricOutcome(Position(3), OrderOutcome.Succeeded(Map(
         "CARROT" -> NumberValue(11),
         "CITRON" -> NumberValue(21)))),
-      HistoricOutcome(Position(4), Outcome.succeeded)))
+      HistoricOutcome(Position(4), OrderOutcome.succeeded)))
 
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
       .await(99.s).orThrow
@@ -68,7 +68,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderAdded(failingResultWorkflow.id),
       OrderStarted,
       OrderForked(Vector("💥" -> OrderId("💥|💥"))),
-      OrderJoined(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderJoined(OrderOutcome.Failed(Some("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
 
   "joinIfFailed" in:
@@ -112,7 +112,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     controller.addOrderBlocking(order)
 
-    val expectedOutcomeAdded = OrderOutcomeAdded(Outcome.Disrupted(Problem(
+    val expectedOutcomeAdded = OrderOutcomeAdded(OrderOutcome.Disrupted(Problem(
       "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0," +
         "Processing(Subagent:AGENT-A-0),Map(),None,None,Vector()," +
         "Some(Attached to Agent:AGENT-A),None,None,false,false,false,false,List(),List(),Set())")))
@@ -146,14 +146,14 @@ object ForkTest:
     def toOrderProcess(step: Step) =
       OrderProcess(
         IO.sleep(60.s)
-          .as(Outcome.succeeded))
+          .as(OrderOutcome.succeeded))
   private object SlowJob extends InternalJob.Companion[SlowJob]
 
   final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for arg <- step.arguments("ARG").asNumber yield
-          Outcome.Succeeded(Map(
+          OrderOutcome.Succeeded(Map(
             "jobResult" -> NumberValue(arg + 1))))
   object TestJob extends InternalJob.Companion[TestJob]
 
@@ -235,12 +235,12 @@ object ForkTest:
       XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
 
       XOrderId <-: OrderProcessingStarted(aSubagentId),        YOrderId <-: OrderProcessingStarted(aSubagentId),
-      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderProcessed(OrderOutcome.succeeded),         YOrderId <-: OrderProcessed(OrderOutcome.succeeded),
       XOrderId <-: OrderMoved(Position(0) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(0) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderJoined(OrderOutcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(1)),
 
     TestOrder.id <-: OrderForked(Vector(
@@ -249,18 +249,18 @@ object ForkTest:
       XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
 
       XOrderId <-: OrderProcessingStarted(aSubagentId),        YOrderId <-: OrderProcessingStarted(aSubagentId),
-      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderProcessed(OrderOutcome.succeeded),         YOrderId <-: OrderProcessed(OrderOutcome.succeeded),
       XOrderId <-: OrderMoved(Position(1) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(1) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderJoined(OrderOutcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(2)),
 
     TestOrder.id <-: OrderAttachable(bAgentPath),
     TestOrder.id <-: OrderAttached(bAgentPath),
     TestOrder.id <-: OrderProcessingStarted(bSubagentId),
-    TestOrder.id <-: OrderProcessed(Outcome.succeeded),
+    TestOrder.id <-: OrderProcessed(OrderOutcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(3)),
 
     TestOrder.id <-: OrderDetachable,
@@ -271,8 +271,8 @@ object ForkTest:
       XOrderId <-: OrderAttached(bAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
 
       XOrderId <-: OrderProcessingStarted(bSubagentId),       YOrderId <-: OrderProcessingStarted(aSubagentId),
-      XOrderId <-: OrderProcessed(Outcome.Succeeded(Map("jobResult" -> NumberValue(11)))),
-                                                              YOrderId <-: OrderProcessed(Outcome.Succeeded(Map("jobResult" -> NumberValue(21)))),
+      XOrderId <-: OrderProcessed(OrderOutcome.Succeeded(Map("jobResult" -> NumberValue(11)))),
+                                                              YOrderId <-: OrderProcessed(OrderOutcome.Succeeded(Map("jobResult" -> NumberValue(21)))),
       XOrderId <-: OrderMoved(Position(3) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 1),
 
                                                               YOrderId <-: OrderDetachable,
@@ -281,12 +281,12 @@ object ForkTest:
                                                               YOrderId <-: OrderAttached(bAgentPath),
 
                                                               YOrderId <-: OrderProcessingStarted(bSubagentId),
-                                                              YOrderId <-: OrderProcessed(Outcome.succeeded),
+                                                              YOrderId <-: OrderProcessed(OrderOutcome.succeeded),
                                                               YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 2),
 
       XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.Succeeded(Map(
+    TestOrder.id <-: OrderJoined(OrderOutcome.Succeeded(Map(
       "CARROT" -> NumberValue(11),
       "CITRON" -> NumberValue(21)))),
     TestOrder.id <-: OrderMoved(Position(4)),
@@ -297,11 +297,11 @@ object ForkTest:
       XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(bAgentPath),
 
       XOrderId <-: OrderProcessingStarted(aSubagentId),       YOrderId <-: OrderProcessingStarted(bSubagentId),
-      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderProcessed(OrderOutcome.succeeded),         YOrderId <-: OrderProcessed(OrderOutcome.succeeded),
       XOrderId <-: OrderMoved(Position(4) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(4) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderJoined(OrderOutcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
     TestOrder.id <-: OrderFinished())

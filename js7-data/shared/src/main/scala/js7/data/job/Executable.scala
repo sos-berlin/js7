@@ -13,7 +13,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
-import js7.data.order.Outcome
+import js7.data.order.OrderOutcome
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, NumberValue}
 
@@ -44,7 +44,7 @@ sealed trait ProcessExecutable extends Executable:
   def v1Compatible: Boolean
 
   final def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
-    Outcome.Completed(
+    OrderOutcome.Completed(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ProcessExecutable.toNamedValue(returnCode))
 object ProcessExecutable:

@@ -5,7 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -31,7 +31,7 @@ final class SimpleBlockingInternalJobTest extends OurTestSuite, ControllerAgentF
       .runOrder(FreshOrder(OrderId("TestEnvBlockingInternalJob"), workflow.path))
       .map(_.value)
       .collectFirst { case OrderProcessed(outcome) => outcome }
-    assert(outcome contains Outcome.succeeded)
+    assert(outcome contains OrderOutcome.succeeded)
 
 
 object SimpleBlockingInternalJobTest:

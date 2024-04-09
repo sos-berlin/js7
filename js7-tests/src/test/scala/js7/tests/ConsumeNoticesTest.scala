@@ -14,7 +14,7 @@ import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -94,7 +94,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable, OrderDetached,
       OrderNoticesConsumed(),
@@ -244,7 +244,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable, OrderDetached,
       OrderNoticesConsumed(),
@@ -292,7 +292,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable,
       OrderDetached,
@@ -346,7 +346,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable,
       OrderDetached,
@@ -362,7 +362,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable,
       OrderDetached,
@@ -437,7 +437,7 @@ final class ConsumeNoticesTest
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "consumeNotices" % 0 / "consumeNotices" % 1),
       OrderDetachable, OrderDetached,
       OrderNoticesConsumed(),
@@ -485,7 +485,7 @@ final class ConsumeNoticesTest
       OrderStarted,
       OrderNoticesExpected(Vector(Expected(aBoard.path, noticeId))),
       OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
-      OrderOutcomeAdded(Outcome.failed),
+      OrderOutcomeAdded(OrderOutcome.failed),
       OrderNoticesConsumed(true),
       OrderFailed(Position(0)),
       OrderCancelled,
@@ -567,7 +567,7 @@ final class ConsumeNoticesTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderNoticesConsumed(failed = true),
@@ -579,7 +579,7 @@ final class ConsumeNoticesTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderNoticesConsumed(failed = true),
