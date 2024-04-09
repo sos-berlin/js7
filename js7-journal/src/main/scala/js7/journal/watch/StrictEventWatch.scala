@@ -51,15 +51,18 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   : IO[E] =
     underlying.whenKeyedEvent(request, key, predicate)
 
+  @TestOnly
+  def resetLastWatchedEventId(): Unit =
+    _lastWatchedEventId = lastAddedEventId
+
   /** TEST ONLY - Blocking. */
   @TestOnly
   def awaitNext[E <: Event : ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
-    after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] = {
-    val r = await(predicate, after, timeout)
+    val r = await(predicate, after = _lastWatchedEventId, timeout)
     _lastWatchedEventId = r.last.eventId
     r
   }
@@ -96,16 +99,6 @@ final class StrictEventWatch(val underlying: FileEventWatch):
       .untilAllKeys(keys, predicate, after = after, timeout = Some(timeout))
       .logWhenItTakesLonger(s"awaitKeys[${implicitClass[E].shortClassName}]")
       .await(timeout)
-
-  /** TEST ONLY - Blocking. */
-  @TestOnly
-  def expectNext[E <: Event](
-    predicate: KeyedEvent[E] => Boolean = Every,
-    after: EventId = _lastWatchedEventId,
-    timeout: FiniteDuration = 99.s)
-    (using ioRuntime: IORuntime, E: Tag[E], classTag: ClassTag[E])
-  : Expect[E] =
-    new Expect(awaitNext(predicate, after = after, timeout))
 
   /** TEST ONLY - Blocking. */
   @TestOnly

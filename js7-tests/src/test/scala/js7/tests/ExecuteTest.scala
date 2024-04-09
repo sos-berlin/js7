@@ -557,13 +557,13 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
             .map(i => FreshOrder(orderIds(i), workflows(i / jobProcessLimit).path)))
           .await(99.s).orThrow
         for orderId <- orderIds do
-          eventWatch.awaitNext[OrderProcessingStarted](_.key == orderId, after = eventId)
+          eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
 
         val extraOrderId = OrderId("AGENT-LIMIT-EXTRA")
         addAndExpectedLimitIsReached(extraOrderId, workflows(1).path)
 
-        eventWatch.expectNext[OrderProcessed]():
-          eventWatch.expectNext[OrderProcessingStarted]():
+        eventWatch.expect[OrderProcessed]():
+          eventWatch.expect[OrderProcessingStarted]():
             ParallelInternalJob.continue(1)
 
         ParallelInternalJob.reset()
@@ -579,7 +579,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       test(increasedProcessLimit = None, "C")
 
     def test(increasedProcessLimit: Option[Int], name: String) =
-      eventWatch.expectNext[ItemAttached](_.event.key == agentPath):
+      eventWatch.expect[ItemAttached](_.event.key == agentPath):
         controller.api
           .updateUnsignedSimpleItems(Seq(
             controllerState.keyToItem(AgentRef)(agentPath)
@@ -600,14 +600,14 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           .map(i => FreshOrder(orderIds(i), workflow.path)))
           .await(99.s).orThrow
         for orderId <- orderIds do
-          eventWatch.awaitNext[OrderProcessingStarted](_.key == orderId, after = eventId)
+          eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
 
         val extraOrderId = OrderId(s"AGENT-LIMIT-$name-EXTRA")
         addAndExpectedLimitIsReached(extraOrderId, workflow.path)
 
         // Increase Agent processLimit
-        eventWatch.expectNext[OrderProcessingStarted]():
-          eventWatch.expectNext[ItemAttached](_.event.key == agentPath):
+        eventWatch.expect[OrderProcessingStarted]():
+          eventWatch.expect[ItemAttached](_.event.key == agentPath):
             controller.api
               .updateUnsignedSimpleItems(Seq(
                 controllerState.keyToItem(AgentRef)(agentPath)
@@ -620,7 +620,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       }
 
     def addAndExpectedLimitIsReached(orderId: OrderId, workflowPath: WorkflowPath): Unit =
-      eventWatch.expectNext[OrderAttached](_.key == orderId):
+      eventWatch.expect[OrderAttached](_.key == orderId):
         controller.api.addOrder(FreshOrder(orderId, workflowPath)).await(99.s).orThrow
       retryUntil(9.s, 10.ms):
         assert(orderToObstacles(orderId)(WallClock) == Right(Set(agentProcessLimitReached)))
