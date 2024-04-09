@@ -536,11 +536,12 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       OrderMoved.SkippedDueToWorkflowPathControl
 
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State]): Boolean =
-    state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
-      .exists(control => state.workflowPositionToLabel(order.workflowPosition)
-        .toOption
-        .flatten
-        .exists(control.skip.contains))
+    !order.isState[Order.BetweenCycles] &&
+      state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
+        .exists(control => state.workflowPositionToLabel(order.workflowPosition)
+          .toOption
+          .flatten
+          .exists(control.skip.contains))
 
   private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] =
     for

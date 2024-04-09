@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.syntax.option.*
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
@@ -8,19 +9,19 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.ControlWorkflowPath
+import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflowPath}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.{ItemRevision, VersionId}
-import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderTerminated}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{EmptyInstruction, Execute, If}
+import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, If, Prompt, Retry, Schedule, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
@@ -43,11 +44,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(aWorkflow, bWorkflow)
+  protected val items = Seq(aWorkflow, bWorkflow, calendar)
 
   "Skip the only Job" in:
     val orderId = OrderId("A")
-    skipJob(aWorkflow.path, true, ItemRevision(1))
+    skipInstruction(aWorkflow.path, true, ItemRevision(1))
     val events = controller
       .runOrder(FreshOrder(orderId, aWorkflow.path, deleteWhenTerminated = true))
       .map(_.value)
@@ -60,7 +61,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderDeleted))
 
   "Skip the Job in the middle" in:
-    skipJob(bWorkflow.path, true, ItemRevision(1))
+    skipInstruction(bWorkflow.path, true, ItemRevision(1))
     val orderId = OrderId("B")
     val events = controller
       .runOrder(FreshOrder(orderId, bWorkflow.path, deleteWhenTerminated = true))
@@ -98,7 +99,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         WorkflowJob.Name("JOB") -> EmptyJob.workflowJob(agentPath)))
 
     withTemporaryItem(workflow) { workflow =>
-      skipJob(workflow.path, true, ItemRevision(1))
+      skipInstruction(workflow.path, true, ItemRevision(1))
       val orderId = OrderId("B")
       val events = controller
         .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -147,13 +148,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     awaitAndAssert:
       controllerState.keyTo(WorkflowPathControl).isEmpty
 
-  private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
+  private def skipInstruction(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
   : EventId =
     val eventId = eventWatch.lastAddedEventId
-    controller.api
-      .executeCommand(ControlWorkflowPath(workflowPath, skip = Map(
-        label -> skip)))
-      .await(99.s).orThrow
+    skipInstruction(workflowPath, skip)
     val keyedEvents = eventWatch.await[UnsignedSimpleItemAddedOrChanged](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
       NoKey <-: UnsignedSimpleItemAdded(
@@ -163,69 +161,115 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
 
+  private def skipInstruction(workflowPath: WorkflowPath, skip: Boolean = true): Unit =
+    controller.api
+      .executeCommand(ControlWorkflowPath(workflowPath, skip = Map(
+        label -> skip)))
+      .await(99.s).orThrow
+
   "Skip any instruction (JS-2112)" - {
     "Skip first instruction" in:
-      val label = Label("LABEL")
       val workflow = Workflow.of(WorkflowPath("SKIP-FIRST-INSTRUCTION"),
         label @: If(expr("true"),
           Workflow.of(EmptyJob.execute(agentPath))),
         EmptyInstruction())
       withTemporaryItem(workflow): workflow =>
-        controller.api
-          .executeCommand(ControlWorkflowPath(workflow.path, skip = Map(
-            label -> true)))
-          .await(99.s).orThrow
-
-        locally:
-          val orderId = OrderId("SKIP-FIRST-INSTRUCTION")
-          val events = controller
-            .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-            .map(_.value)
-          assert(events == Seq(
-            OrderAdded(workflow.id, deleteWhenTerminated = true),
-            OrderMoved(Position(1), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
-            OrderMoved(Position(2)),
-            OrderStarted,
-            OrderFinished(),
-            OrderDeleted))
+        skipInstruction(workflow.path)
+        val orderId = OrderId("SKIP-FIRST-INSTRUCTION")
+        val events = controller
+          .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .map(_.value)
+        assert(events == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(1), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+          OrderMoved(Position(2)),
+          OrderStarted,
+          OrderFinished(),
+          OrderDeleted))
 
     "Skip instruction after Execute" in:
-      val label = Label("LABEL")
       val workflow = Workflow.of(WorkflowPath("SKIP-AFTER-EXECUTE"),
         EmptyJob.execute(agentPath),
         label @: If(expr("true"),
           Workflow.of(
             EmptyInstruction())))
       withTemporaryItem(workflow): workflow =>
-        controller.api
-          .executeCommand(ControlWorkflowPath(workflow.path, skip = Map(
-            label -> true)))
-          .await(99.s).orThrow
+        skipInstruction(workflow.path)
+        val orderId = OrderId("SKIP-AFTER-EXECUTE")
+        val events = controller
+          .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .map(_.value)
+        assert(events == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted(subagentId),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(1)),
+          OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+          OrderDetachable,
+          OrderDetached,
+          OrderFinished(),
+          OrderDeleted))
 
-        locally:
-          val orderId = OrderId("SKIP-AFTER-EXECUTE")
-          val events = controller
-            .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-            .map(_.value)
-          assert(events == Seq(
-            OrderAdded(workflow.id, deleteWhenTerminated = true),
-            OrderAttachable(agentPath),
-            OrderAttached(agentPath),
-            OrderStarted,
-            OrderProcessingStarted(subagentId),
-            OrderProcessed(Outcome.succeeded),
-            OrderMoved(Position(1)),
-            OrderMoved(Position(2), Some(OrderMoved.SkippedDueToWorkflowPathControl)),
-            OrderDetachable,
-            OrderDetached,
-            OrderFinished(),
-            OrderDeleted))
+    "Cycle is skipped only before entering it" in:
+      val workflow = Workflow(WorkflowPath("SKIP-CYCLE"),
+        Seq(
+          label @:
+            Cycle(
+              Schedule.continuous(0.s, limit = 2.some),
+              Workflow.of(Prompt(expr("'PROMPT'"))))),
+        calendarPath = calendar.path.some)
+
+      withTemporaryItem(workflow): workflow =>
+        eventWatch.resetLastWatchedEventId()
+        val orderId = OrderId("#2024-04-10#SKIP-CYCLE")
+        controller.addOrderBlocking:
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+        skipInstruction(workflow.path)
+        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+    "Try with retry is skipped only before entering it" in:
+      val workflow = Workflow(WorkflowPath("SKIP-TRY"),
+        Seq(
+          label @:
+            TryInstruction(
+              Workflow.of(
+                Prompt(expr("'PROMPT'")),
+                Fail(None)),
+              Workflow.of(
+                Retry()),
+              maxTries = 2.some)))
+
+      withTemporaryItem(workflow): workflow =>
+        eventWatch.resetLastWatchedEventId()
+        val orderId = OrderId("SKIP-TRY")
+        controller.addOrderBlocking:
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+        skipInstruction(workflow.path)
+        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
   }
 
 
 object ControlWorkflowPathSkipTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
+  private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
 
   private val label = Label("SKIP")
   private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ VersionId("INITIAL"), Seq(
