@@ -58,14 +58,20 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
 
   /** Fetch event stream from Controller. */
   @Nonnull
-  def eventFlux(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =
+  def eventFlux(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent])
+  : Flux[JEventAndControllerState[Event]] =
     eventFlux(requireNonNull(proxyEventBus), OptionalLong.empty())
+
+  /** Fetch event stream from Controller. */
+  @Nonnull
+  def eventFlux(@Nonnull after: OptionalLong/*EventId*/): Flux[JEventAndControllerState[Event]] =
+    eventFlux(new JStandardEventBus, after = after)
 
   /** Fetch event stream from Controller. */
   @Nonnull
   def eventFlux(
     @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
-    after: OptionalLong/*EventId*/)
+    @Nonnull after: OptionalLong/*EventId*/)
   : Flux[JEventAndControllerState[Event]] =
     asScala
       .eventAndStateStream(proxyEventBus.asScala, after.toScala)
@@ -77,7 +83,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     startProxy(new JStandardEventBus[ProxyEvent])
 
   @Nonnull
-  def startProxy(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent]): CompletableFuture[JControllerProxy] =
+  def startProxy(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent])
+  : CompletableFuture[JControllerProxy] =
     startProxy(proxyEventBus, new JControllerEventBus)
 
   /** Starts a `JControllerProxy`.
@@ -264,7 +271,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .map(_.toVoidVavr))
 
   @Nonnull
-  def executeCommand(@Nonnull command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
+  def executeCommand(@Nonnull command: JControllerCommand)
+  : CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
     runIO(asScala
       .executeCommand(command.asScala)
       .map(_.map(o => (o: ControllerCommand.Response)).toVavr))
@@ -310,7 +318,8 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   @Nonnull
-  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
+  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean)
+  : CompletableFuture[JEventAndControllerState[Event]] =
     requireNonNull(predicate)
     runIO(asScala
       .when(es => predicate(JEventAndControllerState(es)))
