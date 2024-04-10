@@ -226,20 +226,24 @@ object FileUtils:
     if !isDirectory(dir) then throw new IOException(s"Not a directory: $dir")
     if !isSymbolicLink(dir) then
       deleteDirectoryContentRecursively(dir)
-    delete(dir)
+    loggingDelete(dir)
 
   def deleteDirectoryContentRecursively(dir: Path): Unit =
     for f <- dir.directoryContents do
       if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
-      delete(f)
+      loggingDelete(f)
 
   def tryDeleteDirectoryContentRecursively(dir: Path): Unit =
     for f <- dir.directoryContents do
       if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
-      try delete(f)
+      try loggingDelete(f)
       catch { case NonFatal(t) =>
         logger.warn(s"Delete $f => ${t.toStringWithCauses}")
       }
+
+  private def loggingDelete(file: Path): Unit =
+    delete(file)
+    logger.trace(s"Deleted file $file")
 
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable & Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable:
