@@ -6,15 +6,17 @@ import java.util.Objects.requireNonNull
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, PostNotice, TransferOrders}
+import js7.data.controller.ControllerCommand.{AddOrder, Batch, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
+import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Label
+import js7.data.workflow.position.{Label, Position}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
 import js7.data_for_java.workflow.JWorkflowId
@@ -30,6 +32,7 @@ extends JJsonable[JControllerCommand]:
 
   protected def companion = JControllerCommand
 
+
 @javaApi
 object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   type AsScala = ControllerCommand
@@ -37,6 +40,20 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   @Nonnull
   def addOrder(@Nonnull jFreshOrder: JFreshOrder): JControllerCommand =
     JControllerCommand(AddOrder(jFreshOrder.asScala))
+
+  def batch(@Nonnull commands: java.util.List[JControllerCommand]): JControllerCommand =
+    JControllerCommand(Batch:
+      commands.asScala
+        .map: cmd =>
+          CorrelIdWrapped(CorrelId.current, cmd.asScala)
+        .toVector)
+
+  @Nonnull
+  def goOrder(
+    @Nonnull orderId: OrderId,
+    @Nonnull position: JPosition)
+  : JControllerCommand =
+    JControllerCommand(GoOrder(orderId, position.asScala))
 
   @Nonnull
   def postNotice(

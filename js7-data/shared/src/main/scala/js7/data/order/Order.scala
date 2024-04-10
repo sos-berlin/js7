@@ -708,7 +708,7 @@ final case class Order[+S <: Order.State](
       isState[FailedInFork] ||
       isState[Broken]
 
-  private def isGoCommandable =
+  def isGoCommandable: Boolean =
     isState[BetweenCycles] ||
       isState[DelayedAfterError] ||
       (isState[Fresh] && maybeDelayedUntil.isDefined)
