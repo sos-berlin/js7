@@ -175,9 +175,12 @@ extends MainService, Service.StoppableByRequest:
 
   @TestOnly
   def waitUntilReady()(using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line): Unit =
-    IO.fromFutureDummyCancelable(IO(whenReady))
+    untilReady
       .logWhenItTakesLonger
       .await(99.s)
+
+  def untilReady: IO[Unit] =
+    IO.fromFutureDummyCancelable(IO(whenReady))
 
   @TestOnly
   def clusterState: IO[ClusterState] =
@@ -254,7 +257,7 @@ object RunningController:
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdGenerator, testEventBus)
 
-    val resources = 
+    val resources =
       Resource.both(
         /*CorrelId.bindNew*/ (clusterNodeResource),
         CorrelId.bindNew:
@@ -302,7 +305,7 @@ object RunningController:
               whenReady.tryFailure(t)
             }))
 
-      val untilOrderKeeperTerminated = 
+      val untilOrderKeeperTerminated =
         memoize:
           logger.traceIO(
             orderKeeperStarted.flatMap {

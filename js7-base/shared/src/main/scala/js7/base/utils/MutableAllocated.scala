@@ -33,13 +33,13 @@ final class MutableAllocated[A](logMinor: Boolean = false)
 
   def acquire(resource: Resource[IO, A]): IO[A] =
     logger.traceIO(s"$toString acquire"):
-      cancelWhenReleasedFinally:
+      cancelWhenFinallyReleased:
         allocatedVar
           .update: allocated =>
             allocated.release.uncancelable *> resource.toAllocated
           .map(_.allocatedThing)
 
-  private def cancelWhenReleasedFinally(io: IO[A]): IO[A] =
+  private def cancelWhenFinallyReleased(io: IO[A]): IO[A] =
     whenReleaseFinally.tryGet.flatMap: released =>
       if released.isDefined then
         IO.raiseError(new AcquisitionCanceledException)

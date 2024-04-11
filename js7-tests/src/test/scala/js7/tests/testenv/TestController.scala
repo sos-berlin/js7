@@ -162,6 +162,9 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
         .logWhenItTakesLonger(s"runOrder(${order.id})")
     }).await(timeout)
 
+  def untilReady: IO[Unit] =
+    runningController.untilReady
+
   def waitUntilReady(): Unit =
     runningController.waitUntilReady()
 
