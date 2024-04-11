@@ -191,7 +191,7 @@ extends Service.StoppableByRequest:
 
     protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
       onBatchFailed(queueables, problem) *>
-        IO.whenA(!problem.isInstanceOf[DirectorDriverStoppedProblem])(
+        IO.whenA(!problem.isInstanceOf[DirectorDriverStoppedProblem] && !isTerminating)(
           startAndForgetDirectorDriver)
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): IO[Unit] =
@@ -401,13 +401,15 @@ extends Service.StoppableByRequest:
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): IO[Unit] =
     startDirectorDriverFiber
-      .update { fiber =>
+      .update: fiber =>
         fiber.cancel *>
           startNewDirectorDriver
-            .handleError(t => logger.error(
-              s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t))
+            .handleError:
+              case t: directorDriverAllocated.AcquisitionCanceledException =>
+                logger.debug(s"${src.value} startDirectorDriver => ${t.toStringWithCauses}")
+              case t =>
+                logger.error(s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t)
             .start
-      }
       .void
 
   private def startNewDirectorDriver: IO[Unit] =
