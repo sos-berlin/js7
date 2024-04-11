@@ -9,12 +9,12 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, Path}
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.watch.DirectoryWatchSettings
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
 import js7.base.service.Service
@@ -25,7 +25,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, DelayConf, Delayer}
 import js7.base.web.Uri
 import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkohttp.web.PekkoWebServer.{BindingAndResource, *}
+import js7.common.pekkohttp.web.PekkoWebServer.*
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.apache.pekko.actor.ActorSystem
@@ -118,7 +118,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     import bindingAndResource.{resource, webServerBinding as binding}
 
-    Delayer.start[IO](delayConf)
+    Delayer.start[IO](DelayConf.default)
       .flatMap { delayer =>
         var errorLogged = false
         readFileTimes(binding)
@@ -160,7 +160,6 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 
 object PekkoWebServer:
   private val logger = Logger[this.type]
-  private val delayConf = DelayConf(NonEmptySeq.of(1.s, 3.s, 6.s, 10.s))
 
   private[web] val testConfig = config"""
     js7.web.server.auth.https-client-authentication = off
