@@ -457,7 +457,7 @@ object Logger extends AdHocLogger:
 
     if argsString.isEmpty then
       logLevel match
-        case LogLevel.LogNone =>
+        case LogLevel.None =>
         case LogLevel.Trace => logger.trace(s"↘ $function ↘")
         case LogLevel.Debug => logger.debug(s"↘ $function ↘")
         case LogLevel.Info  => logger.info (s"↘ $function ↘")
@@ -465,7 +465,7 @@ object Logger extends AdHocLogger:
         case LogLevel.Error => logger.error(s"↘ $function ↘")
     else
       logLevel match
-        case LogLevel.LogNone =>
+        case LogLevel.None =>
         case LogLevel.Trace => logger.trace(s"↘ $function($argsString) ↘")
         case LogLevel.Debug => logger.debug(s"↘ $function($argsString) ↘")
         case LogLevel.Info  => logger.info (s"↘ $function($argsString) ↘")
@@ -503,7 +503,7 @@ object Logger extends AdHocLogger:
     lazy val argsString = args.toString
     if argsString.isEmpty then
       logLevel match
-        case LogLevel.LogNone =>
+        case LogLevel.None =>
         case LogLevel.Trace => logger.trace(s"↙$marker $function => $duration$msg ↙")
         case LogLevel.Debug => logger.debug(s"↙$marker $function => $duration$msg ↙")
         case LogLevel.Info  => logger.info (s"↙$marker $function => $duration$msg ↙")
@@ -511,7 +511,7 @@ object Logger extends AdHocLogger:
         case LogLevel.Error => logger.error(s"↙$marker $function => $duration$msg ↙")
     else
       logLevel match
-        case LogLevel.LogNone =>
+        case LogLevel.None =>
         case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg ↙")
         case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg ↙")
         case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg ↙")

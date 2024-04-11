@@ -1,6 +1,5 @@
 package js7.base.log
 
-import js7.base.log.LogLevel.{Debug, Error, Info, LogNone, Trace, Warn}
 import org.slf4j
 import org.slf4j.{LoggerFactory, Marker}
 
@@ -20,45 +19,45 @@ object Slf4jUtils:
     implicit final class LevelLogger(private val delegate: slf4j.Logger) extends AnyVal:
       def isEnabled(level: LogLevel): Boolean =
         level match
-          case LogNone => false
-          case Trace => delegate.isTraceEnabled
-          case Debug => delegate.isDebugEnabled
-          case Info => delegate.isInfoEnabled
-          case Warn => delegate.isWarnEnabled
-          case Error => delegate.isErrorEnabled
+          case LogLevel.None => false
+          case LogLevel.Trace => delegate.isTraceEnabled
+          case LogLevel.Debug => delegate.isDebugEnabled
+          case LogLevel.Info => delegate.isInfoEnabled
+          case LogLevel.Warn => delegate.isWarnEnabled
+          case LogLevel.Error => delegate.isErrorEnabled
 
       def isEnabled(level: LogLevel, marker: Marker): Boolean =
         level match
-          case LogNone => false
-          case Trace => delegate.isTraceEnabled(marker)
-          case Debug => delegate.isDebugEnabled(marker)
-          case Info => delegate.isInfoEnabled(marker)
-          case Warn => delegate.isWarnEnabled(marker)
-          case Error => delegate.isErrorEnabled(marker)
+          case LogLevel.None => false
+          case LogLevel.Trace => delegate.isTraceEnabled(marker)
+          case LogLevel.Debug => delegate.isDebugEnabled(marker)
+          case LogLevel.Info => delegate.isInfoEnabled(marker)
+          case LogLevel.Warn => delegate.isWarnEnabled(marker)
+          case LogLevel.Error => delegate.isErrorEnabled(marker)
 
       def log(level: LogLevel, message: => String): Unit =
         if isEnabled(level) then level match
-          case LogNone =>
-          case Trace => delegate.trace(message)
-          case Debug => delegate.debug(message)
-          case Info => delegate.info(message)
-          case Warn => delegate.warn(message)
-          case Error => delegate.error(message)
+          case LogLevel.None =>
+          case LogLevel.Trace => delegate.trace(message)
+          case LogLevel.Debug => delegate.debug(message)
+          case LogLevel.Info => delegate.info(message)
+          case LogLevel.Warn => delegate.warn(message)
+          case LogLevel.Error => delegate.error(message)
 
       def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
         if isEnabled(level) then level match
-          case LogNone =>
-          case Trace => delegate.trace(message, throwable)
-          case Debug => delegate.debug(message, throwable)
-          case Info => delegate.info(message, throwable)
-          case Warn => delegate.warn(message, throwable)
-          case Error => delegate.error(message, throwable)
+          case LogLevel.None =>
+          case LogLevel.Trace => delegate.trace(message, throwable)
+          case LogLevel.Debug => delegate.debug(message, throwable)
+          case LogLevel.Info => delegate.info(message, throwable)
+          case LogLevel.Warn => delegate.warn(message, throwable)
+          case LogLevel.Error => delegate.error(message, throwable)
 
       def log(level: LogLevel, marker: Marker, message: => String): Unit =
         if isEnabled(level, marker) then level match
-          case LogNone =>
-          case Trace => delegate.trace(marker, message)
-          case Debug => delegate.debug(marker, message)
-          case Info => delegate.info(marker, message)
-          case Warn => delegate.warn(marker, message)
-          case Error => delegate.error(marker, message)
+          case LogLevel.None =>
+          case LogLevel.Trace => delegate.trace(marker, message)
+          case LogLevel.Debug => delegate.debug(marker, message)
+          case LogLevel.Info => delegate.info(marker, message)
+          case LogLevel.Warn => delegate.warn(marker, message)
+          case LogLevel.Error => delegate.error(marker, message)

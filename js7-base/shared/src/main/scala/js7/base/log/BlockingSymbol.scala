@@ -43,18 +43,21 @@ final class BlockingSymbol:
 
   def logLevel: LogLevel =
     _index match
-      case 0 => LogLevel.LogNone
+      case 0 => LogLevel.None
       case 1 => LogLevel.Debug
       case 2 => LogLevel.Info
       case 3 => LogLevel.Warn
 
   def releasedLogLevel: LogLevel =
     _index match
-      case 0 => LogLevel.LogNone
+      case 0 => LogLevel.None
       case 1 => LogLevel.Debug
       case 2 | 3 => LogLevel.Info
 
   override def toString =
+    symbol
+
+  def symbol: String =
     symbols(_index)
 
 

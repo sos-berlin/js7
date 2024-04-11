@@ -72,7 +72,7 @@ object CatsUtils:
       private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
       : IO[A] =
         CatsDeadline.now.flatMap: since =>
-          var level: LogLevel = LogLevel.LogNone
+          var level: LogLevel = LogLevel.None
           underlying
             .whenItTakesLonger()(duration => IO:
               val m = if duration < InfoWorryDuration then "🟡" else "🟠"
@@ -86,7 +86,7 @@ object CatsUtils:
                 level = LogLevel.Info
                 logger.info(msg))
             .guaranteeCaseLazy: exitCode =>
-              IO.whenA(level != LogLevel.LogNone):
+              IO.whenA(level != LogLevel.None):
                 for elapsed <- since.elapsed yield
                   exitCode match
                     case Outcome.Succeeded(_) => logger.log(level,

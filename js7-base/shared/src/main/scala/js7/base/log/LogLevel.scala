@@ -1,39 +1,27 @@
 package js7.base.log
 
+import java.util.Locale
 import js7.base.convert.As
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait LogLevel
+enum LogLevel(private val name: String):
+  case Trace extends LogLevel("trace")
+  case Debug extends LogLevel("debug")
+  case Info extends LogLevel("info")
+  case Warn extends LogLevel("warn")
+  case Error extends LogLevel("error")
+  case None extends LogLevel("none")
 
 
 object LogLevel:
-  object LogNone extends LogLevel
-  object Trace extends LogLevel
-  object Debug extends LogLevel
-  object Info extends LogLevel
-  object Warn extends LogLevel
-  object Error extends LogLevel
+  given Ordering[LogLevel] = Ordering.by(_.ordinal)
 
-  implicit val ordering: Ordering[LogLevel] =
-    Ordering.by:
-      case LogNone => 0
-      case Trace => 1
-      case Debug => 2
-      case Info => 3
-      case Warn => 4
-      case Error => 5
-
-  def apply(string: String): LogLevel =
-    string.toLowerCase match
-      case "none"  => LogNone
-      case "trace" => Trace
-      case "debug" => Debug
-      case "info"  => Info
-      case "warn"  => Warn
-      case "error" => Error
-      case _ => throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
+  def apply(name: String): LogLevel =
+    try LogLevel.valueOf(name.toLowerCase(Locale.ROOT).capitalize)
+    catch case _: IllegalArgumentException =>
+      throw new IllegalArgumentException(s"Invalid LogLevel: $name")
 
   implicit val StringAsLogLevel: As[String, LogLevel] =
     As[String, LogLevel](LogLevel.apply)
