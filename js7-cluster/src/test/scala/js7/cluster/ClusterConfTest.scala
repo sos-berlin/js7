@@ -4,6 +4,7 @@ import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.DelayConf
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.message.ProblemCodeMessages
@@ -25,6 +26,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.watch.uniqueness-memory-size = 100
+        js7.journal.cluster.retry-delays = [ 1s ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
@@ -44,6 +46,7 @@ final class ClusterConfTest extends OurTestSuite
             failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
+          delayConf = DelayConf(1.s),
           config = config)))
     }
 
@@ -58,6 +61,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
+        js7.journal.cluster.retry-delays = [ 1s ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
@@ -83,6 +87,7 @@ final class ClusterConfTest extends OurTestSuite
             failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
+          delayConf = DelayConf(1.s),
           config = config)))
     }
   }

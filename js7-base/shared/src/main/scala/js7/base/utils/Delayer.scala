@@ -9,7 +9,7 @@ import fs2.Stream
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.*
-import js7.base.log.Logger
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Delayer.*
 import scala.concurrent.duration.*
@@ -20,6 +20,9 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
   import conf.{delays, resetWhen}
 
   private val _state = Atomic(State(initialNow, resetDelays(delays)))
+  private val sym = BlockingSymbol()
+
+  export sym.{logLevel, symbol}
 
   def sleep: F[Unit] =
     sleep_(_ => F.unit)
@@ -32,6 +35,7 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
     nextDelay2.flatMap:
       case (elapsed, delay) =>
         logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
+        sym.increment()
         onSleep(delay) *> F.sleep(delay)
 
   def nextDelay: F[FiniteDuration] =
@@ -48,7 +52,6 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
         }))
 
   private sealed case class State(since: CatsDeadline, nextDelays: LazyList[FiniteDuration]):
-
     def next(now: CatsDeadline): (FiniteDuration, FiniteDuration, State) =
       val elapsed = now - since
       val delay = (nextDelays.head - elapsed) max ZeroDuration

@@ -1,11 +1,14 @@
 package js7.cluster
 
+import cats.data.NonEmptySeq
 import cats.instances.either.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.ScalaTime.*
+import js7.base.utils.DelayConf
 import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
@@ -24,6 +27,7 @@ final case class ClusterConf(
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
   testDontHaltWhenPassiveLostRejected: Boolean = false,
+  delayConf: DelayConf,
   config: Config):
 
   def isPrimary = !isBackup
@@ -66,6 +70,11 @@ object ClusterConf:
       testDontHaltWhenPassiveLostRejected = config.getBoolean(
         "js7.journal.cluster.dont-halt-when-passive-lost-rejected", false)
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
+      delayConf = DelayConf(NonEmptySeq
+        .fromSeq:
+          config.getDurationList("js7.journal.cluster.retry-delays").asScala.toSeq.map(_.toFiniteDuration)
+        .getOrElse:
+          NonEmptySeq.one(1.s))
     yield
       new ClusterConf(
         JournalConf.fromConfig(config),
@@ -79,4 +88,5 @@ object ClusterConf:
         testHeartbeatLoss,
         testAckLoss,
         testDontHaltWhenPassiveLostRejected,
+        delayConf,
         config = config)

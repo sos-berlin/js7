@@ -4,18 +4,18 @@ import cats.effect.{IO, Outcome, Resource}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.startup.Halt.haltJava
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
+import js7.base.utils.{Delayer, OneTimeToken, OneTimeTokenProvider, SetOnce}
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
-import js7.base.system.startup.Halt.haltJava
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
@@ -23,6 +23,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
+import scala.math.Ordered.orderingToOrdered
 import scala.reflect.ClassTag
 
 private[cluster] final class ClusterCommon private(
@@ -77,32 +78,36 @@ private[cluster] final class ClusterCommon private(
     apiResource: Resource[IO, ClusterNodeApi],
     toCommand: OneTimeToken => C)
   : IO[Unit] =
-    IO.defer:
+    Delayer.start[IO](clusterConf.delayConf).flatMap: delayer =>
       val name = implicitClass[C].simpleScalaName
       var warned = false
       val since = now
       apiResource
-        .use(api => api
-          .retryIfSessionLost()(
-            api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
-              couplingTokenProvider.resource.use(token =>
-                api.executeClusterCommand(toCommand(token))))
-          .map((_: ClusterCommand.Response) => ())
-          .onErrorRestartLoop(()) { (throwable, _, retry) =>
-            warned = true
-            logger.warn(s"🔴 $name command failed with ${throwable.toStringWithCauses}")
-            logger.debug(throwable.toString, throwable)
-            // TODO ClusterFailed event?
-            IO.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
-              retry(())
-          }
-          .guaranteeCase {
-            case Outcome.Succeeded(_) => IO(
-              if warned then logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))
-            case Outcome.Canceled() => IO(
-              if warned then logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
-            case _ => IO.unit
-          })
+        .use: api =>
+          api
+            .retryIfSessionLost()(
+              api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
+                couplingTokenProvider.resource.use(token =>
+                  api.executeClusterCommand(toCommand(token))))
+            .map((_: ClusterCommand.Response) => ())
+            .onErrorRestartLoop(()) { (throwable, _, retry) =>
+              warned = true
+              logger.log(delayer.logLevel,
+                s"${delayer.symbol} $name command failed with ${throwable.toStringWithCauses}")
+              if !throwable.isInstanceOf[java.net.SocketException] && throwable.getStackTrace.nonEmpty
+              then logger.debug(throwable.toString, throwable)
+              // TODO ClusterFailed event?
+              // TODO Handle heartbeat timeout?
+              delayer.sleep *> retry(())
+            }
+            .guaranteeCase:
+              case Outcome.Succeeded(_) => IO:
+                if delayer.logLevel >= LogLevel.Warn then
+                  logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}")
+              case Outcome.Canceled() => IO:
+                if delayer.logLevel >= LogLevel.Warn then
+                  logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}")
+              case _ => IO.unit
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
   : IO[Option[FailedOver]] =
