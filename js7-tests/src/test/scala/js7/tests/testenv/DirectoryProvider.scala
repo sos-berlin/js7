@@ -211,7 +211,7 @@ extends HasCloser:
       .map(_._1)
       .await(99.s)
 
-  private def testControllerResource(
+  def testControllerResource(
     testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),

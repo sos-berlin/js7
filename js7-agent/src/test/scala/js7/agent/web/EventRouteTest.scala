@@ -133,19 +133,29 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
     // fail with watch.ClosedException)
     awaitAndAssert { journalFiles.head.fileEventId > EventId.BeforeFirst }
 
-    assert(agentClient
+    agentClient
       .commandExecute(CoupleController(
         agentPath, agentRunId, EventId.BeforeFirst, controllerRunId))
-      .await(99.s) == Left(UnknownEventIdProblem(EventId.BeforeFirst)))
+      .await(99.s)
+      .match
+        case Left(problem) if problem is UnknownEventIdProblem => succeed
+        case o => fail(s"Unexpected response: $o")
 
   "Recoupling with Controller's last events deleted fails" in:
     val newerEventId = eventId + 1  // Assuming that no further Event has been emitted
-    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, newerEventId, controllerRunId))
-      .await(99.s) == Left(UnknownEventIdProblem(newerEventId)))
+    agentClient.commandExecute(CoupleController(agentPath, agentRunId, newerEventId, controllerRunId))
+      .await(99.s)
+      .match
+        case Left(problem) if problem is UnknownEventIdProblem =>
+        case o => fail(s"Unexpected response: $o")
 
     val unknownEventId = EventId(1)  // Assuming this is EventId has not been emitted
-    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, unknownEventId, controllerRunId))
-      .await(99.s) == Left(UnknownEventIdProblem(unknownEventId)))
+    agentClient.commandExecute(CoupleController(agentPath, agentRunId, unknownEventId, controllerRunId))
+      .await(99.s)
+      .match
+        case Left(problem) if problem is UnknownEventIdProblem => succeed
+        case o => fail(s"Unexpected response: $o")
+
 
   "Recouple with wrong ControllerRunId" in:
     assert(agentClient

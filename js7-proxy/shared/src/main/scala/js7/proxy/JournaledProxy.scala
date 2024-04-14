@@ -1,7 +1,7 @@
 package js7.proxy
 
+import cats.data.NonEmptySeq
 import cats.effect.{IO, Resource, ResourceIO}
-import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
@@ -15,6 +15,7 @@ import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.{DelayConf, Delayer}
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
@@ -23,13 +24,13 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
+import js7.data.problems.UnknownEventIdProblem
 import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
-import scala.util.control.NonFatal
 
 trait JournaledProxy[S <: SnapshotableState[S]]:
 
@@ -69,7 +70,7 @@ object JournaledProxy:
   : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
 
-    def stream2: Stream[IO, EventAndState[Event, S]] =
+    def stream2(delayer: Delayer[IO]): Stream[IO, EventAndState[Event, S]] =
       none[S].tailRecM: maybeState =>
         Stream
           .resource:
@@ -93,27 +94,32 @@ object JournaledProxy:
                     fromEventId.fold(obs):
                       dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
                   .map(Right.apply)
-                  .recoverWith:
-                    case t if t.getClass.getName ==
-                      "org.apache.pekko.stream.AbruptTerminationException" =>
+                  .handleErrorWith: t =>
+                    if t.getClass.getName == "org.apache.pekko.stream.AbruptTerminationException"
+                      || fromEventId.nonEmpty && isTorn(t)
+                    then
                       Stream.raiseError(t)
-                    case NonFatal(t) if fromEventId.isEmpty || !isTorn(t) => Stream.suspend:
-                      val continueWithState =
-                        if isTorn(t) then
-                          logger.error(t.toStringWithCauses)
-                          logger.warn("Restarting stream from a new snapshot, loosing some events")
-                          None
-                        else
-                          logger.warn(t.toStringWithCauses)
-                          if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
-                          logger.debug("Restarting stream and try to continue seamlessly after=" +
-                            EventId.toString(state.eventId))
-                          Some(lastState)
-                      Stream.emit(Left(continueWithState))
-                        .delayBy(1.s/*TODO*/)
+                    else
+                      Stream
+                        .suspend(Stream.emit(Left:
+                          if isTorn(t) then
+                            logger.error(t.toStringWithCauses)
+                            logger.warn:
+                              "Restarting stream from a new snapshot, loosing some events"
+                            None
+                          else
+                            logger.warn(t.toStringWithCauses)
+                            if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
+                            logger.debug("Restarting stream and try to continue seamlessly after=" +
+                              EventId.toString(state.eventId))
+                            Some(lastState)))
+                        .evalTap(_ => delayer.sleep)
 
     def isTorn(t: Throwable) =
-      fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
+      checkedCast[ProblemException](t)
+        .map(_.problem)
+        .exists: problem =>
+          problem.is(UnknownEventIdProblem) || problem.is(EventSeqTornProblem)
 
     def streamWithState(api: RequiredApi_[S], state: S, stateFetchDuration: FiniteDuration)
     : Stream[IO, EventAndState[Event, S]] =
@@ -133,10 +139,12 @@ object JournaledProxy:
     def onCouplingError(throwable: Throwable) = IO:
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
 
-    stream2
-      //PekkoHttpClient logs, too:
-      //.evalTap(o => IO:
-      //  logger.trace(s"stream => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
+    Stream
+      .eval:
+        Delayer.start[IO]:
+          DelayConf(NonEmptySeq.of(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s), resetWhen = 10.s)
+      .flatMap:
+        stream2
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.

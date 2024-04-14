@@ -46,7 +46,6 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester:
           for t <- Try(primaryController.terminated.await(timeout)).failed do
             logger.error(s"Controller terminated. ${t.toStringWithCauses}")
 
-          //backupController.eventWatch.await[ClusterSwitchedOver](timeout = timeout)
           lastEventId = backupController.eventWatch.await[OrderFinished](_.key == orderId, timeout = timeout).head.eventId
         }
 

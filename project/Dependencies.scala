@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object Dependencies
 {
   val pekkoVersion = "1.0.2"
-  val pekkoHttpVersion = "1.0.0"
+  val pekkoHttpVersion = "1.0.1"
   val slf4jVersion = "2.0.12"  // See also plugins.sbt
   val log4jVersion = "2.23.1"  // See also plugins.sbt
   val catsVersion = "2.10.0"

@@ -132,12 +132,13 @@ trait GenericEventRoute extends RouteProvider:
             awaitFirstEventStream(request, eventWatch)
 
           case Some(heartbeat) =>
-            IO.right:
-              eventStream(request, isRelevantEvent, eventWatch)
-                .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
-                .keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
-                .prependOne(HttpHeartbeatByteString)
-                .interruptWhenF(shutdownSignaled)
+            IO:
+              eventWatch.checkEventId(request.after) >> Right:
+                eventStream(request, isRelevantEvent, eventWatch)
+                  .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
+                  .keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
+                  .prependOne(HttpHeartbeatByteString)
+                  .interruptWhenF(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
     : IO[Checked[Stream[IO, ByteString]]] =
@@ -160,7 +161,7 @@ trait GenericEventRoute extends RouteProvider:
               limit = request.limit - 1 max 0,
               delay = (request.delay - runningSince.elapsed) max ZeroDuration)
 
-            Right:
+            eventWatch.checkEventId(request.after) >> Right:
               Stream.emit(head)
                 .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
                 .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))

@@ -1,13 +1,16 @@
 package js7.tests.controller.proxy.history
 
-//diffx import com.softwaremill.diffx.generic.auto.*
-//diffx import com.softwaremill.diffx.scalatest.DiffShouldMatcher.*
-import org.apache.pekko
-import js7.data.workflow.position.BranchPath.syntax.*
+import cats.effect.IO
+import cats.effect.std.Semaphore
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
+import js7.base.io.file.FileUtils
+import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.{completedL, headL, materialize}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.test.OurTestSuite
@@ -16,6 +19,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.*
 import js7.common.pekkoutils.ProvideActorSystem
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
@@ -26,12 +30,15 @@ import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.OrderOutcome.{Succeeded, succeeded}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.problems.UnknownEventIdProblem
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowParser
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.proxy.data.event.{EventAndState, ProxyStarted}
+import js7.proxy.ControllerApi
+import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest
@@ -39,9 +46,8 @@ import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkfl
 import js7.tests.controller.proxy.history.ProxyHistoryTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.{completedL, headL, materialize}
+import org.apache.pekko
+import org.apache.pekko.actor.ActorSystem
 import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
@@ -223,6 +229,46 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
         javaTester.testTorn()
       }
     }
+
+  "Restart Controller with deleted journal while Proxy stream is running" in:
+    withControllerAndBackupWithoutAgents(suppressClusterWatch = true): (primary, backup, _) =>
+      Semaphore[IO](0).flatMap: semaphore =>
+        val streaming: IO[Unit] =
+          given ActorSystem = actorSystem
+          ControllerApi.resource(admissionsToApiResource(admissions)).use: controllerApi =>
+            logger.traceStream:
+              controllerApi
+                .eventAndStateStream(fromEventId = Some(EventId.BeforeFirst))
+                .map(_.stampedEvent)
+                .collect:
+                  case Stamped(eventId, _, KeyedEvent(NoKey, _: ControllerReady)) => ()
+                .evalTap: _ =>
+                  semaphore.release
+            .compile
+            .count
+            .flatTap: count =>
+              IO(assert(count == 2))
+            .void
+
+        val runControllers: IO[Unit] =
+          primary
+            .testControllerResource().use: controller =>
+              semaphore.acquire *> controller.terminate()
+            .productR:
+              IO(deleteDirectoryContentRecursively(primary.controllerEnv.stateDir))
+            .productR:
+              primary.testControllerResource().use: controller =>
+                semaphore.acquire *> controller.terminate()
+            .void
+
+        streaming
+          .recoverWith:
+            case e: ProblemException if e.problem is UnknownEventIdProblem =>
+              logger.info(s"Restart stream after ${e.problem}")
+              streaming
+          .background.surround:
+            runControllers
+      .await(99.s)
 
 
 object ProxyHistoryTest:

@@ -128,3 +128,5 @@ object Problems:
 
   final case class GoOrderNotAtPositionProblem(orderId: OrderId) extends Problem.Coded:
     def arguments = Map1("orderId", orderId.toString)
+
+  case object ClusterNodeHasBeenSwitchedOverProblem extends Problem.ArgumentlessCoded

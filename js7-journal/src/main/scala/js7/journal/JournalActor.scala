@@ -14,7 +14,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -24,6 +24,7 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.jsonseq.PositionAnd
 import js7.common.pekkoutils.SupervisorStrategies
+import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
@@ -149,13 +150,13 @@ extends Actor, Stash, JournalLogging:
   private def ready: Receive = receiveGet orElse:
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
       if isHalted then
-        for o <- timestamped do
-          logger.debug(s"Event ignored because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
+        for o <- timestamped do logger.debug:
+          s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
         // We ignore the event and do not notify the caller,
         // because it would crash and disturb the process of switching-over.
         // (so AgentDriver with AgentReady event)
-        // TODO The caller should handle the error (persist method does not allow this for now)
-        //reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
+        //reply(sender(), replyTo,
+        //  Output.Stored(Left(ClusterNodeHasBeenSwitchedOverProblem), uncommittedState, callersItem))
       else
         val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
         uncommittedState.applyStampedEvents(stampedEvents) match
@@ -649,8 +650,6 @@ object JournalActor:
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
 
-  //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
-
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/](
     journalLocation: JournalLocation,
     conf: JournalConf,
@@ -702,6 +701,9 @@ object JournalActor:
       stamped: Checked[Seq[Stamped[AnyKeyedEvent]]],
       journaledState: S,
       callersItem: CallersItem)
+    extends Output
+
+    private[journal] final case class StoreRejected(problem: Problem, callersItem: CallersItem)
     extends Output
 
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output
