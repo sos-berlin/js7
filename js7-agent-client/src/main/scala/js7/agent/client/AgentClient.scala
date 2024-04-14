@@ -61,14 +61,14 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
 
             case checked  =>
               logger.log(
-                sym.releasedLogLevel,
+                sym.relievedLogLevel,
                 checked match {
                   case Left(problem) => s"❓$toString: $problem"
                   case Right(_) => s"🟢 $toString was available again"
                 })
               IO.right(checked)
           .tapError(throwable => IO(
-            logger.log(sym.releasedLogLevel, s"💥$toString => $throwable")))
+            logger.log(sym.relievedLogLevel, s"💥$toString => $throwable")))
       }
 
   final def commandExecute(command: AgentCommand): IO[Checked[command.Response]] =

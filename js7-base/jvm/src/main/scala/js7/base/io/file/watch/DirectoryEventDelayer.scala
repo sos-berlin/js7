@@ -248,7 +248,7 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
           s"$sym Watched file is still being modified for ${logExtra(now)}")
 
     def onMatured(now: CatsDeadline) =
-      logger.log(sym.releasedLogLevel,
+      logger.log(sym.relievedLogLevel,
         s"🟢 Watched file is considered written after ${logExtra(now)}")
 
     private def logExtra(now: CatsDeadline): String =

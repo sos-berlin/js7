@@ -113,7 +113,7 @@ object AsyncLock:
         def logAfterAcquire: IO[Unit] =
           IO:
             if sym.called then
-              logger.log(sym.releasedLogLevel,
+              logger.log(sym.relievedLogLevel,
                 s"↘ 🟢$nrString $name acquired by $acquirer_ · $queueLength queued · ${
                   since.elapsed.pretty} ↘")
             else if logMinor then

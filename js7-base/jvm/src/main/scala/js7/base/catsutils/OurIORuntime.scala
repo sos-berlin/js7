@@ -84,9 +84,9 @@ object OurIORuntime:
     computeExecutor: Option[Executor])
     (using F: Sync[F])
   : Resource[F, IORuntime] =
-    val computeLabel = s"$label compute"
-    val computeBlockerLabel = s"$label compute-blocker"
-    val blockingLabel = s"$label blocking"
+    val computeLabel = s"$label-compute"
+    val computeBlockerLabel = s"$label-compute-blocker"
+    val blockingLabel = s"$label-blocking"
 
     for
       pair <-
