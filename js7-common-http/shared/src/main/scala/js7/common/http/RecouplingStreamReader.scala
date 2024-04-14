@@ -23,6 +23,7 @@ import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.EventSeqTornProblem
+import js7.data.problems.UnknownEventIdProblem
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -129,13 +130,13 @@ abstract class RecouplingStreamReader[
 
   final def pauseBeforeNextTry(delay: FiniteDuration): IO[Unit] =
     IO.defer:
-      for
-        _ <- IO.sleep((sinceLastTry + delay).timeLeftOrZero.roundUpToNext(PauseGranularity))
-      yield
+      IO.sleep:
+        (sinceLastTry + delay).timeLeftOrZero.roundUpToNext(PauseGranularity)
+      .map: _ =>
         sinceLastTry = now  // update asynchronously
 
   private final class ForApi(api: Api, initialAfter: I):
-    @volatile private var lastIndex = initialAfter
+    private var lastIndex = initialAfter
 
     def streamAgainAndAgain: Stream[IO, V] =
       logger.traceStream:
@@ -146,6 +147,9 @@ abstract class RecouplingStreamReader[
             else
               Right(
                 streamAfter(after)
+                  .map: v =>
+                    lastIndex = toIndex(v)
+                    v
                   .handleErrorWith {
                     case t: ProblemException if isSevereProblem(t.problem) =>
                       Stream.raiseError[IO](t)
@@ -164,18 +168,14 @@ abstract class RecouplingStreamReader[
           .flatten
 
     private def streamAfter(after: I): Stream[IO, V] =
-     logger.traceStream:
+     logger.traceStream("streamAfter", after):
       Stream
-        .eval(
+        .eval:
           tryEndlesslyToGetStream(after)
-            .<*(IO {
-              if sym.called then logger.info(s"🟢 Streaming $api ...")
-            }))
+            .<*(IO:
+              logger.log(sym.relievedLogLevel, s"🟢 Streaming $api ...")
+              sym.clear())
         .flatten
-        .map { v =>
-          lastIndex = toIndex(v)
-          v
-        }
 
     /** Retries until web request returns an Stream. */
     private def tryEndlesslyToGetStream(after: I): IO[Stream[IO, V]] =
@@ -314,7 +314,9 @@ object RecouplingStreamReader:
     }.stream(api, after)
 
   private def isSevereProblem(problem: Problem) =
-    problem.is(EventSeqTornProblem) || problem.is(AckFromActiveClusterNodeProblem)
+    problem.is(UnknownEventIdProblem)
+    || problem.is(EventSeqTornProblem)
+    || problem.is(AckFromActiveClusterNodeProblem)
 
   private class RecouplingPause:
     // This class may be used asynchronously but not concurrently

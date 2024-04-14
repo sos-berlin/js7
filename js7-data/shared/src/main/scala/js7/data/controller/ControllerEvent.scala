@@ -17,6 +17,7 @@ sealed trait ControllerEvent extends NoKeyEvent
 
 
 object ControllerEvent:
+  /** May be used by Proxy users to detect a deleted and reset journal. */
   final case class ControllerInitialized(
     controllerId: ControllerId,
     initiallyStartedAt: Timestamp)

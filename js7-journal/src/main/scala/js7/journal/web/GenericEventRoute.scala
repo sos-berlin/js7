@@ -3,10 +3,10 @@ package js7.journal.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.applicativeError.*
+import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.ValidUserPermission
-import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
@@ -37,7 +37,6 @@ import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -174,11 +173,10 @@ trait GenericEventRoute extends RouteProvider:
     : Stream[IO, Stamped[AnyKeyedEvent]] =
       filterStream:
         eventWatch.stream(request, predicate)
-      .recoverWith:
-        case NonFatal(e) =>
-          logger.warn(e.toStringWithCauses)
-          if e.getStackTrace.nonEmpty then logger.debug(e.toStringWithCauses, e)
-          Stream.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
+          .handleErrorWith: t =>
+            logger.warn(t.toStringWithCauses)
+            if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
+            Stream.empty // The streaming event web service doesn't have an error channel, so we simply end the tail
 
     private def eventDirective(defaultAfter: EventId)
     : Directive1[EventRequest[Event]] =
