@@ -78,9 +78,9 @@ extends MainService, Service.StoppableByRequest:
 
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
     def stream: Stream[IO, ClusterWatchRequest] =
-      observeAgainAndAgain(clusterWatchRequestStream)
+      streamAgainAndAgain(clusterWatchRequestStream)
 
-    private def observeAgainAndAgain[A](stream: Stream[IO, A]): Stream[IO, A] =
+    private def streamAgainAndAgain[A](stream: Stream[IO, A]): Stream[IO, A] =
       Delayer.stream[IO](delayConf)
         .flatMap { _ =>
           var failed = false
