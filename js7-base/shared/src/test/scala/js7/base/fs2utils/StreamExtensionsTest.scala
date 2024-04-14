@@ -22,7 +22,7 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       val intStream: Stream[Pure, Int] = 1 +: Stream(2, 3)
       assert(intStream.compile.to(Seq) == Seq(1, 2, 3))
 
-      val stream = ("one" +: Stream[Pure, Int](2, 3))
+      val stream = "one" +: Stream[Pure, Int](2, 3)
       assert(stream.toList == List("one", 2, 3))
 
     "prepend" in:

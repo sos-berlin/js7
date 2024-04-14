@@ -182,14 +182,14 @@ object StreamExtensions:
               case o: O @unchecked => Stream.constant(o).repeat
               //case o: O @unchecked => Stream.chunk(Chunk.from(Array.fill(chunkSize)(o))).repeat
 
-    def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
-      other ++ stream
+    def prepend[F2[x] >: F[x], O2 >: O](prefix: Stream[F2, O2]): Stream[F2, O2] =
+      prefix ++ stream
 
-    def prependOne[O1 >: O](a: O1): Stream[F, O1] =
-      prepend(Stream.emit[F, O1](a))
+    def prependOne[O1 >: O](o: O1): Stream[F, O1] =
+      prepend(Stream.emit[F, O1](o))
 
-    def appendOne[O1 >: O](a: O1): Stream[F, O1] =
-      stream ++ Stream.emit[F, O1](a)
+    def appendOne[O1 >: O](o: O1): Stream[F, O1] =
+      stream ++ Stream.emit[F, O1](o)
 
     def fillUpChunks(limit: Int): Stream[F, Chunk[O]] =
       stream.repeatPull:
