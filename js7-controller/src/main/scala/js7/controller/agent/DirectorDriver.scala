@@ -69,7 +69,9 @@ extends Service.StoppableByRequest:
         .background.surround:
           continuallyFetchEvents *>
             IO(assertThat(isStopping)) *>
-            onFetchedEventsLock.lock(IO.unit) *>
+            //? May block switch-over when JournalActor does not respond to Events (due to
+            // switch-over).
+            //? onFetchedEventsLock.lock(IO.unit) *>
             stopEventFetcher)
 
   private def stopEventFetcher: IO[Unit] =
