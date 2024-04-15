@@ -1,6 +1,6 @@
 package js7.common.pekkoutils
 
-import cats.effect.{IO, Resource, Sync}
+import cats.effect.{IO, Resource, ResourceIO, Sync}
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.log.Logger
@@ -139,14 +139,14 @@ object Pekkos:
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
 
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
-  : Resource[IO, ActorSystem] =
+  : ResourceIO[ActorSystem] =
     for
       ec <- Resource.eval(IO.executionContext)
       r <- actorSystemResource1(name, config, ec)
     yield r
 
   private def actorSystemResource1(name: String, config: Config, ec: ExecutionContext)
-  : Resource[IO, ActorSystem] =
+  : ResourceIO[ActorSystem] =
     Resource.make(
       acquire = IO(newActorSystem(name, config, ec)))(
       release = terminate)

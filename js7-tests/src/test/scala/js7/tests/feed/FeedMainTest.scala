@@ -1,6 +1,6 @@
 package js7.tests.feed
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -12,7 +12,6 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.lock.{Lock, LockPath}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.IO
 
 final class FeedMainTest extends OurTestSuite, ControllerAgentForScalaTest:
 

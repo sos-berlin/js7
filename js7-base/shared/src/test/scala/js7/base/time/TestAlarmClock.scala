@@ -1,7 +1,6 @@
 package js7.base.time
 
-import cats.effect.IO
-import cats.effect.kernel.Resource
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 import scala.util.NotGiven
@@ -51,7 +50,7 @@ object TestAlarmClock:
     SimpleTestAlarmClock(start)
 
   def resource(start: Timestamp, clockCheckInterval: Option[FiniteDuration] = None)
-  : Resource[IO, TestAlarmClock] =
+  : ResourceIO[TestAlarmClock] =
     Resource.make(
       acquire =
         IO.executionContext.map(implicit ec =>

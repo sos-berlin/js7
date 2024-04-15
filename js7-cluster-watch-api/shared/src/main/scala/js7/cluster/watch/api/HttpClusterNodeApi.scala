@@ -1,6 +1,6 @@
 package js7.cluster.watch.api
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import io.circe.Decoder
 import js7.base.auth.Admission
@@ -119,7 +119,7 @@ object HttpClusterNodeApi:
     httpClient: HttpClient,
     uriPrefix: String,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  : Resource[IO, HttpClusterNodeApi] =
+  : ResourceIO[HttpClusterNodeApi] =
     SessionApi.resource(IO(
       new HttpClusterNodeApi.Standard(admission, httpClient, uriPrefix, loginDelays)))
 

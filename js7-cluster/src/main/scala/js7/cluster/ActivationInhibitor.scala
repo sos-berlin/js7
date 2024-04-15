@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.{IO, Outcome, Resource}
+import cats.effect.{IO, Outcome, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
@@ -123,7 +123,7 @@ private[cluster] object ActivationInhibitor:
   def inhibitActivationOfPassiveNode(
     setting: ClusterSetting,
     peersUserAndPassword: Option[UserAndPassword],
-    clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi])
+    clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi])
   : IO[Option[FailedOver]] =
     IO.defer {
       val retryDelay = 5.s  // TODO

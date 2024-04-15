@@ -1,6 +1,7 @@
 package js7.controller.client
 
-import cats.effect.Resource
+import cats.effect.{IO, ResourceIO}
+import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
 import izumi.reflect.Tag
 import js7.base.auth.Admission
@@ -15,8 +16,6 @@ import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerSta
 import js7.data.event.{EventApi, EventId, JournalInfo}
 import js7.data.order.{FreshOrder, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
-import cats.effect.IO
-import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
@@ -96,7 +95,7 @@ object HttpControllerApi:
     admission: Admission,
     httpClient: HttpClient,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  : Resource[IO, HttpControllerApi] =
+  : ResourceIO[HttpControllerApi] =
     SessionApi.resource(IO(
       new HttpControllerApi.Standard(admission, httpClient, loginDelays)))
 

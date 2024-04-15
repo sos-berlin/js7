@@ -1,6 +1,6 @@
 package js7.tests.feed
 
-import cats.effect.{ExitCode, IO, Resource}
+import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import java.io.InputStream
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -25,6 +25,6 @@ object FeedMain extends OurApp:
             case Right(()) =>
               ExitCode.Success
 
-  def run(args: Seq[String], in: Resource[IO, InputStream]): IO[Checked[Unit]] =
-    val settings = Settings.parseArguments(args.toSeq)
+  def run(args: Seq[String], in: ResourceIO[InputStream]): IO[Checked[Unit]] =
+    val settings = Settings.parseArguments(args)
     Feed.run(in, settings)

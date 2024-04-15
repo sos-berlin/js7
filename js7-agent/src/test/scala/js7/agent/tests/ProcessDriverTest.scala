@@ -1,7 +1,6 @@
 package js7.agent.tests
 
-import cats.effect.IO
-import cats.effect.kernel.Resource
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.US_ASCII
@@ -13,7 +12,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
@@ -77,7 +76,7 @@ final class ProcessDriverTest
         Order.Processing(SubagentId("SUBAGENT")),
         historicOutcomes = Vector(HistoricOutcome(Position(999), OrderOutcome.Succeeded(Map("a" -> StringValue("A"))))))
 
-      val resource: Resource[IO, Assertion] =
+      val resource: ResourceIO[Assertion] =
         for
           jobEC <- unlimitedExecutionContextResource[IO]("ProcessDriverTest-blocking", config)
           jobLauncherConf = JobLauncherConf.checked(

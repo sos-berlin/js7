@@ -1,7 +1,7 @@
 package js7.base.log
 
 import cats.effect.kernel.Sync
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
@@ -122,22 +122,22 @@ object Logger
       : F[A] =
         logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
 
-      inline def debugResource[A](resource: Resource[IO, A])
-      : Resource[IO, A] =
+      inline def debugResource[A](resource: ResourceIO[A])
+      : ResourceIO[A] =
         resource //debugResource(src.value)(resource)
 
       inline def debugResource[A](function: String, inline args: => Any = "")
-        (resource: Resource[IO, A])
-      : Resource[IO, A] =
+        (resource: ResourceIO[A])
+      : ResourceIO[A] =
         resource
 
-      inline def traceResource[A](resource: Resource[IO, A])
-      : Resource[IO, A] =
+      inline def traceResource[A](resource: ResourceIO[A])
+      : ResourceIO[A] =
         resource //traceResource(src.value)(resource)
 
       inline def traceResource[A](function: String, inline args: => Any = "")
-        (resource: Resource[IO, A])
-      : Resource[IO, A] =
+        (resource: ResourceIO[A])
+      : ResourceIO[A] =
         resource
 
       inline def debugStream[A](stream: Stream[IO, A]): Stream[IO, A] =

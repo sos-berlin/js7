@@ -1,7 +1,9 @@
 package js7.tests.feed
 
-import cats.effect.Resource
+import cats.effect.{IO, ResourceIO}
+import fs2.Stream
 import java.io.InputStream
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
@@ -14,13 +16,10 @@ import js7.data.item.ItemOperation
 import js7.data.order.FreshOrder
 import js7.proxy.ControllerApi
 import js7.tests.feed.Feed.*
-import cats.effect.IO
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.right
 
 final class Feed(controllerApi: ControllerApi, settings: Settings):
 
-  def run(in: Resource[IO, InputStream]): IO[Checked[Unit]] =
+  def run(in: ResourceIO[InputStream]): IO[Checked[Unit]] =
     in.use(in =>
       IO {
         implicit val x = Feed.opJsonCodec
@@ -58,7 +57,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings):
 
 
 object Feed:
-  def run(in: Resource[IO, InputStream], settings: Settings): IO[Checked[Unit]] =
+  def run(in: ResourceIO[InputStream], settings: Settings): IO[Checked[Unit]] =
     Pekkos.actorSystemResource("Feed")
       .flatMap(actorSystem =>
         ControllerApi.resource(

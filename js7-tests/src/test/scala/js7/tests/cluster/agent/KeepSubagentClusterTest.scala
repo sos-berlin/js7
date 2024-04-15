@@ -1,6 +1,6 @@
 package js7.tests.cluster.agent
 
-import cats.effect.Resource
+import cats.effect.{IO, ResourceIO}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -26,7 +26,6 @@ import js7.tests.cluster.agent.KeepSubagentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.IO
 import scala.util.control.NonFatal
 
 final class KeepSubagentClusterTest
@@ -57,13 +56,13 @@ final class KeepSubagentClusterTest
   protected def items = Nil
 
   "Job started at backup Subagent while failing-over" in:
-    val primaryDirectorResource: Resource[IO, RunningAgent] =
+    val primaryDirectorResource: ResourceIO[RunningAgent] =
       directoryProvider
         .directorEnvResource(
           primarySubagentItem, otherSubagentIds = Seq(backupSubagentId))
         .flatMap(_.directorResource)
 
-    val backupDirectorResource: Resource[IO, RunningAgent] =
+    val backupDirectorResource: ResourceIO[RunningAgent] =
       directoryProvider
         .directorEnvResource(
           backupSubagentItem, otherSubagentIds = Seq(primarySubagentId), isClusterBackup = true)

@@ -2,7 +2,7 @@ package js7.agent
 
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.ConfigUtil
@@ -163,7 +163,7 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RunningAgent] =
+  : ResourceIO[RunningAgent] =
     locally:
       for
         subagent <- subagentResource(conf)
@@ -175,7 +175,7 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RestartableDirector] =
+  : ResourceIO[RestartableDirector] =
     locally:
       for
         subagent <- subagentResource(conf)
@@ -184,7 +184,7 @@ object RunningAgent:
     .evalOn(ioRuntime.compute)
 
   def subagentResource(conf: AgentConfiguration)(implicit ioRuntime: IORuntime)
-  : Resource[IO, Subagent] =
+  : ResourceIO[Subagent] =
     Resource.suspend(IO {
       val testEventBus = new StandardEventBus[Any]
       for
@@ -202,7 +202,7 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RunningAgent] =
+  : ResourceIO[RunningAgent] =
     Resource.suspend(IO {
       import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
@@ -237,7 +237,7 @@ object RunningAgent:
     testEventBus: StandardEventBus[Any],
     clock: AlarmClock)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RunningAgent] =
+  : ResourceIO[RunningAgent] =
     import clusterNode.actorSystem
     import conf.config
 

@@ -2,7 +2,7 @@ package js7.subagent
 
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{FiberIO, IO, Resource}
+import cats.effect.{FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
@@ -112,7 +112,7 @@ extends MainService, Service.StoppableByRequest:
         })
     })
 
-  def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): Resource[IO, Unit] =
+  def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): ResourceIO[Unit] =
     logger.debugResource(
       for
         _ <- directorRouteVariable.registeringRouteResource(toRoute)
@@ -121,7 +121,7 @@ extends MainService, Service.StoppableByRequest:
         //  release = unregisterDirector)
       yield ())
 
-  //def directorRegisteringResource(registerable: DirectorRegisterable): Resource[IO, Unit] =
+  //def directorRegisteringResource(registerable: DirectorRegisterable): ResourceIO[Unit] =
   //  for {
   //    _ <- webServer.registeringRouteResource(registerable.toRoute)
   //    //_ <- Resource.make(
@@ -213,7 +213,7 @@ object Subagent:
 
   def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
     (implicit ioRuntime: IORuntime)
-  : Resource[IO, Subagent] = {
+  : ResourceIO[Subagent] = {
     import conf.config
 
     given Scheduler = ioRuntime.scheduler
@@ -264,11 +264,11 @@ object Subagent:
   }//Monix??? .executeOn(scheduler)
 
   //def blockingInternalJobEC(name: String, config: Config, virtual: Boolean)
-  //: Resource[IO, ExecutionContext] =
+  //: ResourceIO[ExecutionContext] =
   //  unlimitedExecutionContextResource[IO](
   //    s"$name blocking-job", config, virtual = virtual)
 
-  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[IO, Path] =
+  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): ResourceIO[Path] =
     provideFile[IO](conf.workDirectory / "http-uri")
       .evalTap(file => IO {
         for uri <- uri do file := s"$uri/subagent"

@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, Resource}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option.*
 import cats.syntax.foldable.*
@@ -243,7 +243,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   /** While waiting for a Subagent, the Order is cancelable. */
   private def cancelableWhileWaitingForSubagent(orderId: OrderId)
-  : Resource[IO, Deferred[IO, Unit]] =
+  : ResourceIO[Deferred[IO, Unit]] =
     Resource
       .eval(Deferred[IO, Unit])
       .flatMap(canceledDeferred =>
@@ -448,7 +448,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       remoteSubagentDriverResource(subagentItem).toAllocated
 
   private def localSubagentDriverResource(subagentItem: SubagentItem)
-  : Resource[IO, SubagentDriver] =
+  : ResourceIO[SubagentDriver] =
     LocalSubagentDriver
       .resource(
         subagentItem,
@@ -460,7 +460,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         driver.startObserving))
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
-  : Resource[IO, RemoteSubagentDriver] =
+  : ResourceIO[RemoteSubagentDriver] =
     for
       api <- subagentApiResource(subagentItem)
       driver <- RemoteSubagentDriver
@@ -475,7 +475,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           driver.startObserving))
     yield driver
 
-  private def subagentApiResource(subagentItem: SubagentItem): Resource[IO, HttpSubagentApi] =
+  private def subagentApiResource(subagentItem: SubagentItem): ResourceIO[HttpSubagentApi] =
     assertThat(subagentItem.id != localSubagentId)
     HttpSubagentApi.resource(
       Admission(

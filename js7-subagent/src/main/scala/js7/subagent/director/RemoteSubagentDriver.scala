@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import cats.effect.kernel.Deferred
-import cats.effect.{FiberIO, IO, Resource}
+import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
@@ -603,7 +603,7 @@ object RemoteSubagentDriver:
     controllerId: ControllerId,
     conf: RemoteSubagentDriver.Conf,
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
-  : Resource[IO, RemoteSubagentDriver] =
+  : ResourceIO[RemoteSubagentDriver] =
     Service.resource(IO {
       new RemoteSubagentDriver(
         subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)

@@ -40,7 +40,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
 
 final class ControllerApi(
-  val apisResource: Resource[IO, Nel[HttpControllerApi]],
+  val apisResource: ResourceIO[Nel[HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
@@ -222,7 +222,7 @@ object ControllerApi:
   private val logger = Logger[this.type]
 
   def resource(
-    apisResource: Resource[IO, Nel[HttpControllerApi]],
+    apisResource: ResourceIO[Nel[HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)
-  : Resource[IO, ControllerApi] =
+  : ResourceIO[ControllerApi] =
     Resource.make(IO { new ControllerApi(apisResource, proxyConf) })(_.stop)

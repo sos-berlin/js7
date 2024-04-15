@@ -1,6 +1,6 @@
 package js7.controller.web
 
-import cats.effect.Resource
+import cats.effect.ResourceIO
 import js7.base.auth.{AgentDirectorForwardPermission, SimpleUser, UpdateItemPermission}
 import js7.cluster.ClusterNode
 import js7.common.pekkohttp.web.PekkoWebServer
@@ -30,7 +30,7 @@ object ControllerWebServer:
     controllerConfiguration: ControllerConfiguration,
     sessionRegister: SessionRegister[SimpleSession])(
     implicit actorSystem_ : ActorSystem, ioRuntime: IORuntime)
-  : Resource[IO, ControllerWebServer] =
+  : ResourceIO[ControllerWebServer] =
     PekkoWebServer.resource(
       controllerConfiguration.webServerBindings,
       controllerConfiguration.config,

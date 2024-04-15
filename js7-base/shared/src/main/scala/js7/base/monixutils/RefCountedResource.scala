@@ -1,19 +1,19 @@
 package js7.base.monixutils
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.utils.AsyncLock
 
-final class RefCountedResource[A: Tag](base: Resource[IO, A])
+final class RefCountedResource[A: Tag](base: ResourceIO[A])
   (implicit enclosing: sourcecode.Enclosing):
 
   private val lock = AsyncLock(s"${enclosing.value}:RefCountedResource[${implicitly[Tag[A]].tag}]")
   @volatile private var maybeCached: Option[Cached] = None
 
-  def resource(implicit src: sourcecode.Enclosing): Resource[IO, A] =
+  def resource(implicit src: sourcecode.Enclosing): ResourceIO[A] =
     resource(src.value)
 
-  def resource(label: String): Resource[IO, A] =
+  def resource(label: String): ResourceIO[A] =
     Resource
       .make(acquire(label))(releaseCached(label))
       .map(_.a)

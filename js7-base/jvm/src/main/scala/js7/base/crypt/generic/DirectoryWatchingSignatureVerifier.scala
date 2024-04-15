@@ -1,7 +1,7 @@
 package js7.base.crypt.generic
 
 import cats.effect
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.foldable.*
@@ -170,7 +170,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
   def checkedResource(config: Config, onUpdated: () => Unit)
     (implicit iox: IOExecutor)
-  : Checked[Resource[IO, DirectoryWatchingSignatureVerifier]] =
+  : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
     prepare(config).map(_.toResource(onUpdated))
 
   def prepare(config: Config): Checked[Prepared] =
@@ -203,7 +203,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
     settings: DirectoryWatchSettings):
 
     def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
-    : Resource[IO, DirectoryWatchingSignatureVerifier] =
+    : ResourceIO[DirectoryWatchingSignatureVerifier] =
       Service.resource(IO(
         new DirectoryWatchingSignatureVerifier(
           companionToDirectory, settings, onUpdated)))

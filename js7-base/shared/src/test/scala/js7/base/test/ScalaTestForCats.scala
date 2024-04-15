@@ -11,11 +11,10 @@ object ScalaTestForCats:
    *
    * Allows Seq[Assertion](...).combineAll
    */
-  given Monoid[Assertion] =
-    new Monoid[Assertion]:
-      val empty = Succeeded
+  given Monoid[Assertion] = new Monoid[Assertion]:
+    val empty = Succeeded
 
-      def combine(a: Assertion, b: Assertion) =
-        (a, b) match
-          case (Succeeded, Succeeded) => Succeeded
-          case other => throw new IllegalArgumentException(s"Unexpected Assertion value: $other")
+    def combine(a: Assertion, b: Assertion) =
+      (a, b) match
+        case (Succeeded, Succeeded) => Succeeded
+        case other => throw new IllegalArgumentException(s"Unexpected Assertion value: $other")

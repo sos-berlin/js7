@@ -1,7 +1,7 @@
 package js7.controller.agent
 
 import cats.effect.kernel.Deferred
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import cats.syntax.option.*
 import fs2.Stream
 import js7.agent.client.AgentClient
@@ -288,7 +288,7 @@ private[agent] object DirectorDriver:
     adoptEvents: Seq[Stamped[AnyKeyedEvent]] => IO[Unit],  // TODO Stream
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
-  : Resource[IO, DirectorDriver] =
+  : ResourceIO[DirectorDriver] =
     Service.resource(IO(
       new DirectorDriver(
         agentDriver, agentPath, initialEventId, client,

@@ -1,9 +1,7 @@
 package js7.tests.testenv
 
-import cats.effect.IO
-import cats.effect.ResourceIO
-import cats.effect.Resource
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.option.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException

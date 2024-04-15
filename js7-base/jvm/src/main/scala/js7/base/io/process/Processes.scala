@@ -1,16 +1,14 @@
 package js7.base.io.process
 
-import cats.effect.IO
-import cats.effect.Sync
-import cats.effect.Resource
+import cats.effect.{IO, Resource, Sync}
 import java.io.{ByteArrayOutputStream, IOException}
-import java.nio.file.{Files, Path}
 import java.nio.file.attribute.FileAttribute
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import java.nio.file.{Files, Path}
 import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime.*

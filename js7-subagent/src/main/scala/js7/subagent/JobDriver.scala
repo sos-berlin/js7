@@ -1,7 +1,7 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
@@ -141,7 +141,7 @@ private final class JobDriver(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
-  : Checked[Resource[IO, ProcessOrder]] =
+  : Checked[ResourceIO[ProcessOrder]] =
     checkedJobLauncher
       // Read JobResources each time because they may change at any time
       .flatMap(_ => jobConf.jobResourcePaths.traverse(pathToJobResource))

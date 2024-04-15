@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource, SyncIO}
+import cats.effect.{IO, Resource, ResourceIO, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -230,7 +230,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
-  : Resource[IO, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
+  : ResourceIO[(ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
     for
       eventbus <- Resource.fromAutoCloseable(IO:
         new StandardEventBus[ClusterNodeLossNotConfirmedProblem])

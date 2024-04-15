@@ -3,7 +3,7 @@ package js7.agent
 import cats.effect.Resource.ExitCase
 import cats.effect.kernel.Sync
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource, kernel}
+import cats.effect.{IO, Resource, ResourceIO, kernel}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
 import js7.agent.configuration.AgentConfiguration
@@ -162,7 +162,7 @@ object TestAgent:
 
   def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RunningAgent] =
+  : ResourceIO[RunningAgent] =
     RunningAgent.resource(conf, testWiring)
       .flatMap(agent => Resource.makeCase(
         acquire = IO.pure(agent))(

@@ -2,7 +2,7 @@ package js7.cluster
 
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Outcome, Resource}
+import cats.effect.{IO, Outcome, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
@@ -299,7 +299,7 @@ object ClusterWatchCounterpart:
     timing: ClusterTiming,
     testEventPublisher: EventPublisher[Any])
     (using IORuntime)
-  : Resource[IO, ClusterWatchCounterpart] =
+  : ResourceIO[ClusterWatchCounterpart] =
     for
       pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]
       service <- Service.resource(IO:

@@ -1,6 +1,6 @@
 package js7.base.io.file.watch
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
@@ -41,7 +41,7 @@ extends Service.StoppableByRequest:
           watchService.close()
         }))
 
-  private[watch] def streamResource: Resource[IO, Stream[IO, Seq[DirectoryEvent]]] =
+  private[watch] def streamResource: ResourceIO[Stream[IO, Seq[DirectoryEvent]]] =
     for _ <- directoryWatchResource yield
       (true +: Stream.constant(false))
         .evalMap(isFirst => IO
@@ -51,7 +51,7 @@ extends Service.StoppableByRequest:
         .takeWhile(events => !events.contains(Overflow))
         .map(_.asInstanceOf[Seq[DirectoryEvent]])
 
-  private def directoryWatchResource: Resource[IO, WatchKey] =
+  private def directoryWatchResource: ResourceIO[WatchKey] =
     Resource.make(
       acquire =
         failWhenStopRequested(repeatWhileIOException(options, IO {
@@ -126,7 +126,7 @@ object BasicDirectoryWatch:
           logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
           Array.empty
 
-  def resource(options: WatchOptions)(using iox: IOExecutor): Resource[IO, BasicDirectoryWatch] =
+  def resource(options: WatchOptions)(using iox: IOExecutor): ResourceIO[BasicDirectoryWatch] =
     Service.resource(IO(new BasicDirectoryWatch(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>

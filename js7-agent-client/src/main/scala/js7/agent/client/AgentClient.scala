@@ -1,6 +1,6 @@
 package js7.agent.client
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import fs2.Stream
 import js7.agent.client.AgentClient.*
@@ -119,7 +119,7 @@ object AgentClient:
     label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, AgentClient] =
+  : ResourceIO[AgentClient] =
     Resource.make(
       acquire = IO(apply(admission, label, httpsConfig)))(
       release = client => client.tryLogout *> IO(client.close()))

@@ -1,6 +1,6 @@
 package js7.journal.state
 
-import cats.effect.Resource
+import cats.effect.{Resource, ResourceIO}
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import org.apache.pekko
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
@@ -147,7 +147,7 @@ object FileJournal:
       ioRuntime: IORuntime,
       actorRefFactory: ActorRefFactory,
       timeout: pekko.util.Timeout)
-  : Resource[IO, FileJournal[S]] =
+  : ResourceIO[FileJournal[S]] =
     Resource.make(
       acquire = IO.defer {
         import recovered.journalLocation

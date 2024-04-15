@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 
 final class CancelableService private(protected val run: IO[Unit])
 extends Service.StoppableByRequest:
@@ -14,5 +14,5 @@ extends Service.StoppableByRequest:
 
 
 object CancelableService:
-  def resource(run: IO[Unit]): Resource[IO, CancelableService] =
+  def resource(run: IO[Unit]): ResourceIO[CancelableService] =
     Service.resource(IO(new CancelableService(run)))

@@ -1,6 +1,6 @@
 package js7.journal.recover
 
-import cats.effect.Resource
+import cats.effect.{Resource, ResourceIO}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import js7.base.log.Logger
@@ -64,7 +64,7 @@ object StateRecoverer:
 
   def resource[S <: SnapshotableState[S]](journalLocation: JournalLocation, config: Config)
     (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
-  : Resource[IO, Recovered[S]] =
+  : ResourceIO[Recovered[S]] =
     Resource.fromAutoCloseable(IO(
       StateRecoverer.recover[S](journalLocation, config)))
 

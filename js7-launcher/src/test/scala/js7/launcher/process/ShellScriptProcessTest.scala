@@ -1,7 +1,7 @@
 package js7.launcher.process
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import java.nio.file.Files.*
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -17,11 +17,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLine, TaskId}
-import js7.launcher.{StdObservers, StdObserversForTest}
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.RichProcess.tryDeleteFile
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
+import js7.launcher.{StdObservers, StdObserversForTest}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.Future
 
@@ -172,7 +172,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
   private def runningShellScript(
     processConfiguration: ProcessConfiguration,
     executable: Path)
-  : Resource[IO, (ShellScriptProcess, StdObserversForTest.TestSink)] =
+  : ResourceIO[(ShellScriptProcess, StdObserversForTest.TestSink)] =
     StdObservers
       .testSink(name = "ShellScriptProcessTest")
       .evalMap: testSink =>

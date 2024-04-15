@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, IO, Outcome, Resource}
+import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*
@@ -84,7 +84,7 @@ object Service:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: Service](newService: IO[S]): Resource[IO, S] =
+  def resource[S <: Service](newService: IO[S]): ResourceIO[S] =
     Resource.make(
       acquire =
         newService.flatTap(service =>
@@ -117,8 +117,8 @@ object Service:
   def restartAfterFailure[S <: Service: Tag](
     startDelays: Seq[FiniteDuration] = defaultRestartDelays,
     runDelays: Seq[FiniteDuration] = defaultRestartDelays)
-    (serviceResource: Resource[IO, S])
-  : Resource[IO, RestartAfterFailureService[S]] =
+    (serviceResource: ResourceIO[S])
+  : ResourceIO[RestartAfterFailureService[S]] =
     resource(IO(
       new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 

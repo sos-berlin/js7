@@ -1,7 +1,7 @@
 package js7.proxy
 
 import cats.data.EitherT
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJson}
 import js7.base.problem.Checked
@@ -10,7 +10,7 @@ import js7.controller.client.HttpControllerApi
 
 trait ControllerApiWithHttp:
   protected def apiResource(implicit src: sourcecode.Enclosing)
-  : Resource[IO, HttpControllerApi]
+  : ResourceIO[HttpControllerApi]
 
   def httpPostJson(uriTail: String, jsonString: String): IO[Checked[String]] =
     (for

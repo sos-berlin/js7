@@ -1,30 +1,33 @@
 package js7.provider
 
-import org.apache.pekko.actor.ActorSystem
-import cats.effect.Resource
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, ResourceIO}
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
+import fs2.Stream
 import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.catsutils.CatsEffectExtensions.completed
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.utils.Atomic.extensions.*
+import js7.base.monixlike.MonixLikeExtensions.parZip2
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
-import js7.common.pekkoutils.Pekkos
+import js7.base.utils.{Atomic, ProgramTermination}
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
+import js7.common.pekkoutils.Pekkos
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
@@ -38,12 +41,7 @@ import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
 import js7.provider.Provider.*
 import js7.provider.configuration.ProviderConfiguration
 import js7.proxy.ControllerApi
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.utils.Atomic
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.completed
-import js7.base.monixlike.MonixLikeExtensions.parZip2
+import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -221,7 +219,7 @@ object Provider:
     SimpleItemReader(SubagentItem),
     SimpleItemReader(Calendar))
 
-  def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): Resource[IO, Provider] =
+  def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for
       actorSystem <- Pekkos.actorSystemResource("Providor", conf.config)
       iox <- IOExecutor.resource[IO](conf.config, "Provider")
@@ -230,7 +228,7 @@ object Provider:
 
   private def resource2(conf: ProviderConfiguration)
     (using ioRuntime: IORuntime, iox: IOExecutor, actorSystem: ActorSystem)
-  : Resource[IO, Provider] =
+  : ResourceIO[Provider] =
     val userAndPassword: Option[UserAndPassword] = for
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")

@@ -1,6 +1,6 @@
 package js7.data.value.expression.scopes
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.problem.Checked
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.StringValue
@@ -59,6 +59,6 @@ extends Scope, AutoCloseable:
 object FileValueScope:
   val functionName = "toFile"
 
-  def resource(fileValueState: FileValueState): Resource[IO, FileValueScope] =
+  def resource(fileValueState: FileValueState): ResourceIO[FileValueScope] =
     Resource.fromAutoCloseable(IO:
       new FileValueScope(fileValueState))

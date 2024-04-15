@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.{IO, Outcome, Resource}
+import cats.effect.{IO, Outcome, Resource, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
@@ -28,7 +28,7 @@ import scala.reflect.ClassTag
 
 private[cluster] final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,
-  val clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi],
+  val clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any])(
@@ -75,7 +75,7 @@ private[cluster] final class ClusterCommon private(
     tryEndlesslyToSendCommand(clusterNodeApi(admission, name), _ => command)
 
   def tryEndlesslyToSendCommand[C <: ClusterCommand: ClassTag](
-    apiResource: Resource[IO, ClusterNodeApi],
+    apiResource: ResourceIO[ClusterNodeApi],
     toCommand: OneTimeToken => C)
   : IO[Unit] =
     Delayer.start[IO](clusterConf.delayConf).flatMap: delayer =>
@@ -183,12 +183,12 @@ private[js7] object ClusterCommon:
 
   def resource(
     clusterWatchCounterpart: ClusterWatchCounterpart,
-    clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi],
+    clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
     testEventPublisher: EventPublisher[Any])(
     implicit pekkoTimeout: Timeout)
-  : Resource[IO, ClusterCommon] =
+  : ResourceIO[ClusterCommon] =
       Resource.make(
         IO(new ClusterCommon(
           clusterWatchCounterpart,

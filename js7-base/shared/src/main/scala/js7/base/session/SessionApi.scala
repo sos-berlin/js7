@@ -1,6 +1,6 @@
 package js7.base.session
 
-import cats.effect.{IO, Outcome, Resource}
+import cats.effect.{IO, Outcome, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import js7.base.auth.UserAndPassword
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -62,7 +62,7 @@ object SessionApi:
   private val logger = Logger[this.type]
 
   /** Logs out when the resource is being released. */
-  def resource[A <: SessionApi](api: IO[A]): Resource[IO, A] =
+  def resource[A <: SessionApi](api: IO[A]): ResourceIO[A] =
     Resource.make(
       acquire = api)(
       release = _.tryLogout.void)

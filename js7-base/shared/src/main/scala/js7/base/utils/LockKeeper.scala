@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.option.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
@@ -23,7 +23,7 @@ final class LockKeeper[K]:
   def lock[A](key: K)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
     lockResource(key).surround(body)
 
-  def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): Resource[IO, Token] =
+  def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): ResourceIO[Token] =
     Resource.make(acquire(key))(release)
 
   private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): IO[Token] =

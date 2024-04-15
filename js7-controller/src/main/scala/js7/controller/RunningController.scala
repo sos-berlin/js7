@@ -1,7 +1,7 @@
 package js7.controller
 
 import cats.effect.unsafe.Scheduler
-import cats.effect.{Resource, Sync, SyncIO}
+import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.OurIORuntime
@@ -213,7 +213,7 @@ object RunningController:
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RunningController] = {
+  : ResourceIO[RunningController] = {
     given Scheduler = ioRuntime.scheduler
 
     val alarmClock: AlarmClock =
@@ -238,7 +238,7 @@ object RunningController:
     alarmClock: AlarmClock,
     eventIdGenerator: EventIdGenerator)
     (implicit ioRuntime: IORuntime, iox: IOExecutor)
-  : Resource[IO, RunningController] =
+  : ResourceIO[RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
 
     given ExecutionContext = ioRuntime.compute
@@ -327,7 +327,7 @@ object RunningController:
       import clusterNode.recoveredExtract
 
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
-      : Resource[IO, ControllerWebServer] =
+      : ResourceIO[ControllerWebServer] =
         for
           webServer <- ControllerWebServer.resource(
             orderApi, commandExecutor, itemUpdater, clusterNode,
@@ -350,7 +350,7 @@ object RunningController:
       def runningControllerResource(
         webServer: ControllerWebServer,
         sessionRegister: SessionRegister[SimpleSession])
-      : Resource[IO, RunningController] =
+      : ResourceIO[RunningController] =
         Service.resource(IO(
           new RunningController(
             recoveredExtract.eventWatch.strict,
@@ -380,7 +380,7 @@ object RunningController:
     config: Config,
     testEventBus: StandardEventBus[Any])(
     implicit iox: IOExecutor)
-  : Resource[IO, SignedItemVerifier[SignableItem]] =
+  : ResourceIO[SignedItemVerifier[SignableItem]] =
     DirectoryWatchingSignatureVerifier
       .checkedResource(
         config,

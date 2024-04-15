@@ -1,7 +1,7 @@
 package js7.common.pekkohttp.web.session
 
 import cats.effect.std.AtomicCell
-import cats.effect.{Deferred, FiberIO, IO, Resource}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
@@ -70,7 +70,7 @@ extends Service.StoppableByRequest:
       state.logOpenSessions())
 
   def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
-  : Resource[IO, SessionToken] =
+  : ResourceIO[SessionToken] =
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
     provideSessionTokenFile(user, sessionTokenFile)
@@ -80,7 +80,7 @@ extends Service.StoppableByRequest:
           headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
         })))
 
-  private def provideSessionTokenFile(user: SimpleUser, file: Path): Resource[IO, SessionToken] =
+  private def provideSessionTokenFile(user: SimpleUser, file: Path): ResourceIO[SessionToken] =
     provideFile[IO](file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
@@ -282,7 +282,7 @@ object SessionRegister:
   private val logger = Logger[this.type]
 
   def resource[S <: Session: Tag](newSession: SessionInit => S, config: Config)
-  : Resource[IO, SessionRegister[S]] =
+  : ResourceIO[SessionRegister[S]] =
     Service.resource(IO:
       new SessionRegister[S](newSession, config))
 

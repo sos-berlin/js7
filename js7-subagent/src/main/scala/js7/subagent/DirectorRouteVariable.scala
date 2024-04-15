@@ -1,13 +1,12 @@
 package js7.subagent
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.utils.AsyncLock
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.data.subagent.Problems.NoDirectorProblem
 import js7.subagent.DirectorRouteVariable.*
-import cats.effect.IO
 import org.apache.pekko.http.scaladsl.server.Directives.complete
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.collection.mutable
@@ -18,7 +17,7 @@ private final class DirectorRouteVariable:
   private var _toRoute: ToRoute = noDirector
   private val cache = mutable.Map.empty[WebServerBinding, (Route, Int)]
 
-  def registeringRouteResource(toRoute: ToRoute): Resource[IO, Unit] =
+  def registeringRouteResource(toRoute: ToRoute): ResourceIO[Unit] =
     Resource.make(
       acquire = lock.lock(IO {
         if _toRoute ne noDirector then throw new IllegalStateException(

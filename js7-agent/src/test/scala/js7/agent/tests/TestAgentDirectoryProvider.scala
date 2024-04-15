@@ -1,7 +1,6 @@
 package js7.agent.tests
 
-import cats.effect.kernel.Sync
-import cats.effect.Resource
+import cats.effect.{Resource, Sync}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 import js7.agent.data.AgentState

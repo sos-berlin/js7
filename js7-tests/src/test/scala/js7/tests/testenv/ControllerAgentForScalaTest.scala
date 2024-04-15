@@ -1,12 +1,14 @@
 package js7.tests.testenv
 
-import cats.syntax.parallel.*
+import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.unsafe.IORuntime
 import cats.instances.option.*
-import cats.effect.Resource
-import com.typesafe.config.{Config, ConfigFactory}
-import js7.agent.TestAgent
-import cats.syntax.traverse.*
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
+import cats.syntax.traverse.*
+import com.typesafe.config.{Config, ConfigFactory}
+import fs2.Stream
+import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -30,9 +32,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -67,7 +66,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   private val clusterWatchServiceOnce = SetOnce[Allocated[IO, ClusterWatchService]]
 
-  protected def clusterWatchServiceResource: Option[Resource[IO, ClusterWatchService]] =
+  protected def clusterWatchServiceResource: Option[ResourceIO[ClusterWatchService]] =
     None
 
   protected def controllerHttpsMutual = false
@@ -203,7 +202,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     suffix: String = "",
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
-  : Resource[IO, Subagent] =
+  : ResourceIO[Subagent] =
     logger.traceResource(s"subagentResource(${subagentItem.id})"):
       Resource.suspend(IO {
         val eventId = eventWatch.lastAddedEventId

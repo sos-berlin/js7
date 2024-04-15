@@ -1,7 +1,7 @@
 package js7.common.system.startup
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{ExitCode, IO, Resource}
+import cats.effect.{ExitCode, IO, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.{BuildInfo, utils}
 import js7.base.configutils.Configs.logConfig
@@ -35,7 +35,7 @@ object ServiceMain:
     argsToConf: CommandLineArguments => Conf,
     useLockFile: Boolean = false,
     suppressShutdownLogging: Boolean = false)
-    (toServiceResource: Conf => Resource[IO, S],
+    (toServiceResource: Conf => ResourceIO[S],
     use: (Conf, S) => IO[ProgramTermination] =
     (_: Conf, service: S) => service.untilTerminated)
   : IO[ExitCode] =
@@ -64,7 +64,7 @@ object ServiceMain:
     name: String,
     timeout: Duration = Duration.Inf)
     (using rt: IORuntime, S: Tag[S])
-    (resource: Resource[IO, S],
+    (resource: ResourceIO[S],
     use: S => ProgramTermination = (_: S)
       .untilTerminated
       .map(o => o: ProgramTermination) // because we have no Tag[S#Termination]
@@ -125,7 +125,7 @@ object ServiceMain:
       logJavaSettings()
 
     private[ServiceMain] def run[S <: MainService: Tag](
-      resource: Resource[IO, S])
+      resource: ResourceIO[S])
       (use: S => IO[ProgramTermination])
     : IO[ProgramTermination] =
       resource
@@ -147,9 +147,9 @@ object ServiceMain:
     //      logger.error(s"onMainServiceCanceled: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
 
-    //private def withShutdownHook[S <: MainService: Tag](serviceResource: Resource[IO, S])
+    //private def withShutdownHook[S <: MainService: Tag](serviceResource: ResourceIO[S])
     //  (implicit scheduler: IORuntime)
-    //: Resource[IO, S] =
+    //: ResourceIO[S] =
     //  serviceResource
     //    .toAllocatedResource
     //    .flatTap(allocated =>

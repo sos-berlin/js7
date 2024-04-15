@@ -2,7 +2,7 @@ package js7.subagent
 
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
+import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
@@ -279,7 +279,7 @@ extends Service.StoppableByRequest:
               IO.pure(processLost: OrderOutcome).start
 
   private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
-  : Resource[IO, StdObservers] =
+  : ResourceIO[StdObservers] =
     import subagentConf.{outerrByteBufferSize, outerrQueueSize, stdouterr}
     for
       outErrStatistics <- outErrStatisticsResource
@@ -295,7 +295,7 @@ extends Service.StoppableByRequest:
       stdObservers
 
   /** Logs some stdout and stderr statistics. */
-  private def outErrStatisticsResource: Resource[IO, Map[StdoutOrStderr, OutErrStatistics]] =
+  private def outErrStatisticsResource: ResourceIO[Map[StdoutOrStderr, OutErrStatistics]] =
     Resource
       .make(
         acquire = IO:
@@ -384,7 +384,7 @@ object DedicatedSubagent:
     jobLauncherConf: JobLauncherConf,
     subagentConf: SubagentConf)
     (using ioRuntime: IORuntime)
-  : Resource[IO, DedicatedSubagent] =
+  : ResourceIO[DedicatedSubagent] =
   Service.resource(IO(
     new DedicatedSubagent(
       subagentId, subagentRunId, commandExecutor, journal, agentPath, controllerId,

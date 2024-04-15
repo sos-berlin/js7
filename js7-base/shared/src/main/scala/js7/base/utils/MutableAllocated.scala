@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -31,7 +31,7 @@ final class MutableAllocated[A](logMinor: Boolean = false)
       case allocated =>
         Right(allocated.allocatedThing)
 
-  def acquire(resource: Resource[IO, A]): IO[A] =
+  def acquire(resource: ResourceIO[A]): IO[A] =
     logger.traceIO(s"$toString acquire"):
       cancelWhenFinallyReleased:
         allocatedVar

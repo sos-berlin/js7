@@ -1,6 +1,6 @@
 package js7.common.http
 
-import cats.effect.{Deferred, IO, Outcome, Resource}
+import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.applicativeError.*
 import fs2.Stream
 import io.circe.syntax.*
@@ -561,7 +561,7 @@ object PekkoHttpClient:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = "")
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, PekkoHttpClient] =
+  : ResourceIO[PekkoHttpClient] =
     Resource.fromAutoCloseable(IO(new PekkoHttpClient.Standard(
       uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
     //Resource.make(

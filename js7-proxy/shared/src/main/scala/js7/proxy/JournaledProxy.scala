@@ -1,7 +1,7 @@
 package js7.proxy
 
 import cats.data.NonEmptySeq
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
@@ -15,9 +15,9 @@ import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.{DelayConf, Delayer}
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
 import js7.common.http.RecouplingStreamReader
@@ -39,7 +39,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
   def subscribe(maxQueued: Option[Int] = None)
-  : Resource[IO, Stream[IO, EventAndState[Event, S]]]
+  : ResourceIO[Stream[IO, EventAndState[Event, S]]]
 
   def sync(eventId: EventId): IO[Unit]
 

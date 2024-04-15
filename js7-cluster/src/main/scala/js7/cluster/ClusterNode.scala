@@ -1,7 +1,7 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, Outcome, Ref, Resource}
+import cats.effect.{Deferred, Outcome, Ref, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import java.util.concurrent.atomic.AtomicReference
@@ -275,8 +275,8 @@ object ClusterNode:
   private val logger = Logger[this.type]
 
   def recoveringResource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
-    pekkoResource: Resource[IO, ActorSystem],
-    clusterNodeApi: (Admission, String, ActorSystem) => Resource[IO, ClusterNodeApi],
+    pekkoResource: ResourceIO[ActorSystem],
+    clusterNodeApi: (Admission, String, ActorSystem) => ResourceIO[ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
@@ -287,7 +287,7 @@ object ClusterNode:
       nodeNameToPassword: NodeNameToPassword[S],
       ioRuntime: IORuntime,
       pekkoTimeout: Timeout)
-  : Resource[IO, ClusterNode[S]] =
+  : ResourceIO[ClusterNode[S]] =
     StateRecoverer
       .resource[S](journalLocation, clusterConf.config)
       .both(pekkoResource/*start in parallel*/)
@@ -302,7 +302,7 @@ object ClusterNode:
 
   private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     recovered: Recovered[S],
-    clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi],
+    clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
@@ -314,7 +314,7 @@ object ClusterNode:
       ioRuntime: IORuntime,
       actorSystem: ActorSystem,
       pekkoTimeout: pekko.util.Timeout)
-  : Checked[Resource[IO, ClusterNode[S]]] =
+  : Checked[ResourceIO[ClusterNode[S]]] =
     val checked = recovered.clusterState match
       case Empty =>
         (clusterConf.isPrimary || recovered.eventId == EventId.BeforeFirst) !!
@@ -351,7 +351,7 @@ object ClusterNode:
       ioRuntime: IORuntime,
       actorSystem: ActorSystem,
       timeout: pekko.util.Timeout)
-  : Resource[IO, ClusterNode[S]] =
+  : ResourceIO[ClusterNode[S]] =
     import clusterConf.{config, ownId}
 
     if recovered.clusterState != Empty then logger.info(

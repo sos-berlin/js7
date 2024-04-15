@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import js7.base.log.Logger
 import js7.base.service.ServiceTest.*
 import js7.base.test.OurAsyncTestSuite
@@ -121,7 +121,7 @@ final class ServiceTest extends OurAsyncTestSuite:
 
     override def toString = "MyService"
   private object MyService:
-    def resource(setRunning: Boolean => Unit): Resource[IO, MyService] =
+    def resource(setRunning: Boolean => Unit): ResourceIO[MyService] =
       Service.resource(IO(new MyService(setRunning)))
 
 

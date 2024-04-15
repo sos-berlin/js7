@@ -1,6 +1,5 @@
 package js7.common.pekkohttp.web
 
-import cats.data.NonEmptySeq
 import cats.effect.kernel.Deferred
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.instances.vector.*
@@ -19,7 +18,7 @@ import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
 import js7.base.service.Service
 import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime.{DurationRichInt, RichFiniteDuration}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, DelayConf, Delayer}

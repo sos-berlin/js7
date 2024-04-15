@@ -1,7 +1,7 @@
 package js7.cluster.watch
 
 import cats.data.NonEmptySeq
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.configutils.Configs.RichConfig
@@ -154,7 +154,7 @@ extends MainService, Service.StoppableByRequest:
 object ClusterWatchService:
   private val logger = Logger[this.type]
 
-  def completeResource(conf: ClusterWatchConf): Resource[IO, ClusterWatchService] =
+  def completeResource(conf: ClusterWatchConf): ResourceIO[ClusterWatchService] =
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for
       pekko <- actorSystemResource(name = "ClusterWatch", config)
@@ -169,24 +169,24 @@ object ClusterWatchService:
 
   def resource(
     clusterWatchId: ClusterWatchId,
-    apisResource: Resource[IO, Nel[HttpClusterNodeApi]],
+    apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
     config: Config,
     label: String = "",
     onClusterStateChanged: (HasNodes) => Unit = _ => (),
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
-  : Resource[IO, ClusterWatchService] =
+  : ResourceIO[ClusterWatchService] =
     resource2(
       clusterWatchId, apisResource, config.withFallback(defaultConfig), label = label,
       onClusterStateChanged, onUndecidableClusterNodeLoss)
 
   private def resource2(
     clusterWatchId: ClusterWatchId,
-    apisResource: Resource[IO, Nel[HttpClusterNodeApi]],
+    apisResource: ResourceIO[Nel[HttpClusterNodeApi]],
     config: Config,
     label: String,
     onClusterStateChanged: (HasNodes) => Unit,
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
-  : Resource[IO, ClusterWatchService] =
+  : ResourceIO[ClusterWatchService] =
     Resource.suspend(IO {
       val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
       val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")

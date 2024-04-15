@@ -1,6 +1,6 @@
 package js7.common.jsonseq
 
-import cats.effect.Resource
+import cats.effect.{Resource, ResourceIO}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import io.circe.Json
@@ -150,7 +150,7 @@ object InputStreamJsonSeqReader:
   private[jsonseq] val BlockSize = 8192
   private val logger = Logger[this.type]
 
-  def resource(file: Path): Resource[IO, InputStreamJsonSeqReader] =
+  def resource(file: Path): ResourceIO[InputStreamJsonSeqReader] =
     Resource.fromAutoCloseable(IO(InputStreamJsonSeqReader.open(file)))
 
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =

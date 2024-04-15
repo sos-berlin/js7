@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -197,7 +197,7 @@ object WorkingClusterNode:
       ioRuntime: IORuntime,
       actorRefFactory: ActorRefFactory,
       timeout: pekko.util.Timeout)
-  : Resource[IO, WorkingClusterNode[S]] =
+  : ResourceIO[WorkingClusterNode[S]] =
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty)(
         common.requireValidLicense.map(_.orThrow)))

@@ -1,10 +1,9 @@
 package js7.base.test
 
-import cats.syntax.monoid.*
 import cats.syntax.foldable.*
-import org.scalatest.freespec.AnyFreeSpec
-import ScalaTestForCats.given
+import js7.base.test.ScalaTestForCats.given
 import org.scalatest.FixtureContext
+import org.scalatest.freespec.AnyFreeSpec
 
 final class ScalaTestForCatsTest extends AnyFreeSpec:
 
@@ -13,4 +12,4 @@ final class ScalaTestForCatsTest extends AnyFreeSpec:
 
     val e = intercept[IllegalArgumentException]:
       Seq(succeed, new FixtureContext {}).combineAll
-    assert(e.getMessage.startsWith("Unexpected Assertion value: "))  
+    assert(e.getMessage.startsWith("Unexpected Assertion value: "))

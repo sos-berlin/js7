@@ -1,6 +1,6 @@
 package js7.tests.cluster.agent
 
-import cats.effect.Resource
+import cats.effect.{IO, ResourceIO}
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
@@ -25,7 +25,6 @@ import js7.tests.cluster.agent.ResetAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import cats.effect.IO
 import scala.util.control.NonFatal
 
 final class ResetAgentClusterTest
@@ -58,8 +57,8 @@ final class ResetAgentClusterTest
 
   "Reset backup Director, too" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def toTestAgent(envResource: Resource[IO, DirectorEnv]): (DirectorEnv, TestAgent) =
-      val resource: Resource[IO, (DirectorEnv, RunningAgent)] =
+    def toTestAgent(envResource: ResourceIO[DirectorEnv]): (DirectorEnv, TestAgent) =
+      val resource: ResourceIO[(DirectorEnv, RunningAgent)] =
         for
           env <- envResource
           program <- env.programResource

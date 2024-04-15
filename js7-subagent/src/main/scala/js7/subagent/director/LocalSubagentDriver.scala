@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import cats.effect.kernel.Deferred
-import cats.effect.{FiberIO, IO, Resource}
+import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.chunkWithin
@@ -363,7 +363,7 @@ object LocalSubagentDriver:
     journal: Journal[S],
     controllerId: ControllerId,
     subagentConf: SubagentConf)
-  : Resource[IO, LocalSubagentDriver] =
+  : ResourceIO[LocalSubagentDriver] =
     Service.resource(IO {
       new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
     })

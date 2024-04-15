@@ -1,6 +1,6 @@
 package js7.agent
 
-import cats.effect.Resource
+import cats.effect.{Resource, ResourceIO}
 import cats.effect.kernel.Deferred
 import cats.syntax.flatMap.*
 import js7.agent.RestartableDirector.*
@@ -70,7 +70,7 @@ extends MainService, Service.StoppableByRequest:
                 else
                   Right(termination))))
 
-  private def onStopRequested(stop: IO[Unit]): Resource[IO, Unit] =
+  private def onStopRequested(stop: IO[Unit]): ResourceIO[Unit] =
     Resource
       .make(
         acquire = untilStopRequested.*>(stop).start)(
@@ -97,6 +97,6 @@ private object RestartableDirector:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : Resource[IO, RestartableDirector] =
+  : ResourceIO[RestartableDirector] =
     Service.resource(IO(
       new RestartableDirector(subagent, conf, testWiring)))

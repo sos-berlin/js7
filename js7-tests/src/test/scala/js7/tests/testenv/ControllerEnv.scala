@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
-import cats.effect.Resource
+import cats.effect.ResourceIO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Path
 import js7.base.auth.{UserAndPassword, UserId}
@@ -13,8 +14,6 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.{AgentTrustStoreResource, defaultVerifier}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import scala.collection.immutable.Iterable
 
 /** Environment with config and data directories for a Controller. */
@@ -32,7 +31,7 @@ extends ProgramEnv.WithFileJournal:
 
   protected def confFilename = "controller.conf"
 
-  def programResource(using IORuntime): Resource[IO, RunningController] = ???
+  def programResource(using IORuntime): ResourceIO[RunningController] = ???
 
   val journalLocation = JournalLocation(ControllerState, stateDir / "controller")
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))

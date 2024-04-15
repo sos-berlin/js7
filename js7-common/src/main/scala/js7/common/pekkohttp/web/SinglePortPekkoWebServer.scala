@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.memoize
@@ -55,7 +55,7 @@ private object SinglePortPekkoWebServer:
     shutdownDelay: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, SinglePortPekkoWebServer] =
+  : ResourceIO[SinglePortPekkoWebServer] =
     Resource.suspend:
       memoize: /*saves the `revision` counter for multiple allocations*/
         IO:
@@ -78,7 +78,7 @@ private object SinglePortPekkoWebServer:
     shutdownDelay: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, SinglePortPekkoWebServer] =
+  : ResourceIO[SinglePortPekkoWebServer] =
     Service.resource(IO.defer {
       val pekkoHttp = Http(actorSystem)
 

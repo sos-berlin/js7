@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import js7.base.log.Logger
@@ -72,7 +72,7 @@ object Closer:
     closeables.reverseIterator foreach closer.register
     closer.close()
 
-  private val resource: Resource[IO, Closer] =
+  private val resource: ResourceIO[Closer] =
     Resource.make(
       acquire = IO(new Closer))(
       release = closer => IO(closer.close()))

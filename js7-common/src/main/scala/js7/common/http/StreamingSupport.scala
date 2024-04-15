@@ -2,7 +2,7 @@ package js7.common.http
 
 import cats.effect
 import cats.effect.kernel.Resource.ExitCase
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
 import izumi.reflect.Tag
@@ -49,7 +49,7 @@ object StreamingSupport:
             deferredRelease.complete(release)
               .as(source)
 
-    def toPekkoSourceForHttpResponse(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
+    def toPekkoSourceForHttpResponse(using A: Tag[A]): ResourceIO[Source[A, NotUsed]] =
       logger.traceResource:
         stream
           .handleErrorWith: throwable =>
@@ -57,7 +57,7 @@ object StreamingSupport:
             Stream.empty
           .toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
 
-    def toPekkoSourceResource: Resource[IO, Source[A, NotUsed]] =
+    def toPekkoSourceResource: ResourceIO[Source[A, NotUsed]] =
       stream
         .onFinalizeCase:
           case ExitCase.Canceled => IO(logger.debug(s"⚫️ toPekkoSourceResource stream canceled"))

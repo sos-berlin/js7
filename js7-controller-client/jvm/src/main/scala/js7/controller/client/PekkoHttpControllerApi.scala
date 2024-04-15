@@ -1,6 +1,6 @@
 package js7.controller.client
 
-import cats.effect.Resource
+import cats.effect.{Resource, ResourceIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.io.https.HttpsConfig
@@ -42,7 +42,7 @@ object PekkoHttpControllerApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
-  : Resource[IO, HttpControllerApi] =
+  : ResourceIO[HttpControllerApi] =
     val myName = if name.nonEmpty then name else "PekkoHttpControllerApi"
     for
       actorSystem <- actorSystemResource(name = myName, config)
@@ -54,7 +54,7 @@ object PekkoHttpControllerApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, Nel[HttpControllerApi]] =
+  : ResourceIO[Nel[HttpControllerApi]] =
     admissions.zipWithIndex
       .traverse { case (a, i) => resource(a, httpsConfig, name = s"$name-$i") }
 
@@ -65,7 +65,7 @@ object PekkoHttpControllerApi:
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
-  : Resource[IO, HttpControllerApi] =
+  : ResourceIO[HttpControllerApi] =
     for
       httpClient <- PekkoHttpClient.resource(
         admission.uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,

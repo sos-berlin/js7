@@ -403,7 +403,7 @@ object StreamExtensions:
   //extension [A](underlying: IO[Stream[IO, A]])
   //  def logTiming(
   //    toCount: A => Long = simpleCount,
-  //    onComplete: (FiniteDuration, Long, Outcome[IO, A, Throwable]) => Unit,
+  //    onComplete: (FiniteDuration, Long, OutcomeIO[A, Throwable]) => Unit,
   //    startedAt: Deadline = now)
   //  : IO[Stream[IO, A]] =
   //    underlying
@@ -414,7 +414,7 @@ object StreamExtensions:
   //extension [A](underlying: IO[Checked[Stream[IO, A]]])
   //  def logTiming(
   //    toCount: A => Long = simpleCount,
-  //    onComplete: (FiniteDuration, Long, Outcome[IO, A, Throwable]) => Unit,
+  //    onComplete: (FiniteDuration, Long, OutcomeIO[A, Throwable]) => Unit,
   //    startedAt: => Deadline = now)
   //  : IO[Checked[Stream[IO, A]]] =
   //    IO.defer:

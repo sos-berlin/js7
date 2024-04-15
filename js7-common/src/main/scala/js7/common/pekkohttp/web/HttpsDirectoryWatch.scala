@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import cats.syntax.all.*
 import java.nio.file.Path
 import js7.base.fs2utils.StreamExtensions.*
@@ -63,5 +63,5 @@ private object HttpsDirectoryWatch:
   def resource(
     settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: IO[Unit])
     (implicit iox: IOExecutor)
-  : Resource[IO, HttpsDirectoryWatch] =
+  : ResourceIO[HttpsDirectoryWatch] =
     Service.resource(IO(new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)))

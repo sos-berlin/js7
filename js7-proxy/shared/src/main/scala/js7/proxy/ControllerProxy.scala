@@ -1,6 +1,6 @@
 package js7.proxy
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, ResourceIO}
 import fs2.Stream
 import js7.base.eventbus.StandardEventBus
 import js7.base.problem.Checked
@@ -40,11 +40,11 @@ object ControllerProxy:
 
   private[proxy] def resource(
     api: ControllerApi,
-    apisResource: Resource[IO, Nel[HttpControllerApi]],
+    apisResource: ResourceIO[Nel[HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
     proxyConf: ProxyConf = ProxyConf.default)
-  : Resource[IO, ControllerProxy] =
+  : ResourceIO[ControllerProxy] =
       for
         journaledProxy <- JournaledProxy.resource(
           JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),

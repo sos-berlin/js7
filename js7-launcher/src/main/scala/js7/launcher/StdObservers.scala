@@ -54,7 +54,7 @@ final class StdObservers private(
   val closeChannels: IO[Unit] =
      IO.both(outChannel.close, errChannel.close).void
 
-  private def pumpChannelsToSinkResource: Resource[IO, Unit] =
+  private def pumpChannelsToSinkResource: ResourceIO[Unit] =
     Resource
       .make(
         acquire = pumpChannelsToSink.start)(

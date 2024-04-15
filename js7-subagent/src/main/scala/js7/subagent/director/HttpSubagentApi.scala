@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.Resource
+import cats.effect.ResourceIO
 import io.circe.Decoder
 import js7.base.auth.Admission
 import js7.base.io.https.HttpsConfig
@@ -86,6 +86,6 @@ object HttpSubagentApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String,
     actorSystem: ActorSystem)
-  : Resource[IO, HttpSubagentApi] =
+  : ResourceIO[HttpSubagentApi] =
     SessionApi.resource(IO(
       new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))

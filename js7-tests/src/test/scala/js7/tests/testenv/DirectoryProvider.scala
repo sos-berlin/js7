@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -153,7 +153,7 @@ extends HasCloser:
     itemSigner.sign(item)
 
   /** Proxy's ControllerApi */
-  def controllerApiResource(runningController: RunningController): Resource[IO, ControllerApi] =
+  def controllerApiResource(runningController: RunningController): ResourceIO[ControllerApi] =
     ControllerApi.resource(
       admissionsToApiResource(
         Nel.one(controllerAdmission(runningController)))(
@@ -217,7 +217,7 @@ extends HasCloser:
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
     (using IORuntime)
-  : Resource[IO, TestController] =
+  : ResourceIO[TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
         .toAllocated
@@ -232,7 +232,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[IO, RunningController] =
+  : ResourceIO[RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
       config.withFallback(controllerConfig),
@@ -350,7 +350,7 @@ extends HasCloser:
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
     (using IORuntime)
-  : Resource[IO, DirectorEnv] =
+  : ResourceIO[DirectorEnv] =
     Resource
       .fromAutoCloseable(IO(
         newDirectorEnv(subagentItem, suffix, otherSubagentIds,
@@ -386,7 +386,7 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
     (using IORuntime)
-  : Resource[IO, Subagent] =
+  : ResourceIO[Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
         director = director,
@@ -403,7 +403,7 @@ extends HasCloser:
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
     (using IORuntime)
-  : Resource[IO, BareSubagentEnv] =
+  : ResourceIO[BareSubagentEnv] =
     Resource
       .fromAutoCloseable(IO(
         new BareSubagentEnv(
@@ -508,7 +508,7 @@ object DirectoryProvider:
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
-  : Resource[IO, ClusterWatchService] =
+  : ResourceIO[ClusterWatchService] =
     Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>

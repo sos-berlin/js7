@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 
 final class OneTimeTokenProvider private():
 
   @volatile private var current: Option[OneTimeToken] = None
 
-  val resource: Resource[IO, OneTimeToken] =
+  val resource: ResourceIO[OneTimeToken] =
     Resource.make(
       acquire = IO {
         val token = OneTimeToken.random()

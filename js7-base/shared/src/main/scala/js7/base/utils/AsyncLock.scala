@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.std.Mutex
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.LogLevel.Trace
@@ -81,7 +81,7 @@ object AsyncLock:
             onAcquired *> body
 
 
-    private def logging(acquirer: => String): Resource[IO, IO[Unit]] =
+    private def logging(acquirer: => String): ResourceIO[IO[Unit]] =
       Resource.defer:
         val since = Deadline.now
 
