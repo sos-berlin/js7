@@ -7,7 +7,8 @@ import js7.data.order.OrderEvent.OrderNoticesExpected
 
 final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)
 extends BoardSnapshot:
-  def toExpected = OrderNoticesExpected.Expected(boardPath, id)
+  def toExpected: OrderNoticesExpected.Expected = 
+    OrderNoticesExpected.Expected(boardPath, id)
 
 
 object Notice:

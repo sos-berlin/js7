@@ -23,7 +23,7 @@ import scala.util.Try
 trait JobLauncher:
   protected val jobConf: JobConf
 
-  def precheckAndWarn = IO.unit
+  def precheckAndWarn: IO[Unit] = IO.unit
 
   protected def start: IO[Checked[Unit]]
 

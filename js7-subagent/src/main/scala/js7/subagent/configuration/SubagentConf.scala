@@ -49,7 +49,7 @@ final case class SubagentConf(
 extends CommonConfiguration:
   require(jobWorkingDirectory.isAbsolute)
 
-  lazy val scriptInjectionAllowed =
+  lazy val scriptInjectionAllowed: Boolean =
     config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
   def executablesDirectory: Path =
@@ -122,7 +122,7 @@ extends CommonConfiguration:
 object SubagentConf:
   private def defaultLogDirectory(data: Path) = data / "logs"
 
-  val DefaultConfig = Configs
+  val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/subagent/configuration/subagent.conf"))
     .withFallback(Js7Configuration.defaultConfig)
 

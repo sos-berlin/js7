@@ -26,7 +26,7 @@ extends
   protected def start =
     startService(untilStopRequested)
 
-  override def stop =
+  override def stop: IO[Unit] =
     super.stop
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =

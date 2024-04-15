@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
 trait InventoryItemPath extends GenericString:
   def companion: Companion[? <: InventoryItemPath]
 
-  final def isAssignableToAgent =
+  final def isAssignableToAgent: Boolean =
     this.isInstanceOf[InventoryItemPath.AttachableToAgent]
 
   final def toTypedString: String =

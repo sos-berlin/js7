@@ -9,7 +9,7 @@ trait SimpleMainService extends MainService:
 
   private val terminated = Deferred.unsafe[IO, Termination]
 
-  final def start =
+  final def start: IO[Service.Started] =
     startService:
       for
         termination <- run
@@ -17,7 +17,7 @@ trait SimpleMainService extends MainService:
       yield
         ()
 
-  override final def untilTerminated =
+  override final def untilTerminated: IO[ProgramTermination] =
     terminated.get
 
   def run: IO[Termination]

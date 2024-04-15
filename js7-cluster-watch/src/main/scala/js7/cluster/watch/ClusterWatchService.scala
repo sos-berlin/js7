@@ -49,7 +49,7 @@ extends MainService, Service.StoppableByRequest:
     label = label,
     onClusterStateChanged = onClusterStateChanged,
     onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
-  val clusterWatchRunId = ClusterWatchRunId.random()
+  val clusterWatchRunId: ClusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =

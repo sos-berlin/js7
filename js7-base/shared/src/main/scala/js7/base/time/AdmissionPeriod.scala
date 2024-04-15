@@ -39,10 +39,10 @@ extends AdmissionPeriod:
     else
       Right(this)
 
-  def pretty =
+  def pretty: String =
     "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 object DailyPeriod:
-  val always = DailyPeriod(0, 24.h)
+  val always: DailyPeriod = DailyPeriod(0, 24.h)
 
   @TestOnly
   def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
@@ -69,7 +69,7 @@ extends AdmissionPeriod:
   def secondOfDay: Int =
     secondOfWeek % DaySeconds
 
-  def pretty =
+  def pretty: String =
     "weekly at " + dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 object WeekdayPeriod:
   @TestOnly
@@ -89,9 +89,10 @@ extends AdmissionPeriod:
 
   private def dayOfMonth = secondOfMonth / DaySeconds + 1
 
-  def secondOfDay = secondOfMonth % DaySeconds
+  def secondOfDay: Int =
+    secondOfMonth % DaySeconds
 
-  def pretty =
+  def pretty: String =
     ordinalToString(dayOfMonth) + " of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
@@ -115,9 +116,10 @@ extends AdmissionPeriod:
 
   private def lastDayOfMonth = -lastSecondOfMonth / DaySeconds + 1
 
-  def secondOfDay = -lastSecondOfMonth % DaySeconds
+  def secondOfDay: Int =
+    -lastSecondOfMonth % DaySeconds
 
-  def pretty =
+  def pretty: String =
     (lastDayOfMonth match {
       case 1 => ""
       case _ => ordinalToString(lastDayOfMonth) + " to "
@@ -143,13 +145,16 @@ extends AdmissionPeriod:
     else
       Right(this)
 
-  def shiftWeeks = secondOfWeeks / WeekSeconds
+  def shiftWeeks: Int =
+    secondOfWeeks / WeekSeconds
 
-  def dayOfWeek = secondOfWeeks / DaySeconds % 7
+  def dayOfWeek: Int =
+    secondOfWeeks / DaySeconds % 7
 
-  def secondOfDay = secondOfWeeks % DaySeconds
+  def secondOfDay: Int =
+    secondOfWeeks % DaySeconds
 
-  def pretty =
+  def pretty: String =
     ordinalToString(shiftWeeks + 1) + " " +
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
@@ -180,13 +185,15 @@ extends AdmissionPeriod:
   /** 0: last week. */
   private[time] def shiftWeeks = (secondOfWeeks + 1) / WeekSeconds
 
-  def dayOfWeek = ((secondOfWeeks + 5*WeekSeconds) / DaySeconds) % 7
+  def dayOfWeek: Int =
+    ((secondOfWeeks + 5*WeekSeconds) / DaySeconds) % 7
 
-  def secondOfDay = (secondOfWeeks + 5*WeekSeconds) % DaySeconds
+  def secondOfDay: Int =
+    (secondOfWeeks + 5*WeekSeconds) % DaySeconds
 
-  def secondOfWeek = (secondOfWeeks + 5*WeekSeconds) % WeekSeconds
+  def secondOfWeek: Int = (secondOfWeeks + 5*WeekSeconds) % WeekSeconds
 
-  def pretty =
+  def pretty: String =
     (shiftWeeks match {
       case 0 => "last "
       case n => ordinalToString(-n+1) + " last "
@@ -209,7 +216,7 @@ object MonthlyLastWeekdayPeriod:
 
 final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
 extends AdmissionPeriod:
-  override def pretty =
+  override def pretty: String =
     val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
     s"$ts, ${duration.pretty}"
 object SpecificDatePeriod:

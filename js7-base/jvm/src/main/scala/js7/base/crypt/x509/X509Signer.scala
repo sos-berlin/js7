@@ -19,7 +19,7 @@ extends DocumentSigner:
 
   protected type MySignature = X509Signature
 
-  def companion = X509Signer
+  def companion: DocumentSigner.Companion {type MySignature = X509Signature} = X509Signer
 
   def sign(message: ByteArray): X509Signature =
     val signature = Signature.getInstance(algorithm.string);
@@ -34,9 +34,9 @@ object X509Signer extends DocumentSigner.Companion:
   protected type MySignature = X509Signature
   protected type MyMessageSigner = X509Signer
 
-  def typeName = X509Signature.TypeName
+  def typeName: String = X509Signature.TypeName
 
-  def checked(privateKey: ByteArray, password: SecretString = SecretString("")) =
+  def checked(privateKey: ByteArray, password: SecretString = SecretString("")): Checked[X509Signer] =
     if true then
       Left(Problem.pure("X509Signer requirers a SignerId which the current API does not provide"))
     else if password.nonEmpty then
@@ -44,7 +44,7 @@ object X509Signer extends DocumentSigner.Companion:
     else
       checked(privateKey, SHA512withRSA, SignerId("???"))
 
-  def checked(privateKey: ByteArray, algorithm: X509Algorithm, signerId: SignerId) =
+  def checked(privateKey: ByteArray, algorithm: X509Algorithm, signerId: SignerId): Checked[X509Signer] =
     Checked.catchNonFatal {
       KeyFactory.getInstance("RSA")
         .generatePrivate(new PKCS8EncodedKeySpec(privateKey.toArray))

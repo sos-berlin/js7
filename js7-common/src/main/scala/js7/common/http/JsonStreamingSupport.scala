@@ -18,22 +18,31 @@ import js7.common.pekkoutils.ByteStrings.syntax.*
   * @author Joacim Zschimmer
   */
 object JsonStreamingSupport:
-  val `application/json-seq` = MediaType.customWithFixedCharset("application", "json-seq", `UTF-8`)  // https://tools.ietf.org/html/rfc7464
-  val `application/x-ndjson` = MediaType.customWithFixedCharset("application", "x-ndjson", `UTF-8`)  // https://github.com/ndjson/ndjson-spec
-  val `application/x-ndjson-ContentType` = `application/x-ndjson`.toContentType
-  val CustomMediaTypes = `application/json-seq` :: `application/x-ndjson` :: Nil
+  val `application/json-seq`: MediaType.WithFixedCharset =
+    MediaType.customWithFixedCharset("application", "json-seq", `UTF-8`)  // https://tools.ietf.org/html/rfc7464
+
+  val `application/x-ndjson`: MediaType.WithFixedCharset =
+    MediaType.customWithFixedCharset("application", "x-ndjson", `UTF-8`)  // https://github.com/ndjson/ndjson-spec
+
+  val `application/x-ndjson-ContentType`: ContentType.WithFixedCharset =
+    `application/x-ndjson`.toContentType
+
+  val CustomMediaTypes: List[MediaType.WithFixedCharset] =
+    `application/json-seq` :: `application/x-ndjson` :: Nil
 
   /** Useable for HTTP request expecting a Checked[Stream] response. */
-  val StreamingJsonHeader = Accept(
+  val StreamingJsonHeader: Accept = Accept(
     MediaRange.One(`application/x-ndjson`, 1.0f),   // For observed items
     MediaRange.One(`application/json`, 0.9f))       // For Problem response
+
   val StreamingJsonHeaders: List[Accept] =
     StreamingJsonHeader :: Nil
 
-  val JsonObjectMaxSize = 1024*1024  // TODO Maybe 10MB? For very big Workflows or snapshot objects
+  val JsonObjectMaxSize: Int = 1024*1024  // TODO Maybe 10MB? For very big Workflows or snapshot objects
   private val LF = ByteString(Ascii.LF)
 
-  val NdJsonStreamingSupport = jsonSeqStreamingSupport(`application/x-ndjson`, _ ++ LF)
+  val NdJsonStreamingSupport: JsonEntityStreamingSupport =
+    jsonSeqStreamingSupport(`application/x-ndjson`, _ ++ LF)
 
   private def jsonSeqStreamingSupport(mediaType: MediaType.WithFixedCharset, frame: ByteString => ByteString): JsonEntityStreamingSupport =
     EntityStreamingSupport

@@ -52,7 +52,7 @@ extends Scope, AutoCloseable:
       case Some(filenameExpr) =>
         filenameExpr.evalAsString
 
-  def close() =
+  def close(): Unit =
     fileValueState.releaseScope(this)
 
 

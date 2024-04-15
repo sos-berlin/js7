@@ -34,7 +34,8 @@ extends AutoCloseable:
     if statistics.fileCount.get() > 0 then
       logger.info(s"toFile function statistics: $statistics")
 
-  def isEmpty = usedFilenames.get().isEmpty && scopeRegister.isEmpty
+  def isEmpty: Boolean = 
+    usedFilenames.get().isEmpty && scopeRegister.isEmpty
 
   def startScope(scope: FileValueScope): Unit =
     scopeRegister.add(scope)

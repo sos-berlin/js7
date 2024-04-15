@@ -29,7 +29,7 @@ import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOr
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPath, WorkflowPathControl}
-import scala.collection.mutable
+import scala.collection.{MapView, mutable}
 
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState],
@@ -49,7 +49,9 @@ extends SnapshotableStateBuilder[ControllerState],
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
   val isAgent = false
-  def idToOrder = _idToOrder
+
+  def idToOrder: PartialFunction[OrderId, Order[Order.State]] =
+    _idToOrder
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow]:
@@ -63,20 +65,24 @@ extends SnapshotableStateBuilder[ControllerState],
         repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
 
-  def workflowPathToId(workflowPath: WorkflowPath) =
+  def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  val keyToUnsignedItemState = _keyToUnsignedItemState.view
+  val keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
+    _keyToUnsignedItemState.view
 
-  def controllerId = controllerMetaState.controllerId
+  def controllerId: ControllerId =
+    controllerMetaState.controllerId
 
-  def orders = _idToOrder.values
+  def orders: Iterable[Order[Order.State]] =
+    _idToOrder.values
 
-  def keyToItem =
+  def keyToItem: Nothing =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 
-  def pathToJobResource = keyToItem(JobResource)
+  def pathToJobResource: MapView[JobResourcePath, JobResource] =
+    keyToItem(JobResource)
 
   protected def onInitializeState(state: ControllerState): Unit =
     _standards = state.standards
@@ -158,7 +164,7 @@ extends SnapshotableStateBuilder[ControllerState],
     case o @ (_: JournalState | _: ClusterStateSnapshot) =>
       addStandardObject(o)
 
-  override protected def onOnAllSnapshotsAdded() =
+  override protected def onOnAllSnapshotsAdded(): Unit =
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
@@ -167,7 +173,7 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def onAddEvent =
     case Stamped(_, _, keyedEvent) => applyEventMutable(keyedEvent)
 
-  override def applyEvent(keyedEvent: KeyedEvent[Event]) =
+  override def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerStateBuilder] =
     applyEventMutable(keyedEvent)
     Right(this)
 
@@ -357,8 +363,9 @@ extends SnapshotableStateBuilder[ControllerState],
 
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState],
-    remove: Iterable[OrderWatchPath]
-  ) = update(addItemStates = orderWatchStates, removeItemStates = remove)
+    remove: Iterable[OrderWatchPath])
+  : Checked[ControllerStateBuilder] =
+    update(addItemStates = orderWatchStates, removeItemStates = remove)
 
   protected def update(
     addOrders: Iterable[Order[Order.State]],
@@ -372,7 +379,7 @@ extends SnapshotableStateBuilder[ControllerState],
     _keyToUnsignedItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)
 
-  def result() =
+  def result(): ControllerState =
     ControllerState(
       eventId = eventId,
       _standards,

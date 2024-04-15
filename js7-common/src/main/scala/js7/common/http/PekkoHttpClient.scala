@@ -58,7 +58,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
-import scala.util.Success
+import scala.util.{Success, Try}
 import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
 
@@ -92,7 +92,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   final def materializer: Materializer = implicitly[Materializer]
 
-  def close() =
+  def close(): Unit =
     logger.trace(s"$toString: close")
     closed = true
 
@@ -544,8 +544,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 
 object PekkoHttpClient:
-  val HttpHeartbeatByteArray = ByteArray("\n")
-  val HttpHeartbeatByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
+  val HttpHeartbeatByteArray: ByteArray = ByteArray("\n")
+  val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
 
   val LogData: Boolean = true
     //val key = "js7.PekkoHttpClient.log-data"
@@ -578,24 +578,24 @@ object PekkoHttpClient:
 
   final case class `x-js7-session`(sessionToken: SessionToken)
   extends ModeledCustomHeader[`x-js7-session`]:
-    val companion = `x-js7-session`
-    def value = sessionToken.secret.string
+    val companion: `x-js7-session`.type = `x-js7-session`
+    def value: String = sessionToken.secret.string
     val renderInRequests = true
     val renderInResponses = false
   object `x-js7-session` extends ModeledCustomHeaderCompanion[`x-js7-session`]:
     val name = "x-js7-session"
-    def parse(value: String) = Success(new `x-js7-session`(SessionToken(SecretString(value))))
+    def parse(value: String): Try[`x-js7-session`] = Success(new `x-js7-session`(SessionToken(SecretString(value))))
 
   final case class `x-js7-request-id`(number: Long)
   extends ModeledCustomHeader[`x-js7-request-id`]:
-    val companion = `x-js7-request-id`
-    def value = "#" + number
+    val companion: ModeledCustomHeaderCompanion[`x-js7-request-id`] = `x-js7-request-id`
+    def value: String = "#" + number
     val renderInRequests = true
     val renderInResponses = false
   object `x-js7-request-id` extends ModeledCustomHeaderCompanion[`x-js7-request-id`]:
     val name = "x-js7-request-id"
 
-    def parse(value: String) =
+    def parse(value: String): Try[`x-js7-request-id`] =
       parseNumber(value)
         .map(`x-js7-request-id`(_))
         .left.map(_.throwable)
@@ -612,14 +612,14 @@ object PekkoHttpClient:
 
   final case class `x-js7-correlation-id`(correlId: CorrelId)
   extends ModeledCustomHeader[`x-js7-correlation-id`]:
-    val companion = `x-js7-correlation-id`
+    val companion: `x-js7-correlation-id`.type = `x-js7-correlation-id`
     // Convert to ASCII
-    def value = correlId.toAscii
+    def value: String = correlId.toAscii
     val renderInRequests = true
     val renderInResponses = false
   object `x-js7-correlation-id` extends ModeledCustomHeaderCompanion[`x-js7-correlation-id`]:
     val name = "x-js7-correlation-id"
-    def parse(asciiString: String) =
+    def parse(asciiString: String): Try[`x-js7-correlation-id`] =
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
 
   private val logger = Logger[this.type]
@@ -688,7 +688,7 @@ object PekkoHttpClient:
     httpResponse: HttpResponse,
     val dataAsString: String)
   extends HttpClient.HttpException, NoStackTrace:
-    def statusInt = status.intValue
+    def statusInt: Int = status.intValue
 
     // Don't publish httpResponse because its entity stream has already been consumed for dataAsString
     def status: StatusCode = httpResponse.status

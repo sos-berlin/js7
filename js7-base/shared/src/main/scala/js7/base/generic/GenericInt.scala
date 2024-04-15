@@ -16,7 +16,7 @@ trait GenericInt:
 
 object GenericInt:
   trait Companion[A <: GenericInt]:
-    val name = getClass.shortClassName
+    val name: String = getClass.shortClassName
 
     def apply(number: Int): A
 

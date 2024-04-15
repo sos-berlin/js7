@@ -2,24 +2,28 @@ package js7.data_for_java.crypt
 
 import javax.annotation.Nonnull
 import js7.base.crypt.{Signed, SignedString}
+import org.jetbrains.annotations.TestOnly
 
 final case class JSigned[A](asScala: Signed[A]):
-  def value = asScala.value
-  def signedString = asScala.signedString
+  def value: A = asScala.value
+  def signedString: SignedString = asScala.signedString
 
-  def tamper = tamperSuffix(" ")
+  @TestOnly
+  def tamper: JSigned[A] = tamperSuffix(" ")
 
-  def tamperSuffix(suffix: String) = copy(
+  @TestOnly
+  def tamperSuffix(suffix: String): JSigned[A] = copy(
     asScala = asScala.copy(
       signedString = asScala.signedString.copy(
         string = signedString.string + suffix)))
 
-  def tamperSignedString(signedString: SignedString) = copy(
+  @TestOnly
+  def tamperSignedString(signedString: SignedString): JSigned[A] = copy(
     asScala = asScala.copy(
       signedString = signedString))
 
 
 object JSigned:
   @Nonnull
-  def of[A](value: A, signedString: SignedString) =
+  def of[A](value: A, signedString: SignedString): JSigned[A] =
     JSigned(Signed(value, signedString))

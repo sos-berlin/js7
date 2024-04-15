@@ -39,7 +39,7 @@ object Futures:
     val promise = Promise[A]()
     new Thread {
       if name.nonEmpty then setName(name)
-      override def run() =
+      override def run(): Unit =
         try promise.success(body)
         catch { case t: Throwable =>  // Not only NonFatal (or what should we do else?)
           promise.failure(t)
@@ -143,5 +143,8 @@ object Futures:
   final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 
   object SynchronousExecutionContext extends ExecutionContext:
-    def execute(runnable: Runnable) = runnable.run()
-    def reportFailure(cause: Throwable) = logger.error(s"$cause", cause)
+    def execute(runnable: Runnable): Unit = 
+      runnable.run()
+    
+    def reportFailure(cause: Throwable): Unit = 
+      logger.error(s"$cause", cause)

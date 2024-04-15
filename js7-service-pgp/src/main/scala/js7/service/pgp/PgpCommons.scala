@@ -36,7 +36,7 @@ object PgpCommons:
 
   private val BufferSize = 4096
 
-  def pgpPublicKeyToShortString(key: PGPPublicKey) =
+  def pgpPublicKeyToShortString(key: PGPPublicKey): String =
     "PGPPublicKey" +
       " userIDs=" + key.getUserIDs.asScala.mkString("'", "', '", "'") +
       " fingerprint=" + fingerPrintAsString(key)
@@ -142,7 +142,7 @@ object PgpCommons:
     try PGPUtil.getSymmetricCipherName(n)
     catch { case NonFatal(_) => s"cipher-$n" }
 
-  private[pgp] def registerBouncyCastle() = ()  // Dummy to initialize this object
+  private[pgp] def registerBouncyCastle(): Unit = ()  // Dummy to initialize this object
 
   private def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
     message.useSync { in =>

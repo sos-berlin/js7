@@ -241,12 +241,12 @@ object OrderParameterList:
 
   final case class MissingOrderArgumentProblem(parameter: OrderParameter.Required)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "name" -> parameter.name,
       "type" -> parameter.valueType.name)
 
   final case class UndeclaredOrderArgumentProblem(name: String) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "name" -> name)
 
   final case class WrongValueTypeProblem(
@@ -254,23 +254,23 @@ object OrderParameterList:
     argumentType: ValueType,
     expectedType: ValueType)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "name" -> name,
       "type" -> argumentType.name,
       "expectedType" -> expectedType.name)
 
   final case class FinalOrderArgumentProblem(name: String)
   extends Problem.Coded:
-    def arguments = Map("name" -> name)
+    def arguments: Map[String, String] = Map("name" -> name)
 
   final case class MissingObjectFieldsProblem(path: String, name: Iterable[String])
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "path" -> path,
       "names" -> name.mkString(", "))
 
   final case class UndeclaredObjectFieldsProblem(path: String, name: Iterable[String])
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "path" -> path,
       "names" -> name.mkString(", "))

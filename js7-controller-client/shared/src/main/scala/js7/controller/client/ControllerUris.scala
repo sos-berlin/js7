@@ -15,16 +15,16 @@ import scala.reflect.ClassTag
  * @author Joacim Zschimmer
  */
 final class ControllerUris private(controllerUri: Uri):
-  def overview = api()
+  def overview: Uri = api()
 
-  val command = api("/command")
+  val command: Uri = api("/command")
 
-  val session = api("/session")
+  val session: Uri = api("/session")
 
   object order:
-    def overview = api("/order")
+    def overview: Uri = api("/order")
 
-    def add = api("/order")
+    def add: Uri = api("/order")
 
     def apply(orderId: OrderId): Uri =
       api("/" + encodePath("order", orderId.string))
@@ -33,7 +33,7 @@ final class ControllerUris private(controllerUri: Uri):
     def list: Uri =
       list(None)
 
-    def list(eventId: Option[EventId]) =
+    def list(eventId: Option[EventId]): Uri =
       api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString)*)
 
   //def agentCommand(agentPath: AgentPath): Uri =
@@ -46,11 +46,13 @@ final class ControllerUris private(controllerUri: Uri):
     api("", query*)
 
   def api(path: String, query: (String, String)*): Uri =
-    if path.nonEmpty && !path.startsWith("/") then throw new IllegalArgumentException("Controller URI path must start with a slash")
+    if path.nonEmpty && !path.startsWith("/") then
+      throw new IllegalArgumentException("Controller URI path must start with a slash")
     Uri(
       controller("api" + path).string + encodeQuery(query*))
 
-  def controller(path: String) = Uri(s"$controllerUri$path")
+  def controller(path: String): Uri =
+    Uri(s"$controllerUri$path")
 
   override def toString = controllerUri.string
 

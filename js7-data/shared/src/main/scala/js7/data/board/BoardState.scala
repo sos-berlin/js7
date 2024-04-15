@@ -165,4 +165,4 @@ object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
     noticeIdStack: List[NoticeId])
   extends BoardSnapshot
   object NoticeConsumptionSnapshot:
-    val subtype = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")
+    val subtype: Subtype[NoticeConsumptionSnapshot] = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")

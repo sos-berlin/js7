@@ -35,7 +35,7 @@ object Schedule:
 
   final case class Periodic(period: FiniteDuration, offsets: Seq[FiniteDuration])
   extends Repeat:
-    override def toString = "period=" + period +
+    override def toString: String = "period=" + period +
       " offsets=" + offsets.map(_.pretty).mkString("(", ", ", ")")
   object Periodic:
     def checked(period: FiniteDuration, offsets: Seq[FiniteDuration]): Checked[Periodic] =
@@ -75,7 +75,7 @@ object Schedule:
     pause: FiniteDuration,
     limit: Option[Int] = None)
   extends Repeat:
-    override def toString =
+    override def toString: String =
       View(
         Some("pause=" + pause.pretty),
         limit.map("limit=" + _)

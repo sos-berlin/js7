@@ -92,7 +92,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
   : IO[command.Response] =
-    implicit val implicitSessionToken =
+    given IO[Option[SessionToken]] =
       if suppressSessionToken then IO.pure(None)
       else IO { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)

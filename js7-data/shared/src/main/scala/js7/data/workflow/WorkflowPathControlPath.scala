@@ -7,12 +7,13 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 final case class WorkflowPathControlPath(workflowPath: WorkflowPath)
 extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:
 
-  def string = workflowPath.string
-  def companion = WorkflowPathControlPath
+  def string: String = workflowPath.string
+  def companion: WorkflowPathControlPath.type = WorkflowPathControlPath
 
 
 object WorkflowPathControlPath extends UnsignedSimpleItemPath.Companion[WorkflowPathControlPath]:
-  protected def unchecked(string: String) = new WorkflowPathControlPath(WorkflowPath(string))
+  protected def unchecked(string: String) =
+    new WorkflowPathControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowPathControlPath] =
     for

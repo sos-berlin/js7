@@ -15,7 +15,7 @@ import js7.tests.jobs.DeleteFileJob.logger
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
 
-  def toOrderProcess(step: Step) =
+  def toOrderProcess(step: Step): OrderProcess =
     OrderProcess(
       step.arguments.checked("file")
         .orElse(step.order.arguments.checked(FileArgumentName))

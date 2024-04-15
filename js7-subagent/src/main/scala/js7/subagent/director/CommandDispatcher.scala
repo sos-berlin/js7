@@ -123,7 +123,7 @@ private trait CommandDispatcher:
     val command: Command,
     val promise: Promise[Checked[Response]] = Promise(),
     val correlId: CorrelId = CorrelId.current):
-    val responded = IO.fromFuture(IO.pure(promise.future))
+    val responded: IO[Checked[Response]] = IO.fromFuture(IO.pure(promise.future))
 
     def respond(response: Try[Checked[Response]]): Unit =
       if !promise.tryComplete(response) then

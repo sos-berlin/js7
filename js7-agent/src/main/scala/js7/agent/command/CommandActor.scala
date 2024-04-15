@@ -35,7 +35,7 @@ extends Actor:
   //  The register is used for inspection via web service only
   private val register = new CommandRegister[AgentCommand]
 
-  def receive =
+  def receive: Receive =
     case Input.Execute(command, meta, correlId, response) =>
       correlId.bind:
         executeCommand(command, meta, response)
@@ -128,7 +128,7 @@ object CommandActor:
       response: Try[Checked[Response]])
 
   final class Handle(actor: ActorRef) extends CommandHandler:
-    def execute(command: AgentCommand, meta: CommandMeta) =
+    def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[Response]] =
       IO.deferFuture:
         val promise = Promise[Checked[Response]]()
         actor ! Input.Execute(command, meta, CorrelId.current, promise)

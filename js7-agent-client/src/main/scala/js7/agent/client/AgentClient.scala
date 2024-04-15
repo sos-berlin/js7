@@ -18,7 +18,7 @@ import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.web.Uri
+import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
@@ -37,7 +37,8 @@ import scala.concurrent.duration.FiniteDuration
 trait AgentClient
 extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClusterNodeApi:
 
-  def httpClient = this
+  def httpClient: HttpClient =
+   this
 
   def baseUri: Uri
 

@@ -7,7 +7,8 @@ import js7.data.workflow.Instruction
 
 final case class Break(sourcePos: Option[SourcePos] = None)
 extends Instruction:
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: Instruction =
+    copy(sourcePos = None)
 
   override def toString = "Break"
 

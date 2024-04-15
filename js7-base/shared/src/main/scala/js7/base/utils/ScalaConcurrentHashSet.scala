@@ -20,16 +20,19 @@ class ScalaConcurrentHashSet[A] extends mutable.Set[A]:
   final def clear(): Unit =
     delegate.clear()
 
-  final override def addOne(a: A) =
+  final override def addOne(a: A): this.type =
     delegate.put(a, UNIT)
     this
 
-  final override def subtractOne(a: A) =
+  final override def subtractOne(a: A): this.type =
     delegate.remove(a)
     this
 
-  final def iterator = delegate.keys.asScala
+  final def iterator: Iterator[A] =
+    delegate.keys.asScala
 
-  final def contains(a: A) = delegate containsKey a
+  final def contains(a: A): Boolean =
+    delegate containsKey a
 
-  override final def isEmpty = delegate.isEmpty
+  override final def isEmpty: Boolean =
+    delegate.isEmpty

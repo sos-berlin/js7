@@ -16,14 +16,15 @@ import js7.base.utils.ScalaUtils.syntax.*
   * @author Joacim Zschimmer
   */
 object StartUp:
-  val startedAt = Timestamp.now
+  val startedAt: Timestamp = Timestamp.now
   private var _isMain = false
   private val classPathLogged = Atomic(false)
 
   def initializeMain(): Unit =
     _isMain = true
 
-  def isMain = _isMain
+  def isMain: Boolean = 
+    _isMain
 
   def logJavaSettings(): Unit =
     // Do not initialize logging framework to early
@@ -60,14 +61,14 @@ object StartUp:
       (hostname.nonEmpty ?? s"host=$hostname ")
     ).trim
 
-  def printlnWithClockIgnoringException(line: String) =
+  def printlnWithClockIgnoringException(line: String): Unit =
     try printlnWithClock(line)
     catch { case _: Throwable => }
 
   def printlnWithClock(line: String): Unit =
     System.err.println(s"$nowString $line")
 
-  def nowString =
+  def nowString: String =
     Instant.now.toString
       .replace('T', ' ')
       .take(23)/*ms*/

@@ -20,7 +20,7 @@ final class Recovered[S <: SnapshotableState[S]] private(
   (implicit S: SnapshotableState.Companion[S])
 extends AutoCloseable:
 
-  def close() =
+  def close(): Unit =
     eventWatch.close()
 
   /** Replace this Recovered.

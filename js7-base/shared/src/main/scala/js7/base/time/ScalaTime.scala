@@ -49,21 +49,21 @@ object ScalaTime:
 
   implicit final class DurationRichLong(private val delegate: Long) extends AnyVal:
     /** Duration, counted in nanoseconds. */
-    def ns = Duration(delegate, NANOSECONDS)
+    def ns: FiniteDuration = Duration(delegate, NANOSECONDS)
 
     /** Duration, counted in microseconds. */
-    def µs = Duration(delegate, MICROSECONDS)
+    def µs: FiniteDuration = Duration(delegate, MICROSECONDS)
 
     /** Duration, counted in milliseconds. */
-    def ms = Duration(delegate, MILLISECONDS)
+    def ms: FiniteDuration = Duration(delegate, MILLISECONDS)
 
     /** Duration, counted in seconds. */
-    def s = Duration(delegate, SECONDS)
+    def s: FiniteDuration = Duration(delegate, SECONDS)
 
     /**
      * Duration, counted in hours.
      */
-    def h = Duration(delegate, HOURS)
+    def h: FiniteDuration = Duration(delegate, HOURS)
 
   implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal:
     /** Duration, counted in seconds. */
@@ -110,7 +110,8 @@ object ScalaTime:
   def randomDuration(maximum: Duration): Duration = Duration(maximum.toNanos * Random.nextFloat(), NANOSECONDS)
 
   implicit final class RichDuration(private val duration: Duration) extends AnyVal, Ordered[RichDuration]:
-    def unary_- = ZeroDuration - duration
+    def unary_- : Duration = 
+      ZeroDuration - duration
 
     def min(o: Duration): Duration =
       if this <= o then duration else o
@@ -123,7 +124,7 @@ object ScalaTime:
         case o: FiniteDuration => Some(o)
         case _: Duration.Infinite => None
 
-    override def toString = pretty  // For ScalaTest
+    override def toString: String = pretty  // For ScalaTest
 
     def msPretty: String =
       val nanos = duration.toNanos
@@ -237,23 +238,24 @@ object ScalaTime:
       sb.append(primaryName)
       sb.toString
 
-    def compare(o: RichDuration) = duration compareTo o.duration
+    def compare(o: RichDuration): Int =
+      duration compareTo o.duration
 
   implicit final class RichFiniteDuration(private val duration: FiniteDuration) extends AnyVal:
     def *(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds * o)
     def /(o: BigDecimal): FiniteDuration = bigDecimalToDuration(toBigDecimalSeconds / o)
 
-    def isZero = duration.length == 0
+    def isZero: Boolean = duration.length == 0
 
-    def isPositive = duration.length > 0
+    def isPositive: Boolean = duration.length > 0
 
-    def isZeroOrBelow = duration.length <= 0
+    def isZeroOrBelow: Boolean = duration.length <= 0
 
-    def isZeroOrAbove = duration.length >= 0
+    def isZeroOrAbove: Boolean = duration.length >= 0
 
-    def isNegative = duration.length < 0
+    def isNegative: Boolean = duration.length < 0
 
-    def withMillis(milliseconds: Int) =
+    def withMillis(milliseconds: Int): FiniteDuration =
       if !duration.isNegative then
         Duration(duration.toSeconds, SECONDS) + milliseconds.ms
       else
@@ -274,7 +276,7 @@ object ScalaTime:
         BigDecimal(duration.length).round(ctx).toLong,
         duration.unit)
 
-    def toBigDecimalSeconds = duration.unit match
+    def toBigDecimalSeconds: BigDecimal = duration.unit match
       case NANOSECONDS  => BigDecimal(duration.length, 9)
       case MICROSECONDS => BigDecimal(duration.length, 6)
       case MILLISECONDS => BigDecimal(duration.length, 3)
@@ -359,7 +361,7 @@ object ScalaTime:
       nanoSleep(remainingNanos)
       extraSleepUntil(until)
 
-  private def nanoSleep(nanos: Long) =
+  private def nanoSleep(nanos: Long): Unit =
     val m = 1000*1000
     Thread.sleep(nanos / m, (nanos % m).toInt)
 

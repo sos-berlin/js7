@@ -19,7 +19,7 @@ final case class VerifiedUpdateItems private[controller](
   simple: VerifiedUpdateItems.Simple,
   maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None):
 
-  def itemCount =
+  def itemCount: Int =
     simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
 
   def versionedPaths: View[VersionedItemPath] =
@@ -39,7 +39,7 @@ object VerifiedUpdateItems:
     unsignedSimpleItems: Seq[UnsignedSimpleItem] = Nil,
     verifiedSimpleItems: Seq[Verified[SignableSimpleItem]] = Nil,
     delete: Seq[SimpleItemPath] = Nil):
-    def itemCount =
+    def itemCount: Int =
       unsignedSimpleItems.size + verifiedSimpleItems.size
 
   final case class Versioned(

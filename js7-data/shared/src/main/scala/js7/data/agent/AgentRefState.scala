@@ -40,7 +40,7 @@ extends UnsignedSimpleItemState:
   def updateItem(item: AgentRef): Checked[AgentRefState] =
     Right(copy(agentRef = item))
 
-  def agentPath = agentRef.path
+  def agentPath: AgentPath = agentRef.path
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match

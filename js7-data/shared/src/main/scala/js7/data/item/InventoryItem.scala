@@ -37,7 +37,7 @@ trait InventoryItem:
     View.empty
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
-  override def hashCode = 31 * key.hashCode + itemRevision.hashCode
+  override def hashCode: Int = 31 * key.hashCode + itemRevision.hashCode
 
 
 object InventoryItem:
@@ -46,7 +46,7 @@ object InventoryItem:
   trait Companion[A <: InventoryItem]:
     type Item <: A
     def cls: Class[A]
-    val typeName = getClass.simpleScalaName
+    val typeName: String = getClass.simpleScalaName
 
     type Key <: InventoryItemKey
     def Key: InventoryItemKey.Companion[Key]
@@ -67,7 +67,7 @@ object InventoryItem:
     def jsonDecoder: Decoder[A] =
       jsonCodec
 
-    override def toString = typeName
+    override def toString: String = typeName
 
   def jsonCodec(companions: Seq[Companion_]): TypedJsonCodec[InventoryItem] =
     TypedJsonCodec(companions.map(_.subtype)*)

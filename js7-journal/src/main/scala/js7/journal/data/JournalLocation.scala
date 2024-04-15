@@ -1,6 +1,7 @@
 package js7.journal.data
 
 import java.nio.file.Path
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.data.event.SnapshotableState
 
 final case class JournalLocation(
@@ -8,6 +9,7 @@ final case class JournalLocation(
   /** Path without extension, like "/directory/test". */
   fileBase: Path):
 
-  val name = fileBase.getFileName.toString
+  val name: String = fileBase.getFileName.toString
 
-  def snapshotObjectJsonCodec = S.snapshotObjectJsonCodec
+  def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+    S.snapshotObjectJsonCodec

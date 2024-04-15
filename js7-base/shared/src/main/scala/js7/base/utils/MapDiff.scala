@@ -20,7 +20,7 @@ final case class MapDiff[K, V] private(
     else
       (other.view.filterKeys(deleted) ++ updated ++ added).toMap
 
-  def isEmpty =
+  def isEmpty: Boolean =
     this == Empty
 
 
@@ -30,7 +30,7 @@ object MapDiff:
   def empty[K, V]: MapDiff[K, V] =
     Empty.asInstanceOf[MapDiff[K, V]]
 
-  def added[K, V](added: Map[K, V]) =
+  def added[K, V](added: Map[K, V]): MapDiff[K, V] =
     apply(added, Map.empty, Set.empty)
 
   def apply[K, V](added: Map[K, V], updated: Map[K, V], deleted: Set[K]): MapDiff[K, V] =

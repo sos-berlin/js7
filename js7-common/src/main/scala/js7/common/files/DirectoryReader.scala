@@ -47,7 +47,7 @@ object DirectoryReader:
       })
     nest(rootDirectory, nestingLimit)
 
-  def fileIsTouched(a: BasicFileAttributes, b: BasicFileAttributes) =
+  def fileIsTouched(a: BasicFileAttributes, b: BasicFileAttributes): Boolean =
     a.isDirectory != b.isDirectory ||
     a.isRegularFile != b.isRegularFile ||
     a.isSymbolicLink != b.isSymbolicLink ||
@@ -58,11 +58,12 @@ object DirectoryReader:
     a.fileKey != b.fileKey
 
   final case class Entry(file: Path, attributes: BasicFileAttributes):
-    override def equals(other: Any) =
+    override def equals(other: Any): Boolean =
       other match
         case o: Entry => file == o.file && !fileIsTouched(attributes, o.attributes)
         case _ => false
 
-    def isTouched(o: BasicFileAttributes) = fileIsTouched(attributes, o)
+    def isTouched(o: BasicFileAttributes): Boolean = 
+      fileIsTouched(attributes, o)
   object Entry:
     val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file

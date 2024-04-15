@@ -19,7 +19,7 @@ final case class Version(
   build: List[String] = Nil)
 extends GenericString, Ordered[Version]:
 
-  def compare(o: Version) =
+  def compare(o: Version): Int =
     if this eq o then
       0
     else

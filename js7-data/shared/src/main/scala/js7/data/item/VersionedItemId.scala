@@ -24,24 +24,24 @@ extends SignableItemKey:
   def toTypedString: String =
     path.toTypedString + VersionSeparator + versionId.string
 
-  def isAnonymous = path.isAnonymous && versionId.isAnonymous
+  def isAnonymous: Boolean = path.isAnonymous && versionId.isAnonymous
 
-  def toSimpleString =
+  def toSimpleString: String =
     if versionId.isAnonymous then
       path.string
     else
       s"${path.string}$VersionSeparator${versionId.string}"
 
-  def isAssignableToAgent =
+  def isAssignableToAgent: Boolean =
     path.isAssignableToAgent
 
-  override def toString =
+  override def toString: String =
     if versionId.isAnonymous then
       path.toString
     else
       s"${path.toTypedString}$VersionSeparator${versionId.string}"
 
-  def pretty =
+  def pretty: String =
     if versionId.isAnonymous then
       path.string
     else

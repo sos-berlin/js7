@@ -16,9 +16,9 @@ final class AgentUris private(agentUri: Uri):
 
   private val prefixedUri = Uri(s"$agentUri/agent")
 
-  val overview = toUri("api")
-  val session = toUri("api/session")
-  val command = toUri("api/command")
+  val overview: Uri = toUri("api")
+  val session: Uri = toUri("api/session")
+  val command: Uri = toUri("api/command")
 
   def controllersEvents[E <: Event](
     request: EventRequest[E],
@@ -29,9 +29,10 @@ final class AgentUris private(agentUri: Uri):
         request.toQueryParameters ++
           (heartbeat.fold(Nil)(h => ("heartbeat" -> h.toDecimalString) :: Nil)))
 
-  def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
+  def apply(relativeUri: String): Uri = 
+    toUri(stripLeadingSlash(relativeUri))
 
-  def api(relativeUri: String) =
+  def api(relativeUri: String): Uri =
     if relativeUri.isEmpty then
       toUri("api")
     else

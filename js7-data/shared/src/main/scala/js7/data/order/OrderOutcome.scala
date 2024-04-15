@@ -20,14 +20,15 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 sealed trait OrderOutcome:
-  final def isSucceeded = isInstanceOf[OrderOutcome.Succeeded]
+  final def isSucceeded: Boolean =
+    isInstanceOf[OrderOutcome.Succeeded]
 
   def show: String
 
 object OrderOutcome:
   val succeeded: Completed = Succeeded.empty
-  val succeededRC0 = Succeeded.returnCode0
-  val failed = Failed(None, Map.empty)
+  val succeededRC0: Succeeded = Succeeded.returnCode0
+  val failed: Failed = Failed(None, Map.empty)
 
   def leftToFailed(checked: Checked[OrderOutcome]): OrderOutcome =
     checked match
@@ -40,7 +41,7 @@ object OrderOutcome:
       case Right(o) => o
 
   @TestOnly
-  def failedWithSignal(signal: ProcessSignal) =
+  def failedWithSignal(signal: ProcessSignal): Failed =
     Failed(Map("returnCode" -> NumberValue(if isWindows then 0 else 128 + signal.number)))
 
   /** The job has terminated. */
@@ -86,8 +87,9 @@ object OrderOutcome:
       Subtype(deriveCodec[Succeeded]))
 
   final case class Succeeded(namedValues: NamedValues) extends Completed:
-    def show = if namedValues.isEmpty then "Succeeded" else s"Succeeded($namedValues)"
-    override def toString = show
+    def show: String =
+      if namedValues.isEmpty then "Succeeded" else s"Succeeded($namedValues)"
+    override def toString: String = show
   object Succeeded extends Completed.Companion[Succeeded]:
     val empty = new Succeeded(Map.empty)
     val returnCode0 = new Succeeded(NamedValues.rc(0))
@@ -113,14 +115,15 @@ object OrderOutcome:
     namedValues: NamedValues,
     uncatchable: Boolean)
   extends Completed, NotSucceeded:
-    override def toString =
+    override def toString: String =
       View(uncatchable ? "uncatchable", errorMessage, namedValues.??)
         .flatten
         .mkString("⚠️ Failed(", ", ", ")")
 
-    def show = "Failed" +
-      ((uncatchable || errorMessage.isDefined) ??
-        ("(" + (View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ")) + ")"))
+    def show: String =
+      "Failed" +
+        ((uncatchable || errorMessage.isDefined) ??
+          ("(" + (View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ")) + ")"))
 
   object Failed extends Completed.Companion[Failed]:
     def apply(

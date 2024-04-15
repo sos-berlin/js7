@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
@@ -29,9 +29,9 @@ sealed trait ScriptExecutable:
   def script: String
 
 sealed trait ProcessExecutable extends Executable:
-  final def arguments = Map.empty
+  final def arguments: Map[String, Expression] = Map.empty
 
-  override def referencedJobResourcePaths =
+  override def referencedJobResourcePaths: Iterable[JobResourcePath] =
     super.referencedJobResourcePaths ++
       env.values.view.flatMap(_.referencedJobResourcePaths)
 
@@ -43,7 +43,7 @@ sealed trait ProcessExecutable extends Executable:
 
   def v1Compatible: Boolean
 
-  final def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
+  final def toOutcome(namedValues: NamedValues, returnCode: ReturnCode): OrderOutcome.Completed =
     OrderOutcome.Completed(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ProcessExecutable.toNamedValue(returnCode))
@@ -57,7 +57,7 @@ extends ProcessExecutable:
 
   def isAbsolute: Boolean
 object PathExecutable:
-  def unapply(pathExecutable: PathExecutable) =
+  def unapply(pathExecutable: PathExecutable): Some[(String, Map[String, Expression], ReturnCodeMeaning, Option[KeyLogin], Boolean)] =
     Some((pathExecutable.path, pathExecutable.env, pathExecutable.returnCodeMeaning,
       pathExecutable.login, pathExecutable.v1Compatible))
 
@@ -66,7 +66,7 @@ object PathExecutable:
     env: Map[String, Expression] = Map.empty,
     login: Option[KeyLogin] = None,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    v1Compatible: Boolean = false)
+    v1Compatible: Boolean = false): PathExecutable
   =
     unchecked(path, env, login, returnCodeMeaning, v1Compatible)
 
@@ -82,7 +82,7 @@ object PathExecutable:
     else
       RelativePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).orThrow
 
-  def sh(path: String, env: Map[String, Expression] = Map.empty) =
+  def sh(path: String, env: Map[String, Expression] = Map.empty): PathExecutable =
     apply(if isWindows then s"$path.cmd" else path, env)
 
   def checked(
@@ -140,7 +140,8 @@ object AbsolutePathExecutable:
     env: Map[String, Expression] = Map.empty,
     login: Option[KeyLogin] = None,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    v1Compatible: Boolean) =
+    v1Compatible: Boolean)
+  : Either[Problem.Coded, AbsolutePathExecutable] =
     if path.isEmpty then
       Left(EmptyStringProblem(path))
     else if !PathExecutable.isAbsolute(path) then
@@ -189,7 +190,8 @@ extends ProcessExecutable:
 
   override def toString = s"CommandLineExecutable($commandLineExpression)"
 object CommandLineExecutable:
-  def fromString(commandLine: String, env: Map[String, Expression] = Map.empty) =
+  def fromString(commandLine: String, env: Map[String, Expression] = Map.empty)
+  : Checked[CommandLineExecutable] =
     CommandLineParser.parse(commandLine).map(apply(_, env))
 
   implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =

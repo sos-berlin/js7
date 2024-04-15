@@ -39,7 +39,7 @@ object SubagentCommand extends CommonCommand.Companion:
   object Batch:
     final case class Response(responses: Seq[Checked[SubagentCommand.Response]])
     extends SubagentCommand.Response, Big:
-      override def toString =
+      override def toString: String =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
 
@@ -100,7 +100,7 @@ object SubagentCommand extends CommonCommand.Companion:
   extends OrderCommand:
     type Response = Accepted
 
-    def orderId = order.id
+    def orderId: OrderId = order.id
     override def toShortString = s"StartOrderProcess(${order.id})"
 
   final case class KillProcess(

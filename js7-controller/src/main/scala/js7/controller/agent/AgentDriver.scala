@@ -541,7 +541,8 @@ private[controller] object AgentDriver:
         journal, agentDriverConf, controllerConf, actorSystem)))
 
   sealed trait Queueable:
-    def toShortString = toString
+    def toShortString: String =
+      toString
   object Queueable:
     final case class AttachUnsignedItem(item: UnsignedItem)
     extends Queueable
@@ -554,9 +555,9 @@ private[controller] object AgentDriver:
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
     extends Queueable:
-      override lazy val hashCode = order.id.hashCode
+      override lazy val hashCode: Int = order.id.hashCode
 
-      def orderId = order.id
+      def orderId: OrderId = order.id
       override def toShortString =
         s"AttachOrder($orderId, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
 

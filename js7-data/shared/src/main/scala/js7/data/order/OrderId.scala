@@ -13,11 +13,14 @@ final case class OrderId private(string: String) extends GenericString:
   if string.isEmpty then throw new IllegalArgumentException("OrderId must not be empty")
 
   // Faster than generic hashCode of the case class:
-  override def hashCode = string.hashCode
+  override def hashCode: Int =
+    string.hashCode
 
-  override def toString = s"Order:$string"
+  override def toString =
+    s"Order:$string"
 
-  def pretty = s"Order $string"
+  def pretty: String =
+    s"Order $string"
 
   def /(childId: String): OrderId =
     withChild(childId).orThrow
@@ -61,14 +64,14 @@ final case class OrderId private(string: String) extends GenericString:
 
 object OrderId extends GenericString.NonEmpty[OrderId]:
   val ChildSeparatorChar = '|'
-  val ChildSeparator = ChildSeparatorChar.toString
+  val ChildSeparator: String = ChildSeparatorChar.toString
   private val ChildSeparatorRegex = Regex.quote(ChildSeparator)
   private val ReservedCharacters = Set('|')
 
   protected def unchecked(string: String) = new OrderId(string)
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
-  def of(validOrderId: String) =
+  def of(validOrderId: String): OrderId =
     apply(validOrderId)
 
   final case class ChildId private(string: String) extends GenericString
@@ -78,7 +81,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]:
     protected def unchecked(string: String) =
       new ChildId(string)
 
-    override def checked(string: String) =
+    override def checked(string: String): Checked[ChildId] =
       if string contains ChildSeparator then
         Left(Problem.pure(s"Order ChildId must not contain '$ChildSeparator'"))
       else

@@ -4,9 +4,9 @@ import js7.base.utils.ScalaUtils.*
 
 final case class LabeledRunnable(label: String, runnable: Runnable) extends Runnable:
 
-  def run() = runnable.run()
+  def run(): Unit = runnable.run()
 
-  override def toString = label
+  override def toString: String = label
 
 
 object LabeledRunnable:

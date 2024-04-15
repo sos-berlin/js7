@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope.evalExpressionMap
-import js7.launcher.ProcessOrder
+import js7.launcher.{OrderProcess, ProcessOrder}
 import js7.launcher.internal.InternalJob.{JobContext, Step}
 import js7.launcher.internal.InternalJobLauncher.*
 import scala.concurrent.ExecutionContext
@@ -54,7 +54,7 @@ extends JobLauncher:
           internalJob.stop)
     .unsafeMemoize
 
-  def toOrderProcess(processOrder: ProcessOrder) =
+  def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]] =
     IO:
       for
         internalJob <- internalJobLazy()

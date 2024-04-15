@@ -22,7 +22,9 @@ object WebServerPort:
     Https(new InetSocketAddress("localhost", port))
 
   final case class Http(address: InetSocketAddress) extends WebServerPort:
-    def scheme = WebServerBinding.Http
+    def scheme: WebServerBinding.Scheme = 
+      WebServerBinding.Http
 
   final case class Https(address: InetSocketAddress) extends WebServerPort:
-    def scheme = WebServerBinding.Https
+    def scheme: WebServerBinding.Scheme = 
+      WebServerBinding.Https

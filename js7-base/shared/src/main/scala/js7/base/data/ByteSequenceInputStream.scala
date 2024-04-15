@@ -9,7 +9,7 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
   private[this] var marked = 0
   private val length = A.length(byteSeq)
 
-  def read() =
+  def read(): Int =
     if i == length then
       -1
     else
@@ -29,8 +29,8 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
 
   override def markSupported = true
 
-  override def mark(readlimit: Int) =
+  override def mark(readlimit: Int): Unit =
     marked = i
 
-  override def reset() =
+  override def reset(): Unit =
     i = marked

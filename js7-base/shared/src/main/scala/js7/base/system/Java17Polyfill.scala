@@ -6,7 +6,7 @@ object Java17Polyfill:
 
   /** Required when IDE compiles with JDK >17, but code must still be compilable with JDK 17
    * and imports should be kept. */
-  def java17Polyfill() = {}
+  def java17Polyfill(): Unit = {}
 
   extension (thread: Thread)
     /** Since Java 19. */

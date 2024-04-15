@@ -25,7 +25,7 @@ trait VersionedItemPath extends InventoryItemPath:
     else
       P.apply(string)
 
-  final def isAnonymous =
+  final def isAnonymous: Boolean =
     this == companion.Anonymous
 
 
@@ -63,13 +63,13 @@ object VersionedItemPath:
       def apply(idString: String): VersionedItemId[P] =
         this.checked(idString).orThrow
 
-      def apply(path: P, versionId: VersionId) =
+      def apply(path: P, versionId: VersionId): VersionedItemId[P] =
         path ~ versionId
 
-      val pathCompanion = P
+      val pathCompanion: Companion[P] = P
 
       // A versioned pathTypeName may not differ from its itemTypePath
-      def pathTypeName = itemTypeName
+      def pathTypeName: String = itemTypeName
 
     override def toString = name
 

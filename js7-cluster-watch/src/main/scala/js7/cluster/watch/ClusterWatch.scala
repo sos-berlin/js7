@@ -147,7 +147,7 @@ final class ClusterWatch(
     _state.toChecked(UntaughtClusterWatchProblem)
       .map(_.clusterState)
 
-  override def toString =
+  override def toString: String =
     "ClusterWatch(" +
       _state.fold("untaught")(state =>
         state.clusterState.toShortString/* + ", " +

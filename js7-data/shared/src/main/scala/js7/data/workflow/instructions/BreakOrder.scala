@@ -9,7 +9,8 @@ import js7.data.workflow.Instruction
 final case class BreakOrder(sourcePos: Option[SourcePos] = None)
 extends Instruction:
 
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: BreakOrder =
+    copy(sourcePos = None)
 
   override def toString = "BreakOrder"
 

@@ -38,35 +38,41 @@ final case class ControllerConfiguration(
   config: Config)
 extends BasicConfiguration, CommonConfiguration:
 
-  override def maybeConfigDirectory = Some(configDirectory)
+  override def maybeConfigDirectory: Some[Path] =
+    Some(configDirectory)
 
-  override def maybeDataDirectory = Some(dataDirectory)
+  override def maybeDataDirectory: Some[Path] =
+    Some(dataDirectory)
 
   implicit def implicitPekkoAskTimeout: Timeout = pekkoAskTimeout
 
-  def stateDirectory: Path = dataDirectory / "state"
+  def stateDirectory: Path =
+    dataDirectory / "state"
 
-  def workDirectory: Path = dataDirectory / "work"
+  def workDirectory: Path =
+    dataDirectory / "work"
 
-  lazy val journalLocation = JournalLocation(ControllerState, stateDirectory / "controller")
+  lazy val journalLocation: JournalLocation =
+    JournalLocation(ControllerState, stateDirectory / "controller")
 
   def journalConf: JournalConf =
     clusterConf.journalConf
 
   // Suppresses Config (which may contain secrets)
-  override def toString = s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
-    s"$timeZone,$journalConf,$clusterConf,$name,Config)"
+  override def toString: String =
+    s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
+      s"$timeZone,$journalConf,$clusterConf,$name,Config)"
 
 
 object ControllerConfiguration:
-  val DefaultName = if isTest then "Controller" else "JS7"
+  val DefaultName: String = if isTest then "Controller" else "JS7"
 
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    name: String = DefaultName
-  ) =
+    name: String = DefaultName)
+  : ControllerConfiguration =
     val data = configAndData / "data"
     if !Files.exists(data) then createDirectory(data)
     val state = data / "state"
@@ -84,11 +90,14 @@ object ControllerConfiguration:
         httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o)))
           .toList)
 
-  lazy val DefaultConfig = Configs
+  lazy val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/controller/configuration/controller.conf"))
     .withFallback(Js7Configuration.defaultConfig)
 
-  def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) =
+  def fromCommandLine(
+    commandLineArguments: CommandLineArguments, 
+    config: Config = ConfigFactory.empty)
+  : ControllerConfiguration =
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)
     val conf = fromDirectories(
       configDirectory = common.configDirectory,

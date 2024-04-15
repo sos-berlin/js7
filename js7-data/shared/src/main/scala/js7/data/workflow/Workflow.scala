@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.calendar.CalendarPath
-import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
+import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId, VersionedItemPath}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.order.Order
 import js7.data.subagent.SubagentSelectionId
@@ -50,7 +50,7 @@ final case class Workflow(
   outer: Option[Workflow])
 extends VersionedItem, TrivialItemState[Workflow]:
 
-  override def equals(o: Any) = o match
+  override def equals(o: Any): Boolean = o match
     case o: Workflow =>
       (id == o.id
         && rawLabeledInstructions == o.rawLabeledInstructions
@@ -82,7 +82,8 @@ extends VersionedItem, TrivialItemState[Workflow]:
       .uniqueToMap(labels => throw new IllegalArgumentException(
         s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: VersionedItemId[WorkflowPath]): Workflow = 
+    reuseIfEqual(this, copy(id = id))
 
   val item: Workflow = this
 
@@ -496,9 +497,9 @@ object Workflow extends VersionedItem.Companion[Workflow], TrivialItemState.Comp
   type Item = Workflow
   type Path = WorkflowPath
 
-  val cls = classOf[Workflow]
-  val Path = WorkflowPath
-  val empty = Workflow(WorkflowPath.NoId, Vector.empty)
+  val cls: Class[Workflow] = classOf[Workflow]
+  val Path: VersionedItemPath.Companion[WorkflowPath] = WorkflowPath
+  val empty: Workflow = Workflow(WorkflowPath.NoId, Vector.empty)
 
   def anonymous(
     labeledInstructions: Seq[Instruction.Labeled],

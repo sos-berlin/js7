@@ -1,6 +1,6 @@
 package js7.base.utils
 
 object EmptyRunnable extends Runnable:
-  def run() = {}
+  def run(): Unit = {}
 
 val emptyRunnable: Runnable = EmptyRunnable

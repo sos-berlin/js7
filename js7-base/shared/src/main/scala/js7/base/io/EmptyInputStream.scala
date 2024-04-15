@@ -4,6 +4,6 @@ import java.io.InputStream
 
 final class EmptyInputStream extends InputStream:
 
-  def read() = -1
+  def read(): Int = -1
 
   override def available = 0

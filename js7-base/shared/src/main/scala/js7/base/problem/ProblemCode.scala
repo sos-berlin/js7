@@ -13,6 +13,8 @@ object ProblemCode extends GenericString.NonEmpty[ProblemCode]:
   val empty: ProblemCode = unchecked("")
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
-  def of(string: String) = apply(string)
+  def of(string: String): ProblemCode = 
+    apply(string)
 
-  protected def unchecked(string: String) = new ProblemCode(string)
+  protected def unchecked(string: String) =
+    new ProblemCode(string)

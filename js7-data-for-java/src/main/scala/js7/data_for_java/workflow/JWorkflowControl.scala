@@ -15,7 +15,7 @@ final case class JWorkflowControl(asScala: WorkflowControl)
 extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]:
   type AsScala = WorkflowControl
 
-  def companion = JWorkflowControl
+  def companion: JWorkflowControl.type = JWorkflowControl
 
   @Nonnull
   def id: JWorkflowControlId =

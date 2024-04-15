@@ -13,7 +13,7 @@ extends InternalJob:
   // We need an empty constructor for reflection
   def this() = this(OrderOutcome.succeeded)
 
-  final def toOrderProcess(step: Step) =
+  final def toOrderProcess(step: Step): OrderProcess =
     OrderProcess(IO {
       logger.debug(s"${getClass.simpleScalaName} ${step.order.id}")
       outcome

@@ -5,7 +5,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
-import js7.data.value.StringValue
+import js7.data.value.{StringValue, Value}
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import org.jetbrains.annotations.TestOnly
@@ -14,7 +14,8 @@ import org.jetbrains.annotations.TestOnly
 trait EnvScope extends Scope:
   protected def get(name: String): Option[String]
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
+  : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("env", arguments) =>
         Some(arguments match {
@@ -43,7 +44,7 @@ trait EnvScope extends Scope:
 
 
 object EnvScope extends EnvScope:
-  def get(name: String) =
+  def get(name: String): Option[String] =
     Option(testEnv.get(name)) orElse sys.env.get(name)
 
   private val testEnv = new ConcurrentHashMap[String, String]

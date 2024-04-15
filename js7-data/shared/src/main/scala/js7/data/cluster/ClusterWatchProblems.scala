@@ -7,6 +7,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.node.NodeId
+import scala.collection.immutable.Map.{Map1, Map2, Map3}
 import scala.concurrent.duration.FiniteDuration
 
 object ClusterWatchProblems:
@@ -28,17 +29,17 @@ object ClusterWatchProblems:
     reportedClusterState: ClusterState)
     extends Problem.Coded:
     //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
-    def arguments = Map(
-      "event" -> event.fold("None")(_.toString),
-      "currentClusterState" -> currentClusterState.toString,
-      "reportedClusterState" -> reportedClusterState.toString)
+    def arguments: Map[String, String] = Map3(
+      "event", event.fold("None")(_.toString),
+      "currentClusterState", currentClusterState.toString,
+      "reportedClusterState", reportedClusterState.toString)
 
   object ClusterWatchEventMismatchProblem extends Problem.Coded.Companion
 
   final case class ClusterWatchInactiveNodeProblem(from: NodeId, clusterState: ClusterState,
     lastHeartbeatDuration: FiniteDuration, operation: String)
     extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "from" -> from.string,
       "clusterState" -> clusterState.toString,
       "lastHeartbeat" -> lastHeartbeatDuration.pretty,
@@ -54,17 +55,17 @@ object ClusterWatchProblems:
     fromNodeId: NodeId,
     event: ClusterNodeLostEvent)
   extends Problem.Coded:
-    def arguments = Map(
-      "fromNodeId" -> fromNodeId.toString,
-      "event" -> event.toString)
+    def arguments: Map[String, String] = Map2(
+      "fromNodeId", fromNodeId.toString,
+      "event", event.toString)
   object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion:
     implicit val jsonCodec: Codec.AsObject[ClusterNodeLossNotConfirmedProblem] =
       TypedJsonCodec[ClusterNodeLossNotConfirmedProblem](
         Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]))
 
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded:
-    def arguments = Map(
-      "nodeId" -> nodeId.toString)
+    def arguments: Map[String, String] = Map1(
+      "nodeId", nodeId.toString)
 
   case object ClusterWatchRequestDoesNotMatchProblem extends Problem.ArgumentlessCoded
 
@@ -74,25 +75,23 @@ object ClusterWatchProblems:
     rejectedClusterWatchId: ClusterWatchId,
     requestedClusterWatchId: ClusterWatchId)
   extends Problem.Coded:
-    def arguments = Map(
-      "rejectedClusterWatchId" -> rejectedClusterWatchId.toString,
-      "requestedClusterWatchId" -> requestedClusterWatchId.toString,
-    )
+    def arguments: Map[String, String] = Map2(
+      "rejectedClusterWatchId", rejectedClusterWatchId.toString,
+      "requestedClusterWatchId", requestedClusterWatchId.toString)
 
   final case class OtherClusterWatchStillAliveProblem(
     rejectedClusterWatchId: ClusterWatchId,
     requestedClusterWatchId: ClusterWatchId)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "rejectedClusterWatchId" -> rejectedClusterWatchId.toString,
-      "requestedClusterWatchId" -> requestedClusterWatchId.toString,
-    )
+      "requestedClusterWatchId" -> requestedClusterWatchId.toString)
 
   final case class ClusterWatchIdNotUniqueProblem(
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "clusterWatchId" -> clusterWatchId.toString,
       "clusterWatchRunId" -> clusterWatchRunId.toString)
 

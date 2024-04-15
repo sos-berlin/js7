@@ -14,7 +14,7 @@ final case class Finish(
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
 
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: Finish = copy(sourcePos = None)
 
 
 object Finish:

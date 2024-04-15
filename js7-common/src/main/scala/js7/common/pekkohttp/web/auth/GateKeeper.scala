@@ -50,8 +50,13 @@ final class GateKeeper[U <: User](
     scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
-  val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
-  val wwwAuthenticateHeader = `WWW-Authenticate`(basicChallenge)  // Let's a browser show a authentication dialog
+
+  val credentialsMissing: AuthenticationFailedRejection =
+    AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
+
+  val wwwAuthenticateHeader: `WWW-Authenticate` =
+    `WWW-Authenticate`(basicChallenge)  // Let's a browser show a authentication dialog
+
   val anonymous: U = configuration.anonymous
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
@@ -222,7 +227,8 @@ final class GateKeeper[U <: User](
     completeIO:
       IO(body).delayBy(invalidAuthenticationDelay)
 
-  def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
+  def invalidAuthenticationDelay: FiniteDuration =
+    configuration.invalidAuthenticationDelay
 
   def secureStateString: String =
     configuration.secureStateString(scheme)
@@ -259,8 +265,8 @@ object GateKeeper:
     httpsClientAuthRequired: Boolean = false,
     idToUser: UserId => Option[U],
     distinguishedNameToIdsOrUser: DistinguishedName => Checked[Either[Set[UserId], U]]):
-    val publicPermissions = Set[Permission](SuperPermission)
-    val publicGetPermissions = Set[Permission](GetPermission)
+    val publicPermissions: Set[Permission] = Set(SuperPermission)
+    val publicGetPermissions: Set[Permission] = Set(GetPermission)
     val anonymous: U = idToUser(UserId.Anonymous)
       .getOrElse(sys.error("Anonymous user has not been defined"))  // Should not happen
 

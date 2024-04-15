@@ -119,7 +119,7 @@ object ScheduleCalculator:
   private val monday1 = LocalDateTime.parse("2021-11-01T00:00")
   assert(monday1.getDayOfWeek == MONDAY)
 
-  def apply(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean = false) =
+  def apply(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean = false): ScheduleCalculator =
     checked(schedule, zone, dateOffset, onlyOnePeriod).orThrow
 
   private[instructions] def checked(

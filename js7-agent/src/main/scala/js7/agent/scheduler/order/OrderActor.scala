@@ -250,7 +250,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
     logger.error(msg)
     sender() ! Status.Failure(new IllegalStateException(msg))
 
-  private def update(events: Seq[OrderEvent]) =
+  private def update(events: Seq[OrderEvent]): Unit =
     val previousOrderOrNull = order
     events foreach updateOrder
     becomeAsStateOf(order)
@@ -269,7 +269,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
           context.stop(self)
       case _ =>
 
-  private def updateOrder(event: OrderEvent) =
+  private def updateOrder(event: OrderEvent): Unit =
     order = event match
       case event: OrderAttachedToAgent =>
         Order.fromOrderAttached(orderId, event)
@@ -284,7 +284,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
       case _ =>
         sys.error(s"Unexpected event for '$orderId': $event")
 
-  override def unhandled(msg: Any) =
+  override def unhandled(msg: Any): Unit =
     msg match
       case msg @ (_: Command | _: Input | _: Internal.UpdateEvents) =>
         logger.error(s"Unhandled message $msg in Actor state '$actorStateName', Order state is ${order.state}")

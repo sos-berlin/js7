@@ -116,7 +116,7 @@ extends Service.StoppableByRequest:
         })
     })
 
-  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
     val jobKeySet = jobKeys.toSet
     jobKeys.toVector
       .flatMap(jobKeyToJobDriver.get)

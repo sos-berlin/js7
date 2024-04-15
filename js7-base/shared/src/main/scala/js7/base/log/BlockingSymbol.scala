@@ -58,7 +58,7 @@ final class BlockingSymbol:
       case 1 => LogLevel.Debug
       case 2 | 3 => LogLevel.Info
 
-  override def toString =
+  override def toString: String =
     symbol
 
   def symbol: String =

@@ -61,7 +61,7 @@ extends MainService, Service.StoppableByRequest:
 
   if conf.scriptInjectionAllowed then logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
-  val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
+  val subagentRunId: SubagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private[subagent] val commandExecutor =
     new SubagentCommandExecutor(this, signatureVerifier)
   private val dedicatedAllocated =

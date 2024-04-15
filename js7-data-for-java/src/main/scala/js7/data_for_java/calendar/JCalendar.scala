@@ -37,7 +37,7 @@ extends JJsonable[JCalendar], JUnsignedSimpleItem:
     asScala.periodDatePattern
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JUnsignedSimpleItem =
     copy(asScala.withRevision(revision.toScala))
 
 

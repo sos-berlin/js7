@@ -29,14 +29,16 @@ extends SignatureVerifier:
   import PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
-  def companion = PgpSignatureVerifier
+  def companion: PgpSignatureVerifier.type = 
+    PgpSignatureVerifier
 
   registerBouncyCastle()
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
 
   @TestOnly
-  def publicKeys = publicKeyRingCollection.toArmoredString :: Nil
+  def publicKeys: Seq[String] = 
+    publicKeyRingCollection.toArmoredString :: Nil
 
   /** Returns `Right(message)` iff signature matches the message. */
   def verify(document: ByteArray, signature: PgpSignature): Checked[Seq[SignerId]] =
@@ -68,7 +70,7 @@ extends SignatureVerifier:
 
   override def toString = s"PgpSignatureVerifier(origin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
 
-  def publicKeysToStrings =
+  def publicKeysToStrings: Seq[String] =
     Seq(s"PGP origin=$publicKeyOrigin") ++
       publicKeyRingCollection.asScala
         .flatMap(_.asScala.map(k => "  " + pgpPublicKeyToShortString(k)))
@@ -78,7 +80,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = PgpSignature
   protected type MySignatureVerifier = PgpSignatureVerifier
 
-  val typeName = PgpSignature.TypeName
+  val typeName: String = PgpSignature.TypeName
   val filenameExtension = ".asc"
   val recommendedKeyDirectoryName = "trusted-pgp-keys"
 

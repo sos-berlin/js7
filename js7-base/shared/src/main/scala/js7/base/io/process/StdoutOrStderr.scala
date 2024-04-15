@@ -10,11 +10,11 @@ import js7.base.generic.GenericString
 sealed trait StdoutOrStderr extends GenericString, Product, Serializable/*to be compatible with case object*/ :
 
   val string: String
-  override def toString = string
+  override def toString: String = string
 
 
 object StdoutOrStderr:
-  val values = List(Stdout, Stderr)
+  val values: List[StdoutOrStderr] = List(Stdout, Stderr)
 
   implicit val keyJsonEncoder: KeyEncoder[StdoutOrStderr] = _.string
   implicit val keyJsonDecoder: KeyDecoder[StdoutOrStderr] =
@@ -30,12 +30,12 @@ object StdoutOrStderr:
 
 case object Stdout extends StdoutOrStderr, GenericString:
   @javaApi
-  val singleton = this
+  val singleton: Stdout.type = this
 
   val string = "stdout"
 
 case object Stderr extends StdoutOrStderr, GenericString:
   @javaApi
-  val singleton = this
+  val singleton: Stderr.type = this
 
   val string = "stderr"

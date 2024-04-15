@@ -15,7 +15,7 @@ final case class SignedString(string: String, signature: GenericSignature):
 
   /** Tamper in a JSON-compatible way. */
   @TestOnly
-  def tamper = copy(string = string + " ")
+  def tamper: SignedString = copy(string = string + " ")
 
 
 object SignedString:

@@ -20,9 +20,9 @@ object FreeTcpPortFinder:
       try
         val output = new StringBuilder
         val processLogger = new ProcessLogger:
-          def out(s: => String) = output.append(s)
+          def out(s: => String): Unit = output.append(s)
 
-          def err(s: => String) = ()
+          def err(s: => String): Unit = ()
 
           def buffer[T](f: => T): T = f
         "sysctl -n net.inet.ip.portrange.first" ! processLogger

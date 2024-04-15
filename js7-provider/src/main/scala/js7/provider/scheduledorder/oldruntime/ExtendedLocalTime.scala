@@ -1,6 +1,6 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{Duration, Instant, LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.convert.As
 import js7.provider.scheduledorder.oldruntime.ExtendedLocalTime.*
 import scala.language.implicitConversions
@@ -20,23 +20,23 @@ extends Ordered[ExtendedLocalTime]:
   def atDate(date: LocalDate): LocalDateTime =
     LocalDateTime.of(date plusDays days, localTime)
 
-  def compare(o: ExtendedLocalTime) =
+  def compare(o: ExtendedLocalTime): Int =
     toNanoOfDay compare o.toNanoOfDay
 
-  def toInstant(localDate: LocalDate, zone: ZoneId) =
+  def toInstant(localDate: LocalDate, zone: ZoneId): Instant =
     val local = toLocalDateTime(localDate)
     local.toInstant(zone.getRules.getOffset(local))
 
-  def toLocalDateTime(localDate: LocalDate) =
+  def toLocalDateTime(localDate: LocalDate): LocalDateTime =
     LocalDateTime.of(localDate plusDays days, localTime)
 
-  def localTime =
+  def localTime: LocalTime =
     LocalTime.ofNanoOfDay(toNanoOfDay % (24*60*60*Billion))
 
   def days: Long =
     toNanoOfDay / (24*60*60*Billion)
 
-  override def toString =
+  override def toString: String =
     val h = toNanoOfDay / (60*60*Billion)
     val m = toNanoOfDay / (60*Billion) % 60
     val s = toNanoOfDay / Billion % 60
@@ -57,8 +57,8 @@ extends Ordered[ExtendedLocalTime]:
 
 object ExtendedLocalTime:
   private val Billion = 1000*1000*1000L
-  val StartOfDay = of(0, 0)
-  val EndOfDay = of(24, 0)
+  val StartOfDay: ExtendedLocalTime = of(0, 0)
+  val EndOfDay: ExtendedLocalTime = of(24, 0)
   implicit val stringAs: As[String, ExtendedLocalTime] = As(fromString)
   private val ParseRegex = """([0-9]+):([0-9]{2})(?::([0-9]{2}))?""".r
 

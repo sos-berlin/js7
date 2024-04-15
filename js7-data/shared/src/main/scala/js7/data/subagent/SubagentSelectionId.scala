@@ -9,12 +9,13 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 final case class SubagentSelectionId(string: String)
 extends UnsignedSimpleItemPath, DelegateId, InventoryItemPath.AttachableToAgent:
 
-  def companion = SubagentSelectionId
+  def companion: SubagentSelectionId.type = SubagentSelectionId
 
-  def toUserId = UserId(string)
+  def toUserId: UserId = 
+    UserId(string)
 
   // A SubagentId may be used as a SubagentSelectionId
-  def toSubagentId = SubagentId(string)
+  def toSubagentId: SubagentId = SubagentId(string)
 
 
 object SubagentSelectionId
@@ -27,7 +28,7 @@ extends DelegateId.Companion[SubagentSelectionId],
   type Item = SubagentSelection
 
   override val itemTypeName = "SubagentSelection"
-  override val pathTypeName = itemTypeName
+  override val pathTypeName: String = itemTypeName
 
   protected def unchecked(string: String) =
     new SubagentSelectionId(string)

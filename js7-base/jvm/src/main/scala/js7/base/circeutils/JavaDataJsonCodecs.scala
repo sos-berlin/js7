@@ -1,5 +1,6 @@
 package js7.base.circeutils
 
+import io.circe.Decoder.Result
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant, ZoneId}
@@ -28,13 +29,15 @@ object JavaDataJsonCodecs:
   private val dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
   object StringInstantEncoder extends Encoder[Instant]:
-    def apply(o: Instant) = Json.fromString(dateTimeFormatter.format(o))
+    def apply(o: Instant): Json = 
+      Json.fromString(dateTimeFormatter.format(o))
 
   object NumericInstantEncoder extends Encoder[Instant]:
-    def apply(o: Instant) = Json.fromLong(o.toEpochMilli)
+    def apply(o: Instant): Json = 
+      Json.fromLong(o.toEpochMilli)
 
   trait InstantDecoder extends Decoder[Instant]:
-    def apply(cursor: HCursor) =
+    def apply(cursor: HCursor): Result[Instant] =
       if cursor.value.isNumber then
         cursor.as[Long] map Instant.ofEpochMilli
       else

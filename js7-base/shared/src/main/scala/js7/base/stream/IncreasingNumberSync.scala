@@ -72,7 +72,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
             IO(promise.future -> /*onCancel=*/ IO.unit)
           .as(true)
 
-  def last = _last
+  def last: Long = _last
 
   @TestOnly
   private[stream] def waitingCount =

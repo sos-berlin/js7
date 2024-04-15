@@ -30,7 +30,7 @@ private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends 
         s"UnhandledMessage from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: " +
           s"${o.message.getClass.scalaName} ${o.message.toString.truncateWithEllipsis(1000, showLength = true)}")
 
-  private def callOutput(logLevel: LogLevel, string: => String) =
+  private def callOutput(logLevel: LogLevel, string: => String): Unit =
     try output(logLevel, () => string)
     catch
       case NonFatal(t) => logger.warn(t.toString)

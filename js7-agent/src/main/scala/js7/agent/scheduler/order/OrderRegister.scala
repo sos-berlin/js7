@@ -32,7 +32,7 @@ private[order] object OrderRegister:
   final class OrderEntry(
     val orderId: OrderId,
     val actor: ActorRef):
-    val timer = SerialSyncCancelable()
+    val timer: SerialSyncCancelable = SerialSyncCancelable()
     var detachResponses: List[Promise[Unit]] = Nil
 
-    def isDetaching = detachResponses.nonEmpty
+    def isDetaching: Boolean = detachResponses.nonEmpty

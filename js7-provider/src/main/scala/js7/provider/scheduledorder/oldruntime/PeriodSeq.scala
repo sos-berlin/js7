@@ -22,9 +22,9 @@ abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]):
 
 
 object PeriodSeq:
-  val Empty = PeriodSeq(Nil)
+  val Empty: PeriodSeq = PeriodSeq(Nil)
 
-  def apply(o: Seq[Period]) =
+  def apply(o: Seq[Period]): PeriodSeq =
     new PeriodSeq(o.sorted) {}
 
   implicit def fromPeriod(period: Period): PeriodSeq =

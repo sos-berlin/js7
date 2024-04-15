@@ -16,7 +16,8 @@ extends RuntimeException(message, cause):
 
 
 object ProblemException:
-  def unapply(e: ProblemException) = Some(e.problem)
+  def unapply(e: ProblemException): Some[Problem] =
+    Some(e.problem)
 
   private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable)
   extends ProblemException(problem, message, cause), scala.util.control.NoStackTrace:

@@ -26,9 +26,10 @@ final case class ProcessConfiguration(
 
   for id <- maybeTaskId do require(id.nonEmpty)
 
-  def idArgumentOption = maybeTaskId.map(o => s"--agent-task-id=${o.string}")
+  def idArgumentOption: Option[String] = 
+    maybeTaskId.map(o => s"--agent-task-id=${o.string}")
 
-  def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
+  def toKillScriptCommandArgumentsOption(pid: Option[Pid]): Option[Seq[String]] =
     for
       id <- maybeTaskId
       killScript <- killScriptOption
@@ -36,7 +37,7 @@ final case class ProcessConfiguration(
 
 
 object ProcessConfiguration:
-  def forTest = ProcessConfiguration(
+  def forTest: ProcessConfiguration = ProcessConfiguration(
     encoding = UTF_8/*Windows ???*/,
     killWithSigterm = Seq("/bin/kill", "$pid"),
     killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"),

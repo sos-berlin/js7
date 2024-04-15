@@ -10,7 +10,8 @@ import js7.data.workflow.Instruction
   */
 final case class Gap(sourcePos: Option[SourcePos])
 extends Instruction:
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: Gap = 
+    copy(sourcePos = None)
 
   override def toString = "gap"
 

@@ -1,7 +1,7 @@
 package js7.data.event
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, HCursor, Json}
+import io.circe.{Codec, Decoder, Encoder, HCursor, Json, JsonObject}
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, typeName, unknownJsonTypeFailure}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections.*
@@ -62,7 +62,7 @@ extends Codec.AsObject[KeyedEvent[E]]:
       printName = s"$printName|${other.printName}",
       (subtypes ++ other.subtypes))
 
-  def encodeObject(keyedEvent: KeyedEvent[E]) =
+  def encodeObject(keyedEvent: KeyedEvent[E]): JsonObject =
     keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
 
   def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
@@ -89,7 +89,7 @@ extends Codec.AsObject[KeyedEvent[E]]:
     else
       nameToClass.get(name)
 
-  override def toString = printName
+  override def toString: String = printName
 
 
 object KeyedEventTypedJsonCodec:

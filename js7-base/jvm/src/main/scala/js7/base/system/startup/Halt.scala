@@ -9,7 +9,7 @@ import js7.base.system.startup.StartUp.printlnWithClockIgnoringException
 object Halt:
   private val logger = Logger[this.type]
 
-  def initialize() = {}
+  def initialize(): Unit = {}
 
   def haltJava(msg: String, restart: Boolean, warnOnly: Boolean = false): Nothing =
     haltJava2(

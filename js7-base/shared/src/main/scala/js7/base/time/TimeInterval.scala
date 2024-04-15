@@ -19,8 +19,8 @@ sealed trait TimeInterval:
 
 
 object TimeInterval:
-  val never = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
-  val alwaysSinceEpoch = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
+  val never: TimeInterval = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
+  val alwaysSinceEpoch: TimeInterval = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
 
   def apply(start: Timestamp, duration: FiniteDuration): TimeInterval =
     Standard(start, duration)
@@ -32,23 +32,23 @@ object TimeInterval:
   extends TimeInterval:
     assertThat(!duration.isNegative)
 
-    def end = start + duration
+    def end: Timestamp = start + duration
 
     def contains(timestamp: Timestamp): Boolean =
       start <= timestamp && !endsBefore(timestamp)
 
-    def startsBefore(timestamp: Timestamp) =
+    def startsBefore(timestamp: Timestamp): Boolean =
       start <= timestamp
 
-    def endsBefore(timestamp: Timestamp) =
+    def endsBefore(timestamp: Timestamp): Boolean =
       end <= timestamp
 
     override def toString = s"TimeInterval($start, ${duration.pretty})"
 
   object Never extends TimeInterval:
-    val start = Timestamp.Epoch
-    val end = Timestamp.Epoch
-    val duration = Duration.Zero
+    val start: Timestamp = Timestamp.Epoch
+    val end: Timestamp = Timestamp.Epoch
+    val duration: FiniteDuration = Duration.Zero
 
     def contains(timestamp: Timestamp) =
       false
@@ -62,9 +62,9 @@ object TimeInterval:
     override def toString = "Never"
 
   object Always extends TimeInterval:
-    val start = Timestamp.Epoch
-    val end = Timestamp.MaxValue
-    val duration = end - start
+    val start: Timestamp = Timestamp.Epoch
+    val end: Timestamp = Timestamp.MaxValue
+    val duration: FiniteDuration = end - start
 
     def contains(timestamp: Timestamp) =
       true

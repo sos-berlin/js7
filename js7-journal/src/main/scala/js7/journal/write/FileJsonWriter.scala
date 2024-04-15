@@ -25,7 +25,7 @@ extends AutoCloseable:
   private var synced = false
   private val initialPosition = Files.size(file)
 
-  def close() =
+  def close(): Unit =
     wrapException:
       if !closed.getAndSet(true) then
         flush()
@@ -56,13 +56,13 @@ extends AutoCloseable:
         flushed = true
         synced = false
 
-  def isFlushed = flushed
+  def isFlushed: Boolean = flushed
 
-  def isSynced = synced
+  def isSynced: Boolean = synced
 
-  def fileLength = initialPosition + bytesWritten
+  def fileLength: Long = initialPosition + bytesWritten
 
-  def bytesWritten  = writer.bytesWritten
+  def bytesWritten: Long = writer.bytesWritten
 
   protected def wrapException[A](body: => A): A =
     try body

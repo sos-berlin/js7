@@ -9,12 +9,12 @@ import scala.concurrent.duration.*
 sealed class CatsDeadline private(val sinceZero: FiniteDuration)
 extends Ordered[CatsDeadline]:
 
-  override def equals(o: Any) =
+  override def equals(o: Any): Boolean =
     o match
       case o: CatsDeadline => nanosSinceZero == o.nanosSinceZero
       case _ => false
 
-  override def hashCode =
+  override def hashCode: Int =
     nanosSinceZero.hashCode
 
   def nanosSinceZero: Long =
@@ -69,7 +69,7 @@ extends Ordered[CatsDeadline]:
   def timeLeft: IO[FiniteDuration] =
     for o <- IO.monotonic yield sinceZero - o
 
-  def compare(other: CatsDeadline) =
+  def compare(other: CatsDeadline): Int =
     (nanosSinceZero - other.nanosSinceZero).compare(0L)
 
   // ??? If we had access to IORuntime or Scheduler (like a IO.runtime: IO[IORuntime),
@@ -80,7 +80,7 @@ extends Ordered[CatsDeadline]:
    * real (non-test) IORuntime.
    * Then toString calculates the difference to now from two very different clocks.
    */
-  override def toString =
+  override def toString: String =
     //s"CatsDeadline(\"${sinceZero.pretty}\")" // Only differences between CatsDeadlines are relevant
     elapsed
       .map(o => (o.isPositive ?? "+") + o.pretty)

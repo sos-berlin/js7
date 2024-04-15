@@ -10,12 +10,12 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
  */
 final case class ReturnCode private(number: Int) extends GenericInt:
 
-  def isSuccess = number == 0
+  def isSuccess: Boolean = number == 0
 
   def isProcessSignal: Boolean =
     number > 128 && number < 256
 
-  def pretty(isWindows: Boolean) =
+  def pretty(isWindows: Boolean): String =
     if isWindows || !isProcessSignal then
       toString
     else
@@ -31,8 +31,8 @@ final case class ReturnCode private(number: Int) extends GenericInt:
 object ReturnCode extends GenericInt.Companion[ReturnCode]:
   private val predefined = (0 to 255).map(new ReturnCode(_)).toArray
 
-  val Success = predefined(0)
-  val StandardFailure = predefined(1)
+  val Success: ReturnCode = predefined(0)
+  val StandardFailure: ReturnCode = predefined(1)
 
   def apply(number: Int): ReturnCode =
     if predefined isDefinedAt number then

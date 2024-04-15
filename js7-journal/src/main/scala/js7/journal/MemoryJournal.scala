@@ -32,7 +32,7 @@ final class MemoryJournal[S <: JournaledState[S]] private(
   (implicit protected val S: JournaledState.Companion[S])
 extends Journal[S]:
 
-  val journalId = JournalId.random()
+  val journalId: JournalId = JournalId.random()
 
   private val stateLock = AsyncLock.dontLog() //Slow with many (>100000) acquirers: ("MemoryJournal.state")
   private val queueLock = AsyncLock.dontLog()
@@ -45,7 +45,7 @@ extends Journal[S]:
 
   def isHalted = false
 
-  val whenNoFailoverByOtherNode = IO.unit
+  val whenNoFailoverByOtherNode: IO[Unit] = IO.unit
 
   val eventWatch: RealEventWatch = new MemoryJournalEventWatch
 
@@ -187,7 +187,7 @@ extends Journal[S]:
 
   /** To simulate sudden death. */
   @TestOnly
-  def stopEventWatch() =
+  def stopEventWatch(): Unit =
     eventWatchStopped = true
 
   @TestOnly

@@ -2,7 +2,7 @@ package js7.data.item
 
 import io.circe.{Codec, HCursor}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.Signed
+import js7.base.crypt.{Signed, SignedString}
 import js7.data.event.ItemContainer
 
 trait SignedItemEvent extends InventoryItemEvent:
@@ -11,7 +11,7 @@ trait SignedItemEvent extends InventoryItemEvent:
 
 object SignedItemEvent:
   sealed trait SignedItemAddedOrChanged extends SignedItemEvent, ItemAddedOrChanged, Product:
-    def signedString = signed.signedString
+    def signedString: SignedString = signed.signedString
     def signed: Signed[SignableItem]
     def item: SignableItem = signed.value
     def key: SignableItemKey = signed.value.key

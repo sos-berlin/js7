@@ -81,7 +81,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, Terminated}
+import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
@@ -109,7 +109,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private given scheduler: Scheduler = ioRuntime.scheduler
   private given ExecutionContext = ioRuntime.compute
 
-  override val supervisorStrategy = SupervisorStrategies.escalate
+  override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
   private def journal = journalAllocated.allocatedThing
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = journal.journalActor
@@ -169,10 +169,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           self ! Internal.StillShuttingDown
         continue()
 
-    def close() =
+    def close(): Unit =
       stillShuttingDownCancelable.cancel()
 
-    def onStillShuttingDown() =
+    def onStillShuttingDown(): Unit =
       logger.info(s"Still shutting down, waiting for $runningAgentDriverCount AgentDrivers" +
         (!snapshotTaken ?? " and the snapshot"))
 
@@ -181,7 +181,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         snapshotTaken = true
         continue()
 
-    def continue() =
+    def continue(): Unit =
       for shutDown <- shutDown do
         logger.trace(s"shutdown.continue: $runningAgentDriverCount AgentDrivers${
           !snapshotTaken ?? ", snapshot required"}")
@@ -254,11 +254,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
         .flatMapT(o => journalAllocated.release.as(Right(o)))
 
-    def close() = stillSwitchingOverSchedule.cancel()
+    def close(): Unit = stillSwitchingOverSchedule.cancel()
 
   watch(journalActor)
 
-  override def postStop() =
+  override def postStop(): Unit =
     try
       shutdown.close()
       switchover foreach { _.close() }
@@ -269,7 +269,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         ProgramTermination(restart = switchover.exists(_.restart) | shutdown.restart))
       super.postStop()
 
-  def receive =
+  def receive: Receive =
     case Input.Start =>
       val controllerState = journal.unsafeCurrentState()
       if controllerState.controllerMetaState.isDefined then
@@ -656,7 +656,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   // JournalActor's termination must be handled in any `become`-state and
   // must lead to ControllerOrderKeeper's termination
-  override def journaling = handleExceptionalMessage orElse super.journaling
+  override def journaling: Receive =
+    handleExceptionalMessage orElse super.journaling
 
   private def handleExceptionalMessage: Receive =
     case Terminated(actor) if actor == journalActor =>

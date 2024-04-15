@@ -7,13 +7,14 @@ object Problems:
     requestedSubagentId: SubagentId,
     realSubagentId: SubagentId)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "requestedSubagentId" -> requestedSubagentId.string,
       "realSubagentId" -> realSubagentId.string)
 
   final case class SubagentRunIdMismatchProblem(subagentId: SubagentId)
   extends Problem.Coded:
-    def arguments = Map("subagentId" -> subagentId.string)
+    def arguments: Map[String, String] = Map(
+      "subagentId" -> subagentId.string)
 
   type SubagentAlreadyDedicatedProblem = SubagentAlreadyDedicatedProblem.type
   case object SubagentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded

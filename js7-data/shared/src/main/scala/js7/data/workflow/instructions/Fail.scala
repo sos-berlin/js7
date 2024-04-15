@@ -19,7 +19,8 @@ final case class Fail(
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
 
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: Fail = 
+    copy(sourcePos = None)
 
 
 object Fail:

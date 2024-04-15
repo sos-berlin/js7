@@ -40,7 +40,7 @@ extends JournalWriter(S, after = after, append = !withoutSnapshots),
     try if eventsStarted then endEventSection(sync = sync)
     finally close()
 
-  override def close() =
+  override def close(): Unit =
     super.close()
     for o <- observer do
       o.onJournalingEnded(jsonWriter.fileLength)
@@ -96,9 +96,10 @@ extends JournalWriter(S, after = after, append = !withoutSnapshots),
     for r <- observer do
       r.onEventsCommitted(lengthAndEventId, n)
 
-  def isEventWritten = _eventWritten
+  def isEventWritten: Boolean = _eventWritten
 
-  def fileLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId)
+  def fileLengthAndEventId: PositionAnd[EventId] = 
+    PositionAnd(fileLength, lastWrittenEventId)
 
   override def toString = s"EventJournalWriter(${file.getFileName})"
 

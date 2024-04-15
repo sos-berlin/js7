@@ -18,9 +18,11 @@ import java.util as ju
 import scala.collection.MapView
 
 final class JMapViewWrapper[K, V](mapView: MapView[K, V])
-extends ju.AbstractMap[K, V] { self =>
+  extends ju.AbstractMap[K, V]:
+  self =>
 
-  override def size = mapView.size
+  override def size: Int =
+    mapView.size
 
   override def get(key: AnyRef): V =
     try
@@ -34,29 +36,30 @@ extends ju.AbstractMap[K, V] { self =>
     new ju.AbstractSet[ju.Map.Entry[K, V]]:
       def size = self.size
 
-      def iterator = new ju.Iterator[ju.Map.Entry[K, V]]:
-        val ui = mapView.iterator
+      def iterator: ju.Iterator[ju.Map.Entry[K, V]] =
+        new ju.Iterator[ju.Map.Entry[K, V]]:
+          val ui = mapView.iterator
 
-        def hasNext = ui.hasNext
+          def hasNext = ui.hasNext
 
-        def next() =
-          val (k, v) = ui.next()
-          new ju.Map.Entry[K, V]:
-            def getKey = k
-            def getValue = v
-            def setValue(v1 : V) = throw new UnsupportedOperationException
+          def next() =
+            val (k, v) = ui.next()
+            new ju.Map.Entry[K, V]:
+              def getKey = k
+              def getValue = v
+              def setValue(v1 : V): V = throw new UnsupportedOperationException
 
-            // It's important that this implementation conform to the contract
-            // specified in the javadocs of java.util.Map.Entry.hashCode
-            //
-            // See https://github.com/scala/bug/issues/10663
-            override def hashCode =
-              (if k == null then 0 else k.hashCode()) ^
-              (if v == null then 0 else v.hashCode())
+              // It's important that this implementation conform to the contract
+              // specified in the javadocs of java.util.Map.Entry.hashCode
+              //
+              // See https://github.com/scala/bug/issues/10663
+              override def hashCode =
+                (if k == null then 0 else k.hashCode()) ^
+                (if v == null then 0 else v.hashCode())
 
-            override def equals(other: Any) = other match
-              case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue
-              case _ => false
+              override def equals(other: Any) = other match
+                case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue
+                case _ => false
 
   override def containsKey(key: AnyRef): Boolean =
     try
@@ -66,4 +69,3 @@ extends ju.AbstractMap[K, V] { self =>
       mapView.contains(key.asInstanceOf[K])
     catch
       case ex: ClassCastException => false
-}

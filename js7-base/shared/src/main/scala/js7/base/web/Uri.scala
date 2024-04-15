@@ -43,7 +43,9 @@ final case class Uri(string: String) extends GenericString:
 object Uri extends GenericString.NonEmpty[Uri]:
   private val StripPathRegex = "([^/]*//[^/]+/).*".r
 
-  protected def unchecked(string: String) = new Uri(string)
+  protected def unchecked(string: String) = 
+    new Uri(string)
 
   @javaApi
-  def of(validUri: String) = apply(validUri)
+  def of(validUri: String): Uri = 
+    apply(validUri)

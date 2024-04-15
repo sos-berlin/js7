@@ -287,7 +287,7 @@ abstract class RecouplingStreamReader[
 
 
 object RecouplingStreamReader:
-  val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
+  val TerminatedProblem: Problem = Problem.pure("RecouplingStreamReader has been stopped")
 
   private val PauseGranularity = 500.ms
   private val logger = Logger[this.type]
@@ -324,9 +324,14 @@ object RecouplingStreamReader:
     @volatile private var pauses = initial
     @volatile private var lastCouplingTriedAt = now
 
-    def onCouple() = lastCouplingTriedAt = now
-    def onCouplingSucceeded() = pauses = initial
-    def nextPause() = (lastCouplingTriedAt + synchronized { pauses.next() }).timeLeft max Minimum
+    def onCouple(): Unit =
+      lastCouplingTriedAt = now
+
+    def onCouplingSucceeded(): Unit =
+      pauses = initial
+
+    def nextPause() =
+      (lastCouplingTriedAt + synchronized(pauses.next())).timeLeft max Minimum
 
     private def initial = Iterator(Minimum, 1.s, 1.s, 1.s, 2.s, 5.s) ++
       Iterator.continually(10.s)

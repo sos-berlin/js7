@@ -32,11 +32,14 @@ final class CommandLineArguments private(argMap: mutable.LinkedHashMap[String, V
     unusedKeylessArguments.clear()
     values("")
 
-  def isDefinedAt(key: String) = argMap isDefinedAt key
+  def isDefinedAt(key: String): Boolean =
+    argMap isDefinedAt key
 
-  def apply(key: String): Vector[String] = values(key)
+  def apply(key: String): Vector[String] =
+    values(key)
 
-  private def values(key: String): Vector[String] = arguments(key).map(_.value)
+  private def values(key: String): Vector[String] =
+    arguments(key).map(_.value)
 
   def arguments(key: String): Vector[Argument] =
     unusedArguments -= key
@@ -49,7 +52,8 @@ final class CommandLineArguments private(argMap: mutable.LinkedHashMap[String, V
       throw new IllegalArgumentException("Unknown command line arguments: " + unusedKeylessArguments.map(o => s"#${o+1}") .mkString(" ") +
         unusedArguments.values.flatten.mkString(" "))
 
-  override def toString = argMap.values.flatten.mkString(" ")
+  override def toString: String =
+    argMap.values.flatten.mkString(" ")
 
 
 object CommandLineArguments:
@@ -88,12 +92,13 @@ object CommandLineArguments:
     def value: String
 
   final case class Switch(key: String, booleanValue: Boolean) extends Argument:
-    override def toString = key
-    def value = throw new UnsupportedOperationException(s"Option $key has no value")
+    override def toString: String = key
+    def value: Nothing =
+      throw new UnsupportedOperationException(s"Option $key has no value")
 
   final case class NameValue(key: String, value: String) extends Argument:
     override def toString = s"$key$value"
 
   final case class ValueOnly(value: String) extends Argument:
     def key = ""
-    override def toString = value
+    override def toString: String = value

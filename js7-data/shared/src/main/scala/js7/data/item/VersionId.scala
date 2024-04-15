@@ -15,7 +15,8 @@ final case class VersionId(string: String) extends GenericString:
   def requireNonAnonymous(): Unit =
     VersionId.checked(string).orThrow
 
-  def isAnonymous = this == VersionId.Anonymous
+  def isAnonymous: Boolean = 
+    this == VersionId.Anonymous
 
   override def toString = s"Version:$string"
 

@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked.*
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
@@ -19,17 +19,17 @@ final case class If(
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
 
-  def withoutSourcePos = copy(
+  def withoutSourcePos: If = copy(
     sourcePos = None,
     thenWorkflow = thenWorkflow.withoutSourcePos,
     elseWorkflow = elseWorkflow.map(_.withoutSourcePos))
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): If =
     copy(
       thenWorkflow = thenWorkflow.withPositions(position / BranchId.Then),
       elseWorkflow = elseWorkflow.map(_.withPositions(position / BranchId.Else)))
 
-  override def adopt(outer: Workflow) = copy(
+  override def adopt(outer: Workflow): If = copy(
     thenWorkflow = thenWorkflow.copy(outer = Some(outer)),
     elseWorkflow = elseWorkflow.map(_.copy(outer = Some(outer))))
 
@@ -38,15 +38,17 @@ extends Instruction:
       thenWorkflow = thenWorkflow.reduceForAgent(agentPath),
       elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentPath)))
 
-  override def workflow(branchId: BranchId) =
+  override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Then => Right(thenWorkflow)
       case BranchId.Else => elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
       case _ => super.workflow(branchId)
 
-  override def branchWorkflows = (BranchId.Then -> thenWorkflow) :: elseWorkflow.map(BranchId.Else -> _).toList
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+    (BranchId.Then -> thenWorkflow) :: elseWorkflow.map(BranchId.Else -> _).toList
 
-  override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w => s" else $w") + sourcePosToString
+  override def toString: String =
+    s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w => s" else $w") + sourcePosToString
 
 
 object If:

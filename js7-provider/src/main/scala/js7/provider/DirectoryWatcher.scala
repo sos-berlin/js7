@@ -29,11 +29,12 @@ extends AutoCloseable:
     // Register early to get the events from now
     directory.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
 
-  def close() = if !closed.getAndSet(true) then
-    logger.trace(s"$directory: watchService.close")
-    watchService.close()
+  def close(): Unit = 
+    if !closed.getAndSet(true) then
+      logger.trace(s"$directory: watchService.close")
+      watchService.close()
 
-  def isClosed = closed.get()
+  def isClosed: Boolean = closed.get()
 
   /** Stream may only be subscribed to once, because it uses the outer WatchService. */
   def singleUseStream: Stream[IO, Unit] =

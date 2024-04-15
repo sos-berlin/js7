@@ -36,7 +36,7 @@ extends AutoCloseable:
     require(removed, s"Job '${jobKey.name}': Releasing unknown FileSet")
     free = fileSet :: free
 
-  def close() =
+  def close(): Unit =
     if used.nonEmpty then
       logger.debug(s"Job '${jobKey.name}': Closing while files are in use: $used")
     tryDeleteFiles((free ++ used).flatMap(_.files))
@@ -47,7 +47,7 @@ private[process] object FilePool:
   private val logger = Logger[this.type]
 
   final case class FileSet(shellReturnValuesProvider: ShellReturnValuesProvider):
-    def clear() =
+    def clear(): Unit =
       shellReturnValuesProvider.clear()
 
     def files: Seq[Path] =

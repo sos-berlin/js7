@@ -3,11 +3,15 @@ package js7.data.cluster
 import java.util.UUID
 import java.util.UUID.randomUUID
 import js7.base.generic.GenericString
+import js7.base.problem.Checked
 import js7.base.utils.Base64UUID
 
 final case class ClusterWatchRunId(base64UUID: Base64UUID) extends GenericString:
-  def string = base64UUID.string
-  override def toString = s"ClusterWatchRunId:$string"
+  def string: String =
+    base64UUID.string
+
+  override def toString =
+    s"ClusterWatchRunId:$string"
 
 
 object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]:
@@ -20,8 +24,8 @@ object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]:
   def random(): ClusterWatchRunId =
     ClusterWatchRunId(randomUUID)
 
-  protected def unchecked(string: String) =
+  protected def unchecked(string: String): ClusterWatchRunId =
     throw new NotImplementedError
 
-  override def checked(string: String) =
+  override def checked(string: String): Checked[ClusterWatchRunId] =
     for o <- Base64UUID.checked(string) yield new ClusterWatchRunId(o)

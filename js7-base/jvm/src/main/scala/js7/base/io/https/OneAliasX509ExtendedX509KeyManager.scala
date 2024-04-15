@@ -9,9 +9,9 @@ final class OneAliasX509ExtendedX509KeyManager(
 extends X509ExtendedKeyManager, OneAliasX509KeyManager:
 
   override def chooseEngineClientAlias(keyType: Array[String], issuers: Array[Principal],
-    engine: SSLEngine) =
+    engine: SSLEngine): String =
     alias
 
   override def chooseEngineServerAlias(keyType: String, issuers: Array[Principal],
-    engine: SSLEngine) =
+    engine: SSLEngine): String =
     alias

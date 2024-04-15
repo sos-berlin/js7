@@ -50,9 +50,9 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
 
   protected final def persistedEventId = _persistedEventId
 
-  protected final def persistedEventId_=(eventId: EventId) = _persistedEventId = eventId  // TODO Used for recovery, should not be mutable
+  protected final def persistedEventId_=(eventId: EventId): Unit = _persistedEventId = eventId  // TODO Used for recovery, should not be mutable
 
-  override protected def become(stateName: String)(receive: Receive) =
+  override protected def become(stateName: String)(receive: Receive): Unit =
     super.become(stateName)(journaling orElse receive)
 
   override def postStop(): Unit =

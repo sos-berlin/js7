@@ -3,7 +3,7 @@ package js7.data.lock
 import io.circe.Codec
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.utils.Assertions.assertThat
-import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import js7.data.item.{ItemRevision, UnsignedItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 
 final case class Lock(
   path: LockPath,
@@ -15,10 +15,10 @@ extends UnsignedSimpleItem:
 
   assertThat(limit >= 0)
 
-  def rename(path: LockPath) =
+  def rename(path: LockPath): Lock =
     copy(path = path)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): Lock =
     copy(itemRevision = revision)
 
   def toInitialItemState: LockState =
@@ -26,13 +26,13 @@ extends UnsignedSimpleItem:
 
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]:
-  val cls = classOf[Lock]
+  val cls: Class[Lock] = classOf[Lock]
 
   type Key = LockPath
-  def Key = LockPath
+  def Key: UnsignedSimpleItemPath.Companion[LockPath] = LockPath
 
   override type Path = LockPath
-  override val Path = LockPath
+  override val Path: UnsignedItemPath.Companion[LockPath] = LockPath
 
   type ItemState = LockState
 

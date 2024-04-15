@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 
 sealed trait JOutcome extends JJsonable[JOutcome]:
   type AsScala = OrderOutcome
-  def companion = JOutcome
+  def companion: JJsonable.Companion[JOutcome] = JOutcome
 
 
 object JOutcome extends JJsonable.Companion[JOutcome]:
@@ -23,7 +23,7 @@ object JOutcome extends JJsonable.Companion[JOutcome]:
     JOutcome.Succeeded(OrderOutcome.Succeeded.empty)
 
   @javaApi @Nonnull
-  def succeeded(@Nonnull namedValues: java.util.Map[String, Value]) =
+  def succeeded(@Nonnull namedValues: java.util.Map[String, Value]): Succeeded =
     JOutcome.Succeeded(OrderOutcome.Succeeded(namedValues.asScala.toMap))
 
   @javaApi
@@ -31,11 +31,11 @@ object JOutcome extends JJsonable.Companion[JOutcome]:
     JOutcome.Failed(OrderOutcome.failed)
 
   @javaApi @Nonnull
-  def failed(@Nonnull message: String) =
+  def failed(@Nonnull message: String): Failed =
     JOutcome.Failed(OrderOutcome.Failed(message.nonEmpty ? message))
 
   @javaApi @Nonnull
-  def failed(@Nonnull message: String, @Nonnull namedValues: java.util.Map[String, Value]) =
+  def failed(@Nonnull message: String, @Nonnull namedValues: java.util.Map[String, Value]): Failed =
     JOutcome.Failed(OrderOutcome.Failed(message.nonEmpty ? message, namedValues.asScala.toMap))
 
   def apply(asScala: OrderOutcome): JOutcome =

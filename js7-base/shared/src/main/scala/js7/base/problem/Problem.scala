@@ -54,17 +54,18 @@ sealed trait Problem:
 
   final def wrapProblemWith(message: String) = new Problem.Lazy(message, Some(this))
 
-  override def equals(o: Any) = o match
+  override def equals(o: Any): Boolean = o match
     case _: Problem.HasCode => false
     case o: Problem => toString == o.toString
     case _ => false
 
-  override def hashCode = toString.hashCode
+  override def hashCode: Int = toString.hashCode
 
   /** Message with cause. **/
   override def toString = messageWithCause
 
-  final def messageWithCause = message + cause.fold("")(o => s" [$o]")
+  final def messageWithCause: String =
+    message + cause.fold("")(o => s" [$o]")
 
   /** Message without cause. **/
   protected[problem] def message: String
@@ -76,7 +77,8 @@ object Problem extends Semigroup[Problem]:
   private val DefaultHttpStatusCode = 400  // Bad Request
 
   @javaApi
-  def singleton = this
+  def singleton: Problem.type =
+    this
 
   implicit def toInvalid[A](problem: Problem): Left[Problem, A] =
     Left(problem)
@@ -118,7 +120,7 @@ object Problem extends Semigroup[Problem]:
 
   implicit val problemSemigroup: Semigroup[Problem] = this
 
-  def combine(a: Problem, b: Problem) = (a, b) match
+  def combine(a: Problem, b: Problem): Problem = (a, b) match
     case (a: Combined, b: Combined) =>
       Combined(a.problems.toVector ++ b.problems)
 
@@ -161,25 +163,28 @@ object Problem extends Semigroup[Problem]:
     def code: ProblemCode
     def arguments: Map[String, String]
 
-    override final def maybeCode = Some(code)
+    override final def maybeCode: Some[ProblemCode] =
+      Some(code)
 
-    final def cause = None
+    final def cause: None.type =
+      None
 
-    def rawMessage = CodedMessages.problemCodeToMessage(code, arguments)
+    def rawMessage: String = 
+      CodedMessages.problemCodeToMessage(code, arguments)
 
-    override def equals(o: Any) = o match
+    override def equals(o: Any): Boolean = o match
       case o: HasCode => code == o.code && arguments == o.arguments && cause == o.cause
       case _ => false
 
-    override def hashCode = (code.hashCode * 31 + arguments.hashCode) * 31 + cause.hashCode
+    override def hashCode: Int = (code.hashCode * 31 + arguments.hashCode) * 31 + cause.hashCode
 
-    override def toString =
+    override def toString: String =
       val msg = messageWithCause
       if s"$msg ".startsWith(s"${code.string} ") ||
           s"$msg(".startsWith(s"${code.string}(") then msg
       else code.string + ": " + msg
   object HasCode:
-    def apply(code: ProblemCode, arguments: Map[String, String]) =
+    def apply(code: ProblemCode, arguments: Map[String, String]): HasCode =
       val c = code
       val a = arguments
       new HasCode:
@@ -189,17 +194,17 @@ object Problem extends Semigroup[Problem]:
       Some((coded.code, coded.arguments))
 
   trait Coded extends HasCode:
-    val code = Coded.codeOf(getClass)
+    val code: ProblemCode = Coded.codeOf(getClass)
     def toSerialized: Problem = HasCodeAndMessage(code, arguments, message)
   object Coded:
     trait Companion:
-      val code = codeOf(getClass)
+      val code: ProblemCode = codeOf(getClass)
     private[problem] def codeOf(clas: Class[?]) =
       ProblemCode(clas.simpleScalaName stripSuffix "Problem")
 
   trait ArgumentlessCoded extends Coded, Coded.Companion:
-    override val code = Coded.codeOf(getClass)
-    final def arguments = Map.empty
+    override val code: ProblemCode = Coded.codeOf(getClass)
+    final def arguments: Map[String, String] = Map.empty
 
   private[problem] case class HasCodeAndMessage(
     code: ProblemCode,
@@ -209,12 +214,12 @@ object Problem extends Semigroup[Problem]:
 
   class Eager(protected val rawMessage: String, val cause: Option[Problem] = None)
   extends Simple:
-    override final def hashCode = super.hashCode  // Derived case class should not override
+    override final def hashCode: Int = super.hashCode  // Derived case class should not override
 
   class Lazy(messageFunction: => String, val cause: Option[Problem] = None)
   extends Simple:
     protected def rawMessage = messageFunction
-    override final def hashCode = super.hashCode  // Derived case class should not override
+    override final def hashCode: Int = super.hashCode  // Derived case class should not override
 
   def combined(problems: immutable.Iterable[String]): Combined =
     Combined(problems.map(o => new Lazy(o)))
@@ -222,9 +227,9 @@ object Problem extends Semigroup[Problem]:
   final case class Combined(problems: immutable.Iterable[Problem]) extends Problem:
     require(problems.nonEmpty)
 
-    def throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)
+    def throwable: Throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)
 
-    def throwableOption =
+    def throwableOption: Option[Throwable] =
       val throwables = problems.flatMap(_.throwableOption)
       throwables.headOption.map { head =>
         val throwable = new ProblemException(this)
@@ -237,13 +242,14 @@ object Problem extends Semigroup[Problem]:
     override def flatten: View[Problem] =
       problems.view.flatMap(_.flatten)
 
-    lazy val message = problems.map(_.toString) reduce combineMessages
+    lazy val message: String = 
+      problems.map(_.toString) reduce combineMessages
 
-    override def head = problems.head
+    override def head: Problem = problems.head
 
-    def cause = None
+    def cause: Option[Problem] = None
 
-    override def equals(o: Any) = o match
+    override def equals(o: Any): Boolean = o match
       case o: Combined =>
         (problems, o.problems) match
           case (problems: Set[Problem @unchecked], _) => problems == o.problems.toSet  // Ignore ordering (used in tests)
@@ -251,7 +257,8 @@ object Problem extends Semigroup[Problem]:
           case _ => problems == o.problems
       case _ => super.equals(o)
 
-    override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
+    override def hashCode: Int = 
+      problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
 
   sealed trait FromThrowable extends Problem
 

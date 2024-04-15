@@ -109,7 +109,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
       branchId: Optional[ForkBranchId],
       arguments: java.util.Map[String, Value])
     object ForkedChild:
-      def fromScala(child: OrderForked.Child) =
+      def fromScala(child: OrderForked.Child): ForkedChild =
         ForkedChild(
           child.orderId,
           child.branchId.map(o => ForkBranchId(o.string)).toJava,

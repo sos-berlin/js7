@@ -13,19 +13,21 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
 
   protected type Self = JavaTimestamp
 
-  def companion = JavaTimestamp
+  def companion: Timestamp.Companion =
+    JavaTimestamp
 
   /** Returns an ISO-8601 string with milliseconds.
     * For example "2017-12-04T11:22:33.456Z".
     */
-  def toIsoString = dateTimeFormatter.format(this.toInstant)
+  def toIsoString: String = 
+    dateTimeFormatter.format(this.toInstant)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
     catchExpected[Exception]:
       val zone = maybeTimezone.fold(ZoneId.systemDefault())(ZoneId.of)
       this.toOffsetDateTime(zone).format(DateTimeFormatter.ofPattern(format))
 
-  def copy(epochMilli: Long) =
+  def copy(epochMilli: Long): Timestamp =
     JavaTimestamp.ofEpochMilli(epochMilli)
 
 
@@ -51,21 +53,28 @@ object JavaTimestamp extends Timestamp.Companion:
       def fromJavaUtilDate(date: java.util.Date): Timestamp =
         Timestamp.ofEpochMilli(date.getTime)
 
-  val MaxValue = ofEpochMilli(Long.MaxValue)
+  val MaxValue: Timestamp =
+    ofEpochMilli(Long.MaxValue)
 
-  def ofEpochMilli(o: Long) = new SystemTimestamp(o)
+  def ofEpochMilli(o: Long): Timestamp =
+    new JavaTimestamp(o)
 
-  def apply(instant: Instant) = ofInstant(instant)
+  def apply(instant: Instant): Timestamp =
+    ofInstant(instant)
 
-  def apply(date: java.util.Date) = ofJavaUtilDate(date)
+  def apply(date: java.util.Date): Timestamp =
+    ofJavaUtilDate(date)
 
-  def ofInstant(instant: Instant) = new SystemTimestamp(instant.toEpochMilli)
+  def ofInstant(instant: Instant): JavaTimestamp =
+    new JavaTimestamp(instant.toEpochMilli)
 
-  def ofJavaUtilDate(date: java.util.Date) = JavaTimestamp.ofEpochMilli(date.getTime)
+  def ofJavaUtilDate(date: java.util.Date): Timestamp =
+    JavaTimestamp.ofEpochMilli(date.getTime)
 
-  private def dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
+  private def dateTimeFormatter =
+    DateTimeFormatter.ISO_INSTANT
 
-  def parse(string: String): JavaTimestamp =
+  def parse(string: String): Timestamp =
     ofInstant(Instant.from(dateTimeFormatter parse string))
 
   @TestOnly

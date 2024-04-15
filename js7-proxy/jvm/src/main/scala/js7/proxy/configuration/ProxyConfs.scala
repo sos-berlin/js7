@@ -9,9 +9,9 @@ import js7.common.configuration.Js7Configuration
 import js7.common.http.configuration.RecouplingStreamReaderConfs
 
 object ProxyConfs:
-  val defaultConfig = Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"))
+  val defaultConfig: Config = Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"))
     .withFallback(Js7Configuration.defaultConfig)
-  lazy val default = fromConfig(defaultConfig)
+  lazy val default: ProxyConf = fromConfig(defaultConfig)
 
   def fromConfig(config: Config): ProxyConf =
     val c = config withFallback defaultConfig

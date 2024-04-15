@@ -15,11 +15,11 @@ final case class GenericSignature(
   signerCertificate: Option[String] = None)
 extends Signature:
 
-  def toGenericSignature = this
+  def toGenericSignature: GenericSignature = this
 
   override def toString = s"Signature($toRawString)"
 
-  def toRawString =
+  def toRawString: String =
     if signatureString.length <= 33 then
       signatureString
     else

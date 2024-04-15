@@ -30,18 +30,18 @@ extends ForkInstruction:
       childToId = childToId,
       childToArguments = childToArguments)
 
-  def withoutSourcePos = copy(
+  def withoutSourcePos: ForkList = copy(
     sourcePos = None,
     workflow = workflow.withoutSourcePos)
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): ForkList =
     copy(workflow =
       workflow withPositions position / BranchId.ForkList)
 
-  override def adopt(outer: Workflow) = copy(
+  override def adopt(outer: Workflow): ForkList = copy(
     workflow = workflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, outer: Workflow) =
+  override def reduceForAgent(agentPath: AgentPath, outer: Workflow): Instruction =
     if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, outer) then
       copy(
         workflow = reuseIfEqual(workflow, workflow.reduceForAgent(agentPath)))
@@ -52,12 +52,13 @@ extends ForkInstruction:
     // Any Agent or the controller can fork. The current Agent is okay.
     workflow.isStartableOnAgent(agentPath)
 
-  override def workflow(branchId: BranchId) =
+  override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.ForkList => Right(workflow)
       case _ => super.workflow(branchId)
 
-  override def branchWorkflows = Seq(BranchId.ForkList -> workflow)
+  override def branchWorkflows: Seq[(BranchId, Workflow)] = 
+    Seq(BranchId.ForkList -> workflow)
 
   override def toString = s"ForkList()$sourcePosToString"
 

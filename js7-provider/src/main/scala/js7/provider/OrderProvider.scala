@@ -28,7 +28,7 @@ trait OrderProvider extends HasCloser:
 
   private val orderScheduleGenerator = new OrderScheduleGenerator(addOrders, conf.config)
 
-  protected def startAddingOrders()(using IORuntime) =
+  protected def startAddingOrders()(using IORuntime): Unit =
     orderScheduleGenerator.start()
 
   private def addOrders(orders: Seq[FreshOrder]): IO[Completed] =

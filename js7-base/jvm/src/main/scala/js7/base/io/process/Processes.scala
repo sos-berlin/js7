@@ -21,17 +21,21 @@ object Processes:
 
   private val logger = Logger[this.type]
 
-  def processToString(process: Process): String = processToString(process, processToPidOption(process))
+  def processToString(process: Process): String =
+    processToString(process, processToPidOption(process))
 
-  def processToString(process: Process, pid: Option[Pid]) = pid.map(_.toString) getOrElse process.toString
+  def processToString(process: Process, pid: Option[Pid]): String =
+    pid.map(_.toString) getOrElse process.toString
 
-  def processToPidOption(process: Process): Option[Pid] = ProcessPidRetriever.processToPid(process)
+  def processToPidOption(process: Process): Option[Pid] =
+    ProcessPidRetriever.processToPid(process)
 
 
   /**
    * Builds an argument list for [[ProcessBuilder]].
    */
-  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): Seq[String] = Vector(file.toString) ++ arguments
+  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): Seq[String] =
+    Vector(file.toString) ++ arguments
 
 
   // Shortcuts for operating system specific methods
@@ -40,11 +44,14 @@ object Processes:
     * Including dot.
     * For example ".sh" or ".cmd".
     */
-  val ShellFileExtension = OS.shellFileExtension
+  val ShellFileExtension: String =
+    OS.shellFileExtension
 
-  val ShellFileAttributes: Seq[FileAttribute[java.util.Set[?]]] = OS.shellFileAttributes
+  val ShellFileAttributes: Seq[FileAttribute[java.util.Set[?]]] =
+    OS.shellFileAttributes
 
-  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
+  def newTemporaryShellFile(name: String): Path =
+    OS.newTemporaryShellFile(name)
 
   def temporaryShellFileResource[F[_]](name: String)(using F: Sync[F]): Resource[F, Path] =
     Resource.make(
@@ -53,9 +60,11 @@ object Processes:
       release = file => F.interruptible:
         Files.delete(file))
 
-  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path = OS.newLogFile(directory, name, outerr)
+  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path =
+    OS.newLogFile(directory, name, outerr)
 
-  def directShellCommandArguments(argument: String): Seq[String] = OS.directShellCommandArguments(argument)
+  def directShellCommandArguments(argument: String): Seq[String] =
+    OS.directShellCommandArguments(argument)
 
   @TestOnly
   def runProcess(commandLine: String): String =
@@ -79,7 +88,8 @@ object Processes:
       def buffer[T](f: => T) = f
     })
     if exitCode != 0 then
-      throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString), ByteArray(stderr.toString))
+      throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString),
+        ByteArray(stderr.toString))
     stdout.toString
 
   private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray =
@@ -104,8 +114,10 @@ object Processes:
       throw new ProcessException(commandLine, ReturnCode(returnCode), stdout, stderr)
     stdout
 
-  final class ProcessException(commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray) extends RuntimeException:
-    override def getMessage =
+  final class ProcessException(
+    commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray)
+  extends RuntimeException:
+    override def getMessage: String =
       s"""Command failed with exit code ${returnCode.number}
          |$commandLine
          |""".stripMargin +

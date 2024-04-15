@@ -12,8 +12,10 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobConf, JobResourcePath}
+import js7.data.order.Order
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, Value}
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.{OrderProcess, ProcessOrder, StdWriter}
@@ -61,8 +63,8 @@ object InternalJob:
     def env: Checked[Map[String, Option[String]]] =
       processOrder.checkedJobResourcesEnv
 
-    def order = processOrder.order
-    def workflow = processOrder.workflow
+    def order: Order[Order.Processing] = processOrder.order
+    def workflow: Workflow = processOrder.workflow
 
     @deprecated("Use write")
     def send(outErr: StdoutOrStderr, string: String): IO[Unit] =

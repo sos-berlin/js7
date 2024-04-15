@@ -32,7 +32,7 @@ extends HasCloser, AgentClient:
 
   onClose { super[AgentClient].close() }
 
-  override def close() =
+  override def close(): Unit =
     logOpenSession()
     super[HasCloser].close()
 

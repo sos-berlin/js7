@@ -9,7 +9,7 @@ import org.jetbrains.annotations.TestOnly
 object ClusterWatchMain extends ServiceApp:
   // No Logger here!
 
-  def run(args: List[String]) =
+  def run(args: List[String]): IO[ExitCode] =
     runService(args, "JS7 ClusterWatch", ClusterWatchConf.fromCommandLine)(
       conf => ClusterWatchService.completeResource(conf),
       use = (_, service: ClusterWatchService) => service.untilTerminated)

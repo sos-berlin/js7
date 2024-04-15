@@ -77,7 +77,7 @@ extends MainService, Service.StoppableByRequest:
 
   lazy val localUri: Uri = getLocalUri()
   val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
-  val subagent = forDirector.subagent
+  val subagent: Subagent = forDirector.subagent
   private val isTerminating = Atomic(false)
 
   // SubagentCommand.ShutDown command shuts down the director, too.
@@ -426,7 +426,7 @@ object RunningAgent:
     commandHandler: Option[CommandHandler] = None,
     authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None)
   object TestWiring:
-    val empty = TestWiring()
+    val empty: TestWiring = TestWiring()
 
   private case class MainActorStarted(
     actor: ActorRef @@ MainActor,

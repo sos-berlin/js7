@@ -28,7 +28,7 @@ extends HttpControllerApi, SessionApi.HasUserAndPassword, AutoCloseable:
     new PekkoHttpClient.Standard(
       baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
 
-  def close() =
+  def close(): Unit =
     logOpenSession()
     httpClient.close()
 

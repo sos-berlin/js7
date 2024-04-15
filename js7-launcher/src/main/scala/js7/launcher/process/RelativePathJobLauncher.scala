@@ -12,7 +12,8 @@ final class RelativePathJobLauncher(
   protected val jobLauncherConf: JobLauncherConf)
 extends PathProcessJobLauncher:
 
-  def stop = IO.unit
+  def stop: IO[Unit] = 
+    IO.unit
 
   // Evaluate file path again for each order
   protected def checkFile =

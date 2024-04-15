@@ -19,7 +19,8 @@ extends Period:
   //for (o <- repeat ++ absoluteRepeat) require(o.toMillis > 0, s"repeat should be positive")
   //require(repeat.isEmpty || absoluteRepeat.isEmpty, s"Only one of attributes repeat and absolute_repeat is allowed")
 
-  override def absoluteRepeatOption = Some(absoluteRepeat)
+  override def absoluteRepeatOption: Some[Duration] = 
+    Some(absoluteRepeat)
 
   def nextLocalTime(t: LocalTime): Option[LocalTime] =
     if t < begin then
@@ -38,7 +39,7 @@ extends Period:
 
 
 object RepeatPeriod:
-  val StartOfDay = LocalTime.of(0, 0)
+  val StartOfDay: LocalTime = LocalTime.of(0, 0)
 
   def wholeDay(absoluteRepeat: Duration): RepeatPeriod =
     RepeatPeriod(LocalTime.MIN, ExtendedLocalTime.EndOfDay, absoluteRepeat)

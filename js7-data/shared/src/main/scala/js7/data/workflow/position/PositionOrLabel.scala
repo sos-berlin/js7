@@ -72,7 +72,8 @@ extends PositionOrLabel:
         parent.nextRetryBranchPath
       case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be emitted inside a Fork for a Try outside the Fork
 
-  def isInFork = branchPath.exists(_.branchId.isFork)
+  def isInFork: Boolean =
+    branchPath.exists(_.branchId.isFork)
 
   def isNestedIn(branchPath: BranchPath): Boolean =
     this.branchPath startsWith branchPath
@@ -96,7 +97,7 @@ extends PositionOrLabel:
 
 
 object Position:
-  val First = Position(InstructionNr.First)
+  val First: Position = Position(InstructionNr.First)
   private val NoTryBlockProblem = Problem.pure("Retry, but not in a catch-block")
 
   def apply(nr: InstructionNr): Position =

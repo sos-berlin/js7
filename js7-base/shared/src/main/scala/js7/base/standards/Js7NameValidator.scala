@@ -1,6 +1,7 @@
 package js7.base.standards
 
 import java.lang.Character.isSurrogate
+import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.standards.Js7NameValidator.*
 
@@ -12,16 +13,16 @@ extends NameValidator:
     isExtraNameStart = _.isDigit,
     isExtraNamePart = c => isExtraNamePart0(c) || isSurrogate(c))
 
-  override def checked(name: String) =
+  override def checked(name: String): Checked[String] =
     if name endsWith "." then
       Left(InvalidNameProblem(typeName, name))
     else
       javaNameValidator.checked(name)
 
-  def isNameStart(c: Char) =
+  def isNameStart(c: Char): Boolean =
     javaNameValidator.isNameStart(c)
 
-  def isNamePart(c: Char) =
+  def isNamePart(c: Char): Boolean =
     javaNameValidator.isNamePart(c) || isExtraNamePart0(c)
 
 

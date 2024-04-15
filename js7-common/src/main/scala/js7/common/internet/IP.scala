@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 object IP:
 
   implicit object StringToInetAddress extends As[String, InetAddress]:
-    def apply(o: String) =
+    def apply(o: String): InetAddress =
       // getByName resolves a blank " " name, too (MacOS).
       if o.trim.isEmpty then throw new IllegalArgumentException("Missing IP address")
       InetAddress.getByName(o)
@@ -26,7 +26,7 @@ object IP:
   final class StringToInetSocketAddress(defaultHost: String, defaultPort: Option[Int]) extends As[String, InetSocketAddress]:
     import StringToInetSocketAddress.*
 
-    def apply(string: String) =
+    def apply(string: String): InetSocketAddress =
       try string match
         case StandardRegex(host, port) => useDefaults(host, port)
         case IPv6Regex(host, port) => useDefaults(host, port)
@@ -47,7 +47,7 @@ object IP:
     private val IPv6Regex = """\[(.*)\]:(\d*)""".r
     private val IPv6Host = """\[(.*)\]""".r
 
-    def apply(string: String) =
+    def apply(string: String): InetSocketAddress =
       string match
         case StandardRegex(host, port) => makeInetSocketAddress(host, port)
         case IPv6Regex(host, port) => makeInetSocketAddress(host, port)

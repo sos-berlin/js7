@@ -3,6 +3,7 @@ package js7.base.auth
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.generic.GenericString
 import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
 
 /**
@@ -10,17 +11,17 @@ import js7.base.problem.Problems.InvalidNameProblem
   */
 final case class UserId private(string: String) extends GenericString:
 
-  def isAnonymous = this == UserId.Anonymous
+  def isAnonymous: Boolean = this == UserId.Anonymous
 
   override def toString = s"User:$string"
 
 
 object UserId extends GenericString.Checked_[UserId]:
-  val Anonymous = UserId("Anonymous")
+  val Anonymous: UserId = UserId("Anonymous")
 
   protected def unchecked(string: String) = new UserId(string)
 
-  override def checked(string: String) =
+  override def checked(string: String): Checked[UserId] =
     if string.isEmpty then
       Left(EmptyStringProblem(name))
     else if isValid(string) then

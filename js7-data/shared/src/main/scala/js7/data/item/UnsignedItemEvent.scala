@@ -18,19 +18,19 @@ object UnsignedItemEvent:
     def item: VersionedControl
     assertThat(item.itemRevision.isDefined)
   object UnsignedItemAddedOrChanged:
-    def unapply(event: UnsignedItemAddedOrChanged) = Some(event.item)
+    def unapply(event: UnsignedItemAddedOrChanged): Some[VersionedControl] = Some(event.item)
 
   final case class UnsignedItemAdded(item: VersionedControl)
   extends UnsignedItemAddedOrChanged:
-    def key = item.key
+    def key: VersionedControlId_ = item.key
 
   final case class UnsignedItemChanged(item: VersionedControl)
   extends UnsignedItemAddedOrChanged:
-    def key = item.key
+    def key: VersionedControlId_ = item.key
 
   implicit def jsonCodec[S](implicit S: ItemContainer.Companion[S])
   : TypedJsonCodec[UnsignedItemEvent] =
-    implicit val x = S.versionedControlJsonCodec
+    given TypedJsonCodec[VersionedControl] = S.versionedControlJsonCodec
     TypedJsonCodec(
       Subtype(deriveCodec[UnsignedItemAdded]),
       Subtype(deriveCodec[UnsignedItemChanged]))

@@ -20,7 +20,8 @@ final case class JBranchPath(asScala: BranchPath) extends JavaWrapper:
   def toList: java.util.List[Any] =
     asScala.toFlatSeq.asJava
 
-  override def toString = asScala.show
+  override def toString: String =
+    asScala.show
 
 
 object JBranchPath:

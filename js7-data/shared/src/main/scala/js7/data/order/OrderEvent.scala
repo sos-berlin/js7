@@ -71,7 +71,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX:
     workflowId.requireNonAnonymous()
-    def addedOrderId(orderId: OrderId) = orderId
+    def addedOrderId(orderId: OrderId): OrderId = orderId
     override def toShortString = s"OrderAdded(${workflowId.path})"
   object OrderAdded:
 
@@ -114,9 +114,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
-    def scheduledFor = None
-    def externalOrderKey = None
-    def addedOrderId(o: OrderId) = orderId
+    def scheduledFor: Option[Timestamp] = None
+    def externalOrderKey: Option[ExternalOrderKey] = None
+    def addedOrderId(o: OrderId): OrderId = orderId
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
   object OrderOrderAdded:
 
@@ -166,7 +166,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCoreEvent:
     workflowPosition.workflowId.requireNonAnonymous()
 
-    def workflowId = workflowPosition.workflowId
+    def workflowId: WorkflowId = workflowPosition.workflowId
 
   final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent
@@ -193,7 +193,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def stdoutStderr: StdoutOrStderr
     def chunk: String
 
-    override def toString = getClass.simpleScalaName + "(" +
+    override def toString: String = getClass.simpleScalaName + "(" +
       chunk.truncateWithEllipsis(
         300/*for error lines with long (file path) prefix*/,
         showLength = true) + ")"
@@ -203,29 +203,29 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         case Stdout => OrderStdoutWritten.apply
         case Stderr => OrderStderrWritten.apply
 
-    def unapply(o: OrderStdWritten) = o match
+    def unapply(o: OrderStdWritten): Some[(StdoutOrStderr, String)] = o match
       case OrderStdoutWritten(chunk) => Some((Stdout, chunk))
       case OrderStderrWritten(chunk) => Some((Stderr, chunk))
 
   final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten:
-    def stdoutStderr = Stdout
-    override def toString = super.toString
+    def stdoutStderr: StdoutOrStderr = Stdout
+    override def toString: String = super.toString
   object OrderStdoutWritten:
     implicit val jsonCodec: Codec.AsObject[OrderStdoutWritten] = deriveCodec[OrderStdoutWritten]
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten:
-    def stdoutStderr = Stderr
-    override def toString = super.toString
+    def stdoutStderr: StdoutOrStderr = Stderr
+    override def toString: String = super.toString
   object OrderStderrWritten:
     implicit val jsonCodec: Codec.AsObject[OrderStderrWritten] = deriveCodec[OrderStderrWritten]
 
   final case class OrderProcessed(outcome: OrderOutcome) extends OrderCoreEvent:
-    override def isSucceeded = outcome.isSucceeded
+    override def isSucceeded: Boolean = outcome.isSucceeded
   object OrderProcessed:
-    val processLostDueToRestart = processLost(ProcessLostDueToRestartProblem)
-    val processLostDueToReset = processLost(ProcessLostDueToResetProblem)
+    val processLostDueToRestart: OrderProcessed = processLost(ProcessLostDueToRestartProblem)
+    val processLostDueToReset: OrderProcessed = processLost(ProcessLostDueToResetProblem)
 
-    def processLost(problem: Problem) =
+    def processLost(problem: Problem): OrderProcessed =
       OrderProcessed(OrderOutcome.Disrupted(OrderOutcome.Disrupted.ProcessLost(problem)))
 
     implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
@@ -259,7 +259,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderJoined(outcome: OrderOutcome)
   extends OrderActorEvent:
-    override def isSucceeded = outcome.isSucceeded
+    override def isSucceeded: Boolean = outcome.isSucceeded
 
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
@@ -317,7 +317,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     implicit val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
       deriveCodec[OrderNoticesConsumptionStarted].checked(_.checked)
     type Consumption = OrderNoticesExpected.Expected
-    val Consumption = OrderNoticesExpected.Expected
+    val Consumption: OrderNoticesExpected.Expected.type = OrderNoticesExpected.Expected
 
   final case class OrderNoticesConsumed(failed: Boolean = false)
   extends OrderNoticeEvent
@@ -360,7 +360,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[OrderOutcome.NotSucceeded])
   extends OrderFailedEvent, OrderTerminated:
-    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+    def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
   object OrderFailed:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
@@ -373,7 +373,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
-    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+    def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
   object OrderFailedInFork:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
@@ -386,14 +386,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     movedTo: Position,
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
-    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+    def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
   final case class OrderCaught(
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
-    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+    def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
   object OrderCaught:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
@@ -453,7 +453,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderKillingMarked extends OrderActorEvent:
     def kill: Option[CancellationMode.Kill]
   object OrderKillingMarked:
-    def unapply(event: OrderKillingMarked) = Some(event.kill)
+    def unapply(event: OrderKillingMarked): Some[Option[CancellationMode.Kill]] = Some(event.kill)
 
   /** A OrderCancellationMarked on Agent is different from same Event at the Controller.
     * Controller will ignore the Agent's OrderCancellationMarked.
@@ -461,7 +461,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     **/
   final case class OrderCancellationMarked(mode: CancellationMode = CancellationMode.Default)
   extends OrderKillingMarked:
-    def kill = mode match
+    def kill: Option[CancellationMode.Kill] = mode match
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
 
@@ -477,7 +477,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderKillingMarked:
-    def kill = mode.kill
+    def kill: Option[CancellationMode.Kill] = mode.kill
 
   final case class OrderGoMarked(position: Position)
   extends OrderActorEvent
@@ -513,25 +513,25 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     final case class ReplaceHistoricOutcome(position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
-      def positions = position :: Nil
+      def positions: Iterable[Position] = position :: Nil
     object ReplaceHistoricOutcome:
       def apply(historicOutcome: HistoricOutcome) =
         new ReplaceHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
 
     final case class InsertHistoricOutcome(before: Position, position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
-      def positions = before :: position :: Nil
+      def positions: Iterable[Position] = before :: position :: Nil
     object InsertHistoricOutcome:
       def apply(at: Position, historicOutcome: HistoricOutcome) =
         new InsertHistoricOutcome(at, historicOutcome.position, historicOutcome.outcome)
 
     final case class DeleteHistoricOutcome(position: Position)
     extends HistoryOperation:
-      def positions = position :: Nil
+      def positions: Iterable[Position] = position :: Nil
 
     final case class AppendHistoricOutcome(position: Position, outcome: OrderOutcome)
     extends HistoryOperation:
-      def positions = position :: Nil
+      def positions: Iterable[Position] = position :: Nil
     object AppendHistoricOutcome:
       def apply(historicOutcome: HistoricOutcome) =
         new AppendHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
@@ -565,28 +565,29 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def lockPaths: Seq[LockPath]
 
   object OrderLockEvent:
-    def unapply(event: OrderLockEvent) = Some(event.lockPaths)
+    def unapply(event: OrderLockEvent): Some[Seq[LockPath]] = Some(event.lockPaths)
 
   sealed trait OrderLockAcquiredOrQueuedEvent extends OrderLockEvent:
     def demands: Seq[LockDemand]
 
   final case class OrderLocksQueued(demands: List[LockDemand])
   extends OrderLockAcquiredOrQueuedEvent :
-    def checked = LockDemand.checked(demands).rightAs(this)
-    def lockPaths = demands.map(_.lockPath)
+    def checked: Checked[OrderLocksQueued] = LockDemand.checked(demands).rightAs(this)
+    def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
   final case class OrderLocksAcquired(demands: List[LockDemand])
     extends OrderLockAcquiredOrQueuedEvent:
-    def checked = LockDemand.checked(demands).rightAs(this)
-    def lockPaths = demands.map(_.lockPath)
+    def checked: Checked[OrderLocksAcquired] = LockDemand.checked(demands).rightAs(this)
+    def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
   final case class OrderLocksDequeued(lockPaths: Seq[LockPath])
   extends OrderLockEvent:
-    def checked = lockPaths.checkUniqueness.rightAs(this)
+    def checked: Checked[OrderLocksDequeued] =
+      lockPaths.checkUniqueness.rightAs(this)
 
   final case class OrderLocksReleased(lockPaths: Seq[LockPath])
   extends OrderLockEvent:
-    def checked = lockPaths.checkUniqueness.rightAs(this)
+    def checked: Checked[OrderLocksReleased] = lockPaths.checkUniqueness.rightAs(this)
 
   final case class LockDemand(lockPath: LockPath, count: Option[Int] = None):
     def checked: Checked[this.type] =
@@ -595,7 +596,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       else
         Right(this)
   object LockDemand:
-    def checked(demands: Seq[LockDemand]) =
+    def checked(demands: Seq[LockDemand]): Checked[Unit] =
       demands
         .checkUniqueness(_.lockPath)
         .>>(demands.traverse(_.checked))

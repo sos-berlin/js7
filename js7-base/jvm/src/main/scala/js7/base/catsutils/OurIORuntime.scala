@@ -131,9 +131,11 @@ object OurIORuntime:
       case ec: ExecutionContext => ec
       case _ =>
         new ExecutionContext:
-          def execute(runnable: Runnable) = executor.execute(runnable)
+          def execute(runnable: Runnable): Unit = 
+            executor.execute(runnable)
 
-          def reportFailure(t: Throwable) = OurIORuntime.reportFailure(t)
+          def reportFailure(t: Throwable): Unit =
+            OurIORuntime.reportFailure(t)
 
   private def reportFailure(throwable: Throwable): Unit =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${

@@ -40,14 +40,14 @@ object ClusterEvent:
 
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
   extends ClusterNodeLostEvent:
-    def lostNodeId = failedActiveId
+    def lostNodeId: Id = failedActiveId
 
     override def toString =
       s"ClusterFailedOver(${failedActiveId.string} --> ${activatedId.string}, $failedAt)"
 
   final case class ClusterPassiveLost(id: Id)
   extends ClusterNodeLostEvent:
-    def lostNodeId = id
+    def lostNodeId: Id = id
   type ClusterActiveNodeShutDown = ClusterActiveNodeShutDown.type
   case object ClusterActiveNodeShutDown
   extends ClusterEvent

@@ -2,8 +2,8 @@ package js7.data.workflow.instructions
 
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
-import js7.data.board.BoardPathExpression
-import js7.data.order.Order
+import js7.data.board.{BoardPath, BoardPathExpression}
+import js7.data.order.{Order, OrderEvent}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.source.SourcePos
 
@@ -12,11 +12,14 @@ final case class ExpectNotices(
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction:
 
-  def withoutSourcePos = copy(sourcePos = None)
+  def withoutSourcePos: ExpectNotices =
+    copy(sourcePos = None)
 
-  def referencedBoardPaths = boardPaths.boardPaths
+  def referencedBoardPaths: Set[BoardPath] =
+    boardPaths.boardPaths
 
-  def fulfilledEvents(order: Order[Order.State], ignored: Vector[OrderNoticesExpected.Expected]) =
+  def fulfilledEvents(order: Order[Order.State], ignored: Vector[OrderNoticesExpected.Expected])
+  : List[OrderEvent.OrderActorEvent] =
     OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
 
 

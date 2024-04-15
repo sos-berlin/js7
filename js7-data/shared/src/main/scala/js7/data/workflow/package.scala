@@ -1,11 +1,12 @@
 package js7.data
 
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.item.{UnsignedVersionedItemId, VersionId, VersionedItemId}
+import js7.data
+import js7.data.item.{UnsignedVersionedItemId, VersionId, VersionedControlPath, VersionedItemId}
 
 package object workflow:
   type WorkflowId = VersionedItemId[WorkflowPath]
-  val WorkflowId = WorkflowPath.VersionedItemIdCompanion
+  val WorkflowId: data.workflow.WorkflowPath.VersionedItemIdCompanion.type = WorkflowPath.VersionedItemIdCompanion
 
   type WorkflowControlId = UnsignedVersionedItemId[WorkflowControlPath]
 
@@ -18,17 +19,20 @@ package object workflow:
         WorkflowControlPath(workflowId.path),
         workflowId.versionId)
 
-    def apply(path: WorkflowControlPath, versionId: VersionId) =
+    def apply(path: WorkflowControlPath, versionId: VersionId)
+    : UnsignedVersionedItemId[WorkflowControlPath] =
       path ~ versionId
 
-    val pathCompanion = WorkflowControlPath
+    val pathCompanion: VersionedControlPath.Companion[WorkflowControlPath] = WorkflowControlPath
 
     // A versioned pathTypeName may not differ from its itemTypePath
-    def pathTypeName = itemTypeName
+    def pathTypeName: String = itemTypeName
 
     object syntax:
       implicit final class RichWorkflowControlId(private val workflowControlId: WorkflowControlId)
       extends AnyVal:
-        def workflowId = WorkflowId(workflowPath, workflowControlId.versionId)
+        def workflowId: WorkflowId =
+          WorkflowId(workflowPath, workflowControlId.versionId)
 
-        def workflowPath = WorkflowPath(workflowControlId.path.string)
+        def workflowPath: WorkflowPath =
+          WorkflowPath(workflowControlId.path.string)

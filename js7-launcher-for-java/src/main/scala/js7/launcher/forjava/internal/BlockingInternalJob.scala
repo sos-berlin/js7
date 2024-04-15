@@ -118,4 +118,4 @@ object BlockingInternalJob:
     def run(): JOutcome.Completed
 
     @throws[Exception] @Nonnull
-    def cancel(immediately: Boolean) = {}
+    def cancel(immediately: Boolean): Unit = {}

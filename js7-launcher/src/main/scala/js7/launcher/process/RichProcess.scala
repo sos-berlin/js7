@@ -17,6 +17,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -45,7 +46,7 @@ abstract class RichProcess protected[process](
             waitForProcessTermination(process)
 
 
-  def duration = runningSince.elapsed
+  def duration: FiniteDuration = runningSince.elapsed
 
   def terminated: IO[ReturnCode] =
     _terminated
@@ -168,14 +169,15 @@ abstract class RichProcess protected[process](
   final def stdin: OutputStream =
     process.stdin
 
-  override def toString =
+  override def toString: String =
     process.toString
 
 
 object RichProcess:
   private val logger = Logger[this.type]
 
-  def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
+  def tryDeleteFile(file: Path): Boolean =
+    tryDeleteFiles(file :: Nil)
 
   def tryDeleteFiles(files: Iterable[Path]): Boolean =
     var allFilesDeleted = true

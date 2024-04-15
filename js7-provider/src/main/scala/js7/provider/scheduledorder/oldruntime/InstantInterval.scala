@@ -11,7 +11,8 @@ import scala.language.implicitConversions
   */
 final case class InstantInterval(from: Instant, until: Instant):
 
-  def +(duration: Duration) = InstantInterval(from + duration, until + duration)
+  def +(duration: Duration): InstantInterval = 
+    InstantInterval(from + duration, until + duration)
 
   override def toString = s"[$from, $until)"
 

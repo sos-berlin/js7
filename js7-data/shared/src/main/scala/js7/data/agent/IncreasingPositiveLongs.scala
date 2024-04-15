@@ -16,7 +16,7 @@ extends AbstractIterator[Long]:
 
   def hasNext = true
 
-  def next() =
+  def next(): Long =
     counter.getAndUpdate(new LongUnaryOperator {
       def applyAsLong(n: Long) =
         n match {

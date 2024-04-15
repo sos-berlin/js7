@@ -31,7 +31,7 @@ final case class Repo(
   assert(versionIds.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
   /** `signatureVerifier` is not compared - for testing only. */
-  override def equals(o: Any) = o match
+  override def equals(o: Any): Boolean = o match
     case o: Repo =>
       versionIds == o.versionIds &&
         pathToVersionToSignedItems == o.pathToVersionToSignedItems
@@ -41,7 +41,7 @@ final case class Repo(
 
   lazy val currentVersionId: VersionId = versionIds.headOption getOrElse VersionId.Anonymous
 
-  def currentVersionSize =
+  def currentVersionSize: Int =
     currentSignedItems.size
 
   lazy val currentVersion: Map[VersionedItemPath, Signed[VersionedItem]] =
@@ -410,7 +410,7 @@ final case class Repo(
       case _ :: tail => Right(tail)
 
   // TODO Very big toString ?
-  override def toString =
+  override def toString: String =
     if versionIds.isEmpty && pathToVersionToSignedItems.isEmpty then
       "Repo.empty"
     else
@@ -445,12 +445,16 @@ final case class Repo(
     addedOrChanged: Seq[VersionedItemAddedOrChanged])
   extends EventBlock:
     def isEmpty = false
-    lazy val events = (View(VersionAdded(versionId)) ++ removedEvents ++ addedOrChanged).toVector
-    lazy val ids =
+    lazy val events: Seq[VersionedEvent] =
+      (View(VersionAdded(versionId)) ++ removedEvents ++ addedOrChanged).toVector
+
+    lazy val ids: Seq[VersionedItemId_] =
       (removedEvents.view.map(event => (pathToId(event.path).get: VersionedItemId_)) ++
         addedOrChanged.view.map(_.path ~ versionId)
       ).toVector
-    lazy val items = addedOrChanged.view.map(_.signed.value).toVector
+
+    lazy val items: Seq[VersionedItem] =
+      addedOrChanged.view.map(_.signed.value).toVector
 
 
 object Repo:
@@ -547,22 +551,30 @@ object Repo:
     def maybeSignedItem: Option[Signed[VersionedItem]]
     def isRemoved: Boolean
   object Version:
-    def apply(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]) =
+    def apply(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]): Version =
       maybeSignedItem match
         case None => Remove(versionId)
         case Some(signed) => Add(signed)
-    def unapply(version: Version) = Some(version.versionId -> version.maybeSignedItem)
+
+    def unapply(version: Version): Some[(VersionId, Option[Signed[VersionedItem]])] =
+      Some(version.versionId -> version.maybeSignedItem)
   /** Add or updated. */
   final case class Add(signedItem: Signed[VersionedItem])
   extends Version:
-    def versionId = signedItem.value.id.versionId
-    val maybeSignedItem = Some(signedItem)
+    def versionId: VersionId =
+      signedItem.value.id.versionId
+
+    val maybeSignedItem: Option[Signed[VersionedItem]] =
+      Some(signedItem)
+
     def isRemoved = false
-    override def toString = s"+${signedItem.value.id.versionId.string}"
+
+    override def toString =
+      s"+${signedItem.value.id.versionId.string}"
   final case class Remove(versionId: VersionId)
   extends Version:
     def isRemoved = true
-    def maybeSignedItem = None
+    def maybeSignedItem: None.type = None
     override def toString = s"-${versionId.string}"
 
   /** None: not known at or before this VersionId; Some(None): removed at or before this VersionId. */

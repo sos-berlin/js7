@@ -133,7 +133,7 @@ private object WindowsApi:
   def messageIdToString(id: Int) =
     if id <= 0xc0ffffff /*negative*/  then f"0x$id%08x" else id.toString
 
-  private def requireWindows(functionName: String) =
+  private def requireWindows(functionName: String): Unit =
     if !isWindows then sys.error(s"Windows API '$functionName' is only available under Microsoft Windows")
 
   final class WindowsException(message: String) extends RuntimeException(message)

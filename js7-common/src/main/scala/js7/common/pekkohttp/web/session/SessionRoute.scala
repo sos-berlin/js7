@@ -61,7 +61,7 @@ trait SessionRoute extends RouteProvider:
   private def authenticateOrUseHttpUser(
     idsOrUser: Either[Set[UserId], SimpleUser],
     userAndPasswordOption: Option[UserAndPassword])
-  : Either[Problem, SimpleUser] =
+  : Checked[SimpleUser] =
     userAndPasswordOption match
       case None =>
         idsOrUser match

@@ -49,7 +49,7 @@ extends AutoCloseable:
     case o => o
 
   /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
-  def close() =
+  def close(): Unit =
     synchronized:
       for in <- Option(inAtomic.getAndSet(null)) do
         in.close()
@@ -136,7 +136,8 @@ extends AutoCloseable:
         lineNumber = -1
         logger.trace(s"seek $pos => blockPos=$pos blockRead=$blockRead blockLength=$blockLength")
 
-  def position = blockPos + blockRead
+  def position: Long = 
+    blockPos + blockRead
 
   private def check[A](body: => A): A =
     try body
@@ -164,4 +165,5 @@ object InputStreamJsonSeqReader:
   extends ProblemException(JsonSeqFileClosedProblem(file))
 
   final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded:
-    def arguments = Map("file" -> file)
+    def arguments: Map[String, String] = Map(
+      "file" -> file)

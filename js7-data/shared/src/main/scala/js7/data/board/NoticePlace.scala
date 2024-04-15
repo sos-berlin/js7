@@ -24,7 +24,7 @@ extends Big:
       Problem(s"NoticePlace($noticeId) with different NoticeIds")
     ).rightAs(this)
 
-  def isEmpty =
+  def isEmpty: Boolean =
     notice.isEmpty &&
       expectingOrderIds.isEmpty &&
       !isInConsumption &&
@@ -72,5 +72,7 @@ object NoticePlace:
     isInConsumption: Boolean,
     consumptionCount: Int)
   extends BoardSnapshot
+
   object Snapshot:
-    val subtype = Subtype.named(deriveCodec[Snapshot], "NoticePlace")
+    val subtype: Subtype[Snapshot] =
+      Subtype.named(deriveCodec[Snapshot], "NoticePlace")

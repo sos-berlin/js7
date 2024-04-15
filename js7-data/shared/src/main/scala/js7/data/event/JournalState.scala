@@ -5,12 +5,13 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.{Heartbeat, JournalEventsReleased, SnapshotTaken}
-import fs2.Stream
+import fs2.{Pure, Stream}
 
 final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId]):
-  def estimatedSnapshotSize = if this != JournalState.empty then 1 else 0
+  def estimatedSnapshotSize: Int = 
+    if this != JournalState.empty then 1 else 0
 
-  def toSnapshotStream =
+  def toSnapshotStream: Stream[Pure, JournalState] =
     Stream.iterable((this != JournalState.empty) ? this)
 
   def applyEvent(event: JournalEvent): JournalState =
@@ -31,5 +32,5 @@ final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId]):
 
 
 object JournalState:
-  val empty = JournalState(Map.empty)
+  val empty: JournalState = JournalState(Map.empty)
   implicit val jsonCodec: Codec.AsObject[JournalState] = deriveCodec[JournalState]

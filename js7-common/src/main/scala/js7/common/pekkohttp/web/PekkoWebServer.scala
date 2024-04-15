@@ -251,7 +251,7 @@ object PekkoWebServer:
     final class Simple(route: Route) extends BoundRoute:
       val serviceName = ""
 
-      val webServerRoute = IO.pure(route)
+      val webServerRoute: IO[Route] = IO.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
 

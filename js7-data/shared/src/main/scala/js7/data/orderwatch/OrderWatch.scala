@@ -2,7 +2,7 @@ package js7.data.orderwatch
 
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.agent.AgentPath
-import js7.data.item.UnsignedSimpleItem
+import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.orderwatch.OrderWatch.*
 import js7.data.workflow.WorkflowPath
 
@@ -18,14 +18,16 @@ trait OrderWatch extends UnsignedSimpleItem:
 
   val workflowPath: WorkflowPath
 
-  override def dedicatedAgentPath =
+  override def dedicatedAgentPath: Option[AgentPath] =
     Some(agentPath)
 
 
 object OrderWatch:
   trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]:
     type Key = OrderWatchPath
-    def Key = OrderWatchPath
+    
+    def Key: UnsignedSimpleItemPath.Companion[OrderWatchPath] = 
+      OrderWatchPath
 
     type ItemState = OrderWatchState
 

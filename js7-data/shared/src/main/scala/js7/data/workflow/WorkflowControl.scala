@@ -19,22 +19,22 @@ extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
   def workflowId: WorkflowId =
     id.workflowId
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): WorkflowControl =
     copy(itemRevision = revision)
 
-  def workflowPath = id.path.workflowPath
+  def workflowPath: WorkflowPath = id.path.workflowPath
 
 
 object WorkflowControl
 extends VersionedControl.Companion[WorkflowControl], UnsignedItemState.Companion[WorkflowControl]:
 
   type Item = WorkflowControl
-  val cls = classOf[WorkflowControl]
+  val cls: Class[WorkflowControl] = classOf[WorkflowControl]
 
   override type Key = WorkflowControlId
 
   type Path = WorkflowControlPath
-  val Path = WorkflowControlPath
+  val Path: WorkflowControlPath.type = WorkflowControlPath
 
   override type ItemState = WorkflowControl
 

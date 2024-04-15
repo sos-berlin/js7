@@ -27,4 +27,4 @@ final class StandardFutureCancelable(f: () => Future[Unit]) extends FutureCancel
 
 object EmptyFutureCancelable extends FutureCancelable:
 
-  def cancelToFuture() = Future.successful(())
+  def cancelToFuture(): Future[Unit] = Future.successful(())

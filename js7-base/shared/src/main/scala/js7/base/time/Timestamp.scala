@@ -17,7 +17,7 @@ trait Timestamp extends Ordered[Timestamp]:
 
   def toEpochMilli: Long
 
-  def toEpochSecond = toEpochMilli / 1000
+  def toEpochSecond: Long = toEpochMilli / 1000
 
   /** Returns an ISO-8601 string with milliseconds.
     * For example "2017-12-04T11:22:33.456Z".
@@ -40,7 +40,7 @@ trait Timestamp extends Ordered[Timestamp]:
 
   //Problem with sbt: def toIsoStringBuilder: StringBuilder
 
-  def compare(o: Timestamp) = toEpochMilli compare o.toEpochMilli
+  def compare(o: Timestamp): Int = toEpochMilli compare o.toEpochMilli
 
   def +(o: FiniteDuration): Timestamp =
     copy(epochMilli = addSaturating(toEpochMilli, o.toMillis))
@@ -51,9 +51,9 @@ trait Timestamp extends Ordered[Timestamp]:
   def -(o: Timestamp): FiniteDuration =
     new FiniteDuration(subtractSaturating(toEpochMilli, o.toEpochMilli), MILLISECONDS)
 
-  final def min(o: Timestamp) = if this < o then this else o
+  final def min(o: Timestamp): Timestamp = if this < o then this else o
 
-  final def max(o: Timestamp) = if this > o then this else o
+  final def max(o: Timestamp): Timestamp = if this > o then this else o
 
   final def roundToNextSecond: Timestamp = copy((toEpochMilli + 999)/ 1000 * 1000)
 
@@ -67,11 +67,11 @@ trait Timestamp extends Ordered[Timestamp]:
 
   def copy(epochMilli: Long): Timestamp
 
-  def show = toString
+  def show: String = toString
 
-  def pretty = toString.replace('T', ' ')
+  def pretty: String = toString.replace('T', ' ')
 
-  override def toString =
+  override def toString: String =
     if toEpochMilli == 0 then "Epoch" else toIsoString
 
 
@@ -97,7 +97,7 @@ object Timestamp:
   def now: Timestamp =
     ofEpochMilli(currentTimeMillis)
 
-  final def currentTimeMillis = System.currentTimeMillis
+  final def currentTimeMillis: Long = System.currentTimeMillis
 
   implicit val TimestampShow: Show[Timestamp] = _.show
 

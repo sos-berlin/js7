@@ -22,31 +22,31 @@ extends Instruction:
   private def checked: Checked[this.type] =
     LockDemand.checked(demands).rightAs(this)
 
-  def withoutSourcePos = copy(
+  def withoutSourcePos: LockInstruction = copy(
     sourcePos = None,
     lockedWorkflow = lockedWorkflow.withoutSourcePos)
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): LockInstruction =
     copy(
       lockedWorkflow = lockedWorkflow.withPositions(position / BranchId.Lock))
 
-  override def adopt(outer: Workflow) = copy(
+  override def adopt(outer: Workflow): LockInstruction = copy(
     lockedWorkflow = lockedWorkflow.copy(
       outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if isVisibleForAgent(agentPath, workflow) then
       copy(
         lockedWorkflow = lockedWorkflow.reduceForAgent(agentPath))
     else
       Gap(sourcePos)  // The agent will never touch this lock or it subworkflow
 
-  override def workflows = lockedWorkflow :: Nil
+  override def workflows: Seq[Workflow] = lockedWorkflow :: Nil
 
-  override def branchWorkflows =
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Lock -> lockedWorkflow) :: Nil
 
-  override def workflow(branchId: BranchId) =
+  override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Lock => Right(lockedWorkflow)
       case _ => super.workflow(branchId)

@@ -44,15 +44,15 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def apply(array: Array[Byte]): ByteSeq =
     fromArray(array)
 
-  def apply(string: String) =
+  def apply(string: String): ByteSeq =
     fromString(string)
 
-  def one(byte: Byte) =
+  def one(byte: Byte): ByteSeq =
     unsafeWrap(Array(byte))
 
   def fromArray(bytes: Array[Byte]): ByteSeq
 
-  def fromArray(bytes: Array[Byte], from: Int, until: Int) =
+  def fromArray(bytes: Array[Byte], from: Int, until: Int): ByteSeq =
     if bytes.isEmpty then
       empty
     else
@@ -115,10 +115,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def toChunk(byteSeq: ByteSeq): fs2.Chunk[Byte] =
     fs2.Chunk.array(unsafeArray(byteSeq))
 
-  def show(byteSeq: ByteSeq) =
+  def show(byteSeq: ByteSeq): String =
     show(byteSeq, maxShowLength)
 
-  def show(byteSeq: ByteSeq, limit: Int) =
+  def show(byteSeq: ByteSeq, limit: Int): String =
     // TODO Test is missing
     val len = length(byteSeq)
     val prefix = take(byteSeq, limit)
@@ -131,7 +131,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
         (len > limit) ?? (s", $len bytes") +
         ")"
 
-  def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
+  def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
     nonEmpty(byteSeq) ??
       ("»" +
         iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintableChar).mkString).mkString +
@@ -192,10 +192,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     m >= 0 &&
       (0 until n).forall(i => at(byteSeq, m + i) == at(suffix, i))
 
-  def take(byteSeq: ByteSeq, n: Int) =
+  def take(byteSeq: ByteSeq, n: Int): ByteSeq =
     slice(byteSeq, 0, n)
 
-  def drop(byteSeq: ByteSeq, n: Int) =
+  def drop(byteSeq: ByteSeq, n: Int): ByteSeq =
     slice(byteSeq, n, length(byteSeq))
 
   def slice(byteSeq: ByteSeq, from: Int, until: Int): ByteSeq =
@@ -324,19 +324,19 @@ object ByteSequence:
     def typeClassInstance: ByteSequence[ByteSeq]
     def self: ByteSeq
 
-    def show =
+    def show: String =
       typeClassInstance.show(self)
 
     def show(limit: Int): String =
       typeClassInstance.show(self, limit = limit)
 
-    def toStringAndHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
+    def toStringAndHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
       typeClassInstance.toStringAndHexRaw(self, n, withEllipsis)
 
     def toHexRaw: String =
       typeClassInstance.toHexRaw(self)
 
-    def toHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
+    def toHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
       typeClassInstance.toHexRaw(self, n, withEllipsis)
 
     def toHex: String =
@@ -378,10 +378,10 @@ object ByteSequence:
     def endsWith(suffix: ByteSeq): Boolean =
       typeClassInstance.endsWith(self, suffix)
 
-    def take(n: Int) =
+    def take(n: Int): ByteSeq =
       typeClassInstance.take(self, n)
 
-    def drop(n: Int) =
+    def drop(n: Int): ByteSeq =
       typeClassInstance.drop(self, n)
 
     def slice(from: Int, until: Int): ByteSeq =
@@ -406,10 +406,10 @@ object ByteSequence:
     def iterator: Iterator[Byte] =
       typeClassInstance.iterator(self)
 
-    def utf8String =
+    def utf8String: String =
       typeClassInstance.utf8String(self)
 
-    def utf8StringTruncateAt(truncateAt: Int) =
+    def utf8StringTruncateAt(truncateAt: Int): String =
       typeClassInstance.utf8StringTruncateAt(self, truncateAt)
 
     def toArray: Array[Byte] =
@@ -437,25 +437,25 @@ object ByteSequence:
     def toByteArray: ByteArray =
       typeClassInstance.toByteArray(self)
 
-    def toByteSequence[A](implicit A: ByteSequence[A]) =
+    def toByteSequence[A](implicit A: ByteSequence[A]): A =
       typeClassInstance.toByteSequence(self)
 
-    def toByteBuffer =
+    def toByteBuffer: ByteBuffer =
       typeClassInstance.toByteBuffer(self)
 
-    def toInputStream =
+    def toInputStream: InputStream =
       typeClassInstance.toInputStream(self)
 
-    def toInputStreamResource =
+    def toInputStreamResource: Resource[SyncIO, InputStream] =
       typeClassInstance.toInputStreamResource(self)
 
-    def writeToStream(out: OutputStream) =
+    def writeToStream(out: OutputStream): Unit =
       typeClassInstance.writeToStream(self, out)
 
-    def parseJsonAs[B: Decoder] =
+    def parseJsonAs[B: Decoder]: Checked[B] =
       typeClassInstance.parseJsonAs(self)
 
-    def parseJson =
+    def parseJson: Checked[Json] =
       typeClassInstance.parseJson(self)
 
   trait ToByteSequenceOps:

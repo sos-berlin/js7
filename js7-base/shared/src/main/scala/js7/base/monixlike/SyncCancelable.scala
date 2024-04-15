@@ -14,4 +14,4 @@ object SyncCancelable:
   def apply(cancel: Runnable): SyncCancelable =
     val cancel_ = cancel
     new SyncCancelable:
-      def cancel() = cancel_.run()
+      def cancel(): Unit = cancel_.run()

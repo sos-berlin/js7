@@ -32,13 +32,13 @@ object LocalInterval:
     def contains(local: LocalDateTime): Boolean =
       !start.isAfter(local) && end.isAfter(local)
 
-    def contains(start: LocalDateTime, end: LocalDateTime) =
+    def contains(start: LocalDateTime, end: LocalDateTime): Boolean =
       this.start < end && start < this.end
 
-    def startsBefore(local: LocalDateTime) =
+    def startsBefore(local: LocalDateTime): Boolean =
       start <= local
 
-    def endsBefore(local: LocalDateTime) =
+    def endsBefore(local: LocalDateTime): Boolean =
       end <= local
 
     def end: LocalDateTime =
@@ -49,7 +49,7 @@ object LocalInterval:
         JavaTimestamp.ofZoned(ZonedDateTime.of(start, zone)),
         duration)
 
-    def compare(o: LocalInterval) =
+    def compare(o: LocalInterval): Int =
       o match
         case Never => -1  // this < Never
         case Always => +1 // this > Always
@@ -70,10 +70,10 @@ object LocalInterval:
     def endsBefore(local: LocalDateTime) =
       true
 
-    def toTimeInterval(zone: ZoneId) =
+    def toTimeInterval(zone: ZoneId): TimeInterval =
       TimeInterval.Never
 
-    def compare(o: LocalInterval) =
+    def compare(o: LocalInterval): Int =
       o match
         case Never => 0
         case _ => +1  // Never > Always, Never > Standard
@@ -93,10 +93,10 @@ object LocalInterval:
     def endsBefore(local: LocalDateTime) =
       false
 
-    def toTimeInterval(zone: ZoneId) =
+    def toTimeInterval(zone: ZoneId): TimeInterval =
       TimeInterval.Always
 
-    def compare(o: LocalInterval) =
+    def compare(o: LocalInterval): Int =
       o match
         case Always => 0
         case _ => -1  // Always < 0, Always < Standard

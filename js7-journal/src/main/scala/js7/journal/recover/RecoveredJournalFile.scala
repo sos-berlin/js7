@@ -2,7 +2,7 @@ package js7.journal.recover
 
 import java.nio.file.Path
 import js7.base.utils.Assertions.assertThat
-import js7.data.event.{JournalHeader, JournalPosition, SnapshotableState}
+import js7.data.event.{EventId, JournalHeader, JournalId, JournalPosition, SnapshotableState}
 
 final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   file: Path,
@@ -22,12 +22,17 @@ final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   assertThat(journalHeader.eventId < nextJournalHeader.eventId)
   assertThat(journalHeader.totalEventCount < nextJournalHeader.totalEventCount)
 
-  def journalId = journalHeader.journalId
+  def journalId: JournalId =
+    journalHeader.journalId
 
-  def fileEventId = journalHeader.eventId
+  def fileEventId: EventId =
+    journalHeader.eventId
 
-  def eventId = nextJournalHeader.eventId
+  def eventId: EventId =
+    nextJournalHeader.eventId
 
-  def journalPosition = JournalPosition(fileEventId, length)
+  def journalPosition: JournalPosition =
+    JournalPosition(fileEventId, length)
 
-  override def toString = s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$nextJournalHeader)"
+  override def toString =
+    s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$nextJournalHeader)"

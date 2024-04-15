@@ -43,6 +43,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentI
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import fs2.Stream
+import js7.base.auth.UserId
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -68,14 +69,16 @@ extends SignedItemContainer,
 
   def isAgent = false
 
-  def controllerId = controllerMetaState.controllerId
+  def controllerId: ControllerId =
+    controllerMetaState.controllerId
 
-  def companion = ControllerState
+  def companion: ControllerState.type =
+    ControllerState
 
-  def clusterNodeIdToName(nodeId: NodeId) =
+  def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     Right(DummyClusterNodeName)
 
-  def clusterNodeToUserId(nodeId: NodeId) =
+  def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
     Right(controllerId.toUserId)
 
   def estimatedSnapshotSize: Int =
@@ -112,13 +115,13 @@ extends SignedItemContainer,
       Stream.iterable(idToOrder.values)
     ).flatten
 
-  def withEventId(eventId: EventId) =
+  def withEventId(eventId: EventId): ControllerState =
     copy(eventId = eventId)
 
-  def withStandards(standards: SnapshotableState.Standards) =
+  def withStandards(standards: SnapshotableState.Standards): ControllerState =
     copy(standards = standards)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] = keyedEvent match
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(
         controllerId = controllerId,
@@ -641,11 +644,11 @@ extends SignedItemContainer,
         repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
 
-  def workflowPathToId(workflowPath: WorkflowPath) =
+  def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  def pathToJobResource = keyTo(JobResource)
+  def pathToJobResource: MapView[JobResourcePath, JobResource] = keyTo(JobResource)
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
     new MapView[SignableItemKey, Signed[SignableItem]]:
@@ -667,7 +670,8 @@ extends SignedItemContainer,
     pathToSignedSimpleItem.values.view ++
       repo.signedItems
 
-  def orders = idToOrder.values
+  def orders: Iterable[Order[Order.State]] =
+    idToOrder.values
 
   def finish: ControllerState =
     copy(
@@ -693,7 +697,7 @@ extends ClusterableState.Companion[ControllerState],
 
   private val logger = Logger[this.type]
 
-  val Undefined = ControllerState(
+  val Undefined: ControllerState = ControllerState(
     EventId.BeforeFirst,
     SnapshotableState.Standards.empty,
     ControllerMetaState.Undefined,
@@ -704,7 +708,7 @@ extends ClusterableState.Companion[ControllerState],
     Set.empty,
     Map.empty)
 
-  val empty = Undefined
+  val empty: ControllerState = Undefined
 
   def newBuilder() = new ControllerStateBuilder
 
@@ -712,27 +716,28 @@ extends ClusterableState.Companion[ControllerState],
     AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
-  lazy val snapshotObjectJsonCodec = TypedJsonCodec[Any](
-    Subtype[JournalHeader],
-    Subtype[SnapshotMeta],
-    Subtype[JournalState],
-    Subtype[ClusterStateSnapshot],
-    Subtype[ControllerMetaState],
-    Subtype[AgentRefState],
-    Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),
-    Subtype[SubagentSelection],
-    Subtype[LockState],
-    Subtype[Board],
-    Subtype[Calendar],
-    Subtype[Notice],
-    NoticePlace.Snapshot.subtype,
-    BoardState.NoticeConsumptionSnapshot.subtype,
-    Subtype[VersionedEvent],  // These events describe complete objects
-    Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
-    Subtype[OrderWatchState.Snapshot],
-    Subtype[Order[Order.State]],
-    WorkflowPathControl.subtype,
-    WorkflowControl.subtype)
+  lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+    TypedJsonCodec[Any](
+      Subtype[JournalHeader],
+      Subtype[SnapshotMeta],
+      Subtype[JournalState],
+      Subtype[ClusterStateSnapshot],
+      Subtype[ControllerMetaState],
+      Subtype[AgentRefState],
+      Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),
+      Subtype[SubagentSelection],
+      Subtype[LockState],
+      Subtype[Board],
+      Subtype[Calendar],
+      Subtype[Notice],
+      NoticePlace.Snapshot.subtype,
+      BoardState.NoticeConsumptionSnapshot.subtype,
+      Subtype[VersionedEvent],  // These events describe complete objects
+      Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
+      Subtype[OrderWatchState.Snapshot],
+      Subtype[Order[Order.State]],
+      WorkflowPathControl.subtype,
+      WorkflowControl.subtype)
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec/*.named("ControllerState.keyedEventJsonCodec"*/(

@@ -11,7 +11,7 @@ import scala.collection.mutable
 trait CommonCommand:
   type Response
 
-  def toShortString = toString
+  def toShortString: String = toString
 
   /**
    * true if toString returns a longer string than toShortString.
@@ -31,11 +31,11 @@ object CommonCommand:
 
       def commands: Seq[CorrelIdWrapped[Command]]
 
-      override def toString =
+      override def toString: String =
         val b = mutable.Buffer.empty[String]
         var last = ""
         var n = 0
-        def flush() = if !last.isEmpty then
+        def flush(): Unit = if !last.isEmpty then
           b += (if n == 1 then last else s"$n×$last")
           last = ""
           n = 0
@@ -56,6 +56,6 @@ object CommonCommand:
         def responses: Seq[Checked[Companion.this.Response]]
         def productPrefix: String
 
-        override def toString =
+        override def toString: String =
           val succeeded = responses.count(_.isRight)
           s"$productPrefix($succeeded succeeded and ${responses.size - succeeded} failed)"

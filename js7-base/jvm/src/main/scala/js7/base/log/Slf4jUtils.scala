@@ -13,7 +13,7 @@ object Slf4jUtils:
   // SLF4J: See also https://www.slf4j.org/codes.html#substituteLogger
   LoggerFactory.getILoggerFactory
 
-  def initialize() = {}
+  def initialize(): Unit = {}
 
   object syntax:
     implicit final class LevelLogger(private val delegate: slf4j.Logger) extends AnyVal:

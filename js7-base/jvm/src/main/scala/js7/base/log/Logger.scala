@@ -94,7 +94,7 @@ object Logger extends AdHocLogger:
         prefix,
         LoggerFactory.getLogger(normalizeClassName(c))))
 
-  private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = "") =
+  private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = ""): Unit =
     if !ifNotInitialized.isInitializing then
       ifNotAboutMissingIniatializingWarned:
         val classArg = if cls == null then "" else s"[${cls.scalaName}]"

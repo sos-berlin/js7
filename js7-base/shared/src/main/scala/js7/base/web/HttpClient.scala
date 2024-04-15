@@ -98,18 +98,19 @@ object HttpClient:
   abstract class HttpException(message: String = null) extends RuntimeException(message):
     def statusInt: Int
     def problem: Option[Problem]
-    def isTemporaryUnreachable = isTemporaryUnreachableStatus(statusInt)
+    def isTemporaryUnreachable: Boolean = 
+      isTemporaryUnreachableStatus(statusInt)
   object HttpException:
     object HasProblem:
       def unapply(e: HttpException): Option[Problem] =
         e.problem
 
-  def isTemporaryUnreachable(throwable: Throwable) =
+  def isTemporaryUnreachable(throwable: Throwable): Boolean =
     throwable match
       case e: HttpClient.HttpException => e.isTemporaryUnreachable
       case _ => true  // Maybe a TCP exception
 
-  val isTemporaryUnreachableStatus = Set[Int](
+  val isTemporaryUnreachableStatus: Set[Int] = Set[Int](
     408, // Request Timeout
     429, // Too Many Requests
     //? 449, // Retry With

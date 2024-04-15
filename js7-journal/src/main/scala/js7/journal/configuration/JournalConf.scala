@@ -30,7 +30,7 @@ object JournalConf:
   private val logger = Logger[this.type]
   private val checkStateKey = "js7.journal.slow-check-state"
 
-  def fromConfig(config: Config) =
+  def fromConfig(config: Config): JournalConf =
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration

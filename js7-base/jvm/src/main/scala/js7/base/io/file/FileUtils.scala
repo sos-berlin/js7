@@ -29,9 +29,9 @@ import scala.util.control.NonFatal
 object FileUtils:
 
   private val logger = Logger[this.type]
-  val EmptyPath = Paths.get("")
-  val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
-  def temporaryDirectory = Paths.get(sys.props("java.io.tmpdir"))
+  val EmptyPath: Path = Paths.get("")
+  val WorkingDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath
+  def temporaryDirectory: Path = Paths.get(sys.props("java.io.tmpdir"))
 
   /**
    * Touchs the file and deletes it when closer is closed.
@@ -77,14 +77,17 @@ object FileUtils:
       def :=(string: String): Unit =
         contentString = string
 
-      def :=(bytes: collection.Seq[Byte]) = write(bytes)
+      def :=(bytes: collection.Seq[Byte]): Unit =
+        write(bytes)
 
-      def :=(bytes: Array[Byte]) = write(bytes)
+      def :=(bytes: Array[Byte]): Unit =
+        write(bytes)
 
       def write(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
 
-      def :=[W: Writable](w: W) = write(w)
+      def :=[W: Writable](w: W): Unit =
+        write(w)
 
       def write[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(

@@ -14,36 +14,36 @@ sealed trait BoardPathExpression extends Precedence:
 object BoardPathExpression:
   final case class ExpectNotice(boardPath: BoardPath)
   extends BoardPathExpression:
-    def precedence = Precedence.Factor
+    def precedence: Int = Precedence.Factor
 
-    val boardPaths = Set(boardPath)
+    val boardPaths: Set[BoardPath] = Set(boardPath)
 
-    def eval(isNoticeAvailable: BoardPath => Boolean) =
+    def eval(isNoticeAvailable: BoardPath => Boolean): Boolean =
       isNoticeAvailable(boardPath)
 
-    override def toString = quoteString(boardPath.string)
+    override def toString: String = quoteString(boardPath.string)
 
   final case class And(a: BoardPathExpression, b: BoardPathExpression)
   extends BoardPathExpression:
-    def precedence = Precedence.And
+    def precedence: Int = Precedence.And
 
-    val boardPaths = a.boardPaths ++ b.boardPaths
+    val boardPaths: Set[BoardPath] = a.boardPaths ++ b.boardPaths
 
-    def eval(isNoticeAvailable: BoardPath => Boolean) =
+    def eval(isNoticeAvailable: BoardPath => Boolean): Boolean =
       a.eval(isNoticeAvailable) && b.eval(isNoticeAvailable)
 
-    override def toString = makeString(a, "&&", b)
+    override def toString: String = makeString(a, "&&", b)
 
   final case class Or(a: BoardPathExpression, b: BoardPathExpression)
   extends BoardPathExpression:
-    def precedence = Precedence.Or
+    def precedence: Int = Precedence.Or
 
-    val boardPaths = a.boardPaths ++ b.boardPaths
+    val boardPaths: Set[BoardPath] = a.boardPaths ++ b.boardPaths
 
-    def eval(isNoticeAvailable: BoardPath => Boolean) =
+    def eval(isNoticeAvailable: BoardPath => Boolean): Boolean =
       a.eval(isNoticeAvailable) || b.eval(isNoticeAvailable)
 
-    override def toString = makeString(a, "||", b)
+    override def toString: String = makeString(a, "||", b)
 
   implicit val jsonEncoder: Encoder[BoardPathExpression] =
     o => Json.fromString(o.toString)

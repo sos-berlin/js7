@@ -44,15 +44,15 @@ object VersionedControlPath:
       def apply(idString: String): UnsignedVersionedItemId[P] =
         checked(idString).orThrow
 
-      def apply(path: P, versionId: VersionId) =
+      def apply(path: P, versionId: VersionId): UnsignedVersionedItemId[P] =
         path ~ versionId
 
-      val pathCompanion = P
+      val pathCompanion: Companion[P] = P
 
       // A versioned pathTypeName may not differ from its itemTypePath
-      def pathTypeName = itemTypeName
+      def pathTypeName: String = itemTypeName
 
-    override def toString = name
+    override def toString: String = name
 
     implicit override final val jsonEncoder: Encoder[P] =
       o => Json.fromString(o.string)

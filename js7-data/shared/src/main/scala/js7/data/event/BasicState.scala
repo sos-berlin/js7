@@ -15,4 +15,4 @@ object BasicState:
     def name: String =
       getClass.shortClassName
 
-    override def toString = name
+    override def toString: String = name

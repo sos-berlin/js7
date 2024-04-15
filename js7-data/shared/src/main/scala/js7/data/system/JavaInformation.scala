@@ -14,8 +14,12 @@ final case class JavaInformation(
 object JavaInformation:
 
   final case class Memory(maximum: Long, total: Long, free: Long):
-    def reserve = maximum - total
-    def used = total - free
+    def reserve: Long =
+      maximum - total
+
+    def used: Long =
+      total - free
+
   object Memory:
     implicit val jsonCodec: Codec.AsObject[Memory] = deriveCodec
 

@@ -63,7 +63,7 @@ extends HasCloser,
 
   closer.onClose { super.close() }
 
-  override def close() =
+  override def close(): Unit =
     logOpenSession()
     closer.close()
 

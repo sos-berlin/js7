@@ -7,7 +7,8 @@ final case class ClusterWatchConfirmation(
   clusterWatchId: ClusterWatchId,
   clusterWatchRunId: ClusterWatchRunId):
 
-  def confirmer = clusterWatchId.toString
+  def confirmer: String = 
+    clusterWatchId.toString
 
   override def toString =
     s"ConfirmedByClusterWatch($requestId $clusterWatchId $clusterWatchRunId)"

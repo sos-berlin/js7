@@ -28,19 +28,19 @@ final case class Fork(
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction:
 
-  def withoutSourcePos = copy(
+  def withoutSourcePos: Fork = copy(
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): Fork =
     copy(branches =
       branches.map(branch => branch.copy(
         workflow = branch.workflow withPositions position / branch.id.toBranchId)))
 
-  override def adopt(outer: Workflow) = copy(
+  override def adopt(outer: Workflow): Fork = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, workflow) then
       copy(
         branches = for b <- branches yield
@@ -60,7 +60,7 @@ extends ForkInstruction:
   //def startAgents: Set[AgentPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
-  override def workflow(branchId: BranchId) =
+  override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
         val id = Branch.Id(name drop BranchId.ForkPrefix.length)
@@ -69,13 +69,15 @@ extends ForkInstruction:
       case _ =>
         super.workflow(branchId)
 
-  override def branchWorkflows = branches.map(b => b.id.toBranchId -> b.workflow)
+  override def branchWorkflows: Seq[(BranchId, Workflow)] = 
+    branches.map(b => b.id.toBranchId -> b.workflow)
 
-  override def toString = s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
+  override def toString = 
+    s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
 
 
 object Fork:
-  private def apply(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos]) =
+  private def apply(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos]): Nothing =
     throw new NotImplementedError
 
   def forTest(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =
@@ -119,7 +121,7 @@ object Fork:
 
     /** Branch.Id("x").string == BranchId("fork+x") */
     final case class Id(string: String) extends GenericString:
-      def toBranchId = BranchId.fork(string)
+      def toBranchId: BranchId.Named = BranchId.fork(string)
     object Id extends GenericString.Checked_[Id]:
       def unchecked(string: String) = new Id(string)
 
@@ -148,6 +150,6 @@ object Fork:
     yield fork
 
   final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "branchIds" -> branchIds.mkString(", ")
     )

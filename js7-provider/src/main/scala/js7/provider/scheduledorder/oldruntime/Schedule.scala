@@ -10,9 +10,11 @@ trait Schedule {
 
 
 object Schedule:
-  val eternalInterval = InstantInterval(Instant.ofEpochSecond(0), Instant.ofEpochSecond(Long.MaxValue))
+  val eternalInterval: InstantInterval = InstantInterval(Instant.ofEpochSecond(0), Instant.ofEpochSecond(Long.MaxValue))
 
   object Default extends Schedule:
-    def nextInstant(o: Instant) = None
+    def nextInstant(o: Instant): None.type =
+      None
 
-    def nextInterval(from: Instant) = Some(eternalInterval)
+    def nextInterval(from: Instant): Some[InstantInterval] =
+      Some(eternalInterval)

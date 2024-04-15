@@ -7,7 +7,7 @@ import js7.base.utils.Assertions.assertThat
 final case class CommandLine(arguments: Seq[String]):
   assertThat(arguments.nonEmpty)
 
-  def file = Paths.get(arguments.head)
+  def file: Path = Paths.get(arguments.head)
 
   override def toString = arguments
     .map { arg =>

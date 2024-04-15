@@ -6,12 +6,13 @@ import js7.data.agent.AgentPath
 import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{ListValue, StringValue}
+import js7.data.value.{ListValue, StringValue, Value}
 import scala.collection.View
 
 final class AgentsSubagentIdsScope(state: StateView) extends Scope:
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
+  : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("subagentIds", Nil) =>
         Some(subagentIds(state, None))

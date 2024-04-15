@@ -26,7 +26,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris, BasicConfigurat
 
   def webServerPorts: Seq[WebServerPort]
 
-  lazy val httpsConfig =
+  lazy val httpsConfig: HttpsConfig =
     HttpsConfig(
       keyStoreRef =
         (if config.hasPath("js7.web.https.client-keystore") then
@@ -69,8 +69,8 @@ object CommonConfiguration:
     configDirectory: Path,
     dataDirectory: Path,
     webServerPorts: Seq[WebServerPort]):
-    val workDirectory = dataDirectory / "work"
-    val logDirectory = dataDirectory / "logs"
+    val workDirectory: Path = dataDirectory / "work"
+    val logDirectory: Path = dataDirectory / "logs"
 
   object Common:
     def fromCommandLineArguments(a: CommandLineArguments): Common =

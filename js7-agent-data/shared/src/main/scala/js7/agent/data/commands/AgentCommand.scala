@@ -46,7 +46,7 @@ object AgentCommand extends CommonCommand.Companion:
   object Batch:
     final case class Response(responses: Seq[Checked[AgentCommand.Response]])
     extends AgentCommand.Response, Big:
-      override def toString =
+      override def toString: String =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
 
@@ -173,7 +173,7 @@ object AgentCommand extends CommonCommand.Companion:
   extends AgentCommand:
     type Response = Response.Accepted
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
-    override def toString = toShortString
+    override def toString: String = toShortString
   object AttachSignedItem:
     // Same serialization as SignedItemAdded event
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
@@ -196,8 +196,9 @@ object AgentCommand extends CommonCommand.Companion:
 
     type Response = Response.Accepted
 
-    override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
-      s"${order.state.getClass.simpleScalaName}))"
+    override def toShortString: String =
+      s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
+        s"${order.state.getClass.simpleScalaName}))"
   object AttachOrder:
     def apply(order: Order[Order.IsFreshOrReady], agentPath: AgentPath) =
       new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentPath))))

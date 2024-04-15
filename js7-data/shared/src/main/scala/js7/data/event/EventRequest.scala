@@ -38,7 +38,7 @@ final case class EventRequest[E <: Event](
 object EventRequest:
   private val DefaultDelay = ZeroDuration
   private val DefaultLimit = Int.MaxValue
-  val LongTimeout = 365.days
+  val LongTimeout: FiniteDuration = 365.days
 
   /**
     * Convenience for only one Event class.

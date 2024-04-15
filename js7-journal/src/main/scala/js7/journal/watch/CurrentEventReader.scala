@@ -53,7 +53,7 @@ extends EventReader:
     synchronized:
       journalingEnded || position < flushedLengthSync.last
 
-  private[journal] def onJournalingEnded(fileLength: Long) =
+  private[journal] def onJournalingEnded(fileLength: Long): Unit =
     synchronized:
       flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
       _committedLength = fileLength

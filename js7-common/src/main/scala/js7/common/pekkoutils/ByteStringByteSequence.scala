@@ -10,28 +10,28 @@ import org.apache.pekko.util.{ByteString, CompactByteString}
 
 object ByteStringByteSequence extends ByteSequence[ByteString]:
 
-  val clazz = classOf[ByteString]
-  val empty = ByteString.empty
+  val clazz: Class[ByteString] = classOf[ByteString]
+  val empty: ByteString = ByteString.empty
 
-  override def fromArray(bytes: Array[Byte]) =
+  override def fromArray(bytes: Array[Byte]): ByteString =
     ByteString(bytes)
 
-  def fromByteArray(byteArray: ByteArray) =
+  def fromByteArray(byteArray: ByteArray): ByteString =
     ByteString.fromArrayUnsafe(byteArray.unsafeArray)
 
-  def unsafeWrap(bytes: Array[Byte]) =
+  def unsafeWrap(bytes: Array[Byte]): ByteString =
     ByteString.fromArrayUnsafe(bytes)
 
-  override def isEmpty(byteString: ByteString)(implicit ev: Eq[ByteString]) =
+  override def isEmpty(byteString: ByteString)(implicit ev: Eq[ByteString]): Boolean =
     byteString.isEmpty
 
-  def eqv(a: ByteString, b: ByteString) =
+  def eqv(a: ByteString, b: ByteString): Boolean =
     a == b
 
-  def length(byteString: ByteString) =
+  def length(byteString: ByteString): Int =
     byteString.length
 
-  def at(byteString: ByteString, i: Int) =
+  def at(byteString: ByteString, i: Int): Byte =
     byteString(i)
 
   override def take(byteString: ByteString, n: Int): ByteString =
@@ -43,10 +43,10 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
   override def slice(byteString: ByteString, from: Int, until: Int): ByteString =
     byteString.slice(from, until)
 
-  def iterator(byteString: ByteString) =
+  def iterator(byteString: ByteString): Iterator[Byte] =
     byteString.iterator
 
-  def combine(a: ByteString, b: ByteString) =
+  def combine(a: ByteString, b: ByteString): ByteString =
     a ++ b
 
   override def combineAll(as: IterableOnce[ByteString]): ByteString =
@@ -60,7 +60,7 @@ object ByteStringByteSequence extends ByteSequence[ByteString]:
   override def unsafeArray(byteString: ByteString): Array[Byte] =
     byteString.toArrayUnsafe()
 
-  override def unsafeWrappedArray(byteString: ByteString) =
+  override def unsafeWrappedArray(byteString: ByteString): Option[Array[Byte]] =
     byteString match
       case byteString: CompactByteString => Some(byteString.toArrayUnsafe())
       //Inaccessible: case ByteString1(array, 0, len) if len == array.length => Some(array)

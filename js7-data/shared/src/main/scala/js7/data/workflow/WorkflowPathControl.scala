@@ -2,7 +2,7 @@ package js7.data.workflow
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import js7.data.item.{ItemRevision, TrivialItemState, UnsignedSimpleItem, UnsignedSimpleItemState}
+import js7.data.item.{ItemRevision, TrivialItemState, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.workflow.position.Label
 
 final case class WorkflowPathControl(
@@ -16,10 +16,10 @@ extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[WorkflowPa
   val companion: WorkflowPathControl.type = WorkflowPathControl
   val item: WorkflowPathControl = this
 
-  def rename(path: WorkflowPathControlPath) =
+  def rename(path: WorkflowPathControlPath): WorkflowPathControl =
     copy(path = path)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): WorkflowPathControl =
     copy(itemRevision = revision)
 
   def workflowPath: WorkflowPath =
@@ -32,11 +32,12 @@ extends UnsignedSimpleItem.Companion[WorkflowPathControl],
   TrivialItemState.Companion[WorkflowPathControl]:
 
   override type Key = WorkflowPathControlPath
-  def Key = WorkflowPathControlPath
+  def Key: UnsignedSimpleItemPath.Companion[WorkflowPathControlPath] = 
+    WorkflowPathControlPath
 
   override type Path = WorkflowPathControlPath
   val Path: WorkflowPathControlPath.type = WorkflowPathControlPath
-  val cls = classOf[WorkflowPathControl]
+  val cls: Class[WorkflowPathControl] = classOf[WorkflowPathControl]
 
   override type ItemState = WorkflowPathControl
 

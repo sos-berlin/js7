@@ -38,7 +38,7 @@ extends JJsonable[JSubagentItem], JUnsignedSimpleItem:
     asScala.disabled
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JUnsignedSimpleItem =
     copy(asScala.withRevision(revision.toScala))
 
 

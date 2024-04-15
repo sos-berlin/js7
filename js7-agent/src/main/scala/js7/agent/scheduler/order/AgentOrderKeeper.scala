@@ -68,7 +68,7 @@ import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, SupervisorStrategy, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -119,7 +119,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
 
-  override val supervisorStrategy = SupervisorStrategies.escalate
+  override val supervisorStrategy: SupervisorStrategy =
+    SupervisorStrategies.escalate
 
   protected val journalActor: ActorRef @@ JournalActor.type =
     journal.journalActor.taggedWith[JournalActor.type]
@@ -161,10 +162,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
           })
         continue()
 
-    def close() =
+    def close(): Unit =
       stillTerminatingSchedule foreach (_.cancel())
 
-    def onStillTerminating() =
+    def onStillTerminating(): Unit =
       logger.info(s"🟠 Still terminating, waiting for ${orderRegister.size} orders" +
         s", ${jobRegister.size} jobs" +
         (!snapshotFinished ?? ", and the snapshot"))
@@ -208,7 +209,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
   self ! Internal.Recover(recoveredAgentState)
   // Do not use recovered_ after here to allow release of the big object
 
-  override def postStop() =
+  override def postStop(): Unit =
     // TODO Use Resource (like the Subagent starter)
     // TODO Blocking!
     try
@@ -224,7 +225,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     super.postStop()
     logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
 
-  def receive =
+  def receive: Receive =
     case Internal.Recover(recoveredAgentState) =>
       journalState = recoveredAgentState.journalState
 
@@ -920,7 +921,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       }
       .unsafeToFuture()
 
-  override def unhandled(message: Any) =
+  override def unhandled(message: Any): Unit =
     message match
       case Internal.JobDriverStopped =>
         logger.trace("Internal.JobDriverStopped")
@@ -1025,10 +1026,10 @@ object AgentOrderKeeper:
     private val queueSet = mutable.Set.empty[OrderId]
     private val inProcess = mutable.Set.empty[OrderId]
 
-    def isEmpty = queue.isEmpty
-    def nonEmpty = !isEmpty
+    def isEmpty: Boolean = queue.isEmpty
+    def nonEmpty: Boolean = !isEmpty
 
-    def isKnown(orderId: OrderId) =
+    def isKnown(orderId: OrderId): Boolean =
       queueSet.contains(orderId) || inProcess.contains(orderId)
 
     def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
@@ -1042,7 +1043,7 @@ object AgentOrderKeeper:
             Some(orderId)
       }.flatten
 
-    def +=(orderId: OrderId) =
+    def +=(orderId: OrderId): Unit =
       if inProcess(orderId) then throw new DuplicateKeyException(s"Duplicate $orderId")
       if queueSet contains orderId then throw new DuplicateKeyException(s"Duplicate $orderId")
       queue += orderId

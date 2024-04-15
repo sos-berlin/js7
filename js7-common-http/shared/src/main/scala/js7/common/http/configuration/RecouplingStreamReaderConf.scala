@@ -13,4 +13,5 @@ final case class RecouplingStreamReaderConf(
 
 
 object RecouplingStreamReaderConf:
-  val forTest = RecouplingStreamReaderConf(55.s, 1.s, 1.s, Nel.one(5.s))
+  val forTest: RecouplingStreamReaderConf = 
+    RecouplingStreamReaderConf(55.s, 1.s, 1.s, Nel.one(5.s))

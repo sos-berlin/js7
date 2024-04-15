@@ -12,4 +12,4 @@ trait SimpleStateActor extends Actor:
     _actorStateName = stateName
     context.become(receive)
 
-  final def actorStateName = _actorStateName
+  final def actorStateName: String = _actorStateName

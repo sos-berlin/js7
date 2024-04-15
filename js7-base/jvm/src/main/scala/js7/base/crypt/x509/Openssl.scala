@@ -57,14 +57,14 @@ final class Openssl(dir: Path):
         |""".stripMargin
     f
 
-  def selectOpensslConf(ca: Boolean) =
+  def selectOpensslConf(ca: Boolean): Path =
     if ca then caConstraintFile else noCaConstraintFile
 
   // suppressCAContraint does not work since openssl 1.1.1i !!!
   final class Root(name: String, suppressCAContraint: Boolean = false):
     root =>
-    val privateKeyFile = dir / s"$name.private-key"
-    val certificateFile = dir / s"$name.crt"
+    val privateKeyFile: Path = dir / s"$name.private-key"
+    val certificateFile: Path = dir / s"$name.crt"
 
     opensslReq(s"/CN=$name", privateKeyFile, certificateFile, ca = !suppressCAContraint)
 
@@ -77,11 +77,11 @@ final class Openssl(dir: Path):
 
     final class Signer(name: String) extends DocumentSigner:
       type MySignature = OpensslSignature
-      val companion = Signer
-      val signerId = SignerId(s"CN=$name")
+      val companion: Signer.type = Signer
+      val signerId: SignerId = SignerId(s"CN=$name")
       private val privateKeyFile = dir / s"$name.private-key"
 
-      val certificateFile =
+      val certificateFile: Path =
         runProcess(s"$openssl genrsa -out ${quote(privateKeyFile)} 1024")
         val certificateRequestFile = dir / s"$name.csr"
         runProcess(s"$openssl req -new -subj '/${signerId.string}' -key ${quote(privateKeyFile)} -out ${quote(certificateRequestFile)}")
@@ -124,7 +124,7 @@ final class Openssl(dir: Path):
 
       val typeName = "X509-openssl"
 
-      def checked(privateKey: ByteArray, password: SecretString) =
+      def checked(privateKey: ByteArray, password: SecretString): Nothing =
         throw new NotImplementedError
 
   def generateCertWithPrivateKey(name: String, distinguishedName: String)
@@ -150,7 +150,7 @@ object Openssl:
 
   private val useHomebrew = true
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
-  lazy val openssl =
+  lazy val openssl: String =
     val openssl =
       if useHomebrew && isMac && exists(homebrewOpenssl) then
         homebrewOpenssl
@@ -164,10 +164,13 @@ object Openssl:
     Pem(typ).fromPem(file.contentString).orThrow
 
   final case class CertWithPrivateKey(privateKey: ByteArray, certificate: ByteArray):
-    lazy val certificatePem = X509Cert.CertificatePem.toPem(certificate)
+    lazy val certificatePem: String =
+      X509Cert.CertificatePem.toPem(certificate)
 
   // For Windows
-  def quote(path: Path) = "'" + path.toString.replace("\\", "\\\\") + "'"
+  def quote(path: Path): String = 
+    "'" + path.toString.replace("\\", "\\\\") + "'"
 
 final case class OpensslSignature(base64: String) extends Signature:
-  def toGenericSignature = GenericSignature(X509Signer.typeName, base64)
+  def toGenericSignature: GenericSignature = 
+    GenericSignature(X509Signer.typeName, base64)

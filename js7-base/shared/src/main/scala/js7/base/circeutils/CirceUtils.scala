@@ -17,6 +17,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators
 import scala.collection.immutable.SeqMap
+import scala.collection.immutable.Map.Map1
 import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.control.NonFatal
@@ -106,9 +107,10 @@ object CirceUtils:
       CirceUtils.CompactPrinter
 
   implicit final class RichCirceError(private val error: io.circe.Error) extends AnyVal:
-    def toProblem = Problem.pure("JSON " + error.show
-      .replace("\r\n", "\\n")
-      .replace("\n", "\\n"))
+    def toProblem: Problem =
+      Problem.pure("JSON " + error.show
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n"))
 
   implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal:
     /** Converts to Checked with rendered error message. */
@@ -143,7 +145,8 @@ object CirceUtils:
     def toPrettyString: String =
       PrettyPrinter.print(underlying)
 
-    def checkedAs[A: Decoder] = underlying.as[A].toChecked
+    def checkedAs[A: Decoder]: Checked[A] =
+      underlying.as[A].toChecked
 
     def intOrThrow: Int =
       val number = numberOrThrow
@@ -270,7 +273,7 @@ object CirceUtils:
     new JsonWritable[A]
 
   private final class JsonWritable[A: Encoder] extends Writable[A]:
-    def writeToStream(a: A, out: OutputStream) =
+    def writeToStream(a: A, out: OutputStream): Unit =
       val w = new OutputStreamWriter(out, UTF_8)
       w.write(a.asJson.compactPrint)
       w.flush()
@@ -309,10 +312,11 @@ object CirceUtils:
   def parseJson(string: String): Either[ParsingFailure, Json] =
     io.circe.parser.parse(string)
 
-  private def throwUnexpected(expected: String, found: String) =
+  private def throwUnexpected(expected: String, found: String): Nothing =
     throw new JsonException(s"JSON $expected expected instead of $found")
 
   final class JsonException(message: String) extends RuntimeException(message)
 
   final case class JsonProblem(error: io.circe.Error) extends Problem.Coded:
-    def arguments = Map("error" -> error.show.replace("\n", "\\n"))
+    def arguments: Map[String, String] =
+      Map1("error", error.show.replace("\n", "\\n"))

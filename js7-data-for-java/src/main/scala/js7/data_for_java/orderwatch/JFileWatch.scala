@@ -47,7 +47,7 @@ extends JJsonable[JFileWatch], JUnsignedSimpleItem:
     asScala.pattern.map(_.pattern).toJava
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JUnsignedSimpleItem =
     copy(asScala.withRevision(revision.toScala))
 
 

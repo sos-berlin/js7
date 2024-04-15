@@ -1,5 +1,6 @@
 package js7.data.folder
 
+import java.nio.file.Path
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.data.item.{SourceType, VersionedItemPath}
@@ -7,7 +8,7 @@ import js7.data.item.{SourceType, VersionedItemPath}
 final case class FolderPath private(string: String) extends VersionedItemPath:
   import FolderPath.*
 
-  def companion = FolderPath
+  def companion: FolderPath.type = FolderPath
 
   def subfolder(name: String): FolderPath =
     require(!name.contains('/'), "Name must not contain a slash '/'")
@@ -38,15 +39,15 @@ final case class FolderPath private(string: String) extends VersionedItemPath:
       PartialFunction.cond(path):
         case path: FolderPath => this == path
 
-  def isRoot = string.isEmpty
+  def isRoot: Boolean = string.isEmpty
 
-  override def toFile(t: SourceType) =
+  override def toFile(t: SourceType): Path =
     throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
 
 
 object FolderPath extends VersionedItemPath.Companion[FolderPath]:
   val Root = new FolderPath("")
-  override val sourceTypeToFilenameExtension = Map.empty
+  override val sourceTypeToFilenameExtension: Map[SourceType, String] = Map.empty
 
   protected def unchecked(string: String) = new FolderPath(string)
 

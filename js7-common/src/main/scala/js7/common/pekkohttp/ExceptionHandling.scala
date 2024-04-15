@@ -4,6 +4,7 @@ import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import cats.implicits.catsSyntaxEitherId
 import com.typesafe.config.Config
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime.*
@@ -86,7 +87,7 @@ trait ExceptionHandling:
 
 
 object ExceptionHandling:
-  val webLogger = Logger("js7.web.exception")
+  val webLogger: ScalaLogger = Logger("js7.web.exception")
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
     s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"

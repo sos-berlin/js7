@@ -62,8 +62,8 @@ object X509Cert:
   private val logger = Logger[this.type]
 
   private val MayActAsCA = "2.5.29.19"
-  val CertificatePem = Pem("CERTIFICATE")
-  val PrivateKeyPem = Pem("PRIVATE KEY")
+  val CertificatePem: Pem = Pem("CERTIFICATE")
+  val PrivateKeyPem: Pem = Pem("PRIVATE KEY")
 
   def fromPem(pem: String): Checked[X509Cert] =
     CertificatePem.fromPem(pem) flatMap fromByteArray

@@ -23,7 +23,7 @@ extends AutoCloseable:
   private val directory = createTempDirectory("SimpleEventCollector-")
   private val journalLocation = JournalLocation(
     new SnapshotableState.HasCodec {
-      implicit val keyedEventJsonCodec = eventTypedJsonCodec
+      implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = eventTypedJsonCodec
       val name: String = "TestState"
       val snapshotObjectJsonCodec = TypedJsonCodec()
     },

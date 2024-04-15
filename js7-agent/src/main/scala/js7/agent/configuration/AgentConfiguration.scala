@@ -76,13 +76,15 @@ extends CommonConfiguration:
 
 
 object AgentConfiguration:
-  val DefaultName = if isTest then "Agent" else "JS7"
+  val DefaultName: String =
+    if isTest then "Agent" else "JS7"
 
   val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/agent/configuration/agent.conf"))
     .withFallback(SubagentConf.DefaultConfig)
 
-  def fromCommandLine(args: CommandLineArguments, extraConfig: Config = ConfigFactory.empty) =
+  def fromCommandLine(args: CommandLineArguments, extraConfig: Config = ConfigFactory.empty)
+  : AgentConfiguration =
     val subagentConf = SubagentConf.fromCommandLine(args,
       extraConfig = extraConfig, internalConfig = DefaultConfig)
     args.requireNoMoreArguments()

@@ -15,10 +15,10 @@ import scala.reflect.ClassTag
   */
 final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Key):
 
-  override def hashCode =
+  override def hashCode: Int =
     31 * key.hashCode + event.hashCode
 
-  override def equals(o: Any) =
+  override def equals(o: Any): Boolean =
     o match
       case o: KeyedEvent[E] @unchecked =>
         key == o.key && event == o.event

@@ -17,6 +17,7 @@ import js7.data.subagent.SubagentSelectionId
 import js7.data.value.ValuePrinter
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, Scope}
+import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -35,13 +36,13 @@ final case class WorkflowJob(
   admissionTimeScheme: Option[AdmissionTimeScheme],
   skipIfNoAdmissionStartForOrderDay: Boolean):
 
-  def referencedJobResourcePaths =
+  def referencedJobResourcePaths: View[JobResourcePath] =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
 
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
 
-  def argumentsString = s"agent=${agentPath.string}, " +
+  def argumentsString: String = s"agent=${agentPath.string}, " +
     (executable match {
       case PathExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"executable=$o"
       case ShellScriptExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"script=$o"

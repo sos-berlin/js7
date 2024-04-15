@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, DecodingFailure, Encoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.Signed
+import js7.base.crypt.{Signed, SignedString}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -31,13 +31,14 @@ object VersionedEvent:
     ItemAddedOrChanged,
     Product:
 
-    def signedString = signed.signedString
+    def signedString: SignedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
     def path: VersionedItemPath = item.path
     override def toShortString = s"$productPrefix($path)"
   object VersionedItemAddedOrChanged:
-    def unapply(event: VersionedItemAddedOrChanged) = Some(event.signed)
+    def unapply(event: VersionedItemAddedOrChanged): Some[Signed[VersionedItem]] =
+      Some(event.signed)
 
     // Use SignedItemAdded implementation (for ..AddedOrChanged and ..Changed events)
     private[VersionedEvent] def jsonDecoder[A <: VersionedItemAddedOrChanged: ClassTag]
@@ -51,10 +52,12 @@ object VersionedEvent:
               Right(toA(e.signed.copy(value = item)))
             case item =>
               Left(DecodingFailure(
-                s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.key}", c.history))
+                s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.key}",
+                c.history))
           })
 
-  final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged:
+  final case class VersionedItemAdded(signed: Signed[VersionedItem])
+  extends VersionedItemAddedOrChanged:
     def id = signed.value.key
   object VersionedItemAdded:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemAdded] =
@@ -64,7 +67,8 @@ object VersionedEvent:
     private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemAdded] =
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemAdded(_))
 
-  final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged:
+  final case class VersionedItemChanged(signed: Signed[VersionedItem])
+  extends VersionedItemAddedOrChanged:
     def id = signed.value.key
   object VersionedItemChanged:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemChanged] =

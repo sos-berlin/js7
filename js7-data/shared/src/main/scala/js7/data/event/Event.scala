@@ -17,7 +17,7 @@ trait Event:
 
   def isSucceeded: Boolean = true
 
-  def toShortString = toString
+  def toShortString: String = toString
 
   @targetName("toKeyedEvent")
   final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
@@ -41,7 +41,8 @@ object Event:
 
     implicit def implicitSelf: KeyCompanion[E]
 
-    override def toString = getClass.shortClassName
+    override def toString: String = 
+      getClass.shortClassName
 
   transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E]:
     type Key = K

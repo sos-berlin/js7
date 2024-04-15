@@ -8,10 +8,10 @@ extends WallClock:
   private var _monotonicNanos = 0L
   private var _now = start
 
-  def monotonicNanos() =
+  def monotonicNanos(): Long =
     _monotonicNanos
 
-  def epochMilli() =
+  def epochMilli(): Long =
     _now.toEpochMilli
 
   def :=(ts: Timestamp): Unit =

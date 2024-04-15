@@ -70,7 +70,7 @@ private[watch] final class FileEventIteratorPool(
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
 
-        override def close() =
+        override def close(): Unit =
           synchronized:
             freeIterators -= this
             lentIterators -= this

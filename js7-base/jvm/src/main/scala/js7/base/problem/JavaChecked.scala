@@ -9,9 +9,11 @@ import js7.base.utils.ScalaUtils.syntax.*
   */
 final case class JavaChecked[A](checked: Checked[A]):
 
-  def isValid = checked.isRight
+  def isValid: Boolean = 
+    checked.isRight
 
-  def isInvalid = checked.isLeft
+  def isInvalid: Boolean = 
+    checked.isLeft
 
   @throws[ProblemException]
   def get: A =

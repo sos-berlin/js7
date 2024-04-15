@@ -25,7 +25,7 @@ final class PgpSigner private(pgpSecretKey: PGPSecretKey, password: SecretString
 extends DocumentSigner:
   protected type MySignature = PgpSignature
 
-  def companion = PgpSigner
+  def companion: PgpSigner.type = PgpSigner
 
   import PgpSigner.*
 
@@ -62,9 +62,9 @@ object PgpSigner extends DocumentSigner.Companion:
   protected type MySignature = PgpSignature
   protected type MyMessageSigner = PgpSigner
 
-  def typeName = PgpSignature.TypeName
+  def typeName: String = PgpSignature.TypeName
 
-  def checked(privateKey: ByteArray, password: SecretString) =
+  def checked(privateKey: ByteArray, password: SecretString): Checked[PgpSigner] =
     Checked.catchNonFatal(
       new PgpSigner(selectSecretKey(readSecretKeyRingCollection(privateKey)), password))
 
@@ -74,7 +74,7 @@ object PgpSigner extends DocumentSigner.Companion:
     Checked.catchNonFatal(
       new PgpSigner(pgpSecretKey, password))
 
-  def forTest() =
+  def forTest(): (PgpSigner, PgpSignatureVerifier) =
     val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
     PgpSigner(pgpSecretKey, pgpPassword).orThrow ->

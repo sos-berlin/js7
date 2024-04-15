@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.log.{CorrelId, CorrelIdWrapped}
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,8 @@ final class ControllerCommandExecutorTest extends OurTestSuite:
 
   private var cancelled = 0
   private val otherCommandExecutor = new CommandExecutor[ControllerCommand]:
-    def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Either[Problem, command.Response]] =
+    def executeCommand(command: ControllerCommand, meta: CommandMeta)
+    : IO[Checked[command.Response]] =
       (command, meta) match
         case (`cancelOrder`, `meta`) =>
           cancelled += 1

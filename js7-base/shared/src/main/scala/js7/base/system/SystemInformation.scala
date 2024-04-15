@@ -14,6 +14,6 @@ final case class SystemInformation(
 object SystemInformation:
   (MapJsonDecoder, MapJsonEncoder)  // Force import usage for IntelliJ (hidden usage by @JsonCocec)
 
-  val ForTest = SystemInformation(hostname = "HOSTNAME")
+  val ForTest: SystemInformation = SystemInformation(hostname = "HOSTNAME")
 
   implicit val jsonCodec: Codec.AsObject[SystemInformation] = deriveCodec[SystemInformation]

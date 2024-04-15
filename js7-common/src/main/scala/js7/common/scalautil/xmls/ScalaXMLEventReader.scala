@@ -20,7 +20,7 @@ extends AutoCloseable:
 
   private var _simpleAttributeMap: SimpleAttributeMap = null
 
-  def close() = delegate.close()
+  def close(): Unit = delegate.close()
 
   def parseDocument[A](body: => A): A =
     eat[StartDocument]
@@ -142,7 +142,7 @@ extends AutoCloseable:
       throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
     event.asInstanceOf[E]
 
-  def nextEvent() = delegate.nextEvent()
+  def nextEvent(): XMLEvent = delegate.nextEvent()
 
   def hasNext: Boolean = delegate.hasNext
 
@@ -188,7 +188,7 @@ object ScalaXMLEventReader:
   final case class Config(ignoreUnknown: Boolean = false)
 
   object Config:
-    val Default = Config()
+    val Default: Config = Config()
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
@@ -224,7 +224,7 @@ object ScalaXMLEventReader:
       readAttributes += name
       super.get(name)
 
-    override def default(name: String) = throw new NoSuchElementException(s"XML attribute '$name' is required")
+    override def default(name: String): String = throw new NoSuchElementException(s"XML attribute '$name' is required")
 
     def ignore(name: String): Unit = readAttributes += name
 

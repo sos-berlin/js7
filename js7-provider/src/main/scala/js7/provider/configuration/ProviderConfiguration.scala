@@ -24,8 +24,8 @@ final case class ProviderConfiguration(
   config: Config = ConfigFactory.empty)
 extends BasicConfiguration:
 
-  val liveDirectory = configDirectory / "live"
-  val orderGeneratorsDirectory = configDirectory / "order-generators"
+  val liveDirectory: Path = configDirectory / "live"
+  val orderGeneratorsDirectory: Path = configDirectory / "order-generators"
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"ProviderConfiguration($configDirectory,$controllerUri,Config)"

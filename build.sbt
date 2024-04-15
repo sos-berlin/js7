@@ -91,6 +91,9 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 
 ThisBuild / scalacOptions ++= Seq(
   //"-explain",
+  //"-Vprofile",
+  //"-Vprofile-sorted-by:tasty",
+  //"-Vprofile-details:10",
   "-java-output-version:17",
   "-feature",
   "-deprecation",
@@ -112,7 +115,7 @@ val scalaTestArguments = Tests.Argument(
   TestFrameworks.ScalaTest,
   ((if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30")) *)
 
-val _dummy_ = {
+val _dummy_ : Unit = {
   sys.props("TEST") = "true"
 }
 

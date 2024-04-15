@@ -297,4 +297,5 @@ private[agent] object DirectorDriver:
 
   final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
   extends Problem.Coded:
-    def arguments = Map("agentPath" -> agentPath.string)
+    def arguments: Map[String, String] = Map(
+      "agentPath" -> agentPath.string)

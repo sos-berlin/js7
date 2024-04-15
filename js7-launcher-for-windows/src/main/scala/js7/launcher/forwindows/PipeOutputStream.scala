@@ -6,9 +6,11 @@ import java.io.OutputStream
 import js7.launcher.forwindows.WindowsApi.{call, kernel32}
 
 private abstract class PipeOutputStream(pipeHandle: HANDLE) extends OutputStream:
-  def write(b: Int) = write(Array(b.toByte), 0, 1)
 
-  override def write(bytes: Array[Byte], offset: Int, length: Int) =
+  def write(b: Int): Unit =
+    write(Array(b.toByte), 0, 1)
+
+  override def write(bytes: Array[Byte], offset: Int, length: Int): Unit =
     val a = if offset == 0 then bytes else bytes.slice(offset, offset + length)
     require(length <= a.length, "Invalid length")
 

@@ -51,7 +51,7 @@ import scala.util.{Failure, Success, Try}
 final class ClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/: Tag] private(
   prepared: Prepared[S],
   passiveOrWorkingNode: AtomicReference[Option[Either[PassiveClusterNode[S], Allocated[IO, WorkingClusterNode[S]]]]],
-  currentStateRef: Ref[IO, IO[Either[Problem, S]]],
+  currentStateRef: Ref[IO, IO[Checked[S]]],
   val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   eventBus: EventPublisher[Stamped[AnyKeyedEvent]],
@@ -76,7 +76,7 @@ extends Service.StoppableByRequest:
   def dontNotifyActiveNodeAboutShutdown(): Unit =
     _testDontNotifyActiveNodeAboutShutdown = true
 
-  val currentState: IO[Either[Problem, S]] =
+  val currentState: IO[Checked[S]] =
     currentStateRef.get.flatten
 
   /** None when stopped before activated. */
@@ -264,9 +264,9 @@ extends Service.StoppableByRequest:
     common.clusterWatchCounterpart.newStream
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
-  def isWorkingNode = passiveOrWorkingNode.get().exists(_.isRight)
+  def isWorkingNode: Boolean = passiveOrWorkingNode.get().exists(_.isRight)
 
-  def isPassive = passiveOrWorkingNode.get().exists(_.isLeft)
+  def isPassive: Boolean = passiveOrWorkingNode.get().exists(_.isLeft)
 
   override def toString = s"ClusterNode(${ownId.string})"
 
@@ -292,7 +292,7 @@ object ClusterNode:
       .resource[S](journalLocation, clusterConf.config)
       .both(pekkoResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
-        implicit val a = actorSystem
+        given ActorSystem = actorSystem
         resource(
           recovered,
           clusterNodeApi(_, _, actorSystem),
@@ -535,7 +535,8 @@ object ClusterNode:
     MainServiceTerminationException,
     NoStackTrace:
 
-    def termination = ProgramTermination.Restart
+    def termination: ProgramTermination =
+      ProgramTermination.Restart
 
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,

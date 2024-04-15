@@ -48,7 +48,7 @@ object Configs:
       logger.debug(s"No configuration file $file")
       ConfigFactory.empty
 
-  def loadResource(resource: JavaResource) =
+  def loadResource(resource: JavaResource): Config =
     logger.trace(s"Reading configuration JavaResource $resource")
     var options = Required.setClassLoader(resource.classLoader)
     options = options.setOriginDescription(InternalOriginDescription)
@@ -90,7 +90,7 @@ object Configs:
     def apply(path: String): String =
       underlying.getString(path)
 
-    def isDefinedAt(path: String) =
+    def isDefinedAt(path: String): Boolean =
       underlying.hasPath(path)
 
   implicit final class RichConfig(private val underlying: Config) extends AnyVal:

@@ -17,7 +17,7 @@ final class JobResourceScope(
 extends Scope:
 
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
-    (implicit fullScope: Scope)
+    (implicit fullScope: Scope): Option[Checked[Value]]
   =
     // fullScope is the complete scope, maybe containing order variables,
     // which should not be accessible for a JobResource, to avoid name clash and
@@ -28,7 +28,7 @@ extends Scope:
   private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
     Some(jobResourceVariable(v.jobResourcePath, v.name))
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope): Option[Checked[Value]] =
     functionCall match
       case FunctionCall("jobResourceVariable", arguments) =>
         Some(arguments match {

@@ -33,7 +33,7 @@ private[time] trait ClockChecking extends Runnable:
   @volatile private var ticking = false
   @volatile private var stopped = false
 
-  def stop() =
+  def stop(): Unit =
     stopped = true
     stopTicking()
     ticker.cancel()
@@ -124,9 +124,9 @@ private[time] trait ClockChecking extends Runnable:
       if !called.getAndSet(true) then
         callback
 
-    def run() = cancel()
+    def run(): Unit = cancel()
 
-    def cancel() =
+    def cancel(): Unit =
       self.synchronized:
         for alarms <- epochMilliToAlarms.get(epochMilli) do
           val remaining = alarms.filterNot(_ eq this)

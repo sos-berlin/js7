@@ -25,7 +25,8 @@ object OrderParameter:
   /** A required order argument. */
   final case class Required(name: String, valueType: ValueType)
   extends HasType:
-    def referencedJobResourcePaths = Nil
+    def referencedJobResourcePaths: Iterable[JobResourcePath] =
+      Nil
 
   sealed trait HasExpression extends OrderParameter:
     def expression: Expression
@@ -38,9 +39,11 @@ object OrderParameter:
   /** An optional value may be overridden by an order argument. */
   final case class Optional(name: String, valueType: ValueType, expression: Expression)
   extends HasType, HasExpression:
-    def referencedJobResourcePaths = expression.referencedJobResourcePaths
+    def referencedJobResourcePaths: Iterable[JobResourcePath] = 
+      expression.referencedJobResourcePaths
 
   /** A final value may not be overriden. */
   final case class Final(name: String, expression: Expression)
   extends HasExpression:
-    def referencedJobResourcePaths = expression.referencedJobResourcePaths
+    def referencedJobResourcePaths: Iterable[JobResourcePath] = 
+      expression.referencedJobResourcePaths

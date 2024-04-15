@@ -24,7 +24,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.collection.{MapView, View, mutable}
+import scala.collection.{IndexedSeqView, MapView, View, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -50,7 +50,7 @@ final case class Order[+S <: Order.State](
   stopPositions: Set[PositionOrLabel] = Set.empty):
 
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
-  override def hashCode = id.hashCode
+  override def hashCode: Int = id.hashCode
 
   def newForkedOrders(event: OrderForked): View[Order[Ready]] =
     for child <- event.children.view yield
@@ -359,7 +359,7 @@ final case class Order[+S <: Order.State](
           else
             // historyOutcomes positions should be unique, but is this sure?
             final class Entry(h: Option[HistoricOutcome]):
-              val inserted = mutable.Buffer.empty[HistoricOutcome]
+              val inserted: mutable.Buffer[HistoricOutcome] = mutable.Buffer.empty[HistoricOutcome]
               var current: Option[HistoricOutcome] = h
               def result = inserted.view ++ current
             var positionFound = false
@@ -579,7 +579,7 @@ final case class Order[+S <: Order.State](
   def lastOutcome: OrderOutcome =
     historicOutcomes.lastOption.fold_(OrderOutcome.succeeded, _.outcome)
 
-  def isFailable =
+  def isFailable: Boolean =
     !isSuspendedOrStopped &&
       (isDetached || isAttached) &&
       (state match {
@@ -631,7 +631,8 @@ final case class Order[+S <: Order.State](
       .toVector
       .toMap
 
-  def isStarted = isState[IsStarted]
+  def isStarted: Boolean =
+    isState[IsStarted]
 
   def castState[A <: State: ClassTag]: Order[A] =
     checkedState[A].orThrow
@@ -642,7 +643,7 @@ final case class Order[+S <: Order.State](
   def ifState[A <: State: ClassTag]: Option[Order[A]] =
     isState[A] ? this.asInstanceOf[Order[A]]
 
-  def isState[A <: State: ClassTag] =
+  def isState[A <: State: ClassTag]: Boolean =
     implicitClass[A] isAssignableFrom state.getClass
 
   def markString: Option[String] =
@@ -695,7 +696,7 @@ final case class Order[+S <: Order.State](
   def canBecomeDetachable: Boolean =
     isAttached && isInDetachableState
 
-  def isInDetachableState =
+  def isInDetachableState: Boolean =
     isState[Fresh] ||
       isState[Ready] ||
       isState[Forked] ||
@@ -717,7 +718,7 @@ final case class Order[+S <: Order.State](
     !isState[IsTerminated] && !isState[Deleted] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
-  def isCancelable =
+  def isCancelable: Boolean =
     (isState[IsFreshOrReady]
       || isState[ProcessingKilled]
       || isState[WaitingForLock]
@@ -739,7 +740,7 @@ final case class Order[+S <: Order.State](
   private def isMarked =
     mark.isDefined
 
-  def isSuspendible =
+  def isSuspendible: Boolean =
     (isState[IsFreshOrReady]
       || isState[ProcessingKilled] && isSuspendingWithKill
     ) && (isDetached || isAttached)
@@ -756,10 +757,10 @@ final case class Order[+S <: Order.State](
       && !isState[Cancelled]/*COMPATIBLE Before v2.6 OrderCancelled did not reset isSuspended*/
       || isState[Stopped])
 
-  def isResuming =
+  def isResuming: Boolean =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
-  def isResumable =
+  def isResumable: Boolean =
     (isState[IsFreshOrReady] && isSuspendedOrStopped
       || isState[Stopped]
       || isState[StoppedWhileFresh]
@@ -767,7 +768,7 @@ final case class Order[+S <: Order.State](
       || isState[Broken]
     ) && (isDetached || isAttached)
 
-  def isProcessable =
+  def isProcessable: Boolean =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
   def isInOutermostBlock: Boolean =
@@ -838,7 +839,7 @@ object Order:
     sealed trait HasAgentPath extends AttachedState:
       def agentPath: AgentPath
     object HasAgentPath:
-      def unapply(o: HasAgentPath) = Some(o.agentPath)
+      def unapply(o: HasAgentPath): Some[AgentPath] = Some(o.agentPath)
     implicit val jsonCodec: TypedJsonCodec[AttachedState] = TypedJsonCodec(
       Subtype(deriveCodec[Attaching]),
       Subtype(deriveCodec[Attached]),
@@ -926,10 +927,10 @@ object Order:
   case object ProcessingKilled extends IsStarted
 
   final case class Forked(children: Vector[Forked.Child]) extends IsStarted:
-    def childOrderIds = children.view.map(_.orderId)
+    def childOrderIds: IndexedSeqView[OrderId] = children.view.map(_.orderId)
   object Forked:
     type Child = OrderForked.Child
-    val Child = OrderForked.Child
+    val Child: OrderForked.Child.type = OrderForked.Child
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
@@ -1061,7 +1062,7 @@ object Order:
 
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "orderId" -> order.id.string,
       "event" -> event.toString,
       "workflowPosition" -> order.workflowPosition.toString,

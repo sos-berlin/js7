@@ -26,7 +26,7 @@ extends immutable.Set[A]:
   //override protected def newSpecificBuilder =
   //  new RangeSet.Builder[A]
 
-  def contains(a: A) =
+  def contains(a: A): Boolean =
     ranges.exists(_.contains(a))
 
   override def concat(that: IterableOnce[A]): RangeSet[A] =
@@ -74,7 +74,7 @@ extends immutable.Set[A]:
       case that: RangeSet[A] @unchecked => ranges == that.ranges
       case _ => super.equals(that)
 
-  override def toString =
+  override def toString: String =
     ranges.mkString("RangeSet(", delimiter, ")")
 
   def asString(implicit encoder: Encoder[A]): String =
@@ -156,26 +156,36 @@ object RangeSet:
       Interval(start, end)
 
   final case class Single[A](value: A) extends Range[A]:
-    def start = value
-    def end = value
-    def contains(a: A) = a == value
+    def start: A = value
+    def end: A = value
+
+    def contains(a: A): Boolean =
+      a == value
 
     def subsetOf(other: Range[A]): Boolean =
       value == other.start && value == other.end
 
-    def iterator = Iterator.single(value)
-    override def toString = value.toString
+    def iterator: Iterator[A] =
+      Iterator.single(value)
+
+    override def toString: String =
+      value.toString
 
   /** A closed (inclusive) interval. */
   final case class Interval[A: Ordering: Ordinal] private[RangeSet](start: A, end: A)
   extends Range[A]:
-    def contains(a: A) = a >= start && a <= end
+    def contains(a: A): Boolean =
+      a >= start && a <= end
 
     def subsetOf(other: Range[A]): Boolean =
       start >= other.start && end <= other.end
 
-    def iterator = Iterator.iterate(start)(_.succ).takeWhile(_ <= end)
-    override def toString = start.toString + rangeSymbol + end
+    def iterator: Iterator[A] =
+      Iterator.iterate(start)(_.succ).takeWhile(_ <= end)
+
+    override def toString: String = 
+      start.toString + rangeSymbol + end
+
   object Interval:
     def apply[A: Ordering: Ordinal](start: A, end: A): Interval[A] =
       // start.succ == end is allowed, but `normalize` will separate it into two `Single`s

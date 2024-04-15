@@ -1,6 +1,7 @@
 package js7.base
 
 import js7.base.time.ScalaTime.DurationRichInt
+import scala.concurrent.duration.FiniteDuration
 
 object ProvisionalAssumptions:
 
@@ -13,5 +14,5 @@ object ProvisionalAssumptions:
     private val elementSizeLimit = 8_000_000 // A big Workflow
     private val heapLimit = 400_000_000 // Bytes
 
-    val elementsPerChunkLimit = heapLimit / elementSizeLimit
-    val groupWithinDelay = 10.ms
+    val elementsPerChunkLimit: Int = heapLimit / elementSizeLimit
+    val groupWithinDelay: FiniteDuration = 10.ms

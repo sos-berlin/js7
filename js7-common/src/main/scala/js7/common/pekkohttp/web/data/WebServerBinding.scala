@@ -39,15 +39,17 @@ object WebServerBinding:
   sealed trait Scheme:
     def name: String
     // Workaround for Scala 3, which does not allow to override toString in subclasses (?)
-    override def toString = name
+    override def toString: String = name
 
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding:
-    def scheme = Http
+    def scheme: Scheme = 
+      Http
 
-    def toWebServerPort = WebServerPort.Http(address)
+    def toWebServerPort: WebServerPort = 
+      WebServerPort.Http(address)
 
-    def requiredFiles = Nil
+    def requiredFiles: Seq[Path] = Nil
   object Http extends Scheme:
     val name = "http"
     // Scala 3: "Double definition"??? override def toString = "http"
@@ -57,11 +59,14 @@ object WebServerBinding:
     keyStoreRef: KeyStoreRef,
     trustStoreRefs: Seq[TrustStoreRef] = Nil)
   extends WebServerBinding:
-    def scheme = Https
+    def scheme: Scheme =
+      Https
 
-    def toWebServerPort = WebServerPort.Https(address)
+    def toWebServerPort: WebServerPort = 
+      WebServerPort.Https(address)
 
-    def requiredFiles = storeRefs.flatMap(_.toFile)
+    def requiredFiles: Seq[Path] =
+      storeRefs.flatMap(_.toFile)
 
     def storeRefs: Seq[StoreRef] =
       keyStoreRef +: trustStoreRefs

@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data_for_java.vavr.VavrConverters.*
 
@@ -35,8 +35,8 @@ object VavrUtils:
   @javaApi
   //Void is null: @Nonnull
   @throws[RuntimeException]("iff Left")
-  def getOrThrow[A](@Nonnull either: Either[Problem, A]): A =
-    getOrThrow(either.toVavr)
+  def getOrThrow[A](@Nonnull checked: Checked[A]): A =
+    getOrThrow(checked.toVavr)
 
   @javaApi
   def toVavr[L, R](@Nonnull either: Either[L, R]): VEither[L, R] =

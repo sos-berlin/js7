@@ -23,10 +23,10 @@ extends JournaledState[SubagentState], ItemContainer:
 
   val companion: SubagentState.type = SubagentState
 
-  def withEventId(eventId: EventId) =
+  def withEventId(eventId: EventId): SubagentState =
     copy(eventId = eventId)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]) =
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[SubagentState] =
     keyedEvent match
       case KeyedEvent(_: NoKey, SubagentItemAttached(workflow: Workflow)) =>
         Right(copy(
@@ -66,7 +66,7 @@ extends JournaledState[SubagentState], ItemContainer:
 object SubagentState
 extends JournaledState.Companion[SubagentState], ItemContainer.Companion[SubagentState]:
 
-  val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
+  val empty: SubagentState = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 
   protected def inventoryItems =
     Seq(Workflow, JobResource)

@@ -55,4 +55,4 @@ object ScheduleSimulator:
   final case class Result(scheduledView: View[Scheduled]/*, exitAt: Timestamp*/)
 
   final case class Scheduled(arrival: Timestamp, cycleState: CycleState):
-    def next = cycleState.next
+    def next: Timestamp = cycleState.next

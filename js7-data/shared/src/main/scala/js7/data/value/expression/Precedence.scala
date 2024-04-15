@@ -12,18 +12,18 @@ trait Precedence:
 object Precedence:
   // Higher number means higher precedence
   private val next = Iterator.from(1).next _
-  val Function = next()
-  val WordOperator = next()
-  val Or = next()
-  val And = next()
-  val Comparison = next()
-  val Equal = next()
-  val Addition = next()
-  val Multiplication = next()
-  val OrElse = next()
-  val Dot = next()
-  val Factor = next()
-  val Highest = next()
+  val Function: Int = next()
+  val WordOperator: Int = next()
+  val Or: Int = next()
+  val And: Int = next()
+  val Comparison: Int = next()
+  val Equal: Int = next()
+  val Addition: Int = next()
+  val Multiplication: Int = next()
+  val OrElse: Int = next()
+  val Dot: Int = next()
+  val Factor: Int = next()
+  val Highest: Int = next()
 
   def toString(a: Precedence, op: String, opPrecedence: Int, b: Precedence): String =
     inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)

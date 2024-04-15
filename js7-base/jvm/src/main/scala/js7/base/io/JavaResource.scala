@@ -28,7 +28,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
         logger.trace(s"Using JavaResource $url")
         Right(url)
 
-  def requireExistence() =
+  def requireExistence(): JavaResource =
     url
     this
 
@@ -76,11 +76,13 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
   def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
     autoClosing(openStream())(ByteSeq.fromInputStreamUnlimited)
 
-  def asUTF8String = readAs[ByteArray].utf8String
+  def asUTF8String: String =
+    readAs[ByteArray].utf8String
 
-  def simpleName = new File(path).getName
+  def simpleName: String =
+    new File(path).getName
 
-  def isValid = checkedUrl.isRight
+  def isValid: Boolean = checkedUrl.isRight
 
   val asResource: cats.effect.Resource[SyncIO, InputStream] =
     cats.effect.Resource.fromAutoCloseable(SyncIO { openStream() })
@@ -97,9 +99,10 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
    */
   def url: URL = checkedUrl.orThrow
 
-  def /(tail: String) = copy(path = s"${path stripSuffix "/"}/$tail")
+  def /(tail: String): JavaResource = 
+    copy(path = s"${path stripSuffix "/"}/$tail")
 
-  override def toString = path
+  override def toString: String = path
 
 
 object JavaResource:

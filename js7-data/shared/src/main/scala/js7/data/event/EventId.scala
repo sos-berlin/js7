@@ -17,14 +17,16 @@ object EventId:
   /** Pseudo EventId for a heartbeat — not a real EventId.*/
   val Heartbeat: EventId = -1L
 
-  def apply(eventId: String) = eventId.toLong
+  def apply(eventId: String): Long = eventId.toLong
 
   @inline
-  def apply(eventId: Long) = eventId
+  def apply(eventId: Long): Long = eventId
 
-  def toTimestamp(eventId: EventId) = Timestamp ofEpochMilli(toEpochMilli(eventId))
+  def toTimestamp(eventId: EventId): Timestamp =
+    Timestamp ofEpochMilli(toEpochMilli(eventId))
 
-  def toEpochMilli(eventId: EventId) = eventId / IdsPerMillisecond
+  def toEpochMilli(eventId: EventId): Long =
+    eventId / IdsPerMillisecond
 
   def toString(eventId: EventId): String =
     s"$eventId/${toDateTimeString(eventId)}"

@@ -23,7 +23,7 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
   lazy val io: IO[A] =
     IO.fromFutureDummyCancelable(IO.pure(future)).unsafeMemoize
 
-  override def toString = toStringOr(s"SetOnce[$label](not yet set)")
+  override def toString: String = toStringOr(s"SetOnce[$label](not yet set)")
 
   @inline def toStringOr(or: => String): String =
     promise.future.value match
@@ -55,16 +55,19 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
   def future: Future[A] =
     promise.future
 
-  def isDefined = nonEmpty
+  def isDefined: Boolean =
+    nonEmpty
 
-  def isEmpty = !nonEmpty
+  def isEmpty: Boolean =
+    !nonEmpty
 
-  def nonEmpty = promise.future.isCompleted
+  def nonEmpty: Boolean =
+    promise.future.isCompleted
 
-  def contains(a: A) =
+  def contains(a: A): Boolean =
     toOption contains a
 
-  def foreach(f: A => Unit) =
+  def foreach(f: A => Unit): Unit =
     toOption.foreach(f)
 
   /**
@@ -115,12 +118,12 @@ object SetOnce:
   def undefined[A](label: => String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)
 
-  def fromOption[A](option: Option[A])(implicit A: Tag[A]) =
+  def fromOption[A](option: Option[A])(implicit A: Tag[A]): SetOnce[A] =
     val setOnce = SetOnce[A](A.tag.toString)
     option foreach setOnce.:=
     setOnce
 
-  def fromOption[A](option: Option[A], label: String) =
+  def fromOption[A](option: Option[A], label: String): SetOnce[A] =
     val setOnce = SetOnce[A](label)
     option foreach setOnce.:=
     setOnce

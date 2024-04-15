@@ -190,7 +190,7 @@ extends UnsignedSimpleItemState:
         .map(_ <-: OrderDeletionMarked)
       )
 
-  def estimatedSnapshotSize =
+  def estimatedSnapshotSize: Int =
     1 + externalToState.size
 
   override def toSnapshotStream: Stream[IO, Any] =
@@ -230,7 +230,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
     OrderWatchState(orderWatch, sourceToOrderId, Set.empty, Set.empty)
       .recalculateQueues
 
-  def fromSnapshot(snapshot: OrderWatchState) =
+  def fromSnapshot(snapshot: OrderWatchState): OrderWatchState =
     OrderWatchState(snapshot.orderWatch, Map.empty, Set.empty, Set.empty)
       .recalculateQueues
 
@@ -239,7 +239,8 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
 
   final case class HeaderSnapshot(orderWatch: OrderWatch)
   extends Snapshot:
-    def orderWatchPath = orderWatch.key
+    def orderWatchPath: OrderWatchPath = 
+      orderWatch.key
 
   final case class ExternalOrderSnapshot(
     orderWatchPath: OrderWatchPath,

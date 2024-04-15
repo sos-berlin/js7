@@ -13,11 +13,12 @@ trait SimpleItem extends InventoryItem:
 
   def withRevision(revision: Option[ItemRevision]): Self
 
-  final def key = path
+  final def key: companion.Key = path
 
   def path: companion.Path
 
-  def pathRev = PathRev(path, itemRevision)
+  def pathRev: PathRev[companion.Key] = 
+    PathRev(path, itemRevision)
 
 
 object SimpleItem:

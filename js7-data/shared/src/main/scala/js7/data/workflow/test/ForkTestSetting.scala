@@ -12,18 +12,18 @@ import js7.data.workflow.{Workflow, WorkflowPath}
   */
 object ForkTestSetting:
 
-  val AAgentPath = AgentPath("AGENT-A")
-  val BAgentPath = AgentPath("AGENT-B")
-  val AgentPaths = List(AAgentPath, BAgentPath)
-  val TestPathExecutable = RelativePathExecutable.checked("executable.cmd").orThrow
-  val AJobName = WorkflowJob.Name("A")
-  val BJobName = WorkflowJob.Name("B")
-  val AJob = WorkflowJob(AAgentPath, TestPathExecutable)
-  val BJob = WorkflowJob(BAgentPath, TestPathExecutable)
-  val AExecute = Execute.Named(AJobName)
-  val BExecute = Execute.Named(BJobName)
+  val AAgentPath: AgentPath = AgentPath("AGENT-A")
+  val BAgentPath: AgentPath = AgentPath("AGENT-B")
+  val AgentPaths: List[AgentPath] = List(AAgentPath, BAgentPath)
+  val TestPathExecutable: RelativePathExecutable = RelativePathExecutable.checked("executable.cmd").orThrow
+  val AJobName: WorkflowJob.Name = WorkflowJob.Name("A")
+  val BJobName: WorkflowJob.Name = WorkflowJob.Name("B")
+  val AJob: WorkflowJob = WorkflowJob(AAgentPath, TestPathExecutable)
+  val BJob: WorkflowJob = WorkflowJob(BAgentPath, TestPathExecutable)
+  val AExecute: Execute.Named = Execute.Named(AJobName)
+  val BExecute: Execute.Named = Execute.Named(BJobName)
 
-  val TestWorkflowSource = """
+  val TestWorkflowSource: String = """
    |define workflow {
    |  // First instruction is a fork: Event OrderStarted here
    |  fork {
@@ -53,7 +53,7 @@ object ForkTestSetting:
    |}
    """.stripMargin.trim
 
-  val TestWorkflow = Workflow(
+  val TestWorkflow: Workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL" ,
     Vector(
       /*0*/ Fork.of(

@@ -22,7 +22,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings):
   def run(in: ResourceIO[InputStream]): IO[Checked[Unit]] =
     in.use(in =>
       IO {
-        implicit val x = Feed.opJsonCodec
+        implicit val x: TypedJsonCodec[Any] = Feed.opJsonCodec
         ByteArray.fromInputStreamUnlimited(in).utf8String.parseJsonAs[Vector[Any]]
       }.flatMapT { objects =>
         val collector = objects
@@ -67,7 +67,7 @@ object Feed:
         feed.run(in)
       }
 
-  val opJsonCodec =
+  val opJsonCodec: TypedJsonCodec[Any] =
     import ControllerState.*
 
     TypedJsonCodec[Any](

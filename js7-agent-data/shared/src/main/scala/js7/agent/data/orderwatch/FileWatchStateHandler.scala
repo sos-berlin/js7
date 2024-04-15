@@ -22,7 +22,7 @@ trait FileWatchStateHandler[Self]:
 
   /** FileWatch handler. */
   object fw:
-    def estimatedExtraSnapshotSize =
+    def estimatedExtraSnapshotSize: Int =
       pathToFileWatchState.values.view.map(_.estimatedExtraSnapshotSize).sum
 
     def attach(fileWatch: FileWatch): Checked[Self] =
@@ -52,5 +52,5 @@ object FileWatchStateHandler:
         .getOrElseUpdate(snapshot.orderWatchPath, new FileWatchState.Builder)
         .addSnapshot(snapshot)
 
-    def result =
+    def result: Map[OrderWatchPath, FileWatchState] =
       pathToFileWatch.view.mapValues(_.result()).toMap

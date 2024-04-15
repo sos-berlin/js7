@@ -5,8 +5,9 @@ import io.circe.{Codec, Decoder}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.web.Uri
-import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemPath, ItemRevision, UnsignedItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.subagent.{SubagentId, SubagentItem}
+import scala.collection.View
 
 final case class AgentRef(
   path: AgentPath,
@@ -33,10 +34,10 @@ extends UnsignedSimpleItem:
           Checked.unit
     yield this
 
-  def rename(path: AgentPath) =
+  def rename(path: AgentPath): AgentRef =
     copy(path = path)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): AgentRef =
     copy(itemRevision = revision)
 
   def toInitialItemState: AgentRefState =
@@ -45,7 +46,8 @@ extends UnsignedSimpleItem:
   override def dedicatedAgentPath: Option[AgentPath] =
     Some(path)
 
-  override def referencedItemPaths = directors.view
+  override def referencedItemPaths: View[InventoryItemPath] =
+    directors.view
 
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
@@ -71,13 +73,13 @@ extends UnsignedSimpleItem:
 
 
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]:
-  val cls = classOf[AgentRef]
+  val cls: Class[AgentRef] = classOf[AgentRef]
 
   type Key = AgentPath
-  def Key = AgentPath
+  def Key: UnsignedSimpleItemPath.Companion[AgentPath] = AgentPath
 
   override type Path = AgentPath
-  override val Path = AgentPath
+  override val Path: UnsignedItemPath.Companion[AgentPath] = AgentPath
 
   type ItemState = AgentRefState
 

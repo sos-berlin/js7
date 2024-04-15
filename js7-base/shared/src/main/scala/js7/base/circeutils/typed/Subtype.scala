@@ -24,7 +24,7 @@ object Subtype:
     * <p>
     * Usage: Subtype[A]
     */
-  def apply[A: ClassTag: Encoder.AsObject: Decoder] =
+  def apply[A: ClassTag: Encoder.AsObject: Decoder]: Subtype[A] =
     make[A](implicitClass[A] :: Nil, Some(implicitClass[A]),
       typeName[A], implicitly[Encoder.AsObject[A]], implicitly[Decoder[A]])
 

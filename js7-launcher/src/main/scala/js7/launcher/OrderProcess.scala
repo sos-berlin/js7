@@ -14,7 +14,7 @@ trait OrderProcess:
 
   protected def run: IO[FiberIO[OrderOutcome.Completed]]
 
-  protected def onStarted(fiber: FiberIO[OrderOutcome.Completed]) = {}
+  protected def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit = {}
 
   def cancel(immediately: Boolean): IO[Unit]
 
@@ -53,7 +53,7 @@ object OrderProcess:
     protected def run =
       IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed).start
 
-    def cancel(immediately: Boolean) =
+    def cancel(immediately: Boolean): IO[Unit] =
       IO.unit
 
   private val CanceledOutcome = OrderOutcome.Failed(Some("Canceled"))

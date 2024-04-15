@@ -13,7 +13,7 @@ final case class HttpsConfig(
 
 
 object HttpsConfig:
-  val empty = HttpsConfig(None, Nil)
+  val empty: HttpsConfig = HttpsConfig(None, Nil)
 
   def fromConfig(config: Config, configDirectory: Path): HttpsConfig =
     HttpsConfig(

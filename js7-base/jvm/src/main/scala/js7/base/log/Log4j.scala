@@ -30,7 +30,7 @@ object Log4j:
           case o => Success(o)
         })
 
-  def initialize(name: String) =
+  def initialize(name: String): Unit =
     ifNotInitialized:
       CorrelIdLog4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)

@@ -8,9 +8,10 @@ sealed trait JOrderObstacle
 
 
 object JOrderObstacle:
-  val toScalaClass = Map[Class[? <: JOrderObstacle], Class[? <: OrderObstacle]](
-    WaitingForCommand.getClass -> classOf[OrderObstacle.WaitingForTime],
-    classOf[WaitingForTime] -> classOf[OrderObstacle.WaitingForTime])
+  val toScalaClass: Map[Class[_ <: JOrderObstacle], Class[_ <: OrderObstacle]] =
+    Map(
+      WaitingForCommand.getClass -> classOf[OrderObstacle.WaitingForTime],
+      classOf[WaitingForTime] -> classOf[OrderObstacle.WaitingForTime])
 
   def apply(orderObstacle: OrderObstacle): JOrderObstacle =
     orderObstacle match
@@ -37,10 +38,10 @@ object JOrderObstacle:
   final case class WaitingForAdmission(asScala: OrderObstacle.WaitingForTime)
   extends WaitingForTime
 
-  val jobProcessLimitReached =
+  val jobProcessLimitReached: JobProcessLimitReached =
     JobProcessLimitReached(OrderObstacle.JobProcessLimitReached)
 
-  val agentProcessLimitReached =
+  val agentProcessLimitReached: AgentProcessLimitReached =
     AgentProcessLimitReached(OrderObstacle.AgentProcessLimitReached)
 
   final case class AgentProcessLimitReached(reached: OrderObstacle.AgentProcessLimitReached.type)
@@ -49,7 +50,8 @@ object JOrderObstacle:
   final case class JobProcessLimitReached(reached: OrderObstacle.JobProcessLimitReached.type)
   extends JOrderObstacle
 
-  val workflowSuspended = WorkflowSuspended(OrderObstacle.WorkflowSuspended)
+  val workflowSuspended: WorkflowSuspended =
+    WorkflowSuspended(OrderObstacle.WorkflowSuspended)
 
   final case class WorkflowSuspended(asScala: OrderObstacle.WorkflowSuspended)
   extends JOrderObstacle

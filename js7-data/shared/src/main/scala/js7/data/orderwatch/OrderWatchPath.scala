@@ -15,7 +15,8 @@ object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]:
   type Item = OrderWatch
 
   @javaApi
-  def of(id: String) = apply(id)
+  def of(id: String): OrderWatchPath = 
+    apply(id)
 
   override protected def unchecked(string: String) =
     new OrderWatchPath(string)

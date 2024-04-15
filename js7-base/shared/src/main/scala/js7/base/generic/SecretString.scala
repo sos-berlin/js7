@@ -18,9 +18,11 @@ final case class SecretString(string: String):
     try body(chars)
     finally for i <- chars.indices do chars(i) = '\u0000'
 
-  def isEmpty = string.isEmpty
+  def isEmpty: Boolean =
+    string.isEmpty
 
-  def nonEmpty = string.nonEmpty
+  def nonEmpty: Boolean =
+    string.nonEmpty
 
   override def toString = "Secret"
 
@@ -29,14 +31,14 @@ final case class SecretString(string: String):
     *
     * @see [[https://codahale.com/a-lesson-in-timing-attacks/]]
     */
-  override def equals(other: Any) =
+  override def equals(other: Any): Boolean =
     other match
       case SecretString(otherString) => timingAttackSecureEqual(string, otherString)
       case _ => false
 
 
 object SecretString:
-  val empty = SecretString("")
+  val empty: SecretString = SecretString("")
 
   object implicits:
     // Import explicitly, it's secret.
@@ -44,7 +46,7 @@ object SecretString:
     private val jsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
     private val jsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
     implicit val jsonCodec: Codec[SecretString] = Codec.from(jsonDecoder, jsonEncoder)
-  val jsonCodec = implicits.jsonCodec
+  val jsonCodec: Codec[SecretString] = implicits.jsonCodec
 
   implicit val StringAsSecretString: As[String, SecretString] =
     As(SecretString.apply)
@@ -54,7 +56,7 @@ object SecretString:
     *
     * @see [[https://codahale.com/a-lesson-in-timing-attacks/]]
     */
-  def timingAttackSecureEqual(a: String, b: String) =
+  def timingAttackSecureEqual(a: String, b: String): Boolean =
     @tailrec def xor(i: Int, result: Int): Int =
       if i == a.length then
         result

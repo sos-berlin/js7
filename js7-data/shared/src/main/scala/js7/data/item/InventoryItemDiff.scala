@@ -7,13 +7,14 @@ final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
   removed: Seq[P] = Nil):
 
   /** For tests: ordering is irrelevant. */
-  override def equals(other: Any) = other match
+  override def equals(other: Any): Boolean = other match
     case o: InventoryItemDiff[?, ?] =>
       addedOrChanged.toSet == o.addedOrChanged.toSet &&
         removed.toSet == removed.toSet
     case _ => false
 
-  def isEmpty = addedOrChanged.isEmpty && removed.isEmpty
+  def isEmpty: Boolean = 
+    addedOrChanged.isEmpty && removed.isEmpty
 
   /** Returns a subset of a certain `InventoryItemPath` and `InventoryItem`. */
   def select[P1 <: P, I1 <: I](implicit I1: InventoryItem.Companion[I1]): InventoryItemDiff[P1, I1] =
@@ -33,7 +34,8 @@ object InventoryItemDiff:
   : InventoryItemDiff_ =
     fromItemChanges(diffItems(as, bs, ignoreVersion = ignoreVersion))
 
-  def fromItemChanges(events: Seq[ItemChange]) =
+  def fromItemChanges(events: Seq[ItemChange])
+  : InventoryItemDiff[InventoryItemPath, InventoryItem] =
     InventoryItemDiff(
       events collect { case o: ItemChange.AddedOrChanged => o.item },
       events collect { case o: ItemChange.Removed => o.path })

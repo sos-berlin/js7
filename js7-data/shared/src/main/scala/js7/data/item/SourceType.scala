@@ -19,4 +19,4 @@ object SourceType:
   case object Xml extends SourceType:
     override def toString = "XML"
 
-  val values = IndexedSeq(Json, Txt, Xml)
+  val values: IndexedSeq[SourceType] = IndexedSeq(Json, Txt, Xml)

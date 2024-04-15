@@ -2,7 +2,7 @@ package js7.controller.web.controller.api
 
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.base.auth.{Admission, UserAndPassword, ValidUserPermission}
+import js7.base.auth.{Admission, SessionToken, UserAndPassword, ValidUserPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
@@ -101,7 +101,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
           label = agentRef.path.toString,
           controllerConfiguration.httpsConfig)
         .use { agentClient =>
-          implicit val sessionToken = IO(agentClient.sessionToken)
+          implicit val sessionToken: IO[Option[SessionToken]] = IO(agentClient.sessionToken)
           agentClient.login() *>
             agentClient
               .sendReceive(HttpRequest(request.method, pekkoUri,

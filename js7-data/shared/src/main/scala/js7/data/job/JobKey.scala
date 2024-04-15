@@ -20,27 +20,32 @@ sealed trait JobKey:
 
 
 object JobKey:
-  def apply(workflowPosition: WorkflowPosition) =
+  def apply(workflowPosition: WorkflowPosition): Anonymous =
     Anonymous(workflowPosition)
 
-  def apply(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) =
+  def apply(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Named =
     Named(workflowBranchPath, name)
 
-  def forTest: JobKey = forTest("TEST")
+  def forTest: JobKey = 
+    forTest("TEST")
 
-  def forTest(name: String) =
+  def forTest(name: String): Named =
     Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
   final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey:
-    def name = workflowPosition.toString
+    def name: String =
+      workflowPosition.toString
 
-    def workflowId = workflowPosition.workflowId
+    def workflowId: WorkflowId =
+      workflowPosition.workflowId
 
   final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name)
   extends JobKey:
-    def name = s"$workflowBranchPath:${jobName.string}"
+    def name: String =
+      s"$workflowBranchPath:${jobName.string}"
 
-    def workflowId = workflowBranchPath.workflowId
+    def workflowId: WorkflowId =
+      workflowBranchPath.workflowId
 
   implicit val jsonEncoder: Encoder.AsObject[JobKey] =
     case Anonymous(WorkflowPosition(workflowId, position)) =>

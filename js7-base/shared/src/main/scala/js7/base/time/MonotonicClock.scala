@@ -80,11 +80,11 @@ private trait MonotonicClock:
     /**
      * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
      */
-    def compare(other: Deadline) =
+    def compare(other: Deadline): Int =
       sinceZero compare other.sinceZero
 
     /** Not immutable, may return a different string for each call. */
-    override def toString =
+    override def toString: String =
       val elapsed = this.elapsed
       "Deadline(" + (elapsed.isPositive ?? "+") + elapsed.pretty + ")"
 

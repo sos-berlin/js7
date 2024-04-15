@@ -12,11 +12,12 @@ final case class ControllerMetaState(
   initiallyStartedAt: Timestamp,
   timezone: Timezone):
 
-  def isDefined = this != ControllerMetaState.Undefined
+  def isDefined: Boolean = 
+    this != ControllerMetaState.Undefined
 
 
 object ControllerMetaState:
-  val Undefined = ControllerMetaState(
+  val Undefined: ControllerMetaState = ControllerMetaState(
     ControllerId("UNDEFINED-CONTROLLER-ID"),
     Timestamp.ofEpochMilli(0),
     Timezone("UTC"))

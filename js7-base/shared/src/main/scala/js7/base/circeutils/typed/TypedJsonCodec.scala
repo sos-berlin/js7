@@ -1,5 +1,6 @@
 package js7.base.circeutils.typed
 
+import io.circe.Decoder.Result
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import js7.base.circeutils.typed.TypedJsonCodec.*
 import js7.base.utils.Collections.implicits.*
@@ -56,7 +57,8 @@ extends Codec.AsObject[A]:
       s"$printName|${other.printName}",
       (subtypes ++ other.subtypes).asInstanceOf[Seq[Subtype[Any]]])
 
-  def apply(c: HCursor) = decode(c)
+  def apply(c: HCursor): Result[A] = 
+    decode(c)
 
   def encodeObject(a: A): JsonObject =
     classToEncoder(a.getClass).asInstanceOf[Encoder.AsObject[A]].encodeObject(a)

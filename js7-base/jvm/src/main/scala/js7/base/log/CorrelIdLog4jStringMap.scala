@@ -16,9 +16,10 @@ extends StringMap:
     else
       nullString
 
-  def toMap = toJavaMap
+  def toMap: java.util.Map[String, String] =
+   toJavaMap
 
-  lazy val toJavaMap: java.util.Map[String, String] =
+  private lazy val toJavaMap: java.util.Map[String, String] =
     java.util.Collections.singletonMap(CorrelIdKey, correlIdString)
 
   def isEmpty = false
@@ -27,9 +28,9 @@ extends StringMap:
 
   def isFrozen = true
 
-  def freeze() = {}
+  def freeze(): Unit = {}
 
-  def containsKey(key: String) =
+  def containsKey(key: String): Boolean =
     key == CorrelIdKey
 
   def getValue[V](key: String): V =
@@ -48,15 +49,19 @@ extends StringMap:
     _forEachCount += 1
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V], state)
 
-  def clear() = throwFrozen()
+  def clear(): Nothing =
+    throwFrozen()
 
-  def putAll(source: ReadOnlyStringMap) = throwFrozen()
+  def putAll(source: ReadOnlyStringMap): Nothing =
+    throwFrozen()
 
-  def putValue(key: String, value: Any) = throwFrozen()
+  def putValue(key: String, value: Any): Nothing =
+    throwFrozen()
 
-  def remove(key: String) = throwFrozen()
+  def remove(key: String): Nothing =
+    throwFrozen()
 
-  private def throwFrozen() =
+  private def throwFrozen(): Nothing =
     throw new IllegalStateException("CorrelId StringMap is frozen")
 
 
@@ -64,4 +69,5 @@ object CorrelIdLog4jStringMap:
   private val nullString = "❓null❓"
   private var _forEachCount = 0L
 
-  def forEachCount = _forEachCount
+  def forEachCount: Long = 
+    _forEachCount

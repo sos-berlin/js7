@@ -13,8 +13,8 @@ object BuildUtils
   //Files.list(Paths.get("logs")).toArray(new Array[Path](_)).foreach(Files.delete)
   deleteIfExists(Paths.get("logs/build.log"))
 
-  val isWindows = sys.props("os.name") startsWith "Windows"
-  val isMac = sys.props("os.name") startsWith "Mac OS"
+  val isWindows: Boolean = sys.props("os.name") startsWith "Windows"
+  val isMac: Boolean = sys.props("os.name") startsWith "Mac OS"
 
   val testParallelization: Int = {
     val factor: Int = sys.props.get("test.parallel") match {
@@ -38,15 +38,16 @@ object BuildUtils
 
   // IntelliJ does not compile (`js7-tester` % "test") when used by js7-base ???
   // It compiles when "test" is changed to "compile".
-  val isIntelliJIdea = sys.props.get("idea.managed").contains("true")
-  val testWhenIntelliJ = if (isIntelliJIdea) "compile" else "test"
+  val isIntelliJIdea: Boolean = sys.props.get("idea.managed").contains("true")
+  val testWhenIntelliJ: String = if (isIntelliJIdea) "compile" else "test"
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] =
     o :: Nil
 
   implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID])
   extends AnyVal {
-    def %(configurations: String) = delegate.map(_ % configurations)
+    def %(configurations: String): Seq[ModuleID] = 
+      delegate.map(_ % configurations)
   }
 
   def runProcess(args: String*): Seq[String] = {
@@ -63,7 +64,7 @@ object BuildUtils
 
   final class ProcessException(commandLine: String, returnCode: Int, stdout: String, stderr: String) extends RuntimeException
   {
-    override def getMessage =
+    override def getMessage: String =
       s"""Command failed with exit code $returnCode
          |$commandLine
          |""".stripMargin +

@@ -17,7 +17,7 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   private val sessionTokenRef = Atomic(none[SessionToken])
 
-  def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
+  def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean): IO[Completed] =
     IO:
       if userAndPassword == expectedUserAndPassword then
         sessionTokenRef := Some(sessionTokenGenerator.next())
@@ -29,14 +29,17 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
       sessionTokenRef := None
       Completed
 
-  def clearSession() =
+  def clearSession(): Unit =
     sessionTokenRef := None
 
-  def hasSession = sessionTokenRef.get().isDefined
+  def hasSession: Boolean =
+    sessionTokenRef.get().isDefined
 
-  override protected def isTemporaryUnreachable(throwable: Throwable) = false
+  override protected def isTemporaryUnreachable(throwable: Throwable) = 
+    false
 
-  override def toString = "TestSessionApi"
+  override def toString = 
+    "TestSessionApi"
 
 
 object TestSessionApi:

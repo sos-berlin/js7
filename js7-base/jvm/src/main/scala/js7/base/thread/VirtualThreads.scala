@@ -18,13 +18,13 @@ object VirtualThreads:
       () => newThreadPerTaskExecutor(factory)
 
   @TestOnly
-  def isEnabled =
+  def isEnabled: Boolean =
     maybeNewVirtualThreadPerTaskExecutor.isDefined
 
   private[thread] def maybeNewVirtualThreadExecutorService(): Option[ExecutorService] =
     maybeNewVirtualThreadPerTaskExecutor.map(_())
 
-  def newMaybeVirtualThread(name: String = "")(body: => Unit) =
+  def newMaybeVirtualThread(name: String = "")(body: => Unit): Thread =
     _newMaybeVirtualThread(name)(() => body)
 
   private lazy val _newMaybeVirtualThread: String => Runnable => Thread =

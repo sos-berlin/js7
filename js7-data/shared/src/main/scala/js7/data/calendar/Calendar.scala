@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import js7.data.item.{ItemRevision, UnsignedItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
@@ -28,27 +28,27 @@ extends UnsignedSimpleItem:
     ((!dateOffset.isNegative) !! Problem.pure("Invalid Calender arguments"))
       .rightAs(this)
 
-  def rename(path: CalendarPath) =
+  def rename(path: CalendarPath): Calendar =
     copy(path = path)
 
   def toInitialItemState: CalendarState =
     CalendarState(this)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): Calendar =
     copy(itemRevision = revision)
 
 
 object Calendar extends UnsignedSimpleItem.Companion[Calendar]:
-  val cls = classOf[Calendar]
+  val cls: Class[Calendar] = classOf[Calendar]
 
   @TestOnly
   private[calendar] val orderIdToDatePatternDefault = "#([^#]+)#.*"
 
   type Key = CalendarPath
-  def Key = CalendarPath
+  def Key: UnsignedSimpleItemPath.Companion[CalendarPath] = CalendarPath
 
   override type Path = CalendarPath
-  override val Path = CalendarPath
+  override val Path: UnsignedItemPath.Companion[CalendarPath] = CalendarPath
 
   type ItemState = CalendarState
 

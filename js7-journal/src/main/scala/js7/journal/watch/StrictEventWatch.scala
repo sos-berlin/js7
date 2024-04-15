@@ -164,8 +164,8 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   : IO[TearableEventSeq[Seq, A]] =
     body(underlying).map(_.strict)
 
-  def tornEventId = underlying.tornEventId
+  def tornEventId: EventId = underlying.tornEventId
 
-  def lastFileEventId = underlying.lastFileEventId
+  def lastFileEventId: EventId = underlying.lastFileEventId
 
-  def lastAddedEventId = underlying.lastAddedEventId
+  def lastAddedEventId: EventId = underlying.lastAddedEventId

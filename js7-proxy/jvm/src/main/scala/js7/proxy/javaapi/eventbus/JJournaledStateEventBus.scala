@@ -17,7 +17,8 @@ extends AutoCloseable:
     this(new JournaledStateEventBus[S])
 
   /** Close all subscriptions. */
-  def close() = asScala.close()
+  def close(): Unit = 
+    asScala.close()
 
   @javaApi @Nonnull
   final def subscribe[E <: Event](
@@ -67,7 +68,8 @@ extends AutoCloseable:
     private[JJournaledStateEventBus] def eventBus = JJournaledStateEventBus.this.asScala
 
     @javaApi
-    def close() = asScala.close()
+    def close(): Unit =
+      asScala.close()
 
     /** For internal use only. */
     private[JJournaledStateEventBus] def internalAddToEventBus(): Unit =

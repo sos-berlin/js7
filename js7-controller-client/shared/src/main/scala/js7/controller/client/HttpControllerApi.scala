@@ -104,5 +104,5 @@ object HttpControllerApi:
     val httpClient: HttpClient,
     override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
   extends HttpControllerApi:
-    val baseUri = admission.uri
+    val baseUri: Uri = admission.uri
     protected val userAndPassword = admission.userAndPassword

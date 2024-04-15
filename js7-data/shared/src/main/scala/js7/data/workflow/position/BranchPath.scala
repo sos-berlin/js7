@@ -92,7 +92,8 @@ object BranchPath:
 
   object syntax:
     extension (segments: BranchPath)
-      def %(nr: InstructionNr) = Position(segments, nr)
+      def %(nr: InstructionNr): Position =
+        Position(segments, nr)
 
       def %(parent: BranchPath.Segment): BranchPath =
         segments ::: parent :: Nil

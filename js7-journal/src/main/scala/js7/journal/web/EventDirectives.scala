@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
   */
 object EventDirectives:
 
-  val MinimumDelay = 100.ms
+  val MinimumDelay: FiniteDuration = 100.ms
   private val PekkoTimeoutTolerance = 1.s  // To let event reader timeout before Pekko
 
   def eventRequest[E <: Event](

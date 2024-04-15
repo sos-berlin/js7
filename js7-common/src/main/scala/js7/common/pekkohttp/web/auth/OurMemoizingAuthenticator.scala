@@ -19,7 +19,7 @@ extends Authenticator[U]:
 
   private val memoizedToUser = Memoizer.strict1(toUser)  // Only cache for short time if source will be a changing database !!!
 
-  def apply(credentials: Credentials) =
+  def apply(credentials: Credentials): Option[U] =
     credentials match
       case provided: Credentials.Provided =>
         val userId = UserId(provided.identifier)

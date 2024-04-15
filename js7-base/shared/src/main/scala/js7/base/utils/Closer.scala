@@ -19,7 +19,7 @@ final class Closer extends AutoCloseable:
 
   def whenNotClosedAtShutdown(body: => Unit): Unit =
     val hook = new Thread(s"ShutdownHook for $toString"):
-      override def run() = body
+      override def run(): Unit = body
     sys.runtime.addShutdownHook(hook)
     onClose:
       sys.runtime.removeShutdownHook(hook)
@@ -27,7 +27,7 @@ final class Closer extends AutoCloseable:
   /**
     * Closes the `Closer`, then "finally" (nonwithstanding any NonFatal exception) call `body`.
     */
-  def closeThen(body: => Unit) =
+  def closeThen(body: => Unit): Unit =
     val c = new Closer
     c onClose body
     c.register(this)

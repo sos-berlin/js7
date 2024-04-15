@@ -10,7 +10,7 @@ sealed trait JClusterState
 extends JJsonable[JClusterState]:
   type AsScala = ClusterState
 
-  def companion = JClusterState
+  def companion: JJsonable.Companion[JClusterState] = JClusterState
 
 
 object JClusterState extends JJsonable.Companion[JClusterState]:
@@ -30,9 +30,9 @@ object JClusterState extends JJsonable.Companion[JClusterState]:
   sealed trait Empty extends JClusterState
 
   case object Empty extends Empty:
-    val asScala = ClusterState.Empty
+    val asScala: ClusterState = ClusterState.Empty
 
-  val empty = Empty
+  val empty: Empty.type = Empty
 
   sealed trait HasNodes extends JClusterState:
     this: Product =>
@@ -45,10 +45,10 @@ object JClusterState extends JJsonable.Companion[JClusterState]:
     def activeId: NodeId =
       asScala.activeId
 
-    final def isNonEmptyActive(id: NodeId) =
+    final def isNonEmptyActive(id: NodeId): Boolean =
       asScala.isNonEmptyActive(id)
 
-    final def isEmptyOrActive(id: NodeId) =
+    final def isEmptyOrActive(id: NodeId): Boolean =
       asScala.isEmptyOrActive(id)
 
     final def passiveId: NodeId =

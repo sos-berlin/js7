@@ -16,11 +16,14 @@ import scala.collection.mutable
   */
 final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
   // Delay Timesstamp construction for faster JSON deserialization
-  def timestamp = Timestamp.ofEpochMilli(timestampMillis)
+  def timestamp: Timestamp =
+    Timestamp.ofEpochMilli(timestampMillis)
 
-  def map[B](f: A => B): Stamped[B] = functor.map(this)(f)
+  def map[B](f: A => B): Stamped[B] =
+    functor.map(this)(f)
 
-  override def toString = s"Stamped($eventId $timestamp $value)"
+  override def toString = 
+    s"Stamped($eventId $timestamp $value)"
 
 
 object Stamped:

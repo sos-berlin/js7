@@ -1,7 +1,8 @@
 package js7.provider.scheduledorder
 
+import io.circe.Codec
 import js7.base.utils.ScalaUtils.reuseIfEqual
-import js7.data.item.{TrivialItemState, VersionedItem, VersionedItemId}
+import js7.data.item.{TrivialItemState, VersionedItem, VersionedItemId, VersionedItemPath}
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule
@@ -22,7 +23,7 @@ extends VersionedItem, TrivialItemState[ScheduledOrderGenerator]:
 
   val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
-  def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
+  def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]): ScheduledOrderGenerator =
     reuseIfEqual(this, copy(id = id))
 
 
@@ -33,7 +34,7 @@ extends VersionedItem.Companion[ScheduledOrderGenerator],
   type Item = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 
-  val cls = classOf[ScheduledOrderGenerator]
-  val Path = ScheduledOrderGeneratorPath
+  val cls: Class[ScheduledOrderGenerator] = classOf[ScheduledOrderGenerator]
+  val Path: VersionedItemPath.Companion[ScheduledOrderGeneratorPath] = ScheduledOrderGeneratorPath
 
-  implicit def jsonCodec = ???
+  implicit def jsonCodec: Codec.AsObject[ScheduledOrderGenerator] = ???

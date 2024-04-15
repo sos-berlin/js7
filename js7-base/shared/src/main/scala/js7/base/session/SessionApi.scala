@@ -215,12 +215,13 @@ object SessionApi:
 
     def hasSession = true
 
-    def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
+    def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean): IO[Completed] =
       IO.completed
 
-    def logout() = IO.completed
+    def logout(): IO[Completed] =
+      IO.completed
 
-    def clearSession() = {}
+    def clearSession(): Unit = {}
 
   private val tryLogoutTimeout = 5.s
 

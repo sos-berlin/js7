@@ -246,7 +246,7 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
         logger.log(sym.logLevel,
           s"$sym Watched file is still being modified for ${logExtra(now)}")
 
-    def onMatured(now: CatsDeadline) =
+    def onMatured(now: CatsDeadline): Unit =
       logger.log(sym.relievedLogLevel,
         s"🟢 Watched file is considered written after ${logExtra(now)}")
 

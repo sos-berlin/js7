@@ -9,4 +9,5 @@ case object DoNotVerifySignature extends Signature:
 
   val TypeName = "DontCheck"
 
-  override def toGenericSignature = GenericSignature(TypeName, "")
+  override def toGenericSignature: GenericSignature = 
+    GenericSignature(TypeName, "")

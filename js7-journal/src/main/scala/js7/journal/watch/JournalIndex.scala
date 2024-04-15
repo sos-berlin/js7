@@ -53,7 +53,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int):
     }
 
   /** toFactor > 1 to keep multiple JournalIndex small. */
-  def freeze(toFactor: Int) =
+  def freeze(toFactor: Int): Unit =
     if !freezed then synchronized:
       if !freezed then
         val a = toFactor / spread min length / MinimumLength

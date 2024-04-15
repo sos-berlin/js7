@@ -20,10 +20,10 @@ trait FileEventWatch extends EventWatch:
 
   def fileEventIds: Seq[EventId]
 
-  final def tornEventId =
+  final def tornEventId: EventId =
     fileEventIds.headOption getOrElse EventId.BeforeFirst
 
-  final def lastFileEventId =
+  final def lastFileEventId: EventId =
     fileEventIds.last
 
   def strict: StrictEventWatch =

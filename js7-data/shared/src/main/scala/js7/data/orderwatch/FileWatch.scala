@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
-import js7.data.item.ItemRevision
+import js7.data.item.{InventoryItemPath, ItemRevision}
 import js7.data.orderwatch.FileWatch.defaultPattern
 import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
@@ -32,20 +32,21 @@ extends OrderWatch:
   def resolvedPattern: Pattern =
     pattern.fold(defaultPattern)(_.pattern)
 
-  def rename(path: OrderWatchPath) =
+  def rename(path: OrderWatchPath): FileWatch =
     copy(path = path)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): FileWatch =
     copy(itemRevision = revision)
 
-  override val referencedItemPaths = View(agentPath, workflowPath)
+  override val referencedItemPaths: View[InventoryItemPath] = 
+    View(agentPath, workflowPath)
 
 
 object FileWatch extends OrderWatch.Companion[FileWatch]:
-  val cls = classOf[FileWatch]
+  val cls: Class[FileWatch] = classOf[FileWatch]
 
   override type Path = OrderWatchPath
-  override val Path = OrderWatchPath
+  override val Path: OrderWatchPath.type = OrderWatchPath
 
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")

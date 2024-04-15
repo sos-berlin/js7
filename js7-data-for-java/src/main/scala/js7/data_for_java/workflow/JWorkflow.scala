@@ -18,7 +18,7 @@ final case class JWorkflow(asScala: Workflow)
 extends JVersionedItem[JWorkflow, WorkflowPath]:
   type AsScala = Workflow
 
-  def companion = JWorkflow
+  def companion: JWorkflow.type = JWorkflow
 
   @Nonnull
   def id: JWorkflowId =

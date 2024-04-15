@@ -29,7 +29,7 @@ extends SnapshotableStateBuilder[AgentState]:
   private val keyToSignedItem = mutable.Map.empty[SignableItemKey, Signed[SignableItem]]
   private var _state = AgentState.empty
 
-  protected def onInitializeState(state: AgentState) =
+  protected def onInitializeState(state: AgentState): Unit =
     _state = state
 
   protected def onAddSnapshotObject =
@@ -79,7 +79,7 @@ extends SnapshotableStateBuilder[AgentState]:
         pathToJobResource.insert(jobResource.path, jobResource)
       case _ =>
 
-  override protected def onOnAllSnapshotsAdded() =
+  override protected def onOnAllSnapshotsAdded(): Unit =
     _state = _state.copy(
       eventId = eventId,
       meta = agentMetaState,
@@ -100,7 +100,7 @@ extends SnapshotableStateBuilder[AgentState]:
   override def clusterState: ClusterState =
     _state.clusterState
 
-  def result() =
+  def result(): AgentState =
     fixMetaBeforev2_6_3()
     _state.copy(eventId = eventId)
 

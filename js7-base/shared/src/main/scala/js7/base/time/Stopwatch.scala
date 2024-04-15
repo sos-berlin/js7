@@ -26,7 +26,7 @@ final class Stopwatch:
   def duration: FiniteDuration =
     (nanoTime - start).nanoseconds
 
-  override def toString =
+  override def toString: String =
     duration.pretty
 
 
@@ -81,16 +81,16 @@ object Stopwatch:
     Result(duration, n, ops, gap).toPerSecondsString
 
   final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true):
-    def singleDuration = duration / n
-    def showPerSecond = n >= 10 && duration >= 100.ms && singleDuration <= 1.s || n > 100_00
+    def singleDuration: FiniteDuration = duration / n
+    def showPerSecond: Boolean = n >= 10 && duration >= 100.ms && singleDuration <= 1.s || n > 100_00
     def perSecondString: String =
       if duration.toNanos == 0 then
         "∞"
       else
         "~" + (n * 1000L*1000*1000 / duration.toNanos)
-    val gapOps = (gap ?? " ") + ops
+    val gapOps: String = (gap ?? " ") + ops
 
-    override def toString =
+    override def toString: String =
       n match
         case 0 => s"0$gapOps"
         case 1 => s"${duration.pretty}/$n$gapOps"
@@ -98,19 +98,19 @@ object Stopwatch:
           val suffix = showPerSecond ?? s", $perSecondString$gapOps/s"
           s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty})$suffix"
 
-    def toShortString =
+    def toShortString: String =
       if n == 0 || !showPerSecond then
         s"${duration.pretty}/$n$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
 
-    def countAndPerSecondString =
+    def countAndPerSecondString: String =
       if n == 0 then
         s"0$gapOps"
       else
         s"$n$gapOps, $perSecondString/s"
 
-    def toPerSecondsString =
+    def toPerSecondsString: String =
       if n == 0 then
         s"0$gapOps"
       else

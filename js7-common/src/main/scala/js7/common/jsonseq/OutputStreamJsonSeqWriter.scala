@@ -25,7 +25,7 @@ extends AutoCloseable:
     case o: BufferedOutputStream => o
     case o => new BufferedOutputStream(o)
 
-  def close() = buffered.close()
+  def close(): Unit = buffered.close()
 
   @TestOnly
   private[jsonseq] def writeJson(json: Json): Unit =
@@ -38,6 +38,6 @@ extends AutoCloseable:
     buffered.write('\n')
     _written += byteArray.length + extraLength
 
-  def flush() = buffered.flush()
+  def flush(): Unit = buffered.flush()
 
-  def bytesWritten = _written
+  def bytesWritten: Long = _written

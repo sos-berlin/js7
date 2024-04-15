@@ -20,8 +20,12 @@ extends User:
 
 object SimpleUser extends User.Companion[SimpleUser]:
   /** The unauthenticated, anonymous user without permissions, for testing. */
-  val TestAnonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), grantedPermissions = Set.empty)
-  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(SuperPermission))
+  val TestAnonymous: SimpleUser =
+    SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), grantedPermissions = Set.empty)
+
+  val System: SimpleUser =
+    SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(SuperPermission))
+
   implicit val companion: User.Companion[SimpleUser] = this
 
   def addPermissions(user: SimpleUser, permissions: Set[Permission]): SimpleUser =

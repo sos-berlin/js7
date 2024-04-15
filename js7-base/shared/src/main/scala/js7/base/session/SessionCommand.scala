@@ -75,7 +75,7 @@ object SessionCommand:
       Subtype[Login.LoggedIn])
 
   implicit val jsonCodec: TypedJsonCodec[SessionCommand] =
-    implicit val x = UserAndPassword.jsonCodec
+    given Codec.AsObject[UserAndPassword] = UserAndPassword.jsonCodec
     TypedJsonCodec[SessionCommand](
       Subtype[Login],
       Subtype[Logout])

@@ -1,13 +1,14 @@
 package js7.launcher.process
 
+import cats.effect.IO
 import cats.syntax.traverse.*
 import java.nio.charset.Charset
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
+import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AsyncLock
@@ -19,7 +20,6 @@ import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
 import js7.launcher.process.RichProcess.{tryDeleteFile, tryDeleteFiles}
 import js7.launcher.process.ShellScriptJobLauncher.writeScriptToFile
-import cats.effect.IO
 import scala.collection.mutable
 
 final class ShellScriptJobLauncher(
@@ -52,7 +52,7 @@ extends PathProcessJobLauncher:
           }
         }))
 
-  def stop = IO(
+  def stop: IO[Unit] = IO(
     userToFile.synchronized {
       tryDeleteFiles(userToFile.values)
     })
@@ -89,7 +89,7 @@ object ShellScriptJobLauncher:
       .map(_ => file)
     }
 
-  private def makeFileUserAccessible(userName: Option[WindowsUserName], file: Path): Either[Problem, Unit] =
+  private def makeFileUserAccessible(userName: Option[WindowsUserName], file: Path): Checked[Unit] =
     userName match
       case Some(userName) if isWindows =>
         catchNonFatal:

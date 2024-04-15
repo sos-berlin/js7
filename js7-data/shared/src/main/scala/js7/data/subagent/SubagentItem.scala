@@ -19,10 +19,10 @@ extends UnsignedSimpleItem:
 
   val companion: SubagentItem.type = SubagentItem
 
-  def rename(id: SubagentId) =
+  def rename(id: SubagentId): SubagentItem =
     copy(id = id)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): SubagentItem =
     copy(itemRevision = revision)
 
   def path: SubagentId = id
@@ -30,7 +30,8 @@ extends UnsignedSimpleItem:
   def toInitialItemState: SubagentItemState =
     SubagentItemState.initial(this)
 
-  override def dedicatedAgentPath = Some(agentPath)
+  override def dedicatedAgentPath: Some[AgentPath] =
+    Some(agentPath)
 
   // Circular dependency! AgentRef references subagentId: Seq[SubagentId]
   override def referencedItemPaths = new View.Single(agentPath)
@@ -46,14 +47,14 @@ extends UnsignedSimpleItem:
 object SubagentItem
 extends UnsignedSimpleItem.Companion[SubagentItem]:
   type Key = SubagentId
-  def Key = SubagentId
+  def Key: SubagentId.type = SubagentId
 
   override type Path = SubagentId
-  val Path = SubagentId
+  val Path: SubagentId.type = SubagentId
 
   type ItemState = SubagentItemState
 
-  val cls = classOf[SubagentItem]
+  val cls: Class[SubagentItem] = classOf[SubagentItem]
 
   implicit val jsonCodec: Codec.AsObject[SubagentItem] = deriveConfiguredCodec[SubagentItem]
 

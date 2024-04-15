@@ -41,7 +41,8 @@ extends ClusterWatchRequest:
       case event: ClusterNodeLostEvent => event.lostNodeId == lostNodeId
       case _ => false
 
-  def maybeEvent = Some(event)
+  def maybeEvent: Some[ClusterEvent] =
+    Some(event)
 
   override def toShortString =
     s"$requestId ${event.getClass.simpleScalaName} event"
@@ -60,7 +61,8 @@ extends ClusterWatchRequest:
 
   def isNodeLostEvent(lostNodeId: NodeId) = false
 
-  def maybeEvent = None
+  def maybeEvent: None.type =
+    None
 
   def forceWhenUntaught = false
 
@@ -70,7 +72,7 @@ extends ClusterWatchRequest:
 
 object ClusterWatchRequest:
   final case class RequestId(number: Long) extends GenericLong:
-    def increment = RequestId(number + 1)
+    def increment: RequestId = RequestId(number + 1)
     override def toString = s"Request:$number"
   object RequestId extends GenericLong.Companion[RequestId]
 
@@ -81,7 +83,7 @@ object ClusterWatchRequest:
 final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
   extends Problem.Coded:
 
-  def arguments = Map(
+  def arguments: Map[String, String] = Map(
     "from" -> from.string,
     "clusterState" -> clusterState.toString)
 

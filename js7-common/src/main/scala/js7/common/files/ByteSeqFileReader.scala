@@ -25,7 +25,7 @@ extends AutoCloseable:
   if fromEnd then
     channel.position(channel.size)
 
-  def close() =
+  def close(): Unit =
     logger.debug(s"↙ close $file ↙")
     channel.close()
 

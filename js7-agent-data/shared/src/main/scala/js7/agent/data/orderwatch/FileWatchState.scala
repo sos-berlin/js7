@@ -3,7 +3,7 @@ package js7.agent.data.orderwatch
 import cats.effect.IO
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}
-import js7.agent.data.orderwatch.FileWatchState.{EntrySnapshot, HeaderSnapshot, Snapshot}
+import js7.agent.data.orderwatch.FileWatchState.{EntrySnapshot, HeaderSnapshot, ItemState, Snapshot}
 import js7.base.circeutils.JavaFileJsonCodecs.PathJsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
@@ -14,6 +14,7 @@ import js7.data.item.UnsignedSimpleItemState
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import fs2.Stream
+import js7.base.problem.Checked
 import scala.collection.{View, mutable}
 
 final case class FileWatchState(
@@ -27,10 +28,10 @@ extends UnsignedSimpleItemState:
   val item: FileWatch = fileWatch
   def path: OrderWatchPath = item.path
 
-  def updateItem(item: FileWatch) =
+  def updateItem(item: FileWatch): Checked[ItemState] =
     Right(copy(fileWatch = item))
 
-  def id = fileWatch.path
+  def id: OrderWatchPath = fileWatch.path
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
     event match
@@ -49,7 +50,7 @@ extends UnsignedSimpleItemState:
             directoryState.copy(
               fileToEntry = directoryState.fileToEntry - relativePath))
 
-  def containsPath(path: Path) =
+  def containsPath(path: Path): Boolean =
     directoryState.fileToEntry.contains(path)
 
   def allFilesVanished: View[KeyedEvent[ExternalOrderVanished]] =
@@ -58,7 +59,7 @@ extends UnsignedSimpleItemState:
       .map(file =>
         fileWatch.path <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
 
-  def estimatedExtraSnapshotSize =
+  def estimatedExtraSnapshotSize: Int =
     directoryState.fileToEntry.size
 
   override def toSnapshotStream: Stream[IO, Snapshot] =
@@ -77,7 +78,7 @@ object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
 
   final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot:
-    def orderWatchPath = fileWatch.path
+    def orderWatchPath: OrderWatchPath = fileWatch.path
     override def productPrefix = "FileWatchState"
 
   final case class EntrySnapshot(
@@ -101,8 +102,9 @@ object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
         case o: EntrySnapshot =>
           entries += DirectoryState.Entry(o.path)
 
-    def result() = FileWatchState(
-      header.orThrow.fileWatch,
-      DirectoryState.fromIterable(entries))
+    def result(): FileWatchState = 
+      FileWatchState(
+        header.orThrow.fileWatch,
+        DirectoryState.fromIterable(entries))
 
   intelliJuseImport(PathJsonCodec)

@@ -17,19 +17,22 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]:
     if existingValue != null then throw new DuplicateKeyException(s"'$key' has already been registered")
     this
 
-  final override def addOne(kv: (K, V)) =
+  final override def addOne(kv: (K, V)): this.type =
     delegate.put(kv._1, kv._2)
     this
 
-  final override def subtractOne(key: K) =
+  final override def subtractOne(key: K): this.type =
     delegate.remove(key)
     this
 
-  final def iterator = delegate.entrySet().iterator.asScala.map(o => o.getKey -> o.getValue)
+  final def iterator: Iterator[(K, V)] =
+    delegate.entrySet().iterator.asScala.map(o => o.getKey -> o.getValue)
 
-  final def get(key: K) = Option(delegate.get(key))
+  final def get(key: K): Option[V] =
+    Option(delegate.get(key))
 
-  override final def contains(key: K) = delegate containsKey key
+  override final def contains(key: K): Boolean =
+    delegate containsKey key
 
   override final def getOrElse[V1 >: V](key: K, default: => V1): V1 =
     delegate.get(key) match
@@ -37,12 +40,17 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]:
       case v => v
 
 
-  override final def isEmpty = delegate.isEmpty
+  override final def isEmpty: Boolean =
+    delegate.isEmpty
 
-  override final def keysIterator = delegate.keySet.iterator.asScala
+  override final def keysIterator: Iterator[K] =
+    delegate.keySet.iterator.asScala
 
-  override final def keySet = delegate.keySet.asScala
+  override final def keySet: collection.Set[K] =
+    delegate.keySet.asScala
 
-  override final def valuesIterator = delegate.values.iterator.asScala
+  override final def valuesIterator: Iterator[V] =
+    delegate.values.iterator.asScala
 
-  override final def values = delegate.values.asScala
+  override final def values: Iterable[V] =
+    delegate.values.asScala

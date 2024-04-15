@@ -15,4 +15,4 @@ trait Period extends Ordered[Period]:
 
   def nextLocalTime(t: LocalTime): Option[LocalTime]
 
-  final def compare(o: Period) = begin compareTo o.begin
+  final def compare(o: Period): Int = begin compareTo o.begin

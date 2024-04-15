@@ -28,4 +28,5 @@ object WallClock extends SystemWallClock:
 
 
 trait SystemWallClock extends WallClock:
-  final def epochMilli() = System.currentTimeMillis()
+  final def epochMilli(): Long = 
+    System.currentTimeMillis()

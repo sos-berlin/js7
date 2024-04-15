@@ -28,9 +28,11 @@ final class ParallelismCounter:
   private def end(): Unit =
     inParallel.decrementAndGet()
 
-  def maximum = _maximum
+  def maximum: Int =
+    _maximum
 
-  def total = _total
+  def total: Int =
+    _total
 
 
 object ParallelismCounter:

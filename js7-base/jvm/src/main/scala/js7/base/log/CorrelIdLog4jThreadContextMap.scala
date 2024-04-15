@@ -15,17 +15,17 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
 
   private var lastCorrelIdLog4jStringMap = new CorrelIdLog4jStringMap(CorrelId.empty)
 
-  def clear() = {}
+  def clear(): Unit = {}
 
-  def put(key: String, value: String) =
+  def put(key: String, value: String): Unit =
     putSuppressedCount += 1
 
-  def remove(key: String) = {}
+  def remove(key: String): Unit = {}
 
   def isEmpty = false
 
   // Not used
-  def get(key: String) =
+  def get(key: String): String =
     if key == CorrelIdKey then
       getCount += 1
       CorrelId.current.fixedWidthString
@@ -33,15 +33,15 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
       getOtherKey(key)
 
   // Not used
-  def containsKey(key: String) =
+  def containsKey(key: String): Boolean =
     keys(key)
 
   // Not used
-  def getImmutableMapOrNull =
+  def getImmutableMapOrNull: java.util.Map[String, String] =
     getCopy
 
   // Not used
-  def getCopy =
+  def getCopy: java.util.Map[String, String] =
     getCopyCount += 1
     java.util.Collections.singletonMap(CorrelIdKey, CorrelId.local().fixedWidthString)
 

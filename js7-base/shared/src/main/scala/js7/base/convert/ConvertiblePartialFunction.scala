@@ -38,6 +38,6 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
 
 object ConvertiblePartialFunction:
   final case class MissingConfigurationKeyProblem(key: String) extends Problem.Coded:
-    def arguments = Map(
-      "key" -> key
-    )
+    def arguments: Map[String, String] = 
+      Map(
+        "key" -> key)

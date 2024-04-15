@@ -93,7 +93,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
       }
     })
 
-  final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
+  final def addEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
     synchronized:  // synchronize with asynchronous execution of synchronizedStateFuture
       try
         recordCount += 1
@@ -133,7 +133,8 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     getStatePromise.future
 
   /** Journal file's JournalHeader. */
-  final def fileJournalHeader = _journalHeader.toOption
+  final def fileJournalHeader: Option[JournalHeader] =
+    _journalHeader.toOption
 
   /** Calculated next JournalHeader. */
   final def nextJournalHeader: Option[JournalHeader] =
@@ -146,17 +147,20 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
       },
       timestamp = lastEventIdTimestamp))
 
-  final def eventId = _eventId
+  final def eventId: EventId = _eventId
 
-  protected def updateEventId(o: EventId) =
+  protected def updateEventId(o: EventId): Unit =
     assert(_eventId < o)
     _eventId = o
 
-  final def snapshotCount = _snapshotCount
+  final def snapshotCount: Long =
+    _snapshotCount
 
-  final def eventCount = _eventCount
+  final def eventCount: Long =
+    _eventCount
 
-  final def totalEventCount = _journalHeader.toOption.fold(0L)(_.totalEventCount) + _eventCount
+  final def totalEventCount: Long =
+    _journalHeader.toOption.fold(0L)(_.totalEventCount) + _eventCount
 
   private def lastEventIdTimestamp: Timestamp =
     if eventId == EventId.BeforeFirst then Timestamp.now
@@ -170,10 +174,10 @@ object SnapshotableStateBuilder:
   extends SnapshotableStateBuilder[S], StandardsBuilder:
     private var _state = S.empty
 
-    protected def onInitializeState(state: S) =
+    protected def onInitializeState(state: S): Unit =
       _state = state
 
-    override def addSnapshotObject(obj: Any) = obj match
+    override def addSnapshotObject(obj: Any): Unit = obj match
       case o: JournalState =>
         _state = _state.withStandards(_state.standards.copy(
           journalState = o))
@@ -189,11 +193,15 @@ object SnapshotableStateBuilder:
         _state = _state.applyEvent(stamped.value).orThrow
         updateEventId(stamped.eventId)
 
-    def result() = _state withEventId eventId
+    def result(): S =
+      _state withEventId eventId
 
-    protected final def state = _state
+    protected final def state =
+      _state
 
-    protected final def updateState(state: S) = _state = state
+    protected final def updateState(state: S): Unit =
+      _state = state
 
   private case class SnapshotObjectNotApplicableProblem(obj: Any) extends Problem.Coded:
-    def arguments = Map("object" -> obj.getClass.scalaName)
+    def arguments = Map(
+      "object" -> obj.getClass.scalaName)

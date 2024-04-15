@@ -20,7 +20,7 @@ object SignableItem:
 
   // Common JSON serialization for AgentCommand.AttachSignableItem and SignedItemAdded
 
-  def signedEncodeJson(signedString: SignedString, itemRevision: Option[ItemRevision]) =
+  def signedEncodeJson(signedString: SignedString, itemRevision: Option[ItemRevision]): JsonObject =
     JsonObject(
       "signed" -> signedString.asJson,
       // Store itemRevision separately because it is not included in the SignedString

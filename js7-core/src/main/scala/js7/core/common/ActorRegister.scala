@@ -74,15 +74,20 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef):
 
   override def toString = s"ActorRegister(${keyToValue.size} items)"
 
-  final def keys: Vector[K] = keyToValue.keys.toVector
+  final def keys: Vector[K] =
+    keyToValue.keys.toVector
 
-  final def values: Vector[V] = keyToValue.values.toVector
+  final def values: Vector[V] =
+    keyToValue.values.toVector
 
-  final def isEmpty = keyToValue.isEmpty
+  final def isEmpty: Boolean =
+    keyToValue.isEmpty
 
-  final def nonEmpty = keyToValue.nonEmpty
+  final def nonEmpty: Boolean =
+    keyToValue.nonEmpty
 
-  final def size = keyToValue.size
+  final def size: Int =
+    keyToValue.size
 
 
 object ActorRegister:

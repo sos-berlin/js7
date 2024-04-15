@@ -107,7 +107,7 @@ extends MainService, Service.StoppableByRequest:
   @TestOnly lazy val localUri: Uri =
     webServer.localUri
 
-  val untilTerminated =
+  val untilTerminated: IO[ProgramTermination] =
     IO.fromFutureDummyCancelable(IO.pure(terminated))
 
   protected def start =
@@ -475,4 +475,4 @@ object RunningController:
     alarmClock: Option[AlarmClock] = None,
     eventIdGenerator: Option[EventIdGenerator] = None)
   object TestWiring:
-    val empty = TestWiring()
+    val empty: TestWiring = TestWiring()

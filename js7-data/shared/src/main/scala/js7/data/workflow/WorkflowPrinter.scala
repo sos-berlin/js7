@@ -24,9 +24,9 @@ import scala.annotation.tailrec
   */
 final class WorkflowPrinter(sb: StringBuilder):
 
-  def appendQuoted(string: String) = ValuePrinter.appendQuoted(sb, string)
+  def appendQuoted(string: String): Unit = ValuePrinter.appendQuoted(sb, string)
 
-  def appendQuotedExpression(string: String) =
+  def appendQuotedExpression(string: String): Any =
     if string.contains('\n') then
       @tailrec def q(quote: String): Unit =
         if string contains quote then q(quote + "'")
@@ -45,7 +45,8 @@ final class WorkflowPrinter(sb: StringBuilder):
   def appendNameToExpression(nameToExpression: Map[String, Expression]): Unit =
     ValuePrinter.appendNameToExpression(sb, nameToExpression)
 
-  def indent(nesting: Int) = for _ <- 0 until nesting do sb ++= "  "
+  def indent(nesting: Int): Unit =
+    for _ <- 0 until nesting do sb ++= "  "
 
   def appendWorkflowExecutable(job: WorkflowJob): Unit =
     sb ++= "agent="
@@ -258,7 +259,7 @@ object WorkflowPrinter:
     new WorkflowPrinter(sb).appendLabeledInstruction(nesting = 0, () @: instruction)
     sb.toString
 
-  def namedValuesToString(namedValues: NamedValues) =
+  def namedValuesToString(namedValues: NamedValues): String =
     val sb = new StringBuilder(128)
     appendNamedValues(sb, namedValues)
     sb.toString()

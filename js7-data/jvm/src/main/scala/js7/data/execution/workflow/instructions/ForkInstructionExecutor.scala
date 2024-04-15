@@ -32,7 +32,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
     now: Timestamp): OrderOutcome.Completed
 
-  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView) =
+  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView): Checked[List[KeyedEvent[OrderActorEvent]]] =
     readyOrStartable(order)
       .map(order =>
         for event <- forkOrder(fork, order, state) yield
@@ -106,7 +106,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   override final def onReturnFromSubworkflow(
     fork: Instr,
     childOrder: Order[Order.State],
-    state: StateView) =
+    state: StateView): Checked[List[KeyedEvent[OrderActorEvent]]] =
     Right(
       tryJoinChildOrder(fork, childOrder, state)
         .toList)

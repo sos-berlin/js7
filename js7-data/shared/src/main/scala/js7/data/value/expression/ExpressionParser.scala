@@ -70,7 +70,7 @@ object ExpressionParser:
   private val catchCount: Parser[OrderCatchCount.type] =
     keyword("catchCount").as(OrderCatchCount)
 
-  val booleanConstant =
+  val booleanConstant: Parser[BooleanConstant] =
     trueConstant | falseConstant
 
   private val numericConstant: Parser[NumericConstant] =

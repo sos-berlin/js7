@@ -34,17 +34,17 @@ extends Instruction:
     else
       Right(this)
 
-  def withoutSourcePos = copy(
+  def withoutSourcePos: TryInstruction = copy(
     sourcePos = None,
     tryWorkflow = tryWorkflow.withoutSourcePos,
     catchWorkflow = catchWorkflow.withoutSourcePos)
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): TryInstruction =
     copy(
       tryWorkflow = tryWorkflow withPositions position / BranchId.Try_,
       catchWorkflow = catchWorkflow withPositions position / BranchId.Catch_)
 
-  override def adopt(outer: Workflow) = copy(
+  override def adopt(outer: Workflow): TryInstruction = copy(
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
 
@@ -53,16 +53,16 @@ extends Instruction:
       tryWorkflow = tryWorkflow.reduceForAgent(agentPath),
       catchWorkflow = catchWorkflow.reduceForAgent(agentPath))
 
-  override def workflow(branchId: BranchId) =
+  override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case TryBranchId(_) => Right(tryWorkflow)
       case CatchBranchId(_) => Right(catchWorkflow)
       case _ => super.workflow(branchId)
 
-  override def branchWorkflows =
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Try_ -> tryWorkflow) :: (BranchId.Catch_ -> catchWorkflow) :: Nil
 
-  override def toCatchBranchId(branchId: BranchId) =
+  override def toCatchBranchId(branchId: BranchId): Option[BranchId] =
     branchId match
       case TryBranchId(i) => Some(BranchId.catch_(i))
       case _ => super.toCatchBranchId(branchId)
@@ -90,8 +90,10 @@ extends Instruction:
 
 object TryInstruction:
   private val NoRetryDelay = ZeroDuration  // No retryDelays, no delay
-  val InvalidMaxTriesProblem = Problem.pure("maxTries argument must be a positive number")
-  val MissingRetryProblem = Problem.pure("Missing a retry instruction in the catch block to make sense of retryDelays or maxTries")
+  private val InvalidMaxTriesProblem = Problem.pure("maxTries argument must be a positive number")
+
+  val MissingRetryProblem: Problem =
+    Problem.pure("Missing a retry instruction in the catch block to make sense of retryDelays or maxTries")
 
   def checked(tryWorkflow: Workflow, catchWorkflow: Workflow, retryDelays: Option[Seq[FiniteDuration]] = None, maxTries: Option[Int] = None,
     sourcePos: Option[SourcePos] = None)

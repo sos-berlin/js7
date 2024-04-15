@@ -23,7 +23,7 @@ sealed trait BranchId:
 
   def isCycle: Boolean
 
-  final def isIsFailureBoundary = isFork
+  final def isIsFailureBoundary: Boolean = isFork
 
   /** An order can not be moved through a move boundary. */
   final def isNotMoveBoundary: Boolean =
@@ -33,20 +33,20 @@ sealed trait BranchId:
 
 
 object BranchId:
-  val Then = BranchId("then")
-  val Else = BranchId("else")
-  val Try_ = BranchId("try")
+  val Then: Named = BranchId("then")
+  val Else: Named = BranchId("else")
+  val Try_ : Named = BranchId("try")
   val TryPrefix = "try+"
-  val Catch_ = BranchId("catch")
+  val Catch_ : Named = BranchId("catch")
   val CatchPrefix = "catch+"
-  val ForkList = BranchId("fork")
+  val ForkList: Named = BranchId("fork")
   val ForkPrefix = "fork+"
-  val Lock = BranchId("lock")
-  val Cycle = BranchId("cycle")
+  val Lock: Named = BranchId("lock")
+  val Cycle: Named = BranchId("cycle")
   val CyclePrefix = "cycle+"
-  val ConsumeNotices = BranchId("consumeNotices")
-  val StickySubagent = BranchId("stickySubagent")
-  val Options = BranchId("options")
+  val ConsumeNotices: Named = BranchId("consumeNotices")
+  val StickySubagent: Named = BranchId("stickySubagent")
+  val Options: Named = BranchId("options")
 
   /** Set of BranchIds an Order is movable through. */
   private[BranchId] val NoMoveBoundary = Set[BranchId](Then, Else, Try_, Catch_, Cycle/*???*/, Options)
@@ -68,7 +68,7 @@ object BranchId:
       case CatchBranchId(i) => Right(Some(BranchId.try_(i + 1)))
       case _ => Left(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
 
-  def fork(branch: String) =
+  def fork(branch: String): Named =
     BranchId(ForkPrefix + branch)
 
   def cycle(cycleState: CycleState): BranchId =
@@ -89,15 +89,16 @@ object BranchId:
 
   final case class Named(string: String) extends BranchId:
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
-    def normalized =
+    def normalized: BranchId =
       if string startsWith TryPrefix then "try"
       else if string startsWith CatchPrefix then "catch"
       else if string startsWith CyclePrefix then "cycle"
       else this
 
-    def isFork = string.startsWith(ForkPrefix) || string == "fork"
+    def isFork: Boolean = 
+      string.startsWith(ForkPrefix) || string == "fork"
 
-    def isCycle =
+    def isCycle: Boolean =
       string.startsWith(BranchId.CyclePrefix) || this == Cycle
 
     def toCycleState: Checked[CycleState] =

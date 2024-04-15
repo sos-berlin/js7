@@ -10,10 +10,10 @@ extends GenericString.Checked_[A]:
 
   private lazy val pathValidator = new Js7PathValidator(name)
 
-  final def isNameStart(c: Char) =
+  final def isNameStart(c: Char): Boolean =
     pathValidator.isNameStart(c)
 
-  final def isNamePartMaybe(c: Char) =
+  final def isNamePartMaybe(c: Char): Boolean =
     pathValidator.isNamePartMaybe(c)
 
   override def checked(string: String): Checked[A] =

@@ -15,7 +15,7 @@ package object problems:
     tornEventId: EventId,
     lastAddedEventId: EventId)
   extends Problem.Coded:
-    def arguments = Map3(
+    def arguments: Map[String, String] = Map3(
       "requestedEventId", EventId.toString(requestedEventId),
       "tornEventId", EventId.toString(tornEventId),
       "lastAddedEventId", EventId.toString(lastAddedEventId))

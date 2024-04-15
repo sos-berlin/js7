@@ -31,4 +31,5 @@ extends DelegateId.Companion[AgentPath], UnsignedSimpleItemPath.Companion[AgentP
   protected def unchecked(string: String) = new AgentPath(string)
 
   @javaApi
-  def of(validName: String) = apply(validName)
+  def of(validName: String): AgentPath =
+    apply(validName)

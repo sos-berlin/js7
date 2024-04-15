@@ -90,7 +90,7 @@ object Pekkos:
     else
       Future.successful(())
 
-  def byteStringToTruncatedString(byteString: ByteString, size: Int = 100) =
+  def byteStringToTruncatedString(byteString: ByteString, size: Int = 100): String =
     s"${byteString.size} bytes " + (byteString.take(size).map(c => f"$c%02x") mkString " ") + ((byteString.sizeIs > size) ?? " ...")
 
   def encodeAsActorName(o: String): String =

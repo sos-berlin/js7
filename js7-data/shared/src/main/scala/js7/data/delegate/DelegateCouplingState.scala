@@ -13,13 +13,13 @@ sealed trait DelegateCouplingState
 object DelegateCouplingState:
   final case class Reset(reason: Reset.Reason) extends DelegateCouplingState
   object Reset:
-    val fresh = Reset(Fresh)
-    val shutdown = Reset(Shutdown)
-    val restart = Reset(Restart)
-    val byCommand = Reset(ResetCommand)
+    val fresh: Reset = Reset(Fresh)
+    val shutdown: Reset = Reset(Shutdown)
+    val restart: Reset = Reset(Restart)
+    val byCommand: Reset = Reset(ResetCommand)
 
     sealed trait Reason:
-      @javaApi val string = getClass.simpleScalaName
+      @javaApi val string: String = getClass.simpleScalaName
 
     /** Initially state. */
     case object Fresh extends Reason

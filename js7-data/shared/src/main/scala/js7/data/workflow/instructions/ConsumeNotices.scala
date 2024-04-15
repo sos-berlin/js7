@@ -3,12 +3,12 @@ package js7.data.workflow.instructions
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
 import js7.base.problem.{Checked, Problem}
-import js7.data.board.BoardPathExpression
-import js7.data.order.Order
+import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
+import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
 import js7.data.workflow.position.{BranchId, Position}
-import js7.data.workflow.{Instruction, Workflow}
+import js7.data.workflow.{ Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -16,29 +16,31 @@ final case class ConsumeNotices(
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction:
 
-  def withoutSourcePos =
+  def withoutSourcePos: ConsumeNotices =
     copy(sourcePos = None)
 
-  override def withPositions(position: Position): Instruction =
+  override def withPositions(position: Position): ConsumeNotices =
     copy(
       subworkflow = subworkflow.withPositions(position / BranchId.Cycle))
 
-  override def adopt(outer: Workflow) = copy(
-    subworkflow = subworkflow.copy(
-      outer = Some(outer)))
+  override def adopt(outer: Workflow): ConsumeNotices =
+    copy(
+      subworkflow = subworkflow.copy(
+        outer = Some(outer)))
 
-  def referencedBoardPaths =
+  def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths
 
   def fulfilledEvents(
     order: Order[Order.State],
     consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
-  = OrderNoticesConsumptionStarted(consumptions) :: Nil
+  : List[OrderEvent.OrderActorEvent] =
+    OrderNoticesConsumptionStarted(consumptions) :: Nil
 
-  override def workflows =
+  override def workflows: Seq[Workflow] =
     subworkflow :: Nil
 
-  override def branchWorkflows =
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.ConsumeNotices -> subworkflow) :: Nil
 
   override def workflow(branchId: BranchId): Checked[Workflow] =

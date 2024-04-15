@@ -44,7 +44,7 @@ extends EventDrivenState[Self, E], StateView:
         // OrderStdWritten is not applied. But check OrderId.
         idToOrder.checked(orderId).rightAs(this)
 
-  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, Self] =
+  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Checked[Self] =
     for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)

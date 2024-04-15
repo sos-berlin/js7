@@ -6,7 +6,7 @@ import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
-import js7.base.auth.ValidUserPermission
+import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
@@ -81,7 +81,7 @@ trait GenericEventRoute extends RouteProvider:
           accept(`application/x-ndjson`):
             Route.seal:
               authorizedUser(ValidUserPermission) { user =>
-                implicit val userId = user.id
+                given UserId = user.id
                 val waitingSince = !eventWatch.whenStarted.isCompleted ? now
                 if waitingSince.isDefined then logger.debug("Waiting for journal to become ready ...")
                 onSuccess(eventWatch.whenStarted) { eventWatch =>

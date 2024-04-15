@@ -24,15 +24,16 @@ object PlatformInfo {
   implicit val jsonCodec: Codec.AsObject[PlatformInfo] = deriveCodec[PlatformInfo]
 
   @TestOnly
-  val test = PlatformInfo(
-    Timestamp("2022-07-08T12:00:00Z"),
-    timezone = "Europe/Berlin",
-    Version("2.4.0-TEST"),
-    hostname = "HOST",
-    operatingSystemDistribution = Some("DISTRIBUTION"),
-    cpuModel = Some("CPU"),
-    JavaInformation(
-      version = "x.y.z",
-      availableProcessors = 8,
-      JavaInformation.Memory(maximum = 3, total = 2, free = 1),
-      systemProperties = Map("test" -> "TEST")))}
+  val test: PlatformInfo = 
+    PlatformInfo(
+      Timestamp("2022-07-08T12:00:00Z"),
+      timezone = "Europe/Berlin",
+      Version("2.4.0-TEST"),
+      hostname = "HOST",
+      operatingSystemDistribution = Some("DISTRIBUTION"),
+      cpuModel = Some("CPU"),
+      JavaInformation(
+        version = "x.y.z",
+        availableProcessors = 8,
+        JavaInformation.Memory(maximum = 3, total = 2, free = 1),
+        systemProperties = Map("test" -> "TEST")))}

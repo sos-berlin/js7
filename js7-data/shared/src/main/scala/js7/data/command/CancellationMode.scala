@@ -13,7 +13,7 @@ sealed trait CancellationMode
 
 
 object CancellationMode:
-  val Default = FreshOrStarted(None)
+  val Default: FreshOrStarted = FreshOrStarted(None)
 
   case object FreshOnly extends CancellationMode
 

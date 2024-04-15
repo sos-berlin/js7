@@ -22,19 +22,19 @@ object BasicPrinter:
       sb.append(identifier.replace("`", "``"))
       sb.append('`')
 
-  def identifierRequiresBacktick(identifier: String) =
+  def identifierRequiresBacktick(identifier: String): Boolean =
     !isIdentifier(identifier) && !identifier.forall(isDigit)
 
-  def isIdentifier(string: String) =
+  def isIdentifier(string: String): Boolean =
     string.nonEmpty &&
       string.last != '-' &&
       isIdentifierStart(string.charAt(0)) &&
       (1 until string.length).forall(i => isIdentifierPart(string.charAt(i)))
 
-  def isIdentifierStart(c: Char) =
+  def isIdentifierStart(c: Char): Boolean =
     isUnicodeIdentifierStart(c) /*|| isHighSurrogate(c)*/
 
-  def isIdentifierPart(c: Char) =
+  def isIdentifierPart(c: Char): Boolean =
     isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) /*|| isSurrogate(c)*/
 
   private def isDigit(c: Char) =

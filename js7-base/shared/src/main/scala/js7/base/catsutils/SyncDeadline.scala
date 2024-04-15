@@ -11,12 +11,12 @@ import scala.concurrent.duration.FiniteDuration
 sealed class SyncDeadline private(val nanosSinceZero: Long)
 extends Ordered[SyncDeadline]:
 
-  override def equals(o: Any) =
+  override def equals(o: Any): Boolean =
     o match
       case o: SyncDeadline => nanosSinceZero == o.nanosSinceZero
       case _ => false
 
-  override def hashCode =
+  override def hashCode: Int =
     nanosSinceZero.hashCode
 
   /** Return a deadline advanced (i.e.s, moved into the future) by the given duration. */
@@ -60,13 +60,13 @@ extends Ordered[SyncDeadline]:
     now.nanosSinceZero - nanosSinceZero
 
   /** The natural ordering for deadline is determined by the natural order of the underlying (finite) duration. */
-  def compare(other: SyncDeadline) =
+  def compare(other: SyncDeadline): Int =
     (nanosSinceZero - other.nanosSinceZero).compare(0L)
 
   def toCatsDeadline: CatsDeadline =
     CatsDeadline.fromMonotonicNanos(nanosSinceZero)
 
-  override def toString =
+  override def toString: String =
     if nanosSinceZero.abs < toStringTestingLimit then
       // Probably executed for testing
       if nanosSinceZero >= 0 then
@@ -114,7 +114,7 @@ object SyncDeadline:
   def fromMonotonic(duration: FiniteDuration): SyncDeadline =
     SyncDeadline(duration.toNanos)
 
-  def fromCatsDeadline(catsDeadline: CatsDeadline) =
+  def fromCatsDeadline(catsDeadline: CatsDeadline): SyncDeadline =
     fromNanos(catsDeadline.nanosSinceZero)
 
   //implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:

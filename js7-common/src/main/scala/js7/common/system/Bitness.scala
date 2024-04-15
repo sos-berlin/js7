@@ -11,13 +11,13 @@ object Bitness extends Enumeration:
   private val sunModel = Option(System.getProperty("sun.arch.data.model")) getOrElse
       error("System property sun.arch.data.model is undefined")
 
-  val Bits32 = Value
-  val Bits64 = Value
+  val Bits32: Bitness.Value = Value
+  val Bits64: Bitness.Value = Value
 
-  val bitness = sunModel match
+  val bitness: Bitness.Value = sunModel match
     case "32" => Bits32
     case "64" => Bits64
     case _ => error(s"Unknown value in system property sun.arch.data.model=$sunModel")
 
-  def is64Bit = bitness == Bits64
-  def is32Bit = bitness == Bits32
+  def is64Bit: Boolean = bitness == Bits64
+  def is32Bit: Boolean = bitness == Bits32

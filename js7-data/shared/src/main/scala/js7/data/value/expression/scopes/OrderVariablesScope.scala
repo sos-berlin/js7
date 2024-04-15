@@ -11,7 +11,7 @@ import scala.collection.MapView
 
 final class OrderVariablesScope(order: Order[Order.State], workflow: Workflow)
 extends Scope:
-  override lazy val nameToCheckedValue =
+  override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
     orderArguments.mapValues(Right(_))
       .orElseMapView(order
         .historicOutcomes
@@ -23,7 +23,7 @@ extends Scope:
         }
         .fold(MapView.empty[String, Checked[Value]])((a, b) => a.orElseMapView(b)))
 
-  override def findValue(search: ValueSearch) =
+  override def findValue(search: ValueSearch): Option[Checked[Value]] =
     search match
       case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
         orderArguments.get(name).map(Right(_))

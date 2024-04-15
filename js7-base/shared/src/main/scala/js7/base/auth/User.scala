@@ -34,7 +34,8 @@ trait User:
   final def hasPermission(requiredPermission: Permission): Boolean =
     grantedPermissions.contains(requiredPermission) || grantedPermissions.contains(SuperPermission)
 
-  final def isAnonymous = id.isAnonymous
+  final def isAnonymous: Boolean =
+    id.isAnonymous
 
 
 object User:
@@ -42,7 +43,6 @@ object User:
     def addPermissions(user: U, permissions: Set[Permission]): U
 
   final case class UserDoesNotHavePermissionProblem(userId: UserId, permission: Permission) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "userId" -> userId.string,
-      "permission" -> permission.name
-    )
+      "permission" -> permission.name)

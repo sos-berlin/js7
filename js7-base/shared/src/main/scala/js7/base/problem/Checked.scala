@@ -21,8 +21,8 @@ import scala.util.{Failure, Left, NotGiven, Success, Try}
   */
 object Checked:
 
-  val unit = Checked(())
-  val completed = Checked(Completed)
+  val unit: Checked[Unit] = Checked(())
+  val completed: Checked[Completed] = Checked(Completed)
 
   // Only used by catchNonFatal — must be lazy to avoid early initialized of logging.
   private lazy val catchLogger = Logger[this.type]

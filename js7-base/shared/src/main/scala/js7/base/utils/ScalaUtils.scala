@@ -267,8 +267,11 @@ object ScalaUtils:
         if delegate == when then _then else delegate
 
     implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal:
-      def switchOn(body: => Unit) = if delegate.compareAndSet(false, true) then body
-      def switchOff(body: => Unit) = if delegate.compareAndSet(true, false) then body
+      def switchOn(body: => Unit): Unit =
+        if delegate.compareAndSet(false, true) then body
+
+      def switchOff(body: => Unit): Unit =
+        if delegate.compareAndSet(true, false) then body
 
     implicit final class RichView[A](private val view: View[A]) extends AnyVal:
       def :+[B >: A](b: B): View[B] =
@@ -378,11 +381,11 @@ object ScalaUtils:
 
       override def buffered: MergeOrderedIterator.this.type = this
 
-      def head =
+      def head: A =
         if minimum.isEmpty then compute()
         minimum.getOrElse(throw new NoSuchElementException)
 
-      override def headOption =
+      override def headOption: Option[A] =
         minimum match
           case None => if hasNext then minimum else None
           case o => o
@@ -719,7 +722,8 @@ object ScalaUtils:
         underlying.substring(0, i)
 
       /** Length of the first line, including \n. */
-      def firstLineLength = firstLineLengthN(Int.MaxValue)
+      def firstLineLength: Int =
+        firstLineLengthN(Int.MaxValue)
 
       def firstLineLengthN(until: Int): Int =
         val n = until min underlying.length
@@ -754,7 +758,7 @@ object ScalaUtils:
             sb.appendAll(Iterator.fill(fill)(' '))
 
     implicit final class RichByteArray(private val underlying: Array[Byte]) extends AnyVal:
-      def indexOfByte(byte: Byte) =
+      def indexOfByte(byte: Byte): Int =
         val len = underlying.length
         var i = 0
         while i < len && underlying(i) != byte do i = i + 1
@@ -812,9 +816,10 @@ object ScalaUtils:
       def apply(a: A) = function(a)
       override def toString() = string
 
-  def namedIdentity[A] = new (A => A):
-    def apply(a: A) = a
-    override def toString = "identity"
+  def namedIdentity[A]: A => A =
+    new (A => A):
+      def apply(a: A) = a
+      override def toString = "identity"
 
   def cast[A: ClassTag](o: Any): A =
     checkedCast[A](o) match
@@ -901,7 +906,7 @@ object ScalaUtils:
       if sb.nonEmpty then result.append(sb.toString)
       result
 
-  def ordinalToString(n: Int) =
+  def ordinalToString(n: Int): String =
     n match
       case 1 => "1st"
       case 2 => "2nd"

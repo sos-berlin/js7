@@ -96,20 +96,20 @@ object BuildInfos
         .map { case (k, v) => s"build.$k=$v\n" }
         .mkString
 
-    lazy val isSnapshot =
+    lazy val isSnapshot: Boolean =
       version.contains("-SNAPSHOT")
   }
 
   /** A committed and properly tagged version. */
   final class Tagged(val version: String, branch: String, val commitHash: String)
   extends Info {
-    val longVersion =
+    val longVersion: String =
       version
 
-    val prettyVersion =
+    val prettyVersion: String =
       longVersion
 
-    val buildId =
+    val buildId: String =
       longVersion
   }
 
@@ -144,7 +144,7 @@ object BuildInfos
     val longVersion =
       s"$version+${committedAt.fold("")(o => toSemverDate(o) + ".")}$commitHash"
 
-    val buildId =
+    val buildId: String =
       longVersion
   }
 
@@ -152,10 +152,10 @@ object BuildInfos
   final class Uncommitted(val version: String, val branch: String, val commitHash: String)
   extends Info with Branch {
     /** "2.0.0+UNCOMMITTED.20210127.120000" */
-    val longVersion =
+    val longVersion: String =
       version + "+" + toSemverDate(now) + ".UNCOMMITTED"
 
-    val buildId = {
+    val buildId: String = {
       val uuid = UUID.randomUUID
       val buffer = ByteBuffer.wrap(new Array[Byte](16))
       buffer.putLong(uuid.getMostSignificantBits)

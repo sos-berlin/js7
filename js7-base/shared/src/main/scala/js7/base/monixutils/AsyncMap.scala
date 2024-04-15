@@ -179,7 +179,7 @@ object AsyncMap:
 
     private def isStopping = stoppingProblem != null
 
-    def isStoppingWith(problem: Problem) =
+    def isStoppingWith(problem: Problem): Boolean =
       problem == stoppingProblem
 
     final val whenStopped: IO[Unit] =

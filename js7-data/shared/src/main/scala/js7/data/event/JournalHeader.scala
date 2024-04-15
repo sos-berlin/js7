@@ -1,7 +1,7 @@
 package js7.data.event
 
 import cats.syntax.semigroup.*
-import io.circe.Json
+import io.circe.{Encoder, Json}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -31,9 +31,10 @@ final case class JournalHeader(
   js7Version: String,
   buildId: String):
 
-  override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
-    s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $initiallyStartedAt, " +
-    s"$version, $js7Version, $buildId)"
+  override def toString: String =
+    s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
+      s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), " +
+      s"$initiallyStartedAt, $version, $js7Version, $buildId)"
 
 
 object JournalHeader:
@@ -43,7 +44,7 @@ object JournalHeader:
 
   implicit val jsonCodec: TypedJsonCodec[JournalHeader] =
     intelliJuseImport(FiniteDurationJsonEncoder)
-    implicit val x = Timestamp.StringTimestampJsonEncoder
+    given Encoder[Timestamp] = Timestamp.StringTimestampJsonEncoder
 
     TypedJsonCodec[JournalHeader](
       Subtype.named[JournalHeader](
@@ -102,7 +103,7 @@ object JournalHeader:
         Right(())
 
   final case class JournalTypeMismatchProblem(file: Path, expected: String, typeName: String) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "file" -> file.getFileName.toString,
       "typeName" -> typeName,
       "expected" -> expected)
@@ -113,7 +114,7 @@ object JournalHeader:
     expectedJournalId: JournalId,
     foundJournalId: JournalId)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "file" -> file.getFileName.toString,
       "expectedJournalId" -> expectedJournalId.string,
       "foundJournalId" -> foundJournalId.string)

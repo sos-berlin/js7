@@ -9,7 +9,7 @@ import js7.base.version.Version
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.EventId
-import js7.data.item.UnsignedSimpleItemState
+import js7.data.item.{PathRev, UnsignedSimpleItemState}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemState.logger
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
@@ -35,9 +35,11 @@ extends UnsignedSimpleItemState:
       "A Subagent's AgentPath cannot be changed"))
     yield copy(subagentItem = item)
 
-  def subagentId = subagentItem.id
+  def subagentId: SubagentId =
+    subagentItem.id
 
-  def pathRev = item.pathRev
+  def pathRev: PathRev[SubagentId] =
+    item.pathRev
 
   def applyEvent(event: SubagentItemStateEvent): Checked[SubagentItemState] =
     event match
@@ -109,7 +111,7 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
 
   private val logger = Logger[this.type]
 
-  def initial(subagentItem: SubagentItem) =
+  def initial(subagentItem: SubagentItem): SubagentItemState =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst, platformInfo = None)
 

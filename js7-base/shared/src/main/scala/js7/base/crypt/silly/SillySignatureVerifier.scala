@@ -3,7 +3,7 @@ package js7.base.crypt.silly
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Labeled
 import org.jetbrains.annotations.TestOnly
@@ -20,12 +20,13 @@ extends SignatureVerifier:
 
   protected type MySignature = SillySignature
 
-  def companion = SillySignatureVerifier
+  def companion: SillySignatureVerifier.type =
+    SillySignatureVerifier
 
   @TestOnly
-  def publicKeys = signatures.map(_.string)
+  def publicKeys: Seq[String] = signatures.map(_.string)
 
-  def verify(document: ByteArray, signature: SillySignature) =
+  def verify(document: ByteArray, signature: SillySignature): Checked[Seq[SignerId]] =
     if !signatures.contains(signature) then
       Left(TamperedWithSignedMessageProblem)
     else
@@ -33,7 +34,7 @@ extends SignatureVerifier:
 
   override def toString = s"SillySignatureVerifer(origin=$publicKeyOrigin)"
 
-  def publicKeysToStrings =
+  def publicKeysToStrings: Seq[String] =
     s"$typeName(origin=$publicKeyOrigin)" :: Nil
 
 
@@ -42,13 +43,13 @@ object SillySignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignatureVerifier = SillySignatureVerifier
 
   val Default = new SillySignatureVerifier(SillySignature.Default :: Nil, "SillySignatureVerifier.Default")
-  val typeName = SillySignature.TypeName
+  val typeName: String = SillySignature.TypeName
   val filenameExtension = ".silly"
   val recommendedKeyDirectoryName = "trusted-silly-signature-keys"
 
   private val SillySignerId = SignerId("Silly")
 
-  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly") =
+  def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly"): Checked[SillySignatureVerifier] =
     Right(ignoreInvalid(publicKeys))
 
   def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String = "Silly") =
@@ -56,7 +57,7 @@ object SillySignatureVerifier extends SignatureVerifier.Companion:
       publicKeys.map(o => SillySignature(o.value.utf8String)),
       publicKeyOrigin = origin)
 
-  def genericSignatureToSignature(signature: GenericSignature) =
+  def genericSignatureToSignature(signature: GenericSignature): Checked[SillySignature] =
     assertThat(signature.typeName == typeName)
     if signature.signerId.isDefined then
       Left(Problem("Silly signature does not accept a signerId"))

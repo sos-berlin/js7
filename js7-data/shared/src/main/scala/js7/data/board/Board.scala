@@ -6,7 +6,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
-import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import js7.data.item.{ItemRevision, UnsignedItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
@@ -22,10 +22,10 @@ extends UnsignedSimpleItem:
   protected type Self = Board
   val companion: Board.type = Board
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): Board =
     copy(itemRevision = revision)
 
-  def rename(path: BoardPath) =
+  def rename(path: BoardPath): Board =
     copy(path = path)
 
   def toInitialItemState: BoardState =
@@ -56,13 +56,13 @@ extends UnsignedSimpleItem:
 
 
 object Board extends UnsignedSimpleItem.Companion[Board]:
-  val cls = classOf[Board]
+  val cls: Class[Board] = classOf[Board]
 
   type Key = BoardPath
-  def Key = BoardPath
+  def Key: UnsignedSimpleItemPath.Companion[BoardPath] = BoardPath
 
   override type Path = BoardPath
-  override val Path = BoardPath
+  override val Path: UnsignedItemPath.Companion[BoardPath] = BoardPath
 
   type ItemState = BoardState
 

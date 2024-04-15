@@ -35,12 +35,12 @@ extends AutoCloseable:
     closeOnError(jsonReader):
       jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is empty")
 
-  val journalHeader =
+  val journalHeader: JournalHeader =
     val json = jsonReader.toJson(rawJournalHeader).value
     JournalHeader.checkedHeader(json, journalFile, expectedType = S.name, expectedJournalId)
       .orThrow
 
-  val fileEventId = journalHeader.eventId
+  val fileEventId: EventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
   private var snapshotHeaderRead = false
   private var eventHeaderRead = false
@@ -48,7 +48,7 @@ extends AutoCloseable:
 
   private val transaction = new TransactionReader
 
-  def close() =
+  def close(): Unit =
     jsonReader.close()
 
   /** For FileEventIterator, skips snapshot section */
@@ -200,16 +200,19 @@ extends AutoCloseable:
     import S.keyedEventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
 
-  def eventId = positionAndEventId.value
+  def eventId: EventId = 
+    positionAndEventId.value
 
-  def position = positionAndEventId.position
+  def position: Long =
+    positionAndEventId.position
 
   def positionAndEventId: PositionAnd[EventId] =
     synchronized:
       transaction.positionAndEventId
         .getOrElse(PositionAnd(jsonReader.position, _eventId))
 
-  def totalEventCount = _totalEventCount
+  def totalEventCount: Long = 
+    _totalEventCount
 
 
 object JournalReader:

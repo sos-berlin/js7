@@ -1,5 +1,6 @@
 package js7.agent.data
 
+import cats.effect.IO
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Decoder, Encoder}
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
@@ -24,7 +25,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachi
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
@@ -54,12 +55,13 @@ extends SignedItemContainer,
 
   override def isAgent = true
 
-  override def maybeAgentPath =
+  override def maybeAgentPath: Option[AgentPath] =
     Some(meta.agentPath)
 
-  def controllerId = meta.controllerId
+  def controllerId: ControllerId =
+    meta.controllerId
 
-  def companion = AgentState
+  def companion: AgentState.type = AgentState
 
   /** A Controller has initialized this Agent? */
   def isDedicated: Boolean =
@@ -72,7 +74,7 @@ extends SignedItemContainer,
         standards = standards,
         meta = meta)
 
-  def estimatedSnapshotSize =
+  def estimatedSnapshotSize: Int =
     standards.snapshotSize +
       1 +
       idToWorkflow.size +
@@ -82,7 +84,7 @@ extends SignedItemContainer,
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
 
-  def toSnapshotStream = Stream(
+  def toSnapshotStream: Stream[IO, Any] = Stream(
     standards.toSnapshotStream,
     Stream.iterable(meta != AgentMetaState.empty thenList meta),
     Stream.iterable(keyToItem(AgentRef).values),
@@ -102,10 +104,10 @@ extends SignedItemContainer,
   private def isWithoutSignature(itemKey: SignableItemKey) =
     !keyToSignedItem.contains(itemKey)
 
-  def withEventId(eventId: EventId) =
+  def withEventId(eventId: EventId): AgentState =
     copy(eventId = eventId)
 
-  def withStandards(standards: SnapshotableState.Standards) =
+  def withStandards(standards: SnapshotableState.Standards): AgentState =
     copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
@@ -258,9 +260,11 @@ extends SignedItemContainer,
             directors = directors)))
       case _ => applyStandardEvent(keyedEvent)
 
-  def keyToUnsignedItemState = keyToUnsignedItemState_.view
+  def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
+    keyToUnsignedItemState_.view
 
-  def idToSubagentItemState = keyTo(SubagentItemState)
+  def idToSubagentItemState: MapView[SubagentId, SubagentItemState] =
+    keyTo(SubagentItemState)
 
   protected def pathToFileWatchState = keyTo(FileWatchState)
 
@@ -316,12 +320,12 @@ extends SignedItemContainer,
       //      signed.asInstanceOf[Signed[I]]
       //  }
 
-  def workflowPathToId(workflowPath: WorkflowPath) =
+  def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId] =
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
-  def orders = idToOrder.values
+  def orders: Iterable[Order[Order.State]] = idToOrder.values
 
-  def clusterNodeIdToName(nodeId: NodeId) =
+  def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     if !isDedicated then
       Left(Problem("clusterNodeToUserAndPassword but Agent has not been dedicated"))
     else
@@ -340,9 +344,10 @@ extends SignedItemContainer,
 object AgentState
 extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentState]:
 
-  val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
-    AgentMetaState.empty,
-    Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: AgentState =
+    AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
+      AgentMetaState.empty,
+      Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
   private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
     Set(AgentRefState, SubagentItemState, FileWatchState)
@@ -368,12 +373,13 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
           case NodeId.backup => Right(directors(1))
           case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
   object AgentMetaState:
-    val empty = AgentMetaState(
-      Vector.empty,
-      AgentPath.empty,
-      AgentRunId.empty,
-      ControllerId("NOT-YET-INITIALIZED"),
-      None)
+    val empty: AgentMetaState =
+      AgentMetaState(
+        Vector.empty,
+        AgentPath.empty,
+        AgentRunId.empty,
+        ControllerId("NOT-YET-INITIALIZED"),
+        None)
 
     implicit val jsonEncoder: Encoder.AsObject[AgentMetaState] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentMetaState] =
@@ -387,18 +393,19 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
       yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
 
-  val snapshotObjectJsonCodec = TypedJsonCodec[Any](
-    Subtype[JournalState],
-    Subtype[ClusterStateSnapshot],
-    Subtype[AgentMetaState],
-    Workflow.subtype,
-    Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
-    Subtype[Order[Order.State]],
-    Subtype[FileWatchState.Snapshot],
-    Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
-    Subtype(signableSimpleItemJsonCodec),
-    Subtype(unsignedItemJsonCodec),
-    Subtype[BasicItemEvent])
+  val snapshotObjectJsonCodec: TypedJsonCodec[Any] = 
+    TypedJsonCodec[Any](
+      Subtype[JournalState],
+      Subtype[ClusterStateSnapshot],
+      Subtype[AgentMetaState],
+      Workflow.subtype,
+      Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
+      Subtype[Order[Order.State]],
+      Subtype[FileWatchState.Snapshot],
+      Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
+      Subtype(signableSimpleItemJsonCodec),
+      Subtype(unsignedItemJsonCodec),
+      Subtype[BasicItemEvent])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](

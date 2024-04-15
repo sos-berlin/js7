@@ -9,14 +9,16 @@ extends GenericString:
 
   assert(pattern.flags == 0)
 
-  override def equals(other: Any) =
+  override def equals(other: Any): Boolean =
     other match
       case o: SimplePattern => string == o.string
       case _ => false
 
-  override def hashCode = string.hashCode
+  override def hashCode: Int = 
+    string.hashCode
 
-  def string = pattern.pattern
+  def string: String = 
+    pattern.pattern
 
 
 object SimplePattern extends GenericString.Checked_[SimplePattern]:

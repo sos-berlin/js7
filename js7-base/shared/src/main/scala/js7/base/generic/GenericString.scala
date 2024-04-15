@@ -14,11 +14,11 @@ trait GenericString:
 
   def string: String
 
-  def isEmpty = string.isEmpty
+  def isEmpty: Boolean = string.isEmpty
 
-  final def nonEmpty = !isEmpty
+  final def nonEmpty: Boolean = !isEmpty
 
-  override def toString = string
+  override def toString: String = string
 
   def typedToString: String =
     getClass.getSimpleName + ":" + string
@@ -35,7 +35,7 @@ object GenericString:
   trait Companion[A <: GenericString]:
     def apply(o: String): A
 
-    val name = getClass.shortClassName
+    val name: String = getClass.shortClassName
     implicit val ordering: Ordering[A] = Ordering.by(_.string)
 
     implicit def self: Companion[A] = this
@@ -73,4 +73,5 @@ object GenericString:
       nameValidator.checked(name = string) flatMap super.checked
 
   final case class EmptyStringProblem(typeName: String) extends Problem.Coded:
-    def arguments = Map("type" -> typeName)
+    def arguments: Map[String, String] = Map(
+      "type" -> typeName)

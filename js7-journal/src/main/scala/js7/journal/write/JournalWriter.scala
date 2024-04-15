@@ -39,7 +39,8 @@ extends AutoCloseable:
 
   protected final val jsonWriter = new FileJsonWriter(file, append = append, simulateSync = simulateSync)
 
-  def close() = jsonWriter.close()
+  def close(): Unit = 
+    jsonWriter.close()
 
   final def writeHeader(header: JournalHeader): Unit =
     jsonWriter.write(header.asJson.toByteArray)
@@ -71,7 +72,7 @@ extends AutoCloseable:
 
   private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
     // TODO Try to call it asynchronously (in JournalActor)
-    implicit val s = ioRuntime
+    given IORuntime = ioRuntime
     Stream.iterable[IO, A](seq)
       .mapParallelBatch():
         serialize[A]

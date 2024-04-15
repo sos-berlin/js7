@@ -15,13 +15,13 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
   checkedUnit(heartbeat, heartbeatTimeout).orThrow
 
   /** Duration the ClusterWatch considers the last heartbeat valid. */
-  def clusterWatchHeartbeatValidDuration =
+  def clusterWatchHeartbeatValidDuration: FiniteDuration =
     passiveLostTimeout + heartbeat
 
   /** Duration without heartbeat, after which the passive node may be lost.
    * Shorter than `activeLostTimeout`.
    */
-  def passiveLostTimeout =
+  def passiveLostTimeout: FiniteDuration =
     heartbeat + heartbeatTimeout
 
   /** Duration without heartbeat, after which the active node may be lost.
@@ -30,23 +30,23 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
    * Because PassiveLost is checked every ClusterWatch heartbeat,
    * we add a heartbeat (and an additional heartbeat for timing variation).
    */
-  def activeLostTimeout =
+  def activeLostTimeout: FiniteDuration =
     passiveLostTimeout + 2 * heartbeat
 
   /** Duration, the ClusterWatch client must have received a response.
    * Otherwise, the request will be repeated.
    * Must be shorter then the difference between `passiveLostTimeout` and `activeLostTimeout`.
    */
-  def clusterWatchReactionTimeout  =
+  def clusterWatchReactionTimeout: FiniteDuration =
     heartbeat
 
-  def inhibitActivationDuration =
+  def inhibitActivationDuration: FiniteDuration =
     activeLostTimeout + heartbeat
 
-  def clusterWatchHeartbeat =
+  def clusterWatchHeartbeat: FiniteDuration =
     heartbeat
 
-  def clusterWatchIdTimeout =
+  def clusterWatchIdTimeout: FiniteDuration =
     heartbeat + 2 * heartbeatTimeout
 
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"

@@ -11,17 +11,20 @@ import js7.provider.scheduledorder.oldruntime.SingleStartPeriod.*
 final case class SingleStartPeriod(at: LocalTime)
 extends Period:
 
-  def begin = at
+  def begin: LocalTime =
+    at
 
-  def end = ExtendedLocalTime.fromLocalTime(at) + Epsilon
+  def end: ExtendedLocalTime =
+    ExtendedLocalTime.fromLocalTime(at) + Epsilon
 
   //def repeat = None
 
-  def absoluteRepeatOption = None
+  def absoluteRepeatOption: None.type =
+    None
 
   //def startOnce = true
 
-  def nextLocalTime(from: LocalTime) =
+  def nextLocalTime(from: LocalTime): Option[LocalTime] =
     from <= at option at
 
 

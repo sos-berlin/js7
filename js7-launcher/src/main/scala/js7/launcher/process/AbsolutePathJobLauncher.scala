@@ -19,4 +19,5 @@ extends PathProcessJobLauncher:
         catchExpected[InvalidPathException]:
           Paths.get(executable.path)
 
-  def stop = IO.unit
+  def stop: IO[Unit] =
+    IO.unit

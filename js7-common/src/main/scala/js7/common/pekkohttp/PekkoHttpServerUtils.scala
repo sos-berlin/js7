@@ -156,7 +156,7 @@ object PekkoHttpServerUtils:
     }
 */
 
-  def emptyParameterMap(parameterMap: Map[String, String]) =
+  def emptyParameterMap(parameterMap: Map[String, String]): Object =
     if parameterMap.isEmpty then
       pass
     else

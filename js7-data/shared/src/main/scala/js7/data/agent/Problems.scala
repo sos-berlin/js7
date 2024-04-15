@@ -13,11 +13,12 @@ object Problems:
 
   final case class AgentRunIdMismatchProblem(agentPath: AgentPath)
   extends Problem.Coded:
-    def arguments = Map("agentPath" -> agentPath.string)
+    def arguments: Map[String, String] = Map(
+      "agentPath" -> agentPath.string)
 
   final case class AgentPathMismatchProblem(requestedAgentPath: AgentPath, realAgentPath: AgentPath)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "requestedAgentPath" -> requestedAgentPath.string,
       "realAgentPath" -> realAgentPath.string)
 
@@ -25,12 +26,13 @@ object Problems:
     requestedControllerId: ControllerId,
     realControllerId: ControllerId)
   extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "requestedControllerId" -> requestedControllerId.string,
       "realControllerId" -> realControllerId.string)
 
   final case class AgentDuplicateOrder(orderId: OrderId) extends Problem.Coded:
-    def arguments = Map("orderId" -> orderId.string)
+    def arguments: Map[String, String] = Map(
+      "orderId" -> orderId.string)
 
   type AgentAlreadyDedicatedProblem = AgentAlreadyDedicatedProblem.type
   case object AgentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded

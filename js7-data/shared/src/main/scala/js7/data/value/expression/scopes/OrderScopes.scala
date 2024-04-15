@@ -77,13 +77,13 @@ object OrderScopes:
   def minimalJs7VariablesScope(
     orderId: OrderId,
     workflowPath: WorkflowPath,
-    controllerId: ControllerId)
+    controllerId: ControllerId): Scope
   = NamedValueScope(Map(
      "js7OrderId" -> StringValue(orderId.string),
      "js7WorkflowPath" -> StringValue(workflowPath.string),
      "js7ControllerId" -> StringValue(controllerId.string)))
 
-  def scheduledScope(scheduledFor: Option[Timestamp]) =
+  def scheduledScope(scheduledFor: Option[Timestamp]): Scope =
     TimestampScope("scheduledOrEmpty", scheduledFor)
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */

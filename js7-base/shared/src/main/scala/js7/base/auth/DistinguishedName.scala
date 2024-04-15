@@ -9,19 +9,19 @@ import scala.util.{Failure, Success, Try}
 
 final class DistinguishedName(private val x500Principal: X500Principal):
 
-  lazy val string = x500Principal.toString
+  lazy val string: String = x500Principal.toString
 
-  override def equals(other: Any) = other match
+  override def equals(other: Any): Boolean = other match
     case o: DistinguishedName => o.x500Principal == x500Principal
     case _ => false
 
-  override def hashCode = x500Principal.hashCode
+  override def hashCode: Int = x500Principal.hashCode
 
-  override def toString = string
+  override def toString: String = string
 
 
 object DistinguishedName:
-  def apply(string: String) = checked(string).orThrow
+  def apply(string: String): DistinguishedName = checked(string).orThrow
 
   def checked(string: String): Checked[DistinguishedName] =
     if string.trim.isEmpty then

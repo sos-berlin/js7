@@ -1,6 +1,7 @@
 package js7.data.agent
 
 import js7.base.generic.GenericString
+import js7.base.problem.Checked
 import js7.base.utils.Base64UUID
 import js7.data.event.JournalId
 
@@ -10,14 +11,16 @@ import js7.data.event.JournalId
   * as long as it uses the same event steam (Journal). */
 final case class AgentRunId(journalId: JournalId) extends GenericString:
 
-  def string = journalId.string
+  def string: String = journalId.string
 
-  override def toString = typedToString
+  override def toString: String = typedToString
 
 
 object AgentRunId extends GenericString.NonEmpty[AgentRunId]:
-  val empty = AgentRunId(JournalId(Base64UUID.zero))
+  val empty: AgentRunId = AgentRunId(JournalId(Base64UUID.zero))
 
-  protected def unchecked(string: String) = throw new NotImplementedError
+  protected def unchecked(string: String): Nothing =
+    throw new NotImplementedError
 
-  override def checked(string: String) = JournalId.checked(string) map apply
+  override def checked(string: String): Checked[AgentRunId] =
+    JournalId.checked(string) map apply

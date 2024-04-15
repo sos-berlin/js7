@@ -1,5 +1,6 @@
 package js7.data.value.expression.scopes
 
+import js7.base.problem.Checked
 import js7.data.value.Value
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NamedValueScope.namesToString
@@ -7,7 +8,7 @@ import scala.collection.MapView
 
 final class NamedValueScope(nameToValue: MapView[String, Value])
 extends Scope:
-  override def nameToCheckedValue =
+  override def nameToCheckedValue: MapView[String, Checked[Value]] =
     nameToValue.mapValues(Right(_))
 
   override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"

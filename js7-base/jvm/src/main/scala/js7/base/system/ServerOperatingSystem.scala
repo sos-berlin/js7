@@ -6,6 +6,7 @@ import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
+import java.util
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -41,10 +42,12 @@ trait ServerOperatingSystem:
 object ServerOperatingSystem:
   lazy val unix = new Unix
   lazy val windows = new Windows
-  val LineEnd = if isWindows then "\r\n" else "\n"
+  val LineEnd: String = if isWindows then "\r\n" else "\n"
   val operatingSystem: ServerOperatingSystem = if isWindows then windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
-  lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
+
+  lazy val KernelSupportsNestedShebang: Boolean =
+    KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
   def makeModuleFilename(path: String): String =
     val file = new File(path)
@@ -55,7 +58,7 @@ object ServerOperatingSystem:
   def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.dynamicLibraryEnvironmentVariableName
 
   final class Windows private[system] extends ServerOperatingSystem:
-    val secretFileAttributes = Nil  // TODO File must not be accessible for other Windows users
+    val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] = Nil  // TODO File must not be accessible for other Windows users
 
     def makeExecutableFilename(name: String): String = name + ".exe"
 
@@ -63,16 +66,17 @@ object ServerOperatingSystem:
 
     protected val hostnameEnvName = "COMPUTERNAME"
 
-    val distributionNameAndVersionOption = None
+    val distributionNameAndVersionOption: Option[String] = None
 
-    lazy val cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
+    lazy val cpuModel: Option[String] = sys.env.get("PROCESSOR_IDENTIFIER")
 
     def sleepingShellScript(duration: FiniteDuration) =
       s"@ping -n ${(duration + 999.ms).toSeconds + 1} 127.0.0.1 >nul"
 
   final class Unix private[system] extends ServerOperatingSystem:
-    val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-      .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
+    val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] =
+      Seq(asFileAttribute(PosixFilePermissions fromString "rw-------"))
+        .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
     def makeExecutableFilename(name: String): String = name
 

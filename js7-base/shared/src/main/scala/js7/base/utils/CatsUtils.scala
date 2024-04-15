@@ -26,7 +26,7 @@ import scala.concurrent.duration.*
 object CatsUtils:
 
   type Nel[+A] = NonEmptyList[A]
-  val Nel = NonEmptyList
+  val Nel: NonEmptyList.type = NonEmptyList
 
   private val logger = Logger[this.type]
 

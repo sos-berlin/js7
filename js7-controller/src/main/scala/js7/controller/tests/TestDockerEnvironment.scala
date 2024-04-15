@@ -41,7 +41,8 @@ extends AutoCloseable:
   def agentDir(name: AgentPath): Path =
     agentsDir / name.string
 
-  def agentsDir = temporaryDirectory / "agents"
+  def agentsDir: Path = 
+    temporaryDirectory / "agents"
 
 
 object TestDockerEnvironment:

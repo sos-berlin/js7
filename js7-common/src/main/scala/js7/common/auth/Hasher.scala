@@ -10,7 +10,7 @@ final class Hasher(algorithm: String) extends (String => String):
   private val prototype = MessageDigest.getInstance(algorithm)
   private var isCloneable = true
 
-  def apply(string: String) =
+  def apply(string: String): String =
     bytesToHex(cloneMessageDigest().digest(string.getBytes(UTF_8)))
 
   private def cloneMessageDigest() =
@@ -27,7 +27,7 @@ final class Hasher(algorithm: String) extends (String => String):
   private def newMessageDigest() =
     MessageDigest.getInstance(algorithm)
 
-  override def toString = algorithm
+  override def toString: String = algorithm
 
 
 object Hasher:

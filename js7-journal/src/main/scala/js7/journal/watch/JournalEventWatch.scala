@@ -36,7 +36,7 @@ import js7.journal.watch.JournalEventWatch.*
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
@@ -98,13 +98,14 @@ extends AutoCloseable,
 
   @volatile private var _isActiveNode = false
 
-  def close() =
+  def close(): Unit =
     fileEventIdToHistoric.values.foreach(_.close())
     maybeCurrentEventReader.foreach(_.close())
     for o <- announcedEventReaderPromise do
       o._2.trySuccess(None)
 
-  override def whenStarted = startedPromise.future
+  override def whenStarted: Future[JournalEventWatch.this.type] = 
+    startedPromise.future
 
   def onFailover(): Unit =
     _isActiveNode = true
@@ -171,7 +172,7 @@ extends AutoCloseable,
     startedPromise.trySuccess(this)
     evictUnusedEventReaders()
 
-  def onJournalingEnded(fileLength: Long) =
+  def onJournalingEnded(fileLength: Long): Unit =
     // TODO Delay until no FailedOver event may be written?
     //  This would be after the next journal file has been written with an acknowledged event
     //  - SnapshotTaken is not being acknowledged!
@@ -241,11 +242,11 @@ extends AutoCloseable,
     checkedCurrentEventReader.orThrow.onEventsCommitted(positionAndEventId, n = n)
     onEventsCommitted(positionAndEventId.value)
 
-  def snapshotAfter(after: EventId) =
+  def snapshotAfter(after: EventId): Option[Stream[IO, Any]] =
     rawSnapshotAfter(after)
       .map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
 
-  def rawSnapshotAfter(after: EventId) =
+  def rawSnapshotAfter(after: EventId): Option[Stream[IO, ByteArray]] =
     maybeCurrentEventReader match
       case Some(current) if current.fileEventId <= after =>
         Some(current.rawSnapshot)
@@ -304,7 +305,7 @@ extends AutoCloseable,
     synchronized:
       fileEventIdToHistoric.keys.toSeq.sorted ++ maybeCurrentEventReader.map(_.fileEventId)
 
-  def journalPosition =
+  def journalPosition: Checked[JournalPosition] =
     checkedCurrentEventReader.map(_.journalPosition)
 
   def streamFile(journalPosition: JournalPosition,

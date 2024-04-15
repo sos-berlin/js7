@@ -17,17 +17,18 @@ extends ExecutionContext:
   // - blocking: with ArrayBlockingQueue, execute() blocks when a limit is reached
   // - rejecting: with a limited ConcurrentLinkedQueue, execute() fails when a limit is reached
 
-  def reportFailure(throwable: Throwable) = delegate.reportFailure(throwable)
+  def reportFailure(throwable: Throwable): Unit =
+    delegate.reportFailure(throwable)
 
-  def execute(runnable: Runnable) =
+  def execute(runnable: Runnable): Unit =
     if !enqueueIfThrottled(runnable) then
       delegate.execute(new Runnable {
-        def run() = executeThisAndQueued(runnable)
+        def run(): Unit = executeThisAndQueued(runnable)
       })
 
   private def executeThisAndQueued(runnable: Runnable): Unit =
     delegate.execute(new Runnable {   // Avoid memory-leak with runnable.
-      def run() = {
+      def run(): Unit = {
         runnable.run()
         tryDequeue() match {
           case null =>

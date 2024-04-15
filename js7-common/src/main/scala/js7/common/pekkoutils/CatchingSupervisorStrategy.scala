@@ -28,9 +28,9 @@ object CatchingSupervisorStrategy:
   private val logger = Logger[this.type]
   val StoppingDecider: Decider =
     case _ => Stop
-  def defaultDecider = StoppingDecider
+  def defaultDecider: Decider = StoppingDecider
 
-  def apply[A](promise: Promise[A], loggingEnabled: Boolean = true, decider: Decider = defaultDecider) =
+  def apply[A](promise: Promise[A], loggingEnabled: Boolean = true, decider: Decider = defaultDecider): LoggingOneForOneStrategy with CatchingSupervisorStrategy[A] =
     val p = promise
     new LoggingOneForOneStrategy(loggingEnabled = loggingEnabled)(decider)
     with CatchingSupervisorStrategy[A]:

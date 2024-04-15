@@ -52,7 +52,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   // TODO Change to monadic IOLocal
   final class DummyLocal:
     def apply(): CorrelId = EmptyCorrelId
-    def update(o: CorrelId) = {}
+    def update(o: CorrelId): Unit = {}
 
   private lazy val nextCorrelId: NextCorrelId =
     if isTest && isIntelliJIdea then
@@ -77,7 +77,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
     //  case Some("false") => Some(false)
     //  case _ => isTest ? true
 
-  def couldBeEnabled = maybeEnabled0 getOrElse true
+  def couldBeEnabled: Boolean = maybeEnabled0 getOrElse true
 
   private val isEnabled0 = couldBeEnabled //maybeEnabled0 getOrElse false
 
@@ -85,7 +85,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   @inline private[log] def onCorrelIdLogged(): Unit =
     {} //  isEnabled0 = true
 
-  @inline def isEnabled = isEnabled0
+  @inline def isEnabled: Boolean = isEnabled0
 
   def apply(number: Long): CorrelId =
     LongCorrelId(number)
@@ -138,7 +138,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
         local.update(correlId)
 
   private object EmptyLogCorrelId extends LogCorrelId:
-    def :=(correlId: CorrelId) = {}
+    def :=(correlId: CorrelId): Unit = {}
 
   /** Generate a CorrelId for the body if `current` isEmpty. */
   def bindIfEmpty[R](body: => R)(implicit R: CanBindCorrelId[R]): R =

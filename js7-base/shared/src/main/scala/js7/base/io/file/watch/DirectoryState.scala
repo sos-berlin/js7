@@ -40,7 +40,7 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry]):
   def files: Iterable[Path] =
     fileToEntry.keys
 
-  def isEmpty =
+  def isEmpty: Boolean =
     fileToEntry.isEmpty
 
 

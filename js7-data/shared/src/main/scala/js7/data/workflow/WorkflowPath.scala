@@ -5,11 +5,11 @@ import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
 
 final case class WorkflowPath private(string: String)
 extends VersionedItemPath, InventoryItemPath.AttachableToAgent:
-  def companion = WorkflowPath
+  def companion: VersionedItemPath.Companion[_ <: VersionedItemPath] = WorkflowPath
 
 
 object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]:
-  override val sourceTypeToFilenameExtension = Map(
+  override val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
     SourceType.Json -> ".workflow.json",
     SourceType.Txt -> ".workflow.txt")
 

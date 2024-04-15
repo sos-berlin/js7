@@ -22,12 +22,14 @@ object As:
   implicit val StringAsString: As[String, String] = As(identity)
 
   implicit object StringAsBoolean extends As[String, Boolean]:
-    val StringToBooleanMap = Map(
-      "true"  -> true , "on"  -> true , "yes" -> true,
-      "false" -> false, "off" -> false, "no"  -> false)
+    val StringToBooleanMap: Map[String, Boolean] =
+      Map(
+        "true"  -> true , "on"  -> true , "yes" -> true,
+        "false" -> false, "off" -> false, "no"  -> false)
 
-    def apply(o: String) = StringToBooleanMap.getOrElse(o,
-      throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
+    def apply(o: String): Boolean =
+      StringToBooleanMap.getOrElse(o,
+        throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
 
   //
   // Some default implementations

@@ -14,7 +14,7 @@ object Collections:
   private def defaultDuplicatesToProblem[K](duplicates: Map[K, Iterable[?]]) =
     duplicatesToProblem("Unexpected duplicates", duplicates)
 
-  def duplicatesToProblem[K](prefix: String, duplicates: Map[K, Iterable[?]]) =
+  def duplicatesToProblem[K](prefix: String, duplicates: Map[K, Iterable[?]]): Problem =
     Problem(s"$prefix: ${duplicates.map { case (k, v) => s"${v.size}×$k" }.mkString("; ")}")
 
   object implicits:

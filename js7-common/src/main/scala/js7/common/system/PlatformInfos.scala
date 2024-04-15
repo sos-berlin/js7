@@ -9,7 +9,7 @@ import js7.data.platform.PlatformInfo
 
 object PlatformInfos:
 
-  def currentPlatformInfo() = PlatformInfo(
+  def currentPlatformInfo(): PlatformInfo = PlatformInfo(
     Timestamp.now,
     ZoneId.systemDefault.getId,
     Js7Version,

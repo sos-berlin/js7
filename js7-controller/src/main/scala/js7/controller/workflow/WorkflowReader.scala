@@ -14,7 +14,7 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser}
 object WorkflowReader extends VersionedItemReader:
   val companion: Workflow.type = Workflow
 
-  def read(workflowId: WorkflowId, source: ByteArray) =
+  def read(workflowId: WorkflowId, source: ByteArray): PartialFunction[SourceType, Checked[Workflow]] =
     case t: SourceType.JsonLike =>
       readAnonymousJsonLike(t, source).map(_ withId workflowId)
 

@@ -31,7 +31,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => IO[Completed], 
   @volatile private var closed = false
   private val addOrdersCancelable = SerialFutureCancelable()
 
-  def close() =
+  def close(): Unit =
     closed = true
     timer.cancel()
     addOrdersCancelable.cancelAndForget()

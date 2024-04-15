@@ -15,7 +15,8 @@ object SeekableInputStream:
     new FileSeekableInputStream(new RandomAccessFile(file.toFile, "r"), file)
 
   private class FileSeekableInputStream(randomAccess: RandomAccessFile, file: Path) extends SeekableInputStream:
-    override def close() = randomAccess.close()
+    override def close(): Unit = 
+      randomAccess.close()
 
     def read() =
       randomAccess.read()
@@ -23,7 +24,7 @@ object SeekableInputStream:
     override def read(array: Array[Byte], offset: Int, length: Int) =
       randomAccess.read(array, offset, length)
 
-    def seek(position: Long) =
+    def seek(position: Long): Unit =
       randomAccess.seek(position)
 
     override def toString = file.toString

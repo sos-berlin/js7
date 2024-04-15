@@ -6,7 +6,7 @@ import js7.base.problem.Problem
   * @author Joacim Zschimmer
   */
 final case class EventSeqTornProblem(requestedAfter: EventId, tornEventId: EventId) extends Problem.Coded:
-  def arguments = Map(
+  def arguments: Map[String, String] = Map(
     "requestedAfter" -> EventId.toString(requestedAfter),
     "tornEventId" -> EventId.toString(tornEventId))
 

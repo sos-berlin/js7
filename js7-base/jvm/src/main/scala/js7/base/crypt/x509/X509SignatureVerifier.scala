@@ -31,13 +31,14 @@ extends SignatureVerifier:
 
   protected type MySignature = X509Signature
 
-  def companion = X509SignatureVerifier
+  def companion: X509SignatureVerifier.type = 
+    X509SignatureVerifier
 
   @TestOnly
-  def publicKeys = for o <- trustedCertificates yield
+  def publicKeys: Seq[String] = for o <- trustedCertificates yield
     CertificatePem.toPem(ByteArray.unsafeWrap(o.x509Certificate.getEncoded))
 
-  def publicKeysToStrings =
+  def publicKeysToStrings: Seq[String] =
     Seq(s"X.509 origin=$publicKeyOrigin") ++
       trustedCertificates
         .map(o => "  " + o.toLongString)
@@ -98,7 +99,7 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignatureVerifier = X509SignatureVerifier
 
   private val logger = Logger[this.type]
-  val typeName = X509Signature.TypeName
+  val typeName: String = X509Signature.TypeName
   val filenameExtension = ".pem"
   val recommendedKeyDirectoryName = "trusted-x509-keys"
 

@@ -94,7 +94,7 @@ extends AutoCloseable:
     private var eof = false
     private var _next: Stamped[KeyedEvent[Event]] = null
 
-    def close() =
+    def close(): Unit =
       synchronized:
         // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
         for it <- Option(iteratorAtomic.getAndSet(null)) do

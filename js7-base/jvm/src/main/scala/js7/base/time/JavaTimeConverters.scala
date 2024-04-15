@@ -43,7 +43,8 @@ object JavaTimeConverters:
       else javaToFiniteDuration(underlying)
 
   implicit final class AsJavaFiniteDuration(private val underlying: FiniteDuration) extends AnyVal:
-    def asJava = Duration.ofNanos(underlying.toNanos)
+    def asJava: Duration = 
+      Duration.ofNanos(underlying.toNanos)
 
   private def javaToFiniteDuration(o: Duration): FiniteDuration =
     if o.isZero then

@@ -60,7 +60,7 @@ object ControllerCommand extends CommonCommand.Companion:
   object AddOrders:
     // AddOrderResponse is unnested to be accessible for Java code
     type Response = AddOrdersResponse
-    val Response = AddOrdersResponse
+    val Response: AddOrdersResponse.type = AddOrdersResponse
   final case class AddOrdersResponse(eventId: EventId) extends ControllerCommand.Response
   object AddOrdersResponse:
     implicit val jsonCodec: Codec.AsObject[AddOrdersResponse] = deriveCodec

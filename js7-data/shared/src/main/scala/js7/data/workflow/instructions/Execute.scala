@@ -16,7 +16,7 @@ import js7.data.workflow.{Instruction, Workflow}
 sealed trait Execute extends Instruction:
   def defaultArguments: Map[String, Expression]
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if isVisibleForAgent(agentPath, workflow) then
       this
     else
@@ -24,13 +24,13 @@ sealed trait Execute extends Instruction:
 
 
 object Execute:
-  def apply(name: WorkflowJob.Name) =
+  def apply(name: WorkflowJob.Name): Named =
     Named(name)
 
-  def apply(name: WorkflowJob.Name, arguments: Map[String, Expression]) =
+  def apply(name: WorkflowJob.Name, arguments: Map[String, Expression]): Named =
     Named(name, arguments)
 
-  def apply(workflowJob: WorkflowJob) =
+  def apply(workflowJob: WorkflowJob): Anonymous =
     Anonymous(workflowJob)
 
   final case class Named(
@@ -40,9 +40,9 @@ object Execute:
   extends Execute:
     override def instructionName = "Execute.Named"
 
-    def withoutSourcePos = copy(sourcePos = None)
+    def withoutSourcePos: Instruction = copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
+    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
       workflow.findJob(name) // Should always find!
         .fold(_ => true, _ isExecutableOnAgent agentPath)
 
@@ -68,9 +68,10 @@ object Execute:
   extends Execute:
     override def instructionName = "Execute.Anonymous"
 
-    def withoutSourcePos = copy(sourcePos = None)
+    def withoutSourcePos: Instruction =
+      copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
+    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
       job isExecutableOnAgent agentPath
 
     override def productPrefix = "Execute.Anonymous"

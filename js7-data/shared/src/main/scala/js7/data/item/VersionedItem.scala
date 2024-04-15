@@ -9,15 +9,15 @@ trait VersionedItem extends SignableItem:
   type Path = companion.Path
 
   val companion: VersionedItem.Companion[Self]
-  final def key = id
+  final def key: companion.ItemId = id
   def id: VersionedItemId[Path]
   def withId(id: VersionedItemId[Path]): Self
 
-  final def itemRevision = None
+  final def itemRevision: Option[ItemRevision] = None
 
   def path: Path = key.path
 
-  final def isAnonymous = key.isAnonymous
+  final def isAnonymous: Boolean = key.isAnonymous
 
   final def withoutVersion: Self = withVersion(VersionId.Anonymous)
 

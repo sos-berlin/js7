@@ -19,7 +19,7 @@ trait ReceiveLoggingActor extends SimpleStateActor:
   protected[ReceiveLoggingActor] def isLoggingEnabled =
     logger.isEnabled(receiveLogLevel, Logger.Actor)
 
-  override def postStop() =
+  override def postStop(): Unit =
     logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} stopped")
     super.postStop()
 
@@ -37,7 +37,7 @@ trait ReceiveLoggingActor extends SimpleStateActor:
     new Receive:
       def isDefinedAt(msg: Any) = recv isDefinedAt msg
 
-      def apply(msg: Any) =
+      def apply(msg: Any): Unit =
         logger.log(receiveLogLevel, Logger.Actor,
           s"${context.self.path.pretty} receives '${msg.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}' from ${sender().path.pretty}")
         recv(msg)
@@ -54,12 +54,12 @@ object ReceiveLoggingActor:
 
   trait WithStash extends pekko.actor.Stash, ReceiveLoggingActor:
 
-    override def stash() =
+    override def stash(): Unit =
       if isLoggingEnabled then
         logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} stash")
       super.stash()
 
-    override def unstashAll() =
+    override def unstashAll(): Unit =
       if isLoggingEnabled then
         logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} unstashAll")
       super.unstashAll()

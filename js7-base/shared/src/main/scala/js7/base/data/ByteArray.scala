@@ -14,11 +14,11 @@ import scala.collection.mutable
 
 final class ByteArray private(val unsafeArray: Array[Byte]):
 
-  def length = unsafeArray.length
+  def length: Int = unsafeArray.length
 
-  def apply(i: Int) = unsafeArray(i)
+  def apply(i: Int): Byte = unsafeArray(i)
 
-  def isEmpty = unsafeArray.isEmpty
+  def isEmpty: Boolean = unsafeArray.isEmpty
 
   def copyToArray(array: Array[Byte]): Int =
     copyToArray(array, 0, Int.MaxValue)
@@ -28,7 +28,7 @@ final class ByteArray private(val unsafeArray: Array[Byte]):
     arraycopy(unsafeArray, 0, array, start, n)
     n
 
-  def slice(from: Int, until: Int) =
+  def slice(from: Int, until: Int): ByteArray =
     if from >= until then
       ByteArray.empty
     else if from <= 0 && until >= unsafeArray.length then
@@ -36,7 +36,7 @@ final class ByteArray private(val unsafeArray: Array[Byte]):
     else
       new ByteArray(java.util.Arrays.copyOfRange(unsafeArray, from max 0, until min length))
 
-  def ++(o: ByteArray) =
+  def ++(o: ByteArray): ByteArray =
     if o.isEmpty then this
     else if isEmpty then o
     else
@@ -69,18 +69,18 @@ final class ByteArray private(val unsafeArray: Array[Byte]):
   def writeToStream(out: OutputStream): Unit =
     out.write(unsafeArray)
 
-  override def equals(other: Any) =
+  override def equals(other: Any): Boolean =
     other match
       case other: ByteArray => java.util.Arrays.equals(unsafeArray, other.unsafeArray)
       case _ => false
 
-  override def hashCode = unsafeArray.hashCode
+  override def hashCode: Int = unsafeArray.hashCode
 
-  override def toString = ByteArray.show(this)
+  override def toString: String = ByteArray.show(this)
 
 
 object ByteArray extends ByteSequence[ByteArray]:
-  val clazz = classOf[ByteArray]
+  val clazz: Class[ByteArray] = classOf[ByteArray]
 
   val empty = new ByteArray(Array.empty)
 
@@ -88,55 +88,55 @@ object ByteArray extends ByteSequence[ByteArray]:
   override def apply(string: String): ByteArray =
     super.apply(string)
 
-  override def isEmpty(byteArray: ByteArray)(implicit ev: Eq[ByteArray]) =
+  override def isEmpty(byteArray: ByteArray)(implicit ev: Eq[ByteArray]): Boolean =
     byteArray.isEmpty
 
-  def eqv(a: ByteArray, b: ByteArray) =
+  def eqv(a: ByteArray, b: ByteArray): Boolean =
     java.util.Arrays.equals(a.unsafeArray, b.unsafeArray)
 
-  def fromArray(bytes: Array[Byte]) =
+  def fromArray(bytes: Array[Byte]): ByteArray =
     if bytes.isEmpty then
       empty
     else
       new ByteArray(bytes.clone())
 
-  def fromByteArray(byteArray: ByteArray) =
+  def fromByteArray(byteArray: ByteArray): ByteArray =
     byteArray
 
-  override def toByteArray(a: ByteArray) =
+  override def toByteArray(a: ByteArray): ByteArray =
     a
 
   def unsafeWrap(bytes: Array[Byte]) =
     new ByteArray(requireNonNull(bytes))
 
-  def length(byteArray: ByteArray) =
+  def length(byteArray: ByteArray): Int =
     byteArray.length
 
-  def at(byteArray: ByteArray, i: Int) =
+  def at(byteArray: ByteArray, i: Int): Byte =
     byteArray(i)
 
-  def iterator(byteArray: ByteArray) =
+  def iterator(byteArray: ByteArray): Iterator[Byte] =
     byteArray.unsafeArray.iterator
 
   override def toInputStream(byteArray: ByteArray): InputStream =
     byteArray.toInputStream
 
-  def toArray(byteArray: ByteArray) =
+  def toArray(byteArray: ByteArray): Array[Byte] =
     byteArray.toArray
 
-  override def unsafeArray(byteArray: ByteArray) =
+  override def unsafeArray(byteArray: ByteArray): Array[Byte] =
     byteArray.unsafeArray
 
-  override def unsafeWrappedArray(byteArray: ByteArray) =
+  override def unsafeWrappedArray(byteArray: ByteArray): Option[Array[Byte]] =
     Some(byteArray.unsafeArray)
 
-  override def copyToArray(byteArray: ByteArray, array: Array[Byte]) =
+  override def copyToArray(byteArray: ByteArray, array: Array[Byte]): Int =
     byteArray.copyToArray(array)
 
-  override def copyToArray(byteArray: ByteArray, array: Array[Byte], start: Int, len: Int) =
+  override def copyToArray(byteArray: ByteArray, array: Array[Byte], start: Int, len: Int): Int =
     byteArray.copyToArray(array, start, len)
 
-  override def slice(byteArray: ByteArray, from: Int, until: Int) =
+  override def slice(byteArray: ByteArray, from: Int, until: Int): ByteArray =
     byteArray.slice(from, until)
 
   def combine(a: ByteArray, b: ByteArray): ByteArray =
@@ -160,7 +160,7 @@ object ByteArray extends ByteSequence[ByteArray]:
           pos += byteArray.length
         ByteArray.unsafeWrap(result)
 
-  override def writeToStream(byteArray: ByteArray, out: OutputStream) =
+  override def writeToStream(byteArray: ByteArray, out: OutputStream): Unit =
     byteArray.writeToStream(out)
 
   private[data] val inputStreamBufferSize = 32*1024

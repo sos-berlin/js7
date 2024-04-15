@@ -30,7 +30,8 @@ final case class ClusterConf(
   delayConf: DelayConf,
   config: Config):
 
-  def isPrimary = !isBackup
+  def isPrimary: Boolean = 
+    !isBackup
 
 
 object ClusterConf:

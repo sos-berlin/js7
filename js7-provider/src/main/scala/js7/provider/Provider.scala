@@ -72,7 +72,7 @@ extends Observing, MainService, Service.StoppableByRequest:
   private val newVersionId = new VersionIdGenerator
   private val lastEntries = Atomic(Vector.empty[DirectoryReader.Entry])
 
-  val untilTerminated =
+  val untilTerminated: IO[ProgramTermination] =
     untilStopped.as(ProgramTermination())
 
   protected def start =

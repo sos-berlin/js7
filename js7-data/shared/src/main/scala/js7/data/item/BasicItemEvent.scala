@@ -18,7 +18,7 @@ object BasicItemEvent:
   /** Used for OrderWatch to allow to attach it from Agent. */
   final case class ItemDeletionMarked(key: InventoryItemKey)
   extends ForClient:
-    def attachedState = None
+    def attachedState: None.type = None
 
   final case class ItemDeleted(key: InventoryItemKey)
   extends ForClient
@@ -35,12 +35,13 @@ object BasicItemEvent:
         case Attached(itemRevision) => ItemAttached(key, itemRevision, delegateId)
         case Detachable => ItemDetachable(key, delegateId)
         case Detached => ItemDetached(key, delegateId)
-    def unapply(event: ItemAttachedStateEvent) =
+    def unapply(event: ItemAttachedStateEvent)
+    : Some[(InventoryItemKey, DelegateId, ItemAttachedState)] =
       Some((event.key, event.delegateId, event.attachedState))
 
   final case class ItemAttachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent:
-    def attachedState = Attachable
+    def attachedState: ItemAttachedState = Attachable
   object ItemAttachable:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttachable] =
@@ -55,7 +56,7 @@ object BasicItemEvent:
     itemRevision: Option[ItemRevision],
     delegateId: DelegateId)
   extends ItemAttachedStateEvent:
-    def attachedState = Attached(itemRevision)
+    def attachedState: ItemAttachedState = Attached(itemRevision)
   object ItemAttached:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttached] =
@@ -74,7 +75,7 @@ object BasicItemEvent:
   /** Agent and Subagent only. */
   final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
   extends ForDelegate:
-    def item = signed.value
+    def item: SignableItem = signed.value
     def key: SignableItemKey = item.key
   object SignedItemAttachedToMe:
     def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemAttachedToMe] =
@@ -87,7 +88,7 @@ object BasicItemEvent:
 
   final case class ItemDetachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent:
-    def attachedState = Detachable
+    def attachedState: ItemAttachedState = Detachable
   object ItemDetachable:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetachable] =
@@ -99,7 +100,7 @@ object BasicItemEvent:
 
   final case class ItemDetachingFromMe(key: InventoryItemKey)
   extends ForDelegate:
-    def attachedState = Detached
+    def attachedState: ItemAttachedState.Detached.type = Detached
   object ItemDetachingFromMe:
     def jsonCodec[S](implicit S: ItemContainer.Companion[S])
     : Codec.AsObject[ItemDetachingFromMe] =
@@ -109,7 +110,7 @@ object BasicItemEvent:
 
   final case class ItemDetached(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent, ForDelegate:
-    def attachedState = Detached
+    def attachedState: ItemAttachedState = Detached
   object ItemDetached:
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetached] =

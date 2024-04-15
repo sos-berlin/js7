@@ -9,14 +9,14 @@ import js7.data.workflow.OrderPreparation.*
 import scala.collection.View
 
 final case class OrderPreparation(parameterList: OrderParameterList):
-  def isEmpty = this == default
+  def isEmpty: Boolean = this == default
 
   def referencedJobResourcePaths: View[JobResourcePath] =
     parameterList.referencedJobResourcePaths
 
 
 object OrderPreparation:
-  val default = OrderPreparation(OrderParameterList.default)
+  val default: OrderPreparation = OrderPreparation(OrderParameterList.default)
 
   implicit val orderPreparationIsEmpty: IsEmpty[OrderPreparation] =
     IsEmpty(_.isEmpty)

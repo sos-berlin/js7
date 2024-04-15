@@ -19,7 +19,7 @@ import scala.reflect.ClassTag
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
 extends InternalJob:
 
-  final def toOrderProcess(step: Step) =
+  final def toOrderProcess(step: Step): OrderProcess =
     val orderId = step.order.id
     val semaName = s"${getClass.shortClassName}($orderId) semaphore"
     OrderProcess(
@@ -68,9 +68,9 @@ object SemaphoreJob:
 
   abstract class Companion[I <: SemaphoreJob](implicit classTag: ClassTag[I])
   extends InternalJob.Companion[I]:
-    val semaphore = Semaphore[IO](0).unsafeMemoize
+    val semaphore: IO[Semaphore[IO]] = Semaphore[IO](0).unsafeMemoize
     private val name = classTag.runtimeClass.shortClassName
-    val stdoutLine = getClass.simpleScalaName + "\n"
+    val stdoutLine: String = getClass.simpleScalaName + "\n"
 
     def reset()(using IORuntime): Unit =
       logger.debug(s"$name.reset")

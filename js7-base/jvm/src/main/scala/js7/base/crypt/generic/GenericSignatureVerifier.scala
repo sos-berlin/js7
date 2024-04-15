@@ -32,11 +32,14 @@ extends SignatureVerifier:
 
   protected type MySignature = GenericSignature
 
-  def companion = GenericSignatureVerifier
+  def companion: GenericSignatureVerifier.type =
+    GenericSignatureVerifier
 
-  def publicKeys = throw new NotImplementedError("GenericSignatureVerifier#key")
+  def publicKeys: Seq[String] =
+    throw new NotImplementedError("GenericSignatureVerifier#key")
 
-  def publicKeyOrigin = "(GenericSignatureVerifier)"
+  def publicKeyOrigin: String =
+    "(GenericSignatureVerifier)"
 
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     for
@@ -46,9 +49,10 @@ extends SignatureVerifier:
       signerIds <- verifier.verify(document, typedSignature)
     yield signerIds
 
-  def isEmpty = typeToVerifier.isEmpty
+  def isEmpty: Boolean =
+    typeToVerifier.isEmpty
 
-  override def publicKeysToStrings =
+  override def publicKeysToStrings: Seq[String] =
     "GenericSignatureVerifier#publicKeysToStrings" :: Nil
 
 
@@ -61,10 +65,10 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
 
   def typeName = "(generic)"
 
-  def filenameExtension =
+  def filenameExtension: String =
     throw new NotImplementedError
 
-  def recommendedKeyDirectoryName =
+  def recommendedKeyDirectoryName: String =
     throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
   def checked(config: Config): Checked[GenericSignatureVerifier] =
@@ -113,7 +117,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
   def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
     throw new NotImplementedError("GenericSignatureVerifier.ignoreInvalid?")
 
-  def genericSignatureToSignature(signature: GenericSignature) =
+  def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
     Right(signature)
 
   private def logVerifiers(verifiers: Seq[SignatureVerifier]): Unit =

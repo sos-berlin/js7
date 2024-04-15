@@ -42,9 +42,9 @@ object EventDrivenState:
     implicit final val implicitEventDrivenStateCompanion: Companion[S, E] =
       this
 
-    override def toString = name
+    override def toString: String = name
 
   final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "event" -> keyedEvent.toString.truncateWithEllipsis(100),
       "state" -> state.toString.truncateWithEllipsis(100))

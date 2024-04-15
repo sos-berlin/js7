@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
-import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
+import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, SupervisorStrategy}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
@@ -63,7 +63,7 @@ extends Actor, Stash, JournalLogging:
   private given IORuntime = ioRuntime
 
   private val scheduler = ioRuntime.scheduler
-  override val supervisorStrategy = SupervisorStrategies.escalate
+  override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
 
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: SyncCancelable = null
@@ -103,7 +103,7 @@ extends Actor, Stash, JournalLogging:
   for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
-  override def postStop() =
+  override def postStop(): Unit =
     isHalted = true // is publicly readable via Journal#isHalted, even after actor stop
     if snapshotSchedule != null then snapshotSchedule.cancel()
     delayedCommit.cancel() // Discard commit for fast exit
@@ -471,7 +471,7 @@ extends Actor, Stash, JournalLogging:
     for sender <- snapshotRequesters if sender != self do sender ! Output.SnapshotTaken
     snapshotRequesters.clear()
 
-  private def takeSnapshot() =
+  private def takeSnapshot(): Unit =
     val since = now
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
 
@@ -656,7 +656,7 @@ object JournalActor:
     ioRuntime: IORuntime,
     eventIdGenerator: EventIdGenerator,
     stopped: Promise[Stopped] = Promise())
-  =
+  : Props =
     Props:
       new JournalActor[S](journalLocation, conf, keyedEventBus, ioRuntime, eventIdGenerator, stopped)
 

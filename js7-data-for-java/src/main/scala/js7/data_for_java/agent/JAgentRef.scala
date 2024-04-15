@@ -31,7 +31,7 @@ extends JJsonable[JAgentRef], JUnsignedSimpleItem:
     asScala.processLimit.toJavaPrimitive
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JUnsignedSimpleItem =
     copy(asScala.withRevision(revision.toScala))
 
 

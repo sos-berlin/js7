@@ -61,7 +61,7 @@ object Scope extends Monoid[Scope]:
 
   val empty: Scope = Empty
 
-  def combine(a: Scope, b: Scope) =
+  def combine(a: Scope, b: Scope): Scope =
     (a, b) match
       case (a, Empty) => a
       case (Empty, b) => b

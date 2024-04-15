@@ -1,42 +1,44 @@
 package js7.base.io.process
 
+import java.io.{InputStream, OutputStream}
 import js7.base.io.process.Processes.{processToPidOption, processToString}
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 final class JavaProcess(process: Process) extends Js7Process:
 
-  def isAlive =
+  def isAlive: Boolean =
     process.isAlive
 
-  def pid =
+  def pid: Option[Pid] =
     processToPidOption(process)
 
-  def stdin =
+  def stdin: OutputStream =
     process.getOutputStream
 
-  def returnCode =
+  def returnCode: Option[ReturnCode] =
     !process.isAlive ? ReturnCode(process.exitValue)
 
-  def destroy() =
+  def destroy(): Unit =
     process.destroy()
 
-  def destroyForcibly() =
+  def destroyForcibly(): Unit =
     process.destroyForcibly()
 
-  def waitFor() =
+  def waitFor(): ReturnCode =
     ReturnCode(process.waitFor())
 
-  def waitFor(duration: FiniteDuration) =
+  def waitFor(duration: FiniteDuration): Boolean =
     process.waitFor(duration.toMillis, MILLISECONDS)
 
-  def stdout =
+  def stdout: InputStream =
     process.getInputStream
 
-  def stderr =
+  def stderr: InputStream =
     process.getErrorStream
 
-  override def toString = processToString(process, pid)
+  override def toString: String = 
+    processToString(process, pid)
 
 
 object JavaProcess:

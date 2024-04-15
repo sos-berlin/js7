@@ -8,4 +8,5 @@ trait JavaWrapper:
 
   def asScala: AsScala
 
-  override def toString = asScala.toString
+  override def toString: String = 
+    asScala.toString

@@ -32,7 +32,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
   def toAllocatedString =
     s"Allocated[,$label]($allocatedThing)"
 
-  override def toString =
+  override def toString: String =
     allocatedThing.toString
 
 
@@ -43,5 +43,5 @@ object Allocated:
   def fromPair[F[_]: UnsafeMemoizable, A: Tag](pair: (A, F[Unit])): Allocated[F, A] =
     new Allocated[F, A](pair._1, pair._2)
 
-  def unapply[F[_], A](allocated: Allocated[F, A]) =
+  def unapply[F[_], A](allocated: Allocated[F, A]): Some[(A, F[Unit])] =
     Some(allocated.allocatedThing -> allocated.release)

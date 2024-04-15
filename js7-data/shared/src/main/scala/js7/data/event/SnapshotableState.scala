@@ -67,14 +67,14 @@ object SnapshotableState:
   private val logger = Logger[this.type]
 
   final case class Standards(journalState: JournalState, clusterState: ClusterState):
-    def snapshotSize =
+    def snapshotSize: Int =
       journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
 
     def toSnapshotStream: Stream[IO, Any] =
       journalState.toSnapshotStream ++
         clusterState.toSnapshotStream
   object Standards:
-    def empty = Standards(JournalState.empty, ClusterState.Empty)
+    val empty: Standards = Standards(JournalState.empty, ClusterState.Empty)
 
   trait HasSnapshotCodec :
     def snapshotObjectJsonCodec: TypedJsonCodec[Any]

@@ -8,6 +8,6 @@ import js7.data.event.EventId
   */
 package object problems:
   final case class ReverseReleaseEventsProblem(requestedUntilEventId: EventId, currentUntilEventId: EventId) extends Problem.Coded:
-    def arguments = Map(
+    def arguments: Map[String, String] = Map(
       "requestedUntilEventId" -> requestedUntilEventId.toString,
       "currentUntilEventId" -> currentUntilEventId.toString)

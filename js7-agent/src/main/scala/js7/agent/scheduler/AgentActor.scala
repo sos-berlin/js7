@@ -75,11 +75,11 @@ extends Actor, Stash, SimpleStateActor:
   private def terminating = shutDownOnce.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  override def preStart() =
+  override def preStart(): Unit =
     watch(journal.journalActor)
     super.preStart()
 
-  override def postStop() =
+  override def postStop(): Unit =
     logger.debugCall:
       super.postStop()
       if isResetting then

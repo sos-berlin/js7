@@ -1,5 +1,6 @@
 package js7.subagent.configuration
 
+import com.typesafe.config.Config
 import js7.base.io.https.HttpsConfig
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.journal.configuration.JournalConf
@@ -12,4 +13,4 @@ final case class DirectorConf(
   subagentDriverConf: RemoteSubagentDriver.Conf,
   subagentConf: SubagentConf):
 
-  def config = subagentConf.config
+  def config: Config = subagentConf.config

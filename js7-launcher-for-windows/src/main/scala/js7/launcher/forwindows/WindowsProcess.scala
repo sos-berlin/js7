@@ -59,7 +59,8 @@ extends Js7Process:
      if inRedirection.pipeHandle == INVALID_HANDLE_VALUE then
        throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
      new PipeOutputStream(inRedirection.pipeHandle):
-       override def close() = inRedirection.closePipe()
+       override def close(): Unit = 
+         inRedirection.closePipe()
 
   lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)
   lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
@@ -68,11 +69,11 @@ extends Js7Process:
     if redirection.pipeHandle == INVALID_HANDLE_VALUE then
       throw new IllegalStateException(s"WindowsProcess has no handle for $outerr attached")
     new PipeInputStream(redirection.pipeHandle):
-      override def close() = redirection.closePipe()
+      override def close(): Unit = redirection.closePipe()
 
-  def destroy() = destroyForcibly()
+  def destroy(): Unit = destroyForcibly()
 
-  def destroyForcibly() =
+  def destroyForcibly(): Unit =
     hProcessGuard.use:
       case None =>
       case Some(hProcess) =>
@@ -177,7 +178,7 @@ private[launcher] object WindowsProcess:
   extends AutoCloseable:
     private val closed = new AtomicBoolean
 
-    def close() =
+    def close(): Unit =
       if !closed.getAndSet(true) then
         if profileHandle != INVALID_HANDLE_VALUE then
           call("UnloadUserProfile"):

@@ -1,7 +1,7 @@
 package js7.common.scalautil
 
 import js7.base.utils.Closer
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 
 /**
  * Provides a Future `closed`, which succeeds with `close`.
@@ -22,4 +22,5 @@ trait ClosedFuture:
 
   closer.onClose { closedPromise.success(()) }
 
-  final def closed = closedPromise.future
+  final def closed: Future[Unit] = 
+    closedPromise.future

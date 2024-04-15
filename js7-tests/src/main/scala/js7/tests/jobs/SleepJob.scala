@@ -15,7 +15,7 @@ import scala.concurrent.duration.FiniteDuration
 final class SleepJob(jobContext: JobContext) extends InternalJob:
   import jobContext.clock
 
-  def toOrderProcess(step: Step) =
+  def toOrderProcess(step: Step): OrderProcess =
     OrderProcess(
       step.arguments
         .get("sleep")

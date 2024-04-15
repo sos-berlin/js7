@@ -8,7 +8,7 @@ trait InventoryItemEvent extends NoKeyEvent:
 
 
 object InventoryItemEvent:
-  def jsonCodec[S: ItemContainer.Companion] =
+  def jsonCodec[S: ItemContainer.Companion]: TypedJsonCodec[InventoryItemEvent] =
     (BasicItemEvent.jsonCodec |
       UnsignedSimpleItemEvent.jsonCodec |
       SignedItemEvent.jsonCodec |

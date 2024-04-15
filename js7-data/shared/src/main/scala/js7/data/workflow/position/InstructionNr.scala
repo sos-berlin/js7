@@ -14,7 +14,8 @@ final case class InstructionNr(number: Int) extends GenericInt:
   def increment: InstructionNr =
     copy(number + 1)
 
-  def /(branchId: BranchId) = BranchPath.Segment(this, branchId)
+  def /(branchId: BranchId): BranchPath.Segment = 
+    BranchPath.Segment(this, branchId)
 
   override def toString = s"$Prefix$number"
 
@@ -22,7 +23,7 @@ final case class InstructionNr(number: Int) extends GenericInt:
 object InstructionNr extends GenericInt.Companion[InstructionNr]:
   private val FirstInt = 0
   private lazy val predefined = (0 to 999).map(i => new InstructionNr(i)).toVector
-  lazy val First = InstructionNr(FirstInt)
+  lazy val First: InstructionNr = InstructionNr(FirstInt)
   val Prefix = ":"
 
   def apply(number: Int): InstructionNr =

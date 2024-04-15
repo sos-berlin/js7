@@ -23,7 +23,7 @@ object AgentClientMain extends OurApp:
   private given IORuntime = runtime
   private given ExecutionContext = runtime.compute
 
-  def run(args: List[String]) =
+  def run(args: List[String]): IO[ExitCode] =
     JavaMain.run("AgentClient")(IO:
       run(args.toIndexedSeq, println))
 

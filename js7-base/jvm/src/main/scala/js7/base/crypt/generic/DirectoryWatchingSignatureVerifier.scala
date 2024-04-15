@@ -42,11 +42,14 @@ extends SignatureVerifier, Service.StoppableByCancel:
 
   protected type MySignature = GenericSignature
 
-  def companion = DirectoryWatchingSignatureVerifier
+  def companion: DirectoryWatchingSignatureVerifier.type =
+    DirectoryWatchingSignatureVerifier
 
-  def publicKeys = throw new NotImplementedError("DirectoryWatchingSignatureVerifier#publicKeys")
+  def publicKeys: Seq[String] =
+    throw new NotImplementedError("DirectoryWatchingSignatureVerifier#publicKeys")
 
-  def publicKeyOrigin = "(DirectoryWatchingSignatureVerifier)"
+  def publicKeyOrigin: String =
+    "(DirectoryWatchingSignatureVerifier)"
 
   protected def start =
     IO.defer:
@@ -146,7 +149,7 @@ extends SignatureVerifier, Service.StoppableByCancel:
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     state.genericVerifier.verify(document, signature)
 
-  override def publicKeysToStrings =
+  override def publicKeysToStrings: Seq[String] =
     "DirectoryWatchingSignatureVerifier#publicKeysToStrings" :: Nil
 
   override def toString =
@@ -162,10 +165,10 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
   def typeName = "(generic)"
 
-  def filenameExtension =
+  def filenameExtension: String =
     throw new NotImplementedError
 
-  def recommendedKeyDirectoryName =
+  def recommendedKeyDirectoryName: String =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
 
   def checkedResource(config: Config, onUpdated: () => Unit)
@@ -216,7 +219,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
   def ignoreInvalid(publicKeys: Seq[Labeled[ByteArray]], origin: String) =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier.ignoreInvalid")
 
-  def genericSignatureToSignature(signature: GenericSignature) =
+  def genericSignatureToSignature(signature: GenericSignature): Checked[GenericSignature] =
     Right(signature)
 
   private final case class State(

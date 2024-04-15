@@ -29,7 +29,7 @@ extends MainJournalingActor[S, E]:
 
   override def supervisorStrategy = SupervisorStrategies.escalate
 
-  override def preStart() =
+  override def preStart(): Unit =
     super.preStart()
     persistPromise.success((stateToEvent, options, correlId) =>
       persistStateToEvents(stateToEvent, options, correlId))

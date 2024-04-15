@@ -1,6 +1,6 @@
 package js7.agent
 
-import org.apache.pekko.actor.{Actor, ActorRef, Props, Terminated}
+import org.apache.pekko.actor.{Actor, ActorRef, Props, SupervisorStrategy, Terminated}
 import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
@@ -39,7 +39,8 @@ extends Actor:
   import context.{actorOf, watch}
   private given ExecutionContext = ioRuntime.compute
 
-  override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
+  override val supervisorStrategy: SupervisorStrategy =
+    CatchingSupervisorStrategy(terminationPromise)
 
   private val agentActor = watch(actorOf(
     Props {
@@ -53,7 +54,7 @@ extends Actor:
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)
 
-  val commandActor = SetOnce[ActorRef]
+  val commandActor: SetOnce[ActorRef] = SetOnce[ActorRef]
   private val commandHandler = testCommandHandler getOrElse:
     // A global, not a child actor !!!
     // because a child Actor may stop before Shutdown command has been responded,
@@ -64,11 +65,11 @@ extends Actor:
 
   private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, meta)
 
-  override def preStart() =
+  override def preStart(): Unit =
     super.preStart()
     for t <- terminationPromise.future.failed do readyPromise.tryFailure(t)
 
-  override def postStop() =
+  override def postStop(): Unit =
     if !readyPromise.isCompleted then
       readyPromise.tryFailure(new RuntimeException("MainActor has stopped before AgentActor has become ready") with NoStackTrace)
     if !terminationPromise.isCompleted then
@@ -76,7 +77,7 @@ extends Actor:
     logger.debug("Stopped")
     super.postStop()
 
-  def receive =
+  def receive: Receive =
     case MainActor.Input.Start(recovered) =>
       agentActor ! AgentActor.Input.Start(recovered)
 

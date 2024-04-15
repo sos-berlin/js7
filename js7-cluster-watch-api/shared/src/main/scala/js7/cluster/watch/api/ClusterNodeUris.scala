@@ -11,12 +11,12 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 final class ClusterNodeUris private(prefixedUri: Uri):
-  val command = api("/cluster/command")
-  val session = api("/session")
+  val command: Uri = api("/cluster/command")
+  val session: Uri = api("/session")
 
-  def clusterState = api("/cluster")
+  def clusterState: Uri = api("/cluster")
 
-  def clusterNodeState = api("/cluster?return=ClusterNodeState")
+  def clusterNodeState: Uri = api("/cluster?return=ClusterNodeState")
 
   def clusterWatchMessages(clusterWatchId: ClusterWatchId, keepAlive: Option[FiniteDuration]): Uri =
     Uri(
@@ -41,7 +41,7 @@ final class ClusterNodeUris private(prefixedUri: Uri):
         (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
           request.toQueryParameters))
 
-  def eventIds(timeout: Option[FiniteDuration], heartbeat: Option[FiniteDuration] = None) =
+  def eventIds(timeout: Option[FiniteDuration], heartbeat: Option[FiniteDuration] = None): Uri =
     Uri(
       api("/event").string + encodeQuery(
         Seq("onlyAcks" -> "true") ++
@@ -51,7 +51,7 @@ final class ClusterNodeUris private(prefixedUri: Uri):
   def journal(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
-    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnAck: Boolean = false)
+    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnAck: Boolean = false): Uri
   = Uri(
     api("/journal").string + encodeQuery(
       (returnAck.thenList("return" -> "ack")) :::
@@ -67,7 +67,7 @@ final class ClusterNodeUris private(prefixedUri: Uri):
     Uri(
       Uri(s"${prefixedUri}api$path").string + encodeQuery(query*))
 
-  override def toString = prefixedUri.string
+  override def toString: String = prefixedUri.string
 
 
 object ClusterNodeUris:

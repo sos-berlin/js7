@@ -10,15 +10,17 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import scala.concurrent.duration.FiniteDuration
 
 final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration):
-  def checked =
+  def checked: Checked[HeartbeatTiming] =
     if heartbeat.isZeroOrBelow || heartbeatTimeout.isZeroOrBelow then
       Left(Problem.pure("Invalid heartbeat timing values"))
     else
       Right(this)
 
-  def longHeartbeatTimeout = heartbeat + heartbeatTimeout
+  def longHeartbeatTimeout: FiniteDuration = 
+    heartbeat + heartbeatTimeout
 
-  def heartbeatValidDuration = heartbeat + heartbeatTimeout / 2
+  def heartbeatValidDuration: FiniteDuration = 
+    heartbeat + heartbeatTimeout / 2
 
   override def toString = s"HeartbeatTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 

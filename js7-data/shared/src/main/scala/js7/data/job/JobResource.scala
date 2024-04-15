@@ -17,13 +17,13 @@ extends SignableSimpleItem, TrivialItemState[JobResource]:
   val companion: JobResource.type = JobResource
   val item: JobResource = this
 
-  def withId(id: JobResourcePath) =
+  def withId(id: JobResourcePath): JobResource =
     copy(path = id)
 
-  def rename(path: JobResourcePath) =
+  def rename(path: JobResourcePath): JobResource =
     copy(path = path)
 
-  def withRevision(revision: Option[ItemRevision]) =
+  def withRevision(revision: Option[ItemRevision]): JobResource =
     copy(itemRevision = revision)
 
 
@@ -32,12 +32,12 @@ extends SignableSimpleItem.Companion[JobResource],
   TrivialItemState.Companion[JobResource]:
 
   type Key = JobResourcePath
-  def Key = JobResourcePath
+  def Key: JobResourcePath.type = JobResourcePath
 
   override type Path = JobResourcePath
-  val Path = JobResourcePath
+  val Path: JobResourcePath.type = JobResourcePath
 
-  val cls = classOf[JobResource]
+  val cls: Class[JobResource] = classOf[JobResource]
 
   implicit val jsonCodec: Codec.AsObject[JobResource] =
     deriveConfiguredCodec[JobResource]

@@ -85,7 +85,7 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
 object ClientAttachments:
   private val Empty = ClientAttachments[DelegateId](Map.empty)
 
-  def empty[D <: DelegateId] =
+  def empty[D <: DelegateId]: ClientAttachments[D] =
     Empty.asInstanceOf[ClientAttachments[D]]
 
   private val logger = Logger[this.type]

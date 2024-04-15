@@ -9,7 +9,7 @@ import scala.collection.MapView
 final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
   private lazy val timestampScope = TimestampScope("now", Some(now))
 
-  override lazy val nameToCheckedValue =
+  override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
     new MapView[String, Checked[Value]]:
       def get(key: String) = key match
         case "js7EpochMilli" => Some(Right(NumberValue(now.toEpochMilli)))
@@ -20,7 +20,8 @@ final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
         Iterator("js7EpochMilli", "js7EpochSecond")
           .flatMap(k => get(k).map(k -> _))
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
+  : Option[Checked[Value]] =
     timestampScope.evalFunctionCall(functionCall)
 
   override def toString = s"NowScope($now)"

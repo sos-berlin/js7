@@ -29,7 +29,7 @@ object BasicParsers:
   private val comment: Parser[Unit] =
     inlineComment | lineEndComment
 
-  val isWhiteChar = " \t\r\n".toSet[Char]
+  val isWhiteChar: Set[Char] = " \t\r\n".toSet[Char]
 
   /** Optional whitespace including line ends */
   val w: Parser0[Unit] =
@@ -74,7 +74,7 @@ object BasicParsers:
   val identifierEnd: Parser0[Unit] =
     end | peek(charWhere(c => !isUnicodeIdentifierPart(c)))
 
-  val keyword =
+  val keyword: Parser[String] =
     (charWhere(isIdentifierStart) ~ charsWhile0(isUnicodeIdentifierPart))
       .string.orElse(failWith("Expected a keyword"))
 
@@ -213,7 +213,7 @@ object BasicParsers:
         case 1 => pure(nameToValue(intersection.head).asInstanceOf[A1])
         case _ => failWith(s"Expected non-contradicting keywords: ${intersection.mkString("; ")}")
   object KeyToValue:
-    val empty = KeyToValue[Any](Map.empty)
+    val empty: KeyToValue[Any] = KeyToValue[Any](Map.empty)
 
   def specificKeyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
     val keywordPart: Parser0[Unit] =

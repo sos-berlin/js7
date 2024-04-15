@@ -26,9 +26,11 @@ trait CloseableIterator[+A] extends Iterator[A], AutoCloseable:
           close()
           this
 
-  def :+[B >: A](b: => B) = wrap(this ++ Iterator(b))
+  def :+[B >: A](b: => B): CloseableIterator[B] = 
+    wrap(this ++ Iterator(b))
 
-  def +:[B >: A](b: => B) = wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
+  def +:[B >: A](b: => B): CloseableIterator[B] = 
+    wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
 
   def ++[B >: A](b: => CloseableIterator[B]): CloseableIterator[B] =
     new Concatenated(this, b)
@@ -63,7 +65,7 @@ trait CloseableIterator[+A] extends Iterator[A], AutoCloseable:
   /** Side-effect after successful close. */
   final def onClosed(sideEffect: => Unit): CloseableIterator[A] =
     new CloseableIterator[A]:
-      def close() =
+      def close(): Unit =
         CloseableIterator.this.close()
         sideEffect
       def hasNext = CloseableIterator.this.hasNext
@@ -72,20 +74,20 @@ trait CloseableIterator[+A] extends Iterator[A], AutoCloseable:
 
   private def wrap[B](baseIterator: Iterator[B]): CloseableIterator[B] =
     new CloseableIterator[B]:
-      def close() = CloseableIterator.this.close()
+      def close(): Unit = CloseableIterator.this.close()
       def hasNext = baseIterator.hasNext
       def next() = baseIterator.next()
       override def toString = s"CloseableIterator($baseIterator)"
 
 
 object CloseableIterator:
-  val empty = new CloseableIterator[Nothing]:
-    def close() = {}
+  val empty: CloseableIterator[Nothing] = new CloseableIterator[Nothing]:
+    def close(): Unit = {}
     def hasNext = false
-    def next() = throw new NoSuchElementException
+    def next(): Nothing = throw new NoSuchElementException
     override def toString = "CloseableIterator.empty"
 
-  def apply[A](as: A*) = fromIterator(as.iterator)
+  def apply[A](as: A*): CloseableIterator[A] = fromIterator(as.iterator)
 
   def fromCloseable[C <: AutoCloseable, A](closeable: C)(toIterator: C => Iterator[A]): CloseableIterator[A] =
     try fromIterator(toIterator(closeable)) onClosed { closeable.close() }
@@ -97,7 +99,7 @@ object CloseableIterator:
 
   def fromIterator[A](baseIterator: Iterator[A]): CloseableIterator[A] =
     new CloseableIterator[A]:
-      def close() = {}
+      def close(): Unit = {}
       def hasNext = baseIterator.hasNext
       def next() = baseIterator.next()
       override def toString = s"CloseableIterator($baseIterator)"
@@ -117,7 +119,7 @@ object CloseableIterator:
             case NonFatal(tt) if tt ne t => t.addSuppressed(tt)
           throw t
 
-    def close() = underlying.close()
+    def close(): Unit = underlying.close()
 
     override def toString = s"CloseableIterator.CloseAtEnd($underlying)"
 
@@ -126,7 +128,7 @@ object CloseableIterator:
     private val b = Lazy(lazyB)
     private val concatenated = (a: Iterator[A]) ++ b.value
 
-    def close() =
+    def close(): Unit =
       try a.close()
       finally for b <- b do b.close()
 

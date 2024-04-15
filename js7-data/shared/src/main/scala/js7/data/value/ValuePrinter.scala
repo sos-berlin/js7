@@ -35,7 +35,7 @@ object ValuePrinter:
       case _ =>
         sb.append("???") // FIXME
 
-  def quoteString(string: String) =
+  def quoteString(string: String): String =
     val sb = new StringBuilder(string.length + 10)
     appendQuoted(sb, string)
     sb.toString

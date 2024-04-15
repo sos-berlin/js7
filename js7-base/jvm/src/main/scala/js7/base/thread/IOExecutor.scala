@@ -31,7 +31,7 @@ final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: 
       export delegate.*
       override def toString = name
 
-  def execute(runnable: Runnable) =
+  def execute(runnable: Runnable): Unit =
     executionContext.execute(runnable)
 
   def apply[F[_], A](body: F[A])(using F: Async[F], src: sourcecode.FullName): F[A] =
@@ -41,7 +41,7 @@ final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: 
     logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
       body.evalOn(executionContext))
 
-  private def reportException(throwable: Throwable) =
+  private def reportException(throwable: Throwable): Unit =
     def msg = "Uncaught exception in thread " +
       s"${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
 

@@ -25,7 +25,7 @@ object CodedMessages:
   private def noCodeToPattern(code: ProblemCode): Option[String] =
     None
 
-  def problemCodeToMessage(code: ProblemCode, arguments: Map[String, String]) =
+  def problemCodeToMessage(code: ProblemCode, arguments: Map[String, String]): String =
     codeToPattern(code) match
       case None => code.string + unusedArgumentsToString(arguments)
       case Some(pattern) => patternToMessage(pattern, arguments)

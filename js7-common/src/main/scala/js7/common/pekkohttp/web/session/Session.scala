@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web.session
 
-import js7.base.auth.SimpleUser
+import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.utils.Atomic
 
 /**
@@ -9,9 +9,11 @@ import js7.base.utils.Atomic
 trait Session extends HasTimeout:
   protected[session] def sessionInit: SessionInit
 
-  final def sessionNumber = sessionToken.number
+  final def sessionNumber: Long = 
+    sessionToken.number
 
-  final def sessionToken = sessionInit.sessionToken
+  final def sessionToken: SessionToken = 
+    sessionInit.sessionToken
 
   private lazy val _user = Atomic[SimpleUser](sessionInit.loginUser)
 
