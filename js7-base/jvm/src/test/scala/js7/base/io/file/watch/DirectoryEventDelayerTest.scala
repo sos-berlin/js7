@@ -12,8 +12,8 @@ import js7.base.io.file.watch
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayerTest.*
 import js7.base.log.Logger
-import js7.base.test.TestControlExtensions.*
 import js7.base.test.OurAsyncTestSuite
+import js7.base.test.TestControlExtensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import org.scalatest.BeforeAndAfterAll

@@ -12,13 +12,13 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
 import js7.base.system.startup.Halt
+import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isTest, isTestParallel}
 import js7.base.utils.UseDefault.getOrElse
 import js7.base.utils.{Tests, UseDefault}
-import Halt.haltJava
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 

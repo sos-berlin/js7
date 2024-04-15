@@ -1,9 +1,9 @@
 package js7.base.utils
 
 import cats.effect.ResourceIO
+import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.utils.AutoClosing.autoClosing
-import cats.effect.unsafe.IORuntime
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 

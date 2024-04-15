@@ -5,13 +5,12 @@ import java.time.Instant
 import js7.base.BuildInfo
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
+import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.time.Timestamp
+import js7.base.utils.Atomic
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.system.SystemInformations.totalPhysicalMemory
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
-import js7.base.utils.Atomic
 
 /**
   * @author Joacim Zschimmer
