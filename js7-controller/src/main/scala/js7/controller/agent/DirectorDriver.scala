@@ -1,7 +1,6 @@
 package js7.controller.agent
 
-import cats.effect.kernel.Deferred
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.option.*
 import fs2.Stream
 import js7.agent.client.AgentClient

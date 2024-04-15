@@ -1,9 +1,11 @@
 package js7.controller.agent
 
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, IO}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
+import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
@@ -14,9 +16,6 @@ import js7.controller.agent.CommandQueue.*
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
 import js7.data.order.OrderId
-import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.startAndForget
-import js7.base.monixlike.MonixLikeExtensions.materialize
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration

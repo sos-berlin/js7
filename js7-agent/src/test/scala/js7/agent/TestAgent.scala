@@ -1,7 +1,7 @@
 package js7.agent
 
 import cats.effect.Resource.ExitCase
-import cats.effect.kernel.Sync
+import cats.effect.Sync
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO, kernel}
 import js7.agent.RunningAgent.TestWiring

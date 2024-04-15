@@ -1,9 +1,8 @@
 package js7.base.catsutils
 
-import cats.effect.kernel.Resource.ExitCase
-import cats.effect.kernel.{MonadCancel, Resource}
+import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO, Sync}
+import cats.effect.{Clock, Fiber, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed

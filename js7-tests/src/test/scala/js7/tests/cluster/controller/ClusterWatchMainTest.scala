@@ -1,7 +1,6 @@
 package js7.tests.cluster.controller
 
-import cats.effect.IO
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*

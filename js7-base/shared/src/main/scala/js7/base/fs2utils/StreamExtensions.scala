@@ -1,7 +1,7 @@
 package js7.base.fs2utils
 
-import cats.effect.kernel.Resource.ExitCase
-import cats.effect.kernel.Temporal
+import cats.effect.Resource.ExitCase
+import cats.effect.Temporal
 import cats.effect.std.{AtomicCell, Queue}
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.applicativeError.*

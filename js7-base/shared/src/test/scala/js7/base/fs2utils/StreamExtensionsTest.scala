@@ -1,6 +1,6 @@
 package js7.base.fs2utils
 
-import cats.effect.kernel.Resource.ExitCase
+import cats.effect.Resource.ExitCase
 import cats.effect.testkit.TestControl
 import cats.effect.{IO, Resource, SyncIO}
 import fs2.concurrent.SignallingRef

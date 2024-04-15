@@ -2,7 +2,7 @@ package js7.provider
 
 import cats.Show
 import cats.effect.IO
-import cats.effect.kernel.Resource.ExitCase
+import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.nio.file.StandardWatchEventKinds.*

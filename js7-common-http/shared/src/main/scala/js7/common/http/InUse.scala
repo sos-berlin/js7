@@ -1,7 +1,6 @@
 package js7.common.http
 
-import cats.effect.kernel.Resource
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.utils.Atomic.extensions.*

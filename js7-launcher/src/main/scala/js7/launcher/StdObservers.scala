@@ -1,6 +1,6 @@
 package js7.launcher
 
-import cats.effect.kernel.Resource.ExitCase
+import cats.effect.Resource.ExitCase
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
 import fs2.{Chunk, Pipe, Stream}

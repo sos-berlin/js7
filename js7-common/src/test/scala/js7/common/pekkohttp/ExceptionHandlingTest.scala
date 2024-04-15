@@ -1,6 +1,6 @@
 package js7.common.pekkohttp
 
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite

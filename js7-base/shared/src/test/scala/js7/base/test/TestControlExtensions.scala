@@ -1,7 +1,7 @@
 package js7.base.test
 
 import cats.effect.IO
-import cats.effect.kernel.Outcome
+import cats.effect.Outcome
 import cats.effect.testkit.TestControl
 import org.scalatest.Assertions.fail
 

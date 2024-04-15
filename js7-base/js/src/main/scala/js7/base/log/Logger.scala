@@ -1,6 +1,6 @@
 package js7.base.log
 
-import cats.effect.kernel.Sync
+import cats.effect.Sync
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import js7.base.utils.ScalaUtils.implicitClass

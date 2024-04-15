@@ -1,7 +1,7 @@
 package js7.agent
 
 import cats.effect.{Resource, ResourceIO}
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.syntax.flatMap.*
 import js7.agent.RestartableDirector.*
 import js7.agent.RunningAgent.TestWiring

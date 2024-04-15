@@ -1,11 +1,7 @@
 package js7.controller.web.controller.api.log
 
-import cats.effect.IO
-import cats.effect.kernel.Deferred
-import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{NotFound, OK}
-import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
+import cats.effect.{Deferred, IO}
+import cats.effect.unsafe.IORuntime
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -20,10 +16,13 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.controller.web.controller.api.test.RouteTester
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{NotFound, OK}
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.duration.*
 
 /**

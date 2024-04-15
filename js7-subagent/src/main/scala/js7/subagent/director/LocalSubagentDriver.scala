@@ -1,7 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.kernel.Deferred
-import cats.effect.{FiberIO, IO, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.chunkWithin

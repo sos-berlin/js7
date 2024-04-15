@@ -1,6 +1,6 @@
 package js7.subagent
 
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.traverse.*

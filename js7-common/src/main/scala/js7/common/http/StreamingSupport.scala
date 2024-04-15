@@ -1,7 +1,7 @@
 package js7.common.http
 
 import cats.effect
-import cats.effect.kernel.Resource.ExitCase
+import cats.effect.Resource.ExitCase
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}

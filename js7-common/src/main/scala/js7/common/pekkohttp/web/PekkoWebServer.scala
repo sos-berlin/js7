@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.instances.vector.*
 import cats.syntax.all.*

@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.{FiberIO, IO}
 import cats.syntax.all.*
 import js7.base.crypt.Signed

@@ -1,7 +1,7 @@
 package js7.cluster
 
 import cats.effect.IO
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import fs2.Stream

@@ -1,6 +1,6 @@
 package js7.agent
 
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.all.*

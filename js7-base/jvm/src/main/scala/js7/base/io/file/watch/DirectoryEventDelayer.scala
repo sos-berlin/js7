@@ -2,9 +2,8 @@ package js7.base.io.file.watch
 
 import cats.data.NonEmptySeq
 import cats.effect
-import cats.effect.kernel.Deferred
 import cats.effect.std.{AtomicCell, Queue}
-import cats.effect.{IO, Outcome}
+import cats.effect.{Deferred, IO, Outcome}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import fs2.{Pipe, Stream}

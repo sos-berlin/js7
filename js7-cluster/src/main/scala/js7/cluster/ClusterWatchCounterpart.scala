@@ -1,8 +1,7 @@
 package js7.cluster
 
-import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Outcome, ResourceIO}
+import cats.effect.{Deferred, IO, Outcome, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher

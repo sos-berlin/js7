@@ -1,7 +1,6 @@
 package js7.common.pekkohttp
 
-import cats.effect.IO
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import cats.implicits.catsSyntaxEitherId
 import com.typesafe.config.Config

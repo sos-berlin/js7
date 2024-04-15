@@ -1,6 +1,6 @@
 package js7.common.http
 
-import cats.effect.kernel.Resource.ExitCase
+import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, ResourceIO}
 import fs2.Stream

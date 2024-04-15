@@ -27,7 +27,7 @@ import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import cats.effect.IO
-import cats.effect.kernel.Deferred
+import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
 
 /**
