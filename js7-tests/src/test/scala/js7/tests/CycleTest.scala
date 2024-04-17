@@ -25,7 +25,7 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -929,13 +929,15 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       val orderId = OrderId("#2024-04-01#KICK-CYCLE")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
-      var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
-      assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
 
-      controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
-        .await(99.s).orThrow
-      eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
-        .head.eventId
+      for _ <- 1 to 3 do
+        var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
+        assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
+
+        controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
+          .await(99.s).orThrow
+        eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
+          .head.eventId
 
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == orderId)
@@ -948,15 +950,24 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
         OrderCycleStarted,
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h))),
+
         OrderGoes,
         OrderCycleStarted,
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h))),
+
+        OrderGoes,
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 4, next = clock.now() + 1.h))),
+
+        OrderGoes,
+        OrderCycleStarted,
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 5, next = clock.now() + 1.h))),
+
         OrderCancelled,
         OrderDeleted))
 
 
-  if false then "GoOrder at Agent" in:
-    // Inactive, because (for now) Cycle is always executed at Controller !!!
+  "GoOrder at Agent" in:
     val now = local("2024-04-02T00:00")
     val cycleEnd = local("2024-04-03T00:00")
     clock.resetTo(now)
@@ -965,10 +976,10 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
-        EmptyJob.execute(agentPath),  // Lease Order to Agent
         Cycle(
           Schedule.continuous(1.h),
-          Workflow.empty)))
+          Workflow.of(
+            EmptyJob.execute(agentPath)))))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-02#KICK-CYCLE")
@@ -977,10 +988,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
       assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
 
-      controller.api.executeCommand(GoOrder(orderId, position = Position(1)))
-        .await(99.s).orThrow
-      eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
-        .head.eventId
+      val cyclePosition = Position(0)
+
+      for _ <- 1 to 3 do
+        controller.api.executeCommand(GoOrder(orderId, position = cyclePosition))
+          .await(99.s).orThrow
+        eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
+          .head.eventId
 
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == orderId)
@@ -989,17 +1003,45 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       // No time elapsed, because clock has not been changed.
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
+
+        OrderCycleStarted,
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
-        OrderMoved(Position(1)),
-        OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
-        OrderCycleStarted,
+        OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)) % 1),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h))),
+
+        OrderGoMarked(cyclePosition),
+        OrderGoes,
         OrderCycleStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(OrderOutcome.succeeded),
+        OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h)) % 1),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h))),
+
+        OrderGoMarked(cyclePosition),
+        OrderGoes,
+        OrderCycleStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(OrderOutcome.succeeded),
+        OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h)) % 1),
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 4, next = clock.now() + 1.h))),
+
+        OrderGoMarked(cyclePosition),
+        OrderGoes,
+        OrderCycleStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(OrderOutcome.succeeded),
+        OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 4, next = clock.now() + 1.h)) % 1),
+        OrderCycleFinished(Some(CycleState(cycleEnd, index = 5, next = clock.now() + 1.h))),
+
+        OrderCancellationMarked(),
+        OrderDetachable,
+        //OrderCancellationMarkedOnAgent,
+        OrderDetached,
         OrderCancelled,
         OrderDeleted))
 }

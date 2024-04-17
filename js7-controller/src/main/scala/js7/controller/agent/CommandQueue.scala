@@ -12,6 +12,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
+import js7.controller.agent.AgentDriver.Queueable.MarkOrder
 import js7.controller.agent.CommandQueue.*
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
@@ -244,6 +245,9 @@ private[agent] abstract class CommandQueue(
           responses.flatMap {
             case QueueableResponse(queueable, Right(AgentCommand.Response.Accepted)) =>
               Some(queueable)
+
+            //case QueueableResponse(MarkOrder(orderId, _: OrderMark.Go), Right(o)) =>
+            //  emit something like OrderResetGoMarked ???
 
             case QueueableResponse(_, Right(o)) =>
               sys.error(s"Unexpected response from Agent: $o")

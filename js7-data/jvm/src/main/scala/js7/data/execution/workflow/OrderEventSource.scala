@@ -357,8 +357,10 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         else
           Left(GoOrderNotAtPositionProblem(order.id))
       else if order.isAttached then
-        Right:
-          !order.mark.contains(OrderMark.Go(position)) ? (OrderGoMarked(position) :: Nil)
+        // Emit OrderGoMarked event even if already marked. The user wishes so.
+        // In case the last OrderMark.Go was futile, the repeated OrderGoMarked event induces a
+        // new AgentCommand.MarkOrder which may be effective this time.
+        Right(Some(OrderGoMarked(position) :: Nil))
       else
         Left(GoOrderNotAtPositionProblem(order.id))
 

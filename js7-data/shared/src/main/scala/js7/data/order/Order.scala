@@ -325,10 +325,9 @@ final case class Order[+S <: Order.State](
       case OrderGoes =>
         if isGoCommandable then
           Right:
-            if mark.exists(_.isInstanceOf[OrderMark.Go]) then
-              copy(mark = None)
-            else
-              this
+            mark match
+              case Some(_: OrderMark.Go) => copy(mark = None)
+              case _ => this
         else
           inapplicable
 
