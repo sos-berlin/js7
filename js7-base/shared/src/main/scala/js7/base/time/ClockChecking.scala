@@ -48,11 +48,15 @@ private[time] trait ClockChecking extends Runnable:
   final def scheduleAt(at: Timestamp, label: => String)(callback: => Unit)
   : SyncCancelable =
     val milli = at.toEpochMilli
-    val alarm = new Alarm(milli, callback)
-    self.synchronized:
-      epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
-      scheduleNext()
-    SyncCancelable(alarm)
+    if toMs(milli - epochMilli()).isFailure then
+      logger.warn(s"schedulerAt($at, $label) ignored because its out of range")
+      SyncCancelable.empty
+    else
+      val alarm = new Alarm(milli, callback)
+      self.synchronized:
+        epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
+        scheduleNext()
+      SyncCancelable(alarm)
 
   private def scheduleNext(): Unit =
     if !stopped then epochMilliToAlarms.headOption match
@@ -60,7 +64,7 @@ private[time] trait ClockChecking extends Runnable:
         stopTicking()
         nextMilli = Long.MaxValue
 
-      case Some((firstMilli, _)) =>
+      case Some((firstMilli, alarms)) =>
         // Reschedule at each tick, in case the clock has been adjusted
         val now = epochMilli()
         val delay = (firstMilli - now) max 0
@@ -71,14 +75,18 @@ private[time] trait ClockChecking extends Runnable:
 
         //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
         timer :=
-          Try((delay max 0).ms).match
+          toMs(delay).match
             case Failure(t) =>
-              logger.error(s"scheduleNext: delay=${delay}ms is out of range for FiniteDuration")
+              logger.error(s"scheduleNext: delay=${delay}ms is out of range for FiniteDuration: ${
+                alarms.mkString(", ")}")
               emptyRunnable
             case Success(delay) =>
               scheduler.sleep(delay, this)
 
         nextMilli = firstMilli
+
+  private def toMs(millis: Long): Try[FiniteDuration] =
+    Try((millis max 0).ms)
 
   private def startTicking(tickInterval: FiniteDuration) =
     if !ticking && !stopped then
