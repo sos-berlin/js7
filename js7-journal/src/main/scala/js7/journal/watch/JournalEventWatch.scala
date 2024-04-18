@@ -104,7 +104,7 @@ extends AutoCloseable,
     for o <- announcedEventReaderPromise do
       o._2.trySuccess(None)
 
-  override def whenStarted: Future[JournalEventWatch.this.type] = 
+  override def whenStarted: Future[JournalEventWatch.this.type] =
     startedPromise.future
 
   def onFailover(): Unit =

@@ -47,15 +47,11 @@ extends Journal[S]:
 
   val whenNoFailoverByOtherNode: IO[Unit] = IO.unit
 
-  val eventWatch: RealEventWatch = new MemoryJournalEventWatch
-
-  private class MemoryJournalEventWatch extends RealEventWatch:
+  val eventWatch: RealEventWatch = new RealEventWatch:
+    protected val isActiveNode = true
 
     protected def eventsAfter(after: EventId) =
-      eventsAfter_(after)
-        .map(iterator => CloseableIterator.fromIterator(iterator))
-
-    protected val isActiveNode = true
+      eventsAfter_(after).map(CloseableIterator.fromIterator)
 
     def journalInfo: JournalInfo =
       val q = queue
@@ -175,7 +171,7 @@ extends Journal[S]:
     else
       val (index, found) = queue.search(after)
       if !found && after != q.tornEventId then
-        //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
+        //Left(UnknownEventIdProblem(after, q.tornEventId, q.lastAddedEventId))
         None
       else if eventWatchStopped then
         Some(Iterator.empty)

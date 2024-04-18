@@ -72,6 +72,7 @@ trait RealEventWatch extends EventWatch:
                       if onlyAcks && isActiveNode then
                         AckFromActiveClusterNodeProblem.throwable
                       else
+                        // TODO Use appropriate exception:
                         new TornException(after = request.after, tornEventId = tornAfter)
 
                   case EventSeq.Empty(lastEventId) =>
