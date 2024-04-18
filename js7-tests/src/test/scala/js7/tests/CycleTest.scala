@@ -917,7 +917,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     val cycleEnd = local("2024-04-02T00:00")
     clock.resetTo(now)
     val workflow = Workflow(
-      WorkflowPath("KICK-CYCLE"),
+      WorkflowPath("GO-CYCLE-AT-CONTROLLER"),
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
@@ -926,7 +926,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           Workflow.empty)))
 
     withTemporaryItem(workflow): workflow =>
-      val orderId = OrderId("#2024-04-01#KICK-CYCLE")
+      val orderId = OrderId("#2024-04-01#GO-CYCLE-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
@@ -968,11 +968,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
 
   "GoOrder at Agent" in:
-    val now = local("2024-04-02T00:00")
-    val cycleEnd = local("2024-04-03T00:00")
+    val now = local("2024-04-17T00:00")
+    val cycleEnd = local("2024-04-18T00:00")
     clock.resetTo(now)
     val workflow = Workflow(
-      WorkflowPath("KICK-CYCLE"),
+      WorkflowPath("GO-CYCLE-AT-AGENT"),
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
@@ -982,7 +982,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
             EmptyJob.execute(agentPath)))))
 
     withTemporaryItem(workflow): workflow =>
-      val orderId = OrderId("#2024-04-02#KICK-CYCLE")
+      val orderId = OrderId("#2024-04-17#GO-CYCLE-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId

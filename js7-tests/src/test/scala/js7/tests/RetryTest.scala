@@ -649,12 +649,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       //  .await(99.s)
       //assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
 
-      // Not rejected because Order is leased to Agent
-      controller.api
-        .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
-        .await(99.s)
-        .orThrow
-      sleep(200.ms)
+      locally:
+        assert(!controllerState.idToOrder(orderId).isGoCommandable(Position(0) / "try+1" % 0))
+        val checked = controller.api
+          .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
+          .await(99.s)
+        assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
 
       // GoOrder
       controller.api
@@ -679,7 +679,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(1) / catch_(0) % 0),
         OrderRetrying(Position(1) / try_(1) % 0),
-        OrderGoMarked(Position(0) / "try+1" % 0),
         OrderGoMarked(Position(1) / "try+1" % 0),
         OrderGoes,
         OrderAwoke,

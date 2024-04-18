@@ -68,7 +68,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderGoMarked, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -559,12 +559,19 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             }
 
     case Internal.OrdersMarked(orderToMark) =>
+      // TODO Maybe execute this code when the corresponding event arrives:
+      // Like already OrderGoMarked: OrderSuspensionMarked, OrderResumptionMarked, ...
+      // Then we must not handle a late AgentCommand.MarkOrder response.
       val unknown = orderToMark -- _controllerState.idToOrder.keySet
       if unknown.nonEmpty then
         logger.error("Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
           unknown.mkString(", "))
-      for (orderId, mark) <- orderToMark do
-        orderRegister(orderId).agentOrderMark = Some(mark)
+      orderToMark.foreach:
+        case (orderId, _: OrderMark.Go) =>
+          // Do not set agentOrderMark. This would defeat OrderGoes, which clears agentOrderMark.
+          // OrderGoes event may arrive before MarkOrders response.
+        case (orderId, mark) =>
+          orderRegister(orderId).agentOrderMark = Some(mark)
 
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
@@ -713,8 +720,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.suspend(_, mode))
 
       case ControllerCommand.GoOrder(orderId, position) =>
-        executeOrderMarkCommands(Vector(orderId))(
-          orderEventSource.go(_, position))
+        executeOrderMarkCommands(Vector(orderId)):
+          orderEventSource.go(_, position)
 
       case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded) =>
         executeOrderMarkCommands(Vector(orderId))(
@@ -1374,6 +1381,16 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           for (_, agentEntry) <- checkedWorkflowAndAgentEntry(order) do
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
+
+            // Special handling for OrderMark.Go: set agentOrderMark here, because when it's send
+            // after AgentCommand.MarkOrder has been executed, then this may occur *after* the
+            // OrderGoes event, too late, in the wrong order.
+            mark match
+              case _: OrderMark.Go =>
+                orderRegister.get(orderId).foreach: orderEntry =>
+                  orderEntry.agentOrderMark = Some(mark)
+              case _ =>
+
             val agentDriver = agentEntry.agentDriver
             agentDriver
               .send(AgentDriver.Queueable.MarkOrder(order.id, mark))

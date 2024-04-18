@@ -436,7 +436,7 @@ final class OrderTest extends OurTestSuite
       OrderResumptionMarked(),
       OrderResumed(),
 
-      OrderGoMarked(Position(1)),
+      OrderGoMarked(Position(0)),
       OrderGoes,
 
       OrderLocksAcquired(List(LockDemand(LockPath("LOCK")))),
@@ -684,7 +684,7 @@ final class OrderTest extends OurTestSuite
           case (_: OrderOutcomeAdded   , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderTransferred    , _                 , _, IsDetached             ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderGoMarked       , _                 , _, IsAttached             ) => _.isInstanceOf[BetweenCycles]
-          case (_: OrderGoes           , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]
+          case (_: OrderGoes           , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderFailed         , _                 , _, IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })

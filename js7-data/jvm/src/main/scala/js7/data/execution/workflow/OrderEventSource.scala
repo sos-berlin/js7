@@ -345,24 +345,24 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 
   def go(orderId: OrderId, position: Position): Checked[Option[List[OrderActorEvent]]] =
     idToOrder.checked(orderId).flatMap: order =>
-      if weHave(order) then
-        if order.position != position then
-          Left(GoOrderNotAtPositionProblem(order.id))
-        else if order.isState[Order.BetweenCycles] then
+      if !order.isGoCommandable(position) then
+        Left(GoOrderNotAtPositionProblem(order.id))
+      else if weHave(order) then
+        if order.isState[Order.BetweenCycles] then
           Right(Some(OrderGoes :: OrderCycleStarted :: Nil))
         else if order.isState[Order.DelayedAfterError] then
           Right(Some(OrderGoes :: OrderAwoke :: Nil))
         else if order.isState[Order.Fresh] && order.maybeDelayedUntil.isDefined then
           Right(Some(OrderGoes :: OrderStarted :: Nil))
         else
-          Left(GoOrderNotAtPositionProblem(order.id))
+          Left(GoOrderNotAtPositionProblem(order.id)) // Just in case
       else if order.isAttached then
         // Emit OrderGoMarked event even if already marked. The user wishes so.
         // In case the last OrderMark.Go was futile, the repeated OrderGoMarked event induces a
         // new AgentCommand.MarkOrder which may be effective this time.
         Right(Some(OrderGoMarked(position) :: Nil))
       else
-        Left(GoOrderNotAtPositionProblem(order.id))
+        Left(GoOrderNotAtPositionProblem(order.id)) // Just in case
 
   /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))`
    * iff order is not already marked as resuming. */

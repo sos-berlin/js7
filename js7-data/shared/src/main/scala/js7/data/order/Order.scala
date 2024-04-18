@@ -316,7 +316,7 @@ final case class Order[+S <: Order.State](
             state = if isState[Fresh] then StoppedWhileFresh else Stopped))
 
       case OrderGoMarked(position) =>
-        if isGoCommandable && isAttached then
+        if isGoCommandable(position) && isAttached then
           Right(copy(
             mark = Some(OrderMark.Go(position))))
         else
@@ -708,10 +708,16 @@ final case class Order[+S <: Order.State](
       isState[FailedInFork] ||
       isState[Broken]
 
+  /** OrderGoMarked and OrderGoes are applicable only if Order is in specific waiting states. */
+  def isGoCommandable(position: Position): Boolean =
+    isGoCommandable && this.position == position
+
+  /** OrderGoMarked and OrderGoes are applicable only if Order is in specific waiting states. */
   def isGoCommandable: Boolean =
-    isState[BetweenCycles] ||
-      isState[DelayedAfterError] ||
-      (isState[Fresh] && maybeDelayedUntil.isDefined)
+    (isDetached || isAttached) &&
+      isState[BetweenCycles]
+      || isState[DelayedAfterError]
+      || (isState[Fresh] && maybeDelayedUntil.isDefined)
 
   private def isMarkable =
     !isState[IsTerminated] && !isState[Deleted] ||
