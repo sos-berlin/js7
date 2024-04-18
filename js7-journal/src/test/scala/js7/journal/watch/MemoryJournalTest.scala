@@ -16,7 +16,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
 import js7.journal.{EventIdGenerator, MemoryJournal}
@@ -103,23 +103,30 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     observing.cancelAndForget()
 
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
+
+    /// releaseEvents ///
+
     journal.releaseEvents(1001).await(99.s).orThrow
     assert(eventWatch.tornEventId == 1001)
+    assert(eventWatch
+      .stream(EventRequest.singleClass[TestEvent](after = 1001))
+      .compile.toList
+      .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
+
+    journal.releaseEvents(1002).await(99.s).orThrow
+    assert(eventWatch.tornEventId == 1002)
+    assert:
+      journal.eventWatch.stream(EventRequest.singleClass[Event](after = 1002))
+        .compile.toList.await(99.s)
+        .isEmpty
 
     assert(eventWatch
-      .stream(EventRequest.singleClass[TestEvent](
-        after = EventId.BeforeFirst))
+      .stream(EventRequest.singleClass[TestEvent](after = 1001))
       .compile.toList
       .materialize
       .await(99.s)
       .failed
       .exists(_.isInstanceOf[TornException]))
-
-    assert(eventWatch
-      .stream(EventRequest.singleClass[TestEvent](
-        after = 1001))
-      .compile.toList
-      .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
   "size" in:
     val size = 3

@@ -169,7 +169,7 @@ extends Journal[S]:
     if after < q.tornEventId then
       None
     else
-      val (index, found) = queue.search(after)
+      val (index, found) = q.search(after)
       if !found && after != q.tornEventId then
         //Left(UnknownEventIdProblem(after, q.tornEventId, q.lastAddedEventId))
         None
