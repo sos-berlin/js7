@@ -24,6 +24,7 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.jsonseq.PositionAnd
 import js7.common.pekkoutils.SupervisorStrategies
+import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
@@ -154,8 +155,8 @@ extends Actor, Stash, JournalLogging:
         // We ignore the event and do not notify the caller,
         // because it would crash and disturb the process of switching-over.
         // (so AgentDriver with AgentReady event)
-        //reply(sender(), replyTo,
-        //  Output.Stored(Left(ClusterNodeHasBeenSwitchedOverProblem), uncommittedState, callersItem))
+        reply(sender(), replyTo,
+          Output.Stored(Left(ClusterNodeHasBeenSwitchedOverProblem), uncommittedState, callersItem))
       else
         val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
         uncommittedState.applyStampedEvents(stampedEvents) match
