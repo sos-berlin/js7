@@ -19,6 +19,7 @@ import js7.data.controller.ControllerEvent
 import js7.data.controller.ControllerEvent.ControllerTestEvent
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
@@ -39,7 +40,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
   protected final def test(addNonReplicatedEvents: Boolean = false): Unit =
     sys.props(testHeartbeatLossPropertyKey) = "false"
-    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
+    withControllerAndBackup(): (primary, _, backup, _, clusterSetting) =>
       var primaryController = primary.newController()
       var backupController = backup.newController()
 
@@ -53,13 +54,17 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
         "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
       primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-      // KILL PRIMARY
+
+      /// Kill primary ///
+
       primaryController.api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
       primaryController.stop.await(99.s)
       logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
       assert(since.elapsed < sleepWhileFailing, "— The Controller should have terminated while the shell script runs")
+
+      /// Fail over ///
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
         backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey).head
@@ -74,6 +79,8 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
+      /// Maybe add dirt to journal ///
+
       if addNonReplicatedEvents then
         // Add a dummy event to simulate an Event written by the primary
         // but not replicated and acknowledged when failing over.
@@ -84,24 +91,29 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
           .last.file
           .append(line)
 
+      /// Start primary with dirty journal, primary gets passive ///
+
       primaryController = primary.newController()
       if addNonReplicatedEvents then
-        // Provisional fix lets Controller terminate
+        // Provisional fix lets Controller terminate. The we start it again
         val termination = primaryController.terminated.await(99.s)
         assert(termination.restart)
         try
           primaryController.stop.await(99.s)
           fail("RestartAfterJournalTruncationException expected")
-        catch { case t: RestartAfterJournalTruncationException =>
+        catch case t: RestartAfterJournalTruncationException =>
           logger.info(t.toString)
-        }
         primaryController = primary.newController()
+
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
+      /// Cluster is coupled — now switch over ///
+
       backupController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
-      val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
+      val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](
+        after = failedOverEventId).head.eventId
 
       backupController.terminated await 99.s
       backupController.stop.await(99.s)
@@ -110,12 +122,16 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
+      assert(primaryController.clusterState.await(99.s).isNonEmptyActive(NodeId.primary))
+
+      /// Cluster is coupled, primary is active ///
 
       val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type]
       val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type]
       sys.props(testHeartbeatLossPropertyKey) = "true"
 
-      // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
+      // When heartbeat from passive to active node is broken,
+      // the ClusterWatch will nonetheless not agree to a failover
       val stillCoupled = Coupled(clusterSetting)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
@@ -127,7 +143,6 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       primaryController.stop.await(99.s)
       backupController.stop.await(99.s)
-    }
 
 
 object FailoverControllerClusterTest:
