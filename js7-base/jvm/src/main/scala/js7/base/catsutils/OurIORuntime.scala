@@ -89,9 +89,6 @@ object OurIORuntime:
     val blockingLabel = s"$label-blocking"
 
     for
-      _ <- Resource(F.delay:
-        logger.debug(s"↘ IORuntime »$label« created · $threads threads ↘") ->
-          F.delay(logger.debug(s"↙ IORuntime »$label« destroyed ↙")))
       pair <-
         Resource.eval(F.delay:
           computeExecutor match
