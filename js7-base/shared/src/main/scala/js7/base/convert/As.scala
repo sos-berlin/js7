@@ -6,7 +6,7 @@ import js7.base.utils.DecimalPrefixes
 /**
   * @author Joacim Zschimmer
   */
-trait As[V, W]:
+trait As[V, W] extends (V => W):
   // Objects of this class are implicitly used. So do not extend V => W to avoid implicit use as function.
   def apply(v: V): W
 
