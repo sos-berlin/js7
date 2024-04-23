@@ -32,7 +32,7 @@ object GenericInt:
         def pred(a: A) = apply(a.number - 1)
 
         /** a isSuccessorOf b. */
-        def isSuccessorOf(a: A, b: A): Boolean =
+        override def isSuccessorOf(a: A, b: A): Boolean =
           a.number == b.number + 1
     implicit def stringAsGenericInt: As[String, A] =
       As(o => apply(o.toInt))
