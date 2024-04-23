@@ -23,7 +23,7 @@ object StartUp:
   def initializeMain(): Unit =
     _isMain = true
 
-  def isMain: Boolean = 
+  def isMain: Boolean =
     _isMain
 
   def logJavaSettings(): Unit =

@@ -39,11 +39,11 @@ object OrderParameter:
   /** An optional value may be overridden by an order argument. */
   final case class Optional(name: String, valueType: ValueType, expression: Expression)
   extends HasType, HasExpression:
-    def referencedJobResourcePaths: Iterable[JobResourcePath] = 
+    def referencedJobResourcePaths: Iterable[JobResourcePath] =
       expression.referencedJobResourcePaths
 
   /** A final value may not be overriden. */
   final case class Final(name: String, expression: Expression)
   extends HasExpression:
-    def referencedJobResourcePaths: Iterable[JobResourcePath] = 
+    def referencedJobResourcePaths: Iterable[JobResourcePath] =
       expression.referencedJobResourcePaths

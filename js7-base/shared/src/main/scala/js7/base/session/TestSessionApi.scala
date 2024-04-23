@@ -35,10 +35,10 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
   def hasSession: Boolean =
     sessionTokenRef.get().isDefined
 
-  override protected def isTemporaryUnreachable(throwable: Throwable) = 
+  override protected def isTemporaryUnreachable(throwable: Throwable) =
     false
 
-  override def toString = 
+  override def toString =
     "TestSessionApi"
 
 

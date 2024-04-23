@@ -10,7 +10,7 @@ import js7.data.workflow.WorkflowId
   * @author Joacim Zschimmer
   */
 final case class WorkflowPosition(workflowId: WorkflowId, position: Position):
-  lazy val normalized: WorkflowPosition = 
+  lazy val normalized: WorkflowPosition =
     reuseIfEqual(this, workflowId /: position.normalized)
 
   def checkedParent: Checked[WorkflowPosition] =

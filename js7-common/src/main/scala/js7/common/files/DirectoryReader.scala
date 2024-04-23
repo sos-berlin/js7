@@ -63,7 +63,7 @@ object DirectoryReader:
         case o: Entry => file == o.file && !fileIsTouched(attributes, o.attributes)
         case _ => false
 
-    def isTouched(o: BasicFileAttributes): Boolean = 
+    def isTouched(o: BasicFileAttributes): Boolean =
       fileIsTouched(attributes, o)
   object Entry:
     val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file

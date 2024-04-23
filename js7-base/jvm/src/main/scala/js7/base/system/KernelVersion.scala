@@ -10,10 +10,10 @@ import scala.util.control.NonFatal
  */
 final case class KernelVersion(kernelName: String, version: Seq[Int]):
 
-  def >=(o: KernelVersion): Boolean = 
+  def >=(o: KernelVersion): Boolean =
     kernelName == o.kernelName && (version compareElementWise o.version) >= 0
 
-  override def toString: String = 
+  override def toString: String =
     List(kernelName, version mkString ".") mkString " "
 
 private object KernelVersion:

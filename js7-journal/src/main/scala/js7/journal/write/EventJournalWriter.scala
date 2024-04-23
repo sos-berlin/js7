@@ -98,7 +98,7 @@ extends JournalWriter(S, after = after, append = !withoutSnapshots),
 
   def isEventWritten: Boolean = _eventWritten
 
-  def fileLengthAndEventId: PositionAnd[EventId] = 
+  def fileLengthAndEventId: PositionAnd[EventId] =
     PositionAnd(fileLength, lastWrittenEventId)
 
   override def toString = s"EventJournalWriter(${file.getFileName})"

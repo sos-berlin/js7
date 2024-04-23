@@ -59,7 +59,7 @@ extends Js7Process:
      if inRedirection.pipeHandle == INVALID_HANDLE_VALUE then
        throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
      new PipeOutputStream(inRedirection.pipeHandle):
-       override def close(): Unit = 
+       override def close(): Unit =
          inRedirection.closePipe()
 
   lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)

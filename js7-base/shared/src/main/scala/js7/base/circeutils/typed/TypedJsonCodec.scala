@@ -57,7 +57,7 @@ extends Codec.AsObject[A]:
       s"$printName|${other.printName}",
       (subtypes ++ other.subtypes).asInstanceOf[Seq[Subtype[Any]]])
 
-  def apply(c: HCursor): Result[A] = 
+  def apply(c: HCursor): Result[A] =
     decode(c)
 
   def encodeObject(a: A): JsonObject =

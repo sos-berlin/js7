@@ -41,7 +41,7 @@ object Event:
 
     implicit def implicitSelf: KeyCompanion[E]
 
-    override def toString: String = 
+    override def toString: String =
       getClass.shortClassName
 
   transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E]:

@@ -65,9 +65,9 @@ object PekkoHttpUtils:
       underlying.entity.asByteString
 
   implicit final class RichPekkoUri(private val underlying: Uri) extends AnyVal:
-    def asPekko: PekkoUri = 
+    def asPekko: PekkoUri =
       PekkoUri(underlying.string)
 
   implicit final class RichPekkoAsUri(private val underlying: PekkoUri) extends AnyVal:
-    def asUri: Uri = 
+    def asUri: Uri =
       Uri(underlying.toString)

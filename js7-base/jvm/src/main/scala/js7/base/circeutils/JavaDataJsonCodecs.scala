@@ -29,11 +29,11 @@ object JavaDataJsonCodecs:
   private val dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
   object StringInstantEncoder extends Encoder[Instant]:
-    def apply(o: Instant): Json = 
+    def apply(o: Instant): Json =
       Json.fromString(dateTimeFormatter.format(o))
 
   object NumericInstantEncoder extends Encoder[Instant]:
-    def apply(o: Instant): Json = 
+    def apply(o: Instant): Json =
       Json.fromLong(o.toEpochMilli)
 
   trait InstantDecoder extends Decoder[Instant]:

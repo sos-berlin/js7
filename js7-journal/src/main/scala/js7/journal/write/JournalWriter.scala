@@ -39,7 +39,7 @@ extends AutoCloseable:
 
   protected final val jsonWriter = new FileJsonWriter(file, append = append, simulateSync = simulateSync)
 
-  def close(): Unit = 
+  def close(): Unit =
     jsonWriter.close()
 
   final def writeHeader(header: JournalHeader): Unit =

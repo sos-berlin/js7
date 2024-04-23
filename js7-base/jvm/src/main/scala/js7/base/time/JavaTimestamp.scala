@@ -19,7 +19,7 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
   /** Returns an ISO-8601 string with milliseconds.
     * For example "2017-12-04T11:22:33.456Z".
     */
-  def toIsoString: String = 
+  def toIsoString: String =
     dateTimeFormatter.format(this.toInstant)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =

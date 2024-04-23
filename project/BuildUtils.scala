@@ -46,7 +46,7 @@ object BuildUtils
 
   implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID])
   extends AnyVal {
-    def %(configurations: String): Seq[ModuleID] = 
+    def %(configurations: String): Seq[ModuleID] =
       delegate.map(_ % configurations)
   }
 

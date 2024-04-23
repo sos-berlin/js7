@@ -37,7 +37,7 @@ final class JavaProcess(process: Process) extends Js7Process:
   def stderr: InputStream =
     process.getErrorStream
 
-  override def toString: String = 
+  override def toString: String =
     processToString(process, pid)
 
 

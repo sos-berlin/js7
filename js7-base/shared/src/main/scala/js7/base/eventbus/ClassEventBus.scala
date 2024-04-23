@@ -24,7 +24,7 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
 
   private[eventbus] def isEmpty = register.isEmpty
 
-  def close(): Unit = 
+  def close(): Unit =
     removeAllSubscriptions()
 
   final def publish(event: E): Unit =
@@ -157,7 +157,7 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
     //val assignableClasses: Set[Cls] = classes.asInstanceOf[Set[Cls]]
     //  .flatMap(c => superclassCache.assignableClasses(c).asInstanceOf[Set[Cls]])
 
-    def close(): Unit = 
+    def close(): Unit =
       removeSubscription(this)
 
 

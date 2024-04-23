@@ -22,7 +22,7 @@ final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
   def map[B](f: A => B): Stamped[B] =
     functor.map(this)(f)
 
-  override def toString = 
+  override def toString =
     s"Stamped($eventId $timestamp $value)"
 
 

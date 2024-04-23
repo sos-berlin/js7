@@ -168,9 +168,9 @@ object Openssl:
       X509Cert.CertificatePem.toPem(certificate)
 
   // For Windows
-  def quote(path: Path): String = 
+  def quote(path: Path): String =
     "'" + path.toString.replace("\\", "\\\\") + "'"
 
 final case class OpensslSignature(base64: String) extends Signature:
-  def toGenericSignature: GenericSignature = 
+  def toGenericSignature: GenericSignature =
     GenericSignature(X509Signer.typeName, base64)

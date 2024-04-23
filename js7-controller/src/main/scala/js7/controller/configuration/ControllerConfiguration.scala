@@ -95,7 +95,7 @@ object ControllerConfiguration:
     .withFallback(Js7Configuration.defaultConfig)
 
   def fromCommandLine(
-    commandLineArguments: CommandLineArguments, 
+    commandLineArguments: CommandLineArguments,
     config: Config = ConfigFactory.empty)
   : ControllerConfiguration =
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)

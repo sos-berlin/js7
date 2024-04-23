@@ -98,7 +98,7 @@ object HttpClient:
   abstract class HttpException(message: String = null) extends RuntimeException(message):
     def statusInt: Int
     def problem: Option[Problem]
-    def isTemporaryUnreachable: Boolean = 
+    def isTemporaryUnreachable: Boolean =
       isTemporaryUnreachableStatus(statusInt)
   object HttpException:
     object HasProblem:

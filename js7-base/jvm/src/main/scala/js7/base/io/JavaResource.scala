@@ -99,7 +99,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
    */
   def url: URL = checkedUrl.orThrow
 
-  def /(tail: String): JavaResource = 
+  def /(tail: String): JavaResource =
     copy(path = s"${path stripSuffix "/"}/$tail")
 
   override def toString: String = path

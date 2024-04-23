@@ -31,7 +31,7 @@ extends SignatureVerifier:
 
   protected type MySignature = X509Signature
 
-  def companion: X509SignatureVerifier.type = 
+  def companion: X509SignatureVerifier.type =
     X509SignatureVerifier
 
   @TestOnly

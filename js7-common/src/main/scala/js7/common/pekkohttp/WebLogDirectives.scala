@@ -190,7 +190,7 @@ trait WebLogDirectives extends ExceptionHandling:
 object WebLogDirectives:
   private val webLogger = Logger("js7.web.log")
 
-  val CorrelIdAttributeKey: AttributeKey[CorrelId] = 
+  val CorrelIdAttributeKey: AttributeKey[CorrelId] =
     AttributeKey[CorrelId]("CorrelId")
 
   val TestConfig = config"""

@@ -183,7 +183,7 @@ object RangeSet:
     def iterator: Iterator[A] =
       Iterator.iterate(start)(_.succ).takeWhile(_ <= end)
 
-    override def toString: String = 
+    override def toString: String =
       start.toString + rangeSymbol + end
 
   object Interval:

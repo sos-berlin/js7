@@ -69,10 +69,10 @@ extends ForkInstruction:
       case _ =>
         super.workflow(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] = 
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
     branches.map(b => b.id.toBranchId -> b.workflow)
 
-  override def toString = 
+  override def toString =
     s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
 
 

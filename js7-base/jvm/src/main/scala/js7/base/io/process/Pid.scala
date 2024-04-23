@@ -4,10 +4,10 @@ import js7.base.generic.GenericLong
 
 final case class Pid(number: Long) extends GenericLong:
 
-  def string: String = 
+  def string: String =
     number.toString
 
-  override def toString = 
+  override def toString =
     s"PID:$number"
 
 

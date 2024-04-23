@@ -8,5 +8,5 @@ import org.apache.pekko.http.scaladsl.model.StatusCode
   */
 final class HttpStatusCodeException(val statusCode: StatusCode, val problem: Problem)
 extends RuntimeException:
-  override def getMessage: String = 
+  override def getMessage: String =
     s"${statusCode.intValue} ${statusCode.value} $problem".trim

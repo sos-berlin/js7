@@ -82,7 +82,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
       .uniqueToMap(labels => throw new IllegalArgumentException(
         s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  def withId(id: VersionedItemId[WorkflowPath]): Workflow = 
+  def withId(id: VersionedItemId[WorkflowPath]): Workflow =
     reuseIfEqual(this, copy(id = id))
 
   val item: Workflow = this

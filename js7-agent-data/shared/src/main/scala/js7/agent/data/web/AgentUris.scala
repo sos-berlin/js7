@@ -29,7 +29,7 @@ final class AgentUris private(agentUri: Uri):
         request.toQueryParameters ++
           (heartbeat.fold(Nil)(h => ("heartbeat" -> h.toDecimalString) :: Nil)))
 
-  def apply(relativeUri: String): Uri = 
+  def apply(relativeUri: String): Uri =
     toUri(stripLeadingSlash(relativeUri))
 
   def api(relativeUri: String): Uri =

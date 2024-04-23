@@ -17,7 +17,7 @@ extends AutoCloseable:
     this(new JournaledStateEventBus[S])
 
   /** Close all subscriptions. */
-  def close(): Unit = 
+  def close(): Unit =
     asScala.close()
 
   @javaApi @Nonnull

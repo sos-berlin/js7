@@ -13,7 +13,7 @@ final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
         removed.toSet == removed.toSet
     case _ => false
 
-  def isEmpty: Boolean = 
+  def isEmpty: Boolean =
     addedOrChanged.isEmpty && removed.isEmpty
 
   /** Returns a subset of a certain `InventoryItemPath` and `InventoryItem`. */

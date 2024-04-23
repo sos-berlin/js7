@@ -136,7 +136,7 @@ extends AutoCloseable:
         lineNumber = -1
         logger.trace(s"seek $pos => blockPos=$pos blockRead=$blockRead blockLength=$blockLength")
 
-  def position: Long = 
+  def position: Long =
     blockPos + blockRead
 
   private def check[A](body: => A): A =

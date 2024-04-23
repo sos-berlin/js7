@@ -239,7 +239,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
 
   final case class HeaderSnapshot(orderWatch: OrderWatch)
   extends Snapshot:
-    def orderWatchPath: OrderWatchPath = 
+    def orderWatchPath: OrderWatchPath =
       orderWatch.key
 
   final case class ExternalOrderSnapshot(

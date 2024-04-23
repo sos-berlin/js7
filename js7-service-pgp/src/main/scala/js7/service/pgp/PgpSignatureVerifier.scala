@@ -29,7 +29,7 @@ extends SignatureVerifier:
   import PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
-  def companion: PgpSignatureVerifier.type = 
+  def companion: PgpSignatureVerifier.type =
     PgpSignatureVerifier
 
   registerBouncyCastle()
@@ -37,7 +37,7 @@ extends SignatureVerifier:
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
 
   @TestOnly
-  def publicKeys: Seq[String] = 
+  def publicKeys: Seq[String] =
     publicKeyRingCollection.toArmoredString :: Nil
 
   /** Returns `Right(message)` iff signature matches the message. */

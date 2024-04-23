@@ -13,7 +13,7 @@ import scala.util.Random
   */
 sealed case class HashedPassword(hashed: SecretString, hasher: String => String):
 
-  def equalsClearText(clear: SecretString): Boolean = 
+  def equalsClearText(clear: SecretString): Boolean =
     timingAttackSecureEqual(hashed.string, hasher(clear.string))
 
   def hashAgainRandom: HashedPassword =
@@ -36,7 +36,7 @@ object HashedPassword:
   private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString
 
   /** The empty clear-text password, differently hashed at each invocation. */
-  def newEmpty(): HashedPassword = 
+  def newEmpty(): HashedPassword =
     Empty.hashAgainRandom
 
   private def sha(string: String) =

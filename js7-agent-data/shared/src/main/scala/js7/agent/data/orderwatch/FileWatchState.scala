@@ -102,7 +102,7 @@ object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
         case o: EntrySnapshot =>
           entries += DirectoryState.Entry(o.path)
 
-    def result(): FileWatchState = 
+    def result(): FileWatchState =
       FileWatchState(
         header.orThrow.fileWatch,
         DirectoryState.fromIterable(entries))

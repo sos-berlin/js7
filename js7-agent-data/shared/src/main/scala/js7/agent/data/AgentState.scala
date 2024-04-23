@@ -393,7 +393,7 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
       yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
 
-  val snapshotObjectJsonCodec: TypedJsonCodec[Any] = 
+  val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
       Subtype[JournalState],
       Subtype[ClusterStateSnapshot],

@@ -38,7 +38,7 @@ extends OrderWatch:
   def withRevision(revision: Option[ItemRevision]): FileWatch =
     copy(itemRevision = revision)
 
-  override val referencedItemPaths: View[InventoryItemPath] = 
+  override val referencedItemPaths: View[InventoryItemPath] =
     View(agentPath, workflowPath)
 
 

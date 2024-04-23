@@ -14,10 +14,10 @@ extends GenericString:
       case o: SimplePattern => string == o.string
       case _ => false
 
-  override def hashCode: Int = 
+  override def hashCode: Int =
     string.hashCode
 
-  def string: String = 
+  def string: String =
     pattern.pattern
 
 

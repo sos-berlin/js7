@@ -24,7 +24,7 @@ object PlatformInfo {
   implicit val jsonCodec: Codec.AsObject[PlatformInfo] = deriveCodec[PlatformInfo]
 
   @TestOnly
-  val test: PlatformInfo = 
+  val test: PlatformInfo =
     PlatformInfo(
       Timestamp("2022-07-08T12:00:00Z"),
       timezone = "Europe/Berlin",

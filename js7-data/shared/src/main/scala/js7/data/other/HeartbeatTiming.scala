@@ -16,10 +16,10 @@ final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fi
     else
       Right(this)
 
-  def longHeartbeatTimeout: FiniteDuration = 
+  def longHeartbeatTimeout: FiniteDuration =
     heartbeat + heartbeatTimeout
 
-  def heartbeatValidDuration: FiniteDuration = 
+  def heartbeatValidDuration: FiniteDuration =
     heartbeat + heartbeatTimeout / 2
 
   override def toString = s"HeartbeatTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"

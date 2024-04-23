@@ -22,5 +22,5 @@ trait ClosedFuture:
 
   closer.onClose { closedPromise.success(()) }
 
-  final def closed: Future[Unit] = 
+  final def closed: Future[Unit] =
     closedPromise.future

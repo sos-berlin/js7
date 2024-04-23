@@ -32,7 +32,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     myAgent = agent
 
   override def afterAll() =
-    try 
+    try
       myAgent.terminate().await(99.s)
     finally
       super.afterAll()

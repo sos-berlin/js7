@@ -41,7 +41,7 @@ extends AutoCloseable:
   def agentDir(name: AgentPath): Path =
     agentsDir / name.string
 
-  def agentsDir: Path = 
+  def agentsDir: Path =
     temporaryDirectory / "agents"
 
 

@@ -169,7 +169,7 @@ object Problem extends Semigroup[Problem]:
     final def cause: None.type =
       None
 
-    def rawMessage: String = 
+    def rawMessage: String =
       CodedMessages.problemCodeToMessage(code, arguments)
 
     override def equals(o: Any): Boolean = o match
@@ -242,7 +242,7 @@ object Problem extends Semigroup[Problem]:
     override def flatten: View[Problem] =
       problems.view.flatMap(_.flatten)
 
-    lazy val message: String = 
+    lazy val message: String =
       problems.map(_.toString) reduce combineMessages
 
     override def head: Problem = problems.head
@@ -257,7 +257,7 @@ object Problem extends Semigroup[Problem]:
           case _ => problems == o.problems
       case _ => super.equals(o)
 
-    override def hashCode: Int = 
+    override def hashCode: Int =
       problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
 
   sealed trait FromThrowable extends Problem

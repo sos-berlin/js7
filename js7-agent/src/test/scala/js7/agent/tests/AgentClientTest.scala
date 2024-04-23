@@ -27,7 +27,7 @@ final class AgentClientTest extends OurTestSuite, ScalaFutures, AgentTester:
   private lazy val client = AgentClient(Admission(agent.localUri))
 
   override def afterAll(): Unit =
-    try 
+    try
       actorSystem.terminate().await(99.s)
     finally
       super.afterAll()

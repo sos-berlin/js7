@@ -8,7 +8,7 @@ import js7.data.event.JournalEvent.{Heartbeat, JournalEventsReleased, SnapshotTa
 import fs2.{Pure, Stream}
 
 final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId]):
-  def estimatedSnapshotSize: Int = 
+  def estimatedSnapshotSize: Int =
     if this != JournalState.empty then 1 else 0
 
   def toSnapshotStream: Stream[Pure, JournalState] =

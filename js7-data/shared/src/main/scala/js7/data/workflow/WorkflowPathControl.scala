@@ -32,7 +32,7 @@ extends UnsignedSimpleItem.Companion[WorkflowPathControl],
   TrivialItemState.Companion[WorkflowPathControl]:
 
   override type Key = WorkflowPathControlPath
-  def Key: UnsignedSimpleItemPath.Companion[WorkflowPathControlPath] = 
+  def Key: UnsignedSimpleItemPath.Companion[WorkflowPathControlPath] =
     WorkflowPathControlPath
 
   override type Path = WorkflowPathControlPath

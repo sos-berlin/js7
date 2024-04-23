@@ -57,16 +57,16 @@ trait Instruction:
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
 
-  final def @:(maybeLabel: Option[Label]): Labeled = 
+  final def @:(maybeLabel: Option[Label]): Labeled =
     Labeled(maybeLabel, this)
 
-  final def @:(label: Label): Labeled = 
+  final def @:(label: Label): Labeled =
     Labeled(Some(label), this)
 
-  final def @:(label: String): Labeled = 
+  final def @:(label: String): Labeled =
     Labeled(Some(Label(label)), this)
 
-  final def @:(unit: Unit): Labeled = 
+  final def @:(unit: Unit): Labeled =
     Labeled(None, this)
 
   protected final def sourcePosToString: String =
@@ -86,7 +86,7 @@ object Instruction:
     maybePosition: Option[Position] = None):
     override def toString: String = labelString + instruction
 
-    def labelString: String = 
+    def labelString: String =
       maybeLabel.map(o => s"$o: ").mkString
 
     def withPositions(position: Position): Labeled =

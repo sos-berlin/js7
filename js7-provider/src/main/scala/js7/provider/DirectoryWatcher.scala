@@ -29,7 +29,7 @@ extends AutoCloseable:
     // Register early to get the events from now
     directory.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
 
-  def close(): Unit = 
+  def close(): Unit =
     if !closed.getAndSet(true) then
       logger.trace(s"$directory: watchService.close")
       watchService.close()

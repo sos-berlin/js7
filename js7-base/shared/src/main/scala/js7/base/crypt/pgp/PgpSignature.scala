@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
   */
 final case class PgpSignature(string: String) extends Signature:
 
-  def toGenericSignature: GenericSignature = 
+  def toGenericSignature: GenericSignature =
     GenericSignature(TypeName, string)
 
   override def toString = s"PgpSignature(${string.truncateWithEllipsis(20)})"

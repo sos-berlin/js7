@@ -143,8 +143,8 @@ object Futures:
   final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 
   object SynchronousExecutionContext extends ExecutionContext:
-    def execute(runnable: Runnable): Unit = 
+    def execute(runnable: Runnable): Unit =
       runnable.run()
-    
-    def reportFailure(cause: Throwable): Unit = 
+
+    def reportFailure(cause: Throwable): Unit =
       logger.error(s"$cause", cause)

@@ -9,5 +9,5 @@ final class PgpService extends SignatureService:
   def maybeSignerCompanion: Some[DocumentSigner.Companion] =
     Some(PgpSigner)
 
-  override def toString: String = 
+  override def toString: String =
     verifierCompanion.typeName

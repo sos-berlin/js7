@@ -19,7 +19,7 @@ object ControllerRunId extends GenericString.NonEmpty[ControllerRunId]:
   val empty: ControllerRunId =
     ControllerRunId(JournalId(Base64UUID.zero))
 
-  protected def unchecked(string: String): ControllerRunId = 
+  protected def unchecked(string: String): ControllerRunId =
     throw new NotImplementedError
 
   override def checked(string: String): Checked[ControllerRunId] =

@@ -8,7 +8,7 @@ import js7.data.workflow.Instruction
 
 final case class Prompt(question: Expression, sourcePos: Option[SourcePos] = None)
 extends Instruction:
-  def withoutSourcePos: Prompt = 
+  def withoutSourcePos: Prompt =
     copy(sourcePos = None)
 
 

@@ -95,7 +95,7 @@ object BranchId:
       else if string startsWith CyclePrefix then "cycle"
       else this
 
-    def isFork: Boolean = 
+    def isFork: Boolean =
       string.startsWith(ForkPrefix) || string == "fork"
 
     def isCycle: Boolean =

@@ -179,7 +179,7 @@ final class WorkingClusterNode[
         case None => IO.right(Completed)
         case Some(o) => o.shutDownThisNode)
 
-  def isActive: Boolean = 
+  def isActive: Boolean =
     _activeClusterNode.isDefined
 
 

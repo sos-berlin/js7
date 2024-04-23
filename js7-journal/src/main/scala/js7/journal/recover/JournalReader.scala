@@ -200,7 +200,7 @@ extends AutoCloseable:
     import S.keyedEventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
 
-  def eventId: EventId = 
+  def eventId: EventId =
     positionAndEventId.value
 
   def position: Long =
@@ -211,7 +211,7 @@ extends AutoCloseable:
       transaction.positionAndEventId
         .getOrElse(PositionAnd(jsonReader.position, _eventId))
 
-  def totalEventCount: Long = 
+  def totalEventCount: Long =
     _totalEventCount
 
 

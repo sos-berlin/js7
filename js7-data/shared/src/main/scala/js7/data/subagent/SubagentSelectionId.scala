@@ -11,7 +11,7 @@ extends UnsignedSimpleItemPath, DelegateId, InventoryItemPath.AttachableToAgent:
 
   def companion: SubagentSelectionId.type = SubagentSelectionId
 
-  def toUserId: UserId = 
+  def toUserId: UserId =
     UserId(string)
 
   // A SubagentId may be used as a SubagentSelectionId

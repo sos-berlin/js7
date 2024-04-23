@@ -11,8 +11,8 @@ final case class JProblem(asScala: Problem)
 extends JJsonable[JProblem]:
 
   type AsScala = Problem
-  
-  def companion: JJsonable.Companion[JProblem] = 
+
+  def companion: JJsonable.Companion[JProblem] =
     JProblem
 
   @Nonnull

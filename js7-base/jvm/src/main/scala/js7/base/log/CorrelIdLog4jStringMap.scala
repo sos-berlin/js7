@@ -69,5 +69,5 @@ object CorrelIdLog4jStringMap:
   private val nullString = "❓null❓"
   private var _forEachCount = 0L
 
-  def forEachCount: Long = 
+  def forEachCount: Long =
     _forEachCount

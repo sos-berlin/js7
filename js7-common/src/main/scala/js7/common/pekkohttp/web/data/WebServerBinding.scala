@@ -43,10 +43,10 @@ object WebServerBinding:
 
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding:
-    def scheme: Scheme = 
+    def scheme: Scheme =
       Http
 
-    def toWebServerPort: WebServerPort = 
+    def toWebServerPort: WebServerPort =
       WebServerPort.Http(address)
 
     def requiredFiles: Seq[Path] = Nil
@@ -62,7 +62,7 @@ object WebServerBinding:
     def scheme: Scheme =
       Https
 
-    def toWebServerPort: WebServerPort = 
+    def toWebServerPort: WebServerPort =
       WebServerPort.Https(address)
 
     def requiredFiles: Seq[Path] =

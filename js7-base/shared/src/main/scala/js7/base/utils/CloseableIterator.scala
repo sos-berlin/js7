@@ -26,10 +26,10 @@ trait CloseableIterator[+A] extends Iterator[A], AutoCloseable:
           close()
           this
 
-  def :+[B >: A](b: => B): CloseableIterator[B] = 
+  def :+[B >: A](b: => B): CloseableIterator[B] =
     wrap(this ++ Iterator(b))
 
-  def +:[B >: A](b: => B): CloseableIterator[B] = 
+  def +:[B >: A](b: => B): CloseableIterator[B] =
     wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
 
   def ++[B >: A](b: => CloseableIterator[B]): CloseableIterator[B] =

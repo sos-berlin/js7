@@ -9,7 +9,7 @@ import js7.data.job.TaskId
   * @author Joacim Zschimmer
   */
 final case class ProcessKillScript(file: Path) extends GenericString:
-  def string: String = 
+  def string: String =
     file.toString
 
   def toCommandArguments(id: TaskId, pid: Option[Pid]): Seq[String] =

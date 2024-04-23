@@ -26,7 +26,7 @@ object JobKey:
   def apply(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Named =
     Named(workflowBranchPath, name)
 
-  def forTest: JobKey = 
+  def forTest: JobKey =
     forTest("TEST")
 
   def forTest(name: String): Named =

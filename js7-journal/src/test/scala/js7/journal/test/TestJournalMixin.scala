@@ -53,7 +53,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
   protected val journalLocation = testJournalMeta(directory / "test")
 
   override def afterAll() =
-    try 
+    try
       deleteDirectoryRecursively(directory)
     finally
       super.afterAll()

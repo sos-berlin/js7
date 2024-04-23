@@ -73,7 +73,7 @@ object OldSchedule:
   final case class EveryDay(periodSeq: PeriodSeq) extends PartialFunction[DayOfWeek, PeriodSeq]:
     def isDefinedAt(dayOfWeek: DayOfWeek) = true
 
-    override def apply(dayOfWeek: DayOfWeek): PeriodSeq = 
+    override def apply(dayOfWeek: DayOfWeek): PeriodSeq =
       periodSeq
 
     override def toString = s"EveryDay($periodSeq)"

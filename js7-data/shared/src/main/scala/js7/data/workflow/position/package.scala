@@ -8,5 +8,5 @@ import js7.base.utils.ScalaUtils.syntax.*
 package object position:
   object syntax:
     implicit final class RichWorkflowId(private val underlying: WorkflowId) extends AnyVal:
-      def /(position: Position): WorkflowPosition = 
+      def /(position: Position): WorkflowPosition =
         WorkflowPosition(underlying, position)

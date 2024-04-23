@@ -57,7 +57,7 @@ extends ForkInstruction:
       case BranchId.ForkList => Right(workflow)
       case _ => super.workflow(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] = 
+  override def branchWorkflows: Seq[(BranchId, Workflow)] =
     Seq(BranchId.ForkList -> workflow)
 
   override def toString = s"ForkList()$sourcePosToString"

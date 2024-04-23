@@ -24,7 +24,7 @@ final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentF
   override protected def provideAgentClientCertificate = false
 
   override def afterAll() =
-    try 
+    try
       socket.close()
     finally
       super.afterAll()

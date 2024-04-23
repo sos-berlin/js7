@@ -14,7 +14,7 @@ final case class InstructionNr(number: Int) extends GenericInt:
   def increment: InstructionNr =
     copy(number + 1)
 
-  def /(branchId: BranchId): BranchPath.Segment = 
+  def /(branchId: BranchId): BranchPath.Segment =
     BranchPath.Segment(this, branchId)
 
   override def toString = s"$Prefix$number"

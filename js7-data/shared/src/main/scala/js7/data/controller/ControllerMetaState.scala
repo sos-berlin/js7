@@ -12,7 +12,7 @@ final case class ControllerMetaState(
   initiallyStartedAt: Timestamp,
   timezone: Timezone):
 
-  def isDefined: Boolean = 
+  def isDefined: Boolean =
     this != ControllerMetaState.Undefined
 
 

@@ -10,10 +10,10 @@ import js7.data.workflow.Instruction
   */
 final case class Retry(sourcePos: Option[SourcePos] = None)
 extends Instruction:
-  def withoutSourcePos: Retry = 
+  def withoutSourcePos: Retry =
   copy(sourcePos = None)
 
-  override def toString: String = 
+  override def toString: String =
     "retry" + sourcePosToString
 
 

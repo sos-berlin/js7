@@ -9,10 +9,10 @@ import js7.base.utils.Atomic
 trait Session extends HasTimeout:
   protected[session] def sessionInit: SessionInit
 
-  final def sessionNumber: Long = 
+  final def sessionNumber: Long =
     sessionToken.number
 
-  final def sessionToken: SessionToken = 
+  final def sessionToken: SessionToken =
     sessionInit.sessionToken
 
   private lazy val _user = Atomic[SimpleUser](sessionInit.loginUser)

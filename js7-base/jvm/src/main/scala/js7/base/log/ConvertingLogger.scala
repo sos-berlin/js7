@@ -203,7 +203,7 @@ object ConvertingLogger:
     //protected val fullPrefix = s"“$prefix” "
     private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
 
-    def convertMessage(o: String): String = 
+    def convertMessage(o: String): String =
       fullPrefix + o
 
     def convertFormat(o: String): String =
