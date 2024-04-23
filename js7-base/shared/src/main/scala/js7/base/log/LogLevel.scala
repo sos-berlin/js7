@@ -2,6 +2,7 @@ package js7.base.log
 
 import java.util.Locale
 import js7.base.convert.As
+import js7.base.utils.Ordinal
 
 /**
   * @author Joacim Zschimmer
@@ -17,6 +18,25 @@ enum LogLevel(private val name: String):
 
 object LogLevel:
   given Ordering[LogLevel] = Ordering.by(_.ordinal)
+
+  /** The usual Ordinal invariants are not valid here:
+   * pred(succ(level)) == level, not for LogLevel.Error
+   * succ(pred(level)) == level, not for LogLevel.None
+   */
+  given Ordinal[LogLevel] = new Ordinal[LogLevel]:
+    def succ(level: LogLevel) =
+      level match
+        case None => None
+        case _ => LogLevel.fromOrdinal(level.ordinal + 1)
+
+    def pred(level: LogLevel) =
+      level match
+        case None => None
+        case _ => LogLevel.fromOrdinal(level.ordinal - 1)
+
+    override def isSuccessorOf(a: LogLevel, b: LogLevel) =
+      a.ordinal == b.ordinal + 1
+
 
   def apply(name: String): LogLevel =
     try LogLevel.valueOf(name.toLowerCase(Locale.ROOT).capitalize)
