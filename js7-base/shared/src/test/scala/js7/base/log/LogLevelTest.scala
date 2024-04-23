@@ -29,18 +29,51 @@ final class LogLevelTest extends OurTestSuite:
     assert(LogLevel("debug") eq LogLevel.Debug)
     assert(LogLevel("trace") eq LogLevel.Trace)
 
-  "Ordinal" - {
+  "NoneIsLowestOrdinal" - {
+    import LogLevel.NoneIsLowestOrdinal
     "pred" in:
-      assert((LogLevel.None: log.LogLevel).pred == LogLevel.None)
-      assert((LogLevel.Debug: log.LogLevel).pred == LogLevel.None)
-      assert((LogLevel.Info: log.LogLevel).pred == LogLevel.Debug)
-      assert((LogLevel.Warn: log.LogLevel).pred == LogLevel.Info)
-      assert((LogLevel.Error: log.LogLevel).pred == LogLevel.Warn)
+      def check(pair: (LogLevel, LogLevel)) = assert(pair._1.pred == pair._2)
+      import LogLevel.*
+
+      check(Trace -> None)
+      check(Debug -> Trace)
+      check(Info -> Debug)
+      check(Warn -> Info)
+      check(Error -> Warn)
 
     "succ" in:
-      assert((LogLevel.None: log.LogLevel).succ == LogLevel.Debug)
-      assert((LogLevel.Debug: log.LogLevel).succ == LogLevel.Info)
-      assert((LogLevel.Info: log.LogLevel).succ == LogLevel.Warn)
-      assert((LogLevel.Warn: log.LogLevel).succ == LogLevel.Error)
-      assert((LogLevel.Error: log.LogLevel).succ == LogLevel.Error)
+      def check(pair: (LogLevel, LogLevel)) = assert(pair._1.succ == pair._2)
+      import LogLevel.*
+
+      check(None -> Trace)
+      check(Trace -> Debug)
+      check(Debug -> Info)
+      check(Info -> Warn)
+      check(Warn -> Error)
+      check(Error -> Error)
+  }
+
+  "NoneIsHighestOrdinal" - {
+    import LogLevel.NoneIsHighestOrdinal
+    "pred" in:
+      def check(pair: (LogLevel, LogLevel)) = assert(pair._1.pred == pair._2)
+      import LogLevel.*
+
+      check(Trace -> Trace)
+      check(Debug -> Trace)
+      check(Info -> Debug)
+      check(Warn -> Info)
+      check(Error -> Warn)
+      check(None -> Error)
+
+    "succ" in:
+      def check(pair: (LogLevel, LogLevel)) = assert(pair._1.succ == pair._2)
+      import LogLevel.*
+
+      check(Trace -> Debug)
+      check(Debug -> Info)
+      check(Info -> Warn)
+      check(Warn -> Error)
+      check(Error -> None)
+      check(None -> None)
   }

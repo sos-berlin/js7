@@ -20,10 +20,35 @@ object LogLevel:
   given Ordering[LogLevel] = Ordering.by(_.ordinal)
 
   /** The usual Ordinal invariants are not valid here:
-   * pred(succ(level)) == level, not for LogLevel.Error
-   * succ(pred(level)) == level, not for LogLevel.None
+   * <ul>
+   * <li>pred(succ(level)) == level, not for LogLevel.Error
+   * <li>succ(pred(level)) == level, not for LogLevel.None
+   * </ul>
    */
-  given Ordinal[LogLevel] = new Ordinal[LogLevel]:
+  given NoneIsLowestOrdinal: Ordinal[LogLevel] = new Ordinal[LogLevel]:
+    def succ(level: LogLevel) =
+      level match
+        case None => Trace
+        case Error => Error
+        case _ => LogLevel.fromOrdinal(level.ordinal + 1)
+
+    def pred(level: LogLevel) =
+      level match
+        case None => None
+        case Trace => None
+        case _ => LogLevel.fromOrdinal(level.ordinal - 1)
+
+    override def isSuccessorOf(a: LogLevel, b: LogLevel) =
+      a.ordinal == b.ordinal + 1
+
+
+  /** The usual Ordinal invariants are not valid here:
+   * <ul>
+   * <li>pred(succ(level)) == level, not for LogLevel.None
+   * <li>succ(pred(level)) == level, not for LogLevel.Trace
+   * </ul>
+   */
+  given NoneIsHighestOrdinal: Ordinal[LogLevel] = new Ordinal[LogLevel]:
     def succ(level: LogLevel) =
       level match
         case None => None
@@ -31,7 +56,7 @@ object LogLevel:
 
     def pred(level: LogLevel) =
       level match
-        case None => None
+        case Trace => Trace
         case _ => LogLevel.fromOrdinal(level.ordinal - 1)
 
     override def isSuccessorOf(a: LogLevel, b: LogLevel) =

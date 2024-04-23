@@ -80,7 +80,6 @@ private[cluster] final class ClusterCommon private(
   : IO[Unit] =
     Delayer.start[IO](clusterConf.delayConf).flatMap: delayer =>
       val name = implicitClass[C].simpleScalaName
-      var warned = false
       val since = now
       apiResource
         .use: api =>
@@ -91,7 +90,6 @@ private[cluster] final class ClusterCommon private(
                   api.executeClusterCommand(toCommand(token))))
             .map((_: ClusterCommand.Response) => ())
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
-              warned = true
               logger.log(delayer.logLevel,
                 s"${delayer.symbol} $name command failed with ${throwable.toStringWithCauses}")
               if !throwable.isInstanceOf[java.net.SocketException] && throwable.getStackTrace.nonEmpty

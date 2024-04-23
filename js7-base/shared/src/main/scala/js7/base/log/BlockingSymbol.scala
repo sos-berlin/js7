@@ -1,7 +1,6 @@
 package js7.base.log
 
 import js7.base.log.BlockingSymbol.*
-import scala.math.Ordering.Implicits.*
 
 /** Escalating symbols ⚪🟡🟠🔴 to show the patient retries after a temporary blocking failure.*/
 final class BlockingSymbol:
@@ -16,14 +15,14 @@ final class BlockingSymbol:
     _warnLogged = false
 
   def onDebug(): Unit =
-    increment()
+    _index = _index max 1
     _debugLogged = true
 
   def onInfo(): Unit =
-    increment(minimum = 2)
+    _index = _index max 2
 
   def onWarn(): Unit =
-    increment(minimum = 2)
+    _index = _index max 3
     _warnLogged = true
 
   private def increment(minimum: Int): Unit =
@@ -43,7 +42,7 @@ final class BlockingSymbol:
     _index > 0
 
   def relievedLogLevel: LogLevel =
-    logLevel max LogLevel.Info
+    if _index < 3 then logLevel else LogLevel.Info
 
   def logLevel: LogLevel =
     _index match

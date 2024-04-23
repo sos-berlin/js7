@@ -115,9 +115,9 @@ object SessionApi:
             }
             .guaranteeCase {
               case Outcome.Succeeded(_) => IO(
-                if sym.called then logger.info(s"🟢 $self logged-in"))
+                logger.log(sym.relievedLogLevel, s"🟢 $self logged-in"))
               case Outcome.Canceled() => IO(
-                if sym.called then logger.info(s"⚫️ $self Canceled"))
+                logger.log(sym.relievedLogLevel, s"⚫️ $self Canceled"))
               case _ => IO.unit
             }
         })

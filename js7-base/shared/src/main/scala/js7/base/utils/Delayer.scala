@@ -22,7 +22,7 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
   private val _state = Atomic(State(initialNow, resetDelays(delays)))
   private val sym = BlockingSymbol()
 
-  export sym.{logLevel, symbol}
+  export sym.{logLevel, symbol, relievedLogLevel}
 
   def sleep: F[Unit] =
     sleep_(_ => F.unit)

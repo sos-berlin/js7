@@ -534,7 +534,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           .uncancelable // Only the loop should be cancelable, but not the inner operations
           .flatMap:
             case Left(problem @ PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem) =>
-              sym.increment()
+              sym.onWarn()
               logger.warn(
                 s"$sym $label => $problem — trying since ${since.elapsed.pretty} ...")
               IO.sleep(delays.next()).as(Left(())/*repeat*/)
