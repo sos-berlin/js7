@@ -16,7 +16,7 @@ object Dependencies
   val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.0.0"
-  val circeVersion = "0.14.6"
+  val circeVersion = "0.14.7"
   val circeGenericExtrasVersion = "0.14.3"
   val scalaTestVersion = "3.2.18"
   val scalaTestCheckVersion = "3.2.14.0"

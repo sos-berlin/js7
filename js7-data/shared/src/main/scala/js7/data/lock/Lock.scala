@@ -36,4 +36,4 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]:
 
   type ItemState = LockState
 
-  val jsonCodec: Codec.AsObject[Lock] = deriveConfiguredCodec[Lock]
+  given jsonCodec: Codec.AsObject[Lock] = deriveConfiguredCodec[Lock]

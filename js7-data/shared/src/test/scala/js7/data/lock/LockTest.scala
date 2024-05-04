@@ -6,7 +6,6 @@ import js7.tester.CirceJsonTester.testJson
 
 final class LockTest extends OurTestSuite:
   "JSON" in:
-    implicit val x = Lock.jsonCodec
     testJson(Lock(LockPath("LOCK"), limit = 3), json"""
       {
         "path": "LOCK",
