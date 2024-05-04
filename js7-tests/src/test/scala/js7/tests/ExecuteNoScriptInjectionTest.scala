@@ -11,8 +11,8 @@ import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.tests.ExecuteNoScriptInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class ExecuteNoScriptInjectionTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+final class ExecuteNoScriptInjectionTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(scriptWorkflow, absolutePathWorkflow)
   override protected val controllerConfig = config"""
@@ -22,34 +22,28 @@ final class ExecuteNoScriptInjectionTest extends OurTestSuite, ControllerAgentFo
     """
 
   "signed-script-injection-allowed = off (default)" - {
-    "Executing an ShellScriptExecutable is not allowed" in {
+    "Executing an ShellScriptExecutable is not allowed" in:
       testInjectionNotAllowed(OrderId("❌-ShellScriptExecutable"), scriptWorkflow.path)
-    }
 
-    "Executing an AbsolutePathExecutable is not allowed" in {
+    "Executing an AbsolutePathExecutable is not allowed" in:
       testInjectionNotAllowed(OrderId("❌-AbsolutePathExecutable"), absolutePathWorkflow.path)
-    }
 
-    "Executing an CommandLineExecutable is not allowed" in {
+    "Executing an CommandLineExecutable is not allowed" in:
       testInjectionNotAllowed(OrderId("❌-CommandLineExecutable"), commandLineWorkflow.path)
-    }
 
-    "Executing an InternalExecutable is not allowed" in {
+    "Executing an InternalExecutable is not allowed" in:
       testInjectionNotAllowed(OrderId("❌-InternalExecutable"), internalJobWorkflow.path)
-    }
 
-    def testInjectionNotAllowed(orderId: OrderId, workflowPath: WorkflowPath): Unit = {
+    def testInjectionNotAllowed(orderId: OrderId, workflowPath: WorkflowPath): Unit =
       controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
       val orderProcessed = eventWatch.await[OrderProcessed](_.key == orderId).head
       assert(orderProcessed.value.event.outcome.asInstanceOf[OrderOutcome.Disrupted].reason.problem ==
         SignedInjectionNotAllowed)
-    }
   }
-}
 
 
-object ExecuteNoScriptInjectionTest
-{
+object ExecuteNoScriptInjectionTest:
+
   private val agentPath = AgentPath("AGENT")
 
   private val scriptWorkflow = WorkflowParser.parse(
@@ -75,4 +69,3 @@ object ExecuteNoScriptInjectionTest
     """define workflow {
         execute agent="AGENT", internalJobClass="js7.executor.forjava.internal.tests.EmptyJInternalJob";
       }""").orThrow
-}

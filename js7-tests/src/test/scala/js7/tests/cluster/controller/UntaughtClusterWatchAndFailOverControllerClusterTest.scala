@@ -78,18 +78,16 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
 
         // ClusterWatch is untaught
         val clusterFailedOver = eventBus
-          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver] {
+          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
             case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
-          }
           .await(99.s)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
         if stopPrimary then
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == None)
         else
           val clusterPassiveLost = eventBus
-            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost] {
+            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
               case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
-            }
             .await(99.s)
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
@@ -97,9 +95,8 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == None)
         else
           val clusterPassiveLost = eventBus
-            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost] {
+            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
               case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
-            }
             .await(99.s)
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
@@ -140,9 +137,8 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           // Controller restarts due to truncated Journal
           val termination = primaryController.untilTerminated.await(99.s)
           assert(termination.restart)
-          intercept[RestartAfterJournalTruncationException] {
+          intercept[RestartAfterJournalTruncationException]:
             primaryController.stop.await(99.s)
-          }
 
           logger.info("Start Primary Controller again after journal truncation")
           primaryController = primary.newController()

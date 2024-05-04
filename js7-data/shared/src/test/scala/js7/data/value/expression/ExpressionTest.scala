@@ -16,19 +16,18 @@ import org.scalactic.source
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.{forAll, *}
 import scala.collection.MapView
 
-final class ExpressionTest extends OurTestSuite
-{
+final class ExpressionTest extends OurTestSuite:
+
   implicit val scope: Scope =
-    new Scope {
+    new Scope:
 
       import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
       import ValueSearch.{LastExecuted, Name}
 
       override def symbolToValue(symbol: String) =
-        symbol match {
+        symbol match
           case "catchCount" => Some(Right(3))
           case _ => None
-        }
 
       override lazy val nameToCheckedValue =
         MapView(
@@ -43,7 +42,7 @@ final class ExpressionTest extends OurTestSuite
           "missing" -> Right(MissingValue))
 
       override def findValue(search: ValueSearch) =
-        search match {
+        search match
           case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
             nameToCheckedValue.get(name)
 
@@ -71,10 +70,9 @@ final class ExpressionTest extends OurTestSuite
 
           case _ =>
             None
-        }
 
       override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
-        functionCall match {
+        functionCall match
           case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
             Some(
               for
@@ -83,10 +81,9 @@ final class ExpressionTest extends OurTestSuite
               yield maybeNumber.map(_ * 3).fold(missingValue)(NumberValue(_)))
 
           case _ => None
-        }
 
       override def evalJobResourceVariable(v: JobResourceVariable)(implicit scope: Scope) =
-        v match {
+        v match
           case JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE")) =>
             Some(Right(StringValue("myJobResource,VARIABLE,value")))
 
@@ -94,8 +91,6 @@ final class ExpressionTest extends OurTestSuite
             Some(Right(StringValue("JOB-RESOURCE,VARIABLE-NAME,value")))
 
           case _ => None
-        }
-    }
 
   "Constants" - {
     "Numbers" - {
@@ -111,12 +106,11 @@ final class ExpressionTest extends OurTestSuite
         result = Right(BigDecimal("-1.111222333444555666777888999")),
         BigDecimal("-1.111222333444555666777888999"))
 
-      locally {
+      locally:
         val number = "-111222333444555666777888999000111222333444555666777888999000"
         testEval(number,
           result = Right(BigDecimal(number)),
           BigDecimal(number))
-      }
     }
 
     "Strings" - {
@@ -165,7 +159,7 @@ final class ExpressionTest extends OurTestSuite
   }
 
   "Multi-line strings" - {
-    locally {
+    locally:
       val longString =
         """LINE 1
    |LINE 2
@@ -175,7 +169,6 @@ final class ExpressionTest extends OurTestSuite
         s"'$longString'.stripMargin",
         result = Right(longString.stripMargin),
         StripMargin(longString))
-    }
   }
 
   "String interpolation" - {
@@ -398,9 +391,8 @@ final class ExpressionTest extends OurTestSuite
         DotExpr(DotExpr(NamedValue("myObject"), "myField"), "a"))))
   }
 
-  "function expression call" in {
+  "function expression call" in:
     pending
-  }
 
   "Operators" - {
     "?" - {
@@ -526,11 +518,10 @@ final class ExpressionTest extends OurTestSuite
         result = Left(ErrorInExpressionProblem("ERROR")),
         Equal(ErrorExpr("ERROR"), ErrorExpr("X")))
 
-      "Equal" in {
+      "Equal" in:
         forAll((a: Int, b: Int) => assert(
           Equal(a, b).eval == Right(BooleanValue(a == b))))
         assert(Equal(1, "1").eval == Right(BooleanValue(false)))
-      }
     }
 
     "!=" - {
@@ -562,10 +553,9 @@ final class ExpressionTest extends OurTestSuite
         result = Left(ErrorInExpressionProblem("ERROR")),
         NotEqual(ErrorExpr("ERROR"), ErrorExpr("X")))
 
-      "NotEqual" in {
+      "NotEqual" in:
         forAll((a: Int, b: Int) => assert(
           NotEqual(a, b).eval == Right(BooleanValue(a != b))))
-      }
     }
 
     "<=" - {
@@ -577,10 +567,9 @@ final class ExpressionTest extends OurTestSuite
         result = Right(MissingValue),
         LessOrEqual(MissingConstant, 1))
 
-      "LessOrEqual" in {
+      "LessOrEqual" in:
         forAll((a: Int, b: Int) => assert(
           LessOrEqual(a, b).eval == Right(BooleanValue(a <= b))))
-      }
     }
 
     "<" - {
@@ -596,10 +585,9 @@ final class ExpressionTest extends OurTestSuite
         result = Right(true),
         Equal(Multiply(LastReturnCode, 3), 3))
 
-      "LessThan" in {
+      "LessThan" in:
         forAll((a: Int, b: Int) => assert(
           LessThan(a, b).eval == Right(BooleanValue(a < b))))
-      }
     }
 
     ">=" - {
@@ -611,10 +599,9 @@ final class ExpressionTest extends OurTestSuite
         result = Right(MissingValue),
         GreaterOrEqual(MissingConstant, 1))
 
-      "GreaterOrEqual" in {
+      "GreaterOrEqual" in:
         forAll((a: Int, b: Int) => assert(
           GreaterOrEqual(a, b).eval == Right(BooleanValue(a >= b))))
-      }
     }
 
     ">" - {
@@ -626,10 +613,9 @@ final class ExpressionTest extends OurTestSuite
         result = Right(MissingValue),
         GreaterThan(MissingConstant, 1))
 
-      "GreaterThan" in {
+      "GreaterThan" in:
         forAll((a: Int, b: Int) => assert(
           GreaterThan(a, b).eval == Right(BooleanValue(a > b))))
-      }
     }
 
     "*" - {
@@ -785,10 +771,9 @@ final class ExpressionTest extends OurTestSuite
       result = Right(true),
       Not(Not(true)))
 
-    "Not" in {
+    "Not" in:
       forAll((bool: Boolean) => assert(
         Not(bool).eval == Right(BooleanValue(!bool))))
-    }
   }
 
   "function call" - {
@@ -797,7 +782,7 @@ final class ExpressionTest extends OurTestSuite
       FunctionCall("myFunction", Seq(Argument(7))))
   }
 
-  "objectExpression" in {
+  "objectExpression" in:
     val expr = Map[String, Expression](
       "A" -> 1,
       "B" -> "BBB",
@@ -808,7 +793,6 @@ final class ExpressionTest extends OurTestSuite
         "B" -> "BBB",
         "LIST" -> ListValue(List[Value](1, 2, 3)))),
       In(LastReturnCode, ListExpr(List(1, 2, 3))))
-  }
 
   //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
   //  result = Right(ObjectValue(Map(
@@ -880,14 +864,12 @@ final class ExpressionTest extends OurTestSuite
       Add(ErrorExpr("ERROR"), 1))
   }
 
-  "MissingValue OrMissing" in {
+  "MissingValue OrMissing" in:
     assert(OrMissing(ErrorExpr("ERROR")).eval == Right(MissingValue))
-  }
 
-  "MissingValue is not comparable" in {
+  "MissingValue is not comparable" in:
     assert(Equal(ErrorExpr("ERROR"), ErrorExpr("ERROR")).eval ==
       Left(ErrorInExpressionProblem("ERROR")))
-  }
 
   testEval("\"-->$(error('ERROR'))<--\"",
     result = Left(ErrorInExpressionProblem("ERROR")),
@@ -987,10 +969,9 @@ final class ExpressionTest extends OurTestSuite
       result = Left(ErrorInExpressionProblem("ERROR")),
       And(ErrorExpr("ERROR"), false))
 
-    "And" in {
+    "And" in:
       forAll((a: Boolean, b: Boolean) => assert(
         And(a, b).eval == Right(BooleanValue(a && b))))
-    }
   }
 
   "||" - {
@@ -1026,10 +1007,9 @@ final class ExpressionTest extends OurTestSuite
       result = Left(ErrorInExpressionProblem("ERROR")),
       Or(ErrorExpr("ERROR"), false))
 
-    "Or" in {
+    "Or" in:
       forAll((a: Boolean, b: Boolean) => assert(
         Or(a, b).eval == Right(BooleanValue(a || b))))
-    }
   }
 
   "in" - {
@@ -1037,11 +1017,10 @@ final class ExpressionTest extends OurTestSuite
       result = Right(true),
       In(LastReturnCode, ListExpr(List(1, 2, 3))))
 
-    "In" in {
+    "In" in:
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
         In(a, ListExpr(List(b, c, d))).eval
           == Right(BooleanValue(Set(b, c, d)(a)))))
-    }
   }
 
   "matches" - {
@@ -1117,10 +1096,9 @@ final class ExpressionTest extends OurTestSuite
           Not(LessOrEqual(LastReturnCode, 9))),
         NotEqual(LastReturnCode, 1)))
 
-    "And and LessThan" in {
+    "And and LessThan" in:
       assert(And(LessThan(1, 2), LessThan(1, ToNumber("7"))).eval ==
         Right(BooleanValue(true)))
-    }
   }
 
   "Constant expressions" - {
@@ -1140,22 +1118,18 @@ final class ExpressionTest extends OurTestSuite
       result = Right(false),
       Equal(1, 2))
 
-    "Variables cannot be used" in {
+    "Variables cannot be used" in:
       assert(NamedValue("VARIABLE").eval == Left(Problem("No such named value: VARIABLE")))
-    }
   }
 
   private def testSyntaxError(exprString: String, problem: Problem)(implicit pos: source.Position): Unit =
-    s"$exprString - should fail" in {
+    s"$exprString - should fail" in:
       assert(parseExpression(exprString) == Left(problem))
-    }
 
   private def testEval(exprString: String, result: Checked[Value], expression: Expression)
     (implicit scope: Scope, pos: source.Position)
   : Unit =
-    exprString in {
+    exprString in:
       val checked = parseExpressionOrFunction(exprString.trim)
       assert(checked == Right(expression))
       assert(expression.eval == result)
-    }
-}

@@ -42,8 +42,8 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
 final class CycleTest extends OurTestSuite
-with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
-{
+with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(
     calendar,
@@ -69,7 +69,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
   private implicit val zone: ZoneId = CycleTest.zone
 
-  "Cycle with empty Schedule" in {
+  "Cycle with empty Schedule" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("EMPTY"),
       Seq(
@@ -86,9 +86,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderStarted,
       OrderMoved(Position(1)),
       OrderFinished()))
-  }
 
-  "Simple loop" in {
+  "Simple loop" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("SIMPLE-LOOP"),
       Seq(
@@ -138,9 +137,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Continuously(pause = 0, limit = high) with empty body is detected and fails" in {
+  "Continuously(pause = 0, limit = high) with empty body is detected and fails" in:
     pending // FIXME
     // Wenn bei pause=0 zwischen OrderCycleStarted und OrderCycleFinished kein relevantes Event
     // aufgetreten ist, soll die Schleife abgebrochen werden.
@@ -155,9 +153,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       calendarPath = Some(calendar.path)))
     val events = controller.runOrder(FreshOrder(OrderId("ENDLESS"), workflow.path))
       .map(_.value)
-  }
 
-  "Failing cycle" in {
+  "Failing cycle" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("FAILING"),
       Seq(
@@ -181,9 +178,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderCycleStarted,
       OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST FAILURE"))),
       OrderFailed(Position(0) / BranchId.cycle(cycleState) % 0)))
-  }
 
-  "Catching a failing cycle" in {
+  "Catching a failing cycle" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("CATCH"),
       Seq(
@@ -213,9 +209,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished()))
-  }
 
-  "Cancel while in Order.BetweenCycle" in {
+  "Cancel while in Order.BetweenCycle" in:
     clock.resetTo(local("2021-10-01T00:00"))
     val orderDate = "2021-10-01"
     val workflow = updateItem(Workflow(
@@ -247,7 +242,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         index = 1,
         next = local("2021-10-01T18:00"))),
       OrderCancelled))
-  }
 
 /*
   "Cancel the running cycle only" in {
@@ -260,7 +254,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 */
 
   "Daylight saving time change" - {
-    "Mariehamn daylight saving time (to be sure)" in {
+    "Mariehamn daylight saving time (to be sure)" in:
       assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
       assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
@@ -274,7 +268,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       assert(local("2021-10-31T04:00") - local("2021-10-31T03:00") == 2.h)
       assert(local("2021-10-31T04:00") - local("2021-10-31T03:59:59") == 1.h + 1.s)
-    }
 
     lazy val workflow = updateItem(Workflow(
       WorkflowPath("DST"),
@@ -291,12 +284,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     def orderCycleStartedTimetamps(orderId: OrderId) =
       eventWatch
         .allStamped[OrderCycleStarted]
-        .collect {
+        .collect:
           case stamped @ Stamped(_, _, KeyedEvent(`orderId`, OrderCycleStarted)) =>
             stamped.timestamp
-        }
 
-    "Winter to summer" in {
+    "Winter to summer" in:
       clock.resetTo(Timestamp("2021-03-28T01:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("#2021-03-28#SUMMER")
@@ -306,13 +298,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       assert(orderToObstacles(orderId) ==
         Right(Set[OrderObstacle](WaitingForOtherTime(local("2021-03-28T03:30")))))
 
-      for i <- 1 to 4 do {
-        if i > 1 then {
+      for i <- 1 to 4 do
+        if i > 1 then
           eventId = eventWatch.lastAddedEventId
           clock += 30.minutes
-        }
         eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
-      }
 
       assert(orderCycleStartedTimetamps(orderId) == Vector(
         local("2021-03-28T03:00"),
@@ -327,9 +317,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         Timestamp("2021-03-28T02:30:00Z")))
 
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    }
 
-    "Summer to winter" in {
+    "Summer to winter" in:
       clock.resetTo(Timestamp("2021-10-31T00:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("#2021-10-31#WINTER")
@@ -345,15 +334,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       eventId = eventWatch.lastAddedEventId
       clock := Timestamp("2021-10-31T01:00:00Z")
       // This hour is skipped!!
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId, timeout = 200.ms)
-      }
 
       eventId = eventWatch.lastAddedEventId
       clock := Timestamp("2021-10-31T01:30:00Z")
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId, timeout = 200.ms)
-      }
 
       eventId = eventWatch.lastAddedEventId
       clock := Timestamp("2021-10-31T02:00:00Z")
@@ -370,7 +357,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         Timestamp("2021-10-31T02:00:00Z"))) // 01:00 is skipped!!
 
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    }
   }
 
   "ScheduleTester standard example" - {
@@ -389,16 +375,15 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
-      if expected.nonEmpty then {
+      if expected.nonEmpty then
         eventWatch.await[OrderCyclingPrepared](_.key == orderId)
-      }
       val cycleStartedTimes = new VectorBuilder[Timestamp]
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next // Expected time of OrderCycleStart
         }
 
-      for t <- expectedCycleStartTimes do {
+      for t <- expectedCycleStartTimes do
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
         val stamped = eventWatch
           .await[OrderCycleStarted](_.key == orderId, after = eventId)
@@ -410,17 +395,15 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         TestJob.continue()
         eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
           .head.eventId
-      }
       assert(cycleStartedTimes.result() == expectedCycleStartTimes)
 
-      for ts <- cycleStartedTimes.result().lastOption do {
+      for ts <- cycleStartedTimes.result().lastOption do
         clock := ts + cycleDuration
-      }
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
   }
 
-  "One first cycle in mid of period (bug JS-2012)" in {
+  "One first cycle in mid of period (bug JS-2012)" in:
     // Fixed bug:
     // Cycle executes the block twice, when starting after the first period of the calendar day.
     clock.resetTo(local("2021-10-01T01:30"))
@@ -455,10 +438,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
-  }
 
   "Break" - {
-    "Break" in {
+    "Break" in:
       clock.resetTo(local("2023-03-21T00:00"))
 
       val workflow = Workflow(
@@ -518,9 +500,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderFinished(None),
           OrderDeleted))
       }
-    }
 
-    "Break in Options" in {
+    "Break in Options" in:
       clock.resetTo(local("2023-03-21T00:00"))
 
       val workflow = Workflow(
@@ -569,9 +550,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderFinished(None),
           OrderDeleted))
       }
-    }
 
-    "Break without Cycle is rejected" in {
+    "Break without Cycle is rejected" in:
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
         .updateItems(Stream(
@@ -584,9 +564,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       assert(checked == Left(Problem(
         "JSON DecodingFailure at : Break instruction at 0/then:0 without Cycle")))
-    }
 
-    "Break in Fork without Cycle is rejected" in {
+    "Break in Fork without Cycle is rejected" in:
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
         .updateItems(Stream(
@@ -605,7 +584,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       assert(checked == Left(Problem(
         "JSON DecodingFailure at : Break instruction at 0/cycle:0/fork+A:0/then:0 without Cycle")))
-    }
 
     "Place an Order into a Cycle block containing a Break" - {
       "Order without cycle arguments placed into a Cycle block (JS-2115)" in:
@@ -784,9 +762,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
               OrderFinished(None),
               OrderDeleted))
     }
-  } // "Break"
+  }
 
-  "Resume with invalid Cycle BranchId lets the Order fail" in {
+  "Resume with invalid Cycle BranchId lets the Order fail" in:
     clock.resetTo(local("2023-03-21T00:00"))
     val workflow = Workflow(
       WorkflowPath("BROKEN-WORKFLOW"),
@@ -841,9 +819,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderCancelled,
           OrderDeleted))
     }
-  }
 
-  "Use ResumeOrder to change the argument of a Cycle BranchId call stack entry" in {
+  "Use ResumeOrder to change the argument of a Cycle BranchId call stack entry" in:
     // See BranchId.cycle() which build a Cycle BranchId with arguments.
     import BranchId.Then
     val now = local("2024-03-20T00:00")
@@ -866,7 +843,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
                       Workflow.empty)))))))))
 
     withTemporaryItem(workflow) { workflow =>
-      locally {
+      locally:
         val orderId = OrderId("#2024-03-20#RESUME-WITH-CHANGED-CYCLE-ARGUMENTS")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
@@ -908,9 +885,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderCycleFinished(Some(CycleState(cycleEnd + 1.minute, index = 3, next = clock.now() + 1.s))),
           OrderCancelled,
           OrderDeleted))
-      }
     }
-  }
 
   "GoOrder at Controller" in:
     val now = local("2024-04-01T00:00")
@@ -1044,11 +1019,10 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         OrderDetached,
         OrderCancelled,
         OrderDeleted))
-}
 
 
-object CycleTest
-{
+object CycleTest:
+
   private val logger = Logger[this.type]
 
   private val agentPath = AgentPath("AGENT")
@@ -1083,14 +1057,12 @@ object CycleTest
       timeZone = timezone,
       calendarPath = Some(cycleTestExampleCalendar.path))
 
-  private class TestJob extends SemaphoreJob(TestJob) {
+  private class TestJob extends SemaphoreJob(TestJob):
     override def onAcquired(step: Step, semaphoreName: String) =
-      IO {
+      IO:
         val now = clock.now()
         logger.info(s"🔹 $now  ${LocalDateTime.ofInstant(now.toInstant, zone)}")
         OrderOutcome.succeeded
-      }
-  }
   private object TestJob extends SemaphoreJob.Companion[TestJob]
 
   private val lock = Lock(LockPath("LOCK"))
@@ -1098,7 +1070,5 @@ object CycleTest
   // Use this Log4j Clock with the properties
   // -Dlog4j2.Clock=js7.tests.CycleTest$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn
   final class CycleTestLog4jClock extends org.apache.logging.log4j.core.util.Clock
-  {
+  :
     def currentTimeMillis() = clock.epochMilli()
-  }
-}

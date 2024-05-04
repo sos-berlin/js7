@@ -7,36 +7,32 @@ import js7.base.time.WaitForConditionTest.*
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.*
 
-final class WaitForConditionTest extends OurTestSuite
-{
+final class WaitForConditionTest extends OurTestSuite:
+
   "retryUntil" - {
-    class Fun(n: Int) {
+    class Fun(n: Int):
       var count = 0
-      def apply(): Unit = {
+      def apply(): Unit =
         count += 1
         if count <= n then throw new IllegalStateException("FAILED")
-      }
-    }
 
-    "Immediate success" in {
+    "Immediate success" in:
       implicit val sleeper: TestBlockingSleeper = TestBlockingSleeper()
       val fun = new Fun(0)
       assert(meterElapsedTime {
         retryUntil(99.s, 10.s) { fun.apply() }
       } == 0.s)
       assert(fun.count == 1)
-    }
 
-    "Late success" in {
+    "Late success" in:
       implicit val sleeper: TestBlockingSleeper = TestBlockingSleeper()
       val fun = new Fun(10)
       assert(meterElapsedTime {
         retryUntil(99.s, 7.ms) { fun.apply() }
       } == 10 * 7.ms)
       assert(fun.count == 11)
-    }
 
-    "Failure" in {
+    "Failure" in:
       implicit val sleeper: TestBlockingSleeper = TestBlockingSleeper()
       val fun = new Fun(1000)
       assert(meterElapsedTime {
@@ -45,10 +41,9 @@ final class WaitForConditionTest extends OurTestSuite
         }
       } == 100.ms)
       assert(fun.count > 1)
-    }
   }
 
-  "realTimeIterator (time-sensitive test)" in {
+  "realTimeIterator (time-sensitive test)" in:
     implicit val sleeper: TestBlockingSleeper = TestBlockingSleeper()
     meterElapsedTime { realTimeIterator(Seq(sleeper.now + 10.s)) } shouldEqual 0.s // Bereitstellung soll nicht warten
     val t0 = sleeper.now
@@ -57,33 +52,27 @@ final class WaitForConditionTest extends OurTestSuite
     meterElapsedTime { i.next() } shouldEqual t1 - t0
     meterElapsedTime { i.next() } shouldEqual t2 - t1
     meterElapsedTime { i.next() } shouldEqual t3 - t2
-  }
 
-  "waitForCondition 0 steps (time-sensitive test)" in {
+  "waitForCondition 0 steps (time-sensitive test)" in:
     implicit val sleeper = TestBlockingSleeper()
     val elapsed = meterElapsedTime { waitForCondition(20.s, 10.s) { true } }
     elapsed should be < 1.s
-  }
 
-  "waitForCondition all steps (time-sensitive test)" in {
+  "waitForCondition all steps (time-sensitive test)" in:
     implicit val sleeper = TestBlockingSleeper()
     val elapsed = meterElapsedTime { waitForCondition(300.ms, 1.ms) { false } }
     elapsed should (be >= 300.ms and be <= 3.s)
-  }
 
-  "waitForCondition some steps (time-sensitive test)" in {
+  "waitForCondition some steps (time-sensitive test)" in:
     implicit val sleeper: TestBlockingSleeper = TestBlockingSleeper()
     var cnt = 0
     val elapsed = meterElapsedTime { waitForCondition(1.s, 10.ms) { cnt += 1; cnt > 10 } }  // 100ms
     elapsed should (be >= 100.ms and be < 3.s)
-  }
-}
 
-private object WaitForConditionTest
-{
-  def meterElapsedTime(f: => Unit)(implicit sleeper: TestBlockingSleeper): FiniteDuration = {
+
+private object WaitForConditionTest:
+
+  def meterElapsedTime(f: => Unit)(implicit sleeper: TestBlockingSleeper): FiniteDuration =
     val since = sleeper.now
     f
     sleeper.now - since
-  }
-}

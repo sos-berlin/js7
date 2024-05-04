@@ -6,19 +6,18 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.testJson
 
-final class AdmissionPeriodTest extends OurTestSuite
-{
+final class AdmissionPeriodTest extends OurTestSuite:
+
   "JSON" - {
-    "Always" in {
+    "Always" in:
       testJson[AdmissionPeriod](
         AlwaysPeriod,
         json"""
           {
             "TYPE":  "AlwaysPeriod"
           }""")
-    }
 
-    "Daily" in {
+    "Daily" in:
       testJson[AdmissionPeriod](
         DailyPeriod(3*3600, 600.s), // 3:00, 10 minutes
         json"""
@@ -36,9 +35,8 @@ final class AdmissionPeriodTest extends OurTestSuite
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem(
             "JSON DecodingFailure at : Duration must be positive: DailyPeriod(daily at 03:00, -1s)")))
-    }
 
-    "Weekday" in {
+    "Weekday" in:
       testJson[AdmissionPeriod](
         WeekdayPeriod((3*24+3)*3600, 600.s),  // Thursday, 3:00, 10 minutes
         json"""
@@ -56,9 +54,8 @@ final class AdmissionPeriodTest extends OurTestSuite
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem(
             "JSON DecodingFailure at : Invalid WeekdayPeriod duration: WeekdayPeriod(weekly at Thursday 03:00, -1s)")))
-    }
 
-    "MonthlyDatePeriod" in {
+    "MonthlyDatePeriod" in:
       testJson[AdmissionPeriod](
         MonthlyDatePeriod((3*24+3)*3600, 600.s),  // Fourth of month, 3:00, 10 minutes
         json"""
@@ -76,9 +73,8 @@ final class AdmissionPeriodTest extends OurTestSuite
           }""".checkedAs[AdmissionPeriod] ==
           Left(Problem(
             "JSON DecodingFailure at : Duration must be positive: MonthlyDatePeriod(4th of month, 03:00, -1s)")))
-    }
 
-    "MonthlyLastDatePeriod" in {
+    "MonthlyLastDatePeriod" in:
       testJson[AdmissionPeriod](
         MonthlyLastDatePeriod(-3600, 600.s),  // Last day of month, 23:00
         json"""
@@ -95,9 +91,8 @@ final class AdmissionPeriodTest extends OurTestSuite
           "duration": -1
         }""".checkedAs[AdmissionPeriod] ==
         Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyLastDatePeriod(last day of month, 01:00, -1s)")))
-    }
 
-    "MonthlyWeekdayPeriod" in {
+    "MonthlyWeekdayPeriod" in:
       testJson[AdmissionPeriod](
         MonthlyWeekdayPeriod(((7+3)*24+3)*3600, 600.s),  // Second thursday, 3:00, 10 minutes
         json"""
@@ -114,9 +109,8 @@ final class AdmissionPeriodTest extends OurTestSuite
           "duration": -1
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyWeekdayPeriod(2nd Thursday 03:00, -1s)")))
-    }
 
-    "MonthlyLastWeekdayPeriod" in {
+    "MonthlyLastWeekdayPeriod" in:
       testJson[AdmissionPeriod](
         MonthlyLastWeekdayPeriod((4*24 + 3)*3600 - (2*7*24*3600), 600.s),  // Second last week, friday, 3:00, 10 minutes
         json"""
@@ -133,9 +127,8 @@ final class AdmissionPeriodTest extends OurTestSuite
           "duration": -1
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyLastWeekdayPeriod(2nd last Friday 03:00, -1s)")))
-    }
 
-    "SpecificDatePeriod" in {
+    "SpecificDatePeriod" in:
       val epochSeconds = 1664366400
       assert(epochSeconds == Timestamp("2022-09-28T12:00:00Z").toEpochSecond)
       testJson[AdmissionPeriod](
@@ -148,6 +141,4 @@ final class AdmissionPeriodTest extends OurTestSuite
           }""")
 
       assert(SpecificDatePeriod(epochSeconds, 600.s).toString == "SpecificDatePeriod(2022-09-28T12:00:00, 10min)")
-    }
   }
-}

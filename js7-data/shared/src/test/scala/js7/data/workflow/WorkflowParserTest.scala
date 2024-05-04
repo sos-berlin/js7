@@ -22,13 +22,12 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowParserTest extends OurTestSuite
-{
-  "parse" in {
-    assert(parse(TestWorkflowSource).withoutSourcePos == TestWorkflow.withId(WorkflowPath.NoId))
-  }
+final class WorkflowParserTest extends OurTestSuite:
 
-  "Unknown job" in {
+  "parse" in:
+    assert(parse(TestWorkflowSource).withoutSourcePos == TestWorkflow.withId(WorkflowPath.NoId))
+
+  "Unknown job" in:
     val source = """
       define workflow {
         if (true) {
@@ -38,27 +37,24 @@ final class WorkflowParserTest extends OurTestSuite
     assert(WorkflowParser.parse(source) == Left(Problem(
       // TODO Wrong position in error message, should be 4:12
       """Parsing failed at position 6:8 “      }❓” · Unknown job name 'A'""")))
-  }
 
-  "Execute anonymous" in {
+  "Execute anonymous" in:
     checkWithSourcePos("""define workflow { execute executable="my/executable", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentPath("AGENT"), PathExecutable("my/executable")),
           sourcePos = sourcePos(18, 67)),
         ImplicitEnd(sourcePos(69, 70))))
-  }
 
-  "Execute anonymous with relative agent path" in {
+  "Execute anonymous with relative agent path" in:
     checkWithSourcePos("""define workflow { execute executable="my/executable", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentPath("AGENT"), PathExecutable("my/executable")),
           sourcePos= sourcePos(18, 67)),
         ImplicitEnd(sourcePos(69, 70))))
-  }
 
-  "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
+  "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in:
     checkWithSourcePos(
        """define workflow {
          |  execute executable = "my/executable",
@@ -79,9 +75,8 @@ final class WorkflowParserTest extends OurTestSuite
             sigkillDelay = Some(30.s)),
           sourcePos = sourcePos(20, 208)),
         ImplicitEnd(sourcePos(210, 211))))
-  }
 
-  "Execute script with \\n" in {
+  "Execute script with \\n" in:
     checkWithSourcePos(
       """define workflow { execute script="LINE 1\nLINE 2\nLINE 3", agent="AGENT"; }""",
       Workflow.of(
@@ -89,9 +84,8 @@ final class WorkflowParserTest extends OurTestSuite
           WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("LINE 1\nLINE 2\nLINE 3")),
           sourcePos = sourcePos(18, 72)),
         ImplicitEnd(sourcePos(74, 75))))
-  }
 
-  "Execute script with multi-line string" in {
+  "Execute script with multi-line string" in:
     checkWithSourcePos(
 """define workflow {
   execute agent="AGENT", script=
@@ -105,9 +99,8 @@ final class WorkflowParserTest extends OurTestSuite
           WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("LINE 1\nLINE 2\nLINE 3\n")),
           sourcePos = sourcePos(20, 101)),
         ImplicitEnd(sourcePos(103, 104))))
-  }
 
-  "Execute named" in {
+  "Execute named" in:
     checkWithSourcePos("""
       define workflow {
         job A;
@@ -145,9 +138,8 @@ final class WorkflowParserTest extends OurTestSuite
             WorkflowJob(
               AgentPath("AGENT"),
               ShellScriptExecutable("SCRIPT")))))
-  }
 
-  "define job" in {
+  "define job" in:
     check("""
       define workflow {
         job A;
@@ -176,9 +168,8 @@ final class WorkflowParserTest extends OurTestSuite
                   "A" -> NumericConstant(1),
                   "B" -> NamedValue("b")),
                 returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
-  }
 
-  "Execute named with duplicate jobs" in {
+  "Execute named with duplicate jobs" in:
     assert(WorkflowParser.parse("""
       define workflow {
         job DUPLICATE;
@@ -190,25 +181,22 @@ final class WorkflowParserTest extends OurTestSuite
         }
       }""") == Left(Problem(
       """Parsing failed at position 10:8 “      }❓” · Expected unique job definitions (duplicates: DUPLICATE)""")))
-  }
 
-  "Single instruction with relative job path" in {
+  "Single instruction with relative job path" in:
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")), sourcePos = sourcePos(18, 55)),
           ImplicitEnd(sourcePos(57, 58)))))
-  }
 
-  "Single instruction with absolute job path" in {
+  "Single instruction with absolute job path" in:
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")), sourcePos = sourcePos(18, 55)),
           ImplicitEnd(sourcePos(57, 58)))))
-  }
 
-  "execute with successReturnCodes" in {
+  "execute with successReturnCodes" in:
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
       Workflow.anonymous(
         Vector(
@@ -218,9 +206,8 @@ final class WorkflowParserTest extends OurTestSuite
               PathExecutable("A", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))),
             sourcePos = sourcePos(18, 85)),
           ImplicitEnd(sourcePos(87, 88)))))
-  }
 
-  "execute with failureReturnCodes" in {
+  "execute with failureReturnCodes" in:
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
       Workflow.anonymous(
         Vector(
@@ -230,25 +217,22 @@ final class WorkflowParserTest extends OurTestSuite
               PathExecutable("A", returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3))),
             sourcePos = sourcePos(18, 82)),
           ImplicitEnd(sourcePos(84, 85)))))
-  }
 
-  "execute with command line" in {
+  "execute with command line" in:
     check("""define workflow { execute agent="AGENT", command="COMMAND"; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"), CommandLineExecutable.fromString("COMMAND").orThrow)))))
-  }
 
-  "Label and single instruction" in {
+  "Label and single instruction" in:
     checkWithSourcePos("""define workflow { A: execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           "A" @: Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")), sourcePos = sourcePos(21, 58)),
           ImplicitEnd(sourcePos(60, 61)))))
-  }
 
-  "if (...) {...}" in {
+  "if (...) {...}" in:
     checkWithSourcePos("""define workflow { if (($returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
@@ -263,9 +247,8 @@ final class WorkflowParserTest extends OurTestSuite
               ImplicitEnd(sourcePos(110, 111))),
             sourcePos = sourcePos(18, 65)),
           ImplicitEnd(sourcePos(112, 113)))))
-  }
 
-  "if (...) {...} else {...}" in {
+  "if (...) {...} else {...}" in:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
@@ -282,9 +265,8 @@ final class WorkflowParserTest extends OurTestSuite
               ImplicitEnd(sourcePos(136, 137)))),
             sourcePos = sourcePos(18, 40)),
           ImplicitEnd(sourcePos(138, 139)))))
-  }
 
-  "if (...) instruction" in {
+  "if (...) instruction" in:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
@@ -292,9 +274,8 @@ final class WorkflowParserTest extends OurTestSuite
             Workflow.of(Fail(sourcePos = sourcePos(41, 45))),
             sourcePos = sourcePos(18, 40)),
           ImplicitEnd(sourcePos(46, 47)))))
-  }
 
-  "if (...) instruction else instruction" in {
+  "if (...) instruction else instruction" in:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(
@@ -305,9 +286,8 @@ final class WorkflowParserTest extends OurTestSuite
               sourcePos = sourcePos(51, 92)))),
             sourcePos(18, 40)),
           ImplicitEnd(sourcePos(93, 94)))))
-  }
 
-  "Two consecutive ifs with semicolon" in {
+  "Two consecutive ifs with semicolon" in:
     checkWithSourcePos(
      """define workflow {
           if ($returnCode == 1) {}
@@ -325,9 +305,8 @@ final class WorkflowParserTest extends OurTestSuite
               ImplicitEnd(sourcePos(86, 87))),
             sourcePos = sourcePos(63, 84)),
           ImplicitEnd(sourcePos(96, 97)))))
-  }
 
-  "Two consecutive ifs without semicolon" in {
+  "Two consecutive ifs without semicolon" in:
     checkWithSourcePos(
      """define workflow {
           if ($returnCode == 1) {
@@ -347,9 +326,8 @@ final class WorkflowParserTest extends OurTestSuite
               ImplicitEnd(sourcePos(108, 109))),
             sourcePos = sourcePos(74, 95)),
           ImplicitEnd(sourcePos(118, 119)))))
-  }
 
-  "fork" in {
+  "fork" in:
     checkWithSourcePos(
       """define workflow {
            fork {
@@ -372,10 +350,9 @@ final class WorkflowParserTest extends OurTestSuite
               sourcePos = sourcePos(147+2, 187+2))))),
           sourcePos(29, 33)),
         ImplicitEnd(sourcePos(211+2, 212+2))))
-  }
 
   "try" - {
-    "try" in {
+    "try" in:
       checkWithSourcePos("""
         define workflow {
           try {
@@ -399,9 +376,8 @@ final class WorkflowParserTest extends OurTestSuite
             sourcePos = sourcePos(37, 40)),
           ImplicitEnd(sourcePos(193, 194))))
       )
-    }
 
-    "try with retryDelays" in {
+    "try with retryDelays" in:
       checkWithSourcePos("""
         define workflow {
           try (retryDelays=[1, 2, 3], maxTries=3) fail;
@@ -417,9 +393,8 @@ final class WorkflowParserTest extends OurTestSuite
             maxTries = Some(3),
             sourcePos = sourcePos(37, 76)),
           ImplicitEnd(sourcePos(114, 115)))))
-    }
 
-    "try with retryDelays but retry is missing" in {
+    "try with retryDelays but retry is missing" in:
       assert(WorkflowParser.parse("""
         define workflow {
           try (retryDelays=[1, 2, 3]) fail;
@@ -427,9 +402,8 @@ final class WorkflowParserTest extends OurTestSuite
         }""") ==
         Left(Problem(
           """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
-    }
 
-    "try with maxRetries but retry is missing" in {
+    "try with maxRetries but retry is missing" in:
       assert(WorkflowParser.parse("""
         define workflow {
           try (maxTries=3) fail;
@@ -437,11 +411,10 @@ final class WorkflowParserTest extends OurTestSuite
         }""") ==
         Left(Problem(
           """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
-    }
   }
 
   "retry" - {
-    "no delay" in {
+    "no delay" in:
       checkWithSourcePos("""
         define workflow {
           try {
@@ -460,10 +433,9 @@ final class WorkflowParserTest extends OurTestSuite
               ImplicitEnd(sourcePos(110, 111))),
             sourcePos = sourcePos(37, 40)),
           ImplicitEnd(sourcePos(120, 121))))
-    }
   }
 
-  "fail" in {
+  "fail" in:
     checkWithSourcePos("""
       define workflow {
         fail;
@@ -479,9 +451,8 @@ final class WorkflowParserTest extends OurTestSuite
         Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(129, 186)),
         Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), uncatchable = true, sourcePos(196, 271)),
         ImplicitEnd(sourcePos = sourcePos(279, 280)))))
-  }
 
-  "lock" in {
+  "lock" in:
     checkWithSourcePos("""
       define workflow {
         lock (lock="LOCK") fail;
@@ -491,9 +462,8 @@ final class WorkflowParserTest extends OurTestSuite
         LockInstruction.single(LockPath("LOCK"), None, Workflow.of(Fail(sourcePos = sourcePos(52, 56))), sourcePos = sourcePos(33, 51)),
         LockInstruction.single(LockPath("LOCK"), Some(3), Workflow.of(ImplicitEnd(sourcePos = sourcePos(95, 96))), sourcePos = sourcePos(66, 93)),
         ImplicitEnd(sourcePos = sourcePos(103, 104)))))
-  }
 
-  "finish" in {
+  "finish" in:
     checkWithSourcePos("""
       define workflow {
         finish;
@@ -501,7 +471,6 @@ final class WorkflowParserTest extends OurTestSuite
       Workflow(WorkflowPath.NoId, Vector(
         Finish(sourcePos = sourcePos(33, 39)),
         ImplicitEnd(sourcePos = sourcePos(47, 48)))))
-  }
 
   //for (n <- sys.props.get("test.speed").map(_.toInt)) "Speed" - {
   //  s"Parsing $n processes" in {
@@ -517,7 +486,7 @@ final class WorkflowParserTest extends OurTestSuite
   //  }
   //}
 
-  "Comments" in {
+  "Comments" in:
     val source = """/*comment
         */
         define workflow {
@@ -533,7 +502,6 @@ final class WorkflowParserTest extends OurTestSuite
           sourcePos = sourcePos(90, 143)),
         ImplicitEnd(sourcePos(170, 171))),
       source = Some(source)))
-  }
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
 
@@ -543,18 +511,15 @@ final class WorkflowParserTest extends OurTestSuite
   private def check(source: String, workflow: Workflow): Unit =
     check2(source, workflow, withSourcePos = false)
 
-  private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
+  private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit =
     val parsedWorkflow = WorkflowParser.parse(source).map(o => if withSourcePos then o else o.withoutSourcePos)
     assertEqual(parsedWorkflow.orThrow, workflow.copy(source = Some(source)))
     val generatedSource = workflow.show
     assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
       == Right(workflow.copy(source = Some(generatedSource)).withoutSourcePos),
       s"(generated source: $generatedSource)")
-  }
 
   private def parse(workflowString: String): Workflow =
-    WorkflowParser.parse(workflowString) match {
+    WorkflowParser.parse(workflowString) match
       case Right(workflow) => workflow
       case Left(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
-    }
-}

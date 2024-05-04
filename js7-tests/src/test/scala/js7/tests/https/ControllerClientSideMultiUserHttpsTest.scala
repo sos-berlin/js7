@@ -12,8 +12,8 @@ import org.apache.pekko.http.scaladsl.model.HttpHeader
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 
-final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStandardTests
-{
+final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStandardTests:
+
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = true
   override protected def controllerHttpsMutual = true
@@ -27,60 +27,45 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
     addTestsForCredentials(extraDistringuishedNameUserAndPassword)
   }
 
-  "Login without credentials is rejected" in {
-    val e = intercept[PekkoHttpClient.HttpException] {
+  "Login without credentials is rejected" in:
+    val e = intercept[PekkoHttpClient.HttpException]:
       httpControllerApi.login_(None).await(99.s)
-    }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
-  }
 
-  "Login with non-listed UserId is rejected" in {
-    val e = intercept[PekkoHttpClient.HttpException] {
+  "Login with non-listed UserId is rejected" in:
+    val e = intercept[PekkoHttpClient.HttpException]:
       httpControllerApi.login_(Some(otherUserAndPassword)).await(99.s)
-    }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
-  }
 
-  "Login with listed UserId but wrong password is rejected" in {
-    val e = intercept[PekkoHttpClient.HttpException] {
+  "Login with listed UserId but wrong password is rejected" in:
+    val e = intercept[PekkoHttpClient.HttpException]:
       httpControllerApi.login_(Some(otherUserAndPassword.copy(password = SecretString("WRONG")))).await(99.s)
-    }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
-  }
 
   "HTTP authentication" - {
-    def get(headers: List[HttpHeader]) = {
+    def get(headers: List[HttpHeader]) =
       import httpControllerApi.implicitSessionToken
       httpControllerApi.httpClient.get[ClusterState](controller.localUri / "controller/api/cluster", headers).await(99.s)
-    }
 
-    "Missing authentication is rejected" in {
-      val e = intercept[PekkoHttpClient.HttpException] {
+    "Missing authentication is rejected" in:
+      val e = intercept[PekkoHttpClient.HttpException]:
         get(Nil)
-      }
       assert(e.status == Unauthorized)
-    }
 
-    "Valid authentication" in {
+    "Valid authentication" in:
       get(Authorization(BasicHttpCredentials("TEST", "TEST-PASSWORD")) ::Nil)
       get(Authorization(BasicHttpCredentials("EXTRA", "EXTRA-PASSWORD")) ::Nil)
-    }
 
-    "Wrong authentication" in {
-      val e = intercept[PekkoHttpClient.HttpException] {
+    "Wrong authentication" in:
+      val e = intercept[PekkoHttpClient.HttpException]:
         get(Authorization(BasicHttpCredentials("TEST", "WRONG-PASSWORD")) ::Nil)
-      }
       assert(e.status == Unauthorized)
-    }
 
-    "Non-listed UserId is rejected" in {
-      val e = intercept[PekkoHttpClient.HttpException] {
+    "Non-listed UserId is rejected" in:
+      val e = intercept[PekkoHttpClient.HttpException]:
         get(Authorization(BasicHttpCredentials(otherUserAndPassword.userId.string, otherUserAndPassword.password.string)) ::Nil)
-      }
       assert(e.status == Forbidden &&
         e.problem == Some(Problem("HTTP user does not match UserIds allowed by HTTPS client distinguished name")))
-    }
   }
 
   addTestsForCredentials()
-}

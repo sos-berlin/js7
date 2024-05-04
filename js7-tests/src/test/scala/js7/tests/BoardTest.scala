@@ -36,8 +36,8 @@ import scala.collection.View
 import scala.concurrent.duration.*
 
 final class BoardTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -63,7 +63,7 @@ final class BoardTest
     alarmClock = Some(clock))
 
   "ExpectNotices" - {
-    "expect(0, 1), post(1, 2), expect(0, 2), post(0)" in {
+    "expect(0, 1), post(1, 2), expect(0, 2), post(0)" in:
       val qualifier = nextQualifier()
       val notices = for (boardPath, endOfLife) <- boards.map(_.path) zip endOfLifes yield
         Notice(NoticeId(qualifier), boardPath, endOfLife)
@@ -102,7 +102,7 @@ final class BoardTest
 
       controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-0"), posting0Workflow.path))
 
-      for orderId <- expecting01OrderIds do {
+      for orderId <- expecting01OrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)
         val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
         assert(expectingEvents == Seq(
@@ -114,7 +114,6 @@ final class BoardTest
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
-      }
 
       val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING-0-2"), expecting02Workflow.path))
       assert(readerEvents.map(_.value) == Seq(
@@ -134,9 +133,8 @@ final class BoardTest
         board2.path -> BoardState(
           board2.withRevision(Some(ItemRevision(0))),
           Map(notice2.id -> NoticePlace(notice2.id, Some(notice2))))))
-    }
 
-    "Two orders expect a notice, then post the notice" in {
+    "Two orders expect a notice, then post the notice" in:
       val qualifier = nextQualifier()
       val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
@@ -166,7 +164,7 @@ final class BoardTest
               notice.id,
               Some(notice)))))
 
-      for orderId <- expectingOrderIds do {
+      for orderId <- expectingOrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)
         val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
         assert(expectingEvents == Seq(
@@ -176,7 +174,6 @@ final class BoardTest
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
-      }
 
       assert(controllerState.keyTo(BoardState)(board0.path) ==
         BoardState(
@@ -189,9 +186,8 @@ final class BoardTest
               notice.id,
               Some(notice))
           ).toKeyedMap(_.noticeId)))
-    }
 
-    "Detach order when at Agent" in {
+    "Detach order when at Agent" in:
       // TODO Post kann am Agenten ausgeführt werden, wenn Board (ohne BoardState) dahin übertragen wird,
       //  und anschließend der Controller Order.ExpectingNotice löst.
       val qualifier = nextQualifier()
@@ -228,9 +224,8 @@ final class BoardTest
         OrderNoticesRead,
         OrderMoved(Position(2)),
         OrderFinished()))
-    }
 
-    "PostNotices command with expecting orders" in {
+    "PostNotices command with expecting orders" in:
       val qualifier = "2222-08-08"
       val noticeId = NoticeId(qualifier)
 
@@ -250,9 +245,8 @@ final class BoardTest
       ).await(99.s).orThrow
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) ==
         NoticePlace(notice2.id, Some(notice2)))
-    }
 
-    "PostNotices command without expecting order" in {
+    "PostNotices command without expecting order" in:
       val notice = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice.id)
@@ -269,9 +263,8 @@ final class BoardTest
         NoticePlace(notice.id, Some(notice)))
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) ==
         NoticePlace(notice2.id, Some(notice2)))
-    }
 
-    "DeleteNotice command" in {
+    "DeleteNotice command" in:
       val qualifier = "2222-09-09"
       val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
@@ -295,21 +288,18 @@ final class BoardTest
       controller.api.executeCommand(DeleteNotice(board0.path, notice.id)).await(99.s).orThrow
       assert(eventWatch.await[NoticeDeleted](_.key == board0.path, after = eventId).head.value.event ==
         NoticeDeleted(notice.id))
-    }
 
-    "Delete notice after endOfLife" in {
+    "Delete notice after endOfLife" in:
       clock := endOfLife0 - 1.s
       sleep(100.ms)
       val eventId = eventWatch.lastAddedEventId
       // NoticeDeleted do not occur before endOfLife
       clock := endOfLife0
       // Spare noticeIds.head for DeleteNotice test
-      for noticeId <- noticeIds do {
+      for noticeId <- noticeIds do
         eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
-      }
-    }
 
-    "PostNotices and ExpectNotices respect Order.scheduledFor" in {
+    "PostNotices and ExpectNotices respect Order.scheduledFor" in:
       val qualifier = "2222-10-10"
       val posterOrderId = OrderId(s"#$qualifier#POSTER")
       val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
@@ -327,9 +317,8 @@ final class BoardTest
       clock := startAt
       eventWatch.await[OrderFinished](_.key == posterOrderId)
       eventWatch.await[OrderFinished](_.key == expectingOrderId)
-    }
 
-    "Order.ExpectingNotice is suspendible" in {
+    "Order.ExpectingNotice is suspendible" in:
       val qualifier = "2222-11-11"
       val postingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-POSTING")
       val expectingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-EXPECTING")
@@ -349,9 +338,8 @@ final class BoardTest
 
       controller.api.executeCommand(ResumeOrder(expectingOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == expectingOrderId)
-    }
 
-    "Order.ExpectingNotice is cancelable" in {
+    "Order.ExpectingNotice is cancelable" in:
       val qualifier = "2222-12-12"
       val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
       controller.api.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
@@ -360,10 +348,9 @@ final class BoardTest
 
       controller.api.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == expectingOrderId)
-    }
   }
 
-  "Update Board" in {
+  "Update Board" in:
     val boardState = controllerState.keyTo(BoardState)(board0.path)
 
     val updatedBoard = board0.copy(postOrderToNoticeId = expr("$jsOrderId"))
@@ -372,9 +359,8 @@ final class BoardTest
     assert(controllerState.keyTo(BoardState)(board0.path) ==
       boardState.copy(
         board = updatedBoard.withRevision(Some(ItemRevision(1)))))
-  }
 
-  "Delete Board" in {
+  "Delete Board" in:
     val checked = controller
       .updateItemsAsSystemUser(Stream(
         DeleteSimple(board0.path),
@@ -419,9 +405,8 @@ final class BoardTest
       .await(99.s).orThrow
 
     assert(!controllerState.keyTo(BoardState).contains(board0.path))
-  }
 
-  "JOC-1446 Bug: Wrong OrderMoved event after OrderNoticeRead" in {
+  "JOC-1446 Bug: Wrong OrderMoved event after OrderNoticeRead" in:
     val board = Board.joc(BoardPath("JOC-1446"))
 
     val postingWorkflow = Workflow(WorkflowPath("JOC-1446-POST"), Seq(
@@ -436,7 +421,7 @@ final class BoardTest
     val expectingWorkflow = Workflow(WorkflowPath("JOC-1446-EXPECT"), Seq(
       ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
 
-    withItems(board, postingWorkflow, expectingWorkflow) {
+    withItems(board, postingWorkflow, expectingWorkflow):
       val day = Timestamp.now.toIsoString.take(10) // yyyy-MM-dd
       val postOrderId = OrderId(s"#$day#JOC-1446-POST")
       val expectOrderId = OrderId(s"#$day#JOC-1446-EXPECT")
@@ -448,13 +433,10 @@ final class BoardTest
         .await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == postOrderId)
       eventWatch.await[OrderDeleted](_.key == expectOrderId)
-    }
-  }
-}
 
 
-object BoardTest
-{
+object BoardTest:
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -509,4 +491,3 @@ object BoardTest
   private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
     ExpectNotices(boardPathExpr(s"'${board0.path.string}'"))))
-}

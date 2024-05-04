@@ -31,7 +31,7 @@ private[cluster] final class ActivationInhibitor:
     startAs(Passive)
 
   private def startAs(state: State): IO[Unit] =
-    IO.defer {
+    IO.defer:
       logger.debug(s"startAs $state")
       stateMvarIO.flatMap(mvar =>
         mvar.tryTake.flatMap {
@@ -42,7 +42,6 @@ private[cluster] final class ActivationInhibitor:
               IO.raiseError(new IllegalStateException(
                 s"ActivationInhibitor startAs($state): Already '$s''"))
         })
-    }
 
   def tryToActivate(ifInhibited: IO[Checked[Boolean]], activate: IO[Checked[Boolean]])
   : IO[Checked[Boolean]] =

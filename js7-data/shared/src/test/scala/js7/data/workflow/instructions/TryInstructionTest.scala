@@ -19,14 +19,14 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class TryInstructionTest extends OurTestSuite
-{
+final class TryInstructionTest extends OurTestSuite:
+
   private val try_ = TryInstruction(
     tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("TRY")))),
     catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("CATCH")))))
 
   "JSON" - {
-    "with defaults" in {
+    "with defaults" in:
       testJson[Instruction.Labeled](try_,
         json"""{
           "TYPE": "Try",
@@ -61,9 +61,8 @@ final class TryInstructionTest extends OurTestSuite
             ]
           }
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson[Instruction.Labeled](
         TryInstruction(
           tryWorkflow = Workflow.of(Fail(None)),
@@ -87,20 +86,18 @@ final class TryInstructionTest extends OurTestSuite
          "maxTries": 10,
          "sourcePos": [ 1, 2 ]
         }""")
-    }
   }
 
   "retryDelays require a retry instruction" - {
-    "no retry" in {
+    "no retry" in:
       assert(
         TryInstruction.checked(
           Workflow.empty,
           Workflow.empty,
           Some(1.s :: Nil))
         == Left(TryInstruction.MissingRetryProblem))
-    }
 
-    "retry nested in if-then-try is okay" in {
+    "retry nested in if-then-try is okay" in:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
@@ -113,9 +110,8 @@ final class TryInstructionTest extends OurTestSuite
                     Workflow.empty)))))),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
-    }
 
-    "retry nested in if-else is okay" in {
+    "retry nested in if-else is okay" in:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
@@ -127,9 +123,8 @@ final class TryInstructionTest extends OurTestSuite
                 Some(Workflow.of(Retry()))))))),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
-    }
 
-    "retry in try is not okay" in {
+    "retry in try is not okay" in:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
@@ -141,39 +136,34 @@ final class TryInstructionTest extends OurTestSuite
                 Some(Workflow.of(Retry()))))))),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
-    }
   }
 
-  "workflow" in {
+  "workflow" in:
     assert(try_.workflow(Try_) == Right(try_.tryWorkflow))
     assert(try_.workflow(Catch_) == Right(try_.catchWorkflow))
     assert(try_.workflow("A").isLeft)
-  }
 
-  "flattenedBranchToWorkflow" in {
+  "flattenedBranchToWorkflow" in:
     assert(try_.flattenedWorkflows(Position(7)).toSeq == Seq(
       (Position(7) / "try") -> try_.tryWorkflow,
       (Position(7) / "catch") -> try_.catchWorkflow))
-  }
 
-  "flattenedInstructions" in {
+  "flattenedInstructions" in:
     assert(try_.flattenedInstructions(Position(7)).toSeq == Seq[(Position, Instruction.Labeled)](
       Position(7) / "try" % 0 -> try_.tryWorkflow.instructions(0),
       Position(7) / "try" % 1 -> ImplicitEnd(),
       Position(7) / "catch" % 0 -> try_.catchWorkflow.instructions(0),
       Position(7) / "catch" % 1 -> ImplicitEnd()))
-  }
 
-  "toCatchBranchId" in {
+  "toCatchBranchId" in:
     assert(try_.toCatchBranchId("X") == None)
     assert(try_.toCatchBranchId("try+0") == Some(BranchId("catch+0")))
     assert(try_.toCatchBranchId("try+1") == Some(BranchId("catch+1")))
     assert(try_.toCatchBranchId("try+123") == Some(BranchId("catch+123")))
     assert(try_.toCatchBranchId("catch+0") == None)
     assert(try_.toCatchBranchId("catch+1") == None)
-  }
 
-  "retryCount" in {
+  "retryCount" in:
     def t(delays: Option[Seq[FiniteDuration]]) = TryInstruction(Workflow.empty, Workflow.empty, delays.map(_.toVector))
     assert(t(None).retryDelay(1) == 0.s)
     assert(t(None).retryDelay(2) == 0.s)
@@ -185,5 +175,3 @@ final class TryInstructionTest extends OurTestSuite
     assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(1) == 1.s)
     assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(2) == 2.s)
     assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(3) == 2.s)
-  }
-}

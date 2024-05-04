@@ -11,10 +11,10 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeyTest extends OurTestSuite
-{
+final class JobKeyTest extends OurTestSuite:
+
   "JSON" - {
-    "JobKey.Anonymous" in {
+    "JobKey.Anonymous" in:
       testJson[JobKey](JobKey.Anonymous((WorkflowPath("WORKFLOW") ~ "VERSION") /: (Position(1) / "A" % 2)),
         json"""{
           "workflowId": {
@@ -23,9 +23,8 @@ final class JobKeyTest extends OurTestSuite
           },
           "position": [ 1, "A", 2 ]
         }""")
-    }
 
-    "JobKey.Named" in {
+    "JobKey.Named" in:
       testJson[JobKey](JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "VERSION", Position(0) / "A"), WorkflowJob.Name("JOBNAME")),
         json"""
       {
@@ -36,11 +35,8 @@ final class JobKeyTest extends OurTestSuite
         "branchPath": [ 0, "A" ],
         "jobName": "JOBNAME"
       }""")
-    }
   }
 
-  "toString" in {
+  "toString" in:
     assert(JobKey(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOBNAME")).toString == "Job:WORKFLOW~1:JOBNAME")
     assert(JobKey((WorkflowPath("WORKFLOW") ~ "1") /: (Position(1) / "branch" % 2)).toString == "Job:WORKFLOW~1:1/branch:2")
-  }
-}

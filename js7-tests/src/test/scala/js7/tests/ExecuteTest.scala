@@ -62,10 +62,9 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   override protected def directorEnvToToAgentRef(env: DirectorEnv) =
     super.directorEnvToToAgentRef(env).copy(processLimit = Some(3))
 
-  override def beforeAll() = {
-    for a <- directoryProvider.agentEnvs do {
+  override def beforeAll() =
+    for a <- directoryProvider.agentEnvs do
      a.writeExecutable(RelativePathExecutable("TEST-SCRIPT.cmd"), returnCodeScript("myExitCode"))
-    }
     argScriptFile.writeUtf8Executable(
       if isWindows then
         """@echo off
@@ -76,13 +75,11 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           |exit $2""".stripMargin)
     myReturnCodeScriptFile.writeUtf8Executable(returnCodeScript("myExitCode"))
     super.beforeAll()
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     super.afterAll()
     delete(argScriptFile)
     delete(myReturnCodeScriptFile)
-  }
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(0)))),
     expectedOutcome = OrderOutcome.Succeeded(NamedValues.rc(0)))
@@ -209,7 +206,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = OrderOutcome.Succeeded.rc(1))
 
-  "Argument precedence" in {
+  "Argument precedence" in:
     val executable = ShellScriptExecutable(
       returnCodeScript("myExitCode"),
       env = Map("myExitCode" -> NamedValue("myExitCode")))
@@ -236,9 +233,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         OrderOutcome.Succeeded.rc(22),
         OrderOutcome.Succeeded.rc(33)),
       orderArguments = Map("orderExitCode" -> NumberValue(44)))
-  }
 
-  "Execute instruction arguments refer order named values" in {
+  "Execute instruction arguments refer order named values" in:
     val executable = ShellScriptExecutable(
       returnCodeScript("myExitCode"),
       env = Map("myExitCode" -> NamedValue("myExitCode")))
@@ -265,9 +261,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       expectedOutcomes = Seq(
         OrderOutcome.Succeeded.rc(44),
         OrderOutcome.Succeeded.rc(44)))
-  }
 
-  "Arguments when v1Compatible include workflow defaults" in {
+  "Arguments when v1Compatible include workflow defaults" in:
     testWithWorkflow(
       Workflow(WorkflowPath.Anonymous,
         Vector(
@@ -308,7 +303,6 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           "A" -> StringValue("4711"),
           "B" -> StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
           "C" -> StringValue("FROM SECOND JOB")))))
-  }
 
   addExecuteTest(
     Execute(
@@ -338,12 +332,11 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       "JOBSTART_DATE"       -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
       "JOB_RESOURCE_VARIABLE" -> expr("JobResource:JOB-RESOURCE:VARIABLE"))
 
-    "Special variables in InternalExecutable arguments" in {
+    "Special variables in InternalExecutable arguments" in:
       testWithSpecialVariables(
         ReturnArgumentsInternalJob.executable(arguments = nameToExpression))
-    }
 
-    "Special variables in env expressions" in {
+    "Special variables in env expressions" in:
       val script =
         if isWindows then
           s"""@echo off
@@ -390,9 +383,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         script,
         env = nameToExpression.updated(deletedEnvName, expr("missing"))))
       assert(result.get(deletedEnvName) == Some(StringValue("UNSET")))
-    }
 
-    def testWithSpecialVariables(executable: Executable): NamedValues = {
+    def testWithSpecialVariables(executable: Executable): NamedValues =
       val versionId = versionIdIterator.next()
       val workflowId = workflowPathIterator.next() ~ versionId
       val jobName = WorkflowJob.Name("TEST-JOB")
@@ -418,10 +410,9 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       assert(namedValues contains "SCHEDULED_DATE")
       assert(namedValues contains "JOBSTART_DATE")
 
-      def numberValue(number: Int) = executable match {
+      def numberValue(number: Int) = executable match
         case _: ProcessExecutable => StringValue(number.toString)  // JS7_RETURN_VALUES contains strings
         case _ => NumberValue(number)
-      }
       assert(namedValues - "SCHEDULED_DATE" - "JOBSTART_DATE" - "returnCode"  - deletedEnvName ==
         NamedValues(
           "ORDER_ID" -> StringValue(order.id.string),
@@ -434,9 +425,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           "CONTROLLER_ID" -> StringValue("Controller"),
           "JOB_RESOURCE_VARIABLE" -> StringValue("JOB-RESOURCE-VARIABLE-VALUE")))
       namedValues
-    }
 
-    "$js7JobExecutionCount" in {
+    "$js7JobExecutionCount" in:
       // $js7JobExecutionCount depends on a complete, not shortened Seq[HistoricOutcome].
       val jobName = WorkflowJob.Name("JOB")
       val workflowId = nextWorkflowId()
@@ -465,10 +455,9 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
           "returnCode" -> NumberValue(0)))),
         OrderProcessed(OrderOutcome.Succeeded(Map("jobExecutionCount" -> StringValue("3"),
           "returnCode" -> NumberValue(0))))))
-    }
   }
 
-  "Jobs in nested workflow" in {
+  "Jobs in nested workflow" in:
     // TODO Forbid this?
     testWithWorkflow(
       WorkflowParser.parse("""
@@ -494,9 +483,8 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         OrderOutcome.Succeeded(NamedValues.rc(2)),
         OrderOutcome.Succeeded(NamedValues.rc(11)),
         OrderOutcome.Succeeded(NamedValues.rc(2))))
-  }
 
-  "Command line arguments" in {
+  "Command line arguments" in:
     // TODO Replace --agent-io-id= by something different (for example, PID returned by Java 9)
     def removeTaskId(string: String): String =
       Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
@@ -511,7 +499,6 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
     val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.mkString
     assert(removeTaskId(stdout)
       .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
-  }
 
   "processLimit" - {
     "WorkflowJob processLimit" in:
@@ -633,57 +620,52 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
     expectedOutcome: OrderOutcome)
     (using source.Position)
   : Unit =
-    WorkflowPrinter.instructionToString(execute) in {
+    WorkflowPrinter.instructionToString(execute) in:
       testWithWorkflow(Workflow.of(execute), orderArguments, Seq(expectedOutcome))
-    }
 
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcomes: Seq[OrderOutcome])
     (using source.Position)
-  : Unit = {
+  : Unit =
     val events = runWithWorkflow(anonymousWorkflow, orderArguments)
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
     assert(outcomes == expectedOutcomes)
 
     if expectedOutcomes.last.isSucceeded then assert(events.last.isInstanceOf[OrderFinished])
     else assert(events.last.isInstanceOf[OrderFailed])
-  }
 
   private def runWithWorkflow(
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty)
-  : Seq[OrderEvent] = {
+  : Seq[OrderEvent] =
     //TODO OrderPreparation are missing: testPrintAndParse(anonymousWorkflow)
     val workflow = addWorkflow(anonymousWorkflow)
     val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
     controller.runOrder(order).map(_.value)
-  }
 
-  private def addWorkflow(anonymousWorkflow: Workflow): Workflow = {
+  private def addWorkflow(anonymousWorkflow: Workflow): Workflow =
     val workflowId = nextWorkflowId()
     val workflow = anonymousWorkflow.withId(workflowId)
     directoryProvider.updateVersionedItems(controller, workflowId.versionId, Seq(workflow))
     workflow
-  }
 
   private def nextWorkflowId(): WorkflowId =
     workflowPathIterator.next() ~ versionIdIterator.next()
 
-  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
+  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit =
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
     val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
     logger.debug(workflowNotation)
     assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
-  }
 
   private def agentProcessLimit: Option[Int] =
     controllerState.keyToItem(AgentRef)(agentPath).processLimit
 
 
-object ExecuteTest
-{
+object ExecuteTest:
+
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
 
@@ -700,7 +682,7 @@ object ExecuteTest
       "VARIABLE" -> StringConstant("JOB-RESOURCE-VARIABLE-VALUE")))
 
   private final class TestInternalJob extends InternalJob
-  {
+  :
     def toOrderProcess(step: Step) =
       OrderProcess(
         IO {
@@ -708,17 +690,14 @@ object ExecuteTest
             for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
               OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
-  }
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
 
   private final class ReturnArgumentsInternalJob extends InternalJob
-  {
+  :
     def toOrderProcess(step: Step) =
       OrderProcess.succeeded(step.arguments)
-  }
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]
 
   private final class ParallelInternalJob extends SemaphoreJob(ParallelInternalJob)
   private object ParallelInternalJob extends SemaphoreJob.Companion[ParallelInternalJob]
-}

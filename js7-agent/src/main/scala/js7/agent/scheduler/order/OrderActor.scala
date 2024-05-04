@@ -158,14 +158,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
 
   private def receiveEvent: Receive =
     case Internal.UpdateEvents(events, correlId) =>
-      correlId.bind {
+      correlId.bind:
         update(events)
-      }
 
     case Command.HandleEvents(events, correlId) =>
-      correlId.bind[Unit] {
+      correlId.bind[Unit]:
         handleEvents(events) pipeTo sender()
-      }
 
   private def handleEvents(events: Seq[OrderCoreEvent]): Future[Checked[Completed]] =
     order.applyEvents(events) match

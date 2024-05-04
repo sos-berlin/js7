@@ -18,8 +18,8 @@ import js7.base.test.OurAsyncTestSuite
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 
-final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
-{
+final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
+
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 
   override def afterAll() =
@@ -39,100 +39,83 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
   "Path extention methods" - {
     "slash" - {
       val a = Paths.get("a")
-      "valid" in {
+      "valid" in:
         assert((a / "b").toString == s"a${separator}b")
-      }
       "invalid" - {
-        for invalid <- InvalidRelativePaths do {
-          invalid in {
-            intercept[ProblemException] {
+        for invalid <- InvalidRelativePaths do
+          invalid in:
+            intercept[ProblemException]:
               a / invalid
-            }
             succeed
-          }
-        }
       }
     }
 
-    "contentString" in {
+    "contentString" in:
       path.contentString = TestString
       path.contentString shouldEqual TestString
       new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString
-    }
 
-    "contentBytes" in {
+    "contentBytes" in:
       path.contentBytes shouldEqual TestBytes
       path := Array[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
-    }
 
-    "byteArray" in {
+    "byteArray" in:
       path := Array[Byte](1, 2)
       path.byteArray shouldEqual ByteArray(1, 2)
       path := Array[Byte](7, 8)
       path.byteArray shouldEqual ByteArray(7, 8)
-    }
 
-    "readAs" in {
+    "readAs" in:
       path := Array[Byte](1, 2)
       path.readAs[ByteArray] shouldEqual ByteArray(1, 2)
       path := Array[Byte](7, 8)
       path.readAs[ByteArray] shouldEqual ByteArray(7, 8)
-    }
 
-    ":= String" in {
+    ":= String" in:
       path := TestString
       path.contentString shouldEqual TestString
       new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString
-    }
 
-    "++= String" in {
+    "++= String" in:
       path ++= "-APPENDED"
       path.contentString shouldEqual TestString + "-APPENDED"
       new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString + "-APPENDED"
-    }
 
-    ":= Array[Byte]" in {
+    ":= Array[Byte]" in:
       path := Array[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
-    }
 
-    ":= Seq[Byte]" in {
+    ":= Seq[Byte]" in:
       path := Seq[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
-    }
 
-    ":= ByteArray" in {
+    ":= ByteArray" in:
       val bytes = "A-Å".getBytes(UTF_8)
       path := ByteArray(bytes)
       assert(path.byteArray == ByteArray(bytes))
       assert(path.contentBytes.toSeq == bytes.toSeq)
-    }
 
-    "+= ByteArray" in {
+    "+= ByteArray" in:
       val complete = "A-Å-APPENDED".getBytes(UTF_8)
       val bytes = "-APPENDED".getBytes(UTF_8)
       path ++= ByteArray(bytes)
       assert(path.byteArray == ByteArray(complete))
       assert(path.contentBytes.toSeq == complete.toSeq)
-    }
 
-    ":= JSON" in {
+    ":= JSON" in:
       path := Json.obj("key" -> Json.fromInt(7))
       path.contentString shouldEqual """{"key":7}"""
-    }
 
-    "write" in {
+    "write" in:
       path.write(TestString, UTF_16BE)
       path.contentBytes shouldEqual TestString.getBytes(UTF_16BE)
-    }
 
-    "append" in {
+    "append" in:
       path.append("X", UTF_16BE)
       path.contentString(UTF_16BE) shouldEqual TestString + "X"
-    }
 
-    "directoryContentsAs" in {
+    "directoryContentsAs" in:
       intercept[NotDirectoryException] { path.directoryContentsAs(Set) }
       val dir = createTempDirectory("FileUtilsTest-")
       assert(dir.directoryContentsAs(Set).isEmpty)
@@ -143,10 +126,9 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
       files foreach delete
       delete(dir)
       succeed
-    }
   }
 
-  "inputStreamResource" in {
+  "inputStreamResource" in:
     withTemporaryFile { file =>
       val io = file.inputStreamResource[SyncIO].use(in =>
         SyncIO {
@@ -157,9 +139,8 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
       file := "OTHER"
       assert(io.unsafeRunSync() == "OTHER")
     }
-  }
 
-  "copyDirectoryContent" in {
+  "copyDirectoryContent" in:
     withTemporaryDirectory("FileUtilsTest-A-") { a =>
       a / "1" := 1
       createDirectories(a / "aa" / "aaa")
@@ -176,42 +157,37 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
       }
     }
     succeed
-  }
 
-  "createShortNamedDirectory" in {
+  "createShortNamedDirectory" in:
     assert(FileUtils.ShortNamePermutationCount == 2176782336L)
     val dir = createTempDirectory("test-")
     val n = 100
-    val dirs = List.fill(n) {
+    val dirs = List.fill(n):
       val prefix = "test-"
       val d = FileUtils.createShortNamedDirectory(dir, prefix)
       assert(Files.isDirectory(d))
       assert(d.getFileName.toString.length == prefix.length + 6)
       d
-    }
     assert(dirs.toSet.size == n)
     dirs foreach delete
     delete(dir)
     succeed
-  }
 
-  "withTemporaryFile" in {
+  "withTemporaryFile" in:
     val f = withTemporaryFile { file =>
       assert(exists(file))
       file
     }
     assert(!exists(f))
-  }
 
-  "withTemporaryFile, named" in {
+  "withTemporaryFile, named" in:
     val f = withTemporaryFile("TEST-", ".tmp") { file =>
       assert(exists(file))
       file
     }
     assert(!exists(f))
-  }
 
-  "temporaryDirectoryResource" in {
+  "temporaryDirectoryResource" in:
     var directory: Path = null
     temporaryDirectoryResource[IO]("FileUtilsTest-")
       .use(dir => IO {
@@ -221,9 +197,8 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
         touchFile(dir / "SUBDIRECTORY" / "FILE")
       })
       .*>(IO(assert(!exists(directory))))
-  }
 
-  "autoDeleting" in {
+  "autoDeleting" in:
     val file = createTempFile("TEST-", ".tmp")
     val a = autoDeleting(file) { f =>
       assert(file eq f)
@@ -232,38 +207,30 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
     }
     assert(a == 123)
     assert(!exists(file))
-  }
 
-  "autoDeleting with exception" in {
+  "autoDeleting with exception" in:
     val file = createTempFile("TEST-", ".tmp")
-    intercept[IllegalStateException] {
+    intercept[IllegalStateException]:
       autoDeleting(file) { _ => throw new IllegalStateException }
-    }
     assert(!exists(file))
-  }
 
   "checkRelativePath" - {
-    "valid" in {
+    "valid" in:
       assert(checkRelativePath("relative").isRight)
-    }
 
     "invalid" - {
-      for invalid <- InvalidRelativePaths do {
-        invalid in {
+      for invalid <- InvalidRelativePaths do
+        invalid in:
           assert(checkRelativePath(invalid).isLeft)
-        }
-      }
     }
   }
 
   "provideFile" - {
-    "Non-existing file" in {
+    "Non-existing file" in:
       check(existing = false)
-    }
 
-    "Existing file is delete before use" in {
+    "Existing file is delete before use" in:
       check(existing = true)
-    }
 
     def check(existing: Boolean): Assertion =
       withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
@@ -277,9 +244,8 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
         assert(!exists(file))
       }
   }
-}
 
-private object FileUtilsTest {
+private object FileUtilsTest:
   private val TestString = "AÅ"
   private val TestBytes = TestString.getBytes(UTF_8)
   assert(TestBytes.length == 3)
@@ -304,4 +270,3 @@ private object FileUtilsTest {
     "b/..",
     """b\.""",
     """b\..""")
-}

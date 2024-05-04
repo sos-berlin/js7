@@ -40,8 +40,8 @@ import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 
 final class JournaledProxyTest
-extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForScalaTest
-{
+extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForScalaTest:
+
   override protected def agentPaths = agentPath :: Nil
   protected val items = Nil
   protected def config = ProxyConfs.defaultConfig
@@ -66,29 +66,26 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
 
   private lazy val proxy = api.startProxy().await(99.s)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(100.ms))
     proxy
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     api.stop.await(99.s)
     proxy.stop.await(99.s)
     close()
     super.afterAll()
-  }
 
   "updateItems" - {
-    "VersionId mismatch" in {
+    "VersionId mismatch" in:
       val response = api.updateItems(Stream(
         AddVersion(VersionId("OTHER-VERSION")),
         AddOrChangeSigned(toSignedString(workflow))
       )).await(99.s)
       assert(response == Left(ItemVersionDoesNotMatchProblem(VersionId("OTHER-VERSION"), workflow.id)))
-    }
 
-    "success" in {
+    "success" in:
       val myWorkflow = workflow withVersion versionId
       proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
         api.updateItems(Stream(
@@ -96,29 +93,25 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
           AddOrChangeSigned(toSignedString(myWorkflow))
         )).map { o => assert(o.orThrow == Completed) }
       }.await(99.s)
-    }
   }
 
   "addOrders" - {
-    "Adding duplicate orders is rejected" in {
+    "Adding duplicate orders is rejected" in:
       val order = FreshOrder(OrderId("DUPLICATE"), workflow.path)
       assert(api.addOrders(Stream(order, order)).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Order:DUPLICATE")))
-    }
 
-    "success" in {
+    "success" in:
       val orderIds = (1 to 2).map(i => OrderId(s"ORDER-$i")).toSet
       val whenFinished = proxy.stream()
-        .collect {
+        .collect:
           case EventAndState(Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)), _, _)
             if orderIds contains orderId =>
             orderId <-: event
-        }
-        .updateStateWhileInclusive(Set.empty[OrderId])(_ != orderIds) {
+        .updateStateWhileInclusive(Set.empty[OrderId])(_ != orderIds):
           case (state, KeyedEvent(orderId, _: OrderTerminated | _: OrderFailed)) =>
             state + orderId
           case (state, _) => state
-        }
         .compile.toList
         .unsafeToFuture()
       api.addOrders(
@@ -141,17 +134,13 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
             OrderDetached,
             OrderFinished()))
           .toMap)
-    }
   }
 
-  "AgentRefState.version" in {
+  "AgentRefState.version" in:
     assert(proxy.currentState.keyTo(AgentRefState)(agentPath)
       .platformInfo.map(_.js7Version) contains Js7Version)
-  }
-}
 
 
-object JournaledProxyTest {
+object JournaledProxyTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-}

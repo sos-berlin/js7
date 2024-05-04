@@ -10,33 +10,30 @@ import js7.base.utils.RangeSetTest.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.tester.CirceJsonTester.testJson
 
-final class RangeSetTest extends OurTestSuite {
+final class RangeSetTest extends OurTestSuite:
 
-  "JSON" in {
+  "JSON" in:
     import RangeSet.jsonEncoder
 
     testJson[RangeSet[Int]](
       RangeSet.raw(Interval(-5, -3), Single(0xffffffff), Single(7), Single(9), Single(10)),
       json""" "-5..-3,-1,7,9,10" """)
-  }
 
-  "JSON as Array (not used)" in {
+  "JSON as Array (not used)" in:
     implicit val jsonEncoder: Encoder.AsArray[RangeSet[Int]] = RangeSet.asArrayJsonEncoder[Int]
     implicit val jsonDecoder: Decoder[RangeSet[Int]] = RangeSet.asArrayJsonDecoder[Int]
 
     testJson[RangeSet[Int]](
       RangeSet.raw(Single(1), Interval(3, 5), Single(7), Single(9), Single(10)),
       json"""[ 1, [3, 5], 7, 9, 10]""")
-  }
 
-  "asString, parseInt" in {
+  "asString, parseInt" in:
     val rangeSet = RangeSet.fromRanges(Seq(Interval(-5, -3), Interval(-1, 3), Single(7)))
     val string = "-5..-3,-1..3,7"
     assert(rangeSet.asString == string)
     assert(RangeSet.parseInt(string) == Right(rangeSet))
-  }
 
-  "fromRanges" in {
+  "fromRanges" in:
     assert(RangeSet.fromRanges[Int](Nil) == RangeSet.raw[Int]())
 
     assert(RangeSet.fromRanges(Seq(Single(3), Single(1), Single(3), Single(1))) ==
@@ -57,25 +54,21 @@ final class RangeSetTest extends OurTestSuite {
 
     assert(RangeSet.fromRanges(Seq(Interval(1, 2), Single(3))) ==
       RangeSet.raw(Interval(1, 3)))
-  }
 
-  "fromRanges coalesces succeeding ranges" in {
+  "fromRanges coalesces succeeding ranges" in:
     assert(RangeSet.fromRanges(Seq(Interval(1, 2), Interval(3, 4), Single(5), Single(6))) ==
       RangeSet.raw(Interval(1, 6)))
-  }
 
-  "RangeSet[GenericInt]" in {
+  "RangeSet[GenericInt]" in:
     assert(RangeSet.fromRanges(Seq(Single(Test(1)), Single(Test(2)))) ==
       RangeSet.raw(Single(Test(1)), Single(Test(2))))
 
     assert(RangeSet.fromRanges(Seq(Single(Test(1)), Single(Test(2)), Interval(Test(3), Test(5)))) ==
       RangeSet.raw(Interval(Test(1), Test(5))))
-  }
 
-  "RangeSet[Char]" in {
+  "RangeSet[Char]" in:
     assert(RangeSet.fromRanges[Char](Seq(Single('a'), Single('b'), Single('c'), Single('x'))) ==
       RangeSet.raw(Interval('a', 'c'), Single('x')))
-  }
 
   if false then "RangeSet[String]" in {
     // Requires an Ordinal[String] with isSuccessorOf
@@ -87,22 +80,19 @@ final class RangeSetTest extends OurTestSuite {
     val rangeSet = toRangeSet("1,3..5,7,9..11")
     val set = Set(1, 3, 4, 5, 7, 9, 10, 11)
 
-    "==" in {
+    "==" in:
       assert(rangeSet.ranges == Vector(Single(1), Interval(3, 5), Single(7), Interval(9, 11)))
       assert(rangeSet == set)
       assert(set == rangeSet)
       assert(toRangeSet("1..999999999") != toRangeSet("1..888888888"))
-    }
 
-    "toString" in {
+    "toString" in:
       assert(toRangeSet("-1,1..999999999").toString == "RangeSet(-1,1..999999999)")
-    }
 
-    "empty" in {
+    "empty" in:
       assert(RangeSet.empty[Int] == RangeSet.raw[Int]())
-    }
 
-    "contains" in {
+    "contains" in:
       assert(!RangeSet.empty[Int].contains(1))
 
       assert(!rangeSet.contains(0))
@@ -120,15 +110,13 @@ final class RangeSetTest extends OurTestSuite {
       assert(!rangeSet.contains(12))
       assert(toRangeSet("1..999999999").contains(400000000))
       assert(toRangeSet("1..999999999")(400000000))
-    }
 
-    "+" in {
+    "+" in:
       assert(rangeSet == rangeSet + 1)
       assert(toRangeSet("0,1,3..5,7,9..11") == rangeSet + 0)
       assert(toRangeSet("1..999999999") + 0 == toRangeSet("0..999999999"))
-    }
 
-    "-" in {
+    "-" in:
       assert(rangeSet - 0 == rangeSet)
       assert(rangeSet - 1 == toRangeSet("3..5,7,9..11"))
       assert(rangeSet - 3 == toRangeSet("1,4,5,7,9..11"))
@@ -136,9 +124,8 @@ final class RangeSetTest extends OurTestSuite {
       assert(rangeSet - 5 == toRangeSet("1,3,4,7,9..11"))
       assert(rangeSet - 7 == toRangeSet("1,3..5,9..11"))
       assert(toRangeSet("1..999999999") - 1 == toRangeSet("2..999999999"))
-    }
 
-    "subsetOf" in {
+    "subsetOf" in:
       assert(set.subsetOf(rangeSet))
       assert((rangeSet.incl(1)).subsetOf(rangeSet))
       assert(!(rangeSet.incl(0)).subsetOf(rangeSet))
@@ -157,42 +144,35 @@ final class RangeSetTest extends OurTestSuite {
       assert(!(rangeSet.incl(0)).subsetOf(set))
 
       assert(toRangeSet("1..888888888").subsetOf(toRangeSet("1..999999999")))
-    }
 
-    "🔥 intersect" in {
+    "🔥 intersect" in:
       assert((rangeSet.intersect(RangeSet(1, 4, 5, 99))/*: RangeSet[Int]*/) ==
         RangeSet.raw(Single(1), Single(4), Single(5)))
 
-      if false then {
+      if false then
         // Will deplete memory
         assert(toRangeSet("1..999999999").intersect(toRangeSet("1..999999999")) ==
           toRangeSet("1..999999999"))
-      }
-    }
 
-    "🔥 --" in {
+    "🔥 --" in:
       assert(toRangeSet("1..3") -- toRangeSet("2,5")/*: RangeSet[Int]*/ == toRangeSet("1,3"))
       assert(toRangeSet("2,5") -- toRangeSet("1..3")/*: RangeSet[Int]*/ == toRangeSet("5"))
 
-      if false then {
+      if false then
         // Will deplete memory
         assert(toRangeSet("1..999999999") -- toRangeSet("500000000..999999998") ==
         toRangeSet("1..499999999 999999999"))
-      }
-    }
 
-    "🔥 diff" in {
+    "🔥 diff" in:
       // Same as -- operator ?
       assert(toRangeSet("1..3").diff(toRangeSet("2,5"))/*: RangeSet[Int]*/ == toRangeSet("1,3"))
       assert(toRangeSet("2,5").diff(toRangeSet("1..3"))/*: RangeSet[Int]*/ == toRangeSet("5"))
-      if false then {
+      if false then
         // Will deplete memory
         assert(toRangeSet("1..999999999").diff(toRangeSet("500000000..999999998")) ==
           toRangeSet("1..499999999,999999999"))
-      }
-    }
 
-    "union, concat, ++" in {
+    "union, concat, ++" in:
       assert((RangeSet(2, 6).union(rangeSet)/*: RangeSet[Int]*/) == toRangeSet("1..7,9..11"))
       assert((RangeSet(2, 6).concat(rangeSet): RangeSet[Int]) == toRangeSet("1..7,9..11"))
       assert((rangeSet ++ RangeSet(2, 6)/*: RangeSet[Int]*/) == toRangeSet("1..7,9..11"))
@@ -204,12 +184,8 @@ final class RangeSetTest extends OurTestSuite {
         toRangeSet("1..999999999"))
       assert(toRangeSet("1..499999999") ++ toRangeSet("500000000..999999999") ==
         toRangeSet("1..999999999"))
-    }
   }
-}
 
-
-object RangeSetTest {
+object RangeSetTest:
   private final case class Test(number: Int) extends GenericInt
   private object Test extends GenericInt.Companion[Test]
-}

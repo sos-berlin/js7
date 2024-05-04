@@ -4,9 +4,9 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class DelegateCouplingStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class DelegateCouplingStateTest extends OurTestSuite:
+
+  "JSON" in:
     testJsonDecoder[DelegateCouplingState](
       DelegateCouplingState.Reset.byCommand,
       json"""{
@@ -67,27 +67,21 @@ final class DelegateCouplingStateTest extends OurTestSuite
       json"""{
         "TYPE": "ShutDown"
       }""")
-  }
 
   "For Java" - {
-    "Reset.Fresh.string" in {
+    "Reset.Fresh.string" in:
       val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Fresh)
       assert(s.reason.string == "Fresh")
-    }
 
-    "Reset.Shutdown.string" in {
+    "Reset.Shutdown.string" in:
       val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Shutdown)
       assert(s.reason.string == "Shutdown")
-    }
 
-    "Reset.Restart.string" in {
+    "Reset.Restart.string" in:
       val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Restart)
       assert(s.reason.string == "Restart")
-    }
 
-    "Reset.ResetCommand.string" in {
+    "Reset.ResetCommand.string" in:
       val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.ResetCommand)
       assert(s.reason.string == "ResetCommand")
-    }
   }
-}

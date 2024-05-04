@@ -39,8 +39,8 @@ import fs2.Stream
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(
     Lock(lockPath),
@@ -56,7 +56,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  "Run some orders at different agents with a lock with limit=1" in {
+  "Run some orders at different agents with a lock with limit=1" in:
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(s"""
         define workflow {
@@ -80,11 +80,10 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       assert(controller.eventWatch.await[OrderLocksAcquired](_.key == a).map(_.value).nonEmpty)
 
       val queuedOrderIds = for i <- 1 to 10 yield OrderId(s"🔶-$i")
-      for orderId <- queuedOrderIds do {
+      for orderId <- queuedOrderIds do
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
         assert(controller.eventWatch.await[OrderLocksQueued](_.key == orderId).map(_.value).nonEmpty)
-      }
 
       touchFile(file)
 
@@ -113,7 +112,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderFinished(),
         OrderDeleted))
 
-      for orderId <- queuedOrderIds do {
+      for orderId <- queuedOrderIds do
         assert(controller.eventWatch.await[OrderTerminated](_.key == orderId).map(_.value) == Seq(orderId <-: OrderFinished()))
         controller.eventWatch.await[OrderDeleted](_.key == orderId)
         assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -139,21 +138,18 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           OrderLocksReleased(List(lockPath)),
           OrderFinished(),
           OrderDeleted))
-      }
 
-      for pair <- queuedOrderIds.sliding(2).toSeq do {
+      for pair <- queuedOrderIds.sliding(2).toSeq do
         assert(controller.eventWatch.await[OrderLocksAcquired](_.key == pair(0)).map(_.eventId).head <
                controller.eventWatch.await[OrderLocksAcquired](_.key == pair(1)).map(_.eventId).head)
-      }
       assert(controllerState.keyTo(LockState)(lockPath) ==
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Available,
           Queue.empty))
     }
-  }
 
-  "After releasing a lock of 2, two orders with count=1 each start simultaneously" in {
+  "After releasing a lock of 2, two orders with count=1 each start simultaneously" in:
     val workflow1 = updateItem(Workflow(
       WorkflowPath("FINISH-IN-FORK"),
       Seq(
@@ -198,9 +194,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Multiple orders with count=1 and count=2 finish" in {
+  "Multiple orders with count=1 and count=2 finish" in:
     val workflow1 = updateItem(Workflow.of(workflow1Path,
       LockInstruction(
         Seq(LockDemand(limit2LockPath, count = Some(1))),
@@ -235,9 +230,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Failed order" in {
+  "Failed order" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("FINISH-IN-FORK"),
       Seq(
@@ -297,9 +291,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available, Queue.empty))
-  }
 
-  "Failed order in try/catch" in {
+  "Failed order in try/catch" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK") {
@@ -340,9 +333,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Failed forked order" in {
+  "Failed forked order" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         fork (joinIfFailed=true) {
@@ -382,9 +374,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Forked order with same lock" in {
+  "Forked order with same lock" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK") {
@@ -425,9 +416,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Finish instruction" in {
+  "Finish instruction" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("FINISH"),
       Seq(
@@ -470,9 +460,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         AddVersion(VersionId("FINISH-REMOVED")),
         RemoveVersioned(workflow.path)))
       .await(99.s).orThrow
-  }
 
-  "Finish instruction in Fork" in {
+  "Finish instruction in Fork" in:
     val workflow = updateItem(Workflow(
       WorkflowPath("FINISH-IN-FORK"),
       Seq(
@@ -505,9 +494,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         AddVersion(VersionId("FINISH-IN-FORK-REMOVED")),
         RemoveVersioned(workflow.path)))
       .await(99.s).orThrow
-  }
 
-  "Acquire too much" in {
+  "Acquire too much" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK", count = 2) {}
@@ -532,10 +520,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
   "Multiple locks" - {
-    "All locks are available" in {
+    "All locks are available" in:
       val aWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-A"),
         Seq(
@@ -615,9 +602,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           RemoveVersioned(aWorkflow.path),
           RemoveVersioned(bWorkflow.path)))
         .await(99.s).orThrow
-    }
 
-    "One of two locks is not available" in {
+    "One of two locks is not available" in:
       // a: Lock lockPath
       // b: Lock lockPath, lock2Path
       // c: Lock lock2Path
@@ -748,10 +734,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           RemoveVersioned(bWorkflow.path),
           RemoveVersioned(cWorkflow.path)))
         .await(99.s).orThrow
-    }
   }
 
-  "Cancel while waiting for lock" in {
+  "Cancel while waiting for lock" in:
     val lockingOrderId = OrderId("CANCEL-WHILE-QUEUING-IN-LOCK")
     controller.api
       .addOrder(FreshOrder(lockingOrderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
@@ -803,9 +788,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       AddVersion(VersionId("DELETE")),
       RemoveVersioned(queueingWorkflow.path)
     )).await(99.s).orThrow
-  }
 
-  "Cancel while using a lock" in {
+  "Cancel while using a lock" in:
     val orderId = OrderId("CANCEL-WHILE-IN-LOCK")
     controller.api
       .addOrder(FreshOrder(orderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
@@ -828,9 +812,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-  }
 
-  "Use Lock both exclusivly and non-exclusively" in {
+  "Use Lock both exclusivly and non-exclusively" in:
     val exclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("EXCLUSIVE-WORKFLOW"),
       Seq(
@@ -844,7 +827,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
           count = Some(2),
           lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
 
-    locally {
+    locally:
       // First exclusive, then non-exclusive is queued
       val aOrder = FreshOrder(OrderId("EXCLUSIVE-A"), exclusiveWorkflow.path,
         deleteWhenTerminated = true)
@@ -862,9 +845,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       eventWatch.await[OrderPrompted](_.key == bOrder.id)
       controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == bOrder.id)
-    }
 
-    locally {
+    locally:
       // First non-exclusive, then exclusive is queued
       val aOrder = FreshOrder(OrderId("EXCLUSIVE-AA"), exclusiveWorkflow.path,
         deleteWhenTerminated = true)
@@ -884,16 +866,14 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == bOrder.id)
       eventWatch.await[OrderDeleted](_.key == bOrder.id)
-    }
 
     controller.api.updateItems(Stream(
       AddVersion(VersionId("REMOVE-EXCLUSIVE")),
       RemoveVersioned(exclusiveWorkflow.path),
       RemoveVersioned(nonExclusiveWorkflow.path)
     )).await(99.s).orThrow
-  }
 
-  "JS-2015 Lock in Try/Retry with zero delay" in {
+  "JS-2015 Lock in Try/Retry with zero delay" in:
     val workflow = Workflow(
       WorkflowPath("RETRY-LOCK"),
       Seq(
@@ -943,9 +923,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
-  }
 
-  "JS-2015 Lock in Try/Retry with delay" in {
+  "JS-2015 Lock in Try/Retry with delay" in:
     val workflow = Workflow(
       WorkflowPath("RETRY-LOCK"),
       Seq(
@@ -1000,9 +979,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
-  }
 
-  "Lock is not deletable while in use by a Workflow" in {
+  "Lock is not deletable while in use by a Workflow" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK") {}
@@ -1014,9 +992,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     )).await(99.s) == Left(Problem.Combined(Set(
       ItemIsStillReferencedProblem(lockPath, promptInLockWorkflow.id),
       ItemIsStillReferencedProblem(lockPath, workflow.id)))))
-  }
 
-  "Lock is not deletable while in use by a deleted Workflow with a still running order" in {
+  "Lock is not deletable while in use by a deleted Workflow with a still running order" in:
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK") {
@@ -1042,9 +1019,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
     removeWorkflowAndLock().orThrow
-  }
 
-  "Remove Workflow and Lock" in {
+  "Remove Workflow and Lock" in:
     val eventId = controller.eventWatch.lastAddedEventId
     val previousControllerState = controllerState
     val v = VersionId("DELETE")
@@ -1057,15 +1033,13 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       RemoveVersioned(workflow1Path),
       RemoveVersioned(workflow2Path)
     )).await(99.s).orThrow
-    for workflowId <- previousControllerState.repo.itemIdsFor(WorkflowPath) do {
+    for workflowId <- previousControllerState.repo.itemIdsFor(WorkflowPath) do
       controller.eventWatch.await[ItemDeleted](_.event.key == workflowId, after = eventId)
-    }
     previousControllerState.itemToAgentToAttachedState
-      .foreach {
+      .foreach:
         case (WorkflowId.as(id), _) =>
           controller.eventWatch.await[ItemDetached](_.event.key == id, after = eventId)
         case _ =>
-      }
     controller.eventWatch.await[ItemDeleted](_.event.key == lockPath, after = eventId)
     controller.eventWatch.await[ItemDeleted](_.event.key == lock2Path, after = eventId)
     controller.eventWatch.await[ItemDeleted](_.event.key == limit2LockPath, after = eventId)
@@ -1086,20 +1060,17 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         AgentPath("AGENT") -> Attached(Some(ItemRevision(0)))),
       SubagentId("B-AGENT-0") -> Map(
         AgentPath("B-AGENT") -> Attached(Some(ItemRevision(0))))))
-  }
 
   private def defineWorkflow(workflowNotation: String): Workflow =
     defineWorkflow(workflowPath, workflowNotation)
 
-  private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
+  private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow =
     val workflow = WorkflowParser.parse(workflowPath, workflowNotation).orThrow
     updateItem(workflow)
-  }
-}
 
 
-object LockTest
-{
+object LockTest:
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val bAgentPath = AgentPath("B-AGENT")
@@ -1126,4 +1097,3 @@ object LockTest
 
   final class BSemaphoreJob extends SemaphoreJob(BSemaphoreJob)
   object BSemaphoreJob extends SemaphoreJob.Companion[BSemaphoreJob]
-}

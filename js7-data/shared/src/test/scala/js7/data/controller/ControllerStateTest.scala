@@ -46,24 +46,22 @@ import js7.tester.DiffxAssertions.assertEqual
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerStateTest extends OurAsyncTestSuite
-{
+final class ControllerStateTest extends OurAsyncTestSuite:
+
   private given IORuntime = ioRuntime
 
-  "estimatedSnapshotSize" in {
+  "estimatedSnapshotSize" in:
     assert(controllerState.estimatedSnapshotSize == 21)
     for n <- controllerState.toSnapshotStream.compile.count.unsafeToFuture() yield
       assert(controllerState.estimatedSnapshotSize == n)
-  }
 
-  "pathToSimpleItem" in {
+  "pathToSimpleItem" in:
     val sum =
       controllerState.keyToUnsignedItemState_.map(_._2.item) ++
         controllerState.pathToSignedSimpleItem.values.map(_.value)
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
-  }
 
-  "toSnapshotStream" in {
+  "toSnapshotStream" in:
     for list <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
       yield assert(list ==
         Seq(
@@ -108,13 +106,11 @@ final class ControllerStateTest extends OurAsyncTestSuite
             ItemAttachable(jobResource.path, agentRef.path),
             ItemDeletionMarked(fileWatch.path)) ++
           controllerState.idToOrder.values)
-  }
 
-  "isWorkflowUsedByOrders" in {
+  "isWorkflowUsedByOrders" in:
     assert(controllerState.isWorkflowUsedByOrders == Set(workflow.id))
-  }
 
-  "isWorkflowUsedByOrders does not include orderless workflows" in {
+  "isWorkflowUsedByOrders does not include orderless workflows" in:
     val v = VersionId("X")
     val workflowId = WorkflowPath("X") ~ v
     val controllerStateWithOrderlessWorkflow = controllerState
@@ -123,9 +119,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
         VersionedItemAdded(itemSigner.sign(Workflow(workflowId, Nil)))))
       .orThrow
     assert(controllerStateWithOrderlessWorkflow.isWorkflowUsedByOrders == Set(workflow.id))
-  }
 
-  "pathToReferencingItemKeys" in {
+  "pathToReferencingItemKeys" in:
     val x = controllerState.pathToReferencingItemKeys.mapValuesStrict(_.toSet)
     assert(x == Map[InventoryItemPath, Set[InventoryItemKey]](
       lock.path -> Set(workflow.id),
@@ -135,9 +130,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
       subagentSelection.id -> Set(workflow.id),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
-  }
 
-  "pathToReferencingItemKeys does not return hidden workflows without orders" in {
+  "pathToReferencingItemKeys does not return hidden workflows without orders" in:
     val v = VersionId("x")
     val changedWorkflowId = workflow.path ~ v
     val controllerState = ControllerStateTest.controllerState
@@ -156,14 +150,12 @@ final class ControllerStateTest extends OurAsyncTestSuite
         subagentSelection.id -> Set(workflow.id, changedWorkflowId),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
-  }
 
-  "fromIterator is the reverse of toSnapshotStream" in {
+  "fromIterator is the reverse of toSnapshotStream" in:
     ControllerState
       .fromStream(controllerState.toSnapshotStream)
       .map(expectedState => assertEqual(controllerState, expectedState))
       .unsafeToFuture()
-  }
 
   private val expectedSnapshotJsonArray =
     json"""[
@@ -359,15 +351,14 @@ final class ControllerStateTest extends OurAsyncTestSuite
       }
     ]"""
 
-  "toSnapshotStream JSON" in {
+  "toSnapshotStream JSON" in:
     implicit val x = ControllerState.snapshotObjectJsonCodec
     for
       jsonArray <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
       assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
     yield assertion
-  }
 
-  "ControllerStateBuilder.addSnapshotObject" in {
+  "ControllerStateBuilder.addSnapshotObject" in:
     ControllerState.snapshotObjectJsonCodec
     val builder = new ControllerStateBuilder
     expectedSnapshotJsonArray.asArray.get
@@ -375,9 +366,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
       .foreach(builder.addSnapshotObject)
     builder.onAllSnapshotsAdded()
     assertEqual(builder.result(), controllerState)
-  }
 
-  "keyToItem" in {
+  "keyToItem" in:
     assert(!controllerState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
 
     assert(controllerState.keyToItem.get(jobResource.path) == Some(jobResource))
@@ -391,7 +381,6 @@ final class ControllerStateTest extends OurAsyncTestSuite
       agentRef.path, subagentItem.id, subagentSelection.id,
       lock.path, board.path, fileWatch.path,
       workflow.id, WorkflowPathControlPath(workflow.path)))
-  }
 
   "v2.2 compatiblity" - {
     // COMPATIBLE with v2.2
@@ -407,32 +396,29 @@ final class ControllerStateTest extends OurAsyncTestSuite
     val generatedSubagentItem = SubagentItem(subagentId, agentPath, uri,
       itemRevision = Some(ItemRevision(1)))
 
-    def applyEvent(event: UnsignedSimpleItemEvent): Unit = {
+    def applyEvent(event: UnsignedSimpleItemEvent): Unit =
       val eventId = eventIds.next()
       cs = cs.applyEvent(event).orThrow
       cs = cs.withEventId(eventId)
       builder.addEvent(Stamped(eventId, event))
       assert(builder.result() == cs)
-    }
 
-    "UnsignedSimpleItemAdded" in {
+    "UnsignedSimpleItemAdded" in:
       applyEvent(UnsignedSimpleItemAdded(agentRef))
 
       assert(cs.keyTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None))
       assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
-    }
 
-    "AgentRefState snapshot object" in {
+    "AgentRefState snapshot object" in:
       val b = ControllerState.newBuilder()
       b.addSnapshotObject(AgentRefState(agentRef))
       b.onAllSnapshotsAdded()
       val x = b.result()
       assert(b.result() == cs.withEventId(0))
-    }
 
-    "UnsignedSimpleItemChanged" in {
+    "UnsignedSimpleItemChanged" in:
       val changedUri = Uri("https://example.com")
       val changedAgentRef = agentRef.copy(
         uri = Some(changedUri),
@@ -445,13 +431,11 @@ final class ControllerStateTest extends OurAsyncTestSuite
       assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem.copy(
         uri = changedUri,
         itemRevision = Some(ItemRevision(2))))
-    }
   }
-}
 
 
-object ControllerStateTest
-{
+object ControllerStateTest:
+
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
@@ -559,4 +543,3 @@ object ControllerStateTest
         Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeId))))
     ).toKeyedMap(_.id)
   ).finish
-}

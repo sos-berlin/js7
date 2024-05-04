@@ -27,8 +27,8 @@ import cats.effect.unsafe.IORuntime
 import scala.reflect.ClassTag
 
 final class FinishTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
@@ -40,7 +40,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
   protected def agentPaths = Seq(agentPath)
   protected def items = Nil
 
-  "finish" in {
+  "finish" in:
     val orderId = OrderId("♣️")
     checkEvents[OrderFinished](
       Workflow.of(
@@ -61,9 +61,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0), OrderOutcome.succeeded)))
-  }
 
-  "Successful Finish in catch (JS-2073)" in {
+  "Successful Finish in catch (JS-2073)" in:
     val orderId = OrderId("SUCCESSFUL-FINISH")
     checkEvents[OrderFinished](
       Workflow.of(
@@ -91,9 +90,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
       HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.succeeded),
       HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Succeeded(Map(
         "result" -> StringValue("SUCCESS"))))))
-  }
 
-  "finish with if" in {
+  "finish with if" in:
     val orderId = OrderId("♠️")
     checkEvents[OrderFinished](
       Workflow.of(
@@ -122,9 +120,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
       HistoricOutcome(Position(0), OrderOutcome.succeeded),
       HistoricOutcome(Position(1) / "then" % 0, OrderOutcome.succeeded),
       HistoricOutcome(Position(1) / "then" % 1, OrderOutcome.Failed(Some("FAIL WITH FINISH")))))
-  }
 
-  "finish in fork, finish first" in {
+  "finish in fork, finish first" in:
     val orderId = OrderId("♥️")
     val events = runUntil[OrderTerminated](
       Workflow.of(
@@ -178,10 +175,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0), OrderOutcome.succeeded)))
-  }
 
   "JS-2067 is not a bug" - {
-    "Failing Finish in fork, with joinIfFailed" in {
+    "Failing Finish in fork, with joinIfFailed" in:
       val orderId = OrderId("♦️")
       val events = runUntil[OrderTerminated](
         Workflow.of(
@@ -228,9 +224,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 
       assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
         HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)")))))
-    }
 
-    "Failing Finish in fork, without joinIfFailed" in {
+    "Failing Finish in fork, without joinIfFailed" in:
       val workflow = Workflow.of(
         Fork(
           Vector(
@@ -296,10 +291,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
           HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:🔔|🥕 has been cancelled")))))
       }
-    }
   }
 
-  "finish in fork, succeed first" in {
+  "finish in fork, succeed first" in:
     val workflow = Workflow.of(
       Fork(
         Vector(
@@ -367,7 +361,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
       assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
         HistoricOutcome(Position(0), OrderOutcome.Failed(Some("Order:🟪|🥕 has been cancelled")))))
     }
-  }
 
   private def checkEvents[E <: OrderEvent: ClassTag: Tag](
     workflow: Workflow,
@@ -391,12 +384,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
         .filterNot(_.event.isInstanceOf[OrderStdWritten])
         .toVector
     }
-}
 
 
-object FinishTest
-{
+object FinishTest:
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
-}

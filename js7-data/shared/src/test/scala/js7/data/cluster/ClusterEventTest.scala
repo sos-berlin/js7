@@ -12,11 +12,11 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterEventTest extends OurTestSuite
-{
+final class ClusterEventTest extends OurTestSuite:
+
   private val Id = NodeId
 
-  "ClusterNodesAppointed" in {
+  "ClusterNodesAppointed" in:
     testJson[ClusterEvent](ClusterNodesAppointed(
       ClusterSetting(
         Map(
@@ -40,33 +40,29 @@ final class ClusterEventTest extends OurTestSuite
           "clusterWatchId": "CLUSTER-WATCH"
         }
       }""")
-  }
 
-  "ClusterCouplingPrepared" in {
+  "ClusterCouplingPrepared" in:
     testJson[ClusterEvent](ClusterCouplingPrepared(Id("PRIMARY")),
       json"""{
         "TYPE": "ClusterCouplingPrepared",
         "activeId": "PRIMARY"
       }""")
-  }
 
-  "ClusterCoupled" in {
+  "ClusterCoupled" in:
     testJson[ClusterEvent](ClusterCoupled(NodeId("PRIMARY")),
       json"""{
         "TYPE": "ClusterCoupled",
         "activeId": "PRIMARY"
       }""")
-  }
 
-  "ClusterSwitchedOver" in {
+  "ClusterSwitchedOver" in:
     testJson[ClusterEvent](ClusterSwitchedOver(Id("BACKUP")),
       json"""{
         "TYPE": "ClusterSwitchedOver",
         "activatedId": "BACKUP"
       }""")
-  }
 
-  "ClusterFailedOver" in {
+  "ClusterFailedOver" in:
     testJson[ClusterEvent](ClusterFailedOver(Id("PRIMARY"), Id("BACKUP"), JournalPosition(EventId(0), 1234)),
       json"""{
         "TYPE": "ClusterFailedOver",
@@ -77,60 +73,51 @@ final class ClusterEventTest extends OurTestSuite
           "position": 1234
         }
       }""")
-  }
 
-  "ClusterPassiveLost" in {
+  "ClusterPassiveLost" in:
     testJson[ClusterEvent](ClusterPassiveLost(Id("BACKUP")),
       json"""{
         "TYPE": "ClusterPassiveLost",
         "id": "BACKUP"
       }""")
-  }
 
-  "ClusterActiveNodeShutDown" in {
+  "ClusterActiveNodeShutDown" in:
     testJson[ClusterEvent](ClusterActiveNodeShutDown,
       json"""{
         "TYPE": "ClusterActiveNodeShutDown"
       }""")
-  }
 
-  "ClusterActiveNodeRestarted" in {
+  "ClusterActiveNodeRestarted" in:
     testJson[ClusterEvent](ClusterActiveNodeRestarted,
       json"""{
         "TYPE": "ClusterActiveNodeRestarted"
       }""")
-  }
 
   "ClusterSettingUpdated" - {
-    "passiveUri only" in {
+    "passiveUri only" in:
       testJson[ClusterEvent](ClusterSettingUpdated(passiveUri = Some(Uri("https://PASSIVE"))),
         json"""{
           "TYPE": "ClusterSettingUpdated",
           "passiveUri": "https://PASSIVE"
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson[ClusterEvent](ClusterSettingUpdated(Some(Uri("https://PASSIVE"))),
         json"""{
           "TYPE": "ClusterSettingUpdated",
           "passiveUri": "https://PASSIVE"
         }""")
-    }
   }
 
-  "ClusterWatchRegistered" in {
+  "ClusterWatchRegistered" in:
     testJson[ClusterEvent](ClusterWatchRegistered(ClusterWatchId("CLUSTER-WATCH")),
       json"""{
       "TYPE": "ClusterWatchRegistered",
       "clusterWatchId": "CLUSTER-WATCH"
     }""")
-  }
 
-  "ClusterResetStarted" in {
+  "ClusterResetStarted" in:
     testJson[ClusterEvent](ClusterResetStarted,
       json"""{
       "TYPE": "ClusterResetStarted"
     }""")
-  }
-}

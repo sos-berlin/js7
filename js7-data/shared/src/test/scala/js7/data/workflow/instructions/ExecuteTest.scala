@@ -15,19 +15,18 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends OurTestSuite
-{
+final class ExecuteTest extends OurTestSuite:
+
   "JSON" - {
-    "Named with defaults" in {
+    "Named with defaults" in:
       testJson[Instruction.Labeled](
         Execute.Named(WorkflowJob.Name("JOB")),
         json"""{
           "TYPE": "Execute.Named",
           "jobName": "JOB"
         }""")
-    }
 
-    "Named complete" in {
+    "Named complete" in:
       testJson[Instruction.Labeled](
         Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> StringConstant("VALUE")), Some(SourcePos(1, 2))),
         json"""{
@@ -38,9 +37,8 @@ final class ExecuteTest extends OurTestSuite
           },
           "sourcePos": [ 1, 2 ]
         }""")
-    }
 
-    "Anonymous with defaults" in {
+    "Anonymous with defaults" in:
       testJson[Instruction.Labeled](
         Execute.Anonymous(
           WorkflowJob(
@@ -57,9 +55,8 @@ final class ExecuteTest extends OurTestSuite
             "processLimit" : 1
           }
         }""")
-    }
 
-    "Anonymous complete" in {
+    "Anonymous complete" in:
       testJson[Instruction.Labeled](
         Execute.Anonymous(
           WorkflowJob(
@@ -93,6 +90,4 @@ final class ExecuteTest extends OurTestSuite
           },
           "sourcePos": [ 1, 2 ]
         }""")
-    }
   }
-}

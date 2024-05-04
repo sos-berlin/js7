@@ -88,7 +88,7 @@ object X509Cert:
   : Option[A] =
     if certs.sizeIs <= 1 then
       certs.headOption
-    else {
+    else
       val notExpiredCerts = certs.flatMap(cert =>
         if cert.notAfter < timestamp then {
           logger.error(s"Ignoring $cert because it expired at ${cert.notAfter}")
@@ -98,7 +98,7 @@ object X509Cert:
 
       if notExpiredCerts.sizeIs <= 1 then
         notExpiredCerts.headOption
-      else {
+      else
         val latestStillValid = notExpiredCerts
           .filter(_.notBefore <= timestamp)
           .sortBy(_.notAfter)
@@ -112,8 +112,6 @@ object X509Cert:
           logger.error(s"Ignoring duplicate $cert")
 
         result
-      }
-  }
 
   private val keyUsages = Vector(
     "digitalSignature",
@@ -159,8 +157,7 @@ object X509Cert:
 
 
 /** Used for testing. */
-transparent trait X509CertInterface {
+transparent trait X509CertInterface:
   def signersDistinguishedName: DistinguishedName
   def notBefore: Timestamp
   def notAfter: Timestamp
-}

@@ -54,8 +54,7 @@ extends JournalingActor[S, E]:
     super.persistKeyedEventsReturnChecked(
       events.map(e => Timestamped(key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e)),
       CommitOptions(transaction = true),
-      async = async) {
+      async = async):
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
-    }
 
   override def toString = s"${ getClass.simpleScalaName }($key)"

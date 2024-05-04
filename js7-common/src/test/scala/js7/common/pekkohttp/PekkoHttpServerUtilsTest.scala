@@ -9,12 +9,12 @@ import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest {
+final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest:
 
   "Path" - {
     import Uri.Path
 
-    "startsWithPath" in {
+    "startsWithPath" in:
       assert(!(Path("/aa/b") startsWithPath Path("/a")))
       assert(Path("/aa/b") startsWith Path("/a"))  // startsWith matches this
 
@@ -26,9 +26,8 @@ final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest {
       assert(Path("a/b") startsWithPath Path("a/"))
       assert(Path("a/b") startsWithPath Path("a/b"))
       assert(!(Path("/b") startsWithPath Path("/a")))
-    }
 
-    "drop" in {
+    "drop" in:
       assert(Path.Empty.length == 0)
       assert(Path.Empty.drop(0) == Path.Empty)
       assert(Path("/aa/b").length == 4)
@@ -37,49 +36,40 @@ final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest {
       assert(Path("/aa/b").drop(2) == Path("/b"))
       assert(Path("/aa/b").drop(3) == Path("b"))
       assert(Path("/aa/b").drop(4) == Path.Empty)
-    }
   }
 
-  "pathSegment" in {
+  "pathSegment" in:
     def route =
       pathSegment("prefix") {
         complete("A")
       } ~
-      pathSegment("prefix/b") {
+      pathSegment("prefix/b"):
         complete("B")
-      }
 
-    Get("/prefix/") ~> route ~> check {
+    Get("/prefix/") ~> route ~> check:
       assert(responseAs[String] == "A")
-    }
 
-    Get("/prefix/x") ~> route ~> check {
+    Get("/prefix/x") ~> route ~> check:
       assert(responseAs[String] == "A")
-    }
 
-    Get("/prefix/b") ~> route ~> check {
+    Get("/prefix/b") ~> route ~> check:
       assert(responseAs[String] == "A")
-    }
 
-    Get("/prefix%2Fb/") ~> route ~> check {
+    Get("/prefix%2Fb/") ~> route ~> check:
       assert(responseAs[String] == "B")
-    }
-  }
 
-  "pathSegments" in {
+  "pathSegments" in:
     def aRoute =
-      pathSegments("prefix") {
+      pathSegments("prefix"):
         extractUnmatchedPath { path =>
           complete(path.toString)
         }
-      }
 
     def bRoute =
-      pathSegments("prefix/b") {
+      pathSegments("prefix/b"):
         extractUnmatchedPath { path =>
           complete(path.toString)
         }
-      }
 
 //    Get("/pre") ~> aRoute ~> check {
 //      assert(!handled)
@@ -89,24 +79,17 @@ final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest {
 //      assert(responseAs[String] == "")
 //    }
 
-    Get("/prefix/") ~> aRoute ~> check {
+    Get("/prefix/") ~> aRoute ~> check:
       assert(responseAs[String] == "/")
-    }
 
-    Get("/prefix/x") ~> aRoute ~> check {
+    Get("/prefix/x") ~> aRoute ~> check:
       assert(responseAs[String] == "/x")
-    }
 
-    Get("/prefix/b") ~> bRoute ~> check {
+    Get("/prefix/b") ~> bRoute ~> check:
       assert(responseAs[String] == "")
-    }
 
-    Get("/prefix/b/") ~> bRoute ~> check {
+    Get("/prefix/b/") ~> bRoute ~> check:
       assert(responseAs[String] == "/")
-    }
 
-    Get("/prefix/b/c") ~> bRoute ~> check {
+    Get("/prefix/b/c") ~> bRoute ~> check:
       assert(responseAs[String] == "/c")
-    }
-  }
-}

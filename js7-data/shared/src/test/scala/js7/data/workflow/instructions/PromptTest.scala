@@ -8,19 +8,18 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJson
 
-final class PromptTest extends OurTestSuite
-{
+final class PromptTest extends OurTestSuite:
+
   "JSON" - {
-    "with defaults" in {
+    "with defaults" in:
       testJson[Instruction.Labeled](
         Prompt(StringConstant("QUESTION")),
         json"""{
           "TYPE": "Prompt",
           "question": "'QUESTION'"
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson[Instruction.Labeled](
         Prompt(StringConstant("QUESTION"), Some(SourcePos(1, 2))),
         json"""{
@@ -28,6 +27,4 @@ final class PromptTest extends OurTestSuite
           "question": "'QUESTION'",
           "sourcePos": [ 1, 2 ]
         }""")
-    }
   }
-}

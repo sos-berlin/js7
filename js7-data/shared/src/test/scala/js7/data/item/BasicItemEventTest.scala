@@ -12,29 +12,27 @@ import js7.data.subagent.SubagentId
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class BasicItemEventTest extends OurTestSuite
-{
+final class BasicItemEventTest extends OurTestSuite:
+
   implicit private val jsonCodec: TypedJsonCodec[BasicItemEvent] =
     BasicItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
-    "ItemDeletionMarked" in {
+    "ItemDeletionMarked" in:
       testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchPath("PATH")), json"""
         {
           "TYPE": "ItemDeletionMarked",
           "key": "OrderWatch:PATH"
         }""")
-    }
 
-    "ItemDeleted" in {
+    "ItemDeleted" in:
       testJson[BasicItemEvent](ItemDeleted(OrderWatchPath("PATH")), json"""
         {
           "TYPE": "ItemDeleted",
           "key": "OrderWatch:PATH"
         }""")
-    }
 
-    "ItemAttachable" in {
+    "ItemAttachable" in:
       val event = ItemAttachable(OrderWatchPath("PATH"), AgentPath("AGENT"))
       testJson[BasicItemEvent](event,
         json"""
@@ -51,9 +49,8 @@ final class BasicItemEventTest extends OurTestSuite
           "key": "OrderWatch:PATH",
           "agentPath": "AGENT"
         }""")
-    }
 
-    "ItemAttached" in {
+    "ItemAttached" in:
       val event = ItemAttached(OrderWatchPath("PATH"), Some(ItemRevision(7)), AgentPath("AGENT"))
       testJson[BasicItemEvent](event,
         json"""
@@ -72,9 +69,8 @@ final class BasicItemEventTest extends OurTestSuite
           "itemRevision": 7,
           "agentPath": "AGENT"
         }""")
-    }
 
-    "ItemAttachedToMe" in {
+    "ItemAttachedToMe" in:
       testJson[BasicItemEvent](
         ItemAttachedToMe(
           JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
@@ -104,9 +100,8 @@ final class BasicItemEventTest extends OurTestSuite
             "itemRevision": 7
            }
         }""")
-    }
 
-    "ItemDetachable" in {
+    "ItemDetachable" in:
       val event = ItemDetachable(WorkflowPath("PATH") ~ "1", AgentPath("AGENT"))
       testJson[BasicItemEvent](event,
         json"""
@@ -123,9 +118,8 @@ final class BasicItemEventTest extends OurTestSuite
           "key": "Workflow:PATH~1",
           "agentPath": "AGENT"
         }""")
-    }
 
-    "ItemDetached" in {
+    "ItemDetached" in:
       val event = ItemDetached(WorkflowPath("PATH") ~ "1", AgentPath("AGENT"))
       testJson[BasicItemEvent](event,
         json"""
@@ -142,9 +136,8 @@ final class BasicItemEventTest extends OurTestSuite
           "key": "Workflow:PATH~1",
           "agentPath": "AGENT"
         }""")
-    }
 
-    "ItemDetachingFromMe" in {
+    "ItemDetachingFromMe" in:
       val event = ItemDetachingFromMe(SubagentId("SUBAGENT"))
       testJson[BasicItemEvent](event,
         json"""
@@ -152,6 +145,4 @@ final class BasicItemEventTest extends OurTestSuite
           "TYPE": "ItemDetachingFromMe",
           "key": "Subagent:SUBAGENT"
         }""")
-    }
   }
-}

@@ -21,8 +21,8 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import org.scalatest.Assertion
 
 /** Test for JS-2114 . */
-final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryProviderForScalaTest
-{
+final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryProviderForScalaTest:
+
   private given IORuntime = ioRuntime
 
   override protected val controllerConfig = config"""
@@ -49,7 +49,7 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
   "Restart Director with disabled Subagent, enable" in
     testDisabledSubagentAtAgentState(restartAgent = true)
 
-  private def testDisabledSubagentAtAgentState(restartAgent: Boolean): Assertion = {
+  private def testDisabledSubagentAtAgentState(restartAgent: Boolean): Assertion =
     val controller = directoryProvider
       .newController(httpPort = findFreeTcpPort().some)
 
@@ -69,11 +69,10 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
       try
         enableOrDisableSubagent(enabled = false)
 
-        if restartAgent then {
+        if restartAgent then
           agent.stop.await(99.s)
 
           agent = directoryProvider.startAgent(agentPath).await(99.s)
-        }
 
         enableOrDisableSubagent(enabled = true)
 
@@ -86,15 +85,12 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
         agent.stop.await(99.s)
     finally
       controller.stop.await(99.s)
-  }
-}
 
-object SubagentStartDisabledTest
-{
+object SubagentStartDisabledTest:
+
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW"),
     Seq(
       EmptyJob.execute(agentPath, processLimit = 100)))
-}

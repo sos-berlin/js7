@@ -195,9 +195,8 @@ object PgpCommons:
         new PGPPublicKeyRing(
           PGPUtil.getDecoderStream(labeledKey.value.toInputStream),
             newFingerPrintCalculator()))
-    catch {
+    catch
       case NonFatal(t) => Left(Problem.fromThrowable(t).withKey(labeledKey.label))
-    }
 
   def newFingerPrintCalculator(): KeyFingerPrintCalculator =
     new JcaKeyFingerprintCalculator  // or BcKeyFingerprintCalculator

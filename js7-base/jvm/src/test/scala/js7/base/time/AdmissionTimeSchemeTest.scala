@@ -10,9 +10,9 @@ import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.*
 import scala.concurrent.duration.FiniteDuration
 
-final class AdmissionTimeSchemeTest extends OurTestSuite
-{
-  "JSON" in {
+final class AdmissionTimeSchemeTest extends OurTestSuite:
+
+  "JSON" in:
     testJson(
       AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
@@ -43,16 +43,15 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
           }
         ]
       }""")
-  }
+
 
   "findLocalInterval" - {
-    "Empty" in {
+    "Empty" in:
       implicit val admissionTimeScheme = AdmissionTimeScheme(Nil)
       assert(findLocalInterval("2021-08-23T06:00:00") == None)
-    }
 
     "WeekdayPeriod" - {
-      "Simple" in {
+      "Simple" in:
         implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h)))
@@ -68,9 +67,8 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
 
         assert(findLocalInterval("2021-08-24T10:00") ==
           Some(localInterval("2021-08-29T22:00", 1.h)))
-      }
 
-      "WeekdayPeriod overlap from previous week" in {
+      "WeekdayPeriod overlap from previous week" in:
         implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 3.h)))
@@ -82,10 +80,9 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
 
         assert(findLocalInterval("2021-08-30T02:00") ==
           Some(localInterval("2021-08-31T08:00", 2.h)))
-      }
     }
 
-    "WeekdayPeriod and DailyPeriod" in {
+    "WeekdayPeriod and DailyPeriod" in:
       implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
         WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h),
@@ -111,10 +108,7 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
 
       assert(findLocalInterval("2021-08-29T13:00") ==
         Some(localInterval("2021-08-29T22:00", 1.h)))
-    }
   }
-}
-
 
 object AdmissionTimeSchemeTest:
 

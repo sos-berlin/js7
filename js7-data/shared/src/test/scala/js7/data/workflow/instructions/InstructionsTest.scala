@@ -10,23 +10,20 @@ import js7.tester.CirceJsonTester.testJson
   * @author Joacim Zschimmer
   */
 final class InstructionsTest extends OurTestSuite
- {
+ :
    "JSON" - {
-    "With Label" in {
+    "With Label" in:
       testJson[Labeled](
         "A" @: ExplicitEnd(),
         json"""{
           "label": "A",
           "TYPE": "End"
         }""")
-    }
 
-    "Without Label" in {
+    "Without Label" in:
       testJson[Labeled](
         () @: ExplicitEnd(),
         json"""{
           "TYPE": "End"
         }""")
-    }
-  }
-}
+   }

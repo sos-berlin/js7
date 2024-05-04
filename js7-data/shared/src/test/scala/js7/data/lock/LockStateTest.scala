@@ -9,9 +9,9 @@ import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
 import scala.collection.immutable.Queue
 
-final class LockStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class LockStateTest extends OurTestSuite:
+
+  "JSON" in:
     testJson(LockState(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
       {
         "lock": {
@@ -24,7 +24,6 @@ final class LockStateTest extends OurTestSuite
         },
         "queue": []
       }""")
-  }
 
   private val a = OrderId("A")
   private val b = OrderId("B")
@@ -36,10 +35,10 @@ final class LockStateTest extends OurTestSuite
   for ((lock, testName) <- Seq(
     //Lock(LockPath("LOCK")) -> "Exclusive lock",
     Lock(LockPath("LOCK"), 1) -> "Lock with limit=1",
-    Lock(LockPath("LOCK"), 3) -> "Lock with limit=3")) {
+    Lock(LockPath("LOCK"), 3) -> "Lock with limit=3"))
 
     testName - {
-      "OrderLockAcquired" in {
+      "OrderLockAcquired" in:
         assert(LockState(lock, Available).acquire(a, None) ==
           Right(LockState(lock, Exclusive(a))))
         assert(LockState(lock, Available).acquire(a, Some(1)) ==
@@ -66,9 +65,8 @@ final class LockStateTest extends OurTestSuite
           Left(Problem("Lock:LOCK has already been acquired by this order")))
         assert(LockState(lock, NonExclusive(Map(b -> 1))).acquire(b, Some(1)) ==
           Left(Problem("Lock:LOCK has already been acquired by this order")))
-      }
 
-      "OrderLockQueued" in {
+      "OrderLockQueued" in:
         assert(LockState(lock, Available).enqueue(a, None) ==
           Right(LockState(lock, Available, Queue(a))))
 
@@ -92,18 +90,16 @@ final class LockStateTest extends OurTestSuite
           Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
         assert(LockState(lock, Exclusive(a), Queue(b, c, d)).enqueue(c, None) ==
           Left(Problem("Order:C already queues for Lock:LOCK")))
-      }
 
-      "Child order cannot lock if parent order has locked" in {
+      "Child order cannot lock if parent order has locked" in:
         assert(LockState(lock, Exclusive(a)).enqueue(a / "CHILD", None) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
         assert(LockState(lock, Exclusive(a)).enqueue(a / "CHILD" / "GRANDCHILD", None) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
         assert(LockState(lock, Exclusive(a / "CHILD")).enqueue(a / "CHILD" / "GRANDCHILD", None) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A|CHILD")))
-      }
 
-      "OrderLockReleased" in {
+      "OrderLockReleased" in:
         assert(LockState(lock, Available).release(a) ==
           Left(Problem("Lock:LOCK has not been acquired by this order")))
 
@@ -123,9 +119,7 @@ final class LockStateTest extends OurTestSuite
           Right(LockState(lock, NonExclusive(Map(a -> 1)))))
         assert(LockState(lock, NonExclusive(Map(a -> 1, b -> 1, c -> 1))).release(b) ==
           Right(LockState(lock, NonExclusive(Map(a -> 1, c -> 1)))))
-      }
     }
-  }
 
   //"Exclusive lock used non-exclusively" in {
   //  implicit val lock = Lock(LockPath("LOCK"))
@@ -146,7 +140,7 @@ final class LockStateTest extends OurTestSuite
   "Lock with limit=3" - {
     val lock = Lock(LockPath("LOCK"), limit = 3)
 
-    "acquire" in {
+    "acquire" in:
       assert(LockState(lock, NonExclusive(Map(a -> 1))).acquire(b, Some(1)) ==
         Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 1)))))
 
@@ -170,9 +164,8 @@ final class LockStateTest extends OurTestSuite
 
       assert(LockState(lock, NonExclusive(Map(a -> 99))).acquire(b, Some(1)) ==
         Left(Problem("Lock:LOCK: count=1 plus alreadyAcquired=99 would exceed limit=3")))
-    }
 
-    "acquire with invalid 'count' number" in {
+    "acquire with invalid 'count' number" in:
       assert(LockState(lock, Available).acquire(c, Some(0)) ==
         Left(Problem("Lock:LOCK: Invalid count=0 requested")))
 
@@ -184,15 +177,13 @@ final class LockStateTest extends OurTestSuite
 
       assert(LockState(lock, NonExclusive(Map(a -> 1))).acquire(c, Some(-1)) ==
         Left(Problem("Lock:LOCK: Invalid count=-1 requested")))
-    }
 
-    "enqueue more than limit" in {
+    "enqueue more than limit" in:
       assert(LockState(lock, Available).enqueue(a, Some(4)) ==
         Left(Problem("Cannot fulfill lock count=4 with Lock:LOCK limit=3")))
-    }
   }
 
-  "Lock with limit=0" in {
+  "Lock with limit=0" in:
     val lock = Lock(LockPath("LOCK"), limit = 0)
 
     assert(LockState(lock, Available).acquire(b, Some(1)) ==
@@ -203,9 +194,8 @@ final class LockStateTest extends OurTestSuite
 
     assert(LockState(lock, NonExclusive(Map(a -> 1))).acquire(b, Some(1)) ==
       Left(Problem("Lock:LOCK: count=1 plus alreadyAcquired=1 would exceed limit=0")))
-  }
 
-  "acquire with integer overflow" in {
+  "acquire with integer overflow" in:
     implicit val lock = Lock(LockPath("LOCK"), limit = Int.MaxValue)
     assert(LockState(lock, NonExclusive(Map(a -> 1))).acquire(b, Some(2)) ==
       Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 2)))))
@@ -213,5 +203,3 @@ final class LockStateTest extends OurTestSuite
     assert(Int.MaxValue + Int.MaxValue == -2)
     assert(LockState(lock, NonExclusive(Map(a -> Int.MaxValue))).acquire(b, Some(Int.MaxValue)) ==
       Left(Problem("Lock:LOCK: count=2147483647 plus alreadyAcquired=2147483647 would exceed limit=2147483647")))
-  }
-}

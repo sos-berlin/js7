@@ -42,8 +42,8 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected def doNotAddItems = true
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
@@ -72,7 +72,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
     .await(99.s)
   private lazy val v1Time = now
 
-  override def beforeAll() = {
+  override def beforeAll() =
     createDirectories(providerDirectory / "config" / "private")
     createDirectories(live)
     createDirectories(orderGeneratorsDir)
@@ -106,7 +106,6 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")
     super.beforeAll()
-  }
 
   override def afterAll() =
     try
@@ -116,21 +115,17 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
       super.afterAll()
 
   "updateControllerConfiguration" - {
-    "(start provider)" in {
+    "(start provider)" in:
       provider
-    }
 
-    "Initially, JS7's Repo is empty" in {
+    "Initially, JS7's Repo is empty" in:
       assert(controllerState.repo.pathToVersionToSignedItems.isEmpty)
-    }
 
-    "Start with two workflows" in {
-      for agentRef <- directoryProvider.agentRefs do {
+    "Start with two workflows" in:
+      for agentRef <- directoryProvider.agentRefs do
         live / (agentRef.path.string + ".agent.json") := agentRef
-      }
-      for subagentItem <- directoryProvider.subagentItems do {
+      for subagentItem <- directoryProvider.subagentItems do
         live / (subagentItem.path.string + ".subagent.json") := subagentItem
-      }
 
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
@@ -160,9 +155,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
         Vector(
           WorkflowPathControlPath(AWorkflowPath),
           WorkflowPathControlPath(BWorkflowPath))))
-    }
 
-    "An unknown and some invalid files" in {
+    "An unknown and some invalid files" in:
       sleep((v1Time + 1.1.seconds).timeLeftOrZero)  // File system timestamps may have only a one second precision
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(CWorkflowPath)
@@ -179,9 +173,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
             Problem("JSON DecodingFailure at .instructions: Missing required field")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-2"), SourceType.Json,
             Problem("JSON DecodingFailure at .instructions: Got value '0' with wrong type, expecting array"))))))
-    }
 
-    "Delete invalid files" in {
+    "Delete invalid files" in:
       delete(live / "UNKNOWN.tmp")
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
@@ -195,9 +188,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
           Repo.Add(sign(TestWorkflow.withId(BWorkflowPath ~ V1)))),
         CWorkflowPath -> List(
           Repo.Add(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))
-    }
 
-    "Delete a Workflow" in {
+    "Delete a Workflow" in:
       deleteFile(BWorkflowPath)
       provider.updateControllerConfiguration(V3.some).await(99.s).orThrow
       assert(controllerState.repo.versionIds == List(V2))
@@ -206,9 +198,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
           Repo.Add(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
         CWorkflowPath -> List(
           Repo.Add(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))
-    }
 
-    "Workflow notation (including a try-instruction)" in {
+    "Workflow notation (including a try-instruction)" in:
       val notation =
         """define workflow {
              try fail;
@@ -227,11 +218,9 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
           WorkflowPathControlPath(AWorkflowPath),
           WorkflowPathControlPath(CWorkflowPath),
           WorkflowPathControlPath(workflowPath))))
-    }
 
-    "stop" in {
+    "stop" in:
       stopProvider.await(99.s)
-    }
   }
 
   "observe" - {
@@ -240,7 +229,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
     lazy val whenObserved = provider.stream.completedL.unsafeToFuture()
     var lastEventId = EventId.BeforeFirst
 
-    "Initial observation with a workflow and an agentRef added" in {
+    "Initial observation with a workflow and an agentRef added" in:
       lastEventId = eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
       //live / (s"$agentPath.json") := AgentRef(agentPath, uri = agent.localUri)
@@ -250,26 +239,23 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
       val events = eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
         .map(path => NoKey <-: VersionedItemAdded(sign(TestWorkflow withId path ~ versionId))))
-    }
 
-    "Delete a workflow" in {
+    "Delete a workflow" in:
       whenObserved
       lastEventId = eventWatch.lastAddedEventId
       deleteFile(CWorkflowPath)
       assert(eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemRemoved(CWorkflowPath)))
-    }
 
-    "Add a workflow" in {
+    "Add a workflow" in:
       assert(!whenObserved.isCompleted)
       lastEventId = eventWatch.lastAddedEventId
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemAdded(sign(TestWorkflow withId CWorkflowPath ~ versionId))))
-    }
 
-    "Change a workflow" in {
+    "Change a workflow" in:
       logger.debug("Change a workflow")
       assert(!whenObserved.isCompleted)
       lastEventId = controller.eventWatch.lastAddedEventId
@@ -277,9 +263,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemChanged(sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
-    }
 
-    "Add an order generator" in {
+    "Add an order generator" in:
       lastEventId = controller.eventWatch.lastAddedEventId
       (orderGeneratorsDir / "test.order.xml") := """<?xml version="1.0"?>
         <order job_chain="A">
@@ -290,9 +275,8 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
       lastEventId = controller.eventWatch.lastAddedEventId
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
-    }
 
-    "Replace an order generator" in {
+    "Replace an order generator" in:
       (orderGeneratorsDir / "test.order.xml") := """<?xml version="1.0"?>
         <order job_chain="B">
           <run_time>
@@ -302,19 +286,16 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
       lastEventId = controller.eventWatch.lastAddedEventId
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
-    }
 
-    "Delete an order generator" in {
+    "Delete an order generator" in:
       delete(orderGeneratorsDir / "test.order.xml")
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
-    }
 
-    "stop" in {
+    "stop" in:
       assert(!whenObserved.isCompleted)
       assert(!whenObserved.isCompleted)
       stopProvider.await(99.s)
       whenObserved await 99.s
-    }
   }
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
@@ -322,11 +303,10 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
 
   private def deleteFile(path: InventoryItemPath): Unit =
     delete(live.resolve(path.toFile(SourceType.Json)))
-}
 
 
-object ProviderTest
-{
+object ProviderTest:
+
   private val logger = Logger[this.type]
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
@@ -377,4 +357,3 @@ object ProviderTest
       ]
     }"""
   private val ChangedWorkflow = ChangedWorkflowJson.as[Workflow].orThrow
-}

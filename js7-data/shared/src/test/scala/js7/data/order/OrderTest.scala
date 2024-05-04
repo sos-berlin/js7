@@ -35,8 +35,8 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderTest extends OurTestSuite
-{
+final class OrderTest extends OurTestSuite:
+
   private val testOrder = Order(
     OrderId("ID"),
     WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
@@ -51,7 +51,7 @@ final class OrderTest extends OurTestSuite
 
   "JSON" - {
     "Order" - {
-      "Minimum" in {
+      "Minimum" in:
         testJson[Order[Order.State]](
           Order(OrderId("ID"), (WorkflowPath("WORKFLOW") ~ "v1") /: Position(0),
             Order.Ready),
@@ -68,9 +68,8 @@ final class OrderTest extends OurTestSuite
               }
             }
           }""")
-      }
 
-      "Ready" in {
+      "Ready" in:
         check(
           testOrder.copy(
             attachedState = Some(Attached(AgentPath("AGENT"))),
@@ -122,9 +121,8 @@ final class OrderTest extends OurTestSuite
               "subagentSelectionId": "SUBAGENT-SELECTION"
             }]
           }""")
-      }
 
-      "Processing (extra Codec)" in {
+      "Processing (extra Codec)" in:
         testJson[Order[Processing]](
           Order(
             OrderId("ID"),
@@ -163,9 +161,8 @@ final class OrderTest extends OurTestSuite
               "TYPE": "Processing"
             }
           }""")
-      }
 
-      "mark" in {
+      "mark" in:
         check(
           Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Fresh,
             mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)),
@@ -192,57 +189,50 @@ final class OrderTest extends OurTestSuite
             "isSuspended": true,
             "isResumed": true
           }""")
-      }
 
       def check(o: Order[State], json: Json) = testJson(o, json)
     }
 
     "State" - {
-      "Fresh immediately" in {
+      "Fresh immediately" in:
         testJson[State](Fresh,
           json"""{
             "TYPE": "Fresh"
           }""")
-      }
 
-      "Ready" in {
+      "Ready" in:
         testJson[State](Ready,
           json"""{
             "TYPE": "Ready"
           }""")
-      }
 
-      "Processing" in {
+      "Processing" in:
         testJson[State](Processing(SubagentId("SUBAGENT")),
           json"""{
             "TYPE": "Processing",
             "subagentId": "SUBAGENT"
           }""")
-      }
 
-      "Processed" in {
+      "Processed" in:
         testJson[State](Processed,
           json"""{
             "TYPE": "Processed"
           }""")
-      }
 
-      "FailedWhileFresh" in {
+      "FailedWhileFresh" in:
         testJson[State](FailedWhileFresh,
           json"""{
             "TYPE": "FailedWhileFresh"
           }""")
-      }
 
-      "DelayedAfterError" in {
+      "DelayedAfterError" in:
         testJson[State](DelayedAfterError(Timestamp("2019-03-07T12:00:00Z")),
           json"""{
             "TYPE": "DelayedAfterError",
             "until": 1551960000000
           }""")
-      }
 
-      "Forked (distinct branches)" in {
+      "Forked (distinct branches)" in:
         testJson[State](Forked(Vector(
           Forked.Child(Fork.Branch.Id("A"), OrderId("A") / "1"),
           Forked.Child(Fork.Branch.Id("B"), OrderId("B") / "2"))),
@@ -258,9 +248,8 @@ final class OrderTest extends OurTestSuite
                 }
               ]
             }""")
-      }
 
-      "Forked (ForkList) " in {
+      "Forked (ForkList) " in:
         testJson[State](Forked(Vector(
           Forked.Child(OrderId("A") / "1", Map("x" -> NumberValue(1))),
           Forked.Child(OrderId("B") / "2", Map.empty[String, Value]))),
@@ -277,24 +266,21 @@ final class OrderTest extends OurTestSuite
                 }
               ]
             }""")
-      }
 
-      "WaitingForLock" in {
+      "WaitingForLock" in:
         testJson[State](WaitingForLock,
           json"""{
             "TYPE": "WaitingForLock"
           }""")
-      }
 
-      "ExpectingNotice" in {
+      "ExpectingNotice" in:
         testJson[State](ExpectingNotice(NoticeId("NOTICE")),
           json"""{
             "TYPE": "ExpectingNotice",
             "noticeId": "NOTICE"
           }""")
-      }
 
-      "ExpectingNotices" in {
+      "ExpectingNotices" in:
         testJson[State](ExpectingNotices(Vector(
           OrderNoticesExpected.Expected(
             BoardPath("BOARD"),
@@ -308,17 +294,15 @@ final class OrderTest extends OurTestSuite
               }
             ]
           }""")
-      }
 
-      "Prompting" in {
+      "Prompting" in:
         testJson[State](Prompting(StringValue("QUESTION")),
           json"""{
             "TYPE": "Prompting",
             "question": "QUESTION"
           }""")
-      }
 
-      "BetweenCycles" in {
+      "BetweenCycles" in:
         testJson[State](
           BetweenCycles(Some(CycleState(
             end = Timestamp("2021-10-01T00:00:00Z"),
@@ -336,31 +320,27 @@ final class OrderTest extends OurTestSuite
               "next": 1633089600000
             }
           }""")
-      }
 
-      "Cancelled" in {
+      "Cancelled" in:
         testJson[State](Cancelled,
           json"""{
             "TYPE": "Cancelled"
           }""")
-      }
 
-      "Finished" in {
+      "Finished" in:
         testJson[State](Finished,
           json"""{
             "TYPE": "Finished"
           }""")
-      }
 
-      "Broken" in {
+      "Broken" in:
         testJson[State](
           Broken(),
           json"""{
             "TYPE": "Broken"
           }""")
-      }
 
-      "Broken until v2.4" in {
+      "Broken until v2.4" in:
         testJson[State](
           Broken(Problem("PROBLEM")): @nowarn("msg=deprecated"),
           json"""{
@@ -369,25 +349,22 @@ final class OrderTest extends OurTestSuite
               "message": "PROBLEM"
             }
           }""")
-      }
     }
 
     "AttachedState" - {
-      "Attached" in {
+      "Attached" in:
         testJson[AttachedState](Attached(AgentPath("AGENT")),
           json"""{
             "TYPE": "Attached",
             "agentPath": "AGENT"
           }""")
-      }
 
-      "Detaching" in {
+      "Detaching" in:
         testJson[AttachedState](Detaching(AgentPath("AGENT")),
           json"""{
             "TYPE": "Detaching",
             "agentPath": "AGENT"
           }""")
-      }
     }
   }
 
@@ -471,13 +448,12 @@ final class OrderTest extends OurTestSuite
       OrderDetachable,
       OrderDetached)
 
-    "Event list is complete" in {
+    "Event list is complete" in:
       assert(allEvents.map(_.getClass).toVector.sortBy(_.getName) ==
         OrderEvent.jsonCodec.classes[OrderCoreEvent]
           .filterNot(_ == classOf[OrderNoticeExpected])
           .filterNot(classOf[LegacyOrderLockEvent] isAssignableFrom _)
           .toVector.sortBy(_.getName))
-    }
 
     val IsDetached  = none[AttachedState]
     val IsAttaching = Some(Attaching(agentPath))
@@ -490,19 +466,16 @@ final class OrderTest extends OurTestSuite
     val SuspendingWithKill = OrderMark.Suspending(SuspensionMode(Some(CancellationMode.Kill()))).some
     val Resuming   = OrderMark.Resuming().some
 
-    case object IsSuspended {
+    case object IsSuspended:
       def unapply(order: Order[Order.State]) = Some(order.isSuspended)
-    }
 
-    case object IsSuspendingWithKill {
+    case object IsSuspendingWithKill:
       def unapply(order: Order[Order.State]) = Some(order.isSuspendingWithKill)
-    }
 
-    case object IsChild {
+    case object IsChild:
       def unapply(order: Order[Order.State]) = Some(order.parent.nonEmpty)
-    }
 
-    "Fresh" in {
+    "Fresh" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Fresh),
         deletionMarkable[Fresh] orElse
         markable[Fresh] orElse
@@ -524,9 +497,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _                 , _, IsDetached             ) => _.isInstanceOf[Fresh]
           case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Ready" in {
+    "Ready" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Ready),
         deletionMarkable[Ready] orElse
         markable[Ready] orElse
@@ -564,9 +536,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred      , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "WaitingForLock" in {
+    "WaitingForLock" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), WaitingForLock),
         deletionMarkable[WaitingForLock] orElse
         markable[WaitingForLock] orElse
@@ -579,9 +550,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred  , _, _, IsDetached) => _.isInstanceOf[WaitingForLock]
           case (_: OrderBroken       , _, _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "ExpectingNotice" in {
+    "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
         OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE"))))
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
@@ -596,9 +566,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[ExpectingNotices]
           case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Processing" in {
+    "Processing" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Processing(subagentId)),
         deletionMarkable[Processing] orElse
         markable[Processing] orElse
@@ -609,9 +578,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _              , _, IsDetached) => _.isInstanceOf[Processing] // Impossible combination
           case (_: OrderBroken   , _                 , _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Processed" in {
+    "Processed" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Processed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Processed] orElse
@@ -630,9 +598,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderStopped         , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]
           case (_: OrderBroken          , _                 , _            , _                      ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "ProcessingKilled" in {
+    "ProcessingKilled" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), ProcessingKilled,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[ProcessingKilled] orElse
@@ -651,9 +618,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderStopped     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]
           case (_: OrderBroken      , _                 , _, _                                  ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Prompting" in {
+    "Prompting" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Prompting(StringValue("QUESTION")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Prompting] orElse
@@ -667,9 +633,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred   , _, _, IsDetached) => _.isInstanceOf[Prompting]
           case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "BetweenCycles" in {
+    "BetweenCycles" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), BetweenCycles(Some(cycleState)),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[BetweenCycles] orElse
@@ -688,10 +653,9 @@ final class OrderTest extends OurTestSuite
           case (_: OrderFailed         , _                 , _, IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
-    }
 
 
-    "FailedWhileFresh" in {
+    "FailedWhileFresh" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedWhileFresh,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
         deletionMarkable[FailedWhileFresh] orElse
@@ -704,9 +668,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[FailedWhileFresh]
           case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Failed" in {
+    "Failed" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Failed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.failed))),
         deletionMarkable[Failed] orElse
@@ -719,9 +682,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[Failed]
           case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "FailedInFork" in {
+    "FailedInFork" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedInFork, parent = Some(OrderId("PARENT")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
         detachingAllowed[FailedInFork] orElse
@@ -733,9 +695,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred     , _             , _, IsDetached) => _.isInstanceOf[FailedInFork]
           case (_: OrderBroken          , _             , _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "DelayedAfterError" in {
+    "DelayedAfterError" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         detachingAllowed[DelayedAfterError] orElse
         deletionMarkable[DelayedAfterError] orElse
@@ -750,9 +711,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderGoes, _                   , _, _                      ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Broken" in {
+    "Broken" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Broken()),
         deletionMarkable[Broken] orElse
         markable[Broken] orElse
@@ -768,9 +728,8 @@ final class OrderTest extends OurTestSuite
           case (_: OrderFailedInFork    , IsChild(true), IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderStopped         , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped] // ???
         })
-    }
 
-    "Forked" in {
+    "Forked" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Forked(Vector(Forked.Child("BRANCH", orderId / "CHILD")))),
         deletionMarkable[Forked] orElse
         markable[Forked] orElse
@@ -783,106 +742,93 @@ final class OrderTest extends OurTestSuite
           case (_: OrderTransferred , _           , _, IsDetached) => _.isInstanceOf[Forked]
           case (_: OrderBroken, _                 , _, _         ) => _.isInstanceOf[Broken]
         })
-    }
 
-    "Cancelled" in {
+    "Cancelled" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Cancelled),
         deletionMarkable[Cancelled] orElse {
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[Cancelled]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Deleted]
         })
-    }
 
-    "Finished" in {
+    "Finished" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Finished),
         deletionMarkable[Finished] orElse {
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[Finished]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[Finished]
           case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Deleted]
         })
-    }
 
     "attachedState" - {
-      "attachedState=None" in {
+      "attachedState=None" in:
         val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = None)
         assert(order.applyEvent(OrderAttachable(agentPath)) == Right(order.copy(attachedState = Some(Attaching(agentPath)))))
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
-      }
 
-      "attachedState=Attaching" in {
+      "attachedState=Attaching" in:
         val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)) == Right(order.copy(attachedState = Some(Attached(agentPath)))))
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
-      }
 
-      "attachedState=Attached" in {
+      "attachedState=Attached" in:
         val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attached(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentPath)))))
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
-      }
 
-      "attachedState=Detaching" in {
+      "attachedState=Detaching" in:
         val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Detaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
-      }
     }
 
     type ToPredicate = PartialFunction[
       (OrderEvent, Order[Order.State], Order[Order.State], Option[AttachedState]),
       State => Boolean]
 
-    def deletionMarkable[S <: Order.State: ClassTag]: ToPredicate = {
+    def deletionMarkable[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderDeletionMarked, _, IsChild(false), _) =>
         implicitClass[S] isAssignableFrom _.getClass
-    }
 
-    def markable[S <: Order.State: ClassTag]: ToPredicate = {
+    def markable[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderCancellationMarked | _: OrderSuspensionMarked | _: OrderResumptionMarked, _, _, _) =>
         implicitClass[S] isAssignableFrom _.getClass
-    }
 
-    def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+    def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderCancellationMarked, _, _, _) => implicitClass[S] isAssignableFrom _.getClass
-    }
 
-    def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+    def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderSuspensionMarked, IsSuspended(false), _, _) => implicitClass[S] isAssignableFrom _.getClass
       case (_: OrderResumptionMarked , _                , _, _) => implicitClass[S] isAssignableFrom _.getClass
-    }
 
-    def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+    def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderAttachable, _, _, IsDetached ) => implicitClass[S] isAssignableFrom _.getClass
       case (_: OrderAttached  , _, _, IsAttaching) => implicitClass[S] isAssignableFrom _.getClass
-    }
 
-    def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+    def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate =
       case (OrderDetachable, _, _, IsAttached ) => implicitClass[S] isAssignableFrom _.getClass
       case (OrderDetached  , _, _, IsAttaching | IsAttached | IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
-    }
 
     /** Checks each event in `allEvents`. */
     def checkAllEvents(templateOrder: Order[State], toPredicate: ToPredicate)(implicit pos: source.Position): Unit =
-      allEvents foreach {
+      allEvents foreach:
         case OrderCancellationMarkedOnAgent =>
         case OrderSuspensionMarkedOnAgent =>
         case event =>
-          for m <- View[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming) do {
-            for isSuspended <- View(false, true) do {
-              for isChild <- View(false, true) do {
-                for a <- View(IsDetached, IsAttaching, IsAttached, IsDetaching) do /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
+          for m <- View[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming) do
+            for isSuspended <- View(false, true) do
+              for isChild <- View(false, true) do
+                for a <- View(IsDetached, IsAttaching, IsAttached, IsDetaching) do /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/
                   val mString = m.fold("no mark")(_.getClass.simpleScalaName)
                   val aString = a.fold("detached")(_.getClass.simpleScalaName)
                   val order = templateOrder.copy(attachedState = a, mark = m,
@@ -891,7 +837,7 @@ final class OrderTest extends OurTestSuite
                   val updated = order.applyEvent(event)
                   val maybeState = updated.map(_.state)
                   val maybePredicate = toPredicate.lift((event, order, order, a))
-                  (maybeState, maybePredicate) match {
+                  (maybeState, maybePredicate) match
                     case (Right(state), Some(predicate)) =>
                       assert(predicate(state), s"- for  ${templateOrder.state} state ($mString, isSuspended=$isSuspended, isChild=$isChild, $aString) <-: $event -> $state\n  $order")
                     case (Right(state), None) =>
@@ -899,58 +845,44 @@ final class OrderTest extends OurTestSuite
                     case (Left(problem), Some(_)) =>
                       fail(s"Failed test case for $order <-: $event -> 💥 $problem\n  $order")
                     case (Left(_), None) =>
-                  }
-                }
-              }
-            }
-          }
-      }
   }
 
   "Operations" - {
-    "attached" in {
+    "attached" in:
       val agentPath = AgentPath("A")
       assert(testOrder.attached.isLeft)
       assert(testOrder.copy(attachedState = Some(Attached(agentPath))) .attached == Right(agentPath))
       assert(testOrder.copy(attachedState = Some(Detaching(agentPath))).attached.isLeft)
-    }
 
-    "detaching" in {
+    "detaching" in:
       val agentPath = AgentPath("A")
       assert(testOrder.detaching.isLeft)
       assert(testOrder.copy(attachedState = Some(Attached(agentPath))) .detaching.isLeft)
       assert(testOrder.copy(attachedState = Some(Detaching(agentPath))).detaching == Right(agentPath))
-    }
 
-    "castState" in {
+    "castState" in:
       assert(testOrder.castState[Ready] eq testOrder)
       assert(testOrder.castState[IsFreshOrReady] eq testOrder)
       assert(testOrder.castState[State] eq testOrder)
-      intercept[ProblemException] {
+      intercept[ProblemException]:
         testOrder.castState[Processed]
-      }
-    }
 
-    "ifState" in {
+    "ifState" in:
       assert(testOrder.ifState[Ready] == Some(testOrder))
       assert(testOrder.ifState[IsFreshOrReady] == Some(testOrder))
       assert(testOrder.ifState[State] == Some(testOrder))
       assert(testOrder.ifState[Processed] == None)
-    }
 
-    "isAttaching" in {
+    "isAttaching" in:
       val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
         attachedState = Some(Detaching(AgentPath("AGENT"))))
       assert(order.detaching == Right(AgentPath("AGENT")))
 
       for (o <- Array(
             order.copy(attachedState = Some(Attached(AgentPath("AGENT")))),
-            order.copy(attachedState = None))) {
+            order.copy(attachedState = None)))
         val Left(problem) = o.detaching: @unchecked
         assert(problem.toString contains "ORDER-ID")
-      }
-    }
-
   }
 
   "Events" - {
@@ -964,36 +896,32 @@ final class OrderTest extends OurTestSuite
           HistoricOutcome(Position(2), OrderOutcome.succeeded)),
         isSuspended = true)
 
-      "Truncate history at position" in {
-        for i <- 0 to 2 do withClue(s"Position $i: ") {
+      "Truncate history at position" in:
+        for i <- 0 to 2 do withClue(s"Position $i: "):
           assert(order.applyEvent(OrderResumed(Some(Position(i)), Nil)).toOption.get.historicOutcomes
             == order.historicOutcomes.take(i))
-        }
-      }
 
       def resume(operations: Seq[HistoryOperation]): Seq[HistoricOutcome] =
         order
           .applyEvent(OrderResumed(None, operations))
           .toOption.get.historicOutcomes
 
-      "ReplaceHistoricOutcome" in {
+      "ReplaceHistoricOutcome" in:
         assert(resume(Seq(
           ReplaceHistoricOutcome(Position(1), OrderOutcome.failed))) ==
           Seq(
             HistoricOutcome(Position(0), OrderOutcome.succeeded),
             HistoricOutcome(Position(1), OrderOutcome.failed),
             HistoricOutcome(Position(2), OrderOutcome.succeeded)))
-      }
 
-      "DeletedHistoricOutcome" in {
+      "DeletedHistoricOutcome" in:
         assert(resume(Seq(
           DeleteHistoricOutcome(Position(1)))) ==
           Seq(
             HistoricOutcome(Position(0), OrderOutcome.succeeded),
             HistoricOutcome(Position(2), OrderOutcome.succeeded)))
-      }
 
-      "InsertHistoricOutcome" in {
+      "InsertHistoricOutcome" in:
         assert(resume(Seq(
           InsertHistoricOutcome(Position(1), Position(1) / Then % 0, OrderOutcome.failed),
           InsertHistoricOutcome(Position(1), Position(1) / Then % 1, OrderOutcome.failed))) ==
@@ -1003,9 +931,8 @@ final class OrderTest extends OurTestSuite
             HistoricOutcome(Position(1) / Then % 1, OrderOutcome.failed),
             HistoricOutcome(Position(1), OrderOutcome.succeeded),
             HistoricOutcome(Position(2), OrderOutcome.succeeded)))
-      }
 
-      "AppendHistoricOutcome" in {
+      "AppendHistoricOutcome" in:
         assert(resume(Seq(
           AppendHistoricOutcome(Position(3), OrderOutcome.failed),
           AppendHistoricOutcome(Position(4), OrderOutcome.failed))) ==
@@ -1015,9 +942,8 @@ final class OrderTest extends OurTestSuite
             HistoricOutcome(Position(2), OrderOutcome.succeeded),
             HistoricOutcome(Position(3), OrderOutcome.failed),
             HistoricOutcome(Position(4), OrderOutcome.failed)))
-      }
 
-      "Mixed" in {
+      "Mixed" in:
         assert(resume(Seq(
           InsertHistoricOutcome(Position(2), Position(2) / Then % 0, OrderOutcome.failed),
           DeleteHistoricOutcome(Position(1)),
@@ -1025,23 +951,20 @@ final class OrderTest extends OurTestSuite
           Seq(
             HistoricOutcome(Position(0), OrderOutcome.succeeded),
             HistoricOutcome(Position(2) / Then % 0, OrderOutcome.failed)))
-      }
     }
   }
 
-  "forkPositionOf" in {
+  "forkPositionOf" in:
     assert(testOrder.withPosition(Position(1)).forkPosition.isLeft)
     assert(testOrder.withPosition(Position(1) / "fork+A" % 2).forkPosition == Right(Position(1)))
     assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Right(Position(1)))
     assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3 / "fork+B" % 4).forkPosition == Right(Position(1) / "fork+A" % 2 / Then % 3))
-  }
 
-  "Error message when updated failed" in {
+  "Error message when updated failed" in:
     assert(testOrder.applyEvent(OrderDetachable) ==
       Left(InapplicableOrderEventProblem(OrderDetachable, testOrder))) // "Order 'ID' at position 'WORKFLOW~VERSION:0' in state 'Ready', at Controller, received an inapplicable event: OrderDetachable")))
-  }
 
-  "historicJobExecutionCount" in {
+  "historicJobExecutionCount" in:
     val jobName = WorkflowJob.Name("JOB")
     val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1",
       Vector(
@@ -1060,18 +983,14 @@ final class OrderTest extends OurTestSuite
     assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(0)), workflow) == 3)
     assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(1)), workflow) == 0)
     assert(order.historicJobExecutionCount(JobKey(workflow.id, jobName), workflow) == 2)
-  }
 
-  if sys.props contains "test.speed" then "Speed" in {
+  if sys.props contains "test.speed" then "Speed" in:
     val order = Order(OrderId("ORDER-1"), (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(1), Ready,
       attachedState = Some(Attached(AgentPath("AGENT"))))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])
-    def testSpeed(n: Int, ops: String)(what: => Unit): Unit = {
+    def testSpeed(n: Int, ops: String)(what: => Unit): Unit =
       val start = Timestamp.currentTimeMillis
       for _ <- 1 to n do what
       val duration = Timestamp.currentTimeMillis - start
       println(s"${duration}ms/$n $ops ${(n * 1000L / duration).toString} $ops/s")
-    }
-  }
-}

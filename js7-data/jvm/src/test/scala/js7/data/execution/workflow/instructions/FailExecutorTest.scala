@@ -16,8 +16,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-final class FailExecutorTest extends OurTestSuite
-{
+final class FailExecutorTest extends OurTestSuite:
+
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 
   private lazy val stateView = new TestStateView(
@@ -27,44 +27,38 @@ final class FailExecutorTest extends OurTestSuite
       ForkedOrder.id -> ForkedOrder,
       Carrot.id -> Carrot,
       Lemon.id -> Lemon)
-  ) {
+  ):
     override def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]) =
       Set(Carrot.id, Lemon.id)(order.id)
 
     override def instruction(position: WorkflowPosition) =
-      position match {
+      position match
         case WorkflowPosition(TestWorkflowId, Position(Nil, InstructionNr(1))) =>
           Fork.of(
             "🥕" -> Workflow.empty,
             "🍋" -> Workflow.empty)
         //case WorkflowPosition(TestWorkflowId, Position(BranchPath.Segment(InstructionNr(1), BranchId.Named("fork+🥕")) :: Nil, InstructionNr(2))) =>
         case pos => fail(s"No instruction at $pos")
-      }
-  }
 
   "toEvents" - {
-    "Fresh order will be started" in {
+    "Fresh order will be started" in:
       assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh), stateView) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
-    }
 
     "Catchable Fail" - {
-      "Detached order" in {
+      "Detached order" in:
         assert(failExecutor.toEvents(Fail(), TestOrder, stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
-      }
 
-      "Attached order" in {
+      "Attached order" in:
         assert(failExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(OrderOutcome.failed)))))
-      }
     }
   }
-}
 
 
-object FailExecutorTest
-{
+object FailExecutorTest:
+
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
 
   private val TestOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Ready)
@@ -79,4 +73,3 @@ object FailExecutorTest
 
   private val Lemon  = Order(ForkedOrder.id / "🍋", TestWorkflowId /: (Position(1) / "fork+🍋" % 4),
     Order.Ready, parent = Some(ForkedOrder.id))
-}

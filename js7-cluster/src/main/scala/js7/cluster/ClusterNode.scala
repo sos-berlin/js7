@@ -101,7 +101,7 @@ extends Service.StoppableByRequest:
         .*>(untilStopRequested)
         .guaranteeCaseLazy: outcome =>
           stopRecovery(ProgramTermination()/*???*/) *>
-            IO.defer {
+            IO.defer:
               (passiveOrWorkingNode.get(), outcome) match
                 case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
                   passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
@@ -110,7 +110,6 @@ extends Service.StoppableByRequest:
                   workingClusterNodeAllocated.release
 
                 case _ => IO.unit
-            }
             //? *> stopWorkingClusterNode
 
   private def stopWorkingClusterNode: IO[Unit] =
@@ -404,7 +403,7 @@ object ClusterNode:
                       ourNodeId = recoveredClusterState.activeId,
                       otherNodeId = recoveredClusterState.passiveId)
                     .orThrow)
-                .map {
+                .map:
                   case None /*Other node has not failed-over*/ =>
                     logger.info(s"The other $passiveId is up and still passive, " +
                       "so this node remains the active cluster node")
@@ -412,7 +411,6 @@ object ClusterNode:
 
                   case Some(otherFailedOver) =>
                     Some(startPassiveAfterFailover(recoveredClusterState, otherFailedOver))
-                }
 
           Prepared(
             currentPassiveReplicatedState =

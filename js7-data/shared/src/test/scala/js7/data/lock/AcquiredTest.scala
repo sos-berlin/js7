@@ -6,9 +6,9 @@ import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
 
-final class AcquiredTest extends OurTestSuite
-{
-  "JSON" in {
+final class AcquiredTest extends OurTestSuite:
+
+  "JSON" in:
     testJson[Acquired](Available, json"""
       {
         "TYPE": "Available"
@@ -27,7 +27,6 @@ final class AcquiredTest extends OurTestSuite
           "A": 3
         }
       }""")
-  }
 
   private val a = OrderId("A")
   private val b = OrderId("B")
@@ -35,7 +34,7 @@ final class AcquiredTest extends OurTestSuite
   private val d = OrderId("D")
 
   "Acquired" - {
-    "acquireFor" in {
+    "acquireFor" in:
       assert(Available.acquireFor(a, None) == Right(Exclusive(a)))
       assert(Available.acquireFor(a, Some(1)) == Right(NonExclusive(Map(a -> 1))))
 
@@ -53,9 +52,8 @@ final class AcquiredTest extends OurTestSuite
       assert(NonExclusive(Map(a -> 1, b -> 1)).acquireFor(b, Some(1)) == Left(LockRefusal.AlreadyAcquiredByThisOrder))
       assert(NonExclusive(Map(b -> 1)).acquireFor(b, Some(1)) == Left(LockRefusal.AlreadyAcquiredByThisOrder))
       assert(NonExclusive(Map(a -> 1, b -> 22)).acquireFor(c, Some(333)) == Right(NonExclusive(Map(a -> 1, b -> 22, c -> 333))))
-    }
 
-    "release" in {
+    "release" in:
       assert(Available.release(a) == Left(LockRefusal.UnknownReleasingOrderError))
 
       assert(Exclusive(a).release(a) == Right(Available))
@@ -67,6 +65,4 @@ final class AcquiredTest extends OurTestSuite
 
       assert(NonExclusive(Map(a -> 1, b -> 1)).release(b) == Right(NonExclusive(Map(a -> 1))))
       assert(NonExclusive(Map(a -> 1, b -> 1, c -> 1)).release(b) == Right(NonExclusive(Map(a -> 1, c -> 1))))
-    }
   }
-}

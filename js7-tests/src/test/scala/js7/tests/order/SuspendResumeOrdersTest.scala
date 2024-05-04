@@ -43,8 +43,8 @@ import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScr
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
 final class SuspendResumeOrdersTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -61,13 +61,11 @@ final class SuspendResumeOrdersTest
 
   import controller.api.{addOrder, executeCommand}
 
-  override def beforeAll() = {
-    for a <- directoryProvider.agentEnvs do {
+  override def beforeAll() =
+    for a <- directoryProvider.agentEnvs do
       a.writeExecutable(pathExecutable, waitingForFileScript(triggerFile, delete = true))
-    }
     super.beforeAll()
     controller.eventWatch.await[AgentReady]()
-  }
 
   override def afterAll() =
     try
@@ -75,7 +73,7 @@ final class SuspendResumeOrdersTest
     finally
       super.afterAll()
 
-  "Suspend and resume a fresh order" in {
+  "Suspend and resume a fresh order" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 2.s/*1s too short in rare cases*/))
     addOrder(order).await(99.s).orThrow
@@ -114,9 +112,8 @@ final class SuspendResumeOrdersTest
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "An order reaching end of workflow is suspendible" in {
+  "An order reaching end of workflow is suspendible" in:
     val order = FreshOrder(OrderId("🔻"), singleJobWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -146,9 +143,8 @@ final class SuspendResumeOrdersTest
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(),
       OrderFinished()))
-  }
 
-  "Suspend with kill" in {
+  "Suspend with kill" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("♣️"), singleJobWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -160,13 +156,12 @@ final class SuspendResumeOrdersTest
 
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten])
-      .map {
+      .map:
         case OrderProcessed(OrderOutcome.Killed(failed: OrderOutcome.Failed)) if failed.namedValues == NamedValues.rc(SIGKILL) =>
           // Sometimes, SIGTERM does not work and SIGKILL be sent. Something wrong with the bash script ????
           logger.error("SIGTERM did not work")
           OrderProcessed(OrderOutcome.Killed(failed.copy(namedValues = NamedValues.rc(SIGTERM))))  // Repair, to let test succceed
         case o => o
-      }
 
     assert(events == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
@@ -201,9 +196,8 @@ final class SuspendResumeOrdersTest
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Suspend and resume orders between two jobs" in {
+  "Suspend and resume orders between two jobs" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("♦️"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -243,9 +237,8 @@ final class SuspendResumeOrdersTest
         OrderDetachable,
         OrderDetached,
         OrderFinished()))
-  }
 
-  "An order being cancelled is not suspendible nor resumable" in {
+  "An order being cancelled is not suspendible nor resumable" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔷"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -257,9 +250,8 @@ final class SuspendResumeOrdersTest
 
     touchFile(triggerFile)
     eventWatch.await[OrderCancelled](_.key == order.id)
-  }
 
-  "Suspending a forked order does not suspend child orders" in {
+  "Suspending a forked order does not suspend child orders" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -295,14 +287,12 @@ final class SuspendResumeOrdersTest
         OrderId("FORK") <-: OrderJoined(OrderOutcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderSuspended))
-  }
 
-  "Suspend unknown order" in {
+  "Suspend unknown order" in:
     assert(executeCommand(SuspendOrders(Set(OrderId("UNKNOWN")))).await(99.s) ==
       Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
-  }
 
-  "Suspend multiple orders with Batch" in {
+  "Suspend multiple orders with Batch" in:
     deleteIfExists(triggerFile)
     val orders = for i <- 1 to 3 yield
       FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.s))
@@ -313,9 +303,8 @@ final class SuspendResumeOrdersTest
     ).await(99.s).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
     for o <- orders do eventWatch.await[OrderSuspended](_.key == o.id)
-  }
 
-  "Resume a still suspending order" in {
+  "Resume a still suspending order" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔹"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -358,9 +347,8 @@ final class SuspendResumeOrdersTest
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Resume with position a still suspending order is inhibited" in {
+  "Resume with position a still suspending order is inhibited" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🟦"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -390,9 +378,8 @@ final class SuspendResumeOrdersTest
 
     executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-  }
 
-  "Suspend and resume twice on same Agent" in {
+  "Suspend and resume twice on same Agent" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🟧"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -444,9 +431,8 @@ final class SuspendResumeOrdersTest
 
       OrderResumed(),
       OrderFinished()))
-  }
 
-  "Resume with invalid position is rejected" in {
+  "Resume with invalid position is rejected" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("INVALID-POSITION"), tryWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -473,9 +459,8 @@ final class SuspendResumeOrdersTest
 
     executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-  }
 
-  "Resume with changed position and changed historic outcomes" in {
+  "Resume with changed position and changed historic outcomes" in:
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔶"), tryWorkflow.path)
     addOrder(order).await(99.s).orThrow
@@ -528,9 +513,8 @@ final class SuspendResumeOrdersTest
         HistoricOutcome(Position(2) / Try_ % 0, OrderOutcome.Failed(Some("FAILURE"))),
         HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.succeeded),
         HistoricOutcome(Position(2) / try_(1) % 0, OrderOutcome.Failed(Some("FAILURE"))))))))
-  }
 
-  "Resume when Failed" in {
+  "Resume when Failed" in:
     val order = FreshOrder(OrderId("🟫"), failingWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id)
@@ -583,9 +567,8 @@ final class SuspendResumeOrdersTest
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(1))))
-  }
 
-  "Suspend and resume at end of workflow" in {
+  "Suspend and resume at end of workflow" in:
     val workflow = Workflow(
       WorkflowPath("SUSPEND-AT-END"),
       Seq(
@@ -614,25 +597,22 @@ final class SuspendResumeOrdersTest
         OrderFinished(),
         OrderDeleted))
     }
-  }
 
   "Suspend then cancel" - {
-    "Suspend in the middle of a workflow, then cancel" in {
+    "Suspend in the middle of a workflow, then cancel" in:
       testSuspendAndCancel(
         Workflow(
           WorkflowPath("SUSPEND-THEN-CANCEL"),
           Seq(
             Prompt(expr("'PROMPT'")),
             EmptyInstruction())))
-    }
 
-    "Suspend at end of workflow, then cancel" in {
+    "Suspend at end of workflow, then cancel" in:
       testSuspendAndCancel(
         Workflow(
           WorkflowPath("SUSPEND-AT-END-THEN-CANCEL"),
           Seq(
             Prompt(expr("'PROMPT'")))))
-    }
 
     def testSuspendAndCancel(workflow: Workflow): Unit =
       withTemporaryItem(workflow) { workflow =>
@@ -834,11 +814,10 @@ final class SuspendResumeOrdersTest
           OrderFailedInFork(Position(0) / BranchId.fork("BRANCH") % 0),
           OrderResumed(Some(Position(0) / BranchId.fork("BRANCH") % 1), asSucceeded = true),
           OrderMoved(Position(0) / BranchId.fork("BRANCH") % 2)))
-}
 
 
-object SuspendResumeOrdersTest
-{
+object SuspendResumeOrdersTest:
+
   private val logger = Logger[this.type]
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath = AgentPath("AGENT")
@@ -888,4 +867,3 @@ object SuspendResumeOrdersTest
 
   private object FailingSemaJob extends InternalJob.Companion[FailingSemaJob]:
     val semaphore = Semaphore[IO](0).unsafeMemoize
-}

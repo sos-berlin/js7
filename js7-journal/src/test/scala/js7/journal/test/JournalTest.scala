@@ -22,11 +22,11 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixin
-{
+final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixin:
+
   private given ExecutionContext = ioRuntime.compute
 
-  "First run" in {
+  "First run" in:
     withTestActor() { (actorSystem, actor) =>
       for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s
       assert(journalAggregates.isEmpty)
@@ -37,9 +37,8 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
     }
     assert(journalJsons == FirstJournal)
     assert(journalFileNames == Vector("test--0.journal"))
-  }
 
-  "Second run, recovering from journal, then taking snapshot" in {
+  "Second run, recovering from journal, then taking snapshot" in:
     withTestActor() { (actorSystem, actor) =>
       assert(journalAggregates.isEmpty)
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
@@ -66,23 +65,20 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
       execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
     assert(journalFileNames == Vector("test--0.journal", "test--1000066.journal", "test--1000068.journal"))
-  }
 
-  "Third run, recovering from journal, no events" in {
+  "Third run, recovering from journal, no events" in:
     withTestActor() { (_, actor) =>
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"))
     }
     assert(journalFileNames.length == 4)
-  }
 
-  "With each snapshot a JournalWritten event is written to increment the EventId and force a new journal file" in {
+  "With each snapshot a JournalWritten event is written to increment the EventId and force a new journal file" in:
     withTestActor() { (_, _) => }
     assert(journalFileNames.length == 5)
-  }
 
-  "acceptEarly" in {
+  "acceptEarly" in:
     withTestActor() { (actorSystem, actor) =>
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.JournalActorState] await 99.s
 
@@ -100,9 +96,8 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
         TestAggregate("TEST-E", "ACc"))
     }
     assert(journalFileNames.length == 6)
-  }
 
-  "persist empty event list" in {
+  "persist empty event list" in:
     withTestActor() { (actorSystem, actor) =>
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendEmpty) await 99.s
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("!")) await 99.s
@@ -112,10 +107,9 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
         TestAggregate("TEST-E", "ACc!"))
     }
     assert(journalFileNames.length == 7)
-  }
 
   "Massive parallel" - {
-    def run(n: Int, coalesceEventLimit: Int): Unit = {
+    def run(n: Int, coalesceEventLimit: Int): Unit =
       journalLocation.listJournalFiles.map(_.file) foreach delete
       val config = config"""
        js7.journal.coalesce-event-limit = $coalesceEventLimit
@@ -146,17 +140,14 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
           ).toSet
       }
       assert(journalFileNames.length == 1)
-    }
 
-    for (n, coalesceEventLimit) <- Vector(1000 -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do {
-      s"$n actors, coalesce-event-limit=$coalesceEventLimit" in {
+    for (n, coalesceEventLimit) <- Vector(1000 -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do
+      s"$n actors, coalesce-event-limit=$coalesceEventLimit" in:
         run(n = n, coalesceEventLimit = coalesceEventLimit)
-      }
-    }
   }
 
   if sys.props contains "test.speed" then
-  "Speed test" in {
+  "Speed test" in:
     deleteIfExists(journalLocation.fileBase)
     val keys = for i <- 1 to 100000 yield s"TEST-$i"
     withTestActor() { (_, actor) =>
@@ -170,19 +161,16 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
     withTestActor() { (_, actor) =>
       (actor ? TestActor.Input.WaitUntilReady) await 999.s
       info("Recovered " + stopwatch.itemsPerSecondString(keys.size, "objects"))  // Including initial snapshots
-      assertResult((for key <- keys yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet) {
+      assertResult((for key <- keys yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet):
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet
-      }
     }
-  }
 
   private def journalFileNames =
     journalLocation.listJournalFiles.map(_.file.getFileName.toString)
-}
 
 
-object JournalTest
-{
+object JournalTest:
+
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JS7.Journal",
@@ -301,4 +289,3 @@ object JournalTest
     json""""-------EVENTS-------"""",
     json"""{ "eventId": 1000069, "TYPE": "SnapshotTaken" }""",
   )
-}

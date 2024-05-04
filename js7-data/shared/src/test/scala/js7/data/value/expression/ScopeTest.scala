@@ -7,8 +7,8 @@ import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.{NumberValue, StringValue, Value}
 import scala.collection.MapView
 
-final class ScopeTest extends OurTestSuite
-{
+final class ScopeTest extends OurTestSuite:
+
   "evalLazilyExpressions" - {
     var a = 0
     var failed = 0
@@ -25,7 +25,7 @@ final class ScopeTest extends OurTestSuite
         })
       ))(Scope.empty)
 
-    "Each entry is lazily evaluated only once" in {
+    "Each entry is lazily evaluated only once" in:
       implicit val scope = Scope.empty
       assert(a == 0)
       assert(nameToValue.get("A") == Some(Right(NumberValue(1))))
@@ -33,9 +33,8 @@ final class ScopeTest extends OurTestSuite
       assert(nameToValue.get("A") == Some(Right(NumberValue(1))))
       assert(a == 1)
       assert(nameToValue.get("B") == Some(Right(StringValue("BBB"))))
-    }
 
-    "Even if evaluation fails" in {
+    "Even if evaluation fails" in:
       assert(failed == 0)
       assert(nameToValue.get("FAIL") == Some(Left(Problem("FAILED"))))
       assert(failed == 1)
@@ -43,6 +42,4 @@ final class ScopeTest extends OurTestSuite
       assert(failed == 1)
       assert(nameToValue.get("A") == Some(Right(NumberValue(1))))
       assert(nameToValue.get("B") == Some(Right(StringValue("BBB"))))
-    }
   }
-}

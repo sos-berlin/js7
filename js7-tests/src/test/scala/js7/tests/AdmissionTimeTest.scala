@@ -27,8 +27,8 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.concurrent.duration.*
 
-final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -48,7 +48,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
     alarmClock = Some(clock))
 
   "Sunday at start of daylight saving time" - {
-    "Wait for start of permission period" in {
+    "Wait for start of permission period" in:
       val orderId = OrderId("🔻")
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
@@ -72,17 +72,15 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
       clock := local("2021-03-21T03:00")
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
       assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 0)
-    }
 
-    "Start order while in permission period" in {
+    "Start order while in permission period" in:
       clock := local("2021-03-21T03:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔺")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-    }
 
-    "Start order at end of permission period" in {
+    "Start order at end of permission period" in:
       clock := local("2021-03-21T04:00")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔸")
@@ -91,9 +89,8 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
-    }
 
-    "Start order with permission in daylight saving time gap" in {
+    "Start order with permission in daylight saving time gap" in:
       // Admission is shifted to the next valid local time
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59") == 1.minute)
       clock := local("2021-03-28T02:59")
@@ -108,17 +105,15 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
 
       clock := local("2021-03-28T04:00")
       eventWatch.await[OrderFinished](_.key == orderId)
-    }
 
-    "Start order with permission in daylight saving time gap (2)" in {
+    "Start order with permission in daylight saving time gap (2)" in:
       clock := local("2021-03-28T04:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔶")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-    }
 
-    "Start order at end of shifted permission period" in {
+    "Start order at end of shifted permission period" in:
       clock := local("2021-03-28T05:00")
       val orderId = OrderId("🔷")
       controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
@@ -126,10 +121,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-04-04T03:00")))))
-    }
   }
 
-  "Monday after end of daylight saving time" in {
+  "Monday after end of daylight saving time" in:
     assert(local("2021-10-31T04:00") - local("2021-10-31T03:59") == 1.h + 1.minute)
 
     clock := local("2021-10-31T00:00")
@@ -147,9 +141,8 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
 
     clock := local("2021-11-01T08:00")
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-  }
 
-  "Late start" in {
+  "Late start" in:
     val tooEarly = local("2021-11-08T07:59")
     assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, timeZone, dateOffset = 0.s))
     clock := tooEarly
@@ -171,9 +164,8 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
-  }
 
-  "forceJobAdmission in AddOrder command" in {
+  "forceJobAdmission in AddOrder command" in:
     // Test only inheritance to forked child orders
     val workflow = Workflow(WorkflowPath("forceJobAdmission"),
       Seq(
@@ -188,7 +180,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
 
       val aOrderId = OrderId("♦️")
       val forkedaOrderId = aOrderId / "FORKED"
-      locally {
+      locally:
         // Job is closed
         val eventId = eventWatch.lastAddedEventId
         controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
@@ -197,23 +189,20 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
         assert(controllerState.idToOrder(forkedaOrderId).isState[Order.Ready])
         assert(orderToObstacles(forkedaOrderId) ==
           Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
-      }
 
-      locally {
+      locally:
         // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
         val orderId = OrderId("🥨")
         val eventId = eventWatch.lastAddedEventId
         controller.api.addOrder(FreshOrder(orderId, workflow.path, forceJobAdmission = true))
           .await(99.s).orThrow
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-      }
 
       assert(orderToObstacles(forkedaOrderId) ==
         Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
     }
-  }
 
-  "forceJobAdmission in AddOrder instruction" in {
+  "forceJobAdmission in AddOrder instruction" in:
     clock := local("2023-06-22T00:00")
 
     val startingWorkflow1 = Workflow(WorkflowPath("forceJobAdmission-1"), Seq(
@@ -241,11 +230,9 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
-  }
-}
 
-object AdmissionTimeTest
-{
+object AdmissionTimeTest:
+
   private val agentPath = AgentPath("AGENT")
   private val timeZone = ZoneId.of("Europe/Mariehamn")
 
@@ -266,4 +253,3 @@ object AdmissionTimeTest
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(sundayAdmissionTimeScheme)))),
     timeZone = Timezone(timeZone.getId))
-}

@@ -24,8 +24,8 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRouteTest
-{
+final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRouteTest:
+
   private given IORuntime = ioRuntime
 
   override def testConfig = config"pekko.loglevel = warning"
@@ -69,57 +69,41 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
     })
 
   "authenticatedUser" - {
-    "Anonymous" in {
-      Get("/authorizedUser") ~> route ~> check {
+    "Anonymous" in:
+      Get("/authorizedUser") ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "authorizedUser=Anonymous")
-      }
-    }
 
-    "TEST-USER, wrong password" in {
-      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "xxx")) ~> route ~> check {
+    "TEST-USER, wrong password" in:
+      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "xxx")) ~> route ~> check:
         assert(status == Unauthorized)
-      }
-    }
-    "TEST-USER, right password" in {
-      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "123")) ~> route ~> check {
+    "TEST-USER, right password" in:
+      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "123")) ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "authorizedUser=TEST-USER")
-      }
-    }
   }
 
   "sessionOption" - {
-    "No session header" in {
-      Get("/sessionOption") ~> route ~> check {
+    "No session header" in:
+      Get("/sessionOption") ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "NO SESSION")
-      }
-    }
 
-    "Unknown session header is rejected" in {
-      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, "UNKNOWN") ~> route ~> check {
+    "Unknown session header is rejected" in:
+      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, "UNKNOWN") ~> route ~> check:
         assert(status == Forbidden)
-      }
-    }
 
-    "Known SessionToken" in {
+    "Known SessionToken" in:
       sessionToken = sessionRegister.login(TestUser, Some(Js7Version)).await(99.s)
-      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
+      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")
-      }
-      Get("/authorizedUser") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
+      Get("/authorizedUser") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check:
         assert(status == OK)
         assert(responseAs[String] == "authorizedUser=TEST-USER")
-      }
-    }
   }
-}
 
-
-object RouteProviderTest {
+object RouteProviderTest:
   private val TestUser = SimpleUser(UserId("TEST-USER"), HashedPassword(SecretString("321"), _.reverse))
 
   final case class MySession(sessionInit: SessionInit) extends Session
-}

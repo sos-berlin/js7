@@ -65,11 +65,10 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
       awaitAndAssert(acquired.get == 1 && released.get == 1 && last.get == 1)
   }
 
-  "asFs2Stream" in {
+  "asFs2Stream" in:
     assert(Flux.just(1, 2, 3).asFs2Stream().compile.toList.await(9.s) == List(1, 2, 3))
     assert(Flux.just(1, 2, 3).asFs2Stream(bufferSize = 9).compile.toList.await(9.s) == List(1, 2, 3))
     assert(Flux.just(1, 2, 3).asFs2Stream().asFlux.toIterable().asScala.toList == List(1, 2, 3))
-  }
 
 
 object ReactorConvertersTest:

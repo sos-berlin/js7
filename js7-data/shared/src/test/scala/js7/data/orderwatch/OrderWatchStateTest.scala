@@ -17,8 +17,8 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class OrderWatchStateTest extends OurAsyncTestSuite
-{
+final class OrderWatchStateTest extends OurAsyncTestSuite:
+
   private val orderWatchState = OrderWatchState(
     FileWatch(
       OrderWatchPath("FILE-WATCH"),
@@ -33,13 +33,12 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
       ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
       ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
 
-  "recoverQueues" in {
+  "recoverQueues" in:
     assert(orderWatchState.arisedQueue == Set(ExternalOrderName("A-NAME")))
     assert(orderWatchState.vanishedQueue == Set(ExternalOrderName("B-NAME")))
-  }
 
   "JSON" - {
-    "ArisedOrHasOrder" in {
+    "ArisedOrHasOrder" in:
       testJson[ArisedOrHasOrder](Arised(OrderId("ORDER"), Map("file" -> StringValue("FILE"))),
         json"""{
           "TYPE": "Arised",
@@ -83,9 +82,8 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
             }
           }
         }""")
-    }
 
-    "ExternalOrderSnapshot" in {
+    "ExternalOrderSnapshot" in:
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
           OrderWatchPath("FILE-WATCH"),
@@ -176,9 +174,8 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
             }
           }
         }""")
-    }
 
-    "toSnapshot" in {
+    "toSnapshot" in:
       implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
         TypedJsonCodec(
           Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
@@ -223,6 +220,4 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
             }
           }
         ]""")
-    }
   }
-}

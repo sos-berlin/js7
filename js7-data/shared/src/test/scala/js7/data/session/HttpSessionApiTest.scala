@@ -3,8 +3,8 @@ package js7.data.session
 import js7.base.test.OurTestSuite
 import js7.base.version.Version
 
-final class HttpSessionApiTest extends OurTestSuite
-{
+final class HttpSessionApiTest extends OurTestSuite:
+
   "checkNonMatchingVersion" - {
     // Check log output manually!
     val ourVersion = Version("2.2.2")
@@ -18,10 +18,8 @@ final class HttpSessionApiTest extends OurTestSuite
       for v <- validVersions do log(v)
     }
 
-    "invalid" in {
+    "invalid" in:
       val invalidVersions = Seq("2.1.0", "2.3.0")
         .map(Version(_))
       for v <- invalidVersions do log(v)
-    }
   }
-}

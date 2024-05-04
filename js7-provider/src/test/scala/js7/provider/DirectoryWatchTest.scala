@@ -18,8 +18,8 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
-{
+final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll:
+
   private given IORuntime = ioRuntime
 
   private val timeout = if isMac then 100.ms else 5.minutes
@@ -41,47 +41,36 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
     finally
       super.afterAll()
 
-  if isMac then {
-    "Java's WatchService does not work properly under MacOS" in {
+  if isMac then
+    "Java's WatchService does not work properly under MacOS" in:
       // https://bugs.openjdk.java.net/browse/JDK-7133447
       awaitAndAssert(counter > 0)
-    }
-  } else {
+  else
     "Add some files" - {
-      for i <- 1 to 2 do s"file #$i" in {
-        testUpdate {
+      for i <- 1 to 2 do s"file #$i" in:
+        testUpdate:
           touchFile(dir / i.toString)
-        }
-      }
     }
 
-    "Change a file" in {
-      testUpdate {
+    "Change a file" in:
+      testUpdate:
         dir / "1" ++= "X"
-      }
-    }
 
-    "Delete a file" in {
-      testUpdate {
+    "Delete a file" in:
+      testUpdate:
         delete(dir / "1")
-      }
-    }
-  }
 
-  private def testUpdate(body: => Unit): Unit = {
+  private def testUpdate(body: => Unit): Unit =
     val n = counter
     sleep(10.ms)
     assert(counter == n)
     body
     awaitAndAssert(counter > n)
     sleep(10.ms)
-  }
 
-  "cancel" in {
+  "cancel" in:
     assert(!directoryWatcher.isClosed && !streamFuture.isCompleted)
     streamFuture.cancelToFuture().await(99.s)
     intercept[CancellationException]:
       streamFuture await 99.s
     assert(directoryWatcher.isClosed)
-  }
-}

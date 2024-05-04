@@ -6,39 +6,32 @@ import js7.base.time.ScalaTime.*
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.*
 
-final class ScalaTimeTest extends OurTestSuite
-{
-  "ZeroDuration" in {
+final class ScalaTimeTest extends OurTestSuite:
+
+  "ZeroDuration" in:
     assert(ZeroDuration.toString == "0 seconds")
     assert(Duration.Zero.toString == "0 days")
-  }
 
   "Duration" - {
-    "Int.µs" in {
+    "Int.µs" in:
       assert(7.µs == Duration(7000, NANOSECONDS))
-    }
 
-    "Long.µs" in {
+    "Long.µs" in:
       assert(7L.µs == Duration(7000, NANOSECONDS))
-    }
 
-    "Int.ms" in {
+    "Int.ms" in:
       assert(7.ms == Duration(7, MILLISECONDS))
-    }
 
-    "Long.ms" in {
+    "Long.ms" in:
       assert(7L.ms == Duration(7, MILLISECONDS))
-    }
 
-    "Int.s" in {
+    "Int.s" in:
       (7.s: Duration).toSeconds shouldEqual 7
-    }
 
-    "Long.s" in {
+    "Long.s" in:
       (7L.s: Duration).toMillis shouldEqual 7000
-    }
 
-    "BigDecimal.s and toBigDecimal" in {
+    "BigDecimal.s and toBigDecimal" in:
       List(
         BigDecimal(0) -> Duration.Zero,
         BigDecimal(1) -> 1.second,
@@ -50,81 +43,64 @@ final class ScalaTimeTest extends OurTestSuite
         assert(bigDecimalToDuration(bigDecimal) == duration)
         assert(duration.toBigDecimalSeconds == bigDecimal)
       }
-      intercept[ArithmeticException] {
+      intercept[ArithmeticException]:
         bigDecimalToDuration(BigDecimal("0.1112223334"))
-      }
-      intercept[ArithmeticException] {
+      intercept[ArithmeticException]:
         bigDecimalToDuration(BigDecimal("9223372036.854775808"))  // Long.MaxValue + 1
-      }
-    }
 
-    "Int.h" in {
+    "Int.h" in:
       (7.h: Duration).toHours shouldEqual 7
       (7.h: Duration).toMillis shouldEqual (7*3600*1000)
-    }
 
-    "Long.h" in {
+    "Long.h" in:
       (7L.h: Duration).toHours shouldEqual 7
       (7L.h: Duration).toMillis shouldEqual (7*3600*1000)
-    }
 
-    "randomDuration" in {
+    "randomDuration" in:
       val durations = (1 to 1000).map(_ => randomDuration(2.s))
       val min = durations.min
       val max = durations.max
       assert(min >= 0.s && min <= 100.ms)
       assert(max >= 1900.ms && min <= 2.s)
-    }
 
-    "-Duration" in {
+    "-Duration" in:
       assert(-7.s == Duration(-7, SECONDS))
-    }
 
-    "Duration + Duration" in {
+    "Duration + Duration" in:
       (7.s + 2.ms: Duration).toMillis shouldEqual (7*1000 + 2)
-    }
 
-    "Duration - Duration" in {
+    "Duration - Duration" in:
       (7.s - 2.ms: Duration).toMillis shouldEqual (7*1000 - 2)
-    }
 
-    "Duration * Int" in {
+    "Duration * Int" in:
       (7.s * 2).toMillis shouldEqual 14000
-    }
 
-    "Duration / Int" in {
+    "Duration / Int" in:
       (7.s / 2).toMillis shouldEqual 3500
-    }
 
-    "Duration * BigDecimal" in {
+    "Duration * BigDecimal" in:
       (3.s * BigDecimal("2.5")).toMillis shouldEqual 7500
       (3.s * 2.5).toMillis shouldEqual 7500
-    }
 
-    "Duration / BigDecimal" in {
+    "Duration / BigDecimal" in:
       (10.s / BigDecimal("2.5")).toMillis shouldEqual 4000
       (10.s / 2.5).toMillis shouldEqual 4000
-    }
 
-    "Int * Duration" in {
+    "Int * Duration" in:
       (3 * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
-    }
 
-    "Long * Duration" in {
+    "Long * Duration" in:
       (3L * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
-    }
 
-    "min" in {
+    "min" in:
       assert((1.s min 2.s) == 1.s)
       assert((-1.s min -2.s) == -2.s)
-    }
 
-    "max" in {
+    "max" in:
       assert((1.s max 2.s) == 2.s)
       assert((-1.s max -2.s) == -1.s)
-    }
 
-    "msPretty" in {
+    "msPretty" in:
       assert(0.s.msPretty == "0ms")
       assert(Duration(1, NANOSECONDS).msPretty == "1ns")
       assert(Duration(990, NANOSECONDS).msPretty == "0.99µs")
@@ -144,9 +120,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(Duration(999999990, NANOSECONDS).msPretty == "1s")
       assert(Duration(999999999, NANOSECONDS).msPretty == "1s")
       assert(Duration(1, SECONDS).msPretty == "1s")
-    }
 
-    "pretty" in {
+    "pretty" in:
       assert(0.s.pretty == "0s")
       assert(Duration(1, NANOSECONDS).pretty == "1ns")
       assert(Duration(2, NANOSECONDS).pretty == "2ns")
@@ -228,18 +203,16 @@ final class ScalaTimeTest extends OurTestSuite
       //assert((-3*366*24*60*60).s.pretty == "-3~years")
       //assert(Long.MaxValue.nanoseconds.pretty == "292~years")
       assert(Long.MaxValue.nanoseconds.pretty == "15250weeks")
-    }
 
-    "toDecimalString" in {
+    "toDecimalString" in:
       assert(0.s.toDecimalString == "0")
       assert(1.s.toDecimalString == "1")
       assert((-1).s.toDecimalString == "-1")
       assert(1500.ms.toDecimalString == "1.5")
       assert(4_000_000_000L.s.toDecimalString == "4000000000") // >100 years
       assert(Duration(1, NANOSECONDS).toDecimalString == "0.000000001")
-    }
 
-    "parseDuration" in {
+    "parseDuration" in:
       intercept[IllegalArgumentException] { parseDuration(".1s") }
       intercept[IllegalArgumentException] { parseDuration(".1") }
       assert(parseDuration("123") == 123.s)
@@ -256,9 +229,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(parseDuration("9223372036854ms") == 9223372036854L.ms)
       assert(parseDuration("9223372036854.775µs") == Duration(9223372036854775L, NANOSECONDS))
       intercept[ArithmeticException] { parseDuration("1.2345µs") }
-    }
 
-    "Duration < Duration" in {
+    "Duration < Duration" in:
       assert(!(7.s < 2.s))
       assert(!(7.s <= 2.s))
       assert(7.s > 2.s)
@@ -269,9 +241,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(2.s >= 2.s)
       assert(!(7.s < 7.s))
       assert(7.s <= 7.s)
-    }
 
-    "StringAsDuration" in {
+    "StringAsDuration" in:
       val conv = implicitly[As[String, FiniteDuration]]
       intercept[IllegalArgumentException] { conv("") }
       intercept[IllegalArgumentException] { conv("1 s") }
@@ -281,9 +252,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(conv("123.456789s") == 123456789.µs)
       //assert(conv("3m") == 3*60.s)
       //assert(conv("PT1H1S") == 3601.s)
-    }
 
-    "StringAsDurationOption" in {
+    "StringAsDurationOption" in:
       val conv = implicitly[As[String, Option[FiniteDuration]]]
       intercept[IllegalArgumentException] { conv("1 s") }
       intercept[IllegalArgumentException] { conv("something") }
@@ -293,29 +263,25 @@ final class ScalaTimeTest extends OurTestSuite
       assert(conv("1s") == Some(1.s))
       assert(conv("123.456789s") == Some(123456789.µs))
       //assert(conv("PT1H1S") == Some(3601.s))
-    }
   }
 
   "FiniteDuration" - {
-    "isZero" in {
+    "isZero" in:
       assert(Duration.Zero.isZero)
       assert(new FiniteDuration(0, NANOSECONDS).isZero)
       assert(!1.s.isZero)
-    }
 
-    "isPositive" in {
+    "isPositive" in:
       assert(!Duration.Zero.isPositive)
       assert(!new FiniteDuration(0, NANOSECONDS).isPositive)
       assert(1.s.isPositive)
       assert(!(-1).s.isPositive)
-    }
 
-    "isZeroOrBelow" in {
+    "isZeroOrBelow" in:
       assert(Duration.Zero.isZeroOrBelow)
       assert(new FiniteDuration(0, NANOSECONDS).isZeroOrBelow)
       assert(!1.s.isZeroOrBelow)
       assert((-1).s.isZeroOrBelow)
-    }
 
     "isZeroOrAbove" in:
       assert(Duration.Zero.isZeroOrAbove)
@@ -323,21 +289,19 @@ final class ScalaTimeTest extends OurTestSuite
       assert(1.s.isZeroOrAbove)
       assert(!(-1).s.isZeroOrAbove)
 
-    "isNegative" in {
+    "isNegative" in:
       assert(!Duration.Zero.isNegative)
       assert(!new FiniteDuration(0, NANOSECONDS).isNegative)
       assert((-1).s.isNegative)
       assert(!1.s.isNegative)
-    }
 
-    "withMillis" in {
+    "withMillis" in:
       assert(1.s.withMillis(0) == 1.s)
       assert(-1.s.withMillis(0) == -1.s)
       assert(123999999.µs.withMillis(456) == 123456.ms)
       assert(-123999999.µs.withMillis(456) == -123456.ms)
-    }
 
-    "toBigDecimalSeconds" in {
+    "toBigDecimalSeconds" in:
       assert(FiniteDuration(1234, NANOSECONDS).toBigDecimalSeconds == BigDecimal("0.000001234"))
       assert(FiniteDuration(-1234, NANOSECONDS).toBigDecimalSeconds == BigDecimal("-0.000001234"))
       assert(FiniteDuration(1234, MICROSECONDS).toBigDecimalSeconds == BigDecimal("0.001234"))
@@ -354,9 +318,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(FiniteDuration(-1, DAYS).toBigDecimalSeconds == BigDecimal("-86400"))
 
       assert(FiniteDuration(Long.MaxValue, NANOSECONDS).toBigDecimalSeconds == BigDecimal("9223372036.854775807"))
-    }
 
-    "roundUpToNext" in {
+    "roundUpToNext" in:
       assert(7.ms.roundUpToNext(0.s) == 7.ms)
       assert(7.ms.roundUpToNext(-1.s) == 7.ms)
       assert(0.s.roundUpToNext(1.s) == 0.s)
@@ -373,9 +336,8 @@ final class ScalaTimeTest extends OurTestSuite
       assert(-1999.ns.roundUpToNext(1.µs) == -2.µs)
       assert(-2000.ns.roundUpToNext(1.µs) == -2.µs)
       assert(-1234.ns.roundUpToNext(10.ns) == -1240.ns)
-    }
 
-    "roundToDigits" in {
+    "roundToDigits" in:
       assert(1234.ms.roundToDigits(1) == 1.s)
       assert(1234.ms.roundToDigits(2) == 1200.ms)
       assert(1234.ms.roundToDigits(3) == 1230.ms)
@@ -394,71 +356,57 @@ final class ScalaTimeTest extends OurTestSuite
       assert(9876.ms.roundToDigits(3) == 9880.ms)
       assert(9876.ms.roundToDigits(4) == 9876.ms)
       assert(9876.ms.roundToDigits(5) == 9876.ms)
-    }
   }
 
   "RichDeadline" - {
-    "hasElapsed" in {
+    "hasElapsed" in:
       assert((Deadline.now - 1.s).hasElapsed)
-    }
 
-    "elapsed" in {
+    "elapsed" in:
       assert((Deadline.now - 2.s).elapsed > 1.s)
-    }
 
-    "elapsedOrZero" in {
+    "elapsedOrZero" in:
       assert((Deadline.now + 2.s).elapsed < -1.s)
       assert((Deadline.now + 2.s).elapsedOrZero == 0.s)
       assert((Deadline.now - 2.s).elapsedOrZero > 1.s)
-    }
 
-    "timeLeftOrZero" in {
+    "timeLeftOrZero" in:
       assert((Deadline.now - 2.s).timeLeft < -1.s)
       assert((Deadline.now - 2.s).timeLeftOrZero == 0.s)
       assert((Deadline.now + 2.s).timeLeftOrZero > 1.s)
-    }
 
-    "toTimestamp" in {
+    "toTimestamp" in:
       val a = Deadline.now + 10.seconds
       val ts = a.toTimestamp
       assert(ts >= Timestamp.now + 9.seconds &&
         ts <= Timestamp.now + 11.seconds)
-    }
   }
 
   "Timestamp" - {
-    "Timestamp + Duration" in {
+    "Timestamp + Duration" in:
       (Timestamp.ofEpochMilli(7) + 2.ms: Timestamp) shouldEqual Timestamp.ofEpochMilli(7 + 2)
-    }
 
-    "Timestamp - Duration" in {
+    "Timestamp - Duration" in:
       (Timestamp.ofEpochMilli(7) - 2.ms: Timestamp) shouldEqual Timestamp.ofEpochMilli(7 - 2)
-    }
 
-    "Timestamp - Timestamp" in {
+    "Timestamp - Timestamp" in:
       (Timestamp.ofEpochMilli(7) - Timestamp.ofEpochMilli(2): Duration) shouldEqual Duration(7 - 2, MILLISECONDS)
-    }
 
-    "Timestamp max Timestamp" in {
+    "Timestamp max Timestamp" in:
       Timestamp.ofEpochMilli(1) max Timestamp.ofEpochMilli(2) shouldEqual Timestamp.ofEpochMilli(2)
-    }
 
-    "Timestamp min Timestamp" in {
+    "Timestamp min Timestamp" in:
       Timestamp.ofEpochMilli(1) min Timestamp.ofEpochMilli(2) shouldEqual Timestamp.ofEpochMilli(1)
-    }
 
-    "roundTo" in {
+    "roundTo" in:
       assert(Timestamp.parse("2015-01-01T12:01:01.499Z").roundTo(1.s) == Timestamp.parse("2015-01-01T12:01:01Z"))
       assert(Timestamp.parse("2015-01-01T12:01:01.500Z").roundTo(1.s) == Timestamp.parse("2015-01-01T12:01:02Z"))
       assert(Timestamp.parse("2015-01-01T12:01:29.999Z").roundTo(60.s) == Timestamp.parse("2015-01-01T12:01:00Z"))
       assert(Timestamp.parse("2015-01-01T12:01:30Z"    ).roundTo(60.s) == Timestamp.parse("2015-01-01T12:02:00Z"))
-    }
 
-    "roundDownTo" in {
+    "roundDownTo" in:
       assert(Timestamp.parse("2015-01-01T12:01:01.499Z").roundDownTo(1.s) == Timestamp.parse("2015-01-01T12:01:01Z"))
       assert(Timestamp.parse("2015-01-01T12:01:01.500Z").roundDownTo(1.s) == Timestamp.parse("2015-01-01T12:01:01Z"))
       assert(Timestamp.parse("2015-01-01T12:01:29.999Z").roundDownTo(60.s) == Timestamp.parse("2015-01-01T12:01:00Z"))
       assert(Timestamp.parse("2015-01-01T12:01:30Z"    ).roundDownTo(60.s) == Timestamp.parse("2015-01-01T12:01:00Z"))
-    }
   }
-}

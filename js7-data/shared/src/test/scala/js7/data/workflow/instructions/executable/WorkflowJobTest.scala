@@ -19,10 +19,10 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowJobTest extends OurTestSuite
-{
+final class WorkflowJobTest extends OurTestSuite:
+
   "JSON" - {
-    "default" in {
+    "default" in:
       testJson(
         WorkflowJob(
           AgentPath("AGENT"),
@@ -49,9 +49,8 @@ final class WorkflowJobTest extends OurTestSuite
           },
           "paralellism": 1
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson(
         WorkflowJob(
           AgentPath("AGENT"),
@@ -108,9 +107,8 @@ final class WorkflowJobTest extends OurTestSuite
           },
           "skipIfNoAdmissionStartForOrderDay": true
         }""")
-    }
 
-    "Compatible with v2.4" in {
+    "Compatible with v2.4" in:
       testJsonDecoder(
         WorkflowJob(
           AgentPath("AGENT"),
@@ -126,14 +124,11 @@ final class WorkflowJobTest extends OurTestSuite
           "subagentSelectionId": "SELECTION",
           "skipIfNoAdmissionForOrderDay": true
         }""")
-    }
   }
 
-  "Name" in {
+  "Name" in:
     import WorkflowJob.Name
     assert(Name.checked(Name.Anonymous.string) == Left(EmptyStringProblem("WorkflowJob.Name")))
     assert(Name.checked("") == Left(EmptyStringProblem("WorkflowJob.Name")))
     assert(Name.checked("/path") == Left(InvalidNameProblem("WorkflowJob.Name", "/path")))  // A WorkflowJob's name must not look like a JobPath
     assert(Name.checked("TEST") == Right(Name("TEST")))
-  }
-}

@@ -37,5 +37,6 @@ final class LoggerTest extends OurAsyncTestSuite:
       .as(succeed)
   }
 
+
 object LoggerTest:
   private val logger = Logger[this.type]

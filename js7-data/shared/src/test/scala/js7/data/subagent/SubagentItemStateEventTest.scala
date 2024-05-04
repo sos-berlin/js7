@@ -8,19 +8,18 @@ import js7.data.event.KeyedEvent
 import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.testJson
 
-final class SubagentItemStateEventTest extends OurTestSuite
-{
+final class SubagentItemStateEventTest extends OurTestSuite:
+
   "JSON" - {
-    "SubagentCoupled" in {
+    "SubagentCoupled" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentCoupled,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentCoupled"
         }""")
-    }
 
-    "SubagentCouplingFailed" in {
+    "SubagentCouplingFailed" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentCouplingFailed(Problem("PROBLEM")),
         json"""{
@@ -30,9 +29,8 @@ final class SubagentItemStateEventTest extends OurTestSuite
             "message": "PROBLEM"
           }
         }""")
-    }
 
-    "SubagentDedicated" in {
+    "SubagentDedicated" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentDedicated(
           SubagentRunId(Base64UUID.zero),
@@ -62,9 +60,8 @@ final class SubagentItemStateEventTest extends OurTestSuite
             }
           }
         }""")
-    }
 
-    "SubagentEventsObserved" in {
+    "SubagentEventsObserved" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentEventsObserved(1001L),
         json"""{
@@ -72,27 +69,24 @@ final class SubagentItemStateEventTest extends OurTestSuite
           "TYPE": "SubagentEventsObserved",
           "untilEventId": 1001
         }""")
-    }
 
-    "SubagentRestarted" in {
+    "SubagentRestarted" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentRestarted,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentRestarted"
         }""")
-    }
 
-    "SubagentShutdown" in {
+    "SubagentShutdown" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentShutdown,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentShutdown"
         }""")
-    }
 
-    "SubagentResetStarted" in {
+    "SubagentResetStarted" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentResetStarted(force = false),
         json"""{
@@ -100,15 +94,12 @@ final class SubagentItemStateEventTest extends OurTestSuite
           "TYPE": "SubagentResetStarted",
           "force": false
         }""")
-    }
 
-    "SubagentReset" in {
+    "SubagentReset" in:
       testJson[KeyedEvent[SubagentItemStateEvent]](
         SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentReset,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentReset"
         }""")
-    }
   }
-}

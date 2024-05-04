@@ -138,6 +138,7 @@ final class InternalJobTest
           }
           .toMap)
     }
+
   "Kill InternalJob" in:
     assert(CancelableJob.semaphore.flatMap(_.count).await(99.s) == 0)
     testCancelJob[CancelableJob]()

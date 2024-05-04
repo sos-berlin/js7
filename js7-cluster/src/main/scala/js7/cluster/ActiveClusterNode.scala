@@ -714,7 +714,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                       clusterWatchIdChangeAllowed =
                         events == Seq(ClusterPassiveLost(clusterState.passiveId)),
                       forceWhenUntaught = dontAskClusterWatchWhenUntaught)
-                    .flatMapT {
+                    .flatMapT:
                       case Some(confirmation)
                         // After SwitchOver this ClusterNode is no longer active
                         if clusterState.isNonEmptyActive(ownId) =>
@@ -723,7 +723,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                         // Then, a ClusterWatch change is allowed.
                         registerClusterWatchId(confirmation, alreadyLocked = true)
                       case _ => IO.right(())
-                    }
                     .rightAs(clusterStampedEvents -> clusterState)
 
                 case (Seq(), clusterState) =>

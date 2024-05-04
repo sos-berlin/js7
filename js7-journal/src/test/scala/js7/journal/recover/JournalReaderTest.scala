@@ -25,14 +25,14 @@ import org.apache.pekko.pattern.ask
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReaderTest extends OurTestSuite, TestJournalMixin
-{
+final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
+
   private given IORuntime = ioRuntime
 
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private val stateName = "TestState"
 
-  "Journal file without snapshots or events" in {
+  "Journal file without snapshots or events" in:
     withTestActor() { (_, _ ) => }
     val file = currentFile
     val journalId =
@@ -44,9 +44,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       assert(journalReader.eventId == 1000000)
       assert(journalReader.totalEventCount == 1)
     }
-  }
 
-  "Journal file with snapshot section only" in {
+  "Journal file with snapshot section only" in:
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
@@ -62,9 +61,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       assert(journalReader.eventId == 1000)
       assert(journalReader.totalEventCount == 1)
     }
-  }
 
-  "Journal file with open event section" in {
+  "Journal file with open event section" in:
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalLocation.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
@@ -86,9 +84,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       assert(journalReader.eventId == 1001)
       assert(journalReader.totalEventCount == 2)
     }
-  }
 
-  "Journal file with snapshot and events" in {
+  "Journal file with snapshot and events" in:
     withTestActor() { (actorSystem, actor) =>
       for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
@@ -107,7 +104,6 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
       assert(journalReader.eventId == 1000069)
       assert(journalReader.totalEventCount == 72)
     }
-  }
 
   "Transactions" - {
     val first = Stamped(1000L, "A" <-: TestEvent.Removed)
@@ -116,7 +112,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
              Stamped(1003L, "KEY" <-: TestEvent.Appended('c')) :: Nil
     val last = Stamped(1004L, "Z" <-: TestEvent.Removed)
 
-    "Committed transaction" in {
+    "Committed transaction" in:
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new EventJournalWriter(journalLocation.S, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
@@ -147,9 +143,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
       }
-    }
 
-    "Uncommitted transaction" in {
+    "Uncommitted transaction" in:
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new FileJsonWriter(file)) { writer =>
@@ -169,8 +164,6 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin
         assert(journalReader.eventId == 1000)
         assert(journalReader.totalEventCount == 1)
       }
-    }
   }
 
   private def currentFile = journalLocation.currentFile.orThrow
-}

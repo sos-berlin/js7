@@ -39,8 +39,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.collection.View
 import scala.concurrent.{ExecutionContext, Future}
 
-final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   private given ExecutionContext = executionContext
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -80,28 +80,25 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
 
   private val nextVersion = Iterator.from(1).map(i => VersionId(s"V$i")).next _
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     // Use only our BareSubagent
     enableSubagents(toLocalSubagentId(agentPath) -> false)
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     deleteDirectoryRecursively(workDir)
     super.afterAll()
-  }
 
-  "Signature matches item" in {
+  "Signature matches item" in:
     val v = nextVersion()
     val item = workflow.withVersion(v)
     controller.api.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
     testOrder(v)
-  }
 
-  "Delete signature PEM file at Controller" in {
+  "Delete signature PEM file at Controller" in:
     val pem = (controllersKeyDirectory / "key-1.pem").byteArray
 
-    locally {
+    locally:
       val whenUpdated = whenControllerAndAgentUpdated()
 
       delete(controllersKeyDirectory / "key-1.pem")
@@ -113,35 +110,30 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       val checked = controller.api.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
       assert(checked == Left(Problem(
         "The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
-    }
 
-    locally {
+    locally:
       val whenUpdated = whenControllerAndAgentUpdated()
       controllersKeyDirectory / "key-1.pem" := pem
       agentsKeyDirectory / "key-1.pem" := pem
       subagentsKeyDirectory / "key-1.pem" := pem
       whenUpdated.await(99.s)
-    }
-  }
 
-  "PEM file restored, Signature matches item" in {
+  "PEM file restored, Signature matches item" in:
     val v = nextVersion()
     val item = workflow.withVersion(v)
     controller.api.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
     testOrder(v)
-  }
 
   "Change signature PEM file at Controller" - {
     val signerId = SignerId("CN=WatchSignatureKeysTest-B")
     lazy val bCertAndKey = openssl
       .generateCertWithPrivateKey("TEST", s"/$signerId")
       .orThrow
-    lazy val bItemSigner = {
+    lazy val bItemSigner =
       val bSigner = X509Signer.checked(bCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
       new ItemSigner(bSigner, ControllerState.signableItemJsonCodec)
-    }
 
-    "Item signed with previous signature key is rejected" in {
+    "Item signed with previous signature key is rejected" in:
       val v = nextVersion()
       val whenUpdated = whenControllerAndAgentUpdated()
 
@@ -154,25 +146,22 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       val checked = controller.api.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
       assert(checked == Left(Problem(
         "The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
-    }
 
-    "Sign with changed signature key" in {
+    "Sign with changed signature key" in:
       val v = nextVersion()
       val signed = bItemSigner.sign(workflow.withVersion(v))
       controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
       testOrder(v)
-    }
   }
 
-  "Change signature PEM file slowly" in {
+  "Change signature PEM file slowly" in:
     val signerId = SignerId("CN=WatchSignatureKeysTest-C")
     lazy val cCertAndKey = openssl
       .generateCertWithPrivateKey("TEST", s"/$signerId")
       .orThrow
-    lazy val cItemSigner = {
+    lazy val cItemSigner =
       val cSigner = X509Signer.checked(cCertAndKey.privateKey, SHA512withRSA, signerId).orThrow
       new ItemSigner(cSigner, ControllerState.signableItemJsonCodec)
-    }
 
     val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
     val agentUpdated = agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]
@@ -186,14 +175,12 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       autoClosing(new FileOutputStream((agentsKeyDirectory / "key-1.pem").toFile)) { agentFile =>
         autoClosing(new FileOutputStream((subagentsKeyDirectory / "key-1.pem").toFile)) { subagentFile =>
           val n = 40
-          for i <- 0 until n do withClue(s"${(i.s / 10).pretty} -> ") {
-            for file <- View(controllerFile, agentFile, subagentFile) do {
+          for i <- 0 until n do withClue(s"${(i.s / 10).pretty} -> "):
+            for file <- View(controllerFile, agentFile, subagentFile) do
               logger.debug(f"$file write ${pem(i)}%02x")
               file.write(pem(i))
               file.flush()
-            }
             sleep(100.ms)
-          }
           assert(!controllerUpdated.isCompleted)
           assert(!agentUpdated.isCompleted)
           assert(!subagentUpdated.isCompleted)
@@ -210,9 +197,8 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     controller.api.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
 
     testOrder(v)
-  }
 
-  "Ignore invalid certificate (JS-2116)" in {
+  "Ignore invalid certificate (JS-2116)" in:
     val controllerUpdated = controller.testEventBus
       .when[RunningController.ItemSignatureKeysUpdated].map(_ => ())
     val agentUpdated = agent.testEventBus
@@ -237,7 +223,6 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
     val v = nextVersion()
     val checked = controller.api.updateRepo(v, Seq(itemSigner.sign(workflow.withVersion(v)))).await(99.s)
     assert(checked == Left(Problem("The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
-  }
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =
     IO.parSequenceN(3)(Seq(
@@ -253,18 +238,16 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
         .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated"))
     ).void.unsafeToFuture()
 
-  private def testOrder(versionId: VersionId): Unit = {
+  private def testOrder(versionId: VersionId): Unit =
     val events = controller.runOrder(FreshOrder(OrderId(versionId.toString), workflow.path))
       .map(_.value)
     assert(events.last.isInstanceOf[OrderFinished])
     assert(events.head.asInstanceOf[OrderAdded].workflowId == workflow.path ~ versionId)
     assert(events.collectFirst { case OrderProcessingStarted(Some(`bareSubagentId`), _) => }.isDefined)
-  }
-}
 
 
-object WatchSignatureKeysTest
-{
+object WatchSignatureKeysTest:
+
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val bareSubagentId = SubagentId("BARE-SUBAGENT")
@@ -274,4 +257,3 @@ object WatchSignatureKeysTest
       EmptyJob.execute(agentPath)))
 
   private val aSignerId = SignerId("CN=WatchSignatureKeysTest-A")
-}

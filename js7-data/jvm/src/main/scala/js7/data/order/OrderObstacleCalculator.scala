@@ -61,11 +61,10 @@ final class OrderObstacleCalculator(val stateView: StateView):
       case _ =>
 
     if order.isState[Order.IsFreshOrReady] then
-      for agentPath <- order.attached do {
+      for agentPath <- order.attached do
         val limit = stateView.keyToItem(AgentRef).get(agentPath).flatMap(_.processLimit)
         if limit.exists(_ <= stateView.slowProcessingOrderCount(agentPath)) then
           result += AgentProcessLimitReached
-      }
     result.toSet
 
   private val _jobToOrderCount = new ConcurrentHashMap[JobKey, Int]()

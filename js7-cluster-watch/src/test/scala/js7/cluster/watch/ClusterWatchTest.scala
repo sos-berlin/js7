@@ -24,8 +24,8 @@ import org.scalatest.Assertion
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 
-final class ClusterWatchTest extends OurAsyncTestSuite
-{
+final class ClusterWatchTest extends OurAsyncTestSuite:
+
   ProblemCodeMessages.initialize()
 
   private given IORuntime = ioRuntime
@@ -355,7 +355,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite
 
     assert(watch.clusterState() == Right(passiveLost))
 
-  "ClusterFailedOver when ClusterWatch is still untaught requires manual confirmation" in {
+  "ClusterFailedOver when ClusterWatch is still untaught requires manual confirmation" in:
     val watch = new ClusterWatch
     val failedOver = FailedOver(setting, failedAt)
     val lostNodeId = failedOver.passiveId
@@ -398,7 +398,6 @@ final class ClusterWatchTest extends OurAsyncTestSuite
 
     assert(watch.clusterState() == Right(failedOver))
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == None)
-  }
 
   "requireManualNodeLossConfirmation" - {
     "ClusterFailedOver" in:
@@ -410,7 +409,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite
     //  checkRequireNodeLossConfirm(from = activeId, ClusterPassiveLost(passiveId))
     //}
 
-    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterFailedOver): IO[Assertion] = {
+    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterFailedOver): IO[Assertion] =
       val coupled = Coupled(setting)
       import coupled.{activeId, passiveId}
       import event.lostNodeId
@@ -468,6 +467,4 @@ final class ClusterWatchTest extends OurAsyncTestSuite
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
         yield
           assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
-    }
   }
-}

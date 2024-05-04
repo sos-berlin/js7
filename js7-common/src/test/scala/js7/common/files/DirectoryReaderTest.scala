@@ -18,9 +18,9 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryReaderTest extends OurTestSuite
-{
-  "entries" in {
+final class DirectoryReaderTest extends OurTestSuite:
+
+  "entries" in:
     withTemporaryDirectory("Z-") { dir =>
       touchFile(dir / "C")
       touchFile(dir / "A")
@@ -46,23 +46,20 @@ final class DirectoryReaderTest extends OurTestSuite
       // Second call yields equivalent result
       assert(entries == DirectoryReader.entries(dir))
     }
-  }
 
   if sys.props contains "test.speed" then "Sort speed" - {
     val n = 200000
     val entries = (1 to n).map(_ => Entry(Paths.get(Random.nextString(100)), null))
 
-    "single thread" in {
-      for _ <- 1 to 10 do {
+    "single thread" in:
+      for _ <- 1 to 10 do
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             entries.sortBy(_.file)
           }.toString)
-      }
-    }
 
-    "parallel" in {
-      for _ <- 1 to 10 do {
+    "parallel" in:
+      for _ <- 1 to 10 do
         val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
@@ -70,12 +67,7 @@ final class DirectoryReaderTest extends OurTestSuite
             java.util.Arrays.parallelSort(array, comparator)
             array.toVector
           }.toString)
-      }
-    }
   }
-}
 
-
-object DirectoryReaderTest {
+object DirectoryReaderTest:
   private val logger = Logger[this.type]
-}

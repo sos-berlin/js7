@@ -40,8 +40,8 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
-{
+final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
+
   private implicit val timeout: FiniteDuration = 99.s
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout - 1.s)
   protected def whenShuttingDown = Deferred.unsafe
@@ -69,10 +69,9 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
 
   private val route = pathSegments("event")(eventRoute)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     TestEvents foreach eventCollector.addStamped
-  }
 
   override def afterAll() =
     try
@@ -83,14 +82,11 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
   for (uri <- List(
     "/event?return=OrderEvent&timeout=0&after=0",
     "/event?timeout=0&after=0"))
-  {
-    s"$uri" in {
+    s"$uri" in:
       assert(getEvents(uri) == TestEvents)
-    }
-  }
 
-  "/event application/x-ndjson" in {
-    Get("/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check {
+  "/event application/x-ndjson" in:
+    Get("/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check:
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/x-ndjson`))
       assert(response.utf8String.await(99.s) ==
@@ -102,24 +98,19 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
       //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
       //assert(stamped == TestEvents)
-    }
-  }
 
-  "/event application/x-ndjson with after=unknown fails" in {
-    Get("/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
+  "/event application/x-ndjson with after=unknown fails" in:
+    Get("/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check:
       assert(status == BadRequest)
       assert(response.utf8String.await(99.s) ==
         "EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00Z is not available. Oldest available EventId is 0/BeforeFirst\n")
-    }
-  }
 
   "Fetch EventIds only" - {
-    "/event?onlyAcks=true&timeout=0 while isActiveNode" in {
+    "/event?onlyAcks=true&timeout=0 while isActiveNode" in:
       val stampedSeq = getEventIds("/event?onlyAcks=true&timeout=0")
       assert(stampedSeq == Left(AckFromActiveClusterNodeProblem))
-    }
 
-    "/event?onlyAcks=true&timeout=0" in {
+    "/event?onlyAcks=true&timeout=0" in:
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
@@ -127,10 +118,9 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       assert(stampedSeq == Right(Seq("180")))
 
       eventWatch.isActiveNode = wasActive
-    }
 
     def getEventIds(uri: String): Checked[Seq[String]] =
-      Get(uri) ~> Accept(`application/x-ndjson`, `application/json`) ~> route ~> check {
+      Get(uri) ~> Accept(`application/x-ndjson`, `application/json`) ~> route ~> check:
         if status != OK then
           responseEntity.toStrict(timeout).await(99.s)
             .asUtf8String.await(99.s)
@@ -141,96 +131,81 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
             case "" => Vector.empty
             case string => string.split('\n').toVector
           })
-      }
   }
 
   "Fetch events with repeated GET requests" - {
-    "/event?limit=3&after=30 continue" in {
+    "/event?limit=3&after=30 continue" in:
       val stampedSeq = getEvents("/event?limit=3&after=30")
       assert(stampedSeq.head.eventId == 40)
       assert(stampedSeq.last.eventId == 60)
-    }
 
-    "/event?limit=3&after=60 continue" in {
+    "/event?limit=3&after=60 continue" in:
       val stampedSeq = getEvents("/event?limit=3&after=60")
       assert(stampedSeq.head.eventId == 70)
       assert(stampedSeq.last.eventId == 90)
-    }
 
-    "/event?limit=1&after=70 rewind in last chunk" in {
+    "/event?limit=1&after=70 rewind in last chunk" in:
       val stampedSeq = getEvents("/event?limit=3&after=70")
       assert(stampedSeq.head.eventId ==  80)
       assert(stampedSeq.last.eventId == 100)
-    }
 
-    "/event?limit=3&after=80 continue" in {
+    "/event?limit=3&after=80 continue" in:
       val stampedSeq = getEvents("/event?limit=3&after=80")
       assert(stampedSeq.head.eventId ==  90)
       assert(stampedSeq.last.eventId == 110)
-    }
 
-    "/event?limit=3&after=60 rewind to oldest" in {
+    "/event?limit=3&after=60 rewind to oldest" in:
       val stampedSeq = getEvents("/event?limit=3&after=60")
       assert(stampedSeq.head.eventId == 70)
       assert(stampedSeq.last.eventId == 90)
-    }
 
-    "/event?limit=3&after=150 skip some events" in {
+    "/event?limit=3&after=150 skip some events" in:
       val runningSince = now
       val stampedSeq = getEvents("/event?delay=99&limit=3&after=150")
       assert(runningSince.elapsed < 4.s/*Sometimes, 1s is too short???*/)  // Events must have been returned immediately
       assert(stampedSeq.head.eventId == 160)
       assert(stampedSeq.last.eventId == 180)
-    }
 
-    "/event?after=180 no more events" in {
+    "/event?after=180 no more events" in:
       assert(getEvents("/event?after=180&timeout=0").isEmpty)
-    }
 
-    "/event?after=180 no more events, with timeout" in {
+    "/event?after=180 no more events, with timeout" in:
       val runningSince = now
       assert(getEvents("/event?after=180&timeout=0.2").isEmpty)
       assert(runningSince.elapsed >= 200.millis)
-    }
 
-    "/event DefaultDelay" in {
+    "/event DefaultDelay" in:
       val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis) {
+      scheduler.scheduleOnce(100.millis):
         eventCollector.addStamped(stamped)
-      }
       val stampedSeq = getEvents("/event?timeout=1&after=180")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + defaultDelay)
-    }
 
-    "/event?delay=0 MinimumDelay" in {
+    "/event?delay=0 MinimumDelay" in:
       val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis) {
+      scheduler.scheduleOnce(100.millis):
         eventCollector.addStamped(stamped)
-      }
       val stampedSeq = getEvents("/event?delay=0&timeout=1&after=190")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.MinimumDelay)
-    }
 
-    "/event?delay=0.2" in {
+    "/event?delay=0.2" in:
       val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished())
       val runningSince = now
-      scheduler.scheduleOnce(100.millis) {
+      scheduler.scheduleOnce(100.millis):
         eventCollector.addStamped(stamped)
-      }
       val stampedSeq = getEvents("/event?delay=0.2&timeout=1&after=200")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + 200.millis)
-    }
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream
   }
 
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
-    Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
+    Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check:
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       response.entity.withoutSizeLimit.dataBytes
         .asFs2Stream()
@@ -238,13 +213,10 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .compile.toList
         .await(99.s)
-    }
-}
 
 
-object EventRouteTest
-{
+object EventRouteTest:
+
   private val TestEvents = for i <- 1 to 18 yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))
-}

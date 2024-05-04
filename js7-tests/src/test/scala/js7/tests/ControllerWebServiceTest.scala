@@ -57,8 +57,8 @@ import scala.util.Try
   * @author Joacim Zschimmer
   */
 final class ControllerWebServiceTest
-extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
-{
+extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
+
   private given ExecutionContext = ioRuntime.compute
 
   override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
@@ -93,14 +93,13 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
      js7.journal.delay = 0s
      """
 
-  override def beforeAll() = {
+  override def beforeAll() =
     directoryProvider.controllerEnv.configDir / "controller.conf" ++=
       """js7.journal.sync = off
          js7.journal.delay = 0s"""
     writeControllerConfiguration(directoryProvider.controllerEnv)
     writeAgentConfiguration(directoryProvider.agentEnvs(0))
     super.beforeAll()
-  }
 
   // --------------------------------------------------------
   // Use HTTP headers
@@ -115,26 +114,22 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
   // - Accept-Encoding: gzip
   // --------------------------------------------------------
 
-  "Await ControllerReady" in {
+  "Await ControllerReady" in:
     controller.waitUntilReady()
-  }
 
-  "Await AgentReady" in {
+  "Await AgentReady" in:
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
-    for agentPath <- agentPaths do {
+    for agentPath <- agentPaths do
       controller.eventWatch.await[AgentRefStateEvent.AgentReady](predicate = _.key == agentPath)
-    }
-  }
 
-  "/controller/api" in {
+  "/controller/api" in:
     val overview = httpClient.get[Json](Uri(s"$uri/controller/api")) await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
     WaitForCondition.waitForCondition(9.s, 10.ms) { Try(overview.fieldOrThrow("initiallyStartedAt")).isSuccess }
     assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow >= testStartedAt.toEpochMilli)
     assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
-  }
 
-  "Login" in {
+  "Login" in:
     val cmd = json"""{
         "TYPE": "Login",
         "userAndPassword": {
@@ -153,9 +148,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
       */
     assert(response("TYPE").get == "LoggedIn".asJson)
     sessionToken = response("sessionToken").get.asString.get
-  }
 
-  "Add workflows" in {
+  "Add workflows" in:
     controller.updateItemsAsSystemUser(
       ItemOperation.AddVersion(VersionId("VERSION-1")) +:
         Stream(
@@ -167,7 +161,6 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         ).map(directoryProvider.itemSigner.toSignedString)
           .map(ItemOperation.AddOrChangeSigned.apply)
     ).await(99.s).orThrow
-  }
 
   "/controller/api/agent-forward" - {
     //"/controller/api/agent-forward/%2FFOLDER%2FAGENT-A" in {
@@ -177,14 +170,12 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
     //  assert(overview.version == BuildInfo.prettyVersion)
     //}
 
-    "/controller/api/agent-forward/UNKNOWN returns 400" in {
+    "/controller/api/agent-forward/UNKNOWN returns 400" in:
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-      val e = intercept[HttpException] {
+      val e = intercept[HttpException]:
         httpClient.get[Json](Uri(s"$uri/controller/api/agent-forward/UNKNOWN"), headers) await 99.s
-      }
       assert(e.status.intValue == 400/*BadRequest*/)
       assert(e.problem == Some(UnknownKeyProblem("AgentPath", AgentPath("UNKNOWN"))))
-    }
 
     //"/controller/api/agent-forward/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
     //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
@@ -210,71 +201,61 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         "workflowPath": "MISSING"
       }"""
 
-      "Order with missing workflow is rejected (single order)" in {
+      "Order with missing workflow is rejected (single order)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-        val exception = intercept[HttpException] {
+        val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orderWithMissingWorkflow, headers) await 99.s
-        }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "Unknown item: Workflow:MISSING")  // Or similar
         assert(exception.problem == Some(UnknownItemPathProblem(WorkflowPath("MISSING"))))
-      }
 
-      "Order with missing workflow is rejected (order array)" in {
+      "Order with missing workflow is rejected (order array)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val orders = Json.fromValues(orderWithMissingWorkflow :: Nil)
-        val exception = intercept[HttpException] {
+        val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
-        }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "Unknown item: Workflow:MISSING")  // Or similar
         assert(exception.problem == Some(UnknownItemPathProblem(WorkflowPath("MISSING"))))
-      }
 
-      "Invalid OrderId is rejected (single order)" in {
+      "Invalid OrderId is rejected (single order)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val order = json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }"""
-        val exception = intercept[HttpException] {
+        val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
-        }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "OrderId must not contain reserved characters: |")
         assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
-      }
 
-      "Invalid OrderId is rejected (order array)" in {
+      "Invalid OrderId is rejected (order array)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }""":: Nil)
-        val exception = intercept[HttpException] {
+        val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
-        }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "OrderId must not contain reserved characters: |")
         assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
-      }
 
       val order = json"""{
         "id": "ORDER-ID",
         "workflowPath": "WORKFLOW"
       }"""
 
-      "First" in {
+      "First" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 201/*Created*/)
         assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
-      }
 
-      "Duplicate" in {
+      "Duplicate" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 409/*Conflict*/)
         assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
-      }
 
-      "Bad OrderId" in {
+      "Bad OrderId" in:
         val order = json"""{
           "id": "A|B",
           "workflowPath": "WORKFLOW"
@@ -286,9 +267,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         assert(response.utf8String.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
         assert(response.header[Location].isEmpty)
-      }
 
-      "Multiple" in {
+      "Multiple" in:
         val orders = json"""
           [
             {
@@ -301,9 +281,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         assert(response.status == OK)  // Duplicates are silently ignored
         assert(response.header[Location].isEmpty)
         response.entity.discardBytes()
-      }
 
-      "Multiple with bad OrderId" in {
+      "Multiple with bad OrderId" in:
         val orders = json"""
           [
             {
@@ -317,7 +296,6 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         assert(response.header[Location].isEmpty)
         assert(response.utf8String.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
-      }
     }
 
     testGet("controller/api/order",
@@ -326,44 +304,38 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
         "count": 1
       }""")
 
-    "controller/api/order/ORDER-ID" in {
+    "controller/api/order/ORDER-ID" in:
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val order = httpClient.get[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers) await 99.s
       assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
-    }
   }
 
-  "(await OrderFinished)" in {
+  "(await OrderFinished)" in:
     controller.eventWatch.await[OrderFinished]()  // Needed for test /controller/api/events
-  }
 
-  "Unknown path returns 404 Not found" in {
+  "Unknown path returns 404 Not found" in:
     val response = httpClient.post_(Uri(s"$uri/controller/UNKNOWN"), Json.obj(), Nil) await 99.s
     assert(response.status == NotFound)
-  }
 
   "CSRF with POST" - {
     lazy val testUri = Uri(s"$uri/controller/TEST/post")
 
-    "application/json is allowed" in {
+    "application/json is allowed" in:
       val response = httpClient.postRaw(testUri, Nil, HttpEntity(`application/json`, "{}")) await 99.s
       assert(response.status == OK)
-    }
 
-    "text/plain like HTML form POST is forbidden" in {
+    "text/plain like HTML form POST is forbidden" in:
       val forbidden = httpClient.postRaw(testUri, Nil, HttpEntity(`text/plain(UTF-8)`, "STRING")) await 99.s
       assert(forbidden.status == Forbidden)
       assert(forbidden.utf8String.await(99.s) == Forbidden.defaultMessage)
-    }
   }
 
   "Commands" - {
-    "(add order)" in {
+    "(add order)" in:
       controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("WORKFLOW"),
         scheduledFor = Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
-    }
 
-    "CancelOrders" in {
+    "CancelOrders" in:
       val cmd = json"""
         {
           "TYPE": "Batch",
@@ -395,9 +367,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
             }
           ]
         }""")
-    }
 
-    "ShutDown" in {
+    "ShutDown" in:
       val cmd = json"""{ "TYPE": "ShutDown" }"""
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       testJson(
@@ -406,7 +377,6 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
           "TYPE": "Accepted"
         }""")
       controller.terminated await 99.s
-    }
   }
 
   private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
@@ -420,18 +390,16 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
     (implicit pos: source.Position)
   : Unit =
     suburi - {
-      "JSON" in {
+      "JSON" in:
         testJson(
           manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), headers) await 99.s),
           expected)
-      }
     }
-}
 
 
-object ControllerWebServiceTest
-{
-  private def writeControllerConfiguration(controller: ControllerEnv): Unit = {
+object ControllerWebServiceTest:
+
+  private def writeControllerConfiguration(controller: ControllerEnv): Unit =
     controller.configDir / "controller.conf" ++= """
       |js7.web.server.test = true
       |""".stripMargin
@@ -443,10 +411,7 @@ object ControllerWebServiceTest
       |  }
       |}
       |""".stripMargin)
-  }
 
-  private def writeAgentConfiguration(env: DirectorEnv): Unit = {
+  private def writeAgentConfiguration(env: DirectorEnv): Unit =
     env.writeExecutable(RelativePathExecutable(s"A$sh"), operatingSystem.sleepingShellScript(1.s))  // Allow some time to check web service before order finishes
     env.writeExecutable(RelativePathExecutable(s"B$sh"), operatingSystem.sleepingShellScript(0.s))
-  }
-}

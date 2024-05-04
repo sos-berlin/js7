@@ -11,19 +11,18 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class ExecutableTest extends OurTestSuite
-{
+final class ExecutableTest extends OurTestSuite:
+
   "JSON" - {
-    "RelativePathExecutable, minimum" in {
+    "RelativePathExecutable, minimum" in:
       testJson[Executable](RelativePathExecutable("EXECUTABLE"), json"""
         {
           "TYPE": "PathExecutable",
           "path": "EXECUTABLE"
         }
       """)
-    }
 
-    "RelativePathExecutable" in {
+    "RelativePathExecutable" in:
       testJson[Executable](
         RelativePathExecutable(
           "EXECUTABLE",
@@ -42,18 +41,16 @@ final class ExecutableTest extends OurTestSuite
           "v1Compatible": true
         }
       """)
-    }
 
-    "AbsolutePathExecutable, minimum" in {
+    "AbsolutePathExecutable, minimum" in:
       testJson[Executable](AbsolutePathExecutable("/EXECUTABLE"), json"""
         {
           "TYPE": "PathExecutable",
           "path": "/EXECUTABLE"
         }
       """)
-    }
 
-    "AbsolutePathExecutable" in {
+    "AbsolutePathExecutable" in:
       testJson[Executable](
         AbsolutePathExecutable(
           "/EXECUTABLE",
@@ -72,9 +69,8 @@ final class ExecutableTest extends OurTestSuite
           "v1Compatible": true
         }
       """)
-    }
 
-    "CommandLineExecutable" in {
+    "CommandLineExecutable" in:
       testJson[Executable](
         CommandLineExecutable(
           CommandLineExpression(
@@ -98,9 +94,8 @@ final class ExecutableTest extends OurTestSuite
              "NUMBER": "1 + 2"
            }
         }""")
-    }
 
-    "ShellScriptExecutable, minumum" in {
+    "ShellScriptExecutable, minumum" in:
       testJson[Executable](
         ShellScriptExecutable("SCRIPT"),json"""
         {
@@ -108,9 +103,8 @@ final class ExecutableTest extends OurTestSuite
           "script": "SCRIPT"
         }
       """)
-    }
 
-    "ShellScriptExecutable" in {
+    "ShellScriptExecutable" in:
       testJson[Executable](
         ShellScriptExecutable(
           "SCRIPT",
@@ -134,9 +128,8 @@ final class ExecutableTest extends OurTestSuite
           "v1Compatible": true
         }
       """)
-    }
 
-    "InternalExecutable" in {
+    "InternalExecutable" in:
       testJsonDecoder[Executable](
         InternalExecutable("js7.tests.jobs.EmptyJob"),
       json"""
@@ -170,11 +163,10 @@ final class ExecutableTest extends OurTestSuite
           }
         }
       """)
-    }
   }
 
   "Names before 2020-01-20" - {
-    "ExecutableScript" in {
+    "ExecutableScript" in:
       testJsonDecoder[Executable](
         ShellScriptExecutable("SCRIPT"),
         json"""
@@ -183,9 +175,8 @@ final class ExecutableTest extends OurTestSuite
             "script": "SCRIPT"
           }
         """)
-    }
 
-    "ExecutablePath"  in {
+    "ExecutablePath"  in:
       testJsonDecoder[Executable](
         PathExecutable("PATH"),
         json"""
@@ -194,11 +185,10 @@ final class ExecutableTest extends OurTestSuite
             "path": "PATH"
           }
         """)
-    }
   }
 
   "Names before 2020-06-10" - {
-    "ExecutableScript" in {
+    "ExecutableScript" in:
       testJsonDecoder[Executable](
         ShellScriptExecutable("SCRIPT"),
         json"""
@@ -207,10 +197,9 @@ final class ExecutableTest extends OurTestSuite
             "script": "SCRIPT"
           }
         """)
-    }
   }
 
-  "Invalid PathExecutable" in {
+  "Invalid PathExecutable" in:
     assert(PathExecutable.checked("")            == Left(EmptyStringProblem("RelativePathExecutable")))
     assert(PathExecutable.checked(" ")           == Left(InvalidNameProblem("RelativePathExecutable", " ")))
     assert(PathExecutable.checked(" X")          == Left(InvalidNameProblem("RelativePathExecutable", " X")))
@@ -225,9 +214,8 @@ final class ExecutableTest extends OurTestSuite
     assert(PathExecutable.checked("dir/../file") == Left(InvalidNameProblem("RelativePathExecutable", "dir/../file")))
     assert(PathExecutable.checked("dir\\../file") == Left(InvalidNameProblem("RelativePathExecutable", "dir\\../file")))
     assert(PathExecutable.checked("dir/./file")  == Left(InvalidNameProblem("RelativePathExecutable", "dir/./file")))
-  }
 
-  "Valid PathExecutable" in {
+  "Valid PathExecutable" in:
     assert(PathExecutable.checked("/file")     == Right(AbsolutePathExecutable("/file")))
     assert(PathExecutable.checked("file")      == Right(RelativePathExecutable("file")))
     assert(PathExecutable.checked("/dir/file") == Right(AbsolutePathExecutable("/dir/file")))
@@ -244,5 +232,3 @@ final class ExecutableTest extends OurTestSuite
     assert(PathExecutable.checked("""/a\b""").isRight)
     assert(PathExecutable.checked("/dir/../file").isRight)
     assert(PathExecutable.checked("/dir/./file").isRight)
-  }
-}

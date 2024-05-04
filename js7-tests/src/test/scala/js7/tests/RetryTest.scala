@@ -257,7 +257,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
 
   "JS-2094 Omitting maxTries means unlimited retries" - {
-    "Retry at first position" in {
+    "Retry at first position" in:
       val workflow = Workflow(WorkflowPath("OMITTED-MAX-TRIES-FIRST"), Seq(
         TryInstruction(
           Workflow.of(
@@ -305,9 +305,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderAwoke,
           OrderOutcomeAdded(OrderOutcome.failed)))
       }
-    }
 
-    "Retry not at first position" in {
+    "Retry not at first position" in:
       val workflow = Workflow(WorkflowPath("OMITTED-MAX-TRIES-SECOND"), Seq(
         TryInstruction(
           Workflow.of(
@@ -370,7 +369,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           .await(99.s).orThrow
         eventWatch.await[OrderCancelled](_.key == orderId)
       }
-    }
   }
 
   "JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in:
@@ -458,7 +456,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       }
     }
 
-  "JS-2117 Suspend and resume while retrying" in {
+  "JS-2117 Suspend and resume while retrying" in:
     // No more InapplicableEventProblem!
     val workflow = Workflow(WorkflowPath("SUSPEND-WHILE-RETRYING"), Seq(
       TryInstruction(
@@ -559,7 +557,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderCancelled,
         OrderDeleted))
     }
-  }
 
   "GoOrder when waiting in Retry at Controller" in:
     val workflow = Workflow.of(

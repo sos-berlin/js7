@@ -43,8 +43,8 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class CancelOrdersTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -59,7 +59,7 @@ final class CancelOrdersTest
   protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, sigkillImmediatelyWorkflow,
     twoJobsWorkflow, forkJoinIfFailedWorkflow, forkWorkflow, promptingWorkflow)
 
-  "Cancel a fresh order" in {
+  "Cancel a fresh order" in:
     val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path,
       scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
@@ -70,9 +70,8 @@ final class CancelOrdersTest
     assert(onlyRelevantEvents(eventWatch.eventsByKey[OrderEvent](order.id)) == Vector(
       OrderCancellationMarked(CancellationMode.FreshOnly),
       OrderCancelled))
-  }
 
-  "Cancel a finishing order" in {
+  "Cancel a finishing order" in:
     val order = FreshOrder(OrderId("🔸"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -89,9 +88,8 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderFinished()))
-  }
 
-  "Cancelling (mode=FreshOnly) a started order is not possible" in {
+  "Cancelling (mode=FreshOnly) a started order is not possible" in:
     val order = FreshOrder(OrderId("♠️"), twoJobsWorkflow.path, Map("sleep" -> 5))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -104,9 +102,8 @@ final class CancelOrdersTest
         CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
       .await(99.seconds).orThrow
     eventWatch.await[OrderTerminated](_.key == order.id)
-  }
 
-  "Cancel a started order between two jobs" in {
+  "Cancel a started order between two jobs" in:
     val order = FreshOrder(OrderId("♣️"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -123,14 +120,12 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderCancelled))
-  }
 
-  "Cancel an order and the first job" in {
+  "Cancel an order and the first job" in:
     val order = FreshOrder(OrderId("🔻"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
-  }
 
-  "Cancel an order but not the first job" in {
+  "Cancel an order but not the first job" in:
     val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.path, Map("sleep" -> 2))
     testCancel(order, Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
       expectedEvents = mode => Vector(
@@ -140,21 +135,18 @@ final class CancelOrdersTest
         OrderProcessed(OrderOutcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderCancelled))
-  }
 
-  "Cancel an order and the currently running job" in {
+  "Cancel an order and the currently running job" in:
     val order = FreshOrder(OrderId("🔷"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, None, immediately = false)
-  }
 
-  "Cancel an order and a certain running job with SIGKILL" in {
+  "Cancel an order and a certain running job with SIGKILL" in:
     val order = FreshOrder(OrderId("🟦"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)),
       immediately = true)
-  }
 
-  if isUnix then {
-    "Cancel with sigkillDelay" in {
+  if isUnix then
+    "Cancel with sigkillDelay" in:
       val order = FreshOrder(OrderId("🟩"), sigkillDelayWorkflow.path)
       val t = now
       testCancel(order, None, awaitTrapping = true, immediately = false,
@@ -166,9 +158,8 @@ final class CancelOrdersTest
           OrderProcessingKilled,
           OrderCancelled))
       assert(t.elapsed > sigkillDelay)
-    }
 
-    "Cancel with sigkillDelay=0s" in {
+    "Cancel with sigkillDelay=0s" in:
       val order = FreshOrder(OrderId("🟧"), sigkillImmediatelyWorkflow.path)
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
@@ -178,8 +169,6 @@ final class CancelOrdersTest
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
           OrderCancelled))
-    }
-  }
 
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
     immediately: Boolean)
@@ -197,7 +186,7 @@ final class CancelOrdersTest
         OrderProcessingKilled,
         OrderCancelled))
 
-  "Cancel a forking order and kill job" in {
+  "Cancel a forking order and kill job" in:
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
@@ -226,9 +215,8 @@ final class CancelOrdersTest
         OrderId("FORK") <-: OrderJoined(OrderOutcome.succeeded),
         OrderId("FORK") <-: OrderMoved(Position(1)),
         OrderId("FORK") <-: OrderCancelled))
-  }
 
-  "Cancel a forked child order and kill job" in {
+  "Cancel a forked child order and kill job" in:
     val order = FreshOrder(OrderId("CANCEL-CHILD"), forkJoinIfFailedWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
@@ -266,9 +254,8 @@ final class CancelOrdersTest
         OrderId("CANCEL-CHILD") <-: OrderJoined(
           OrderOutcome.Failed(Some("Order:CANCEL-CHILD|🥕 has been cancelled"))),
         OrderId("CANCEL-CHILD") <-: OrderFailed(Position(0))))
-  }
 
-  "FIX JS-2069: Cancel a suspended forked child Order" in {
+  "FIX JS-2069: Cancel a suspended forked child Order" in:
     val workflow = Workflow.of(
       WorkflowPath("FORK-SUSPENDED"),
       Fork.of(
@@ -293,9 +280,8 @@ final class CancelOrdersTest
       assert(controllerState.idToOrder(orderId).lastOutcome ==
         OrderOutcome.Failed(Some("Order:🔔|🥕 has been cancelled")))
     }
-  }
 
-  "A canceled Order is not resumable" in {
+  "A canceled Order is not resumable" in:
     val order = FreshOrder(OrderId("⬛"), promptingWorkflow.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderPrompted](_.key == order.id)
@@ -317,19 +303,17 @@ final class CancelOrdersTest
       OrderPrompted(StringValue("PROMPT")),
       OrderOperationCancelled,
       OrderCancelled))
-  }
 
   private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
     awaitTrapping: Boolean = false,
     immediately: Boolean,
     expectedEvents: CancellationMode => Seq[OrderEvent])
-  : Unit = {
+  : Unit =
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    eventWatch.await[OrderStdoutWritten] {
+    eventWatch.await[OrderStdoutWritten]:
       case KeyedEvent(order.id, OrderStdoutWritten(chunk)) if chunk startsWith "READY" => true
       case _ => false
-    }
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,
       workflowPosition)))
@@ -340,16 +324,14 @@ final class CancelOrdersTest
       eventWatch.eventsByKey[OrderEvent](order.id)
         .filterNot(_.isInstanceOf[OrderStdWritten])) ==
       expectedEvents(mode))
-  }
 
-  "Cancel unknown order" in {
+  "Cancel unknown order" in:
     assert(controller.api.executeCommand(
       CancelOrders(Set(OrderId("UNKNOWN")), CancellationMode.FreshOnly)
     ).await(99.seconds) ==
       Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
-  }
 
-  "Cancel multiple orders with Batch" in {
+  "Cancel multiple orders with Batch" in:
     val orders = for i <- 1 to 3 yield
       FreshOrder(
         OrderId(i.toString),
@@ -361,9 +343,8 @@ final class CancelOrdersTest
     ).await(99.seconds).orThrow
     assert(response == Response.Accepted)
     for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id)
-  }
 
-  if isUnix then "Cancel a script having a SIGTERM trap writing to stdout" in {
+  if isUnix then "Cancel a script having a SIGTERM trap writing to stdout" in:
     val name = "TRAP-STDOUT"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -416,9 +397,8 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
       OrderProcessingKilled,
       OrderCancelled))
-  }
 
-  if isUnix then "Cancel a script waiting properly for its child process, forwarding SIGTERM" in {
+  if isUnix then "Cancel a script waiting properly for its child process, forwarding SIGTERM" in:
     val name = "TRAP-CHILD"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -471,9 +451,8 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.killed(SIGTERM)),
       OrderProcessingKilled,
       OrderCancelled))
-  }
 
-  if isUnix then "Cancel a script waiting for its child process" in {
+  if isUnix then "Cancel a script waiting for its child process" in:
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "EXIT-TRAP"
     val orderId = OrderId(name)
@@ -514,21 +493,18 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.killed(SIGKILL)),
       OrderProcessingKilled,
       OrderCancelled))
-  }
 
   if isUnix then "Cancel a SIGTERMed script with a still running child process" - {
-    "Without traps" in {
+    "Without traps" in:
       run("TERMINATED-SCRIPT", "", SIGTERM)
-    }
 
-    "With traps" in {
+    "With traps" in:
       run("TERMINATED-SCRIPT-TRAPPED", """
         |trap "wait && exit 143" SIGTERM  # 15+128
         |trap "rc=$? && wait && exit $?" EXIT
         |""".stripMargin, SIGKILL)
-    }
 
-    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit = {
+    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit =
       // The child processes are not killed, but cut off from stdout and stderr.
       val orderId = OrderId(name)
       val v = VersionId(name)
@@ -571,22 +547,19 @@ final class CancelOrdersTest
         OrderProcessed(OrderOutcome.killed(expectedSignal)),
         OrderProcessingKilled,
         OrderCancelled))
-    }
   }
 
   if isUnix then "Sleep in another script" - {
-    "Without traps" in {
+    "Without traps" in:
       run("FOREGROUND", "", SIGTERM)
-    }
 
-    "Withs traps" in {
+    "Withs traps" in:
       run("FOREGROUND-TRAPPED",
         """trap "wait && exit 143" SIGTERM  # 15+128
           |trap "rc=$? && wait && exit $?" EXIT
           |""".stripMargin,
         SIGKILL)
-    }
-    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit = {
+    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit =
       // The child processes are not killed, but cut off from stdout and stderr.
       val orderId = OrderId(name)
       val v = VersionId(name)
@@ -630,10 +603,9 @@ final class CancelOrdersTest
         OrderProcessed(OrderOutcome.killed(expectedSignal)),
         OrderProcessingKilled,
         OrderCancelled))
-    }
   }
 
-  if isUnix then "Sleep in a background script and do not wait for it" in {
+  if isUnix then "Sleep in a background script and do not wait for it" in:
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "BACKGROUND"
     val orderId = OrderId(name)
@@ -679,9 +651,8 @@ final class CancelOrdersTest
       OrderProcessed(OrderOutcome.killed(SIGKILL)),
       OrderProcessingKilled,
       OrderCancelled))
-  }
 
-  "Cancel a Broken Order" in {
+  "Cancel a Broken Order" in:
     val workflow = Workflow.of(WorkflowPath("BROKEN-WORKFLOW"),
       EmptyJob.execute(agentPath),
       BreakOrder())
@@ -711,9 +682,8 @@ final class CancelOrdersTest
           OrderCancelled,
           OrderDeleted))
     }
-  }
 
-  "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in {
+  "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in:
     val workflow = Workflow(WorkflowPath("RETRY"), Seq(
       TryInstruction(
         Workflow.of(
@@ -751,20 +721,17 @@ final class CancelOrdersTest
           OrderCancelled,
           OrderDeleted))
     }
-  }
 
-  private def addWorkflow(workflow: Workflow): Unit = {
+  private def addWorkflow(workflow: Workflow): Unit =
     controller.api
       .updateItems(Stream(
         AddVersion(workflow.id.versionId),
         AddOrChangeSigned(directoryProvider.itemSigner.toSignedString(workflow))))
       .await(99.s).orThrow
-  }
-}
 
 
-object CancelOrdersTest
-{
+object CancelOrdersTest:
+
   private val sleepingExecutable = ShellScriptExecutable(
     if isWindows then
        """@echo off
@@ -839,7 +806,7 @@ object CancelOrdersTest
     EmptyJob.execute(agentPath))
 
   private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =
-    events.filter {
+    events.filter:
       case _: OrderAdded => false
       case _: OrderStarted => false
       case _: OrderAttachable => false
@@ -847,5 +814,3 @@ object CancelOrdersTest
       case _: OrderDetachable => false
       case _: OrderDetached => false
       case _ => true
-    }
-}

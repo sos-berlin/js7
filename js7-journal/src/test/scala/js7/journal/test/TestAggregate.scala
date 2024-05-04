@@ -25,8 +25,8 @@ private[journal] final case class TestAggregate(key: String, string: String,
   o: String = "X",
   p: String = "X",
   q: String = "X",
-  r: String = "X")
-:
+  r: String = "X"):
+
 
   def applyEvent(event: TestEvent) = event match
     case Appended(char) => copy(string = string + char)

@@ -41,8 +41,8 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Try}
 
-final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll
-{
+final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll:
+
   private given IORuntime = ioRuntime
 
   private implicit lazy val actorSystem: ActorSystem =
@@ -53,7 +53,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   private lazy val certFile = directory / "private" / "https-keystore.p12"
 
-  private lazy val keyStoreRef: KeyStoreRef = {
+  private lazy val keyStoreRef: KeyStoreRef =
     createDirectory(directory / "private")
     PekkoWebServerTest.KeyStoreResource.copyToFile(certFile)
     KeyStoreRef.fromSubconfig(
@@ -63,7 +63,6 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
           """,
       directory / "private/https-keystore.p12")
       .orThrow
-  }
 
   private implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
@@ -100,19 +99,17 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
     finally
       super.afterAll()
 
-  "HTTP" in {
+  "HTTP" in:
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))
       .await(99.s)
     assert(response.status == OK)
     assert(response.utf8String.await(99.s) == "OKAY-1")
-  }
 
-  "For this test, localhost must point to 127.0.0.1" in {
+  "For this test, localhost must point to 127.0.0.1" in:
     // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).
     assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")
-  }
 
-  "HTTPS, unchanged key" in {
+  "HTTPS, unchanged key" in:
     val httpsConnectionContext1 = ConnectionContext.httpsClient(
       loadSSLContext(trustStoreRefs = Seq(PekkoWebServerTest.ClientTrustStoreRef)))
 
@@ -123,29 +120,26 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
       .await(99.s)
     assert(response.status == OK)
     assert(response.utf8String.await(99.s) == "OKAY-1")
-  }
 
   "HTTPS, change client's trust certificate, then change server's key" - {
     lazy val changedHttpsConnectionContext = ConnectionContext.httpsClient(
       loadSSLContext(trustStoreRefs = Seq(ChangedClientTrustStoreRef)))
 
-    "Updated client does not match old server certificate" in {
-      val e = intercept[javax.net.ssl.SSLHandshakeException] {
+    "Updated client does not match old server certificate" in:
+      val e = intercept[javax.net.ssl.SSLHandshakeException]:
         http
           .singleRequest(
             HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
             changedHttpsConnectionContext)
           .await(99.s)
-      }
       assert(e.getMessage == "No trusted certificate found")
-    }
 
     val changedCert = ChangedKeyStoreResource.readAs[ByteArray]
     var writtenLength = 0
     lazy val fileChanged = Promise[Unit]()
     lazy val restarted = Promise[Unit]()
 
-    "Write some bytes of server certificate" in {
+    "Write some bytes of server certificate" in:
       fileChanged
       testEventBus.subscribe[PekkoWebServer.BeforeRestartEvent.type](_ =>
         fileChanged.trySuccess(()))
@@ -160,14 +154,12 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
       sleep(3.s)
 
       assert(!restarted.future.isCompleted)
-    }
 
-    "Write remaining of server certificate" in {
-      if writtenLength == 0 then {
+    "Write remaining of server certificate" in:
+      if writtenLength == 0 then
         certFile := changedCert
-      } else {
+      else
         certFile ++= changedCert.drop(writtenLength)
-      }
       restarted.future.await(99.s)
 
       // Due to the second changed, the SinglePortPekkoWebServer is being restarted twice:
@@ -176,23 +168,19 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
       // Not easy to detect that the second restart is not needed. But it's an unusual case.
       val until = now + 99.s
       var tried: Try[HttpResponse] = Failure(new RuntimeException("??"))
-      while now < until && tried.isFailure do {
+      while now < until && tried.isFailure do
         tried = Try(http
           .singleRequest(
             HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
             changedHttpsConnectionContext)
           .await(99.s))
-      }
       val response = tried.get
       assert(response.status == OK)
       assert(Set("OKAY-2", "OKAY-3")(response.utf8String.await(99.s)))
-    }
   }
-}
 
+object PekkoWebServerHttpsChangeTest:
 
-object PekkoWebServerHttpsChangeTest
-{
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=webserver \
@@ -208,4 +196,3 @@ object PekkoWebServerHttpsChangeTest
   private val ChangedClientTrustStoreRef = TrustStoreRef(
     ChangedTrustStoreResource.url,
     storePassword = SecretString("jobscheduler"))
-}

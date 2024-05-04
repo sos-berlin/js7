@@ -12,51 +12,42 @@ import js7.data.workflow.WorkflowPath
 /**
   * @author Joacim Zschimmer
   */
-private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
-{
+private[https] trait ControllerHttpsStandardTests extends HttpsTestBase:
+
   override protected def waitUntilReady = false
 
-  "Controller and Agents use https://" in {
+  "Controller and Agents use https://" in:
     assert(controller.localUri.string startsWith "https://")
     // Referencing agents implicitly starts them (before controller)
     assert(agents.forall(_.localUri.string startsWith "https://"))
-  }
 
   if useCluster then
-    "ClusterCoupled" in {
+    "ClusterCoupled" in:
       backupController
       controller.waitUntilReady()
       controller.eventWatch.await[ClusterCoupled]()
-    }
   else
-    "waitUntilReady" in {
+    "waitUntilReady" in:
       controller.waitUntilReady()
-    }
 
-  "Controller uses https://" in {
+  "Controller uses https://" in:
     assert(controller.localUri.string startsWith "https://")
-  }
 
   protected def addTestsForCredentials(
     credentials: Option[UserAndPassword] = standardUserAndPassword)
   : Unit =
   "Standard tests" - {
-    "overview" in {
+    "overview" in:
       val overview = httpControllerApi.overview await 99.s
       assert(overview.buildId == BuildInfo.buildId)
-    }
 
-    "Login" in {
+    "Login" in:
       httpControllerApi.login_(credentials) await 99.s
-    }
 
-    "Run a job" in {
+    "Run a job" in:
       httpControllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
       controller.eventWatch.await[OrderFinished]()
-    }
 
-    "logout" in {
+    "logout" in:
       httpControllerApi.logout() await 99.s
-    }
   }
-}

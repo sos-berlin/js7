@@ -12,8 +12,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterStateTest extends OurTestSuite
-{
+final class ClusterStateTest extends OurTestSuite:
+
   "JSON" - {
     val setting = ClusterSetting(
       Map(
@@ -23,15 +23,14 @@ final class ClusterStateTest extends OurTestSuite
       ClusterTiming(10.s, 20.s),
       Some(ClusterWatchId("CLUSTER-WATCH")))
 
-    "Empty" in {
+    "Empty" in:
       testJson[ClusterState](
         Empty,
         json"""{
           "TYPE": "Empty"
         }""")
-    }
 
-    "NodesAppointed" in {
+    "NodesAppointed" in:
       testJson[ClusterState](
         NodesAppointed(setting),
         json"""{
@@ -49,9 +48,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "PreparedToBeCoupled" in {
+    "PreparedToBeCoupled" in:
       testJson[ClusterState](
         PreparedToBeCoupled(setting),
         json"""{
@@ -69,9 +67,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "Coupled" in {
+    "Coupled" in:
       testJson[ClusterState](
         Coupled(setting),
         json"""{
@@ -89,9 +86,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "ActiveShutDown" in {
+    "ActiveShutDown" in:
       testJson[ClusterState](
         ActiveShutDown(setting),
         json"""{
@@ -109,9 +105,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "PassiveLost" in {
+    "PassiveLost" in:
       testJson[ClusterState](
         PassiveLost(setting),
         json"""{
@@ -129,9 +124,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "SwitchedOver" in {
+    "SwitchedOver" in:
       testJson[ClusterState](
         SwitchedOver(setting),
         json"""{
@@ -149,9 +143,8 @@ final class ClusterStateTest extends OurTestSuite
             "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
-    }
 
-    "FailedOver" in {
+    "FailedOver" in:
       testJson[ClusterState](
         FailedOver(setting, JournalPosition(EventId(0), 1234)),
         json"""{
@@ -173,6 +166,4 @@ final class ClusterStateTest extends OurTestSuite
             "position": 1234
           }
         }""")
-    }
   }
-}

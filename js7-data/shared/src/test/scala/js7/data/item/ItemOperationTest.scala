@@ -10,10 +10,10 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 
-final class ItemOperationTest extends OurTestSuite
-{
+final class ItemOperationTest extends OurTestSuite:
+
   "JSON" - {
-    "AddOrChangeSimple" in {
+    "AddOrChangeSimple" in:
       testJson[ItemOperation](
         AddOrChangeSimple(Lock(LockPath("LOCK"))),
         // itemRevision is optional and should not be given !!!
@@ -25,27 +25,24 @@ final class ItemOperationTest extends OurTestSuite
             "limit": 1
           }
         }""")
-    }
 
-    "DeleteSimple" in {
+    "DeleteSimple" in:
       testJson[ItemOperation](
         DeleteSimple(LockPath("LOCK")),
         json"""{
           "TYPE": "DeleteSimple",
           "path": "Lock:LOCK"
         } """)
-    }
 
-    "AddVersion" in {
+    "AddVersion" in:
       testJson[ItemOperation](
         AddVersion(VersionId("1")),
         json"""{
           "TYPE": "AddVersion",
           "versionId": "1"
         }""")
-    }
 
-    "AddOrChangeSigned" in {
+    "AddOrChangeSigned" in:
       val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
       val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1")
       testJson[ItemOperation](
@@ -60,15 +57,12 @@ final class ItemOperationTest extends OurTestSuite
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1\",\"instructions\":[]}"
           }
         }""")
-    }
 
-    "RemoveVersioned" in {
+    "RemoveVersioned" in:
       testJson[ItemOperation](
         RemoveVersioned(WorkflowPath("WORKFLOW")),
         json"""{
           "TYPE": "RemoveVersioned",
           "path": "Workflow:WORKFLOW"
         } """)
-    }
   }
-}

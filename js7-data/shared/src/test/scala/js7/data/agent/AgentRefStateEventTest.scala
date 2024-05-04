@@ -12,18 +12,17 @@ import js7.data.node.NodeId
 import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class AgentRefStateEventTest extends OurTestSuite
-{
+final class AgentRefStateEventTest extends OurTestSuite:
+
   "JSON" - {
-    "AgentCoupled" in {
+    "AgentCoupled" in:
       testJson[KeyedEvent[AgentRefStateEvent]](AgentPath("AGENT") <-: AgentCoupled,
         json"""{
           "TYPE": "AgentCoupled",
           "Key": "AGENT"
         }""")
-    }
 
-    "AgentCouplingFailed" in {
+    "AgentCouplingFailed" in:
       testJson[KeyedEvent[AgentRefStateEvent]](AgentPath("AGENT") <-: AgentCouplingFailed(Problem("ERROR")),
         json"""{
           "TYPE": "AgentCouplingFailed",
@@ -32,9 +31,8 @@ final class AgentRefStateEventTest extends OurTestSuite
             "message": "ERROR"
           }
         }""")
-    }
 
-    "AgentReady" in {
+    "AgentReady" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-:
           AgentReady("Europe/Berlin", Some(PlatformInfo.test)),
@@ -63,9 +61,8 @@ final class AgentRefStateEventTest extends OurTestSuite
             }
           }
         }""")
-    }
 
-    "AgentDedicated" in {
+    "AgentDedicated" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-: AgentDedicated(
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
@@ -88,9 +85,8 @@ final class AgentRefStateEventTest extends OurTestSuite
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
           "agentEventId": 1000
         }""")
-    }
 
-    "AgentDedicated, compatible" in {
+    "AgentDedicated, compatible" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-: AgentDedicated(
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
@@ -100,9 +96,8 @@ final class AgentRefStateEventTest extends OurTestSuite
           "Key": "AGENT",
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
         }""")
-    }
 
-    "AgentEventsObserved" in {
+    "AgentEventsObserved" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-: AgentEventsObserved(123L),json"""
         {
@@ -110,9 +105,8 @@ final class AgentRefStateEventTest extends OurTestSuite
           "Key": "AGENT",
           "untilEventId": 123
         }""")
-    }
 
-    "AgentResetStarted" in {
+    "AgentResetStarted" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-: AgentResetStarted(force = true),json"""
         {
@@ -127,9 +121,8 @@ final class AgentRefStateEventTest extends OurTestSuite
           "TYPE": "AgentResetStarted",
           "Key": "AGENT"
         }""")
-    }
 
-    "AgentMirroredEvent" in {
+    "AgentMirroredEvent" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-:
           AgentMirroredEvent(ClusterEvent.ClusterPassiveLost(NodeId("Backup"))),
@@ -142,9 +135,8 @@ final class AgentRefStateEventTest extends OurTestSuite
             "id": "Backup"
           }
         }""")
-    }
 
-    "AgentClusterWatchConfirmationRequired" in {
+    "AgentClusterWatchConfirmationRequired" in:
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-:
           AgentClusterWatchConfirmationRequired(
@@ -164,6 +156,4 @@ final class AgentRefStateEventTest extends OurTestSuite
             }
           }
         }""")
-    }
   }
-}

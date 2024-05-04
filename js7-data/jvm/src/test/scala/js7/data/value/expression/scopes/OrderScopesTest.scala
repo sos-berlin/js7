@@ -27,16 +27,15 @@ import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, 
 import scala.collection.{MapView, View}
 import scala.concurrent.duration.FiniteDuration
 
-final class OrderScopesTest extends OurTestSuite
-{
+final class OrderScopesTest extends OurTestSuite:
+
   "OrderScopes" - {
     lazy val orderScopes = OrderScopes(order, workflow, controllerId)
 
-    "instructionLabel" in {
+    "instructionLabel" in:
       assert(orderScopes.instructionLabel == Some(Label("LABEL-2")))
-    }
 
-    "if, prompt and fail instructions" in {
+    "if, prompt and fail instructions" in:
       val scope = orderScopes.pureOrderScope
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
@@ -53,7 +52,6 @@ final class OrderScopesTest extends OurTestSuite
       assert(scope.parseAndEval("$js7EpochMilli") == Left(Problem("No such named value: js7EpochMilli")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
         Problem("JobResources are not accessible here: JobResource:JOB-RESOURCE:VARIABLE")))
-    }
   }
 
   "ProcessingOrderScopes" - {
@@ -62,7 +60,7 @@ final class OrderScopesTest extends OurTestSuite
     def makeProcessingOrderscopes(
       sigkillDelay: Option[FiniteDuration], timeout: Option[FiniteDuration])
     : ProcessingOrderScopes =
-      new ProcessingOrderScopes {
+      new ProcessingOrderScopes:
         protected val controllerId = OrderScopesTest.controllerId
         protected val workflow = OrderScopesTest.workflow
         protected val order = OrderScopesTest.order.copy(state = Order.Processing(SubagentId("SUBAGENT")))
@@ -81,9 +79,8 @@ final class OrderScopesTest extends OurTestSuite
           skipIfNoAdmissionStartForOrderDay = false)
         protected val jobResources = Seq(jobResource)
         protected val fileValueScope = Scope.empty
-      }
 
-    "JobResource.env" in {
+    "JobResource.env" in:
       val scope = orderScopes.scopeForJobResources
 
       assert(scope.parseAndEval("$orderArgument") == Left(Problem("No such named value: orderArgument")))
@@ -108,9 +105,8 @@ final class OrderScopesTest extends OurTestSuite
       // Könnte zugelassen werden ?
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
         Problem("JobResources are not accessible here: JobResource:JOB-RESOURCE:VARIABLE")))
-    }
 
-    "evalLazilyJobResourceVariables, for JobResource.variables" in {
+    "evalLazilyJobResourceVariables, for JobResource.variables" in:
       val variables = orderScopes.evalLazilyJobResourceVariables(jobResource)
       assert(variables.get("unknown") == None)
       assert(variables.get("A") == Some(Right(StringValue("AAA"))))
@@ -123,9 +119,8 @@ final class OrderScopesTest extends OurTestSuite
       assert(variables.get("orderArgument") == None)
       assert(variables.get("js7Label") == None)
       assert(variables.get("js7WorkflowPath") == None)
-    }
 
-    "scopeForJobDefaultArguments, for (WorkflowJob + Execute).defaultArguments" in {
+    "scopeForJobDefaultArguments, for (WorkflowJob + Execute).defaultArguments" in:
       val defaultArguments = orderScopes.evalLazilyExecuteDefaultArguments(MapView(
         "defaultJobName" -> NamedValue("js7JobName"),
         "defaultOrderId" -> NamedValue("js7OrderId"),
@@ -147,9 +142,8 @@ final class OrderScopesTest extends OurTestSuite
 
       assert(defaultArguments("defaultJobSigkillDelay") == Right(MissingValue))
       assert(defaultArguments("defaultJobTimeout") == Right(MissingValue))
-    }
 
-    "$job.timeoutMillis, $job.sigkillDelayMillis" in {
+    "$job.timeoutMillis, $job.sigkillDelayMillis" in:
       val orderScopes: ProcessingOrderScopes = makeProcessingOrderscopes(
         sigkillDelay = Some(123456.µs), timeout = Some(9.s))
       val defaultArguments = orderScopes.evalLazilyExecuteDefaultArguments(MapView(
@@ -157,7 +151,6 @@ final class OrderScopesTest extends OurTestSuite
         "defaultJobSigkillDelay" -> expr("$js7Job.sigkillDelayMillis")))
       assert(defaultArguments("defaultJobTimeout") == Right(NumberValue(9000)))
       assert(defaultArguments("defaultJobSigkillDelay") == Right(NumberValue(123)))
-    }
 
     "Executable.arguments, Executable.env" - {
       lazy val scope = orderScopes.processingOrderScope
@@ -165,7 +158,7 @@ final class OrderScopesTest extends OurTestSuite
       "Named values precedence" - {
         val nameToValue = order.namedValues(workflow).toMap
 
-        "Order.nameToValue" in {
+        "Order.nameToValue" in:
           assert(nameToValue == Map(
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
@@ -177,9 +170,8 @@ final class OrderScopesTest extends OurTestSuite
             "orderArgument" -> StringValue("ORDER-ARGUMENT"),
             "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
             "timezone" -> StringValue("Europe/Berlin")))
-        }
 
-        "Order.v1CompatibleNamedValues" in {
+        "Order.v1CompatibleNamedValues" in:
           val v1NamedValues = order.v1CompatibleNamedValues(workflow)
           assert(v1NamedValues == Map(
             "a" -> StringValue("a from order"),
@@ -192,45 +184,35 @@ final class OrderScopesTest extends OurTestSuite
             "orderArgument" -> StringValue("ORDER-ARGUMENT"),
             "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
             "timezone" -> StringValue("Europe/Berlin")))
-        }
 
-        def check(name: String, expectedValue: String) = {
+        def check(name: String, expectedValue: String) =
           assert(nameToValue(name) == StringValue(expectedValue))
           assert(scope.parseAndEval("$" + name) == Right(StringValue(expectedValue)))
-        }
 
-        "Name defined only as order argument" in {
+        "Name defined only as order argument" in:
           check("a","a from order")
-        }
 
-        "Name defined as order argument with default" in {
+        "Name defined as order argument with default" in:
           check("b","b from order")
-        }
 
-        "Name defined as only as order default" in {
+        "Name defined as only as order default" in:
           check("c" ,"c from workflow defaults")
-        }
 
-        "Name defined as only as order default, referencing another order argument" in {
+        "Name defined as only as order default, referencing another order argument" in:
           check("c1" ,"c from workflow defaults")
-        }
 
-        "Name defined only as order step result at position 0" in {
+        "Name defined only as order step result at position 0" in:
           check("d" ,"d from position 0")
-        }
 
-        "Name defined as order step result at positions 0 and 1" in {
+        "Name defined as order step result at positions 0 and 1" in:
           check("e" ,"e from position 1")
-        }
 
-        "Name defined as argument and order step result" in {
+        "Name defined as argument and order step result" in:
           assert(scope.parseAndEval("$f") == Right(StringValue("f from order")))
-        }
       }
 
-      "Executable.arguments, Executable.env" in {
+      "Executable.arguments, Executable.env" in:
         // Also for BlockingInternalJob.evalExpression and BlockingInternalJob.namedValue
-
 
         assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
         assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
@@ -261,10 +243,9 @@ final class OrderScopesTest extends OurTestSuite
 
         assert(scope.parseAndEval("$js7EpochMilli") == Right(
           NumberValue(orderScopes.nowScope.now.toEpochMilli)))
-      }
     }
 
-    "Workflow.orderVariables" in {
+    "Workflow.orderVariables" in:
       import OrderScopes.workflowOrderVariablesScope
       val scope = workflowOrderVariablesScope(freshOrder,
         controllerId,
@@ -333,27 +314,22 @@ final class OrderScopesTest extends OurTestSuite
         Right(StringValue("DOT")))
       assert(scope.parseAndEval("jobResourceVariables('SIMPLE').X") ==
         Right(StringValue("XXX")))
-    }
 
-    "Speed" in {
+    "Speed" in:
       implicit val scope = orderScopes.processingOrderScope
       val n = sys.props.get("test.speed").fold(100)(_.toInt)
       val expressionsStrings = View("$orderArgument", "$js7Label", "$js7WorkflowPosition",
         "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:NOW",
         "now($dateTimeFormat, $timezone)")
-      for exprString <- expressionsStrings do {
+      for exprString <- expressionsStrings do
         val expression = expr(exprString)
         logger.info(measureTime(n, exprString, warmUp = n) {
           expression.eval.orThrow
         }.toString)
-      }
-    }
   }
-}
 
 
-object OrderScopesTest
-{
+object OrderScopesTest:
   private val logger = Logger[this.type]
 
   private val controllerId = ControllerId("CONTROLLER")
@@ -421,4 +397,3 @@ object OrderScopesTest
       HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map(
         "e" -> StringValue("e from position 1"),
         "f" -> StringValue("f from position 1"))))))
-}

@@ -7,10 +7,10 @@ import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVa
 import js7.data.value.{NamedValues, StringValue}
 import js7.tester.CirceJsonTester.testJson
 
-final class OrderWatchEventTest extends OurTestSuite
-{
+final class OrderWatchEventTest extends OurTestSuite:
+
   "JSON" - {
-    "ExternalOrderArised" in {
+    "ExternalOrderArised" in:
       testJson[OrderWatchEvent](
         ExternalOrderArised(
           ExternalOrderName("NAME"),
@@ -24,15 +24,12 @@ final class OrderWatchEventTest extends OurTestSuite
             "file": "FILE"
           }
         }""")
-    }
 
-    "ExternalOrderVanished" in {
+    "ExternalOrderVanished" in:
       testJson[OrderWatchEvent](
         ExternalOrderVanished(ExternalOrderName("NAME")),
         json"""{
           "TYPE": "ExternalOrderVanished",
           "externalOrderName": "NAME"
         }""")
-    }
   }
-}

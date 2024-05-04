@@ -19,18 +19,17 @@ import scala.collection.View
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
-trait ScheduleTester extends OurTestSuite
-{
+trait ScheduleTester extends OurTestSuite:
+
   protected final def addStandardScheduleTests
     (testDay: (TimeInterval, FiniteDuration, ZoneId, Seq[(Timestamp, CycleState)], Boolean) => Unit)
     (implicit pos: source.Position)
-  : Unit = {
+  : Unit =
     for ((onlyOnePeriod, days, timeOfDay) <- View(
       (false, standardSetting, MIDNIGHT plus dateOffset.toJava),
       (true, onlyOnePeriodSetting, onlyOnePeriodTimeOfDay)))
-    {
       s"onlyOnePeriod=$onlyOnePeriod" - {
-        for day <- days do day.testName in {
+        for day <- days do day.testName in:
           assert(day.dayOfWeek == day.date.getDayOfWeek, "Weekday does not match start date")
           val startOfDay = LocalDateTime.of(day.date, MIDNIGHT)
           val localStart = startOfDay.plusSeconds(timeOfDay.toSecondOfDay)
@@ -43,19 +42,15 @@ trait ScheduleTester extends OurTestSuite
             zone,
             day.expectedCycles.map { case (now, cs) => now -> cs.toCycleState(end) },
             onlyOnePeriod)
-        }
       }
-    }
-  }
-}
 
 
-object ScheduleTester
-{
+object ScheduleTester:
+
   val dateOffset = 6.h // Business day starts at 6:00 (i.e., switching from monday to tuesday)
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
 
-  val schedule: Schedule = {
+  val schedule: Schedule =
     import LocalTime.parse as localTime
     Schedule(Seq(
       Scheme(
@@ -84,7 +79,6 @@ object ScheduleTester
           WeekdayPeriod(SUNDAY, localTime("18:00"), 30.minutes))),
         Continuous(
           pause = 5.minutes))))
-  }
 
   private val standardSetting = Seq(
     Day(MONDAY,
@@ -352,15 +346,12 @@ object ScheduleTester
     cycleDuration: FiniteDuration = 0.s,
     title: String = "",
     expectedCycles: Seq[(Timestamp, CS)])
-  {
+  :
     def testName = dayOfWeek.toString.toLowerCase(Locale.ROOT).capitalize +
       " " + cycleDuration.pretty +
       (title.??.fold("")(" — " + _))
-  }
 
   private final case class CS(scheme: Int, period: Int, i: Int, next: Timestamp)
-  {
+  :
     def toCycleState(until: Timestamp) =
       CycleState(until, schemeIndex = scheme, periodIndex = period, index = i, next = next)
-  }
-}

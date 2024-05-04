@@ -22,8 +22,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class TryExecutorTest extends OurTestSuite
-{
+final class TryExecutorTest extends OurTestSuite:
+
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(
     isAgent = false,
@@ -32,34 +32,28 @@ final class TryExecutorTest extends OurTestSuite
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "JSON" - {
-    "try" in {
+    "try" in:
       testJson(tryExecutor.nextMove(tryInstruction, AOrder, stateView).orThrow.get.to,
         json"""[ 7, "try+0", 0 ]""")
-    }
 
-    "catch" in {
+    "catch" in:
       testJson(Position(7) / BranchId.catch_(0) % 0,
         json"""[ 7, "catch+0", 0 ]""")
-    }
   }
 
-  "nextMove" in {
+  "nextMove" in:
     assert(executorService.nextMove(tryInstruction, AOrder, stateView) ==
       Right(Some(OrderMoved(Position(7) / try_(0) % 0))))
-  }
 
-  "toEvents" in {
+  "toEvents" in:
     assert(executorService.toEvents(tryInstruction, AOrder, stateView) ==
       Right(Seq(AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
-  }
-}
 
 
-object TryExecutorTest {
+object TryExecutorTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh,
     historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1)))))
   private val TryJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
   private val CatchJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))
-}

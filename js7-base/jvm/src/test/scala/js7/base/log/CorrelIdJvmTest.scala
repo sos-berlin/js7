@@ -148,9 +148,8 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
                 ()
               )))
         .await(99.s)
-      if i % (n / 10) == 0 then {
+      if i % (n / 10) == 0 then
         logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "Futures"))
-      }
 
   //if false then "ThreadContext implemented with Monix Local, is stiched to the Fiber" in:
   //  // We do not use ThreadContext.put. Maybe it should work in non-Monix threads, too.

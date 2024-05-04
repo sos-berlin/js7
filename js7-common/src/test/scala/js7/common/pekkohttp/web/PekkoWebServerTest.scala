@@ -51,8 +51,8 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
-{
+final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
+
   private given IORuntime = ioRuntime
 
   private implicit lazy val actorSystem: ActorSystem =
@@ -63,7 +63,7 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
   private val received = mutable.Buffer.empty[String]
   private val streamFiber = Deferred.unsafe[IO, FiberIO[Unit]]
 
-  private lazy val keyStoreRef: KeyStoreRef = {
+  private lazy val keyStoreRef: KeyStoreRef =
     createDirectory(directory / "private")
     KeyStoreResource.copyToFile(directory / "private" / "https-keystore.p12")
     KeyStoreRef.fromSubconfig(
@@ -73,7 +73,6 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
           """,
       directory / "private/https-keystore.p12")
       .orThrow
-  }
 
   private lazy val webServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
     .resource(
@@ -119,14 +118,13 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
     finally
       super.afterAll()
 
-  "HTTP" in {
+  "HTTP" in:
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))
       .await(99.s)
     assert(response.status == OK)
     assert(response.utf8String.await(99.s) == "OKAY")
-  }
 
-  "Start reading endless stream" in {
+  "Start reading endless stream" in:
     val response = http
       .singleRequest:
         HttpRequest(
@@ -150,37 +148,31 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
     streamFiber.get.await(9.s)
     awaitAndAssert:
       received.headOption.contains(StreamingStartedString)
-  }
 
   "HTTPS" - {
-    "Client does not know server certificate" in {
-      intercept[SSLHandshakeException] {
+    "Client does not know server certificate" in:
+      intercept[SSLHandshakeException]:
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"))
           .await(99.s)
-      }
-    }
 
     lazy val httpsConnectionContext =
       ConnectionContext.httpsClient(loadSSLContext(trustStoreRefs = Seq(ClientTrustStoreRef)))
 
-    "Hostname verification rejects 127.0.0.1" in {
-      val e = intercept[javax.net.ssl.SSLHandshakeException] {
+    "Hostname verification rejects 127.0.0.1" in:
+      val e = intercept[javax.net.ssl.SSLHandshakeException]:
         http
           .singleRequest(
             HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"),
             httpsConnectionContext)
           .await(99.s)
-      }
       assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
              e.getMessage == "General SSLEngine problem")
-    }
 
-    "For this test, localhost must point to 127.0.0.1" in {
+    "For this test, localhost must point to 127.0.0.1" in:
       // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).
       assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")
-    }
 
-    "Hostname verification accepts localhost" in {
+    "Hostname verification accepts localhost" in:
       val response = http
         .singleRequest(
           HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
@@ -188,18 +180,16 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
         .await(99.s)
       assert(response.status == OK)
       assert(response.utf8String.await(99.s) == "OKAY")
-    }
   }
 
   "Stop web server" in:
     webServer.release.await(9.s)
     val outcome = streamFiber.get.flatMap(_.join).await(99.s)
     if !outcome.isSuccess then fail(outcome.toString)
-}
 
 
-object PekkoWebServerTest
-{
+object PekkoWebServerTest:
+
   private val logger = Logger[this.type]
   private val StreamingStartedString = String("STARTED\n")
   private val StreamingString = String("STREAMING\n")
@@ -219,4 +209,3 @@ object PekkoWebServerTest
   private[web] val ClientTrustStoreRef = TrustStoreRef(
     TrustStoreResource.url,
     storePassword = SecretString("jobscheduler"))
-}

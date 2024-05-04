@@ -48,10 +48,10 @@ object CanBindCorrelId:
         IO.defer:
           //Cats??? val saved = Local.getContext()
           _bindCorrelIdCount += 1
-          IO.defer {
+          IO.defer:
             //Cats??? Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
             io
-          }//Cats??? .guarantee(IO(Local.setContext(saved)))
+          //Cats??? .guarantee(IO(Local.setContext(saved)))
 
     def bindNewIfEmpty(io: => IO[Any]): IO[Any] =
       if !CorrelId.isEnabled then

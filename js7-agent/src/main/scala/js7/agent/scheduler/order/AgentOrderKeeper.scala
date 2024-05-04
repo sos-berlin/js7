@@ -540,10 +540,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
               IO.sleep(delays.next()).as(Left(())/*repeat*/)
 
             case checked =>
-              if sym.used then checked match {
+              if sym.used then checked match
                 case Left(problem) => logger.error(s"🔥 $label => $problem")
                 case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
-              }
               IO.right(checked)
       }
 
@@ -785,7 +784,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       case Right(order) => proceedWithOrder(order)
 
   private def proceedWithOrder(order: Order[Order.State]): Unit =
-    if order.isAttached then {
+    if order.isAttached then
       val delayed = clock.lock:
         order.maybeDelayedUntil match
           case Some(until) if clock.now() < until =>
@@ -798,7 +797,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           case _ =>
             false
 
-      if !delayed then {
+      if !delayed then
         val agentState = journal.unsafeCurrentState()
         val oes = new OrderEventSource(agentState)
         if order != agentState.idToOrder(order.id) then
@@ -838,8 +837,6 @@ extends MainJournalingActor[AgentState, Event], Stash:
           && !shuttingDown
         then
           onOrderIsProcessable(order)
-      }
-    }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
     journal.unsafeCurrentState()
@@ -907,7 +904,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
     IO
-      .defer {
+      .defer:
         logger.info(s"❗️ $cmd")
         switchingOver = true // Asynchronous !!!
         IO(clusterNode.workingClusterNode)
@@ -918,7 +915,6 @@ extends MainJournalingActor[AgentState, Event], Stash:
           .flatMapT(_.switchOver)
           .flatMapT(_ => IO.right(self ! Internal.ContinueSwitchover))
           .rightAs(AgentCommand.Response.Accepted)
-      }
       .unsafeToFuture()
 
   override def unhandled(message: Any): Unit =

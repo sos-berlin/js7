@@ -129,13 +129,13 @@ private[cluster] final class ClusterCommon private(
   : IO[Checked[Boolean]] =
     logger.traceIOWithResult:
       IO.pure(clusterState.applyEvent(event))
-        .flatMapT {
+        .flatMapT:
           case updatedClusterState: HasNodes =>
             clusterWatchSynchronizer(clusterState)
               .flatMap(_.applyEvent(event, updatedClusterState,
                 // Changed ClusterWatch must only confirm when taught and sure !!!
                 clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver]))
-              .flatMap {
+              .flatMap:
                 case Left(problem) =>
                   if problem.is(ClusterNodeLossNotConfirmedProblem)
                     || problem.is(ClusterWatchInactiveNodeProblem) then
@@ -161,20 +161,17 @@ private[cluster] final class ClusterCommon private(
                   body
 
                 case Right(maybeConfirm) =>
-                  maybeConfirm match {
+                  maybeConfirm match
                     case None =>
                       logger.info(
                         s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
                     case Some(confirm) =>
                       logger.info(
                         s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
-                  }
                   testEventBus.publish(ClusterWatchAgreedToActivation)
                   body
-              }
           case ClusterState.Empty => IO.left(Problem.pure(
             "ClusterState.Empty in ifClusterWatchAllowsActivation ??"))
-        }
 
 private[js7] object ClusterCommon:
   private val logger = Logger[this.type]

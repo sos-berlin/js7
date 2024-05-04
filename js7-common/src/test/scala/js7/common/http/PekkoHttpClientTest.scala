@@ -48,8 +48,8 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasCloser
-{
+final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasCloser:
+
   private given IORuntime = ioRuntime
 
   implicit private lazy val actorSystem: ActorSystem =
@@ -76,21 +76,18 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     }.closeWithCloser
 
     "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-      for case (uri, None) <- Setting do s"$uri" in {
+      for case (uri, None) <- Setting do s"$uri" in:
         assert(httpClient.checkAgentUri(uri).isLeft)
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
         implicit val s = IO.pure(none[SessionToken])
         assert(Try(httpClient.get_[HttpResponse](uri).await(99.s)).failed.get.getMessage
           contains "does not match")
-      }
     }
 
     "normalizeAgentUri" - {
-      for case (uri, Some(converted)) <- Setting do s"$uri" in {
+      for case (uri, Some(converted)) <- Setting do s"$uri" in:
         assert(httpClient.normalizeAgentUri(uri) == converted)
         assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
-      }
-    }
 
     //"Operations after close are rejected" in {
     //  httpClient.close()
@@ -99,13 +96,14 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     //  assert(Await.result(httpClient.get_[HttpResponse](uri).unsafeToFuture().failed, 99.seconds).getMessage ==
     //    "PekkoHttpClient has been closed: GET https://example.com:9999/PREFIX")
     //}
+    }
   }
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
     lazy val allocatedWebServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
-      .testResource() {
-        decodeRequest {
+      .testResource():
+        decodeRequest:
           import CirceJsonSupport.jsonMarshaller
           post {
             import CirceJsonSupport.jsonUnmarshaller
@@ -123,7 +121,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
                 complete(InternalServerError -> "SERVER ERROR")
               })
           } ~
-            get {
+            get:
               path("STREAM") {
                 completeWithByteStream(`application/x-ndjson`):
                   Stream("ONE\n", "TWO\n")
@@ -134,9 +132,6 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
               path("IDLE-TIMEOUT"):
                 completeWithStream(`application/x-ndjson`):
                   Stream.emit(ByteString("IDLE-TIMEOUT\n")).covary[IO].delayBy(5.s)
-            }
-        }
-      }
       .toAllocated
       .await(99.s)
 
@@ -151,39 +146,34 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     lazy val uri = allocatedWebServer.allocatedThing.localUri
     implicit val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
-    "OK" in {
+    "OK" in:
       assert(httpClient.post(Uri(s"$uri/OK"), A(1)).await(99.s) == A(2))
       assert(liftProblem(httpClient.post(Uri(s"$uri/OK"), A(1))).await(99.s) == Right(A(2)))
-    }
 
-    "Bad Request post" in {
+    "Bad Request post" in:
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/BAD-REQUEST => "BAD REQUEST"""")
-    }
 
-    "Bad Request postDiscardResponse" in {
+    "Bad Request postDiscardResponse" in:
       val t = intercept[HttpException](
         httpClient.postDiscardResponse(Uri(s"$uri/BAD-REQUEST"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/BAD-REQUEST => "BAD REQUEST"""")
-    }
 
-    "Problem" in {
+    "Problem" in:
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/PROBLEM"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 400 Bad Request: POST $uri/PROBLEM => PROBLEM""")
 
       assert(liftProblem(httpClient.post(Uri(s"$uri/PROBLEM"), A(1))).await(99.s) ==
         Left(Problem("PROBLEM")))
-    }
 
-    "Internal Server Error" in {
+    "Internal Server Error" in:
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/SERVER-ERROR"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 500 Internal Server Error: POST $uri/SERVER-ERROR => "SERVER ERROR"""")
-    }
 
-    "getRawLinesStream" in {
+    "getRawLinesStream" in:
       val result = Stream
         .eval(httpClient.getRawLinesStream(Uri(s"$uri/STREAM")))
         .flatten
@@ -191,9 +181,8 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         .await(99.s)
         .map(_.utf8String)
       assert(result == List("ONE\n", "TWO\n"))
-    }
 
-    "getRawLinesStream: idle-timeout yield an empty observable" in {
+    "getRawLinesStream: idle-timeout yield an empty observable" in:
       // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Stream
       val result = Stream
         .eval(httpClient.getRawLinesStream(Uri(s"$uri/IDLE-TIMEOUT")))
@@ -201,20 +190,17 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         .compile.toList
         .await(99.s)
       assert(result.isEmpty)
-    }
 
-    "close" in {
+    "close" in:
       httpClient.close()
       allocatedWebServer.release.await(99.s)
-    }
   }
 
   "liftProblem, HttpException#problem" - {
-    "No Exception" in {
+    "No Exception" in:
       assert(liftProblem(IO(1)).await(99.s) == Right(1))
-    }
 
-    "HttpException with problem" in {
+    "HttpException with problem" in:
       val problem = Problem.pure("PROBLEM")
       val jsonString = Problem.typedJsonEncoder.encodeObject(problem).compactPrint
       val e = new HttpException(
@@ -224,9 +210,8 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         jsonString)
       assert(e.problem == Some(problem))
       assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(problem))
-    }
 
-    "HttpException with broken problem" in {
+    "HttpException with broken problem" in:
       val jsonString = "{}"
       val e = new HttpException(
         POST,
@@ -236,9 +221,8 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       assert(e.problem.isEmpty)
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
       assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(Problem(e.getMessage)))
-    }
 
-    "HttpException with string response" in {
+    "HttpException with string response" in:
       val e = new HttpException(
         POST,
         Uri("/URI"),
@@ -246,43 +230,38 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         "{}")
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
       assert(liftProblem(IO.raiseError(e)).await(99.s) == Left(Problem(e.getMessage)))
-    }
 
-    "Other exception" in {
+    "Other exception" in:
       val e = new Exception
       assert(Try(liftProblem(IO.raiseError(e)).await(99.s)).failed.get eq e)
-    }
   }
 
-  "toPrettyProblem" in {
+  "toPrettyProblem" in:
     val t = new org.apache.pekko.stream.ConnectionException(
       "Tcp command [Connect(agent-1/<unresolved>:4443,None,List(),Some(10 seconds),true)] failed because of java.net.ConnectException: Connection refused")
       .initCause(new java.net.SocketException("Connection refused"))
     assert(toPrettyProblem(Problem.fromThrowable(t)) == Problem("TCP Connect agent-1:4443: Connection refused"))
-  }
 
   "Connection refused, try two times" - {
     lazy val uri = findFreeLocalUri()
 
-    def newHttpClient() = new PekkoHttpClient {
+    def newHttpClient() = new PekkoHttpClient:
       protected val actorSystem = PekkoHttpClientTest.this.actorSystem
       protected val baseUri = uri
       protected val name = "PekkoHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
       protected def httpsConfig = HttpsConfig.empty
-    }
     implicit val sessionToken = IO.pure(none[SessionToken])
 
-    "First call" in {
+    "First call" in:
       autoClosing(newHttpClient()) { httpClient =>
         val since = now
         val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).unsafeToFuture()
         val a = Await.ready(whenGot, 99.s - 1.s)
         assert(a.value.get.isFailure)
       }
-    }
 
-    "Second call lets pekko-http not block for a very long time" in {
+    "Second call lets pekko-http not block for a very long time" in:
       // Akka 2.6.5 or our PekkoHttpClient blocked on next call after connection failure.
       // This does not occur anymore!
       autoClosing(newHttpClient()) { httpClient =>
@@ -290,10 +269,9 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         val a = Await.ready(whenGot, 99.s - 1.s)
         assert(a.value.get.isFailure)
       }
-    }
   }
 
-  "Header x-js7-correlation-id uses ASCII" in {
+  "Header x-js7-correlation-id uses ASCII" in:
     val h = `x-js7-correlation-id`(CorrelId("_CORRELñ"))
     val asciiString = "_CORREL-"
 
@@ -304,9 +282,8 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       .throwable))
     assert(`x-js7-correlation-id`.parse("_CORREL?") == Failure(Problem("Invalid CorrelId")
       .throwable))
-  }
 
-  "Header x-js7-request-id" in {
+  "Header x-js7-request-id" in:
     val n = 111222333444555666L
     val h = `x-js7-request-id`(n)
     val string = s"#$n"
@@ -314,8 +291,6 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     assert(`x-js7-request-id`.parse(string) == Success(h))
     assert(`x-js7-request-id`.parse("123").isFailure)
     assert(`x-js7-request-id`.parse("#123X").isFailure)
-  }
-}
 
 
 object PekkoHttpClientTest:

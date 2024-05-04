@@ -46,8 +46,8 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
-{
+final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
+
   protected type OurSession = SimpleSession
 
   private implicit val timeout: FiniteDuration = 99.s
@@ -77,14 +77,13 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
 
   private given IORuntime = ioRuntime
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     eventWatch = new JournalEventWatch(journalLocation, config)
     allocatedWebServer
     writeSnapshot(EventId.BeforeFirst)
     eventWriter = newEventJournalWriter(EventId.BeforeFirst)
     eventWriter.onJournalingStarted()
-  }
 
   override def afterAll() =
     try
@@ -102,18 +101,17 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       .flatMap(_.compile.toList).await(99.s)
     assert(lines.map(_.utf8String).mkString == file0.contentString)
 
-  "/journal from end of file" in {
+  "/journal from end of file" in:
     val fileLength = size(file0)
     val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=$fileLength"))
       .await(99.s).toListL.await(99.s)
     assert(lines.map(_.utf8String).isEmpty)
-  }
 
   "New data" - {
     val observed = mutable.Buffer[String]()
     var observing: CancelableFuture[Unit] = null
 
-    "Nothing yet written" in {
+    "Nothing yet written" in:
       val initialFileLength = size(journalLocation.file(0L))
       observing = client
         .getRawLinesStream(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
@@ -125,29 +123,25 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
         .unsafeToCancelableFuture()
       sleep(100.ms)
       assert(observed.isEmpty)
-    }
 
-    "Written but not flushed" in {
+    "Written but not flushed" in:
       eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("TEST") ~ "VERSION")))
       sleep(100.ms)
       assert(observed.isEmpty)
-    }
 
-    "flushed" in {
+    "flushed" in:
       assert(observed.isEmpty)
       eventWriter.flush(false)
       awaitAndAssert(observed.nonEmpty)
       assert(observed.mkString ==
          """{"eventId":1000,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"TEST","versionId":"VERSION"}}
            |""".stripMargin)
-    }
 
-    "committed" in {
+    "committed" in:
       // Journal web service reads uncommitted !!!
       eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
-    }
 
-    "Next file" in {
+    "Next file" in:
       eventWriter.endEventSection(sync = false)
       eventWriter.close()
       observing await 99.s
@@ -159,10 +153,9 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       writeSnapshot(1000L)
       eventWriter = newEventJournalWriter(1000L)
       eventWriter.onJournalingStarted()
-    }
   }
 
-  "Truncated record is ignored" in {
+  "Truncated record is ignored" in:
     eventWriter.endEventSection(sync = false)
     eventWriter.close()
     eventWatch.close()
@@ -184,12 +177,11 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     assert(lines == List(EndOfJournalFileMarker))
 
     eventWatch.close()
-  }
 
   "Acknowledgements" - {
     lazy val file4 = journalLocation.file(4000L)
 
-    "Reading acknowledgements from active node is pointless and rejected" in {
+    "Reading acknowledgements from active node is pointless and rejected" in:
       writeSnapshot(4000L)
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
@@ -199,9 +191,8 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       assert(bad.await(99.s) == Left(AckFromActiveClusterNodeProblem))
 
       eventWatch.close()
-    }
 
-    "Reading acknowledgements from passive node is good" in {
+    "Reading acknowledgements from passive node is good" in:
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = false)
@@ -210,7 +201,6 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       assert(lines == Nil)
 
       eventWatch.close()
-    }
   }
 
   private def writeSnapshot(eventId: EventId): Unit =
@@ -227,4 +217,3 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
 
   private def newEventJournalWriter(eventId: EventId) =
     new EventJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
-}

@@ -10,8 +10,8 @@ import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 import scala.util.{Failure, Success}
 
-final class AsyncMapTest extends OurAsyncTestSuite
-{
+final class AsyncMapTest extends OurAsyncTestSuite:
+
   private given IORuntime = ioRuntime
 
   private val asyncMap = AsyncMap(Map(1 -> "EINS"))
@@ -25,23 +25,19 @@ final class AsyncMapTest extends OurAsyncTestSuite
   private def earlyCrashingUpdate(maybe: Option[String]): IO[String] =
     throw new RuntimeException("CRASH")
 
-  "get existing" in {
+  "get existing" in:
     assert(asyncMap.get(1) == Some("EINS"))
-  }
 
-  "get non-existing" in {
+  "get non-existing" in:
     assert(asyncMap.get(0) == None)
-  }
 
-  "checked existing" in {
+  "checked existing" in:
     assert(asyncMap.checked(1) == Right("EINS"))
-  }
 
-  "checked non-existing" in {
+  "checked non-existing" in:
     assert(asyncMap.checked(0) == Left(UnknownKeyProblem("Int", "0")))
-  }
 
-  "remove" in {
+  "remove" in:
     asyncMap
       .update(2, {
         case None => IO("ZWEI")
@@ -51,66 +47,54 @@ final class AsyncMapTest extends OurAsyncTestSuite
       .flatMap(maybe => IO(assert(maybe == Some("ZWEI"))))
       .*>(asyncMap.remove(2))
       .flatMap(maybe => IO(assert(maybe == None)))
-  }
 
-  "getAndUpdate" in {
+  "getAndUpdate" in:
     asyncMap.getAndUpdate(0, update)
       .map(pair => assert(pair == (None, "FIRST")))
       .*>(asyncMap.getAndUpdate(0, update))
       .map(pair => assert(pair == (Some("FIRST"), "FIRST-UPDATED")))
-  }
 
   "getAndUpdate, crashing" - {
     for ((upd, name) <- View(
       propertlyCrashingUpdate _ -> "properly",
       earlyCrashingUpdate _ -> "early"))
-    {
-      name in {
+      name in:
         asyncMap.getAndUpdate(0, upd)
           .attempt
-          .map {
+          .map:
             case Left(t) => assert(t.getMessage == "CRASH")
             case Right(_) => fail()
-          }
           .*>(IO {
             // assert that the lock is released
             assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
           })
-      }
-    }
   }
 
-  "update" in {
+  "update" in:
     asyncMap.update(2, update)
       .map(o => assert(o == "FIRST"))
-  }
 
-  "insert" in {
+  "insert" in:
     asyncMap.insert(3, "INSERTED")
       .map(o => assert(o == Right("INSERTED")))
-  }
 
-  "insert duplicate" in {
+  "insert duplicate" in:
     asyncMap.insert(3, "DUPLICATE")
       .map(o => assert(o == Left(DuplicateKey("Int", "3"))))
-  }
 
   "updateChecked" - {
     def updateChecked(maybe: Option[String]): IO[Checked[String]] =
-      maybe match {
+      maybe match
         case None => IO(Right("FIRST"))
         case Some(_) => IO(Left(Problem("EXISTING")))
-      }
 
-    "standard" in {
+    "standard" in:
       asyncMap.updateChecked(4, updateChecked)
         .map(o => assert(o == Right("FIRST")))
-    }
 
-    "update again" in {
+    "update again" in:
       asyncMap.updateChecked(4, updateChecked)
         .map(o => assert(o == Left(Problem("EXISTING"))))
-    }
 
     "updateChecked, crashing" - {
       def properlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[String]] =
@@ -122,20 +106,16 @@ final class AsyncMapTest extends OurAsyncTestSuite
       for ((upd, name) <- View(
         properlyCrashingUpdateChecked _ -> "properly",
         earlyCrashingUpdateChecked _ -> "early"))
-      {
-        name in {
+        name in:
           asyncMap.updateChecked(0, upd)
             .materialize
-            .map {
+            .map:
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
-            }
             .flatTap(_ => IO {
               // assert that the lock is released
               assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
             })
-        }
-      }
     }
   }
 
@@ -143,26 +123,22 @@ final class AsyncMapTest extends OurAsyncTestSuite
     val asyncMap = AsyncMap(Map(0 -> "ZERO"))
 
     def updateCheckedWithResult(maybe: Option[String]): IO[Checked[(String, Int)]] =
-      maybe match {
+      maybe match
         case None => IO(Right("FIRST" -> 7))
         case Some(_) => IO(Left(Problem("EXISTING")))
-      }
 
-    "standard, check result is 7" in {
+    "standard, check result is 7" in:
       asyncMap.updateCheckedWithResult(4, updateCheckedWithResult)
         .map(o => assert(o == Right(7)))
         .*>(asyncMap.updateCheckedWithResult(4, updateCheckedWithResult))
         .map(o => assert(o == Left(Problem("EXISTING"))))
-    }
 
-    "standard, check updated value is FIRST" in {
+    "standard, check updated value is FIRST" in:
       assert(asyncMap.get(4) == Some("FIRST"))
-    }
 
-    "update again" in {
+    "update again" in:
       asyncMap.updateCheckedWithResult(4, updateCheckedWithResult)
         .map(o => assert(o == Left(Problem("EXISTING"))))
-    }
 
     "updateCheckedWithResult, crashing" - {
       def properlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[(String, Int)]] =
@@ -174,43 +150,36 @@ final class AsyncMapTest extends OurAsyncTestSuite
       for ((upd, name) <- View(
         properlyCrashingUpdateChecked _ -> "properly",
         earlyCrashingUpdateChecked _ -> "early"))
-      {
-        name in {
+        name in:
           asyncMap.updateCheckedWithResult(0, upd)
             .materialize
-            .map {
+            .map:
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
-            }
             .flatTap(_ => IO {
               // assert that the lock is released
               assert(asyncMap.get(0) == Some("ZERO"))
             })
-        }
-      }
-    }
 
     //???
+    }
   }
 
-  "toMap" in {
+  "toMap" in:
     assert(asyncMap.toMap == Map(
       0 -> "FIRST-UPDATED",
       1 -> "EINS",
       2 -> "FIRST",
       3 -> "INSERTED",
       4 -> "FIRST"))
-  }
 
-  "size" in {
+  "size" in:
     assert(asyncMap.size == 5)
-  }
 
-  "isEmpty" in {
+  "isEmpty" in:
     assert(!asyncMap.isEmpty)
-  }
 
-  "removeConditional" in {
+  "removeConditional" in:
     asyncMap.removeConditional(_._1 <= 2)
       .map(all => assert(all == Map(
         0 -> "FIRST-UPDATED",
@@ -219,19 +188,17 @@ final class AsyncMapTest extends OurAsyncTestSuite
       .map(_ => assert(asyncMap.toMap == Map(
         3 -> "INSERTED",
         4 -> "FIRST")))
-  }
 
-  "removeAll" in {
+  "removeAll" in:
     asyncMap.removeAll
       .map(all => assert(all == Map(
         3 -> "INSERTED",
         4 -> "FIRST")))
       .map(_ => assert(asyncMap.toMap.isEmpty))
-  }
 
   "stop" - {
     "empty" - {
-      "stop" in {
+      "stop" in:
         val asyncMap = AsyncMap.stoppable[Int, String]()
         (for
           _ <- asyncMap.initiateStop
@@ -239,9 +206,8 @@ final class AsyncMapTest extends OurAsyncTestSuite
           _ = assert(checked == Left(Problem("AsyncMap[Int, String] is being stopped")))
         yield succeed
         ).unsafeToFuture()
-      }
 
-      "initiateStopWithProblem" in {
+      "initiateStopWithProblem" in:
         val asyncMap = AsyncMap.stoppable[Int, String]()
         val myProblem = Problem("MY PROBLEM")
         (for
@@ -252,10 +218,9 @@ final class AsyncMapTest extends OurAsyncTestSuite
           _ = assert(!asyncMap.isStoppingWith(Problem("OTHER")))
         yield succeed
         ).unsafeToFuture()
-      }
 
       "initiateStopWithProblemIfEmpty" - {
-        "non empty" in {
+        "non empty" in:
           val asyncMap = AsyncMap.stoppable[Int, String]()
           val myProblem = Problem("MY PROBLEM")
           (for
@@ -267,9 +232,8 @@ final class AsyncMapTest extends OurAsyncTestSuite
             _ = assert(!asyncMap.isStoppingWith(myProblem))
           yield succeed
           ).unsafeToFuture()
-        }
 
-        "empty" in {
+        "empty" in:
           val asyncMap = AsyncMap.stoppable[Int, String]()
           val myProblem = Problem("MY PROBLEM")
           (for
@@ -280,7 +244,6 @@ final class AsyncMapTest extends OurAsyncTestSuite
             _ = assert(asyncMap.isStoppingWith(myProblem))
           yield succeed
           ).unsafeToFuture()
-        }
       }
     }
 
@@ -292,7 +255,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
           .as(succeed).unsafeToFuture()
 
 
-      "update is allowed" in {
+      "update is allowed" in:
         fillAsyncMap
 
         (for
@@ -313,7 +276,5 @@ final class AsyncMapTest extends OurAsyncTestSuite
           _ <- asyncMap.whenStopped
         yield succeed
         ).unsafeToFuture()
-      }
     }
   }
-}

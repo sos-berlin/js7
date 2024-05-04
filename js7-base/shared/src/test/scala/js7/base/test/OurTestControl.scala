@@ -127,7 +127,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  */
 final class OurTestControl[A] private(
   ctx: TestContext,
-  _results: AtomicReference[Option[Outcome[Id, Throwable, A]]]) {
+  _results: AtomicReference[Option[Outcome[Id, Throwable, A]]]):
 
   val results: IO[Option[Outcome[Id, Throwable, A]]] = IO(_results.get)
 
@@ -260,16 +260,15 @@ final class OurTestControl[A] private(
       val step = time.min(next)
       val remaining = time - step
 
-      if step <= Duration.Zero then {
+      if step <= Duration.Zero then
         IO.unit
-      } else {
+      else
         advance(step) *> {
           if remaining <= Duration.Zero then
             tick
           else
             tickFor(remaining)
         }
-      }
     }
 
   /**
@@ -286,7 +285,6 @@ final class OurTestControl[A] private(
    * unexpected (though clearly plausible) execution order.
    */
   def seed: String = ctx.seed
-}
 
 object OurTestControl:
 
@@ -375,7 +373,7 @@ object OurTestControl:
 
   def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
   : IO[OurTestControl[A]] =
-    IO {
+    IO:
       OurIORuntimeRegister.add(ctx, ioRuntime)
       val results = new AtomicReference[Option[Outcome[Id, Throwable, A]]](None)
       given IORuntime = ioRuntime
@@ -384,20 +382,17 @@ object OurTestControl:
         OurIORuntimeRegister.remove(ctx)
 
       new OurTestControl(ctx, results)
-    }
 
   def newTestContext(seed: Option[String] = None): TestContext =
-    seed match {
+    seed match
       case Some(seed) => TestContext(seed)
       case None => TestContext()
-    }
 
   def newScheduler(ctx: TestContext): Scheduler =
-    new Scheduler {
-      def sleep(delay: FiniteDuration, task: Runnable): Runnable = {
+    new Scheduler:
+      def sleep(delay: FiniteDuration, task: Runnable): Runnable =
         val cancel = ctx.schedule(delay, task)
         () => cancel()
-      }
 
       def nowMillis() =
         ctx.now().toMillis
@@ -407,7 +402,6 @@ object OurTestControl:
 
       def monotonicNanos() =
         ctx.now().toNanos
-    }
 
   def newIORuntime(
     ctx: TestContext,

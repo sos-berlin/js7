@@ -61,11 +61,10 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
-  : Vector[Stamped[KeyedEvent[E]]] = {
+  : Vector[Stamped[KeyedEvent[E]]] =
     val r = await(predicate, after = _lastWatchedEventId, timeout)
     _lastWatchedEventId = r.last.eventId
     r
-  }
 
   /** TEST ONLY - Blocking. */
   @TestOnly

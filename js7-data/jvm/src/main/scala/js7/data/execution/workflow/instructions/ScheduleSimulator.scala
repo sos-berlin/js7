@@ -31,12 +31,11 @@ trait ScheduleSimulator:
           _next.isDefined
 
         def next() =
-          _next match {
+          _next match
             case None => throw new NoSuchElementException
             case Some(scheduled) =>
               calculateNext()
               scheduled
-          }
 
         def calculateNext() =
           for scheduled <- _next yield
@@ -45,9 +44,8 @@ trait ScheduleSimulator:
             _next = maybeScheduled
 
             for scheduled <- maybeScheduled do
-              if timestamp < scheduled.next then {
+              if timestamp < scheduled.next then
                 timestamp = scheduled.next
-              }
               timestamp += actionDuration
 
 

@@ -8,13 +8,13 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.lock.{Lock, LockPath}
 import js7.tester.CirceJsonTester.testJson
 
-final class UnsignedSimpleItemEventTest extends OurTestSuite
-{
+final class UnsignedSimpleItemEventTest extends OurTestSuite:
+
   implicit private val jsonCodec: TypedJsonCodec[UnsignedSimpleItemEvent] =
     UnsignedSimpleItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
-    "UnsignedSimpleItemAdded" in {
+    "UnsignedSimpleItemAdded" in:
       testJson[UnsignedSimpleItemEvent](UnsignedSimpleItemAdded(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(0)))),
         json"""{
           "TYPE": "UnsignedSimpleItemAdded",
@@ -25,9 +25,8 @@ final class UnsignedSimpleItemEventTest extends OurTestSuite
             "itemRevision": 0
           }
         }""")
-      }
 
-    "UnsignedSimpleItemChanged" in {
+    "UnsignedSimpleItemChanged" in:
       testJson[UnsignedSimpleItemEvent](UnsignedSimpleItemChanged(Lock(LockPath("LOCK"), limit = 3, Some(ItemRevision(1)))),
         json"""{
           "TYPE": "UnsignedSimpleItemChanged",
@@ -38,6 +37,4 @@ final class UnsignedSimpleItemEventTest extends OurTestSuite
             "itemRevision": 1
           }
         }""")
-    }
   }
-}

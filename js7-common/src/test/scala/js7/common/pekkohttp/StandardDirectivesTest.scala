@@ -10,31 +10,28 @@ import js7.data.item.APath
 /**
   * @author Joacim Zschimmer
   */
-final class StandardDirectivesTest extends OurTestSuite
-{
+final class StandardDirectivesTest extends OurTestSuite:
+
   private val matched = Matched(Path.Empty, Tuple1(APath("FOLDER/NAME")))
 
-  "remainingPath" in {
+  "remainingPath" in:
     case class A(string: String) extends GenericString
-    object A extends GenericString.NonEmpty[A] {
+    object A extends GenericString.NonEmpty[A]:
       protected def unchecked(string: String) = new A(string)
-    }
 
     assert(remainingPath[A].apply(Path("PATH")) == Matched(Path.Empty, Tuple1(A("PATH"))))
     // % is not interpreted (despite RFC ?)
     assert(remainingPath[A].apply(Path("PATH%2FX")) == Matched(Path.Empty, Tuple1(A("PATH%2FX"))))
     assert(remainingPath[A].apply(Path("PATH/X")) == Matched(Path.Empty, Tuple1(A("PATH/X"))))
     assert(remainingPath[A].apply(Path.Empty) == Unmatched)
-  }
 
   "remainingItemPath" - {
-    "remainingItemPath with VersionedItemPath" in {
+    "remainingItemPath with VersionedItemPath" in:
       assert(remainingItemPath[APath].apply(Path("PATH")) == Matched(Path.Empty, Tuple1(APath("PATH"))))
       assert(remainingItemPath[APath].apply(Path("invalid,character")) == Unmatched)
       assert(remainingItemPath[APath].apply(Path.Empty)                == Unmatched)
-    }
 
-    "Properly encoded VersionedItemPath (percent character encodes hexadecimal bytes)" in {
+    "Properly encoded VersionedItemPath (percent character encodes hexadecimal bytes)" in:
       // Example: /api/workflow/%2FFOLDER%2FMY-WORKFLOW.
       // If you want to interpret the percent characted as a hexadecimal encoding prefix,
       // then do not omit the first slash but encode it as %2F, as each slash in the VersionedItemPath.
@@ -42,9 +39,8 @@ final class StandardDirectivesTest extends OurTestSuite
       assert(remainingItemPath[APath].apply(Path("NAME"))  == Matched(Path.Empty, Tuple1(APath("NAME"))))
       assert(remainingItemPath[APath].apply(Path("FOLDER%2FNAME"))  == matched)
       //assert(remainingItemPath[APath].apply(Path("FOLDER%2Fwith%252Fpercent")) == Matched(Path.Empty, Tuple1(APath("FOLDER/with%2Fpercent"))))
-    }
 
-    "Raw VersionedItemPath, use it for comfortable typing" in {
+    "Raw VersionedItemPath, use it for comfortable typing" in:
       // Example: /api/workflow/FOLDER/MY-WORKFLOW.
       // Type the first slash of the VersionedItemPath as unencoded '/' if you do not want the percent character to be interpreted.
       // This allows to type the URI in a comfortable way, but this is not recommened for programming.
@@ -64,6 +60,4 @@ final class StandardDirectivesTest extends OurTestSuite
       //assert(remainingItemPath[APath].apply(Path("/FOLDER/with%2Fpercent")) == Matched(Path.Empty, Tuple1(APath("FOLDER/with%2Fpercent"))))
       assert(remainingItemPath[APath].apply(Path("/FOLDER/NAME"))      == Unmatched)
       assert(remainingItemPath[APath].apply(Path.Slash(Path("FOLDER") / "NAME")) == Unmatched)
-    }
   }
-}

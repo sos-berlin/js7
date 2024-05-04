@@ -7,17 +7,15 @@ import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 
-final class ExpressionParserTest extends OurTestSuite
-{
+final class ExpressionParserTest extends OurTestSuite:
   // See also ExpressionTest
 
   "NamedValue" - {
-    "$ with impossible names" in {
+    "$ with impossible names" in:
       assert(dollarNamedValue.parse("$var/1") == Right("/1" -> NamedValue("var")))
       assert(dollarNamedValue.parse("$var.1") == Right(".1" -> NamedValue("var")))
       assert(dollarNamedValue.parse("$var-1") == Right("-1" -> NamedValue("var")))
       assert(dollarNamedValue.parse("$var_1") == Right("" -> NamedValue("var_1")))
-    }
 
     testExpression("""$key""", NamedValue("key"))
     testExpression("""$under_line""", NamedValue("under_line"))
@@ -33,7 +31,7 @@ final class ExpressionParserTest extends OurTestSuite
     //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("SOME-KEY")))
     //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), StringConstant("SOME-KEY")))
 
-    "variable()" in {
+    "variable()" in:
       assert(parseExpression("""variable("clé")""") ==
         Right(NamedValue("clé")))
       assert(parseExpression("""variable ( "clé", default = "DEFAULT" )""") ==
@@ -42,16 +40,13 @@ final class ExpressionParserTest extends OurTestSuite
         Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("clé"))))
       assert(parseExpression("""variable(key="clé", job=JOB)""") ==
         Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("clé"))))
-    }
 
-    "argument()" in {
+    "argument()" in:
       assert(parseExpression("""argument("clé")""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"))))
       assert(parseExpression("""argument ( "clé", default = "DEFAULT" )""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"), Some(StringConstant("DEFAULT")))))
-    }
   }
-
   "$returnCode" - {
     testExpression("$returnCode",
       LastReturnCode)
@@ -70,16 +65,13 @@ final class ExpressionParserTest extends OurTestSuite
   }
 
   "ConstantString.quote" - {
-    for string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r") do {
+    for string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r") do
       testExpression(StringConstant.quote(string), StringConstant(string))
-    }
 
-    "More characters" in {
-      for i <- 0 to 0x200 do {
+    "More characters" in:
+      for i <- 0 to 0x200 do
         val string = i.toChar.toString
         testExpressionRaw(StringConstant.quote(string), StringConstant(string))
-      }
-    }
   }
 
   "String" - {
@@ -92,24 +84,20 @@ final class ExpressionParserTest extends OurTestSuite
     testExpression(""" "ö" """.trim, StringConstant("ö"))
 
     "Escaping special characters" - {
-      "Raw control characters are not escaped" in {
-        for char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar) do {
+      "Raw control characters are not escaped" in:
+        for char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar) do
           val doubleQuoted = s""" "$char" """.trim
           testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
 
           val singleQuoted = s""" '$char' """.trim
           testExpressionRaw(singleQuoted, StringConstant(s"$char"))
-        }
-      }
 
-      "U+0080...U+7FFF" in {
-        for char <- (0x80 to 0x7fff).view.map(_.toChar) do {
+      "U+0080...U+7FFF" in:
+        for char <- (0x80 to 0x7fff).view.map(_.toChar) do
           val doubleQuoted = s""" "$char" """.trim
           testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
           val singleQuoted = s""" "'$char" """.trim
           testExpressionRaw(singleQuoted, StringConstant(s"'$char"))
-        }
-      }
 
       val escapedChars = Seq(
         'n' -> '\n',
@@ -119,10 +107,9 @@ final class ExpressionParserTest extends OurTestSuite
         '$' -> '$',
         '\\' -> '\\')
 
-      for (escaped, expected) <- escapedChars do {
+      for (escaped, expected) <- escapedChars do
         testExpression(s""" "'\\$escaped" """.trim, StringConstant(s"'$expected"))
         testExpression(s""" "\\$escaped" """.trim, StringConstant(s"$expected"))
-      }
 
       "Single quoted string" - {
         testExpression("'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
@@ -135,11 +122,11 @@ final class ExpressionParserTest extends OurTestSuite
         testExpression("'''''->''''<-'''''".trim, StringConstant("->''''<-"))
       }
 
-      "Invalid escaped characters" in {
+      "Invalid escaped characters" in:
         val invalidEscaped = (0x20 to 0xff).map(_.toChar)
           .filter(c => c != '\r' && c != '\n')
           .filterNot(escapedChars.map(_._1).toSet)
-        for escaped <- invalidEscaped do {
+        for escaped <- invalidEscaped do
           // With ' to render as "-string
           assert(parseExpression(s""" "'\\$escaped" """.trim) == Left(Problem(
             s"""Error in expression: Parsing failed at position 4 “"'\\❓$escaped"”""" +
@@ -149,8 +136,6 @@ final class ExpressionParserTest extends OurTestSuite
           assert(parseExpression(s""" "\\$escaped" """.trim) == Left(Problem(
             s"""Error in expression: Parsing failed at position 3 “"\\❓$escaped"”""" +
             """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
-        }
-      }
     }
 
     testExpression(""""A"""", StringConstant("A"))
@@ -160,7 +145,7 @@ final class ExpressionParserTest extends OurTestSuite
     testExpression(""""${`A:1`}B"""", InterpolatedString(List(NamedValue("A:1"), StringConstant("B"))))
     testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), StringConstant(":B"))))
 
-    "Interpolated string" in {
+    "Interpolated string" in:
       assert(parseExpression(""""$A"""") == Right(InterpolatedString(NamedValue("A") :: Nil)))
       assert(parseExpression(""""-->$A$BB<--"""") ==
         Right(InterpolatedString(List(StringConstant("-->"), NamedValue("A"), NamedValue("BB"), StringConstant("<--")))))
@@ -170,13 +155,11 @@ final class ExpressionParserTest extends OurTestSuite
         Right(StringConstant("-->A<--")))
       assert(parseExpression("""""""") == Right(StringConstant.empty))
       assert(parseExpression(""""\\\t\"\r\n"""") == Right(StringConstant("\\\t\"\r\n")))
-    }
 
-    "Invalid strings" in {
+    "Invalid strings" in:
       assert(parseExpression("''").isLeft)
       assert(parseExpression(""" "\" """.trim).isLeft)
       // We do not reject any string - assert(parseExpression(" \"\t\" ".trim).isLeft)
-    }
   }
 
   //TODO testError(""""1" < 1""",
@@ -288,38 +271,30 @@ final class ExpressionParserTest extends OurTestSuite
           Argument(FunctionCall("nested")))))
   }
 
-  "Unknown numeric function" in {
+  "Unknown numeric function" in:
     assert(parseExpression(""""123".toNumber""") ==
       Right(ToNumber(StringConstant("123"))))
-  }
 
-  "Unknown boolean function" in {
+  "Unknown boolean function" in:
     assert(parseExpression(""""true".toBoolean""") ==
       Right(ToBoolean(StringConstant("true"))))
-  }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpr)(implicit pos: source.Position) =
-    exprString in {
+    exprString in:
       assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")
-    }
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
-    exprString in {
+    exprString in:
       testExpressionRaw(exprString, expr)
-    }
 
-  private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
+  private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) =
     assert(parseExpression(exprString) == Right(expr))
     assert(parseExpression(expr.toString) == Right(expr), " - toString")
-  }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
-    exprString + " - should fail" in {
+    exprString + " - should fail" in:
       testErrorRaw(exprString, errorMessage)
-    }
 
-  private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
+  private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     assert(parseExpression(exprString) == Left(Problem(errorMessage)))
-  }
-}

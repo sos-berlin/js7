@@ -9,12 +9,12 @@ import js7.tests.controller.proxy.JControllerFluxTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.jdk.CollectionConverters.*
 
-final class JControllerFluxTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class JControllerFluxTest extends OurTestSuite with ControllerAgentForScalaTest:
+
   protected def agentPaths = Seq(AgentPath("AGENT"))
   protected def items = Seq(workflow)
 
-  "JControllerProxy#flux is switchable to an own Executor" in {
+  "JControllerProxy#flux is switchable to an own Executor" in:
     val tester = new JControllerFluxTester(
       List(JAdmission(controllerAdmission)).asJava,
       JHttpsConfig.empty)
@@ -24,10 +24,7 @@ final class JControllerFluxTest extends OurTestSuite with ControllerAgentForScal
         assert(Thread.currentThread.getName.startsWith("ForkJoinPool.commonPool-worker-"))
       }
     }
-  }
-}
 
-object JControllerFluxTest
-{
+object JControllerFluxTest:
+
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)
-}

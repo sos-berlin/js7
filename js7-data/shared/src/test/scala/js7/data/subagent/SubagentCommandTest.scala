@@ -17,10 +17,10 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class SubagentCommandTest extends OurTestSuite
-{
+final class SubagentCommandTest extends OurTestSuite:
+
   "JSON" - {
-    "DedicateSubagent" in {
+    "DedicateSubagent" in:
       testJson[SubagentCommand](
         DedicateSubagent(
           SubagentId("SUBAGENT"),
@@ -32,9 +32,8 @@ final class SubagentCommandTest extends OurTestSuite
           "agentPath": "AGENT",
           "controllerId": "CONTROLLER"
         }""")
-    }
 
-    "CoupleDirector" in {
+    "CoupleDirector" in:
       testJson[SubagentCommand](
         CoupleDirector(
           SubagentId("SUBAGENT"),
@@ -51,9 +50,8 @@ final class SubagentCommandTest extends OurTestSuite
             "heartbeatTimeout": 12.345
           }
         }""")
-    }
 
-    "AttachSignedItem" in {
+    "AttachSignedItem" in:
       val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
       testJson[SubagentCommand](
         AttachSignedItem(
@@ -68,7 +66,6 @@ final class SubagentCommandTest extends OurTestSuite
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1\",\"instructions\":[]}"
           }
         }""")
-    }
 
     //"AttachItem" in {
     //  testJson[SubagentCommand](
@@ -84,7 +81,7 @@ final class SubagentCommandTest extends OurTestSuite
     //    }""")
     //}
 
-    "ShutDown" in {
+    "ShutDown" in:
       testJson[SubagentCommand](
         ShutDown(Some(SIGTERM), dontWaitForDirector = true, restart = true),
         json"""{
@@ -99,9 +96,8 @@ final class SubagentCommandTest extends OurTestSuite
         json"""{
           "TYPE": "ShutDown"
         } """)
-    }
 
-    "StartOrderProcess" in {
+    "StartOrderProcess" in:
       testJson[SubagentCommand](
         StartOrderProcess(
           Order(
@@ -158,9 +154,8 @@ final class SubagentCommandTest extends OurTestSuite
             }
           }
         }""")
-    }
 
-    "KillProcess" in {
+    "KillProcess" in:
       testJson[SubagentCommand](
         KillProcess(OrderId("ORDER"), SIGTERM),
         json"""{
@@ -168,6 +163,4 @@ final class SubagentCommandTest extends OurTestSuite
           "orderId": "ORDER",
           "signal": "SIGTERM"
         }""")
-    }
   }
-}

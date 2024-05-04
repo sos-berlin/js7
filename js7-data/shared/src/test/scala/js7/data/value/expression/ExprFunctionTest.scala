@@ -11,8 +11,8 @@ import js7.data.value.{FunctionValue, MissingValue, NumberValue, StringValue, Va
 import org.scalactic.source
 import Expression.convenience.*
 
-final class ExprFunctionTest extends OurTestSuite
-{
+final class ExprFunctionTest extends OurTestSuite:
+
   testEval("() => 1", Scope.empty,
     args = Nil,
     result = Right(NumberValue(1)),
@@ -59,18 +59,16 @@ final class ExprFunctionTest extends OurTestSuite
     result: Checked[Value],
     checkedFunction: Checked[ExprFunction])
     (implicit pos: source.Position): Unit =
-    exprString in {
+    exprString in:
       val checked = parseFunction(exprString)
       assert(checked == checkedFunction)
-      for function <- checkedFunction do {
+      for function <- checkedFunction do
         assert(parseFunction(function.toString) == checkedFunction, " in toString❗")
         assert(function.eval(args)(scope) == result)
         assert(parseExpressionOrFunction(exprString) == Right(FunctionExpr(function)))
-      }
-    }
 
   "FunctionExpr and FunctionValue" - {
-    "() => 7" in {
+    "() => 7" in:
       val fun: ExprFunction = ExprFunction(Nil, NumericConstant(7))
       val expr = parseExpressionOrFunction("() => 7").orThrow
       assert(expr == FunctionExpr(fun))
@@ -79,9 +77,8 @@ final class ExprFunctionTest extends OurTestSuite
         NumberValue(7)))
       assert(expr.eval.flatMap(_.asString) == Left(
         UnexpectedValueTypeProblem(StringValue, FunctionValue(fun))))
-    }
 
-    "(x) => x + 7" in {
+    "(x) => x + 7" in:
       val expr = parseExpressionOrFunction("(x) => $x + 7").orThrow
       assert(expr == FunctionExpr(ExprFunction(
         Seq(VariableDeclaration("x")),
@@ -89,10 +86,9 @@ final class ExprFunctionTest extends OurTestSuite
       implicit val scope = Scope.empty
       assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(NumberValue(10) :: Nil) ==
         Right(NumberValue(17)))
-    }
   }
 
-  "restrict" in {
+  "restrict" in:
     def restrict(min: Int, max: Int): Checked[ExprFunction] =
       for
         function <- parseFunction("""(a, b) => "$a,$b"""")
@@ -124,5 +120,3 @@ final class ExprFunctionTest extends OurTestSuite
 
     assert(eval(1, 2, Seq("A", "B", "C")) == Left(Problem(
     "Number of arguments=3 does not match required number of function parameters=1...2 in 'myFunction' function")))
-  }
-}

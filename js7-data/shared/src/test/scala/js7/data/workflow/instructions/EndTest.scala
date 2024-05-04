@@ -10,24 +10,21 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class EndTest extends OurTestSuite {
+final class EndTest extends OurTestSuite:
 
   "JSON" - {
-    "with defaults" in {
+    "with defaults" in:
       testJson[Instruction.Labeled](
         ExplicitEnd(),
         json"""{
           "TYPE": "End"
         }""")
-      }
 
-    "complete" in {
+    "complete" in:
       testJson[Instruction.Labeled](
         ExplicitEnd(Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "End",
           "sourcePos": [ 1, 2 ]
         }""")
-      }
   }
-}

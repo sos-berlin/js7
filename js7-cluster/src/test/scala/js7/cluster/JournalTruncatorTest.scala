@@ -8,10 +8,10 @@ import js7.base.test.OurTestSuite
 import js7.cluster.JournalTruncator.{truncateFile, truncateJournal}
 import js7.data.event.JournalPosition
 
-final class JournalTruncatorTest extends OurTestSuite
-{
+final class JournalTruncatorTest extends OurTestSuite:
+
   "truncateFile" - {
-    "keep=true" in {
+    "keep=true" in:
       withTemporaryFile("ClusterCommonTest", ".tmp") { file =>
         val a = "CONTENT\n"
         val b = (1 to 4906).map(_.toString).mkString(",")
@@ -26,9 +26,8 @@ final class JournalTruncatorTest extends OurTestSuite
 
         delete(truncated)
       }
-    }
 
-    "keep=false" in {
+    "keep=false" in:
       withTemporaryFile("ClusterCommonTest", ".tmp") { file =>
         val a = "CONTENT\n"
         file := a + "REST"
@@ -40,10 +39,9 @@ final class JournalTruncatorTest extends OurTestSuite
 
         assert(!exists(Paths.get(file.toString + "~TRUNCATED-AFTER-FAILOVER")))
       }
-    }
   }
 
-  "truncateJournal" in {
+  "truncateJournal" in:
     withTemporaryDirectory("JournalTruncatorTest-") { dir =>
       val fileBase = dir / "TEST"
       val a = Paths.get(s"$fileBase--1000.journal")
@@ -53,12 +51,10 @@ final class JournalTruncatorTest extends OurTestSuite
       b := "THREE\nFOUR\n"
       c := "FIVE\nSIX\n"
 
-      intercept[RuntimeException] {
+      intercept[RuntimeException]:
         truncateJournal(fileBase, JournalPosition(3333, 0), false)
-      }
-      intercept[RuntimeException] {
+      intercept[RuntimeException]:
         truncateJournal(fileBase, JournalPosition(3000, 7), false)
-      }
 
       var maybeFile = truncateJournal(fileBase, JournalPosition(3000, 9), false)
       assert(maybeFile.isEmpty)
@@ -66,9 +62,8 @@ final class JournalTruncatorTest extends OurTestSuite
       assert(b.contentString == "THREE\nFOUR\n")
       assert(c.contentString == "FIVE\nSIX\n")
 
-      intercept[RuntimeException] {
+      intercept[RuntimeException]:
         truncateJournal(fileBase, JournalPosition(3000, 7), false)
-      }
 
       maybeFile = truncateJournal(fileBase, JournalPosition(3000, 5), false)
       assert(maybeFile == Some(c))
@@ -82,5 +77,3 @@ final class JournalTruncatorTest extends OurTestSuite
       assert(b.contentString == "THREE\n")
       assert(!exists(c))
     }
-  }
-}

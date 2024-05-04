@@ -22,8 +22,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   protected val agentPaths = Nil
   protected val items = Nil
   //private lazy val (signer_, verifier_) = X509Signer.forTest()
@@ -35,7 +35,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
   protected override def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
-  override def beforeAll() = {
+  override def beforeAll() =
     createDirectory(directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys")
     copy(root.certificateFile,
       directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys" / "Root.crt")
@@ -46,7 +46,6 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
          |}
          |""".stripMargin
     super.beforeAll()
-  }
 
   override def afterAll() =
     try
@@ -60,7 +59,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
     lazy val itemFile = workDir / "workflow.json"
     lazy val signatureFile = signer.signFile(itemFile)
 
-    "Signature matches item" in {
+    "Signature matches item" in:
       val item: SignableItem = workflow.withVersion(v2)
       itemFile := item.asJson
       val signedString = SignedString.x509WithCertificate(
@@ -70,9 +69,8 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
         signerCertificate = signer.certificateString)
       val signed = Signed(item, signedString)
       controller.api.updateRepo(v2, Seq(signed)).await(99.s).orThrow
-    }
 
-    "Signature does not match item (item tampered)" in {
+    "Signature does not match item (item tampered)" in:
       val v3 = VersionId("3")
       val item: SignableItem = workflow.withVersion(v3)
       itemFile := item.asJson
@@ -83,10 +81,9 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
           signerCertificate = Some(signer.certificateString)))
       val signed = Signed(item, signedString)
       assert(controller.api.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
-    }
   }
 
-  "Add item with an unknown signer's certificate which controller fails to verify against installed root certificate" in {
+  "Add item with an unknown signer's certificate which controller fails to verify against installed root certificate" in:
     val v4 = VersionId("4")
     val itemFile = workDir / "workflow.json"
     val item: SignableItem = workflow.withVersion(v4)
@@ -101,11 +98,8 @@ final class UpdateRepoX509RootTest extends OurTestSuite, ControllerAgentForScala
         signerCertificate = Some(alienSigner.certificateString)))
     val alienSigned = Signed(item, alienSignedString)
     assert(controller.api.updateRepo(v4, Seq(alienSigned)).await(99.s) == Left(MessageSignedByUnknownProblem))
-  }
-}
 
 
-object UpdateRepoX509RootTest
-{
+object UpdateRepoX509RootTest:
+
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
-}

@@ -79,12 +79,11 @@ extends Js7Process:
       case Some(hProcess) =>
         call("TerminateProcess"):
           kernel32.TerminateProcess(hProcess, TerminateProcessReturnCode.number) ||
-            kernel32.GetLastError == ERROR_ACCESS_DENIED && {
+            kernel32.GetLastError == ERROR_ACCESS_DENIED && (
               Try(waitForProcess(0)).getOrElse(false) || {
                 kernel32.SetLastError(ERROR_ACCESS_DENIED)
                 false
-              }
-            }
+              })
 
   def waitFor(timeout: FiniteDuration): Boolean =
     returnCodeOnce.isDefined ||

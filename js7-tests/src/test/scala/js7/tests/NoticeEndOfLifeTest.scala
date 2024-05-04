@@ -18,8 +18,8 @@ import js7.tests.NoticeEndOfLifeTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
 final class NoticeEndOfLifeTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
-{
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -41,7 +41,7 @@ final class NoticeEndOfLifeTest
   protected val items = Seq(board, postWorkflow, consumeWorkflow)
 
   "PostNotices instruction" - {
-    "Until endOfLife, the Notice is consumable" in {
+    "Until endOfLife, the Notice is consumable" in:
       val postOrderId = OrderId("#2023-06-22#🟦")
       val postEvents = controller.runOrder(FreshOrder(postOrderId, postWorkflow.path))
       assert(postEvents.last.value.isInstanceOf[OrderFinished])
@@ -50,9 +50,8 @@ final class NoticeEndOfLifeTest
       val consumeEvents = controller.runOrder(FreshOrder(consumeOrderId, consumeWorkflow.path))
       assert(!consumeEvents.map(_.value).exists(_.isInstanceOf[OrderNoticesExpected]))
       assert(consumeEvents.last.value.isInstanceOf[OrderFinished])
-    }
 
-    "After endOfLife, the Notice vanishes" in {
+    "After endOfLife, the Notice vanishes" in:
       val postOrderId = OrderId("#2023-06-23#🟧")
       val postEvents = controller.runOrder(FreshOrder(postOrderId, postWorkflow.path))
       assert(postEvents.last.value.isInstanceOf[OrderFinished])
@@ -63,11 +62,10 @@ final class NoticeEndOfLifeTest
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
       controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
         .await(99.s).orThrow
-    }
   }
 
   "PostNotice command" - {
-    "Until endOfLife, the Notice is consumable" in {
+    "Until endOfLife, the Notice is consumable" in:
       controller
         .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
         .await(99.s).orThrow
@@ -75,9 +73,8 @@ final class NoticeEndOfLifeTest
       val events = controller.runOrder(FreshOrder(consumeOrderId, consumeWorkflow.path))
       assert(!events.map(_.value).exists(_.isInstanceOf[OrderNoticesExpected]))
       assert(events.last.value.isInstanceOf[OrderFinished])
-    }
 
-    "After endOfLife, the Notice vanishes" in {
+    "After endOfLife, the Notice vanishes" in:
       controller
         .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
         .await(99.s).orThrow
@@ -87,11 +84,10 @@ final class NoticeEndOfLifeTest
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
       controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
         .await(99.s).orThrow
-    }
   }
 
   "PostNotice command with immediately expired endOfLife" - {
-    "The Notice is immediately deleted" in {
+    "The Notice is immediately deleted" in:
       controller
         .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-25"),
           endOfLife = Some(Timestamp.now)))
@@ -100,12 +96,9 @@ final class NoticeEndOfLifeTest
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
       controller.api.executeCommand(CancelOrders(Set(consumeOrderId))).await(99.s).orThrow
-    }
   }
-}
 
 
-object NoticeEndOfLifeTest
-{
+object NoticeEndOfLifeTest:
+
   private val agentPath = AgentPath("AGENT")
-}

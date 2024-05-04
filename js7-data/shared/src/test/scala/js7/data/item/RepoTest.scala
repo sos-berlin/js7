@@ -18,13 +18,13 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 /**
   * @author Joacim Zschimmer
   */
-final class RepoTest extends OurTestSuite
-{
+final class RepoTest extends OurTestSuite:
+
   import itemSigner.sign
 
   private lazy val Right(testRepo: Repo) = emptyRepo.applyEvents(versionedEvents): @unchecked
 
-  "empty" in {
+  "empty" in:
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
     assert(emptyRepo.idTo(AItem)(APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
@@ -34,9 +34,8 @@ final class RepoTest extends OurTestSuite
       Left(Problem("Missing initial VersionAdded event for Repo")))
 
     assert(!emptyRepo.exists(APath("A")))
-  }
 
-  "empty version" in {
+  "empty version" in:
     val Right(repo) = emptyRepo.applyEvent(VersionAdded(v("INITIAL"))): @unchecked
     assert(repo.historyBefore(v("INITIAL")) == Right(Nil))
     assert(repo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
@@ -49,9 +48,8 @@ final class RepoTest extends OurTestSuite
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
       Left(DuplicateKey("VersionId", v("INITIAL"))))
-  }
 
-  "pathToItems" in {
+  "pathToItems" in:
     assert(testRepo.pathToItems(AItem).mapValues(_.toSeq).toMap == Map(
       a1.path -> Seq(a3, a2, a1)))
     assert(testRepo.pathToItems(AItem).mapValues(_.toSeq).toSeq == Seq(
@@ -62,23 +60,20 @@ final class RepoTest extends OurTestSuite
       bx2.path -> Seq(bx2),
       by2.path -> Seq(by2)))
     assert(testRepo.pathToItems(BItem)(by2.path).toSeq == Seq(by2))
-  }
 
-  "exists" in {
+  "exists" in:
     assert(testRepo.exists(APath("A")))
     assert(!testRepo.exists(APath("Bx")))
     assert(!testRepo.exists(APath("UNKNOWN")))
-  }
 
-  "markedAsRemoved" in {
+  "markedAsRemoved" in:
     assert(!testRepo.markedAsRemoved(APath("A")))
     assert(!testRepo.markedAsRemoved(APath("UNKNOWN")))
     assert(!testRepo.markedAsRemoved(BPath("B")))
     assert(testRepo.markedAsRemoved(BPath("Bx")))
     assert(!testRepo.markedAsRemoved(BPath("By")))
-  }
 
-  "Event input" in {
+  "Event input" in:
     assert(testRepo.idTo(AItem)(APath("A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
     assert(testRepo.idTo(AItem)(APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
     assert(testRepo.idTo(AItem)(APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
@@ -89,11 +84,9 @@ final class RepoTest extends OurTestSuite
     assert(testRepo.idTo(AItem)(APath("A") ~ v3) == Right(a3))
     assert(testRepo.idTo(BItem)(BPath("Bx") ~ v2) == Right(bx2))
     assert(testRepo.idTo(BItem)(BPath("By") ~ v3) == Right(by2))
-  }
 
-  "Event output" in {
+  "Event output" in:
     assert(testRepo.toEvents.toSeq == snapshotEvents)
-  }
 
   //"pathToCurrentId" in {
   //  assert(testRepo.pathToCurrentId(APath("A")) == Right(APath("A") ~ v3))
@@ -103,67 +96,56 @@ final class RepoTest extends OurTestSuite
   //  assert(testRepo.pathToCurrentId(APath("X")) == Left(Problem("No such AItem: A:/X")))
   //}
 
-  "currentVersion" in {
+  "currentVersion" in:
     assert(testRepo.currentVersion == Map(
       a3.path -> sign(a3),
       by2.path -> sign(by2)))
-  }
 
-  "versionId" in {
+  "versionId" in:
     assert(testRepo.currentVersionId == v3)
     assert(emptyRepo.currentVersionId.isAnonymous)
-  }
 
-  "idTo" in {
+  "idTo" in:
     assert(testRepo.idTo(AItem)(a1.id) == Right(a1))
-  }
 
-  "typedCount" in {
+  "typedCount" in:
     assert(testRepo.typedCount[AItem] == 3)
     assert(testRepo.typedCount[BItem] == 2)
-  }
 
-  "currentTyped" in {
+  "currentTyped" in:
     assert(testRepo.currentTyped[AItem] == Map(a3.path -> a3))
     assert(testRepo.currentTyped[BItem] == Map(by2.path -> by2))
-  }
 
   "toEvents" - {
-    "VersionedItem with alien version is rejected" in {
+    "VersionedItem with alien version is rejected" in:
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1.withVersion(v2)) :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ v2)))
-    }
 
-    "VersionedItem without version is rejected" in {
+    "VersionedItem without version is rejected" in:
       // The signer signs the VersionId, too. It must not be diverge from the commands VersionId
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1.withoutVersion)  :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path)))
-    }
 
-    "VersionedItem with matching version" in {
+    "VersionedItem with matching version" in:
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1) :: Nil)
         == Right(emptyRepo.NonEmptyEventBlock(v1, Nil, VersionedItemAdded(sign(a1)) :: Nil)))
-    }
 
-    "Deleting unknown" in {
+    "Deleting unknown" in:
       assert(emptyRepo.itemsToEventBlock(v1, Nil, removed = bx2.path :: Nil)
         == Right(emptyRepo.NonEmptyEventBlock(v1, Nil, Nil)))
-    }
 
-    "Duplicate items" in {
+    "Duplicate items" in:
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1) :: sign(a1) :: Nil)
         == Left(Problem("Unexpected duplicates: 2×A:A")))
-    }
 
     "Duplicate itemsToEventBlock resulting to same Repo is ignored" - {
-      "if some items should be changed" in {
+      "if some items should be changed" in:
         var repo = emptyRepo
         val eventBlock = repo.itemsToEventBlock(v1, sign(a1) :: Nil).orThrow
         assert(eventBlock.nonEmpty)
         repo = repo.applyEvents(eventBlock.events).orThrow
 
         assert(repo.itemsToEventBlock(v1, sign(a1) :: Nil) == Right(repo.emptyEventBlock))
-      }
 
-      "but not if no items should be changed" in {
+      "but not if no items should be changed" in:
         var repo = emptyRepo
         var eventBlock = repo.itemsToEventBlock(v1, Nil).orThrow
         assert(eventBlock.nonEmpty)
@@ -172,16 +154,14 @@ final class RepoTest extends OurTestSuite
         eventBlock = repo.itemsToEventBlock(v1, Nil).orThrow
         assert(eventBlock == repo.NonEmptyEventBlock(v1, Nil, Nil))
         assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", v1)))
-      }
     }
 
-    "Other" in {
+    "Other" in:
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil, removed = bx2.path :: Nil)
         == Right(emptyRepo.NonEmptyEventBlock(v1, Nil,
           List(VersionedItemAdded(sign(a1)), VersionedItemAdded(sign(b1))))))
-    }
 
-    "More" in {
+    "More" in:
       var repo = Repo.empty.copy(selfTest = true)
       repo = repo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil)
         .map(_.events).flatMap(repo.applyEvents).orThrow
@@ -217,13 +197,12 @@ final class RepoTest extends OurTestSuite
         VersionedItemChanged(sign(a2)),
         VersionedItemRemoved(b1.path),
         VersionedItemAdded(sign(bx2))))
-    }
   }
 
   "deleteItem" - {
     import Repo.{Add, Remove, deleteVersionFromEntries, removeDuplicateRemoved}
 
-    "Delete the only Item in the Repo" in {
+    "Delete the only Item in the Repo" in:
       val repo = emptyRepo
         .applyEvents(Seq(
           VersionAdded(v1), VersionedItemAdded(sign(a1)),
@@ -235,9 +214,8 @@ final class RepoTest extends OurTestSuite
       assert(deleted1 == emptyRepo)
       assert(deleted1.toEvents.isEmpty)
       assert(emptyRepo.applyEvents(deleted1.toEvents) == Right(deleted1))
-    }
 
-    "Delete the only Item (but some other Paths exist)" in {
+    "Delete the only Item (but some other Paths exist)" in:
       val repo = emptyRepo
         .applyEvents(Seq(
           VersionAdded(v1), VersionedItemAdded(sign(a1)), VersionedItemAdded(sign(b1)),
@@ -252,9 +230,8 @@ final class RepoTest extends OurTestSuite
       assert(emptyRepo.applyEvents(b1Deleted.toEvents) == Right(b1Deleted))
 
       assert(b1Deleted.deleteItem(a1.id).orThrow == emptyRepo)
-    }
 
-    "Delete an old removed item" in {
+    "Delete an old removed item" in:
       val repo = emptyRepo
         .applyEvents(Seq(
           VersionAdded(v1), VersionedItemAdded(sign(a1)),
@@ -273,9 +250,8 @@ final class RepoTest extends OurTestSuite
       assert(a2Deleted.toEvents.toSeq == Seq(
         VersionAdded(v3), VersionedItemAdded(sign(a3))))
       assert(emptyRepo.applyEvents(a2Deleted.toEvents) == Right(a2Deleted))
-    }
 
-    "removeDuplicateRemoved" in {
+    "removeDuplicateRemoved" in:
       // For positive tests, see below
       import Repo.{Add, Remove, removeDuplicateRemoved}
 
@@ -300,46 +276,41 @@ final class RepoTest extends OurTestSuite
       assert(removeDuplicateRemoved(
         Vector(Remove(v5), Remove(v4), Add(sign(a3)), Remove(v2), Remove(v1)))
         == Vector(Remove(v5), Add(sign(a3))))
-    }
 
-    "deleteVersionFromEntries" in {
+    "deleteVersionFromEntries" in:
       assert(deleteVersionFromEntries(v1, Nil) == Nil)
 
-      locally {
+      locally:
         val entries = List(Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
         assert(deleteVersionFromEntries(v1, entries) == Nil)
         assert(deleteVersionFromEntries(v2, entries) == List(Add(sign(a1))))
-      }
 
-      locally {
+      locally:
         val entries = List(Remove(v2), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
         assert(deleteVersionFromEntries(v1, entries) == Nil)
         assert(deleteVersionFromEntries(v2, entries) == entries)
-      }
 
-      locally {
+      locally:
         // Impossible sequence ?
         val entries = List(Add(sign(a2)), Remove(v1))
         assert(removeDuplicateRemoved(entries.toVector) == entries.dropRight(1))
 
         assert(deleteVersionFromEntries(v1, entries) == entries)
         assert(deleteVersionFromEntries(v2, entries) == Nil)
-      }
 
-      locally {
+      locally:
         val entries = List(Remove(v3), Add(sign(a2)), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
         assert(deleteVersionFromEntries(v1, entries) == List(Remove(v3), Add(sign(a2))))
         assert(deleteVersionFromEntries(v2, entries) == List(Remove(v3), Add(sign(a1))))
         assert(deleteVersionFromEntries(v3, entries) == entries)
-      }
 
-      locally {
+      locally:
         val entries = List(Add(sign(a5)), Remove(v4), Add(sign(a3)), Remove(v2), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
@@ -347,10 +318,8 @@ final class RepoTest extends OurTestSuite
         assert(deleteVersionFromEntries(v2, entries) == entries)
         assert(deleteVersionFromEntries(v3, entries) == List(Add(sign(a5)), Remove(v4), Add(sign(a1))))
         assert(deleteVersionFromEntries(v4, entries) == entries)
-      }
-    }
 
-    "FIX Duplicate VersionedItemRemoved" in {
+    "FIX Duplicate VersionedItemRemoved" in:
       val v1Removed = VersionId("1-REMOVED")
       val v2Removed = VersionId("2-REMOVED")
       val v3Removed = VersionId("3-REMOVED")
@@ -386,10 +355,9 @@ final class RepoTest extends OurTestSuite
         VersionedItemRemoved(APath("A"))))
 
       assert(Repo.empty.applyEvents(repo.toEvents.toSeq) == Right(repo))
-    }
   }
 
-  "unusedItemIdsForType" in {
+  "unusedItemIdsForType" in:
     assert(emptyRepo.unusedItemIdsForType[APath](Set.empty).isEmpty)
     assert(testRepo.unusedItemIdsForType[APath](Set.empty).toSeq == Seq(a2.id, a1.id))
     assert(testRepo.unusedItemIdsForType(Set(a1.id)).toSeq == Seq(a2.id))
@@ -406,72 +374,60 @@ final class RepoTest extends OurTestSuite
     assert(testRepo.unusedItemIdsForType[BPath](Set.empty).toSeq == Seq(bx2.id, bx3.id))
     assert(testRepo.unusedItemIdsForType(Set(bx2.id)).isEmpty)
     assert(testRepo.unusedItemIdsForType(Set(by2.id)).toSeq == Seq(bx2.id, bx3.id))
-  }
 
   "applyEvent" - {
     var repo = emptyRepo.applyEvent(VersionAdded(v1)).orThrow
 
-    "VersionedItemChanged for unknown path" in {
+    "VersionedItemChanged for unknown path" in:
       assert(repo.applyEvent(VersionedItemChanged(sign(AItem(APath("A") ~ v1, "A")))) ==
         Left(UnknownKeyProblem("VersionedItemPath", APath("A"))))
-    }
 
-    "VersionedItemRemoved for unknown path" in {
+    "VersionedItemRemoved for unknown path" in:
       assert(repo.applyEvent(VersionedItemRemoved(APath("A"))) ==
         Left(UnknownKeyProblem("VersionedItemPath", APath("A"))))
-    }
 
-    "VersionedItemAdded for existent path" in {
+    "VersionedItemAdded for existent path" in:
       repo = repo.applyEvent(VersionedItemAdded(sign(AItem(APath("A") ~ v1, "A")))).orThrow
       assert(repo.applyEvent(VersionedItemAdded(sign(AItem(APath("A") ~ v1, "A")))) ==
         Left(DuplicateKey("VersionedItemPath", APath("A"))))
-    }
 
-    "FileBaseAdded with different VersionId" in {
+    "FileBaseAdded with different VersionId" in:
       val event = VersionedItemAdded(sign(AItem(APath("B") ~ v3, "B")))
       assert(repo.applyEvent(event) ==
         Left(EventVersionDoesNotMatchProblem(v1, event)))
-    }
 
-    "FileBaseChanged with different VersionId" in {
+    "FileBaseChanged with different VersionId" in:
       val event = VersionedItemChanged(sign(AItem(APath("A") ~ v3, "A")))
       assert(repo.applyEvent(event) == Left(EventVersionDoesNotMatchProblem(v1, event)))
-    }
 
-    "VersionedItemChanged for removed path" in {
+    "VersionedItemChanged for removed path" in:
       repo = repo.applyEvent(VersionAdded(v2)).orThrow
       repo = repo.applyEvent(VersionedItemRemoved(APath("A"))).orThrow
       repo = repo.applyEvent(VersionAdded(v3)).orThrow
       assert(repo.applyEvent(VersionedItemChanged(sign(AItem(APath("A") ~ v3, "A")))) ==
         Left(VersionedItemRemovedProblem(APath("A"))))
-    }
 
-    "VersionedItemRemoved for removed path" in {
+    "VersionedItemRemoved for removed path" in:
       assert(repo.applyEvent(VersionedItemRemoved(APath("A"))) ==
         Left(VersionedItemRemovedProblem(APath("A"))))
-    }
   }
 
-  locally {
+  locally:
     val n = sys.props.get("RepoTest").map(_.toInt) getOrElse 100
-    s"Add many ($n) versions" in {
+    s"Add many ($n) versions" in:
       // ControllerCommand.UpdateRepo calls itemsToEventBlock
       var repo = emptyRepo
       val stopwatch = new Stopwatch
       var sw = new Stopwatch
-      for i <- 1 to n do {
+      for i <- 1 to n do
         val v = VersionId(i.toString)
         val eventBlock = repo
           .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
         repo = repo.applyEvents(eventBlock.events).orThrow
-        if i % 1000 == 0 then {
+        if i % 1000 == 0 then
           logger.info(sw.itemsPerSecondString(1000, "versions"))
           sw = new Stopwatch
-        }
-      }
       info(stopwatch.itemsPerSecondString(n, "versions"))
-    }
-  }
 
   //"diff" in {
   //  // NOT USED ?
@@ -482,11 +438,10 @@ final class RepoTest extends OurTestSuite
   //  assert(Repo.diff(a1 ::        Nil, a1 :: b1  :: Nil) == VersionedItemRemoved(b1.path) :: Nil)
   //  assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == VersionedItemRemoved(bx2.path) :: VersionedItemAdded(by2.withoutVersion) :: Nil)
   //}
-}
 
 
-object RepoTest
-{
+object RepoTest:
+
   private val logger = Logger[this.type]
 
   private val v1 = VersionId("1")
@@ -521,4 +476,3 @@ object RepoTest
   private val snapshotEvents = versionedEvents
 
   private def v(version: String) = VersionId(version)
-}

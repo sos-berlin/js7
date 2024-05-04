@@ -213,7 +213,7 @@ object Subagent:
 
   def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
     (implicit ioRuntime: IORuntime)
-  : ResourceIO[Subagent] = {
+  : ResourceIO[Subagent] =
     import conf.config
 
     given Scheduler = ioRuntime.scheduler
@@ -261,7 +261,7 @@ object Subagent:
     yield
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
-  }//Monix??? .executeOn(scheduler)
+  //Monix??? .executeOn(scheduler)
 
   //def blockingInternalJobEC(name: String, config: Config, virtual: Boolean)
   //: ResourceIO[ExecutionContext] =

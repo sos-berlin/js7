@@ -41,8 +41,8 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
-{
+final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
+
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
 
@@ -70,25 +70,22 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
     lazy val runningJournal = new RunningJournal
     lazy val journal = runningJournal.start()
 
-    "Start" in {
+    "Start" in:
        journal
-    }
 
-    "persistKeyedEvent with simple KeyedEvent" in {
+    "persistKeyedEvent with simple KeyedEvent" in:
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
           "'FileJournalTest.TestState': Duplicate NumberThing: ONE")))
       intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() }
-    }
 
-    "persistEvent" in {
+    "persistEvent" in:
       assert(journal
         .persistEvent[NumberEvent](NumberKey("TWO"))(
           _ => Right(NumberAdded)).unsafeRunSync().isRight)
-    }
 
-    "Concurrent update" in {
+    "Concurrent update" in:
       val updated = keys
         .map(key =>
           journal.persistKeyedEvent(key <-: NumberAdded)
@@ -97,40 +94,33 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
 
       val keyFutures = for key <- keys yield
-        Future {
+        Future:
           for i <- 0 until n yield
             journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
               .await(99.s)
-        }
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
-    }
 
-    "currentState" in {
+    "currentState" in:
       assert(journal.unsafeCurrentState() ==
         TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
-    }
 
-    "Stop" in {
+    "Stop" in:
       runningJournal.stop()
-    }
   }
 
   "Second run, with recovered state" - {
     lazy val runningJournal = new RunningJournal
     lazy val journal = runningJournal.start()
 
-    "Start" in {
+    "Start" in:
       journal
-    }
 
-    "currentState" in {
+    "currentState" in:
       assert(journal.unsafeCurrentState() ==
         TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
-    }
 
-    "Stop" in {
+    "Stop" in:
       runningJournal.stop()
-    }
   }
 
   private class RunningJournal(
@@ -142,7 +132,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
     private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
     def journal = journalAllocated.allocatedThing
 
-    def start() = {
+    def start() =
       val recovered = StateRecoverer.recover[TestState](journalLocation, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
@@ -152,20 +142,17 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
         .toAllocated
         .await(99.s)
       journal
-    }
 
-    def stop() = {
+    def stop() =
       (journal.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
-      if journal != null then {
+      if journal != null then
         journalAllocated.release.await(99.s)
-      }
       journalAllocated.release.await(99.s)
       close()
-    }
-}
 
-private object FileJournalTest
-{
+
+private object FileJournalTest:
+
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
       js7.pekko.actor-message-log-level = Trace
@@ -178,29 +165,26 @@ private object FileJournalTest
   private def testJournalMeta(fileBase: Path) =
     JournalLocation(TestState, fileBase)
 
-  final case class NumberThing(key: NumberKey, number: Int) {
+  final case class NumberThing(key: NumberKey, number: Int):
     def update(event: NumberEvent): Checked[NumberThing] =
-      event match {
+      event match
         case NumberIncremented =>
           Right(copy(number = number + 1))
 
         case e @ NumberSlowlyIncremented(expected) =>
           if number != expected then
             Left(Problem(s"$e, but number is $toString"))
-          else {
+          else
             Thread.sleep(1)
             Right(copy(number = number + 1000))
-          }
 
         case _ => throw new MatchError(event)
-      }
-  }
 
   final case class NumberThingCollection(numberThings: Map[NumberKey, NumberThing])
-  {
-    def applyEvent: PartialFunction[KeyedEvent[NumberEvent], Checked[NumberThingCollection]] = {
+  :
+    def applyEvent: PartialFunction[KeyedEvent[NumberEvent], Checked[NumberThingCollection]] =
       case KeyedEvent(key: NumberKey, event: NumberEvent) =>
-        event match {
+        event match
           case NumberAdded =>
             if numberThings.contains(key) then
               Left(Problem(s"Duplicate NumberThing: $key"))
@@ -210,28 +194,22 @@ private object FileJournalTest
             numberThings.checked(key)
               .flatMap(_.update(event))
               .map(thing => copy(numberThings = numberThings + (thing.key -> thing)))
-        }
-    }
-  }
 
   final case class StringThing(key: StringKey, string: String)
 
   final case class NumberKey(string: String) extends GenericString
-  object NumberKey {
+  object NumberKey:
     implicit val jsonCodec: Codec.AsObject[NumberKey] = deriveCodec
-  }
 
   final case class StringKey(string: String) extends GenericString
-  object StringKey {
+  object StringKey:
     implicit val jsonCodec: Codec.AsObject[StringKey] = deriveCodec
-  }
 
   sealed trait TestEvent extends Event
 
-  sealed trait NumberEvent extends TestEvent, Event.IsKeyBase[NumberEvent] {
+  sealed trait NumberEvent extends TestEvent, Event.IsKeyBase[NumberEvent]:
     val keyCompanion: NumberEvent.type = NumberEvent
-  }
-  object NumberEvent extends Event.CompanionForKey[NumberKey, NumberEvent] {
+  object NumberEvent extends Event.CompanionForKey[NumberKey, NumberEvent]:
     implicit val implicitSelf: NumberEvent.type = this
     implicit val jsonCodec: TypedJsonCodec[NumberEvent] = TypedJsonCodec(
       Subtype(NumberAdded),
@@ -239,7 +217,6 @@ private object FileJournalTest
       Subtype(NumberIncremented),
       Subtype(deriveCodec[NumberSlowlyIncremented]),
       Subtype(NumberUnhandled))
-  }
 
   case object NumberAdded extends NumberEvent
 
@@ -256,7 +233,7 @@ private object FileJournalTest
     numberThingCollection: NumberThingCollection,
     standards: SnapshotableState.Standards = SnapshotableState.Standards.empty)
   extends SnapshotableState[TestState]
-  {
+  :
     protected type Self = NumberThingCollection
     protected type Snapshot = NumberThing
     protected type E = NumberEvent
@@ -270,31 +247,27 @@ private object FileJournalTest
       copy(standards = standards)
 
     def applyEvent(keyedEvent: KeyedEvent[Event]) =
-      keyedEvent match {
+      keyedEvent match
         case KeyedEvent(key: NumberKey, event: NumberEvent) =>
           for o <- numberThingCollection.applyEvent(key <-: event) yield
             copy(numberThingCollection = o)
 
         case keyedEvent => applyStandardEvent(keyedEvent)
-      }
 
     def estimatedSnapshotSize = numberThingCollection.numberThings.size
 
     def toSnapshotStream = Stream.iterable(numberThingCollection.numberThings.values)
-  }
   object TestState extends SnapshotableState.Companion[TestState]
-  {
+  :
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
     def newBuilder(): SnapshotableStateBuilder[TestState] =
-      new SnapshotableStateBuilder.Simple(TestState) {
-        protected def onAddSnapshotObject = {
+      new SnapshotableStateBuilder.Simple(TestState):
+        protected def onAddSnapshotObject =
           case numberThing: NumberThing =>
             updateState(result().copy(numberThingCollection = result().numberThingCollection.copy(
               numberThings =
                 result().numberThingCollection.numberThings.insert(numberThing.key -> numberThing).orThrow)))
-        }
-      }
 
     protected val inventoryItems = Nil
 
@@ -307,6 +280,3 @@ private object FileJournalTest
       KeyedEventTypedJsonCodec[Event](
         KeyedSubtype[JournalEvent],
         KeyedSubtype[NumberEvent])
-
-  }
-}

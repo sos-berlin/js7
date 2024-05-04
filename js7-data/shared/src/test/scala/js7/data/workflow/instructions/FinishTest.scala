@@ -12,10 +12,10 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class FinishTest extends OurTestSuite
-{
+final class FinishTest extends OurTestSuite:
+
   "JSON" - {
-    "with defaults" in {
+    "with defaults" in:
       testJson[Instruction.Labeled](
         Finish(None),
         json"""{
@@ -40,9 +40,8 @@ final class FinishTest extends OurTestSuite
             "namedValues": {}
           }
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson[Instruction.Labeled](
         Finish(
           Some(
@@ -61,6 +60,4 @@ final class FinishTest extends OurTestSuite
           },
           "sourcePos": [ 1, 2 ]
         }""")
-    }
   }
-}

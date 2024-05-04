@@ -134,7 +134,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         val keyedEvents = chunk.toVector.flatMap(_._1)
         val followUpAll = chunk.traverse(_._2).void
         IO
-          .whenA(keyedEvents.nonEmpty) {
+          .whenA(keyedEvents.nonEmpty):
             keyedEvents
               .traverse:
                 case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
@@ -161,7 +161,6 @@ extends SubagentDriver, Service.StoppableByRequest:
                       alreadyDelayed = subagentConf.eventBufferDelay))
                   .map(_.orThrow /*???*/)
                   .*>(releaseEvents(lastEventId))
-          }
           .*>(followUpAll)
       .takeUntilEval(untilStopRequested)
       .completedL

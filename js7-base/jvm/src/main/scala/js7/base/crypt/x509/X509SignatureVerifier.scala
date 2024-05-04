@@ -113,7 +113,7 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
         .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
         .map(toVerifier(_, origin)))
 
-  def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier = {
+  def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier =
     val certs = pems.flatMap(labeledPem =>
       X509Cert.fromPem(labeledPem.value.utf8String) match {
         case Left(problem) =>
@@ -124,10 +124,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
     toVerifier(
       X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
       origin)
-  }
 
   private def toVerifier(signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert], origin: String)
-  : X509SignatureVerifier = {
+  : X509SignatureVerifier =
     val trustedCertificates = signerDNToTrustedCertificate.values.toVector
     // Openssl 1.1.1i always sets the CA critical extension
     // to allow self-signed certificates (?)
@@ -142,7 +141,6 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
       rootCertificates,
       signerDNToTrustedCertificate,
       origin)
-  }
 
   private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[?]]) =
     duplicatesToProblem("Duplicate X.509 certificates", duplicates)

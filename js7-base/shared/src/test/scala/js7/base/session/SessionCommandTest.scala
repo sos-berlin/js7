@@ -10,10 +10,10 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder, testJsonEncoder}
 /**
   * @author Joacim Zschimmer
   */
-final class SessionCommandTest extends OurTestSuite {
+final class SessionCommandTest extends OurTestSuite:
 
   "JSON" - {
-    "Login" in {
+    "Login" in:
       testJsonEncoder[SessionCommand](SessionCommand.Login(
         Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
         Some(Version("0.0.0-TEST"))),
@@ -38,17 +38,15 @@ final class SessionCommandTest extends OurTestSuite {
           },
           "js7Version": "0.0.0-TEST"
         }""")
-    }
 
-    "Logout" in {
+    "Logout" in:
       testJson[SessionCommand](SessionCommand.Logout(SessionToken(SecretString("SESSION-TOKEN"))),
         json"""{
           "TYPE": "Logout",
           "sessionToken": "SESSION-TOKEN"
         }""")
-    }
 
-    "LoggedIn" in {
+    "LoggedIn" in:
       testJson[SessionCommand.Response](SessionCommand.Login.LoggedIn(
         SessionToken(SecretString("SESSION-TOKEN")),
         Version("0.0.0-TEST")),
@@ -57,6 +55,4 @@ final class SessionCommandTest extends OurTestSuite {
           "sessionToken": "SESSION-TOKEN",
           "js7Version": "0.0.0-TEST"
         }""")
-    }
   }
-}

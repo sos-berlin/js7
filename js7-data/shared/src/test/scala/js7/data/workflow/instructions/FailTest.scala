@@ -12,18 +12,17 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class FailTest extends OurTestSuite
-{
+final class FailTest extends OurTestSuite:
+
   "JSON" - {
-    "with defaults" in {
+    "with defaults" in:
       testJson[Instruction.Labeled](
         Fail(None),
         json"""{
           "TYPE": "Fail"
         }""")
-    }
 
-    "complete" in {
+    "complete" in:
       testJson[Instruction.Labeled](
         Fail(Some(StringConstant("ERROR")), NamedValues.rc(7), uncatchable = true, Some(SourcePos(1, 2))),
         json"""{
@@ -35,6 +34,4 @@ final class FailTest extends OurTestSuite
           "uncatchable": true,
           "sourcePos": [ 1, 2 ]
         }""")
-    }
   }
-}

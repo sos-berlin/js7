@@ -53,7 +53,7 @@ final class ProcessDriver(
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : IO[Checked[RichProcess]] =
-    IO.defer {
+    IO.defer:
       killedBeforeStart match
         case Some(signal) =>
           IO.pure(Left(Problem.pure("Processing killed before start")))
@@ -94,7 +94,6 @@ final class ProcessDriver(
                       killedBeforeStart.traverse(sendProcessSignal(richProcess, _))
                     .as(Right(()))
                 }))
-    }
 
   private def outcomeOf(richProcess: RichProcess): IO[OrderOutcome.Completed] =
     richProcess

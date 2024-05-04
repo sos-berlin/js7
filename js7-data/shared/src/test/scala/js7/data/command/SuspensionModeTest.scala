@@ -10,10 +10,10 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class SuspensionModeTest extends OurTestSuite
-{
+final class SuspensionModeTest extends OurTestSuite:
+
   "JSON" - {
-    "SuspensionMode(Kill())" in {
+    "SuspensionMode(Kill())" in:
       testJson[SuspensionMode](
         SuspensionMode(Some(CancellationMode.Kill())),
         json"""{
@@ -25,9 +25,8 @@ final class SuspensionModeTest extends OurTestSuite
       assert(json"""{
         "kill": {}
       }""".as[SuspensionMode] == Right(SuspensionMode(Some(CancellationMode.Kill()))))
-    }
 
-    "SuspensionMode(Kill(...))" in {
+    "SuspensionMode(Kill(...))" in:
       testJson[SuspensionMode](
         SuspensionMode(Some(
           CancellationMode.Kill(
@@ -45,6 +44,4 @@ final class SuspensionModeTest extends OurTestSuite
             }
           }
         }""")
-    }
   }
-}

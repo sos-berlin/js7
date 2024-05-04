@@ -8,16 +8,15 @@ import js7.common.internet.IP.*
 /**
   * @author Joacim Zschimmer
   */
-final class IPTest extends OurTestSuite {
+final class IPTest extends OurTestSuite:
 
-  "InetAddress" in {
+  "InetAddress" in:
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }
     intercept[IllegalArgumentException] { convert[String, InetAddress](" ") }
     assert(convert[String, InetAddress]("1.2.3.4") == InetAddress.getByName("1.2.3.4"))
     assert(convert[String, InetAddress]("localhost") == InetAddress.getByName("localhost"))
-  }
 
-  "InetSocketAddress" in {
+  "InetSocketAddress" in:
     intercept[IllegalArgumentException] { convert[String, InetSocketAddress]("") }
     intercept[IllegalArgumentException] { convert[String, InetSocketAddress](" ") }
     intercept[IllegalArgumentException] { convert[String, InetSocketAddress](" :1") }
@@ -29,13 +28,11 @@ final class IPTest extends OurTestSuite {
     assert(convert[String, InetSocketAddress]("localhost:12345") == new InetSocketAddress("localhost", 12345))
     assert(convert[String, InetSocketAddress]("[1:2:3:4:5:6]:12345") == new InetSocketAddress("1:2:3:4:5:6", 12345))
     assert(convert[String, InetSocketAddress]("[::1]:12345") == new InetSocketAddress("::1", 12345))
-  }
 
   "StringToInetSocketAddress with default" - {
     def use(defaultHost: String, defaultPort: Option[Int])(body: (String => InetSocketAddress) => Unit): Unit =
-      s"With defaults $defaultHost and $defaultPort" in {
+      s"With defaults $defaultHost and $defaultPort" in:
         body { string => toInetSocketAddress(string, defaultHost, defaultPort) }
-      }
 
     use("0.0.0.0", None) { c =>
       intercept[IllegalArgumentException] { c("") }
@@ -70,4 +67,3 @@ final class IPTest extends OurTestSuite {
       assert(c("9999") == new InetSocketAddress("0.0.0.0", 9999))
     }
   }
-}

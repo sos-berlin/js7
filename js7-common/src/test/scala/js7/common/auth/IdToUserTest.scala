@@ -17,32 +17,27 @@ import scala.jdk.CollectionConverters.*
   * @author Joacim Zschimmer
   */
 final class IdToUserTest extends OurTestSuite:
-{
+
   private given ExecutionContext = ioRuntime.compute
 
-  "Unknown user" in {
+  "Unknown user" in:
     assert(idToUser(UserId("UNKNOWN")) == None)
-  }
 
-  "Plain password" in {
+  "Plain password" in:
     val Some(u) = idToUser(PlainUserId): @unchecked
     assert(u.id == PlainUserId)
     assert(u.hashedPassword equalsClearText PlainPassword)
-  }
 
-  "SHA512 hashed password" in {
+  "SHA512 hashed password" in:
     val Some(u) = idToUser(Sha512UserId): @unchecked
     assert(u.id == Sha512UserId)
     assert(u.hashedPassword equalsClearText Sha512Password)
-  }
 
   "fromConfig" - {
-    "No js7.auth.users" in {
-      intercept[com.typesafe.config.ConfigException.Missing] {
+    "No js7.auth.users" in:
+      intercept[com.typesafe.config.ConfigException.Missing]:
         IdToUser.fromConfig(ConfigFactory.parseString(""), SimpleUser.apply)
-      }
       //assert(idToUser(UserId("UNKNOWN")) == None)
-    }
 
     val idToUser = IdToUser.fromConfig(
       config"""
@@ -69,7 +64,7 @@ final class IdToUserTest extends OurTestSuite:
         }""",
       SimpleUser.apply)
 
-    "fromConfig" in {
+    "fromConfig" in:
       val Some(a) = idToUser(UserId("A")): @unchecked
       val Some(b) = idToUser(UserId("B")): @unchecked
       val Some(b1) = idToUser(UserId("B1")): @unchecked
@@ -105,9 +100,8 @@ final class IdToUserTest extends OurTestSuite:
 
       val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD")): @unchecked
       assert(emptyPasswordUser.hashedPassword equalsClearText SecretString(""))
-    }
 
-    "thread-safe" in {
+    "thread-safe" in:
       val n = 10000
       val a = Future.sequence(
         for i <- 1 to n yield
@@ -116,12 +110,10 @@ final class IdToUserTest extends OurTestSuite:
         for i <- 1 to n yield
           Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") })
       List(a, b) await 99.s
-    }
   }
-}
 
-private object IdToUserTest
-{
+private object IdToUserTest:
+
   private val PlainUserId = UserId("PLAIN-USER")
   private val PlainPassword = SecretString("PLAIN-PASSWORD")
   private val Sha512UserId = UserId("SHA512-USER")
@@ -139,4 +131,3 @@ private object IdToUserTest
     distinguishedNameToUserIds = Map.empty,
     SimpleUser.apply,
     toPermission = Map.empty)
-}

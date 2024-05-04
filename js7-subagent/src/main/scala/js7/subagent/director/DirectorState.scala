@@ -49,13 +49,12 @@ private final case class DirectorState(
         driver,
         subagentItem.disabled))
 
-  def removeSubagent(subagentId: SubagentId): DirectorState = {
+  def removeSubagent(subagentId: SubagentId): DirectorState =
     logger.trace("removeSubagent", subagentId)
     copy(
       subagentToEntry = subagentToEntry.removed(subagentId),
       selectionToPrioritized = selectionToPrioritized
         .updated(None, selectionToPrioritized(None).remove(subagentId)))
-  }
 
   def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
     logger.trace("setDisabled", s"$id, disabled=$disabled")

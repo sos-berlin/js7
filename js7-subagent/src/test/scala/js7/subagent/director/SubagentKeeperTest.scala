@@ -8,8 +8,8 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.subagent.director.SubagentKeeper.{DeterminedSubagentSelection, determineSubagentSelection}
 
-final class SubagentKeeperTest extends OurTestSuite
-{
+final class SubagentKeeperTest extends OurTestSuite:
+
   private val agentPath = AgentPath("AGENT")
   private val otherAgentPath = AgentPath("OTHER")
   private val rawOrder = Order(OrderId("A"), WorkflowPath("W") ~ "1" /: Position(1), Order.Ready)
@@ -18,7 +18,7 @@ final class SubagentKeeperTest extends OurTestSuite
   private val subagentId = SubagentId("SUBAGENT")
 
   "determineSubagentSelection" - {
-    "Order.agentToStickyOrder" in {
+    "Order.agentToStickyOrder" in:
       assert(rawOrder.agentToStickySubagent(agentPath) == None)
 
       val ourStickySubagent = Order.StickySubagent(agentPath, None)
@@ -43,33 +43,28 @@ final class SubagentKeeperTest extends OurTestSuite
         .copy(stickySubagents = List(otherStickySubagent, ourStickySubagent))
         .agentToStickySubagent(agentPath).get
         .eq(ourStickySubagent))
-    }
 
     "No StickyOrder" - {
-      "Job without subagentSelectionId" in {
+      "Job without subagentSelectionId" in:
         assert(determineSubagentSelection(rawOrder, agentPath, None) ==
           DeterminedSubagentSelection(None))
-      }
 
-      "Job subagentSelectionId" in {
+      "Job subagentSelectionId" in:
         assert(determineSubagentSelection(rawOrder, agentPath, Some(bSubagentSelectionId)) ==
           DeterminedSubagentSelection(Some(bSubagentSelectionId)))
-      }
     }
 
     "StickyOrder for other Agent is ignored" - {
       val order = rawOrder.copy(
         stickySubagents = List(Order.StickySubagent(otherAgentPath, Some(aSubagentSelectionId))))
 
-      "Job without subagentSelectionId" in {
+      "Job without subagentSelectionId" in:
         assert(determineSubagentSelection(order, agentPath, None) ==
           DeterminedSubagentSelection(None))
-      }
 
-      "Job subagentSelectionId" in {
+      "Job subagentSelectionId" in:
         assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
           DeterminedSubagentSelection(Some(bSubagentSelectionId)))
-      }
     }
 
     "StickyOrder is valid for our Agent" - {
@@ -78,35 +73,30 @@ final class SubagentKeeperTest extends OurTestSuite
           val order = rawOrder.copy(
             stickySubagents = List(Order.StickySubagent(agentPath, None)))
 
-          "Job without subagentSelectionId" in {
+          "Job without subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, None) ==
               DeterminedSubagentSelection(None, stick = true))
-          }
 
-          "Job with subagentSelectionId" in {
+          "Job with subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
               DeterminedSubagentSelection(Some(bSubagentSelectionId), stick = true))
-          }
         }
 
         "StickyOrder with subagentSelectionId" - {
           val order = rawOrder.copy(
             stickySubagents = List(Order.StickySubagent(agentPath, Some(aSubagentSelectionId))))
 
-          "Job without subagentSelectionId" in {
+          "Job without subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, None) ==
               DeterminedSubagentSelection(Some(aSubagentSelectionId), stick = true))
-          }
 
-          "Job with same subagentSelectionId" in {
+          "Job with same subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(aSubagentSelectionId)) ==
               DeterminedSubagentSelection(Some(aSubagentSelectionId), stick = true))
-          }
 
-          "Job with different subagentSelectionId" in {
+          "Job with different subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
               DeterminedSubagentSelection(Some(bSubagentSelectionId)))
-          }
         }
       }
 
@@ -116,15 +106,13 @@ final class SubagentKeeperTest extends OurTestSuite
             stickySubagents = List(
               Order.StickySubagent(agentPath, None, stuckSubagentId = Some(subagentId))))
 
-          "Job without subagentSelectionId" in {
+          "Job without subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, None) ==
               DeterminedSubagentSelection.stuck(subagentId))
-          }
 
-          "Job with subagentSelectionId" in {
+          "Job with subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
               DeterminedSubagentSelection.stuck(subagentId))
-          }
         }
 
         "StickyOrder with subagentSelectionId" - {
@@ -135,22 +123,18 @@ final class SubagentKeeperTest extends OurTestSuite
                 Some(aSubagentSelectionId),
                 stuckSubagentId = Some(subagentId))))
 
-          "Job without subagentSelectionId" in {
+          "Job without subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, None) ==
               DeterminedSubagentSelection.stuck(subagentId))
-          }
 
-          "Job with same subagentSelectionId" in {
+          "Job with same subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(aSubagentSelectionId)) ==
               DeterminedSubagentSelection.stuck(subagentId))
-          }
 
-          "Job with different subagentSelectionId" in {
+          "Job with different subagentSelectionId" in:
             assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
               DeterminedSubagentSelection(Some(bSubagentSelectionId)))
-          }
         }
       }
     }
   }
-}

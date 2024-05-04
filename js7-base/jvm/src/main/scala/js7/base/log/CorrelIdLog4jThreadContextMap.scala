@@ -86,14 +86,13 @@ object CorrelIdLog4jThreadContextMap:
   private var getReadOnlyContextDataCount2 = 0L
 
   private[log] def getOtherKey(key: String): String =
-    key match {
+    key match
       case NameKey => name
       case VersionKey => BuildInfo.longVersion
       case LongVersionKey => BuildInfo.longVersion
       case PrettyVersionKey => BuildInfo.prettyVersion
       case SystemKey => StartUp.startUpLine()
       case _ => null
-    }
 
   private val isDebug: Boolean =
     sys.props.get("log4j2.debug") match

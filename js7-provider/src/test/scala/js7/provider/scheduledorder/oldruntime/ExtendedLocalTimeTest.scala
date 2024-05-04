@@ -6,10 +6,10 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class ExtendedLocalTimeTest extends OurTestSuite {
+final class ExtendedLocalTimeTest extends OurTestSuite:
 
   "fromString" - {
-    "Invalid times" in {
+    "Invalid times" in:
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("") }
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("0") }
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("0:0:0:0") }
@@ -18,7 +18,6 @@ final class ExtendedLocalTimeTest extends OurTestSuite {
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("-0:0") }
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("0:60") }
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("0:00:60") }
-    }
 
     for ((string, normalized, nano) <- Array(
       ("0:00"     ,  "0:00:00", 0L),
@@ -28,40 +27,32 @@ final class ExtendedLocalTimeTest extends OurTestSuite {
       ("12:09:10" , "12:09:10", LocalTime.of(12,  9, 10).toNanoOfDay),
       ("23:59:59" , "23:59:59", LocalTime.of(23, 59, 59).toNanoOfDay),
       ("48:00"    , "48:00:00",  48L*60*60*1000*1000*1000))
-    ) string in {
+    ) string in:
       val t = ExtendedLocalTime.fromString(string)
       assert(t.toNanoOfDay == nano)
       assert(t.toString == normalized)
-    }
   }
 
-  "toInstant" in {
+  "toInstant" in:
     assert(ExtendedLocalTime.fromString("08:00").toInstant(LocalDate.of(2017, 1, 1), ZoneId.of("Europe/Berlin")) ==
       Instant.parse("2017-01-01T07:00:00Z"))
     assert(ExtendedLocalTime.fromString("08:00").toInstant(LocalDate.of(2017, 8, 1), ZoneId.of("Europe/Berlin")) ==
       Instant.parse("2017-08-01T06:00:00Z"))
-  }
 
 
-  "toLocalDate" in {
+  "toLocalDate" in:
     assert(ExtendedLocalTime.fromString("32:00").toLocalDateTime(LocalDate.of(2017, 1, 1)) ==
       LocalDateTime.of(2017, 1, 2, 8, 0, 0))
-  }
 
-  "toLocalTime" in {
+  "toLocalTime" in:
     assert(ExtendedLocalTime.fromString("32:30:59").localTime ==
       LocalTime.of(8, 30, 59))
-  }
 
-  "compare" in {
+  "compare" in:
     assert(ExtendedLocalTime.fromString("01:00") < ExtendedLocalTime.fromString("02:00"))
-  }
 
-  "StartOfDay" in {
+  "StartOfDay" in:
     assert(ExtendedLocalTime.StartOfDay.toNanoOfDay == 0)
-  }
 
-  "EndOfDay" in {
+  "EndOfDay" in:
     assert(ExtendedLocalTime.EndOfDay.toNanoOfDay == 24L*60*60*1000*1000*1000)
-  }
-}

@@ -14,23 +14,22 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedEventTest extends OurTestSuite
-{
+final class VersionedEventTest extends OurTestSuite:
+
   import VersionedEventTest.{itemEventJsonCodec, itemJsonCodec}
 
   "JSON" - {
-    "VersionAdded" in {
+    "VersionAdded" in:
       testJson[VersionedEvent](
         VersionAdded(VersionId("VERSION")),
         json"""{
           "TYPE": "VersionAdded",
           "versionId": "VERSION"
         }""")
-    }
 
     val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(Fail(None)))
 
-    "VersionedItemAdded" in {
+    "VersionedItemAdded" in:
       testJson[VersionedEvent](
         VersionedItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
@@ -43,9 +42,8 @@ final class VersionedEventTest extends OurTestSuite
             }
           }
         }""")
-    }
 
-    "VersionedItemChanged" in {
+    "VersionedItemChanged" in:
       testJson[VersionedEvent](
         VersionedItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
@@ -58,16 +56,14 @@ final class VersionedEventTest extends OurTestSuite
             }
           }
         }""")
-    }
 
-    "VersionedItemRemoved" in {
+    "VersionedItemRemoved" in:
       testJson[VersionedEvent](
         VersionedItemRemoved(WorkflowPath("TEST")),
         json"""{
           "TYPE": "VersionedItemRemoved",
           "path": "Workflow:TEST"
         }""")
-    }
   }
 
   //"VersionedItemAdded must have a non-anonymous path but not a versionId" in {
@@ -80,14 +76,12 @@ final class VersionedEventTest extends OurTestSuite
   //  intercept[RuntimeException] { VersionedItemChanged(Workflow(WorkflowPath("A") % "VERSION", Vector(Fail(None)))) }
   //}
 
-  "VersionedItemRemoved must have a non-anonymous path" in {
+  "VersionedItemRemoved must have a non-anonymous path" in:
     intercept[RuntimeException] { VersionedItemRemoved(WorkflowPath.Anonymous) }
-  }
-}
 
 
-object VersionedEventTest
-{
+object VersionedEventTest:
+
   implicit private val itemPathJsonCodec: Codec[VersionedItemPath] =
     InventoryItemPath.jsonCodec(Set(WorkflowPath))
 
@@ -96,4 +90,3 @@ object VersionedEventTest
 
   private[VersionedEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[VersionedEvent] =
     VersionedEvent.jsonCodec
-}

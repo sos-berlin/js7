@@ -265,7 +265,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
   }
 
-
 object ControlWorkflowPathSkipTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

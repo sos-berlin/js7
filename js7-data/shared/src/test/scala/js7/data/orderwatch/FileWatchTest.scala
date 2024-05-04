@@ -11,10 +11,10 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 
-final class FileWatchTest extends OurTestSuite
-{
+final class FileWatchTest extends OurTestSuite:
+
   "JSON" - {
-    "FileWatch minimum" in {
+    "FileWatch minimum" in:
       val json = json"""{
         "TYPE": "FileWatch",
         "path": "PATH",
@@ -25,9 +25,8 @@ final class FileWatchTest extends OurTestSuite
       assert(json.as[OrderWatch].orThrow ==
         FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
           expr("'/DIRECTORY'")))
-    }
 
-    "FileWatch, compatible with v2.0.1" in {
+    "FileWatch, compatible with v2.0.1" in:
       val json = json"""{
         "TYPE": "FileWatch",
         "path": "PATH",
@@ -38,9 +37,8 @@ final class FileWatchTest extends OurTestSuite
       assert(json.as[OrderWatch].orThrow ==
         FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
           expr("'/DIRECTORY'")))
-    }
 
-    "FileWatch complete" in {
+    "FileWatch complete" in:
       testJson[OrderWatch](
         FileWatch(
           OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
@@ -59,6 +57,4 @@ final class FileWatchTest extends OurTestSuite
           "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$js7EpochSecond-$$orderWatchPath:$$1\"",
           "delay": 2
         }""")
-    }
   }
-}

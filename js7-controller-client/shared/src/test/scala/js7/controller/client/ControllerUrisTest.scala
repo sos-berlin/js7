@@ -8,44 +8,37 @@ import js7.data.order.OrderId
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerUrisTest extends OurTestSuite
-{
+final class ControllerUrisTest extends OurTestSuite:
+
   private val controllerUris = ControllerUris(Uri("https://example.com/controller"))
 
-  "overview" in {
+  "overview" in:
     assert(controllerUris.overview == Uri("https://example.com/controller/api"))
-  }
 
-  "command" in {
+  "command" in:
     assert(controllerUris.command == Uri("https://example.com/controller/api/command"))
-  }
 
   "order" - {
-    "overview" in {
+    "overview" in:
       assert(controllerUris.order.overview == Uri("https://example.com/controller/api/order"))
-    }
 
-    "single" in {
+    "single" in:
       assert(controllerUris.order(OrderId("ORDER-ID")) == Uri("https://example.com/controller/api/order/ORDER-ID"))
       assert(controllerUris.order(OrderId("/å")) == Uri("https://example.com/controller/api/order/%2F%C3%A5"))
-    }
   }
 
   "snapshot" - {
-    "list" in {
+    "list" in:
       assert(controllerUris.snapshot.list == Uri("https://example.com/controller/api/snapshot/"))
-    }
   }
 
   "agentForward" - {
-    "agentForward" in {
+    "agentForward" in:
       assert(controllerUris.agentForward(AgentPath("FOLDER/AGENT")) ==
         Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT"))
-    }
 
     //"agentCommand" in {
     //  assert(controllerUris.agentCommand(AgentPath("FOLDER/AGENT")) ==
     //    Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT/command"))
     //}
   }
-}

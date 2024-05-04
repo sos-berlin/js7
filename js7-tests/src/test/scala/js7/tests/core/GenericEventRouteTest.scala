@@ -51,8 +51,8 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
 final class GenericEventRouteTest
-extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
-{
+extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
+
   protected type OurSession = SimpleSession
 
   private given IORuntime = ioRuntime
@@ -125,21 +125,19 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     .toAllocated
     .await(99.s)
 
-  private lazy val api = new PekkoHttpClient {
+  private lazy val api = new PekkoHttpClient:
     protected val actorSystem = GenericEventRouteTest.this.actorSystem
     protected val baseUri = allocatedServer.allocatedThing.localUri
     protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
     protected def httpsConfig = HttpsConfig.empty
-  }
 
   private implicit val noSessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     PekkoHttpUtils.avoidLazyObjectInitializationDeadlock()
     allocatedServer
-  }
 
   override def afterAll() =
     try
@@ -149,19 +147,17 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       super.afterAll()
 
   "Read event stream with getDecodedLinesStream" - {
-    "empty, timeout=0" in {
+    "empty, timeout=0" in:
       val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
       assert(stream.toListL.await(99.s) == Nil)
-    }
 
-    "empty, timeout > 0" in {
+    "empty, timeout > 0" in:
       val t = now
       val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(100.ms)))
       assert(stream.toListL.await(99.s) == Nil)
       assert(t.elapsed >= 90.ms)
-    }
 
-    "Sporadic events" in {
+    "Sporadic events" in:
       eventCollector.addStamped(TestEvents(0))
 
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
@@ -178,94 +174,78 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       assert(observed(1) == TestEvents(1))
 
       streamCompleted.cancelToFuture().await(99.s)
-    }
 
     "Fetch events with repeated GET requests" - {  // Similar to EventRouteTest
-      "(Add more events)" in {
+      "(Add more events)" in:
         TestEvents.drop(2) foreach eventCollector.addStamped
-      }
 
-      "/event?limit=3&after=30 continue" in {
+      "/event?limit=3&after=30 continue" in:
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
         assert(stampedSeq.head.eventId == 40)
         assert(stampedSeq.last.eventId == 60)
-      }
 
-      "/event?limit=3&after=60 continue" in {
+      "/event?limit=3&after=60 continue" in:
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
         assert(stampedSeq.head.eventId == 70)
         assert(stampedSeq.last.eventId == 90)
-      }
 
-      "Repeatedly" in {
-        for _ <- 1 to (if isIntelliJIdea then 10_000 else 1000) do {
-          locally {
+      "Repeatedly" in:
+        for _ <- 1 to (if isIntelliJIdea then 10_000 else 1000) do
+          locally:
             val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
             assert(stampedSeq.head.eventId == 40)
             assert(stampedSeq.last.eventId == 60)
-          }
-          locally {
+          locally:
             val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
             assert(stampedSeq.head.eventId == 70)
             assert(stampedSeq.last.eventId == 90)
-          }
-        }
-      }
 
-      "/event?limit=1&after=70 rewind in last chunk" in {
+      "/event?limit=1&after=70 rewind in last chunk" in:
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=70"))
         assert(stampedSeq.head.eventId ==  80)
         assert(stampedSeq.last.eventId == 100)
-      }
 
-      "/event?limit=3&after=80 continue" in {
+      "/event?limit=3&after=80 continue" in:
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=80"))
         assert(stampedSeq.head.eventId ==  90)
         assert(stampedSeq.last.eventId == 110)
-      }
 
-      "/event?limit=3&after=60 rewind to oldest" in {
+      "/event?limit=3&after=60 rewind to oldest" in:
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
         assert(stampedSeq.head.eventId == 70)
         assert(stampedSeq.last.eventId == 90)
-      }
 
-      "/event?limit=3&after=150 skip some events" in {
+      "/event?limit=3&after=150 skip some events" in:
         val runningSince = now
         val stampedSeq = getEventsByUri(Uri("/event?delay=99&limit=3&after=150"))
         assert(runningSince.elapsed < 3.s)  // Events must have been returned immediately
         assert(stampedSeq.head.eventId == 160)
         assert(stampedSeq.last.eventId == 180)
-      }
 
-      "/event?after=180 no more events" in {
+      "/event?after=180 no more events" in:
         assert(getEventsByUri(Uri("/event?timeout=0&after=180")).isEmpty)
-      }
 
-      "/event?after=180 no more events, with timeout" in {
+      "/event?after=180 no more events, with timeout" in:
         val runningSince = now
         assert(getEventsByUri(Uri("/event?after=180&timeout=0.2")).isEmpty)
         assert(runningSince.elapsed >= 200.millis)
-      }
     }
 
-    "Fetch EventIds while active is rejected" in {
+    "Fetch EventIds while active is rejected" in:
       assert(eventWatch.isActiveNode)
       val response = intercept[HttpException](
         getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")))
       assert(response.problem == Some(AckFromActiveClusterNodeProblem))
-    }
 
-    "Fetch EventIds while passive" in {
+    "Fetch EventIds while passive" in:
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
       assert(getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
 
       eventWatch.isActiveNode = wasActive
-    }
 
-    "Fetch EventIds with heartbeat" in {
+    "Fetch EventIds with heartbeat" in:
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
@@ -282,7 +262,6 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       assert(events == Seq(180, heartbeat, heartbeat))
 
       eventWatch.isActiveNode = wasActive
-    }
 
     //"cancel PekkoHttpClient request" in {
     //  for (i <- 1 to 16/*below Pekko's max-open-requests, see js7.conf, otherwise the pool will overflow and block*/) {
@@ -296,7 +275,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     //}
 
     "whenShuttingDown" - {
-      "completes a running stream" in {
+      "completes a running stream" in:
         val started = Promise[Unit]()
         val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
           .onStart(IO:
@@ -307,23 +286,21 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
         // Shut down service
         whenShuttingDown.complete(now).await(99.s)
         streamCompleted await 99.s
-      }
 
-      "completes a stream request, before stream started" in {
+      "completes a stream request, before stream started" in:
         // Shut down service, try again, in case the previous test failed
         whenShuttingDown.complete(now).await(99.s)
         val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
           .completedL.unsafeToFuture()
         // Previous test has already shut down the service
         streamCompleted await 99.s
-      }
     }
   }
 
   private def getEventStream(eventRequest: EventRequest[Event]): Stream[IO, Stamped[KeyedEvent[Event]]] =
     getEvents(eventRequest).await(99.s)
 
-  private def getEvents(eventRequest: EventRequest[Event]): IO[Stream[IO, Stamped[KeyedEvent[Event]]]] = {
+  private def getEvents(eventRequest: EventRequest[Event]): IO[Stream[IO, Stamped[KeyedEvent[Event]]]] =
     import ControllerState.keyedEventJsonCodec
     api
       .getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
@@ -331,7 +308,6 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
           encodeQuery(("heartbeat" -> "1"/*allows early cancellation*/) +:
             eventRequest.toQueryParameters)),
         responsive = true)
-  }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesStream[Stamped[KeyedEvent[OrderEvent]]](uri)
@@ -345,15 +321,13 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       .flatten
       .toListL
       .await(99.s)
-}
 
 
-object GenericEventRouteTest
-{
+object GenericEventRouteTest:
+
   private val TestEvents = for i <- 1 to 18 yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))
   private val ExtraEvent =
     Stamped(EventId(10 * 99), Timestamp.ofEpochMilli(999),
       OrderId(99.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))
-}

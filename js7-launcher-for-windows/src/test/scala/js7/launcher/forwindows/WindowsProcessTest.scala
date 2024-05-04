@@ -19,9 +19,9 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.matchers.should.Matchers.*
 import scala.util.{Failure, Try}
 
-final class WindowsProcessTest extends OurTestSuite
-{
-  if isWindows then {
+final class WindowsProcessTest extends OurTestSuite:
+
+  if isWindows then
     // TODO Test fails
     val commandCharset = Charset forName "cp850"
     for withUserProfile <- Seq(false, true) do
@@ -32,7 +32,7 @@ final class WindowsProcessTest extends OurTestSuite
             WindowsProcessCredential.byKey(o).orThrow,
             withUserProfile = withUserProfile))
 
-        "CreateProcess" in {
+        "CreateProcess" in:
           val batchFile = /*credential match {
             case Some(WindowsProcessCredential(user, _)) =>
               val directory = createTempFile(WindowsApi.windowsDirectory / "Temp", "WindowsProcessTest-", ".cmd")
@@ -79,7 +79,7 @@ final class WindowsProcessTest extends OurTestSuite
           val userNameLines = stdoutLines filter { _ contains "test-username=" }
           assert(userNameLines exists { _ endsWith "self-test" })
           val me = sys.env("USERNAME").toLowerCase(Locale.ROOT)
-          logon match {
+          logon match
             case Some(WindowsLogon(WindowsProcessCredential(WindowsUserName(user), _), _)) =>
               assert(stdout.toLowerCase(Locale.ROOT) contains s"env-username=$user".toLowerCase(Locale.ROOT))
               assert(userNameLines.forall(o => !o.endsWith("\\" ++ me)))
@@ -88,13 +88,11 @@ final class WindowsProcessTest extends OurTestSuite
             case None =>
               // "USERNAME=Lokaler Dienst"? assert(stdout contains s"env-username=$me")
               assert(userNameLines.exists(_.endsWith("\\" ++ me)))
-          }
           delete(stdoutFile)
           delete(stderrFile)
           delete(batchFile)
-        }
 
-        "TerminateProcess" in {
+        "TerminateProcess" in:
           val process = WindowsProcess.startWithWindowsLogon(
             StartWindowsProcess(
               Seq(s"$windowsDirectory\\system32\\ping.exe", "-n", "10", "127.0.0.1"),
@@ -107,9 +105,8 @@ final class WindowsProcessTest extends OurTestSuite
           process.waitFor(1.s)
           assert(!process.isAlive)
           assert(process.returnCode == Some(WindowsProcess.TerminateProcessReturnCode))
-        }
 
-        "Inherit stdout (manual test)" in {
+        "Inherit stdout (manual test)" in:
           val process = WindowsProcess.startWithWindowsLogon(
             StartWindowsProcess(
               Seq(s"$windowsDirectory\\system32\\ping.exe", "-n", "1", "127.0.0.1"),
@@ -120,9 +117,8 @@ final class WindowsProcessTest extends OurTestSuite
           ).orThrow
           process.waitFor(5.s) shouldBe true
           assert(process.returnCode == Some(ReturnCode(0)))
-        }
 
-        "Environment" in {
+        "Environment" in:
           val testVariableName = "TEST_VARIABLE"
           val testVariableValue = "TEST-VALUE"
           val scriptFile = createTempFile("test-", ".cmd")
@@ -149,9 +145,8 @@ final class WindowsProcessTest extends OurTestSuite
 
           awaitAndAssert(Try(delete(stdoutFile)).isSuccess)  // For Windows
           deleteIfExists(stdoutFile)
-        }
 
-        "Write to stdin" in {
+        "Write to stdin" in:
           val scriptFile = createTempFile("test-", ".cmd")
           scriptFile.contentString = """
             |@echo off
@@ -176,27 +171,23 @@ final class WindowsProcessTest extends OurTestSuite
           awaitAndAssert { Try(delete(stdoutFile)).isSuccess }
           deleteIfExists(stdoutFile)
           delete(scriptFile)
-        }
 
-        for user <- logon.map(_.userName) do {
-          "makeFileExecutableForUser" in {
+        for user <- logon.map(_.userName) do
+          "makeFileExecutableForUser" in:
             check("(RX)")(WindowsProcess.makeFileExecutableForUser(_, user))
-          }
 
-          "makeFileAppendableForUser" in {
+          "makeFileAppendableForUser" in:
             check("(M)")(WindowsProcess.makeFileAppendableForUser(_, user))
-          }
 
-          def check(expected: String)(body: Path => Unit): Unit = {
+          def check(expected: String)(body: Path => Unit): Unit =
             val file = createTempFile("test-", ".tmp")
             body(file)
             val icaclsOut = icacls(file)
             println(icaclsOut)
             assert(icaclsOut.replace("\r\n", "\n").toLowerCase(Locale.ROOT) contains s"$user:$expected\n".toLowerCase(Locale.ROOT))
             delete(file)
-          }
 
-          "makeFileAppendableForUser, script appends" in {
+          "makeFileAppendableForUser, script appends" in:
             val appendableFile = createTempFile("test-", ".tmp")
             appendableFile.contentString = ""
             WindowsProcess.makeFileAppendableForUser(appendableFile, user)
@@ -217,11 +208,9 @@ final class WindowsProcessTest extends OurTestSuite
             delete(scriptFile)
             assert(appendableFile.contentString == "TEST\r\n")
             delete(appendableFile)
-          }
-        }
 
-        if false then {  // Own user: stdout is empty. Other user: DLL initialization error, user32.dll
-          "Java via script" in {
+        if false then  // Own user: stdout is empty. Other user: DLL initialization error, user32.dll
+          "Java via script" in:
             val scriptFile = createTempFile("test-", ".cmd")
             scriptFile.contentString = """
               |@echo off
@@ -242,9 +231,8 @@ final class WindowsProcessTest extends OurTestSuite
             assert(stdoutFile.contentString(commandCharset) contains "java version 1.8.0_131")
             delete(stdoutFile)
             delete(scriptFile)
-          }
 
-          "Java direct" in {
+          "Java direct" in:
             val stdoutFile = createTempFile("test-", ".log")
             val stderrFile = createTempFile("test-", ".log")
             val process = WindowsProcess.startWithWindowsLogon(
@@ -263,11 +251,9 @@ final class WindowsProcessTest extends OurTestSuite
             assert(stdoutFile.contentString(commandCharset) contains "java version 1.8.0_131")
             delete(stdoutFile)
             delete(stderrFile)
-          }
-        }
       }
 
-      def icacls(file: Path): String = {
+      def icacls(file: Path): String =
         val stdoutFile = createTempFile("test-", ".log")
         new ProcessBuilder(s"$windowsDirectory\\system32\\icacls.exe", file.toString)
           .redirectOutput(Redirect.to(stdoutFile.toFile))
@@ -275,9 +261,8 @@ final class WindowsProcessTest extends OurTestSuite
           .waitFor()
         try stdoutFile.contentString(commandCharset)
         finally delete(stdoutFile)
-      }
 
-      "execute" in {
+      "execute" in:
         val file = "NON-EXISTANT-FILE-WITH-ÜMLÅÙTS"
         val user = "NON-EXISTENT-ÜSËR"
         val Failure(t) = Try {
@@ -287,10 +272,8 @@ final class WindowsProcessTest extends OurTestSuite
         println(t.getMessage)
         assert(a contains "icacls.exe")
         assert(b contains user)
-      }
-  }
 
-  "injectableUserName" in {
+  "injectableUserName" in:
     check("a")
     check("å")
     check("a.b")
@@ -304,10 +287,7 @@ final class WindowsProcessTest extends OurTestSuite
     def check(name: String) = assert(WindowsProcess.injectableUserName(WindowsUserName(name)) == name)
     intercept[IllegalArgumentException] { WindowsProcess.injectableUserName(WindowsUserName("")) }
     intercept[IllegalArgumentException] { WindowsProcess.injectableUserName(WindowsUserName("a%")) }
-  }
-}
 
 
-object WindowsProcessTest {
+object WindowsProcessTest:
   val TargetSystemProperty = "js7.WindowsProcess.target"
-}

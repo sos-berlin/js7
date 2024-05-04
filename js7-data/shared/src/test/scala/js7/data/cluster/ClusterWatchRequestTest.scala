@@ -11,8 +11,8 @@ import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 
-final class ClusterWatchRequestTest extends OurTestSuite
-{
+final class ClusterWatchRequestTest extends OurTestSuite:
+
   "JSON" - {
     val clusterSetting = ClusterSetting(
       Map(
@@ -21,7 +21,7 @@ final class ClusterWatchRequestTest extends OurTestSuite
       NodeId("A"),
       ClusterTiming(10.s, 20.s))
 
-    "ClusterWatchCheckEvent" in {
+    "ClusterWatchCheckEvent" in:
       testJson[ClusterWatchRequest](
         ClusterWatchCheckEvent(
           RequestId(123),
@@ -65,9 +65,8 @@ final class ClusterWatchRequestTest extends OurTestSuite
           },
           "forceWhenUntaught": false
         }""")
-    }
 
-    "ClusterWatchCheckState" in {
+    "ClusterWatchCheckState" in:
       testJson[ClusterWatchRequest](
         ClusterWatchCheckState(
           RequestId(123),
@@ -94,6 +93,4 @@ final class ClusterWatchRequestTest extends OurTestSuite
             }
           }
         }""")
-    }
   }
-}

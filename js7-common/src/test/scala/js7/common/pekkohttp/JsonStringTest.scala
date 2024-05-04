@@ -16,44 +16,39 @@ import js7.common.pekkohttp.JsonStringTest.*
 /**
  * @author Joacim Zschimmer
  */
-final class JsonStringTest extends OurTestSuite, ScalatestRouteTest
-{
+final class JsonStringTest extends OurTestSuite, ScalatestRouteTest:
+
   private val testString = """{"Ä": "a"}"""
   private val jsonString = JsonString(testString)
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 
-  "Marshal as application/json" in {
+  "Marshal as application/json" in:
     val entity = HttpEntity(`application/json`, testString.getBytes(UTF_8))
     assert(marshal(jsonString) == entity)
-  }
 
   "Web service" - {
-    "SimpleSession Post" in {
-      Post("/", jsonString) ~> testRoute(testString) ~> check {
+    "SimpleSession Post" in:
+      Post("/", jsonString) ~> testRoute(testString) ~> check:
         assert(status == OK)
         assert(contentType == ContentType(`application/json`))
         assert(entityAs[String] == testString)
-      }
-    }
 
-    "application/json" in {
+    "application/json" in:
       val xmlBytes = testString.getBytes(UTF_8)
       val entity = HttpEntity(`application/json`, xmlBytes)
       addHeader(Accept(`application/json`)).apply(Post("/", entity)) ~>
         testRoute(testString) ~>
-        check {
+        check:
           assert(status == OK)
           assert(contentType.mediaType == `application/json`)
           assert(Set(`application/json`.charset, `UTF-8`) contains contentType.charsetOption.get)  // The marshaller may enforce UTF-8
           assert(entityAs[String] == testString)
-        }
-    }
   }
-}
 
-private object JsonStringTest {
+
+private object JsonStringTest:
   import org.scalatest.Assertions.*
 
   private def testRoute(expected: String): Route =
@@ -61,4 +56,3 @@ private object JsonStringTest {
       assert(jsonString.string == expected)
       complete(jsonString)
     }
-}

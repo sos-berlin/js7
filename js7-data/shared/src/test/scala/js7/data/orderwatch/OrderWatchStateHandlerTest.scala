@@ -17,8 +17,8 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 
-final class OrderWatchStateHandlerTest extends OurTestSuite
-{
+final class OrderWatchStateHandlerTest extends OurTestSuite:
+
   private val v1 = VersionId("1")
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val workflowId = workflowPath ~ v1
@@ -31,34 +31,30 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
   private def state(name: String): Option[ArisedOrHasOrder] =
     state.pathToOrderWatchState(aOrderWatch.path).externalToState.get(ExternalOrderName(name))
 
-  private def update(o: TestState) = {
+  private def update(o: TestState) =
     state = o
     assert(state.ow.finishRecovery == Right(state))
-  }
 
-  "addOrderWatch" in {
+  "addOrderWatch" in:
     update(state.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow)
     update(state.ow.addOrderWatch(bOrderWatch.toInitialItemState).orThrow)
     assert(state.ow.addOrderWatch(aOrderWatch.toInitialItemState) ==
       Left(DuplicateKey("OrderWatchPath", "OrderWatch:A-WATCH")))
-  }
 
-  "removeOrderWatch" in {
+  "removeOrderWatch" in:
     val x = bOrderWatch.copy(path = OrderWatchPath("X"))
     val all1 = state.ow.addOrderWatch(x.toInitialItemState).orThrow
     assert(all1.pathToOrderWatchStateMap.contains(x.path))
     val all0 = all1.ow.removeOrderWatch(x.path).orThrow
     assert(all0 == state)
-  }
 
-  "changeOrderWatch" in {
+  "changeOrderWatch" in:
     val a1 = aOrderWatch.copy(directoryExpr = expr("'CHANGED'"))
     val all1 = state.ow.changeOrderWatch(a1).orThrow
     assert(all1.pathToOrderWatchStateMap(a1.path) == OrderWatchState(a1))
-  }
 
   "Events on the happy path" - {
-    "X arises and vanishes before an order could be added" in {
+    "X arises and vanishes before an order could be added" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("X")).orThrow)
       assert(state("X") == Some(arised("X")))
 
@@ -69,9 +65,8 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
       assert(state == TestState(Map(
         aOrderWatch.path -> OrderWatchState(aOrderWatch),
         bOrderWatch.path -> OrderWatchState(bOrderWatch))))
-    }
 
-    "ExternalOrderArised A and B --> OrderAdded" in {
+    "ExternalOrderArised A and B --> OrderAdded" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
       update(state.ow.onOrderWatchEvent(externalOrderArised("B")).orThrow)
 
@@ -87,15 +82,13 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
         bOrderWatch.path -> OrderWatchState((bOrderWatch))))
 
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("A"), orderAdded("B")))
-    }
 
-    "ExternalOrderVanished cancels previous Arised if OrderAdded was not emitted" in {
+    "ExternalOrderVanished cancels previous Arised if OrderAdded was not emitted" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state("A") == None)
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("B")))
-    }
 
-    "ExternalOrderArised A, again" in {
+    "ExternalOrderArised A, again" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
       assert(state
         .pathToOrderWatchState(aOrderWatch.path)
@@ -104,9 +97,8 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
 
       assert(state("A") == Some(arised("A")))
       assert(state("B") == Some(arised("B")))
-    }
 
-    "OrderAdded A and B" in {
+    "OrderAdded A and B" in:
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("B"), orderAdded("A")))
 
       update(state.ow.onOrderAdded(toOrder("A")).orThrow)
@@ -116,9 +108,8 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
       update(state.ow.onOrderAdded(toOrder("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"))))
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).isEmpty)
-    }
 
-    "ExternalOrderVanished A => OrderDeletionMarked" in {
+    "ExternalOrderVanished A => OrderDeletionMarked" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state("A") == Some(HasOrder(orderId("A"), Some(Vanished))))
 
@@ -129,22 +120,19 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
       assert(state("A") == None)
 
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).isEmpty)
-    }
 
-    "ExternalOrderVanished B => OrderDeletionMarked" in {
+    "ExternalOrderVanished B => OrderDeletionMarked" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(Vanished))))
 
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(
         orderId("B") <-: OrderDeletionMarked))
-    }
 
-    "ExternalOrderArised B, while B order is running" in {
+    "ExternalOrderArised B, while B order is running" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("B")).orThrow)
       assert(state.ow.nextEvents(toOrderAdded, Set.empty).isEmpty)
-    }
 
-    "OrderDeleted B => OrderAdded" in {
+    "OrderDeleted B => OrderAdded" in:
       update(state.ow.onOrderDeleted(externalOrderKey("B"), orderId("B")).orThrow)
       // Now, the queued Arised is in effect
       assert(state("B") == Some(arised("B")))
@@ -152,9 +140,8 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
 
       update(state.ow.onOrderAdded(toOrder("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"))))
-    }
 
-    "OrderVanished, OrderArised, OrderVanished, OrderArised while order is running" in {
+    "OrderVanished, OrderArised, OrderVanished, OrderArised while order is running" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(Vanished))))
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(
@@ -170,19 +157,17 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
 
       update(state.ow.onOrderWatchEvent(externalOrderArised("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"), Some(arised("B")))))
-    }
 
-    "OrderDeleted" in {
+    "OrderDeleted" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("B")).orThrow)
       update(state.ow.onOrderDeleted(
         ExternalOrderKey(aOrderWatch.path, ExternalOrderName("B")),
         orderId("B")).orThrow)
       assert(state("A") == None)
       assert(state("B") == None)
-    }
   }
 
-  "OrderDeletionMarked (by user) when not Vanished" in {
+  "OrderDeletionMarked (by user) when not Vanished" in:
     var a = TestState(Map.empty)
     a = a.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow
     a = a.ow.onOrderWatchEvent(externalOrderArised("C")).orThrow
@@ -193,33 +178,29 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
 
     a = a.ow.onOrderWatchEvent(externalOrderArised("C")).orThrow
     assert(a.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("C")))
-  }
 
   "Events in illegal order" - {
-    "Double ExternalOrderArised" in {
+    "Double ExternalOrderArised" in:
       assert(state("A") == None)
       assert(state("B") == None)
 
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
       assert(state.ow.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
         """Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): Arised(Order:file:A-SOURCE:A,Map(file -> '/DIR/A'))""")))
-    }
 
-    "Double early ExternalOrderVanished fails" in {
+    "Double early ExternalOrderVanished fails" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state.ow.onOrderWatchEvent(externalOrderVanished("A")) == Left(Problem(
         "OrderWatch:A-WATCH: Ignored ExternalOrderVanished(A) event for unknown name")))
-    }
 
-    "Arised after OrderAdded" in {
+    "Arised after OrderAdded" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
       update(state.ow.onOrderAdded(toOrder("A")).orThrow)
 
       assert(state.ow.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
         "Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): HasOrder(Order:file:A-SOURCE:A,None)")))
-    }
 
-    "Vanished before OrderDeletionMarked" in {
+    "Vanished before OrderDeletionMarked" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state("A") == Some(HasOrder(orderId("A"), Some(Vanished))))
       assert(state.ow.onOrderWatchEvent(externalOrderVanished("A")) == Left(Problem(
@@ -227,7 +208,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
 
       update(state.ow.onOrderDeleted(externalOrderKey("A"), orderId("A")).orThrow)
       assert(state("A") == None)
-    }
   }
 
   private def toOrderAdded(order: FreshOrder, externalOrderKey: Option[ExternalOrderKey] = None)
@@ -264,14 +244,13 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
       Order.Ready,
       Map("file" -> StringValue(s"/DIR/$name")),
         externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
-}
 
 
-object OrderWatchStateHandlerTest
-{
+object OrderWatchStateHandlerTest:
+
   private final case class TestState(pathToOrderWatchStateMap: Map[OrderWatchPath, OrderWatchState])
   extends OrderWatchStateHandler[TestState]
-  {
+  :
     def pathToOrderWatchState = pathToOrderWatchStateMap.view
 
     protected def updateOrderWatchStates(
@@ -279,5 +258,3 @@ object OrderWatchStateHandlerTest
       remove: Iterable[OrderWatchPath]) =
       Right(copy(
         pathToOrderWatchStateMap -- remove ++ orderWatchStates.map(o => o.path -> o)))
-  }
-}

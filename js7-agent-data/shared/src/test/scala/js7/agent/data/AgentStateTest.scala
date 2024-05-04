@@ -345,7 +345,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
             else
               succeed
           }
-    }
+      }
 
   "Unknown TYPE for snapshotObjectJsonCodec" in:
     assert(AgentState.snapshotObjectJsonCodec

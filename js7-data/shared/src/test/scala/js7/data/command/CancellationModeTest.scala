@@ -10,24 +10,22 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class CancellationModeTest extends OurTestSuite
-{
+final class CancellationModeTest extends OurTestSuite:
+
   "JSON" - {
-    "FreshOnly" in {
+    "FreshOnly" in:
       testJson[CancellationMode](CancellationMode.FreshOnly,
         json"""{
           "TYPE": "FreshOnly"
          }""")
-    }
 
-    "FreshOrStarted" in {
+    "FreshOrStarted" in:
       testJson[CancellationMode](CancellationMode.FreshOrStarted(),
         json"""{
           "TYPE": "FreshOrStarted"
         } """)
-    }
 
-    "FreshOrStarted(Kill)" in {
+    "FreshOrStarted(Kill)" in:
       testJson[CancellationMode](
         CancellationMode.FreshOrStarted(Some(CancellationMode.Kill())),
         json"""{
@@ -41,9 +39,8 @@ final class CancellationModeTest extends OurTestSuite
         "TYPE": "FreshOrStarted",
         "kill": {}
       }""".as[CancellationMode] == Right(CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
-    }
 
-    "FreshOrStarted(Kill(...))" in {
+    "FreshOrStarted(Kill(...))" in:
       testJson[CancellationMode](
         CancellationMode.FreshOrStarted(Some(
           CancellationMode.Kill(
@@ -62,6 +59,4 @@ final class CancellationModeTest extends OurTestSuite
               }
             }
           }""")
-    }
   }
-}

@@ -25,8 +25,8 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -49,7 +49,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
     alarmClock = Some(clock))
 
   "Skip job if it has no admission time for order date" - {
-    "Single job" in {
+    "Single job" in:
       val orderId = OrderId("#2021-09-02#single-job")
       assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(THURSDAY))
 
@@ -60,9 +60,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
         // Order does not start for skipped order (but for OrderFinished)
         OrderStarted,
         OrderFinished()))
-    }
 
-    "Between other jobs" in {
+    "Between other jobs" in:
       val orderId = OrderId("#2021-09-02#multiple-jobs")
       assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(THURSDAY))
 
@@ -87,10 +86,9 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
         OrderDetachable,
         OrderDetached,
         OrderFinished()))
-    }
   }
 
-  "Do not skip if job has a admission time for order date" in {
+  "Do not skip if job has a admission time for order date" in:
     clock.resetTo(local("2021-09-10T00:00")) // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-09-03#")  // Friday
@@ -103,9 +101,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
     clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-  }
 
-  "Do not skip if OrderId has no order date" in {
+  "Do not skip if OrderId has no order date" in:
     clock.resetTo(local("2021-09-10T00:00")) // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("NO-DATE")
@@ -116,9 +113,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
     clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-  }
 
-  "Do not skip if OrderId has an invalid order date" in {
+  "Do not skip if OrderId has an invalid order date" in:
     clock.resetTo(local("2021-09-10T00:00")) // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-02-29#invalid")
@@ -131,8 +127,6 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForSca
     clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-  }
-}
 
 
 object AdmissionTimeSkipJobTest:

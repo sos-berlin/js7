@@ -54,7 +54,7 @@ final class EventSeqTest extends OurTestSuite:
       case _ =>
 
 
-object EventSeqTest {
+object EventSeqTest:
   private trait TestEvent extends Event.IsKeyBase[TestEvent]:
     val keyCompanion: TestEvent.type = TestEvent
 
@@ -65,4 +65,3 @@ object EventSeqTest {
       Subtype.singleton(MyEvent))
 
   private case object MyEvent extends TestEvent
-}

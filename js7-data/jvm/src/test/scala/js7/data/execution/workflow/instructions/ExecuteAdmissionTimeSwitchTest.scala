@@ -13,9 +13,9 @@ import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
 import org.scalatest.Assertions.assert
 import scala.concurrent.duration.*
 
-final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
-{
-  "AdmissionTimeScheme.always" in {
+final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
+
+  "AdmissionTimeScheme.always" in:
     val now = Timestamp("2021-01-01T12:00:00Z")
     implicit val alarmClock: TestAlarmClock = TestAlarmClock(now)
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
@@ -30,11 +30,9 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
     alarmClock += 99*365*24.h
     isEnterable = switch.updateAndCheck(sys.error("FAILED"))
     assert(isEnterable)
-  }
 
-  "UTC" in {
+  "UTC" in:
     check(ZoneId.of("UTC"))
-  }
 
   // --> Mariehamn switched to daylight saving time at 2021-03-28 03:00 <-- !!!
   // Time zone offset changes from +02:00 to +03:00
@@ -42,20 +40,19 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
 
 
   "Europe/Mariehamn" - {
-    "Daylight saving time" in {
+    "Daylight saving time" in:
       implicit val zone = mariehamnZoneId
       assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
       assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
 
       check(zone)
-    }
 
     implicit val zone = mariehamnZoneId
     val admissionTimeScheme = AdmissionTimeScheme(Seq(
       WeekdayPeriod(SUNDAY, LocalTime.of(3, 0), 1.h)))
 
-    "Week without a period due to daylight saving time gap" in {
+    "Week without a period due to daylight saving time gap" in:
       val tester = new Tester(admissionTimeScheme)
       tester.check(local("2021-03-21T00:00"),
         admissionStarted = false,
@@ -92,10 +89,9 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
         admissionStarted = false,
         isAdmitted = false,
         switched = Some(TimeInterval(local("2021-04-04T03:00"), 1.h)))
-    }
   }
 
-  private def check(zone: ZoneId): Unit = {
+  private def check(zone: ZoneId): Unit =
     implicit val implicitZoneId = zone
     val admissionTimeScheme = AdmissionTimeScheme(Seq(
       WeekdayPeriod(MONDAY, LocalTime.of(8, 0), 2.h),
@@ -130,14 +126,12 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
     tester.check(local("2021-03-28T23:00"), // Sunday
       admissionStarted = true,
       isAdmitted = true)
-  }
-}
 
 
-object ExecuteAdmissionTimeSwitchTest
-{
+object ExecuteAdmissionTimeSwitchTest:
+
   private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(using zone: ZoneId)
-  {
+  :
     private implicit val clock: TestAlarmClock = TestAlarmClock(Timestamp.Epoch)
     private var _switched: Option[TimeInterval] = null
     private val switch = new ExecuteAdmissionTimeSwitch(admissionTimeScheme, zone,
@@ -149,17 +143,13 @@ object ExecuteAdmissionTimeSwitchTest
       admissionStarted: Boolean,
       isAdmitted: Boolean,
       switched: Option[TimeInterval] = None)
-    : Unit = {
+    : Unit =
       val was = admissionStarts
       val sw = switched.fold(_switched)(Some(_))
       clock := now
-      val isAdmitted_ = switch.updateAndCheck {
+      val isAdmitted_ = switch.updateAndCheck:
         admissionStarts += 1
-      }
 
       assert(_switched == sw &&
         isAdmitted_ == isAdmitted &&
         admissionStarts == was + admissionStarted.toInt)
-    }
-  }
-}

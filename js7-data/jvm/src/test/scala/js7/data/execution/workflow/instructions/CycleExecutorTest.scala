@@ -23,11 +23,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
-final class CycleExecutorTest extends OurTestSuite, ScheduleTester
-{
+final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
+
   private implicit val zone: ZoneId = CycleExecutorTest.zone
 
-  "Cycle with no Scheme is skipped" in {
+  "Cycle with no Scheme is skipped" in:
     val stepper = new Stepper(
       OrderId("#2021-10-01#"),
       Workflow(
@@ -44,9 +44,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
     assert(stepper.order == stepper.initialOrder.copy(
       state = Ready,
       workflowPosition = workflowId /: Position(1)))
-  }
 
-  "Endless empty loop" in {
+  "Endless empty loop" in:
     assert(local("2021-10-01T00:00") == Timestamp("2021-09-30T21:00:00Z"))
     val clock = TestWallClock(local("2021-10-01T00:00"))
     val stepper = new Stepper(
@@ -71,7 +70,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
     assert(stepper.order == stepper.initialOrder.copy(
       state = BetweenCycles(Some(initialCycleState))))
 
-    for i <- 1 to 3 do withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i "):
       // Endless empty loop. Caller must detect this (see test below)!
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(
@@ -90,11 +89,9 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
           state = BetweenCycles(Some(initialCycleState.copy(
             index = i + 1)))))
       clock += 1.h
-    }
     // TODO Detect this empty loop? => OrderFailedIntermediate_
-  }
 
-  "Endless Loop with Pause" in {
+  "Endless Loop with Pause" in:
     val clock = TestWallClock(local("2021-10-01T00:00"))
     val stepper = new Stepper(
       OrderId("#2021-10-01#"),
@@ -121,7 +118,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
     var nextString = ""
-    for i <- 1 to 3 do withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i "):
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0) /
@@ -146,10 +143,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       clock += 1.s
 
       nextString = ",next=" + clock.now().toEpochMilli
-    }
-  }
 
-  "Loop with TimeLimit and Pause" in {
+  "Loop with TimeLimit and Pause" in:
     val start = local("2021-10-01T00:30")
     val clock = TestWallClock(start)
     val stepper = new Stepper(
@@ -182,7 +177,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
 
     val n = 3
     var i = 1
-    while i <= n do withClue(s"#$i ") {
+    while i <= n do withClue(s"#$i "):
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(Position(0) /
         s"cycle+end=1633143600000,i=$i,next=${clock.now().toEpochMilli}" % 0))
@@ -200,19 +195,16 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
               next = next,
               index = i)))))
 
-      if next.isDefined then {
+      if next.isDefined then
         assert(stepper.step() == Nil)
         clock += 1.h
-      }
-    }
 
     assert(stepper.step() == Seq(OrderMoved(Position(1))))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(1))
       .copy(state = Order.Ready))
-  }
 
-  "Mariehamn daylight saving time (to be sure)" in {
+  "Mariehamn daylight saving time (to be sure)" in:
     assert(local("2020-10-25T00:00") == Timestamp("2020-10-24T21:00:00Z"))
     assert(local("2020-10-25T03:00") == Timestamp("2020-10-25T00:00:00Z"))
     assert(local("2020-10-25T03:30") == Timestamp("2020-10-25T00:30:00Z"))
@@ -225,9 +217,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
     assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
     assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
     assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
-  }
 
-  "Daylight saving time change" in {
+  "Daylight saving time change" in:
     pending  // TODO
 
     val clock = TestWallClock(local("2020-10-25T02:30"))
@@ -255,7 +246,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       .withPosition(Position(0))
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
-    for i <- 1 to 3 do withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i "):
       assert(stepper.step() == Seq(OrderCycleStarted))
 
       assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
@@ -268,8 +259,6 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       assert(stepper.step() == Nil)
 
       clock += 1.s
-    }
-  }
 
   "ScheduleTester standard example" - {
     addStandardScheduleTests {  (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
@@ -283,7 +272,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
     def testCycle(
       timeInterval: TimeInterval, cycleDuration: FiniteDuration,
       zone: ZoneId, onlyOnePeriod: Boolean)
-    : Seq[Timestamp] = {
+    : Seq[Timestamp] =
       val clock = TestWallClock(timeInterval.start)
       val stepper = new Stepper(
         OrderId("#" + timeInterval.start.toLocalDateTime(zone).toLocalDate + "#"),
@@ -297,27 +286,24 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       val builder = new VectorBuilder[Timestamp]
 
       var i = 1
-      while !stepper.order.isState[Finished] && i <= 10000 do withClue(s"#$i") {
+      while !stepper.order.isState[Finished] && i <= 10000 do withClue(s"#$i"):
         i += 1
         val events = stepper.step()
         assert(events.nonEmpty)
-        if events.contains(OrderCycleStarted) then {
+        if events.contains(OrderCycleStarted) then
           builder += clock.now()
 
           // Time to execute the instruction block
           clock += cycleDuration
-        } else
+        else
           for
             order <- stepper.order.ifState[BetweenCycles];
             cycleState <- order.state.cycleState
           do
-            if cycleState.next > clock.now() then {
+            if cycleState.next > clock.now() then
               // Cycle is delayed, so we adjust the clock
               clock := cycleState.next
-            }
-      }
       builder.result()
-    }
   }
 
   "Second OrderCyclingPrepared due to late continuation" - {
@@ -352,31 +338,27 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
         end  = local("2021-10-02T00:00"),
         index = 1))))
 
-    "now < next => OrderCycleStarted" in {
+    "now < next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:44")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
-    }
 
-    "now == next => OrderCycleStarted" in {
+    "now == next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:45")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
-    }
 
-    "now > next => OrderCycleStarted" in {
+    "now > next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:46")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
-    }
 
-    "now >= end => OrderCyclingPrepared to change the scheme" in {
+    "now >= end => OrderCyclingPrepared to change the scheme" in:
       assert(executorService(local("2021-10-01T08:00")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCyclingPrepared(CycleState(
           next = local("2021-10-01T12:20"),
           end  = local("2021-10-02T00:00"),
           index = 1,
           schemeIndex = 1)))))
-    }
 
-    "Same with Stepper" in {
+    "Same with Stepper" in:
       val clock = TestWallClock(local("2021-10-01T07:31"))
       val stepper = new Stepper(OrderId("#2021-10-01#"), workflow, clock)
 
@@ -398,10 +380,9 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
         end  = local("2021-10-02T06:00"),
         index = 1,
         schemeIndex = 1))))
-    }
   }
 
-  "Only one first cycle (bug JS-2012)" in {
+  "Only one first cycle (bug JS-2012)" in:
     val workflow = Workflow(
       WorkflowPath("NO-DOUBLE-EXECUTION") ~ "1",
       Seq(
@@ -434,12 +415,10 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester
       index = 3,
       next = local("2022-08-13T10:00"),
       end  = local("2022-08-14T06:00"))))))
-  }
-}
 
 
-object CycleExecutorTest
-{
+object CycleExecutorTest:
+
   private val logger = Logger[this.type]
   private val workflowId = WorkflowPath("WORKFLOW") ~ "1"
   private val zone = ZoneId.of("Europe/Mariehamn")
@@ -449,7 +428,7 @@ object CycleExecutorTest
     dateOffset = ScheduleTester.dateOffset)
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
-  {
+  :
     private val stateView = new TestStateView(
       isAgent = true,
       idToWorkflow = Map(workflow.id -> workflow),
@@ -470,13 +449,10 @@ object CycleExecutorTest
     def nextPosition =
       executorService.nextMove(nextInstruction, order, stateView)
 
-    def step(): Seq[OrderEvent.OrderActorEvent] = {
+    def step(): Seq[OrderEvent.OrderActorEvent] =
       val keyedEvents = executorService.toEvents(nextInstruction, order, stateView).orThrow
       for ke <- keyedEvents do logger.debug(s"${clock.now()} $ke")
       assert(keyedEvents.forall(_.key == order.id))
       val events = keyedEvents.map(_.event)
       order = order.applyEvents(events).orThrow
       events
-    }
-  }
-}

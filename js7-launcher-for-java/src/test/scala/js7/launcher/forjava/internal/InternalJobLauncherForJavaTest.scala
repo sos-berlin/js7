@@ -41,8 +41,8 @@ import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import org.scalatest.BeforeAndAfterAll
 
-final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterAll
-{
+final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterAll:
+
   private given IORuntime = ioRuntime
 
   private val blockingJobEC =
@@ -63,7 +63,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
         jobArguments = Map("blockingThreadNamePrefix" -> StringConstant(blockingThreadNamePrefix)),
         arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
 
-      implicit lazy val executor: InternalJobLauncher = {
+      implicit lazy val executor: InternalJobLauncher =
         val u = Paths.get("UNUSED")
 
         val jobLauncherConf = JobLauncherConf(u, u, u, u,
@@ -88,50 +88,41 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
         JobLauncher.checked(jobConf, jobLauncherConf)
           .orThrow.asInstanceOf[InternalJobLauncher]
-      }
 
-      "orderProcess" in {
+      "orderProcess" in:
         val (outcomeIO, out, err) = processOrder(NumericConstant(1000)).await(99.s).orThrow
         assert(outcomeIO == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
-      }
 
-      "parallel" in {
+      "parallel" in:
         val indices = 1 to 1000
-        val processes = for i <- indices yield {
+        val processes = for i <- indices yield
           processOrder(NumericConstant(i))
             .map(_.orThrow)
-            .flatMap {
+            .flatMap:
               case (outcome: OrderOutcome.Succeeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
               case (outcome: OrderOutcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
               case (outcome, _, _) => IO(fail(s"UNEXPECTED: $outcome"))
-            }
-        }
         assert(IO.parSequence(processes).await(99.s).reduceLeftEither ==
           Right(indices.map(_ + 1).map(NumberValue(_))))
-      }
 
-      "Exception is caught and returned as Left" in {
+      "Exception is caught and returned as Left" in:
         val (outcome, out, err) = processOrder(StringConstant("INVALID TYPE")).await(99.s).orThrow
         assert(outcome.asInstanceOf[OrderOutcome.Failed]
           .errorMessage.get startsWith "java.lang.ClassCastException")
         assertOutErr(out, err)
-      }
 
-      "stop" in {
+      "stop" in:
         executor.stop.await(99.s)
-        if testClass == classOf[TestJInternalJob] then {
+        if testClass == classOf[TestJInternalJob] then
           assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
-        } else if testClass == classOf[TestBlockingInternalJob] then {
+        else if testClass == classOf[TestBlockingInternalJob] then
           logger.info(s"TestBlockingInternalJob.stoppedCalled=${TestBlockingInternalJob.stoppedCalled}")
           assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
-        }
-      }
 
-      def assertOutErr(out: String, err: String): Unit = {
+      def assertOutErr(out: String, err: String): Unit =
         assert(out == s"TEST FOR OUT${nl}FROM ${testClass.getName}$nl" &&
                err == s"TEST FOR ERR$nl")
-      }
     }
 
   private def processOrder(arg: Expression)(implicit launcher: InternalJobLauncher)
@@ -172,11 +163,9 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           err <- testSink.err
         yield
           Right((orderOutcome, out, err))
-}
 
 
-object InternalJobLauncherForJavaTest
-{
+object InternalJobLauncherForJavaTest:
+
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
   private val logger = Logger[this.type]
-}

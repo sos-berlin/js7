@@ -20,10 +20,10 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class ControllerCommandTest extends OurTestSuite
-{
+final class ControllerCommandTest extends OurTestSuite:
+
   "Batch" - {
-    "Batch" in {
+    "Batch" in:
       testJson[ControllerCommand](Batch(
         Seq(
           CorrelIdWrapped(CorrelId.empty, NoOperation()),
@@ -35,9 +35,8 @@ final class ControllerCommandTest extends OurTestSuite
             { "TYPE": "EmergencyStop", "correlId": "_CORREL_" }
           ]
         }""")
-    }
 
-    "Batch.toString" in {
+    "Batch.toString" in:
       assert(Batch(
         List(
           CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation()),
@@ -52,9 +51,8 @@ final class ControllerCommandTest extends OurTestSuite
           CorrelIdWrapped(CorrelId.empty, NoOperation()),
           CorrelIdWrapped(CorrelId.empty, NoOperation())))
         .toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
-    }
 
-    "BatchResponse" in {
+    "BatchResponse" in:
       testJson[ControllerCommand.Response](Batch.Response(Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Nil),
         json"""{
           "TYPE": "BatchResponse",
@@ -67,17 +65,15 @@ final class ControllerCommandTest extends OurTestSuite
             }
           ]
         }""")
-    }
 
-    "BatchResponse.toString" in {
+    "BatchResponse.toString" in:
       val threeResponses = Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Right(Response.Accepted) :: Nil
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
       assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
-    }
   }
 
   "AddOrder" - {
-    "AddOrder" in {
+    "AddOrder" in:
       testJson[ControllerCommand](AddOrder(FreshOrder(OrderId("ORDER"), WorkflowPath("WORKFLOW"))),
         json"""{
           "TYPE": "AddOrder",
@@ -86,27 +82,24 @@ final class ControllerCommandTest extends OurTestSuite
             "workflowPath": "WORKFLOW"
           }
         }""")
-    }
 
-    "AddOrder.Response" in {
+    "AddOrder.Response" in:
       testJson[ControllerCommand.Response](AddOrder.Response(true),
         json"""{
           "TYPE": "AddOrder.Response",
           "ignoredBecauseDuplicate": true
         }""")
-    }
   }
 
   "CancelOrders" - {
-    "CancelOrders FreshOnly" in {
+    "CancelOrders FreshOnly" in:
       testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancellationMode.FreshOrStarted()),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "A", "B" ]
         }""")
-    }
 
-    "CancelOrders FreshOrStarted" in {
+    "CancelOrders FreshOrStarted" in:
       testJson[ControllerCommand](CancelOrders(
         Seq(OrderId("ORDER")),
         CancellationMode.FreshOrStarted(
@@ -143,10 +136,9 @@ final class ControllerCommandTest extends OurTestSuite
             "kill": {}
           }
         }""")
-    }
   }
 
-  "PostNotice" in {
+  "PostNotice" in:
     testJson[ControllerCommand](PostNotice(
         BoardPath("BOARD"),
         NoticeId("NOTICE")),
@@ -165,98 +157,86 @@ final class ControllerCommandTest extends OurTestSuite
         "noticeId": "NOTICE",
         "endOfLife": 3600000
       }""")
-  }
 
-  "DeleteNotice" in {
+  "DeleteNotice" in:
     testJson[ControllerCommand](DeleteNotice(BoardPath("BOARD"), NoticeId("NOTICE")),
       json"""{
         "TYPE": "DeleteNotice",
         "boardPath": "BOARD",
         "noticeId": "NOTICE"
       }""")
-  }
 
-  "DeleteOrdersWhenTerminated" in {
+  "DeleteOrdersWhenTerminated" in:
     testJson[ControllerCommand](DeleteOrdersWhenTerminated(Seq(OrderId("A"), OrderId("B"))),
       json"""{
         "TYPE": "DeleteOrdersWhenTerminated",
         "orderIds": [ "A", "B" ]
       }""")
-  }
 
-  "AnswerOrderPrompt" in {
+  "AnswerOrderPrompt" in:
     testJson[ControllerCommand](AnswerOrderPrompt(OrderId("ORDER")),
       json"""{
         "TYPE": "AnswerOrderPrompt",
         "orderId": "ORDER"
       }""")
-  }
 
   "EmergencyStop" - {
-    "restart=false" in {
+    "restart=false" in:
       testJson[ControllerCommand](EmergencyStop(),
         json"""{
           "TYPE": "EmergencyStop"
         }""")
-    }
 
-    "restart=true" in {
+    "restart=true" in:
       testJson[ControllerCommand](EmergencyStop(restart = true),
         json"""{
           "TYPE": "EmergencyStop",
           "restart": true
         }""")
-    }
   }
 
-  "ReleaseEvents" in {
+  "ReleaseEvents" in:
     testJson[ControllerCommand](
       ReleaseEvents(123L),
       json"""{
         "TYPE": "ReleaseEvents",
         "untilEventId": 123
       }""")
-  }
 
-  "NoOperation()" in {
+  "NoOperation()" in:
     testJson[ControllerCommand](NoOperation(Some(3.s)),
       json"""{
         "TYPE": "NoOperation",
         "duration": 3
       }""")
-  }
 
-  "EmitTestEvent" in {  // For tests only
+  "EmitTestEvent" in:  // For tests only
     testJson[ControllerCommand](EmitTestEvent,
       json"""{
         "TYPE": "EmitTestEvent"
       }""")
-  }
 
-  "TakeSnapshot" in {
+  "TakeSnapshot" in:
     testJson[ControllerCommand](TakeSnapshot,
       json"""{
         "TYPE": "TakeSnapshot"
       }""")
-  }
 
   "ShutDown" - {
-    "restart=false" in {
+    "restart=false" in:
       testJson[ControllerCommand](ShutDown(),
         json"""{
           "TYPE": "ShutDown"
         }""")
-    }
 
-    "restart=true" in {
+    "restart=true" in:
       testJson[ControllerCommand](ShutDown(restart = true),
         json"""{
           "TYPE": "ShutDown",
           "restart": true
         }""")
-    }
 
-    "clusterAction=Switchover" in {
+    "clusterAction=Switchover" in:
       testJson[ControllerCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Switchover)),
         json"""{
           "TYPE": "ShutDown",
@@ -264,9 +244,8 @@ final class ControllerCommandTest extends OurTestSuite
             "TYPE": "Switchover"
           }
         }""")
-    }
 
-    "clusterAction=Failover" in {
+    "clusterAction=Failover" in:
       testJson[ControllerCommand](ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)),
         json"""{
           "TYPE": "ShutDown",
@@ -274,27 +253,24 @@ final class ControllerCommandTest extends OurTestSuite
             "TYPE": "Failover"
           }
         }""")
-    }
 
-    "suppressSnapshot=true, dontNotifyActiveNode=true" in {
+    "suppressSnapshot=true, dontNotifyActiveNode=true" in:
       testJson[ControllerCommand](ShutDown(suppressSnapshot = true, dontNotifyActiveNode = true),
         json"""{
           "TYPE": "ShutDown",
           "suppressSnapshot": true,
           "dontNotifyActiveNode": true
         }""")
-    }
 
-    "suppressSnapshot=true" in {
+    "suppressSnapshot=true" in:
       testJson[ControllerCommand](ShutDown(suppressSnapshot = true),
         json"""{
           "TYPE": "ShutDown",
           "suppressSnapshot": true
         }""")
-    }
   }
 
-  "ResetAgent" in {
+  "ResetAgent" in:
     testJson[ControllerCommand](ResetAgent(AgentPath("AGENT"), force = true),
       json"""{
         "TYPE": "ResetAgent",
@@ -307,7 +283,6 @@ final class ControllerCommandTest extends OurTestSuite
         "TYPE": "ResetAgent",
         "agentPath": "AGENT"
       }""")
-  }
 
   "GoOrder" in:
     testJsonDecoder[ControllerCommand](
@@ -318,7 +293,7 @@ final class ControllerCommandTest extends OurTestSuite
         "position": [ 1 ]
       }""")
 
-  "ResumeOrder" in {
+  "ResumeOrder" in:
     testJson[ControllerCommand](
       ResumeOrder(
         OrderId("ORDER"),
@@ -361,9 +336,8 @@ final class ControllerCommandTest extends OurTestSuite
         "TYPE": "ResumeOrder",
         "orderId": "ORDER"
       }""")
-  }
 
-  "ResumeOrders" in {
+  "ResumeOrders" in:
     testJson[ControllerCommand](ResumeOrders(
       Seq(OrderId("A"), OrderId("B")),
       asSucceeded = true),
@@ -378,9 +352,8 @@ final class ControllerCommandTest extends OurTestSuite
         "TYPE": "ResumeOrders",
         "orderIds": [ "A", "B" ]
       }""")
-  }
 
-  "SuspendOrders" in {
+  "SuspendOrders" in:
     testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A"), OrderId("B"))), json"""
       {
         "TYPE": "SuspendOrders",
@@ -398,9 +371,8 @@ final class ControllerCommandTest extends OurTestSuite
           }
         }
       }""")
-  }
 
-  "TransferOrders" in {
+  "TransferOrders" in:
     testJson[ControllerCommand](
       TransferOrders(WorkflowPath("WORKFLOW") ~ "v1"
         /*Seq(OrderId("A"), OrderId("B")),
@@ -413,9 +385,8 @@ final class ControllerCommandTest extends OurTestSuite
           "versionId": "v1"
         }
       }""")
-  }
 
-  "ControlWorkflowPath" in {
+  "ControlWorkflowPath" in:
     testJson[ControllerCommand](
       ControlWorkflowPath(
         WorkflowPath("WORKFLOW"),
@@ -430,9 +401,8 @@ final class ControllerCommandTest extends OurTestSuite
           "LABEL": true
         }
       }""")
-  }
 
-  "ControlWorkflow" in {
+  "ControlWorkflow" in:
     testJson[ControllerCommand](
       ControlWorkflow(
         WorkflowPath("WORKFLOW") ~ "VERSION",
@@ -447,9 +417,8 @@ final class ControllerCommandTest extends OurTestSuite
         "addBreakpoints": [ [ 1 ] ],
         "removeBreakpoints": [ [ 2 ] ]
       }""")
-  }
 
-  "ClusterAppointNodes" in {
+  "ClusterAppointNodes" in:
     testJson[ControllerCommand](
       ClusterAppointNodes(
         Map(
@@ -464,9 +433,8 @@ final class ControllerCommandTest extends OurTestSuite
         },
         "activeId": "A"
       }""")
-  }
 
-  "ClusterSwitchOver" in {
+  "ClusterSwitchOver" in:
     testJson[ControllerCommand](ClusterSwitchOver(Some(AgentPath("AGENT"))),
       json"""{
         "TYPE": "ClusterSwitchOver",
@@ -477,9 +445,8 @@ final class ControllerCommandTest extends OurTestSuite
       json"""{
         "TYPE": "ClusterSwitchOver"
       }""")
-  }
 
-  "ConfirmClusterNodeLoss" in {
+  "ConfirmClusterNodeLoss" in:
     testJson[ControllerCommand](ConfirmClusterNodeLoss(AgentPath("AGENT"), NodeId.primary, "me"),
       json"""{
         "TYPE": "ConfirmClusterNodeLoss",
@@ -487,13 +454,10 @@ final class ControllerCommandTest extends OurTestSuite
         "lostNodeId": "Primary",
         "confirmer": "me"
       }""")
-  }
 
-  "Response.Accepted" in {
+  "Response.Accepted" in:
     testJson[ControllerCommand.Response](
       Response.Accepted,
       json"""{
         "TYPE": "Accepted"
       }""")
-  }
-}

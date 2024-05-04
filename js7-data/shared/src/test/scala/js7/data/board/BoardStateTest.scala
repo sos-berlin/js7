@@ -13,12 +13,12 @@ import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
 import scala.collection.View
 
-final class BoardStateTest extends OurAsyncTestSuite
-{
+final class BoardStateTest extends OurAsyncTestSuite:
+
   "JSON" - {
     val boardPath = BoardPath("BOARD")
 
-    "v2.4 JSON compatibility" in {
+    "v2.4 JSON compatibility" in:
       val boardState = BoardState(
         Board(
           boardPath,
@@ -56,7 +56,6 @@ final class BoardStateTest extends OurAsyncTestSuite
           "boardPath": "BOARD",
           "endOfLife": 123000
         }""")))
-    }
 
     lazy val boardState = BoardState(
       Board(
@@ -81,7 +80,7 @@ final class BoardStateTest extends OurAsyncTestSuite
           NoticeId("NOTICE-2"),
           NoticeId("NOTICE-1"))))
 
-    "toSnapshotStream JSON" in {
+    "toSnapshotStream JSON" in:
       boardState.toSnapshotStream
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
@@ -121,27 +120,24 @@ final class BoardStateTest extends OurAsyncTestSuite
               "boardPath": "BOARD",
               "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
             }""")))
-    }
 
-    "toSnapshotStream and recover" in {
+    "toSnapshotStream and recover" in:
       var recovered: BoardState = null
       boardState.toSnapshotStream
         .map(o =>
           reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
-        .map {
+        .map:
           case board: Board =>
             recovered = BoardState(board)
           case snapshot: BoardSnapshot =>
             recovered = recovered.recover(snapshot).orThrow
-        }
         .compile
         .drain
         .map: _ =>
           assert(recovered == boardState)
-    }
   }
 
-  "addNoticeV2_3 (1)" in {
+  "addNoticeV2_3 (1)" in:
     var boardState = BoardState(board)
     val aNotice = NoticeV2_3(NoticeId("A"), endOfLife)
 
@@ -159,9 +155,8 @@ final class BoardStateTest extends OurAsyncTestSuite
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(aNotice.id, Some(aNotice.toNotice(board.path))),
       bNotice.id -> NoticePlace(bNotice.id, Some(bNotice.toNotice(board.path)))))
-  }
 
-  "addNoticeV2_3 (2)" in {
+  "addNoticeV2_3 (2)" in:
     var boardState = BoardState(board)
     val aNotice = NoticeV2_3(NoticeId("A"), endOfLife)
 
@@ -172,9 +167,8 @@ final class BoardStateTest extends OurAsyncTestSuite
         aNotice.id,
         Some(aNotice.toNotice(board.path)),
         Set(aOrderId))))
-  }
 
-  "addNotice, removeNotice (1)" in {
+  "addNotice, removeNotice (1)" in:
     var boardState = BoardState(board)
     assert(!boardState.containsNotice(aNotice.id))
 
@@ -202,9 +196,8 @@ final class BoardStateTest extends OurAsyncTestSuite
 
     boardState = boardState.removeNotice(bNotice.id).orThrow
     assert(boardState.idToNotice == Map.empty)
-  }
 
-  "addNotice, removeNotice (2)" in {
+  "addNotice, removeNotice (2)" in:
     var boardState = BoardState(board)
     boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
     boardState = boardState.addNotice(aNotice).orThrow
@@ -220,9 +213,8 @@ final class BoardStateTest extends OurAsyncTestSuite
         aNotice.id,
         None,
         Set(aOrderId))))
-  }
 
-  "addExpectation, removeExpectation (1)" in {
+  "addExpectation, removeExpectation (1)" in:
     var boardState = BoardState(board)
     boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
@@ -271,9 +263,8 @@ final class BoardStateTest extends OurAsyncTestSuite
 
     boardState = boardState.removeExpectation(aNotice.id, bOrderId).orThrow
     assert(boardState.idToNotice == Map.empty)
-  }
 
-  "addExpectation, removeExpectation (2)" in {
+  "addExpectation, removeExpectation (2)" in:
     var boardState = BoardState(board)
     boardState = boardState.addNotice(aNotice).orThrow
     boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
@@ -286,9 +277,8 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.removeExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
-  }
 
-  "BoardState snapshot" in {
+  "BoardState snapshot" in:
     for snapshot <- boardState.toSnapshotStream.compile.toVector yield
       assert(snapshot == List(board, notice))
 
@@ -305,11 +295,9 @@ final class BoardStateTest extends OurAsyncTestSuite
       recovered = recovered.addExpectation(NoticeId("B"), aOrderId).orThrow
       recovered = recovered.addNotice(notice).orThrow
       assert(recovered == boardState)
-  }
-}
 
-private object BoardStateTest
-{
+private object BoardStateTest:
+
   private val board = Board(
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("'NOTICE'"),
@@ -330,4 +318,3 @@ private object BoardStateTest
       NoticePlace(notice.id, Some(notice)),
       NoticePlace(NoticeId("B"), None, Set(aOrderId, bOrderId))
     ).toKeyedMap(_.noticeId))
-}

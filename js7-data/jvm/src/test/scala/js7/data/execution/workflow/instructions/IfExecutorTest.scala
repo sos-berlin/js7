@@ -24,7 +24,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class IfExecutorTest extends OurTestSuite {
+final class IfExecutorTest extends OurTestSuite:
 
   private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(
@@ -34,53 +34,45 @@ final class IfExecutorTest extends OurTestSuite {
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "JSON BranchId" - {
-    "then" in {
+    "then" in:
       testJson(
         ifExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to,
         json"""[ 7, "then", 0 ]""")
-    }
 
-    "else" in {
+    "else" in:
       testJson(
         ifExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to,
         json"""[ 7, "else", 0 ]""")
-    }
   }
 
-  "If true" in {
+  "If true" in:
     assert(
       executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to ==
         Position(7) / Then % 0)
-  }
 
-  "If false" in {
+  "If false" in:
     assert(
       executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
         Position(7) / Else % 0)
-  }
 
-  "If false, no else branch" in {
+  "If false, no else branch" in:
     assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
       Position(8))
-  }
 
-  "Named value comparison" in {
+  "Named value comparison" in:
     val expr = Equal(NamedValue("A"), StringConstant("AA"))
     assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) ==
       Right(Some(OrderMoved(Position(7) / Then % 0))))
 
     assert(executorService.nextMove(ifThenElse(expr), BOrder, stateView) ==
       Right(Some(OrderMoved(Position(7) / Else % 0))))
-  }
 
-  "Error in expression" in {
+  "Error in expression" in:
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
     assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
-  }
-}
 
 
-object IfExecutorTest {
+object IfExecutorTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA"))))))
@@ -94,4 +86,3 @@ object IfExecutorTest {
 
   private def ifThen(booleanExpr: BooleanExpr) =
     If(booleanExpr, Workflow.of(ThenJob))
-}

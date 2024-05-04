@@ -22,15 +22,15 @@ import scala.collection.View
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteExecutorTest extends OurTestSuite
-{
+final class ExecuteExecutorTest extends OurTestSuite:
+
   private lazy val stateView = TestStateView.of(
     isAgent = false,
     orders = Some(orders),
     workflows = Some(Seq(workflow)))
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
-  "orderIdToDate" in {
+  "orderIdToDate" in:
     assert(orderIdToDate(OrderId("x")) == None)
     assert(orderIdToDate(OrderId("#no-date#")) == None)
     assert(orderIdToDate(OrderId("#2021-09-03")) == None)
@@ -38,39 +38,33 @@ final class ExecuteExecutorTest extends OurTestSuite
     assert(orderIdToDate(OrderId("#2021-13-13#")) == None)
     assert(orderIdToDate(OrderId("#2021-09-03#")) == Some(LocalDate.parse("2021-09-03")))
     assert(orderIdToDate(OrderId("#2021-09-03#xx")) == Some(LocalDate.parse("2021-09-03")))
-  }
 
-  "No or non-skipped AdmissionTimeScheme" in {
-    for position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/) do {
+  "No or non-skipped AdmissionTimeScheme" in:
+    for position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/) do
       val execute = workflow.instruction_[Execute](position).orThrow
-      for order <- orders.filter(_.position == position) do {
+      for order <- orders.filter(_.position == position) do
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
         assert(executorService.nextMove(execute, order, stateView) ==
           Right(None))
-      }
-    }
-  }
 
   "skipIfNoAdmissionStartForOrderDay" - {
     val position = Position(2)
     val execute = workflow.instruction_[Execute](position).orThrow
 
-    "OrderId date has admission time" in {
-      for orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready")) do {
+    "OrderId date has admission time" in:
+      for orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready")) do
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
         assert(executorService.nextMove(execute, order, stateView) ==
           Right(None))
-      }
-    }
 
-    "OrderId date has no admission time" in {
+    "OrderId date has no admission time" in:
       for (orderId <- View(
         OrderId("#2021-09-02#2-Fresh"),
         OrderId("#2021-09-02#2-Ready"),
-        OrderId("#2021-09-04#2-Ready"))) {
+        OrderId("#2021-09-04#2-Ready")))
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
           Right(
@@ -79,14 +73,11 @@ final class ExecuteExecutorTest extends OurTestSuite
         assert(executorService.nextMove(execute, order, stateView) ==
           Right(Some(
             OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))))
-      }
-    }
   }
-}
 
 
-object ExecuteExecutorTest
-{
+object ExecuteExecutorTest:
+
   private val admissionTimeScheme = AdmissionTimeScheme(Seq(
     WeekdayPeriod(FRIDAY, LocalTime.of(8, 0), 25.h)))
   private val agentPath = AgentPath("AGENT")
@@ -119,4 +110,3 @@ object ExecuteExecutorTest
     Order(OrderId("#2021-09-02#2-Ready"), workflow.id /: Position(2), Order.Ready),
 
     Order(OrderId("#2021-09-04#2-Ready"), workflow.id /: Position(2), Order.Ready))
-}

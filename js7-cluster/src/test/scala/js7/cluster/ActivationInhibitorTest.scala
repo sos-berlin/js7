@@ -10,47 +10,42 @@ import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 
-final class ActivationInhibitorTest extends OurAsyncTestSuite
-{
+final class ActivationInhibitorTest extends OurAsyncTestSuite:
+
   "startActive, startPassive" - {
     lazy val inhibitor = new ActivationInhibitor
 
-    "state is Initial" in {
+    "state is Initial" in:
       TestControl.executeEmbed:
         for result <- inhibitor.state yield
           assert(result == Some(Initial))
-    }
 
-    "startActive" in {
+    "startActive" in:
       TestControl.executeEmbed:
         for result <- inhibitor.startActive yield
           assert(result == ())
-    }
 
-    "Following startActive is rejected" in {
+    "Following startActive is rejected" in:
       TestControl.executeEmbed:
         for result <- inhibitor.startActive.attempt yield
           assert(result.isLeft)
-    }
 
-    "Following startPassive is rejected" in {
+    "Following startPassive is rejected" in:
       TestControl.executeEmbed:
         for result <- inhibitor.startPassive.attempt yield
           assert(result.isLeft)
-    }
 
-    "state is Active" in {
+    "state is Active" in:
       TestControl.executeEmbed:
         for result <- inhibitor.state yield
           assert(result == Some(Active))
-    }
   }
 
   "tryActivate" - {
     lazy val inhibitor = new ActivationInhibitor
     lazy val activation = succeedingActivation(inhibitor, Right(true))
 
-    "first" in {
+    "first" in:
       TestControl.executeEmbed:
         val activated = Atomic(false)
         for
@@ -64,9 +59,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
           _ <- for s <- inhibitor.state yield assert(s == Some(Active))
         yield
           succeed
-    }
 
-    "second activation is allowed" in {
+    "second activation is allowed" in:
       // That means, the current activation is acknowledged
       TestControl.executeEmbed:
         val activated = Atomic(false)
@@ -78,10 +72,9 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
           state <- inhibitor.state
         yield
           assert(state == Some(Active))
-      }
   }
 
-  "tryActivate but body rejects with Right(false)" in {
+  "tryActivate but body rejects with Right(false)" in:
     TestControl.executeEmbed:
       lazy val inhibitor = new ActivationInhibitor
       lazy val activation = succeedingActivation(inhibitor, Right(false))
@@ -98,9 +91,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
       yield
         succeed
-  }
 
-  "tryActivate but body returns Left(problem)" in {
+  "tryActivate but body returns Left(problem)" in:
     TestControl.executeEmbed:
       lazy val inhibitor = new ActivationInhibitor
       lazy val activation = succeedingActivation(inhibitor, Left(Problem("PROBLEM")))
@@ -117,12 +109,11 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
       yield
         succeed
-  }
 
   "tryActivate with failed activation" - {
     lazy val inhibitor = new ActivationInhibitor
 
-    "first" in {
+    "first" in:
       TestControl.executeEmbed:
         val passivated = Atomic(false)
         val activated = Atomic(false)
@@ -144,9 +135,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
           _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
         yield
           succeed
-    }
 
-    "again with succeeding activation" in {
+    "again with succeeding activation" in:
       TestControl.executeEmbed:
         for
           a <- succeedingActivation(inhibitor, Right(true))
@@ -154,11 +144,9 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
           _ <- for s <- inhibitor.state yield assert(s == Some(Active))
         yield
           succeed
-    }
   }
 
-
-  "inhibitActivation" in {
+  "inhibitActivation" in:
     val inhibitor = new ActivationInhibitor
     TestControl.executeEmbed:
       for
@@ -188,9 +176,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield o == Right(false)
       yield
         succeed
-  }
 
-  "inhibitActivation waits when currently activating" in {
+  "inhibitActivation waits when currently activating" in:
     TestControl.executeEmbed:
       val inhibitor = new ActivationInhibitor
       for
@@ -209,9 +196,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         _ <- IO.sleep(2.s)
         _ <- for s <- inhibitor.state yield assert(s == Some(Active))
       yield succeed
-  }
 
-  "inhibit while inhibiting" in {
+  "inhibit while inhibiting" in:
     TestControl.executeEmbed:
       val inhibitor = new ActivationInhibitor
       for
@@ -233,7 +219,6 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
       yield
         succeed
-  }
 
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
   : IO[Checked[Boolean]] =
@@ -245,4 +230,3 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
     inhibitor.tryToActivate(
       ifInhibited = IO.right(false),
       activate = IO.raiseError(new RuntimeException("TEST")).delayBy(1.s))
-}

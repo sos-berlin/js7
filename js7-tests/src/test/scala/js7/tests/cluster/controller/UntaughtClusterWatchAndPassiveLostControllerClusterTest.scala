@@ -68,9 +68,8 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       withClusterWatchService(restartedClusterWatchId) { (clusterWatchService, eventBus) =>
         // ClusterWatch is untaught
         val clusterPassiveLost = eventBus
-          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost] {
+          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
             case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
-          }
           .await(99.s)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
@@ -79,9 +78,8 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
         else
           val clusterFailedOver = eventBus
-            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver] {
+            .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
               case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
-            }
             .await(99.s)
           assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
 
@@ -105,10 +103,9 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         sys.props(testAckLossPropertyKey) = "false"
         sys.props(testHeartbeatLossPropertyKey) = "false"
-        if stopBackup then {
+        if stopBackup then
           logger.info("Start Backup Controller")
           backupController = backup.newController()
-        }
 
         eventWatch.await[ClusterCoupled](after = eventId)
 

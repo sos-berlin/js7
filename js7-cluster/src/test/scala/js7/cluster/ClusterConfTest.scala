@@ -15,12 +15,12 @@ import js7.journal.configuration.JournalConfTest
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterConfTest extends OurTestSuite
-{
+final class ClusterConfTest extends OurTestSuite:
+
   ProblemCodeMessages.initialize()
 
   "fromConfig" - {
-    "Minimum configuration" in {
+    "Minimum configuration" in:
       val config = config"""
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
@@ -48,9 +48,8 @@ final class ClusterConfTest extends OurTestSuite
           clusterWatchUniquenessMemorySize = 100,
           delayConf = DelayConf(1.s),
           config = config)))
-    }
 
-    "Full configuration" in {
+    "Full configuration" in:
       val config = config"""
         js7.journal.cluster.node.id = PRIMARY
         js7.journal.cluster.node.is-backup = no
@@ -89,6 +88,4 @@ final class ClusterConfTest extends OurTestSuite
           clusterWatchUniquenessMemorySize = 100,
           delayConf = DelayConf(1.s),
           config = config)))
-    }
   }
-}

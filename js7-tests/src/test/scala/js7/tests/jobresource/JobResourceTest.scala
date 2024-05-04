@@ -43,8 +43,8 @@ import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import org.scalatest.Assertions.*
 
-class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
-{
+class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected final val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -58,12 +58,11 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
   protected lazy val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow,
     aJobResource, bJobResource, envJobResource, sosJobResource)
 
-  "referencedItemPaths" in {
+  "referencedItemPaths" in:
     assert(workflow.referencedItemPaths.toSet ==
       Set(aJobResource.path, bJobResource.path, agentPath))
-  }
 
-  "JobResource" in {
+  "JobResource" in:
     controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.path)
     controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.path)
 
@@ -85,17 +84,15 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
         |E=/E of JOB-RESOURCE-B/
         |aJobResourceVariable=/A of JOB-RESOURCE-A/
         |""".stripMargin)
-  }
 
-  "Change JobResource" in {
+  "Change JobResource" in:
     val eventId = controller.eventWatch.lastAddedEventId
     controller.api.updateSignedItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
-  }
 
-  "JobResource with order variable references (no order access)" in {
+  "JobResource with order variable references (no order access)" in:
     val eventId = controller.eventWatch.lastAddedEventId
     controller.api.updateSignedItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.path, after = eventId)
@@ -108,9 +105,8 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
     // JobResource must not use order variables
     val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
     assert(orderProcessed.outcome == OrderOutcome.Failed(Some("No such named value: E")))
-  }
 
-  "JobResource with environment variable access" in {
+  "JobResource with environment variable access" in:
     val orderId = OrderId("ORDER-ENV")
     controller.api.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
@@ -120,10 +116,9 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
     assert(stdouterr.replaceAll("\r", "") ==
       s"""ORIGINAL_PATH=/${sys.env(PathEnvName)}/
          |""".stripMargin)
-  }
 
   "Example for an SOS JobResource" - {
-    "without scheduledFor" in {
+    "without scheduledFor" in:
       val orderId = OrderId("ORDER-SOS")
       controller.api.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
@@ -145,9 +140,8 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       assert(stdouterr contains s"JS7_SCHEDULED_HOUR=//$nl")
       assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=//$nl")
       assert(stdouterr contains s"JS7_SCHEDULED_SECOND=//$nl")
-    }
 
-    "with scheduledFor" in {
+    "with scheduledFor" in:
       controller.api.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
       val orderId = OrderId("ORDER-SOS-SCHEDULED")
@@ -169,16 +163,14 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       assert(stdouterr contains s"JS7_SCHEDULED_YEAR=/2021/$nl")
       assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=/11/$nl")
       assert(stdouterr contains s"JS7_SCHEDULED_SECOND=/22/$nl")
-    }
   }
 
-  "JobResource.variables in JVM job" in {
+  "JobResource.variables in JVM job" in:
     val orderId = OrderId("ORDER-INTERNAL")
     val events = controller.runOrder(FreshOrder(orderId, internalWorkflow.path))
     assert(events.last.value.isInstanceOf[OrderFinished])
-  }
 
-  "Order fails when referencing an unknown JobResource in an expression" in {
+  "Order fails when referencing an unknown JobResource in an expression" in:
     val workflow = Workflow(
       WorkflowPath("INVALID-WORKFLOW") ~ "INVALID",
       Vector(
@@ -189,19 +181,17 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
               "aJobResourceVariable" -> expr("JobResource:UNKNOWN:a")))))))
     assert(controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
-  }
 
   "Accessing an missing JobResource variable" - {
     val existingName = if isWindows then "TEMP" else if isMac then "TMPDIR" else "HOSTNAME"
     val existingValue = sys.env(existingName)
 
-    "Order fails" in {
+    "Order fails" in:
       val workflow = addUnknownJobResourceVariableWorkflow("MISSING", "JobResource:JOB-RESOURCE-A:UNKNOWN")
       val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN"), workflow.path))
       assert(events.map(_.value).contains(
         OrderProcessed(OrderOutcome.Disrupted(
           UnknownNameInExpressionProblem("JobResource:JOB-RESOURCE-A:UNKNOWN")))))
-    }
 
     //"Environment variable is left unchanged when the ? operator is used" in {
     //  --> Not true anymore: An existent environment variable is being deleted
@@ -213,7 +203,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
     //  assert(stdout contains s"$existingName=/$existingValue/")
     //}
 
-    def addUnknownJobResourceVariableWorkflow(name: String, exprString: String) = {
+    def addUnknownJobResourceVariableWorkflow(name: String, exprString: String) =
       val workflow = Workflow(
         WorkflowPath(name) ~ name,
         Vector(
@@ -227,10 +217,9 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
         .await(99.s).orThrow
       workflow
-    }
   }
 
-  "Delete a JobResource" in {
+  "Delete a JobResource" in:
     val deleteJobResource =
       controller.api.updateItems(Stream.emit(DeleteSimple(bJobResource.path)))
 
@@ -276,9 +265,8 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
         AddOrChangeSigned(toSignedString(bJobResource)),
         AddOrChangeSigned(toSignedString(workflow.withId(workflow.path ~ v)))))
       .await(99.s).orThrow
-  }
 
-  "toFile" in {
+  "toFile" in:
     // Test is slow due to >20MB stdout (many OrderStdoutWritten events)
 
     val resourceContent = (1 to 1_000_000).view.map(i => s"RESOURCE-$i\n").mkString
@@ -331,12 +319,10 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
       .combineAll
     assert(stdout contains resourceContent)
     assert(stdout contains executableContent)
-  }
-}
 
 
-object JobResourceTest
-{
+object JobResourceTest:
+
   private val logger = Logger[this.type]
   private[jobresource] val agentPath = AgentPath("AGENT")
 
@@ -450,7 +436,7 @@ object JobResourceTest
       "JS7_JOBSTART_SECOND"   -> expr("now(format='ss')")))
   logger.debug(sosJobResource.asJson.toPrettyString)
 
-  private val sosWorkflow = {
+  private val sosWorkflow =
     val jobName = WorkflowJob.Name("TEST-JOB")
     Workflow(
       WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
@@ -506,9 +492,8 @@ object JobResourceTest
               |echo JS7_JOBSTART_SECOND=/$JS7_JOBSTART_SECOND/
               |""".stripMargin))),
       jobResourcePaths = Seq(sosJobResource.path))
-  }
 
-  private val internalWorkflow = {
+  private val internalWorkflow =
     val jobName = WorkflowJob.Name("TEST-JOB")
     Workflow(
       WorkflowPath("WORKFLOW-INTERNAL") ~ "INITIAL",
@@ -516,9 +501,8 @@ object JobResourceTest
       nameToJob = Map(
         jobName -> TestJob.workflowJob(agentPath)),
       jobResourcePaths = Seq(aJobResource.path, bJobResource.path))
-  }
 
-  private class TestJob extends InternalJob {
+  private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(IO {
         assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
@@ -526,6 +510,4 @@ object JobResourceTest
         assert(step.jobResourceVariable(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
         OrderOutcome.succeeded
       })
-  }
   private object TestJob extends InternalJob.Companion[TestJob]
-}

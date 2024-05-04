@@ -35,26 +35,24 @@ final class AsyncLockTest extends OurAsyncTestSuite:
     addTests(n, suppressLog = true)
   }
 
-  private def addTests(n: Int, suppressLog: Boolean): Unit = {
-    "AsyncLock, concurrent" in {
+  private def addTests(n: Int, suppressLog: Boolean): Unit =
+    "AsyncLock, concurrent" in:
       var retryCount = 0
       val lock = AsyncLock("TEST", /*logWorryDurations = Nil, */suppressLog = suppressLog, logMinor = true)
       doTest(lock.lock(_))
         .map(o => assert(o == Vector.fill(n)(initial)))
         // High probability to fail once
-        .onErrorRestartLoop(100_000) {
+        .onErrorRestartLoop(100_000):
           case (t, 0, _) => IO.raiseError(t)
           case (_, i, retry) =>
             retryCount += 1
             IO.sleep(1.ms) *> retry(i - 1)
-        }
         .<*(IO(logger.info(s"$retryCount retries")))
-    }
 
-    "No AsyncLock, concurrent" in {
-      if sys.runtime.availableProcessors == 1 then {
+    "No AsyncLock, concurrent" in:
+      if sys.runtime.availableProcessors == 1 then
         fail("This concurrent test requires more than one processor")
-      } else {
+      else
         val maxTries = 100
         val expected = Vector.fill(n)(initial)
         0.tailRecM(i =>
@@ -64,10 +62,8 @@ final class AsyncLockTest extends OurAsyncTestSuite:
               IO.left(i + 1)
             } else
               IO.right(assert(result != expected))))
-      }
-    }
 
-    "AsyncLock, not concurrent" in {
+    "AsyncLock, not concurrent" in:
       val lock = AsyncLock("TEST", /*logWorryDurations = Nil, */suppressLog = suppressLog, logMinor = true)
       Stream.emits(1 to n)
         .evalMap(_ => lock.lock(IO.unit))
@@ -77,7 +73,6 @@ final class AsyncLockTest extends OurAsyncTestSuite:
           logger.info(itemsPerSecondString(duration, n))
           succeed
         }
-    }
 
     def doTest(lock: IO[Int] => IO[Int]): IO[Seq[Int]] =
       val guardedVariable = Atomic(initial)
@@ -103,12 +98,10 @@ final class AsyncLockTest extends OurAsyncTestSuite:
             logger.info(itemsPerSecondString(duration, n))
             result
 
-    def idleNanos(duration: FiniteDuration): Unit = {
+    def idleNanos(duration: FiniteDuration): Unit =
       val t = System.nanoTime()
       val nanos = duration.toNanos
       while System.nanoTime() - t < nanos do {}
-    }
-  }
 
   "Cancellation releases lock only after IO has been canceled" in:
     val lock = AsyncLock("CANCEL-BODY", logWorryDurations = Nil)

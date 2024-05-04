@@ -466,11 +466,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             else if !agentRefState.agentRunId.forall(_ == agentRunId) then
               logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
               Future.successful(None)
-            else {
+            else
               var timestampedEvents: Seq[Timestamped[Event]] =
                 stampedAgentEvents.view.flatMap {
                   case Stamped(_, timestampMillis, keyedEvent) =>
-                    keyedEvent match {
+                    keyedEvent match
                       case KeyedEvent(orderId: OrderId, _: OrderCancellationMarked) =>
                         Timestamped(orderId <-: OrderCancellationMarkedOnAgent, Some(timestampMillis)) :: Nil
 
@@ -478,10 +478,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         Timestamped(orderId <-: OrderSuspensionMarkedOnAgent, Some(timestampMillis)) :: Nil
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                        val ownEvent = event match {
+                        val ownEvent = event match
                           case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                           case _ => event
-                        }
                         Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
@@ -516,10 +515,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         Nil
 
                       case KeyedEvent(_: SubagentId, event: SubagentItemStateEvent) =>
-                        event match {
+                        event match
                           case _: SubagentEventsObserved => Nil // Not needed
                           case _ => Timestamped(keyedEvent) :: Nil
-                        }
 
                       case ke @ KeyedEvent(_: NoKey, _: ClusterEvent) =>
                         Timestamped(agentPath <-: AgentMirroredEvent(ke)) :: Nil
@@ -527,7 +525,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
                         Nil
-                    }
                 }.toVector
 
               if timestampedEvents.isEmpty then
@@ -556,7 +553,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                       (stampedEvents, updatedState) =>
                         handleEvents(stampedEvents, updatedState)
                         Some(agentEventId)
-            }
 
     case Internal.OrdersMarked(orderToMark) =>
       // TODO Maybe execute this code when the corresponding event arrives:
