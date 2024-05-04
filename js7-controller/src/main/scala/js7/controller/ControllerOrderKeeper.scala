@@ -1235,8 +1235,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     itemKey match
       case itemKey: InventoryItemKey =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
-        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) do
-          for ((agentPath, attachedState) <- agentToAttachedState) do
+        for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do
+          for (agentPath, attachedState) <- agentToAttachedState do
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
             for agentEntry <- agentRegister.get(agentPath) do
               val agentDriver = agentEntry.agentDriver

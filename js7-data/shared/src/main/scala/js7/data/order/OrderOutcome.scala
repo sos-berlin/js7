@@ -198,10 +198,10 @@ object OrderOutcome:
         "uncatchable" -> (o.uncatchable ? true).asJson)
 
     implicit val jsonDecoder: Decoder[Disrupted] =
-      c => for {
+      c => for
         problem <- c.get[Disrupted.Reason]("reason")
         uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
-      } yield Disrupted(problem, uncatchable)
+      yield Disrupted(problem, uncatchable)
 
     final case class ProcessLost(problem: Problem) extends Reason
     object ProcessLost:

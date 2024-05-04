@@ -116,15 +116,15 @@ object BranchId:
               .toVector
               .takeWhile(_ => checked.isRight)
               .foreach(part =>
-                if (part startsWith "end=")
+                if part startsWith "end=" then
                   end = Timestamp.ofEpochMilli(part.substring(4).toLong)
-                else if (part startsWith "scheme=")
+                else if part startsWith "scheme=" then
                   schemeIndex = part.substring(7).toInt
-                else if (part startsWith "period=")
+                else if part startsWith "period=" then
                   periodIndex = part.substring(7).toInt
-                else if (part startsWith "i=")
+                else if part startsWith "i=" then
                   index = part.substring(2).toInt
-                else if (part startsWith "next=")
+                else if part startsWith "next=" then
                   next = Timestamp.ofEpochMilli(part.substring(5).toLong)
                 else
                   checked = Left(Problem.pure(cycleFailed)))

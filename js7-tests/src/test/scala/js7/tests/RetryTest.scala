@@ -270,7 +270,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         val orderId = OrderId("🟦")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        for (_ <- 1 to 10)
+        for _ <- 1 to 10 do
           eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
         controller.api
           .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
@@ -417,7 +417,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDeleted))
 
   "JS-2105 Cancel while retrying (Engine has to synchronize OrderDetachable with ongoing events)" in
-    repeatTest(if (isIntelliJIdea) 100 else 10) { testIndex =>
+    repeatTest(if isIntelliJIdea then 100 else 10) { testIndex =>
       // No more InapplicableEventProblem!
       val workflow = Workflow(WorkflowPath("CANCEL-WHILE-RETRYING"), Seq(
         TryInstruction(

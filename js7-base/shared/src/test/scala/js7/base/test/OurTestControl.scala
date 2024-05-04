@@ -260,11 +260,11 @@ final class OurTestControl[A] private(
       val step = time.min(next)
       val remaining = time - step
 
-      if (step <= Duration.Zero) {
+      if step <= Duration.Zero then {
         IO.unit
       } else {
         advance(step) *> {
-          if (remaining <= Duration.Zero)
+          if remaining <= Duration.Zero then
             tick
           else
             tickFor(remaining)

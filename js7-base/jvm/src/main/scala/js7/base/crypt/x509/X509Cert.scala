@@ -86,17 +86,17 @@ object X509Cert:
 
   private def selectBestCert[A <: X509CertInterface](certs: Seq[A], timestamp: Timestamp)
   : Option[A] =
-    if (certs.sizeIs <= 1)
+    if certs.sizeIs <= 1 then
       certs.headOption
     else {
       val notExpiredCerts = certs.flatMap(cert =>
-        if (cert.notAfter < timestamp) {
+        if cert.notAfter < timestamp then {
           logger.error(s"Ignoring $cert because it expired at ${cert.notAfter}")
           None
         } else
           Some(cert))
 
-      if (notExpiredCerts.sizeIs <= 1)
+      if notExpiredCerts.sizeIs <= 1 then
         notExpiredCerts.headOption
       else {
         val latestStillValid = notExpiredCerts
@@ -108,7 +108,7 @@ object X509Cert:
           // No cert is still valid? Then take the coming one with the earliest notBefore
           notExpiredCerts.sortBy(_.notBefore).headOption)
 
-        for (selected <- result) for (cert <- notExpiredCerts.filter(selected.ne))
+        for selected <- result do for cert <- notExpiredCerts.filter(selected.ne) do
           logger.error(s"Ignoring duplicate $cert")
 
         result

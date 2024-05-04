@@ -557,7 +557,7 @@ extends Actor, Stash, JournalLogging:
 
     onReadyForAcknowledgement()
 
-    val how = if (conf.syncOnCommit) "(with sync)" else "(without sync)"
+    val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
     logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) =

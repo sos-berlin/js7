@@ -121,9 +121,9 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
             async = async,
             callback = {
               case Left(problem) =>
-                if (!dontCrashActorOnFailure) {
+                if !dontCrashActorOnFailure then {
                   logger.error(s"»$toString« Event could not be stored: $problem")
-                  for (stamped <- timestamped.map(_.keyedEvent)) logger.error(stamped.toString)
+                  for stamped <- timestamped.map(_.keyedEvent) do logger.error(stamped.toString)
                   throw problem.throwable.appendCurrentStackTrace
                 }
                 logger.debug(s"»$toString« 💥 $problem$stashingCountRemaining")

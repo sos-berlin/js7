@@ -105,7 +105,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         sys.props(testAckLossPropertyKey) = "false"
         sys.props(testHeartbeatLossPropertyKey) = "false"
-        if (stopBackup) {
+        if stopBackup then {
           logger.info("Start Backup Controller")
           backupController = backup.newController()
         }

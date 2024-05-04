@@ -146,7 +146,7 @@ private[cluster] final class ClusterCommon private(
                       val msg = "🟥 While this node has lost the passive node" +
                         " and is waiting for ClusterWatch's agreement, " +
                         "the passive node failed over"
-                      if (clusterConf.testDontHaltWhenPassiveLostRejected)
+                      if clusterConf.testDontHaltWhenPassiveLostRejected then
                         IO.left(ClusterPassiveLostWhileFailedOverProblem) // For test only
                       else
                         haltJava(msg, restart = true, warnOnly = true)

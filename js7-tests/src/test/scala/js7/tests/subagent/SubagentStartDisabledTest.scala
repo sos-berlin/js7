@@ -69,7 +69,7 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
       try
         enableOrDisableSubagent(enabled = false)
 
-        if (restartAgent) {
+        if restartAgent then {
           agent.stop.await(99.s)
 
           agent = directoryProvider.startAgent(agentPath).await(99.s)

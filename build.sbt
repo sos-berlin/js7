@@ -90,6 +90,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
+  //"-new-syntax", "-rewrite",
   //"-explain",
   //"-Vprofile",
   //"-Vprofile-sorted-by:tasty",

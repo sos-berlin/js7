@@ -546,10 +546,10 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       val jobProcessLimit = 2
       assert(agentProcessLimit == Some(3)/*last test*/)
       val firstEventId = eventWatch.lastAddedEventId
-      val workflows = for (_ <- 0 until 2) yield updateItem(Workflow.of(
+      val workflows = for _ <- 0 until 2 yield updateItem(Workflow.of(
         ParallelInternalJob.execute(agentPath, processLimit = jobProcessLimit)))
       try
-        val orderIds = for (i <- 0 until agentProcessLimit.get) yield OrderId(s"AGENT-LIMIT-$i")
+        val orderIds = for i <- 0 until agentProcessLimit.get yield OrderId(s"AGENT-LIMIT-$i")
         val eventId = eventWatch.lastAddedEventId
         controller.api
           .addOrders(Stream
@@ -592,7 +592,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
       val workflow = Workflow.of(
         ParallelInternalJob.execute(agentPath, processLimit = Int.MaxValue))
       withTemporaryItem(workflow) { workflow =>
-        val orderIds = for (i <- 0 until agentProcessLimit.get) yield
+        val orderIds = for i <- 0 until agentProcessLimit.get yield
           OrderId(s"AGENT-LIMIT-$name-$i")
         val eventId = eventWatch.lastAddedEventId
         controller.api.addOrders(Stream
@@ -615,7 +615,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
               .await(99.s).orThrow
 
         ParallelInternalJob.reset()
-        for (orderId <- orderIds :+ extraOrderId)
+        for orderId <- orderIds :+ extraOrderId do
           eventWatch.await[OrderFinished](_.key == orderId, after = firstEventId)
       }
 

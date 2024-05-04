@@ -179,7 +179,7 @@ extends EventDrivenState[Self, E], StateView:
 
         case OrderNoticesConsumed(failed) =>
           val consumeNotices: Checked[ConsumeNotices] =
-            if (failed)
+            if failed then
               findInstructionInCallStack[ConsumeNotices](previousOrder.workflowPosition)
             else
               // When succeeding we are pedantic and expect the ConsumeNotice one level up
@@ -195,10 +195,11 @@ extends EventDrivenState[Self, E], StateView:
   private def findInstructionInCallStack[I <: Instruction: ClassTag](
     workflowPosition: WorkflowPosition)
   : Checked[I] =
-    for {
+    for
       pos <- workflowPosition.checkedParent
       instr <- instruction_[I](pos).orElse(findInstructionInCallStack[I](pos))
-    } yield instr
+    yield
+      instr
 
 
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
