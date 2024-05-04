@@ -270,12 +270,12 @@ extends Actor, Stash, JournalLogging:
       if requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId then
         val n = persistBuffer.view.map(_.eventCount).sum
         if n > 0 then
-          waitingForAckSym.onInfo()
           val lastEvent = persistBuffer.view
             .collect { case o: StandardPersist => o }
             .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
             .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
             .toString.truncateWithEllipsis(200))
+          waitingForAckSym.onWarn()
           logger.warn(s"$waitingForAckSym Waiting for ${waitingForAcknowledgeSince.elapsed.pretty}" +
             " for acknowledgement from passive cluster node" +
             s" for $n events (in ${persistBuffer.size} persists), last is $lastEvent" +
@@ -346,7 +346,7 @@ extends Actor, Stash, JournalLogging:
     commit()
 
   private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit =
-    for ackEventId <- ack if n > 0 && waitingForAckSym.called do
+    for ackEventId <- ack if n > 0 && waitingForAckSym.used do
       logger.info(s"🟢 $n events until $ackEventId have finally been acknowledged after ${
         waitingForAcknowledgeSince.elapsed.pretty}")
       waitingForAckSym.clear()

@@ -241,7 +241,7 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
       if (now - (lastLoggedAt + logDelay)).isZeroOrAbove then
         logDelay = logDelayIterator.next()
         lastLoggedAt = now
-        sym.increment()
+        sym.escalate()
         sym.onInfo()
         logger.log(sym.logLevel,
           s"$sym Watched file is still being modified for ${logExtra(now)}")

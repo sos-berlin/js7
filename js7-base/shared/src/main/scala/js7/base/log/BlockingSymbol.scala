@@ -25,20 +25,14 @@ final class BlockingSymbol:
     _index = _index max 3
     _warnLogged = true
 
-  private def increment(minimum: Int): Unit =
-    if _index < minimum then
-      _index = minimum
-    else
-      increment()
-
-  def increment(): Unit =
+  def escalate(): Unit =
     if _index < 3 then
       _index += 1
 
   def warnLogged: Boolean =
     _warnLogged
 
-  def called: Boolean =
+  def used: Boolean =
     _index > 0
 
   def relievedLogLevel: LogLevel =
@@ -50,12 +44,6 @@ final class BlockingSymbol:
       case 1 => LogLevel.Debug
       case 2 => LogLevel.Info
       case 3 => LogLevel.Warn
-
-  def releasedLogLevel: LogLevel =
-    _index match
-      case 0 => LogLevel.None
-      case 1 => LogLevel.Debug
-      case 2 | 3 => LogLevel.Info
 
   override def toString: String =
     symbol

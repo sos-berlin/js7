@@ -540,7 +540,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
               IO.sleep(delays.next()).as(Left(())/*repeat*/)
 
             case checked =>
-              if sym.called then checked match {
+              if sym.used then checked match {
                 case Left(problem) => logger.error(s"🔥 $label => $problem")
                 case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
               }

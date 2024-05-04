@@ -56,7 +56,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
         body
           .flatMap:
             case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
-              sym.increment()
+              sym.escalate()
               logger.log(sym.logLevel, s"$sym $toString: $problem")
               IO.sleep(delays.next()).as(Left(()))
 

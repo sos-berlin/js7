@@ -195,9 +195,9 @@ object SessionApi:
             })
           .guaranteeCase:
             case Outcome.Succeeded(_) => IO(
-              if sym.called then logger.info(s"🟢 $self reached"))
+              if sym.used then logger.info(s"🟢 $self reached"))
             case Outcome.Canceled() => IO(
-              if sym.called then logger.info(s"⚫️ $self Canceled"))
+              if sym.used then logger.info(s"⚫️ $self Canceled"))
             case _ => IO.unit
 
     final def login(onlyIfNotLoggedIn: Boolean = false): IO[Completed] =

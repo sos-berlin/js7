@@ -314,7 +314,6 @@ private final class ClusterWatchSynchronizer(
     clusterWatchIdChangeAllowed: Boolean,
     alreadyLocked: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
-   logger.traceIO("doACheckedHeartbeat", clusterState):
     clusterWatch
       .checkClusterState(
         clusterState,

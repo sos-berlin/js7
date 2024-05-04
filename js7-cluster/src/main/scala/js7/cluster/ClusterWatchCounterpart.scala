@@ -7,7 +7,7 @@ import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
+import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.service.Service
@@ -54,27 +54,23 @@ extends Service.StoppableByRequest:
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
-   logger.traceIOWithResult("checkClusterState", clusterState, body =
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
       && !clusterState.isInstanceOf[Coupled]
       && !clusterState.isInstanceOf[PassiveLost]
-      && !clusterState.isInstanceOf[FailedOver] then
+      && !clusterState.isInstanceOf[FailedOver]
+    then
       IO.right(None)
     else
       val since = Deadline.now
       initializeCurrentClusterWatchId(clusterState)
         .flatMap: _ =>
-          CorrelId.use(correlId =>
+          CorrelId.use: correlId =>
             check(
               clusterState.setting.clusterWatchId,
               ClusterWatchCheckState(_, correlId, ownId, clusterState),
               clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
-            ).map(_.map(Some(_))))
-        .guaranteeCase:
-          case Outcome.Succeeded(_) => IO.unit
-          case outcome => IO:
-            logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome))
+            ).map(_.map(Some(_)))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
     SyncDeadline.usingNow: now ?=>
@@ -89,8 +85,7 @@ extends Service.StoppableByRequest:
     clusterWatchIdChangeAllowed: Boolean = false,
     forceWhenUntaught: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
-   logger.traceIOWithResult("applyEvent", clusterState, body =
-    CorrelId.use { correlId =>
+    CorrelId.use: correlId =>
       event match
         case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
           if !clusterState.setting.clusterWatchId.isDefined =>
@@ -103,7 +98,6 @@ extends Service.StoppableByRequest:
               forceWhenUntaught = forceWhenUntaught),
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_)))
-    })
 
   private def check(
     clusterWatchId: Option[ClusterWatchId],
@@ -140,18 +134,16 @@ extends Service.StoppableByRequest:
           .untilConfirmed
           .timeoutTo(
             timing.clusterWatchReactionTimeout,
-            IO.raiseError(RequestTimeoutException)))
+            IO.raiseError(new RequestTimeoutException)))
         .onErrorRestartLoop(()):
-          case (RequestTimeoutException, _, retry) =>
-            sym.onWarn()
+          case (_: RequestTimeoutException, _, retry) =>
             SyncDeadline
-              .usingNow: now ?=>
-                logger.warn(sym.toString +
-                  " Still trying to get a confirmation from " +
+              .usingNow:
+                sym.onWarn()
+                logger.warn(s"$sym Still trying to get a confirmation from " +
                   clusterWatchId.fold("any ClusterWatch")(id =>
                     id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
-                  " for " + request.toShortString + "" +
-                  " for " + since.elapsed.pretty + "...")
+                  s" for ${request.toShortString} for ${since.elapsed.pretty}...")
               .*>(retry(()))
 
           case (t, _, _) => IO.raiseError(t)
@@ -160,18 +152,18 @@ extends Service.StoppableByRequest:
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
-            SyncDeadline.usingNow: now ?=>
-              if sym.warnLogged then logger.info(
+            SyncDeadline.usingNow:
+              logger.log(sym.relievedLogLevel,
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
         .guaranteeCase:
           case Outcome.Errored(t) if sym.warnLogged => SyncDeadline.usingNow:
-            logger.warn(
-              s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
+            logger.warn:
+              s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}"
 
           case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow:
-            logger.info(
-              s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
+            logger.info:
+              s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}"
 
           case _ => IO.unit
         .guarantee(IO(
@@ -180,7 +172,7 @@ extends Service.StoppableByRequest:
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): IO[Checked[Unit]] =
     IO(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
       .flatMapT(_ => IO(takeRequest(confirm)))
-      .flatMapT { requested =>
+      .flatMapT: requested =>
         val confirmation = toConfirmation(confirm)
         (requested.request.maybeEvent, confirmation) match
           case (Some(_: ClusterPassiveLost), Left(problem))
@@ -198,10 +190,9 @@ extends Service.StoppableByRequest:
 
           case _ =>
             for confirmer <- confirm.manualConfirmer do
-              logger.info(s"‼️  ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+              logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             requested.confirm(confirmation)
-      }
       .flatMapT: _ =>
         SyncDeadline.usingNow:
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
@@ -248,9 +239,8 @@ extends Service.StoppableByRequest:
 
           case _ =>
             if confirm.requestId != requested.id then
-              logger.debug(s"⛔ confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
               val problem = ClusterWatchRequestDoesNotMatchProblem
-              logger.debug(s"$problem id=${confirm.requestId} but _requested=${requested.id}")
+              logger.debug(s"⛔ $problem id=${confirm.requestId} but _requested=${requested.id}")
               Left(problem)
             else if !_requested.compareAndSet(value, None) then
               takeRequest(confirm)
@@ -324,6 +314,6 @@ object ClusterWatchCounterpart:
     override def toString =
       s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"
 
-  private object RequestTimeoutException extends Exception
+  private class RequestTimeoutException extends Exception
 
   final case class WaitingForConfirmation(request: ClusterWatchRequest)

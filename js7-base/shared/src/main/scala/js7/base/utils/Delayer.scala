@@ -35,7 +35,7 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
     nextDelay2.flatMap:
       case (elapsed, delay) =>
         logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
-        sym.increment()
+        sym.escalate()
         onSleep(delay) *> F.sleep(delay)
 
   def nextDelay: F[FiniteDuration] =

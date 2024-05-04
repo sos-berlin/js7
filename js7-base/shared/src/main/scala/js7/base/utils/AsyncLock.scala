@@ -7,7 +7,7 @@ import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, Logger}
+import js7.base.log.{BlockingSymbol, LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
 import js7.base.utils.Atomic.extensions.*
@@ -106,13 +106,13 @@ object AsyncLock:
                   s"⟲ $sym$nrString $name: $acquirer_ is still waiting for ${since.elapsed.pretty
                   } ($queueLength queued)...")
             .onCancel(IO:
-              if !acquired && sym.called then
+              if !acquired && sym.used then
                 logger.log(sym.logLevel,
                   s"⚫️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
 
         def logAfterAcquire: IO[Unit] =
           IO:
-            if sym.called then
+            if sym.used then
               logger.log(sym.relievedLogLevel,
                 s"↘ 🟢$nrString $name acquired by $acquirer_ · $queueLength queued · ${
                   since.elapsed.pretty} ↘")
@@ -123,8 +123,8 @@ object AsyncLock:
 
         def logRelease(exitCase: ExitCase): IO[Unit] =
           IO:
-            if minorRequestLogged || sym.called then
-              val logLevel = if sym.called then sym.logLevel else Trace
+            if minorRequestLogged || sym.used then
+              val logLevel = if sym.used then sym.logLevel else LogLevel.Trace
               exitCase match
                 case ExitCase.Succeeded =>
                   logger.log(logLevel,

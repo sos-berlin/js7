@@ -37,19 +37,19 @@ final class BlockingSymbolTest extends OurTestSuite:
     assert(sym.logLevel == LogLevel.None)
     assert(sym.relievedLogLevel == LogLevel.None)
 
-    sym.increment()
+    sym.escalate()
     assert(sym.logLevel == LogLevel.Debug)
     assert(sym.relievedLogLevel == LogLevel.Debug)
 
-    sym.increment()
+    sym.escalate()
     assert(sym.logLevel == LogLevel.Info)
     assert(sym.relievedLogLevel == LogLevel.Info)
 
-    sym.increment()
+    sym.escalate()
     assert(sym.logLevel == LogLevel.Warn)
     assert(sym.relievedLogLevel == LogLevel.Info)
 
-    sym.increment()
+    sym.escalate()
     assert(sym.logLevel == LogLevel.Warn)
     assert(sym.relievedLogLevel == LogLevel.Info)
 
