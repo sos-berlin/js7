@@ -52,7 +52,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
       val sym = new BlockingSymbol
       val delays = Iterator(100.ms, 300.ms, 600.ms) ++ Iterator.continually(1.s)
       val until = now + timeout
-      ().tailRecM { _ =>
+      ().tailRecM: _ =>
         body
           .flatMap:
             case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
@@ -70,7 +70,6 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
               IO.right(checked)
           .tapError(throwable => IO(
             logger.log(sym.relievedLogLevel, s"💥$toString => $throwable")))
-      }
 
   final def commandExecute(command: AgentCommand): IO[Checked[command.Response]] =
     liftProblem(

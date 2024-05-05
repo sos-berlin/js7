@@ -137,17 +137,16 @@ extends Service.StoppableByRequest:
     journal.state.flatMap(controllerState => controllerState
       .itemToAgentToAttachedState
       .view
-      .flatMap { case (itemKey, agentPathToAttachedState) =>
+      .flatMap: (itemKey, agentPathToAttachedState) =>
         agentPathToAttachedState
           .get(agentPath)
           .view
-          .collect { case ItemAttachedState.Attachable => itemKey }
+          .collect:
+            case ItemAttachedState.Attachable => itemKey
           .flatMap(controllerState.keyToItem.get)
-          .collect {
+          .collect:
             case item: UnsignedItem => Queueable.AttachUnsignedItem(item)
             //??? case signedItem: SignableItem => Queueable.AttachSignedItem(signedItem)
-          }
-      }
       .toVector
       .traverse(commandQueue.enqueue)
       .*>(commandQueue.maybeStartSending))
@@ -171,23 +170,21 @@ extends Service.StoppableByRequest:
       IO.defer:
         lastCouplingFailed = None
         handleBatchSucceeded(queueableResponses)
-          .flatMap { succeededInputs =>
+          .flatMap: succeededInputs =>
             val markedOrders = succeededInputs.view
               .collect { case o: Queueable.MarkOrder => o.orderId -> o.mark }
               .toMap
             IO
-              .whenA(markedOrders.nonEmpty)(
-                onOrderMarked(markedOrders))
+              .whenA(markedOrders.nonEmpty):
+                onOrderMarked(markedOrders)
               .*>(IO.defer:
-                val releaseEvents = succeededInputs.collect {
+                val releaseEvents = succeededInputs.collect:
                   case o: Queueable.ReleaseEventsQueueable => o
-                }
                 IO.whenA(releaseEvents.nonEmpty):
                   state.releaseEventsCancelable
                     .traverse(_.cancel)
                     .*>(IO:
                       state.releaseEventsCancelable = None))
-          }
 
     protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
       onBatchFailed(queueables, problem) *>
@@ -333,11 +330,11 @@ extends Service.StoppableByRequest:
 
   private def dedicateAgentIfNeeded(directorDriver: DirectorDriver)
   : IO[Checked[(AgentRunId, EventId)]] =
-    logger.traceIO(IO.defer {
+    logger.traceIO(IO.defer:
       checkedAgentRefState
-        .flatMapT { agentRefState =>
+        .flatMapT: agentRefState =>
           import agentRefState.agentRef.directors
-          agentRefState.agentRunId match {
+          agentRefState.agentRunId match
             case Some(agentRunId) => IO.right(agentRunId -> state.adoptedEventId)
             case None =>
               val controllerRunId = ControllerRunId(journal.journalId)
@@ -356,10 +353,7 @@ extends Service.StoppableByRequest:
                         reattachSomeItems().map(Right(_))
                       }
                   ).rightAs(agentRunId -> agentEventId)
-                }
-          }
-        }
-    })
+                })
 
   private def reattachSomeItems(): IO[Unit] =
     journal.state.flatMap(controllerState =>
@@ -460,17 +454,15 @@ extends Service.StoppableByRequest:
         .keyTo(AgentRefState)
         .checked(agentPath)
         .map(_.nodeToClusterNodeProblem)
-        .flatMap { nodeToClusterWatchConfirmationRequired =>
-          Right(maybeProblem match {
+        .flatMap: nodeToClusterWatchConfirmationRequired =>
+          Right(maybeProblem match
             case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
               (!nodeToClusterWatchConfirmationRequired.get(problem.fromNodeId).contains(problem))
                 .thenList(
                   agentPath <-: AgentClusterWatchConfirmationRequired(problem))
             case None =>
               nodeToClusterWatchConfirmationRequired.nonEmpty.thenList(
-                agentPath <-: AgentClusterWatchManuallyConfirmed)
-          })
-        })
+                agentPath <-: AgentClusterWatchManuallyConfirmed)))
       .rightAs(())
       .onProblemHandleInF(problem => logger.error(problem.toString))
 

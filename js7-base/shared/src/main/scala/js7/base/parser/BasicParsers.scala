@@ -136,7 +136,8 @@ object BasicParsers:
 
   private val doubleQuotedContent: Parser0[String] =
     (doubleQuotedContentPart ~ (escapedCharInString ~ doubleQuotedContentPart).rep0)
-      .map { case (a, pairs) => a + pairs.view.map(o => o._1.toString + o._2).mkString }
+      .map: (a, pairs) =>
+        a + pairs.view.map(o => o._1.toString + o._2).mkString
 
   private val doubleQuoted: Parser[String] =
     doubleQuotedContent.with1.surroundedBy(char('"'))
@@ -241,8 +242,8 @@ object BasicParsers:
       .map(_.fold(List.empty[A])(_.toList))
 
   def nonEmptyCommaSequence[A](parser: Parser[A]): Parser[NonEmptyList[A]] =
-    (parser ~ (((w ~ char(',')).backtrack ~~*> parser).rep0))
-      .map { case (head, tail) => NonEmptyList(head, tail) }
+    (parser ~ ((w ~ char(',')).backtrack ~~*> parser).rep0)
+      .map((head, tail) => NonEmptyList(head, tail))
 
   def leftRecurse[A, O](initial: Parser[A], operator: Parser[O], operand: Parser[A])
     (operation: (A, (O, A)) => A)

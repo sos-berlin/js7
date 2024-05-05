@@ -56,13 +56,12 @@ object CirceJsonTester:
     removeJNull(
       json.asObject match {
         case Some(o) =>
-          Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) => k -> normalizeJson(v) })
+          Json.fromFields(o.toVector.sortBy(_._1).map((k, v) => k -> normalizeJson(v)))
 
         case None =>
-          json.asArray match {
+          json.asArray match
             case Some(o) => Json.fromValues(o map normalizeJson)
             case None => json
-          }
       })
 
   def removeJNull(json: Json): Json =

@@ -102,13 +102,12 @@ object CanBindCorrelId:
         if !CorrelId.isEnabled then
           Resource.suspend(F.delay(resource))
         else
-          Resource.suspend(
+          Resource.suspend:
             correlId.bind(resource.allocated)
-              .map { case (acquiredThing, release) =>
+              .map: (acquiredThing, release) =>
                 Resource.make(
                   acquire = F.pure(acquiredThing))(
                   release = _ => correlId.bind(release))
-              })
 
       def bindNewIfEmpty(resource: => Resource[F, A]): Resource[F, A] =
         if !CorrelId.isEnabled then

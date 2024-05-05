@@ -13,6 +13,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.ClusterWatchMainTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 
 final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:
 
@@ -68,9 +69,9 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterFor
     for
       runAnOrder <- runAnOrder.start
       clusterWatch <- clusterWatch.start
-      _ <- runAnOrder.join
+      _ <- runAnOrder.joinStd
       _ <- stopClusterWatch.complete(())
-      _ <- clusterWatch.join
+      _ <- clusterWatch.joinStd
     yield succeed
 
 

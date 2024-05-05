@@ -178,12 +178,10 @@ extends Actor, Stash, SimpleStateActor:
         // Command is idempotent until AgentState has been touched
         dedicate(directors, controllerId, controllerRunId, agentPath)
           .unsafeToFuture()
-          .onComplete { tried =>
-            response.complete(
-              tried.map(_.map { case (agentRunId, eventId) =>
-                AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId)
-              }))
-          }
+          .onComplete: tried =>
+            response.complete:
+              tried.map(_.map: (agentRunId, eventId) =>
+                AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId))
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId, controllerRunId: ControllerRunId)
         if !terminating =>
@@ -309,11 +307,10 @@ extends Actor, Stash, SimpleStateActor:
   : Future[Checked[AgentCommand.Response.Accepted]] =
     (dedicated.actor ? shutDown)
       .mapTo[AgentCommand.Response.Accepted]
-      .map { ordersTerminated =>
+      .map: ordersTerminated =>
         terminateCompleted.success(Completed) // Wait for child Actor termination
         continueTermination()
         Right(ordersTerminated)
-      }
 
   private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
     synchronized:

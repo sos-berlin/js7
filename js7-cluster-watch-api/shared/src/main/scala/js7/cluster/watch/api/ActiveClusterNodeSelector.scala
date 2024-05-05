@@ -81,16 +81,14 @@ object ActiveClusterNodeSelector:
                       maybeActive match
                         case None => IO.sleep(failureDelayIterator.next()).as(Left(()))
                         case Some(x) => IO.right(x)
-            .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
+            .onErrorRestartLoop(()): (throwable, _, tryAgain) =>
               logger.warn(throwable.toStringWithCauses)
               if throwable.getStackTrace.nonEmpty then logger.debug(s"💥 $throwable", throwable)
               tryAgain(()).delayBy(failureDelayIterator.next())
-            }
-            .map { case (api, clusterNodeState) =>
+            .map: (api, clusterNodeState) =>
               val x = if clusterNodeState.isActive then "active" else "maybe passive"
               logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
               api
-            }
 
   private case class ApiWithFiber[Api <: HttpClusterNodeApi](
     api: Api,

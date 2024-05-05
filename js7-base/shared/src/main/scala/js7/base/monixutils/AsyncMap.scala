@@ -141,12 +141,11 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
     lockKeeper.lock(key):
       IO.defer:
         update(_map.get(key))
-          .flatMapT { case (v, r) =>
+          .flatMapT: (v, r) =>
             shortLock
               .lock(IO:
                 updateMap(key, v))
               .rightAs(r)
-          }
 
   private def updateMap(key: K, value: V): Checked[Unit] =
     val checked = if _map.contains(key) then Checked.unit else onEntryInsert()

@@ -90,7 +90,7 @@ object CirceUtils:
             Json.fromJsonObject(
               JsonObject.fromMap(jsonObject
                 .toMap
-                .map { case (k, v) => rename.getOrElse(k, k) -> v }))))
+                .map((k, v) => rename.getOrElse(k, k) -> v)))))
 
   val CompactPrinter: Printer = Printer.noSpaces.copy(
     dropNullValues = true/*Suppress None*/,

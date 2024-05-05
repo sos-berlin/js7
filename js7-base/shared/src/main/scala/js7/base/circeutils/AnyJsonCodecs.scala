@@ -43,7 +43,7 @@ object AnyJsonCodecs:
         else sys.error(s"Unsupported type for JSON serialization: ${v.getClass.getName}")
 
   def mapToJson(m: Map[String, Any]): Json =
-    Json.fromJsonObject(JsonObject.fromMap(m map { case (k, v) => k -> anyToJson(v) }))
+    Json.fromJsonObject(JsonObject.fromMap(m.map((k, v) => k -> anyToJson(v))))
 
   def jsonToAny(json: Json): Any =
     json.asBoolean match

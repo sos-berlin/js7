@@ -124,8 +124,8 @@ private[cluster] object ActivationInhibitor:
     peersUserAndPassword: Option[UserAndPassword],
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi])
   : IO[Option[FailedOver]] =
-    IO.defer {
-      val retryDelay = 5.s  // TODO
+    IO.defer:
+      val retryDelay = 5.s // TODO
       clusterNodeApi(
         Admission(setting.passiveUri, peersUserAndPassword),
         "inhibitActivationOfPassiveNode"
@@ -134,7 +134,7 @@ private[cluster] object ActivationInhibitor:
           .executeClusterCommand(
             ClusterInhibitActivation(setting.timing.inhibitActivationDuration))
           .map(_.failedOver))
-        .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        .onErrorRestartLoop(()): (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen.
           //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
           val msg = "While trying to reach the other cluster node due to restart: " +
@@ -142,11 +142,9 @@ private[cluster] object ActivationInhibitor:
           logger.warn(msg)
           for t <- throwable.ifStackTrace do logger.debug(msg, t)
           retry(()).delayBy(retryDelay)
-        }
-    }.map { maybeFailedOver =>
+    .map: maybeFailedOver =>
       logger.debug(s"${setting.passiveUri} ClusterInhibitActivation returned failedOver=$maybeFailedOver")
       maybeFailedOver
-    }
 
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State

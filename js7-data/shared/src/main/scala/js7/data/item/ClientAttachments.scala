@@ -25,11 +25,9 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
   def toSnapshotStream: Stream[IO, ItemAttachedStateEvent] =
     Stream.iterable(itemToDelegateToAttachedState
       .to(View)
-      .flatMap { case (key, agentToAttached) =>
-        agentToAttached.map { case (agentPath, attachedState) =>
-          ItemAttachedStateEvent(key, agentPath, attachedState)
-        }
-      })
+      .flatMap:(key, agentToAttached) =>
+        agentToAttached.map: (agentPath, attachedState) =>
+          ItemAttachedStateEvent(key, agentPath, attachedState))
 
   def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] =
     val delegateId = cast[D](event.delegateId)

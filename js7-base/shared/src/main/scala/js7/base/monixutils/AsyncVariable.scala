@@ -29,29 +29,26 @@ final class AsyncVariable[V] private(
 
   def updateChecked(update: V => IO[Checked[V]])(implicit src: sourcecode.Enclosing)
   : IO[Checked[V]] =
-    shieldValue(
-      for checked <- update(_value) yield {
+    shieldValue:
+      for checked <- update(_value) yield
         for v <- checked do _value = v
         checked
-      })
 
   def updateWithResult[R](update: V => IO[(V, R)])(implicit src: sourcecode.Enclosing): IO[R] =
-    shieldValue(
+    shieldValue:
       update(_value)
-        .map { case (v, r) =>
+        .map: (v, r) =>
           _value = v
           r
-        })
 
   def updateCheckedWithResult[R](update: V => IO[Checked[(V, R)]])
     (implicit src: sourcecode.Enclosing)
   : IO[Checked[R]] =
-    shieldValue(
+    shieldValue:
       update(_value)
-        .map(_.map { case (v, r) =>
+        .map(_.map: (v, r) =>
           _value = v
-          r
-        }))
+          r)
 
   //def use[R](body: V => IO[R])(implicit src: sourcecode.Enclosing): IO[R] =
   //  lock.lock(body)

@@ -28,8 +28,8 @@ object AdmissionTimeSchemeForJavaTime:
       from: Timestamp, until: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
     : View[(Int, TimeInterval)] =
       findLocalIntervals(from.toLocalDateTime(zone), dateOffset)
-        .map { case (periodIndex, localInterval) =>
-          periodIndex -> localInterval.toTimeInterval(zone) }
+        .map: (periodIndex, localInterval) =>
+          periodIndex -> localInterval.toTimeInterval(zone)
         .takeWhile(_._2.startsBefore(until))
         .filterNot(_._2.endsBefore(from))
 
@@ -56,7 +56,6 @@ object AdmissionTimeSchemeForJavaTime:
     : View[(Int, LocalInterval)] =
       View.fromIteratorProvider(() => admissionTimeScheme.periods
         .zipWithIndex
-        .map { case (period, i) =>
+        .map: (period, i) =>
           AdmissionPeriodCalculator(period, dateOffset).findLocalIntervals(local).map(i -> _)
-        }
         .mergeOrderedBy(_._2))

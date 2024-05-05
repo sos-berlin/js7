@@ -30,7 +30,7 @@ object AgentClientMain extends OurApp:
   def run(args: Seq[String], print: String => Unit)(using IORuntime /*for testing*/): ExitCode =
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
-    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
+    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, configDirectory)): textApi =>
       textApi.setSessionToken(sessionToken)
       if operations.isEmpty then
         ExitCode(if textApi.checkIsResponding() then 0 else 1)
@@ -40,10 +40,9 @@ object AgentClientMain extends OurApp:
           case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
           case Get(uri) => textApi.getApi(uri)
         ExitCode(0)
-    }
 
   private def parseArgs(args: Seq[String]) =
-    CommandLineArguments.parse(args) { arguments =>
+    CommandLineArguments.parse(args): arguments =>
       val agentUri = Uri(arguments.keylessValue(0))
       val configDirectory = arguments.optionAs[Path]("--config-directory=")
       val dataDirectory = arguments.as[Path]("--data-directory=")
@@ -53,7 +52,6 @@ object AgentClientMain extends OurApp:
         case command => StringCommand(command)
       if operations.count(_ == StdinCommand) > 1 then throw new IllegalArgumentException("Stdin ('-') can only be read once")
       (agentUri, configDirectory, dataDirectory, operations)
-    }
 
   private sealed trait Operation
   private case class StringCommand(command: String) extends Operation

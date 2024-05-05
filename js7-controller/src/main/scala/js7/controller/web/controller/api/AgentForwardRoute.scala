@@ -37,20 +37,17 @@ trait AgentForwardRoute extends ControllerRouteProvider:
   private given IORuntime = ioRuntime
 
   protected final lazy val agentForwardRoute: Route =
-    authorizedUser(ValidUserPermission)(_ =>
-      pathPrefix(Segment)(agentPath =>
-        AgentPath.checked(agentPath) match {
+    authorizedUser(ValidUserPermission): _ =>
+      pathPrefix(Segment): agentPath =>
+        AgentPath.checked(agentPath) match
           case Left(problem) => complete(problem)
           case Right(agentPath) =>
-            extractRequest { request =>
+            extractRequest: request =>
               val userAndPassword = controllerConfiguration.config
                 .optionAs[SecretString](
                   "js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
                 .map(UserAndPassword(controllerConfiguration.controllerId.toUserId, _))
-
               forward(agentPath, userAndPassword, request)
-            }
-        }))
 
   private def forward(
     agentPath: AgentPath,

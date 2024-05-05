@@ -154,7 +154,8 @@ object CatsUtils:
         (using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G])
       : G[Allocated[G, B]] =
         resource.allocated[B]
-          .map { case (b, release) => new Allocated(b, release, label = label) }
+          .map: (b, release) =>
+            new Allocated(b, release, label = label)
 
       def toAllocatedResource[G[x] >: F[x], B >: A: Tag](
         using G: Sync[G], F: MonadCancel[F, Throwable], g: UnsafeMemoizable[G])
