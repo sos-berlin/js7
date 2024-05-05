@@ -69,7 +69,7 @@ extends Service.StoppableByRequest:
 
   private def poll: IO[Seq[DirectoryWatchEvent]] =
     pollWatchKey().recover:
-      case NonFatal(t: ClosedWatchServiceException) =>
+      case t: ClosedWatchServiceException =>
         logger.debug(s"${t.toStringWithCauses}")
         // This may execute after service stopped, and the tread pool may be closed too.
         // Therefore we never continue.

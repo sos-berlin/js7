@@ -22,11 +22,10 @@ object JavaMain:
     Logger.resource[IO](name).surround:
       IO(initialize())
         .*>(body)
-        .recover:
-          case t: Throwable =>
-            logger.error(t.toStringWithCauses, t)
-            printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
-            ExitCode(1)
+        .recover: t =>
+          logger.error(t.toStringWithCauses, t)
+          printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
+          ExitCode(1)
 
   private def initialize(): Unit =
     ProblemCodeMessages.initialize()

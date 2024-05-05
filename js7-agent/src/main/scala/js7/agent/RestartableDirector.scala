@@ -10,7 +10,6 @@ import js7.base.log.Logger
 import js7.base.monixutils.AsyncVariable
 import js7.base.service.{MainService, Service}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
-import js7.base.utils.CatsUtils.RichDeferred
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.subagent.Subagent
@@ -48,9 +47,9 @@ extends MainService, Service.StoppableByRequest:
                 else
                   IO.pure(terminated))
               .flatTap(termination =>
-                _untilTerminated.complete3(Success(termination)).as(Right(())))
+                _untilTerminated.complete(Success(termination)).as(Right(())))
               .tapError(t => // ???
-                _untilTerminated.complete3(Failure(t)).void)
+                _untilTerminated.complete(Failure(t)).void)
               .void))
 
   private def restartLoop: IO[DirectorTermination] =

@@ -189,8 +189,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
             if !terminatingJobs then
               terminatingJobs = true
               subagentKeeper.stop
-                .recover(t => logger.error(
-                  s"subagentKeeper.stop =>${t.toStringWithCauses}", t))
+                .handleError: t =>
+                  logger.error(s"subagentKeeper.stop =>${t.toStringWithCauses}", t)
                 .map(_ => self ! Internal.JobDriverStopped)
                 .unsafeRunAndForget()
             if jobRegister.isEmpty && !terminatingJournal then
@@ -439,8 +439,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
               for workflow <- maybeWorkflow do
                 subagentKeeper
                   .stopJobs(workflow.keyToJob.keys, SIGKILL/*just in case*/)
-                  .recover(t => logger.error(
-                    s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t))
+                  .handleError: t =>
+                    logger.error(s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t)
                   .unsafeRunAndForget()
               Right(AgentCommand.Response.Accepted)
             }

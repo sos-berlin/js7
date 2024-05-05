@@ -153,7 +153,8 @@ private[agent] abstract class CommandQueue(
         openRequestCount += 1
         delayNextCommand
           .*>(sendNow(queueables))
-          .recover(t => logger.error(t.toStringWithCauses, t))
+          .handleError: t => 
+            logger.error(t.toStringWithCauses, t)
           .startAndForget.void
       })
     }))

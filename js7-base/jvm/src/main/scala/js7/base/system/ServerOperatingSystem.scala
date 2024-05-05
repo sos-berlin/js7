@@ -125,9 +125,9 @@ object ServerOperatingSystem:
         None
       else
         Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
-          .recover { case _ => readFileOsRelease() }   // New standard ?
-          .recover { case _ => readFileAnyRelease() }  // Vendor-specific
-          .recover { case _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+          .recover { _ => readFileOsRelease() }   // New standard ?
+          .recover { _ => readFileAnyRelease() }  // Vendor-specific
+          .recover { _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
           .toOption
 
     lazy val cpuModel: Option[String] =

@@ -316,7 +316,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     logger.debug(s"🗑 <-|↙$responseLogPrefix canceled with discardEntityBytes => " +
                       tried.fold(_.toStringWithCauses, _ => "OK"))
                   .map((_: Done) => ())
-                  .recover(_ => ())
+                  .handleError(_ => ())
                 ()) // Forget the started Future, discard the remaining entities in background
 
               future -> cancel

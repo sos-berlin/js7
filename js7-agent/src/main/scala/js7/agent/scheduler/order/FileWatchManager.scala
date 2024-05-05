@@ -7,8 +7,8 @@ import cats.syntax.monoid.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
-import fs2.concurrent.{Signal, SignallingRef}
 import fs2.Chunk
+import fs2.concurrent.{Signal, SignallingRef}
 import java.nio.file.{Path, Paths}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState
@@ -17,8 +17,7 @@ import js7.agent.scheduler.order.FileWatchManager.*
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, right}
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
-import js7.base.io.file.watch.DirectoryEventDelayer.syntax.*
-import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatch, DirectoryWatchSettings}
+import js7.base.io.file.watch.{DirectoryEvent, DirectoryEventDelayer, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.*
@@ -131,8 +130,8 @@ final class FileWatchManager(
                 previous.getOrElse(IO.unit) *>
                   stream
                     //?.onCancelRaiseError(CanceledException)
-                    .recover(throwable =>
-                      logger.error(throwable.toStringWithCauses))  // Ignore ???
+                    .handleError: throwable =>
+                      logger.error(throwable.toStringWithCauses)  // Ignore ???
                     .start
                     .map(fiber =>
                       // Register the stopper, a joining task for the next update:
@@ -171,7 +170,8 @@ final class FileWatchManager(
             logger.debug(s"${fileWatch.path} watching started - $directory"))
           .interruptWhen(stop)
           // Buffers without limit all incoming events
-          .delayFileAdded(directory, fileWatch.delay, settings.logDelays)
+          .through:
+            DirectoryEventDelayer(directory, fileWatch.delay, settings.logDelays)
           .chunks
           .evalMap(chunk =>
             lockKeeper.lock(fileWatch.path)(

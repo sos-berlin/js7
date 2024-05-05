@@ -136,8 +136,8 @@ extends MainService, Service.StoppableByRequest:
           case Left(problem) =>
             logger.warn(s"❓$nodeApi $problem")
           case Right(()) =>
-        .recover(t =>
-          logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+        .handleError: t =>
+          logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)
 
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
     clusterWatch.manuallyConfirmNodeLoss(lostNodeId, confirmer)

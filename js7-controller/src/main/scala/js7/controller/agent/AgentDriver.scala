@@ -308,8 +308,9 @@ extends Service.StoppableByRequest:
           case Some(agentRunId) => adoptEvents(agentRunId, stampedEvents)
         })
         .flatMap(_.fold(IO.unit)(releaseAdoptedEvents))
-        .handleError(t =>
-          logger.error(s"$agentDriver.onEventsFetched => " + t.toStringWithCauses, t.nullIfNoStackTrace))
+        .handleError: t =>
+          logger.error(
+            s"$agentDriver.onEventsFetched => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         .logWhenItTakesLonger(s"$agentDriver.onEventsFetched")
 
   private def releaseAdoptedEvents(adoptedEventId: EventId): IO[Unit] =
@@ -323,7 +324,8 @@ extends Service.StoppableByRequest:
               IO.unlessA(isTerminating):
                 commandQueue
                   .enqueue(Queueable.ReleaseEventsQueueable(state.adoptedEventId)).void
-                  .recover(t => logger.error(t.toStringWithCauses, t))
+                  .handleError: t =>
+                    logger.error(t.toStringWithCauses, t)
             .start.flatMap: fiber =>
               IO:
                 state.releaseEventsCancelable = Some(fiber)

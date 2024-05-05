@@ -99,7 +99,7 @@ final class WorkingClusterNode[
             case _: ClusterState.HasNodes => IO.right(Completed)
             case ClusterState.Empty =>
               appointNodes2(setting)
-                .recover(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
+                .handleError(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
                 .map:
                   case Left(ClusterNodesAlreadyAppointed) =>
                     Right(Completed)

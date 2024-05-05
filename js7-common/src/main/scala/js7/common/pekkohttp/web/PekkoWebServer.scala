@@ -69,7 +69,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         .flatMap(_.parSequence)
         .map(_.combineAll)
 
-  def restartWhenHttpsChanges(implicit iox: IOExecutor): Resource[IO,Unit] =
+  def restartWhenHttpsChanges(implicit iox: IOExecutor): ResourceIO[Unit] =
     HttpsDirectoryWatch
       .resource(
         DirectoryWatchSettings.fromConfig(config).orThrow,

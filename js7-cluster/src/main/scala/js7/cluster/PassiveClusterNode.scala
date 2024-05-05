@@ -116,7 +116,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           .login(onlyIfNotLoggedIn = true)
           .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
           .void
-          .recover(throwable => logger.debug(
+          .handleError(throwable => logger.debug(
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
             throwable.nullIfNoStackTrace)))
         .timeoutTo(clusterConf.timing.heartbeat /*some short time*/ , IO.unit)

@@ -60,7 +60,7 @@ object CatsUtils:
 
     extension[A](underlying: IO[A])
       def logAndIgnoreError(what: => String): IO[Unit] =
-        underlying.void.recover: t =>
+        underlying.void.handleError: t =>
           IO(logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
@@ -165,11 +165,6 @@ object CatsUtils:
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
 
-
-  implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
-    /** For compatibility with Cats Effect 3. */
-    @deprecated def complete3(a: A)(implicit F: Sync[F]): F[Boolean] =
-      deferred.complete(a).attempt.map(_.isRight)
 
   implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal:
     def orThrow: A =
