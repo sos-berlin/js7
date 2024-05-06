@@ -4,8 +4,9 @@ import cats.effect.{IO, Sync, SyncIO}
 import cats.syntax.all.*
 import cats.{FlatMap, effect}
 import java.util.concurrent.atomic.AtomicInteger
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.{memoize, given}
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import org.scalatest.Assertion
 
@@ -22,6 +23,24 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
 
   ".unsafeMemoize with Cats SyncIO (blocking, experimental only)" in:
     check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
+
+  "cancel" in:
+    // UnsafeMemoizable is uncancelable.
+    // After cancellation the initialization continues in background and
+    // can be used for a second call.
+    val m = memoize(IO.sleep(10.ms).as(3))
+    for
+      // cancel: 1 is returned despite the computation is awaited (?)
+      x <- m.timeoutTo(1.ms, IO.pure(1))
+      _ = assert(x == 1)
+      // cancel again: now, the computed result 3 is returned
+      x <- m.timeoutTo(1.ms, IO.pure(2))
+      _ = assert(x == 3)
+      // don't cancel
+      x <- m
+      _ = assert(x == 3)
+    yield
+      succeed
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] =
     val called = Atomic(0)
