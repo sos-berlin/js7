@@ -2,6 +2,7 @@ package js7.cluster
 
 import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
+import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import fs2.Stream
 import io.circe.syntax.*
@@ -602,6 +603,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                   Stream.emit(Right(()))
         .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
         .takeThrough(_ => !shouldActivate(builder.clusterState))
+        .recoverWith:
+          case t: org.apache.pekko.stream.StreamTcpException
+            if shouldActivate(builder.clusterState) =>
+            // After a ClusterSwitchedOver event has been processed, the stream may fail due
+            // to connection reset. Maybe due to a prefetch. We ignore this.
+            Stream.exec(IO:
+              logger.debug(s"❓ Ignore error due to activation: ${t.toStringWithCauses}"))
         .collect:
           case Left(problem) => problem
           //case Right(Completed) => -ignore-
