@@ -1,7 +1,6 @@
 package js7.cluster
 
-import cats.effect.IO
-import cats.effect.Deferred
+import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import fs2.Stream
@@ -285,7 +284,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     activeNodeApi: ClusterNodeApi)
     (implicit ioRuntime: IORuntime)
   : IO[Checked[Continuation.Replicatable]] =
-    logger.debugIO("replicateJournalFile", continuation):
+    logger.debugIO("replicateJournalFile", continuation.fileEventId):
       SyncDeadline.now.flatMap: startedAt =>
         replicateJournalFile2(continuation, newStateBuilder, activeNodeApi, startedAt)
 
@@ -302,36 +301,35 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
-      val maybeTmpFile = locally:
-        // Suppress wrong "unreachable code" error for FirstPartialFile case
-        continuation match
-          case _: NoLocalJournal | _: NextFile =>
-            val tmp = Paths.get(file.toString + TmpSuffix)
-            logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
-            Some(tmp)
-
-          case _: FirstPartialFile =>
-            None
-
-      locally:
-        val f = maybeTmpFile getOrElse file
-        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName})=${size(f)} ${builder.clusterState}")
-        assertThat(continuation.fileLength == size(f))
-
-      var out = maybeTmpFile match
-        case None => FileChannel.open(file, APPEND)
-        case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
-      var isReplicatingHeadOfFile = maybeTmpFile.isDefined
-      val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
-      var replicatedFileLength = continuation.fileLength
-      var lastProperEventPosition = continuation.lastProperEventPosition
-      var _eof = false
-
       def releaseEvents(): Unit =
         if journalConf.deleteObsoleteFiles then
           eventWatch.releaseEvents(
             builder.journalState
               .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
+
+      val maybeTmpFile = continuation match
+        case _: NoLocalJournal | _: NextFile =>
+          val tmp = Paths.get(file.toString + TmpSuffix)
+          logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
+          Some(tmp)
+
+        case _: FirstPartialFile =>
+          None
+
+      var out = maybeTmpFile match
+        case None => FileChannel.open(file, APPEND)
+        case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
+
+      locally:
+        val f = maybeTmpFile getOrElse file
+        logger.debug(s"replicateJournalFile size(${f.getFileName})=${size(f)} ${builder.clusterState}")
+        assertThat(continuation.fileLength == size(f))
+
+      var isReplicatingHeadOfFile = maybeTmpFile.isDefined
+      val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
+      var replicatedFileLength = continuation.fileLength
+      var lastProperEventPosition = continuation.lastProperEventPosition
+      var _eof = false
 
       continuation match
         case FirstPartialFile(recoveredJournalFile) =>
@@ -611,7 +609,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         .map:
           case Some(problem) => Left(problem)
           case None =>
-            logger.debug(s"replicateJournalFile(${file.getFileName}) finished, " +
+            logger.debug(s"replicateJournalFile finished, " +
               s"isReplicatingHeadOfFile=$isReplicatingHeadOfFile, " +
               s"replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
             if !isReplicatingHeadOfFile then
