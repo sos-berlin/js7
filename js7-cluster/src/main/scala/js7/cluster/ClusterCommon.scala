@@ -100,11 +100,11 @@ private[cluster] final class ClusterCommon private(
               delayer.sleep *> retry(())
             .guaranteeCase:
               case Outcome.Succeeded(_) => IO:
-                if delayer.logLevel >= LogLevel.Warn then
-                  logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}")
+                logger.log(delayer.relievedLogLevel,
+                  s"🟢 $name command succeeded after ${since.elapsed.pretty}")
               case Outcome.Canceled() => IO:
-                if delayer.logLevel >= LogLevel.Warn then
-                  logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}")
+                logger.log(delayer.relievedLogLevel,
+                  s"⚫️ $name command canceled after ${since.elapsed.pretty}")
               case _ => IO.unit
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])

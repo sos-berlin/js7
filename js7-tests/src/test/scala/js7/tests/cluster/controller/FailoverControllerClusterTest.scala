@@ -109,7 +109,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
-      /// Cluster is coupled — now switch over ///
+      /// Cluster is coupled — now switch back ///
 
       backupController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](

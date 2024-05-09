@@ -288,9 +288,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     SyncDeadline.now.flatMap(startedAt => IO.defer:
       import continuation.file
 
+      val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
+        continuation.maybeJournalId, newStateBuilder)
+
       val maybeTmpFile = locally:
         // Suppress wrong "unreachable code" error for FirstPartialFile case
-        def toTmpFile = continuation match
+        continuation match
           case _: NoLocalJournal | _: NextFile =>
             val tmp = Paths.get(file.toString + TmpSuffix)
             logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
@@ -298,7 +301,11 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           case _: FirstPartialFile =>
             None
-        toTmpFile
+
+      locally:
+        val f = maybeTmpFile getOrElse file
+        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName})=${size(f)} ${builder.clusterState}")
+        assertThat(continuation.fileLength == size(f))
 
       var out = maybeTmpFile match
         case None => FileChannel.open(file, APPEND)
@@ -308,8 +315,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
-      val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
-        continuation.maybeJournalId, newStateBuilder)
 
       def releaseEvents(): Unit =
         if journalConf.deleteObsoleteFiles then
@@ -359,11 +364,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           override def eof(index: Long) =
             _eof && index >= replicatedFileLength
-
-      locally:
-        val f = maybeTmpFile getOrElse file
-        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName})=${size(f)} ${builder.clusterState}")
-        assertThat(continuation.fileLength == size(f))
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.stream(activeNodeApi, after = continuation.fileLength)

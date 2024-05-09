@@ -74,7 +74,7 @@ trait Service:
 
 
 object Service:
-  val defaultRestartDelays: Seq[FiniteDuration] =
+  private val defaultRestartDelays: Seq[FiniteDuration] =
     RestartAfterFailureService.defaultRestartDelays
 
   private[service] object Empty extends Service:

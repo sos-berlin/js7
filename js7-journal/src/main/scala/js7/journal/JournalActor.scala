@@ -240,7 +240,7 @@ extends Actor, Stash, JournalLogging:
         // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
         // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
         lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}" +
-                  s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
+          s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
         if lastAcknowledgedEventId < lastWrittenEventId then logger.warn(msg) else logger.debug(msg)
         ack = lastWrittenEventId
       sender() ! Completed
@@ -459,7 +459,7 @@ extends Actor, Stash, JournalLogging:
       // asynchronously at any time.
       sender() ! (() => isHalted)
 
-  def tryTakeSnapshotIfRequested(): Unit =
+  private def tryTakeSnapshotIfRequested(): Unit =
     if snapshotRequesters.nonEmpty then
       if lastWrittenEventId == lastSnapshotTakenEventId then
         responseAfterSnapshotTaken()
