@@ -100,17 +100,18 @@ extends Service.StoppableByRequest:
           IO.race(recoveryStopRequested.get, fiber.joinStd)
         .*>(untilStopRequested)
         .guaranteeCaseLazy: outcome =>
-          stopRecovery(ProgramTermination()/*???*/) *>
-            IO.defer:
-              (passiveOrWorkingNode.get(), outcome) match
-                case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
-                  passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
+          logger.debugIO("startService guarantee", outcome):
+            stopRecovery(ProgramTermination()/*???*/) *>
+              IO.defer:
+                (passiveOrWorkingNode.get(), outcome) match
+                  case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
+                    passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
 
-                case (Some(Right(workingClusterNodeAllocated)), _) =>
-                  workingClusterNodeAllocated.release
+                  case (Some(Right(workingClusterNodeAllocated)), _) =>
+                    workingClusterNodeAllocated.release
 
-                case _ => IO.unit
-            //? *> stopWorkingClusterNode
+                  case _ => IO.unit
+              //? *> stopWorkingClusterNode
 
   private def stopWorkingClusterNode: IO[Unit] =
     logger.traceIO:

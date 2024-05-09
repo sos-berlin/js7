@@ -74,12 +74,12 @@ private[cluster] final class ClusterCommon private(
     val name = command.getClass.simpleScalaName
     tryEndlesslyToSendCommand(clusterNodeApi(admission, name), _ => command)
 
-  def tryEndlesslyToSendCommand[C <: ClusterCommand: ClassTag](
+  def tryEndlesslyToSendCommand[C <: ClusterCommand](
     apiResource: ResourceIO[ClusterNodeApi],
     toCommand: OneTimeToken => C)
   : IO[Unit] =
     Delayer.start[IO](clusterConf.delayConf).flatMap: delayer =>
-      val name = implicitClass[C].simpleScalaName
+      val name = toCommand(OneTimeToken("TOKEN")).toShortString
       val since = now
       apiResource
         .use: api =>

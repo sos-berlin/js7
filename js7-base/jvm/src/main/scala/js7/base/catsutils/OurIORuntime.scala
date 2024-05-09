@@ -89,6 +89,7 @@ object OurIORuntime:
     val blockingLabel = s"$label-blocking"
 
     for
+      _ <- logAllocation[F](label, threads)
       pair <-
         Resource.eval(F.delay:
           computeExecutor match
@@ -118,6 +119,15 @@ object OurIORuntime:
       _ <- OurIORuntimeRegister.register(compute, ioRuntime)
     yield
       ioRuntime
+
+  private def logAllocation[F[_]](label: String, threads: Int)(using F: Sync[F])
+  : Resource[F, Unit] =
+    Resource(F.delay:
+      locally:
+        if Logger.isInitialized then
+          logger.debug(s"↘ IORuntime '$label' create with $threads threads ↘")
+      -> F.delay:
+        if Logger.isInitialized then logger.debug(s"↙ IORuntime '$label' closed ↙"))
 
   /** Testing only: Differentiate a repeated name with an index. */
   private def toIndexedName(name: String): String =

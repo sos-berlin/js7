@@ -285,7 +285,18 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     activeNodeApi: ClusterNodeApi)
     (implicit ioRuntime: IORuntime)
   : IO[Checked[Continuation.Replicatable]] =
-    SyncDeadline.now.flatMap(startedAt => IO.defer:
+    logger.debugIO("replicateJournalFile", continuation):
+      SyncDeadline.now.flatMap: startedAt =>
+        replicateJournalFile2(continuation, newStateBuilder, activeNodeApi, startedAt)
+
+  private def replicateJournalFile2(
+    continuation: Continuation.Replicatable,
+    newStateBuilder: () => SnapshotableStateBuilder[S],
+    activeNodeApi: ClusterNodeApi,
+    startedAt: SyncDeadline)
+    (implicit ioRuntime: IORuntime)
+  : IO[Checked[Continuation.Replicatable]] =
+    IO.defer:
       import continuation.file
 
       val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
@@ -619,7 +630,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                 Left(Problem.pure("JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
         .guarantee(IO:
-          out.close()))
+          out.close())
 
   private def writeFailedOverEvent(
     out: FileChannel,
