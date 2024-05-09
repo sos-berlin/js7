@@ -112,23 +112,21 @@ private[agent] abstract class CommandQueue(
   final def enqueue(queueable: Queueable): IO[Boolean] =
     lock.lock(IO.defer {
       assertThat(!isTerminating)
-      queueable match {
+      queueable match
         case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           IO.pure(false)
         case _ =>
-          if queue contains queueable then {
+          if queue contains queueable then
             logger.trace(s"Ignore duplicate $queueable")
             IO.pure(false)
-          } else {
+          else
             logger.trace(s"enqueue $queueable")
             queue.enqueue(queueable)
             IO
               .whenA(queue.size == batchSize || freshlyCoupled)(
                 maybeStartSendingLocked)
               .as(true)
-          }
-      }
     })
 
   final def untilTerminated: IO[Unit] =
@@ -153,7 +151,7 @@ private[agent] abstract class CommandQueue(
         openRequestCount += 1
         delayNextCommand
           .*>(sendNow(queueables))
-          .handleError: t => 
+          .handleError: t =>
             logger.error(t.toStringWithCauses, t)
           .startAndForget.void
       })

@@ -186,13 +186,12 @@ extends AutoCloseable:
               maybeLine.map(PositionAnd(lastPosition, _))
             }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
 
-            if onlyAcks then {
+            if onlyAcks then 
               // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
               //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
               var last = null.asInstanceOf[PositionAnd[ByteArray]]
               iterator foreach { last = _ }
               iterator = Option(last).iterator
-            }
 
             iterator = iterator
               .tapEach { o =>

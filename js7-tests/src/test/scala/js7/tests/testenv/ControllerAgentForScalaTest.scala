@@ -212,10 +212,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
             suffix = suffix,
             suppressSignatureKeys = suppressSignatureKeys)
           .evalTap(_ => IO {
-            if awaitDedicated then {
+            if awaitDedicated then
               val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
               eventWatch.await[SubagentCoupled](after = e)
-            }
           })
       })
 

@@ -58,19 +58,17 @@ object Collections:
 
         while buffer.length < n - 1 && it.hasNext do buffer += it.next()
 
-        factory.fromSpecific(new Iterator[List[A]] {
-          def hasNext = it.hasNext || buffer.nonEmpty
+        factory.fromSpecific:
+          new Iterator[List[A]]:
+            def hasNext = it.hasNext || buffer.nonEmpty
 
-          def next() = {
-            if it.hasNext then {
-              buffer += it.next()
-            }
-            if buffer.isEmpty then throw new NoSuchElementException("lookAhead: end of sequence")
-            val result = buffer.toList
-            buffer.remove(0)
-            result
-          }
-        })
+            def next() =
+              if it.hasNext then
+                buffer += it.next()
+              if buffer.isEmpty then throw new NoSuchElementException("lookAhead: end of sequence")
+              val result = buffer.toList
+              buffer.remove(0)
+              result
 
     implicit final class RichIterable[CC[+x] <: Iterable[x], A](private val underlying: CC[A])
     extends AnyVal:

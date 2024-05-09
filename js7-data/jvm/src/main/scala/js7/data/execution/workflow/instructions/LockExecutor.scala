@@ -29,13 +29,13 @@ extends EventInstructionExecutor:
                     .acquire(order.id, _)/*check only*/)
                   .rightAs(
                     OrderLocksAcquired(instruction.demands) :: Nil)
-              else if order.isState[Order.WaitingForLock] then {
+              else if order.isState[Order.WaitingForLock] then 
                 // Caller trys too often ???
                 logger.trace(s"🟡 ${order.id} is still WaitingForLock: ${
                   instruction.demands.zip(availability)
                     .collect { case (demand, false) => demand.lockPath }.mkString(" ")}")
                 Right(Nil)
-              } else
+              else
                 state
                   .foreachLockDemand(instruction.demands)(_
                     .enqueue(order.id, _)/*check only*/)

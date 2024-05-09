@@ -424,8 +424,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         request
           .withEntity(chunked.copy(
             chunks = chunked.chunks
-              .map { chunk =>
-                if LogData || chunk.isLastChunk then {
+              .map: chunk =>
+                if LogData || chunk.isLastChunk then
                   def arrow = if chunk.isLastChunk then "|-->  " else "->->  "
                   def data =
                     if isUtf8 then
@@ -437,9 +437,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     loggerHeartbeat.trace(s"$arrow$requestLogPrefix $data")
                   else
                     loggerStream.trace(s"$arrow$requestLogPrefix $data")
-                }
                 chunk
-              }
               .mapError: t =>
                 logger.trace(s"~~> 💥$requestLogPrefix ${t.toStringWithCauses}")
                 t))
@@ -454,8 +452,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         response
           .withEntity(chunked.copy(
             chunks = chunked.chunks
-              .map { chunk =>
-                if LogData || chunk.isLastChunk then {
+              .map: chunk =>
+                if LogData || chunk.isLastChunk then
                   def arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
                   def data =
                     if isUtf8 then
@@ -467,9 +465,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     loggerHeartbeat.trace(s"$arrow$responseLogPrefix $data")
                   else
                     loggerStream.trace(s"$arrow$responseLogPrefix $data")
-                }
                 chunk
-              }
               .mapError: t =>
                 logger.trace(s"<~~ 💥$responseLogPrefix ${t.toStringWithCauses}")
                 t))

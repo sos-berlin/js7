@@ -83,12 +83,11 @@ extends AutoCloseable:
       Left(Problem.pure("No directory is allowed in toFile function filenamePattern argument"))
     else Right(
       usedFilenames.synchronized {
-        if usedFilenames.get().contains(f) then {
+        if usedFilenames.get().contains(f) then
           // Place duplicate filename in its own directory
           val dedicatedDirectory = Paths.get(directoryNumber.incrementAndGet().toString)
           usedFilenames := usedFilenames.get() + dedicatedDirectory
           f = dedicatedDirectory.resolve(filename)
-        }
         usedFilenames := usedFilenames.get() + f
         f
       })

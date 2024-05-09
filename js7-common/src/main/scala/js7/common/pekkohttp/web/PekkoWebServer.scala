@@ -100,16 +100,16 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         val diff = fileToTime.filterNot:
           case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
           case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
-        (if diff.isEmpty then {
+        (if diff.isEmpty then
           if fileToTime.nonEmpty then logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
           IO.pure(previouslyAllocated)
-        } else {
+        else
           logger.info(s"Restart HTTPS web server due to changed keys or certificates: ${
             diff.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")}")
           previouslyAllocated.fold(IO.unit)(_.release) *>
             startPortWebServer(bindingAndResource) <*
             IO(testEventBus.publish(RestartedEvent))
-        }).<*(IO(
+        ).<*(IO(
           _addrToHttpsFileToTime(binding.address) = prevFileToTime))
       }
 

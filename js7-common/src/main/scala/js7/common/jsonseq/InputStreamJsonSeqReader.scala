@@ -95,7 +95,8 @@ extends AutoCloseable:
             blockRead += 1
             rsReached = true
         val start = blockRead
-        while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do { blockRead += 1 }
+        while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do
+          blockRead += 1
         val chunk = ByteArray.unsafeWrap(java.util.Arrays.copyOfRange(block, start, blockRead + (if lfReached then 1 else 0)))
         if chunk.nonEmpty then
           byteArrays += chunk

@@ -209,10 +209,10 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
         .map(_.toSet)
       .map(controllerOrAgents =>
         // None means Controller or the location is irrelevant (not distinguishable for now)
-        if controllerOrAgents.sizeIs == 1 then {
+        if controllerOrAgents.sizeIs == 1 then
           // All children start at the Controller or the same Agent
           val enoughChildren = orderForked.children.sizeIs >= MinimumChildCountForParentAttachment
-          (order.attachedState, controllerOrAgents.head) match {
+          (order.attachedState, controllerOrAgents.head) match 
             case (Some(Order.Attached(agentPath)), Some(childrensAgentPath)) =>
               // If parent order's attachment and the orders first agent differs,
               // detach the parent order!
@@ -230,8 +230,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
 
             case _ =>
               None
-          }
-        } else // Child orders may start at different agents
+        else // Child orders may start at different agents
           // Transfer back to Controller
           // Inefficient if only one of many children change the agent !!!
           order.isAttached ? None)

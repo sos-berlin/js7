@@ -120,10 +120,10 @@ extends AdmissionPeriod:
     -lastSecondOfMonth % DaySeconds
 
   def pretty: String =
-    (lastDayOfMonth match {
+    (lastDayOfMonth match
       case 1 => ""
       case _ => ordinalToString(lastDayOfMonth) + " to "
-    }) + "last day of month, " +
+    ) + "last day of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
 object MonthlyLastDatePeriod:
@@ -194,10 +194,10 @@ extends AdmissionPeriod:
   def secondOfWeek: Int = (secondOfWeeks + 5*WeekSeconds) % WeekSeconds
 
   def pretty: String =
-    (shiftWeeks match {
+    (shiftWeeks match
       case 0 => "last "
       case n => ordinalToString(-n+1) + " last "
-    }) +
+    ) +
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty

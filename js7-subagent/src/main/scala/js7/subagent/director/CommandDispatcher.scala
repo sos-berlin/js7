@@ -56,17 +56,15 @@ private trait CommandDispatcher:
         queue.stop
           .flatMap { numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
-            for numberedExecute <- numberedExecutes do {
-              commandToProblem.lift(numberedExecute.value.command) match {
+            for numberedExecute <- numberedExecutes do 
+              commandToProblem.lift(numberedExecute.value.command) match 
                 case None =>
                   logger.debug(s"⚠️ $numberedExecute => discarded")
 
                 case Some(problem) =>
                   logger.debug(s"⚠️ $numberedExecute => $problem")
                   numberedExecute.value.tryRespond(Success(Left(problem)))
-              }
               // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
-            }
             processing.joinStd
           })))
 

@@ -156,9 +156,8 @@ object FileJournal:
         val S = implicitly[SnapshotableState.Companion[S]]
         val journalId = recovered.journalId getOrElse JournalId.random()
 
-        if recovered.recoveredJournalFile.isEmpty then {
+        if recovered.recoveredJournalFile.isEmpty then 
           logger.info("Starting a new empty journal")
-        }
 
         val journalActorStopped = Promise[JournalActor.Stopped]()
         val journalActor = actorRefFactory

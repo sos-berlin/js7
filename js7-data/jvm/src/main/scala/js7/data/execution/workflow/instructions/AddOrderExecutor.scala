@@ -17,8 +17,8 @@ extends EventInstructionExecutor:
   def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) =
     detach(order)
       .orElse(start(order))
-      .getOrElse(
-        order.state match {
+      .getOrElse:
+        order.state match
           case Order.Ready =>
             val events = for
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
@@ -42,4 +42,3 @@ extends EventInstructionExecutor:
             events.map(_.map(order.id <-: _).toList)
 
           case _ => Right(Nil)
-        })

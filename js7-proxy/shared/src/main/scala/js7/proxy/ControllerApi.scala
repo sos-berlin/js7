@@ -203,12 +203,11 @@ extends ControllerApiWithHttp:
         .onErrorRestartLoop(()) {
           case (t, _, retry)
             if isTemporaryUnreachable(t) && delays.hasNext =>
-            if warned.elapsed >= 60.s then {
+            if warned.elapsed >= 60.s then
               logger.warn(t.toStringWithCauses)
               warned = now
-            } else {
+            else
               logger.debug(t.toStringWithCauses)
-            }
             apiCache.clear *>
               IO.sleep(delays.next()) *>
               retry(())

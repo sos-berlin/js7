@@ -87,9 +87,8 @@ extends Service.StoppableByRequest:
       IO
         .whenA(first)(IO.defer {
           val orderCount = orderIdToJobDriver.toMap.size
-          if orderCount > 0 then {
+          if orderCount > 0 then 
             logger.info(s"Stopping, waiting for $orderCount processes")
-          }
           IO
             .both(
               orderIdToJobDriver.stop,
@@ -238,11 +237,11 @@ extends Service.StoppableByRequest:
         .handleError(OrderOutcome.Failed.fromThrowable)
         .flatMap { outcome =>
           val orderProcessed = OrderProcessed(outcome)
-          if journal.isHalted then {
+          if journal.isHalted then 
             // We simulate !!!
             logger.debug(s"⚠️  $orderProcessed suppressed because journal is halted")
             IO.pure(orderProcessed)
-          } else
+          else
             journal
               .persistKeyedEvent(order.id <-: orderProcessed)
               .map(_.orThrow._1.value.event)

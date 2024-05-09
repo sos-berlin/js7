@@ -78,11 +78,12 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
 
         case ke @ KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
           if problem.toString.contains("Connection refused")
-            || problem.toString.contains("504 Service Unavailable") then {
-              logger.warn(ke.toString)
-              None
-            } else
-              Some(event)
+            || problem.toString.contains("504 Service Unavailable")
+          then
+            logger.warn(ke.toString)
+            None
+          else
+            Some(event)
 
         case KeyedEvent(`bareSubagentId`, SubagentDedicated(runId, _)) =>
           Some(SubagentDedicated(runId, Some(PlatformInfo.test)))

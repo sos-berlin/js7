@@ -83,10 +83,9 @@ private[cluster] final class ActivationInhibitor:
         mvar.take
           .flatMap {
             case state @ (Initial | Passive | _: Inhibited) =>
-              val depth = state match {
+              val depth = state match
                 case Inhibited(n) => n + 1
                 case _ => 1
-              }
               mvar
                 .put(Inhibited(depth))
                 .flatMap(_ => setInhibitionTimer(duration))

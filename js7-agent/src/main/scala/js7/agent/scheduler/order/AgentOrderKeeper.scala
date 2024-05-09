@@ -568,14 +568,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
                     }
 
               case Some(registeredWorkflow) =>
-                Future.successful(
-                  if workflow.withoutSource.reduceForAgent(ownAgentPath) != registeredWorkflow.withoutSource then {
+                Future.successful:
+                  if workflow.withoutSource.reduceForAgent(ownAgentPath) != registeredWorkflow.withoutSource then
                     logger.warn(s"AttachSignedItem: Different duplicate ${workflow.id}:")
                     logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson.toPrettyString}")
                     logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson.toPrettyString}")
                     Left(Problem.pure(s"Different duplicate ${workflow.id}"))
-                  } else
-                    Right(AgentCommand.Response.Accepted))
+                  else
+                    Right(AgentCommand.Response.Accepted)
 
           case _: JobResource =>
             persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
@@ -998,9 +998,8 @@ object AgentOrderKeeper:
       workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
       zone,
       onSwitch = to =>
-        if !to.contains(TimeInterval.Always) then {
-          logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zone")
-        })
+        if !to.contains(TimeInterval.Always) then
+          logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zone"))
 
     var processCount = 0
 

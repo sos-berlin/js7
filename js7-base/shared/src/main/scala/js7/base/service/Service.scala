@@ -39,22 +39,23 @@ trait Service:
       logInfoStartAndStop(logger, service.toString, args)(
         run))
 
+  /** Run the provided service until it terminates. */
   protected final def startService(run: IO[Unit]): IO[Started] =
     CorrelId
-      .bindNew(logger.debugF(s"$service run")(
-        CatsDeadline.now.flatMap(since =>
+      .bindNew(logger.debugIO(s"$service run"):
+        CatsDeadline.now.flatMap: since =>
           run
-            .guaranteeCase {
+            .guaranteeCase:
               case Outcome.Errored(t) =>
                 since.elapsed
-                  .map { elapsed =>
-                    // A service should not die
-                    val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
-                    if t.isInstanceOf[MainServiceTerminationException] then
-                      logger.debug(msg)
-                    else
-                      logger.error(msg, t.nullIfNoStackTrace)
-                  }
+                  .flatMap: elapsed =>
+                    IO:
+                      val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
+                      if t.isInstanceOf[MainServiceTerminationException] then
+                        logger.debug(msg)
+                      else
+                        // A service should not die
+                        logger.error(msg, t.nullIfNoStackTrace)
                   .*>(stopped.complete(Failure(t)))
                   .void
 
@@ -63,14 +64,12 @@ trait Service:
                   .void
 
               case Outcome.Succeeded(_) =>
-                stopped.complete(Success(())).void
-            })))
+                stopped.complete(Success(())).void)
       .start
-      .flatMap(fiber =>
-        service match {
+      .flatMap: fiber =>
+        service match
           case service: js7.base.service.StoppableByRequest => service.onFiberStarted(fiber)
           case _ => IO.unit
-        })
       .as(Started)
 
 

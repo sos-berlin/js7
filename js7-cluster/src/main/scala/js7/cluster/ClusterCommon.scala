@@ -84,20 +84,20 @@ private[cluster] final class ClusterCommon private(
       apiResource
         .use: api =>
           api
-            .retryIfSessionLost()(
+            .retryIfSessionLost():
               api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
-                couplingTokenProvider.resource.use(token =>
-                  api.executeClusterCommand(toCommand(token))))
+                couplingTokenProvider.resource.use: token =>
+                  api.executeClusterCommand(toCommand(token))
             .map((_: ClusterCommand.Response) => ())
-            .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            .onErrorRestartLoop(()): (throwable, _, retry) =>
               logger.log(delayer.logLevel,
                 s"${delayer.symbol} $name command failed with ${throwable.toStringWithCauses}")
-              if !throwable.isInstanceOf[java.net.SocketException] && throwable.getStackTrace.nonEmpty
+              if !throwable.isInstanceOf[java.net.SocketException]
+                && throwable.getStackTrace.nonEmpty
               then logger.debug(throwable.toString, throwable)
               // TODO ClusterFailed event?
               // TODO Handle heartbeat timeout?
               delayer.sleep *> retry(())
-            }
             .guaranteeCase:
               case Outcome.Succeeded(_) => IO:
                 if delayer.logLevel >= LogLevel.Warn then

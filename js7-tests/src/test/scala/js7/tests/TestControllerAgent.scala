@@ -144,7 +144,7 @@ object TestControllerAgent extends OurApp:
                     lastDuration = Some(Timestamp.now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>
-                    if finished > printedFinished then {
+                    if finished > printedFinished then
                       val duration = lastDuration.fold("-")(_.pretty)
                       val delta = finished - printedFinished
                       val diff = s"(diff ${finished - (Timestamp.now - startTime).toSeconds * conf.orderGeneratorCount})"
@@ -158,10 +158,9 @@ object TestControllerAgent extends OurApp:
                       print("\r" + " " * lastLineLength + "\r" + line)
                       lastLineLength = line.length
                       printedFinished = finished
-                    } else {
+                    else
                       print('.')
                       lastLineLength += 1
-                    }
                 }
               }
             })

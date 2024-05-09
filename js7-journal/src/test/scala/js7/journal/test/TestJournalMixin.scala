@@ -101,18 +101,16 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
                 case _: TestAggregateActor.Command.IsAsync =>
                   // Async persist may be disturbed or not.
                   // This test does not ensure arrival of message `Command.Disturb` before message `JournalActor.Output.Stored`
-                  if disturbance != before then {
+                  if disturbance != before then
                     assert(disturbance == before + 1, s" - Disturbance expected: $command -> $msg")
-                  }
 
                 case _ =>
                   assert(disturbance == before, s" - persist operation has been disturbed: $command -> $msg")
               }
               promise.success(())
             }
-            catch {
+            catch
               case NonFatal(t) => promise.failure(t)
-            }
 
           case msg @ ("OK" | Done) =>
             promise.success(msg)

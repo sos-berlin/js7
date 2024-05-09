@@ -74,11 +74,11 @@ private trait SubagentEventListener:
 
   protected final def startEventListener: IO[Unit] =
     lock.lock(IO.defer {
-      if isListening.getAndSet(true) then {
+      if isListening.getAndSet(true) then
         val msg = "Duplicate startEventListener"
         logger.error(msg)
         IO.raiseError(new RuntimeException(s"$toString: $msg"))
-      } else
+      else
         stopObserving.flatMap(_.tryTake)
           .*>(observeEvents)
           .start
@@ -237,12 +237,11 @@ private trait SubagentEventListener:
             else
               onSubagentDecoupled(Some(problem)) *>
                 IO {
-                  if lastProblem contains problem then {
+                  if lastProblem contains problem then
                     logger.debug(s"⚠️ Coupling failed again: $problem")
-                  } else {
+                  else
                     lastProblem = Some(problem)
                     logger.warn(s"Coupling failed: $problem")
-                  }
                   true
                 })
 

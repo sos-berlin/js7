@@ -37,13 +37,12 @@ object DirectoryReader:
     def nest(dir: Path, nestingLimit: Int): Unit =
       autoClosing(newDirectoryStream(dir, filter))(_ forEach { path =>
         val attr = Files.readAttributes(path, classOf[BasicFileAttributes])
-        if attr.isDirectory then {
+        if attr.isDirectory then
           if nestingLimit <= 0 then throw new RuntimeException(s"Directory hierarchy is nested too deeply: $dir")
           nest(path, nestingLimit - 1)
-        } else {
+        else
           if !path.startsWith(dir) then sys.error(s"File path '$path' does not start with '$dir' ?")
           callback(Entry(path, attr))
-        }
       })
     nest(rootDirectory, nestingLimit)
 

@@ -63,10 +63,9 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
             case checked  =>
               logger.log(
                 sym.relievedLogLevel,
-                checked match {
+                checked match
                   case Left(problem) => s"❓$toString: $problem"
-                  case Right(_) => s"🟢 $toString was available again"
-                })
+                  case Right(_) => s"🟢 $toString was available again")
               IO.right(checked)
           .tapError(throwable => IO(
             logger.log(sym.relievedLogLevel, s"💥$toString => $throwable")))

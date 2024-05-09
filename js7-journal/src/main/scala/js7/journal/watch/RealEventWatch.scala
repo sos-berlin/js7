@@ -240,11 +240,11 @@ trait RealEventWatch extends EventWatch:
                   IO.defer {
                     val head = iterator.next()
                     // Don't compare head.timestamp, timestamp may be much older)
-                    if EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now then {
+                    if EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now then 
                       iterator.close()
                       // Simulate a torn EventSeq
                       IO.pure(TearableEventSeq.Torn(committedEventIdSync.last))
-                    } else
+                    else
                       IO.pure(EventSeq.NonEmpty(head +: iterator))
                   }
               }

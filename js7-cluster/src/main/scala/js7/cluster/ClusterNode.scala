@@ -96,8 +96,8 @@ extends Service.StoppableByRequest:
             // untilWorkingNodeStarted has logged and handled PassiveClusterNodeResetProblem
             logger.debug(prblm.toString)
         .start
-        .flatMap(fiber =>
-          IO.race(recoveryStopRequested.get, fiber.joinStd))
+        .flatMap: fiber =>
+          IO.race(recoveryStopRequested.get, fiber.joinStd)
         .*>(untilStopRequested)
         .guaranteeCaseLazy: outcome =>
           stopRecovery(ProgramTermination()/*???*/) *>

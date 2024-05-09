@@ -34,13 +34,12 @@ object StreamUtils:
       a.tailRecM(a =>
         f(a).flatMap {
           case o @ Left(_) =>
-            if leftCounter >= limit then {
+            if leftCounter >= limit then
               logger.debug(s"Limit Stream.tailRecM after $leftCounter× Left to reduce memory leakage")
               Stream.empty
-            } else {
+            else
               leftCounter += 1
               Stream.emit(o)
-            }
 
           case o => Stream.emit(o)
         })

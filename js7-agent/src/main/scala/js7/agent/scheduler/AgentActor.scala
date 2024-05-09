@@ -157,12 +157,11 @@ extends Actor, Stash, SimpleStateActor:
                     logger.error:
                       s"Subagents could not be reset within $subagentResetTimeout"
                 .*>(journal
-                  .persist(_.clusterState match {
+                  .persist(_.clusterState match
                     case _: ClusterState.Coupled =>
                       // Is it a good idea to persist something when Agent must be reset ???
                       Right((NoKey <-: ClusterResetStarted) :: Nil)
-                    case _ => Right(Nil)
-                  })
+                    case _ => Right(Nil))
                   .materializeIntoChecked
                   .flatMap {
                     case Left(problem) => IO(response.success(Left(problem)))
@@ -355,7 +354,7 @@ extends Actor, Stash, SimpleStateActor:
           journal.persistKeyedEvent(event).rightAs(())
         else
           IO.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
-            demandedClusterNodeUris(nextAgentState) match {
+            demandedClusterNodeUris(nextAgentState) match
               case None =>
                 journal.persistKeyedEvent(event).rightAs(())
 
@@ -371,7 +370,7 @@ extends Actor, Stash, SimpleStateActor:
                     IO(clusterNode.workingClusterNode)
                       .flatMapT(_
                         .appointNodes(idToUri, activeNodeId, extraEvent = Some(event))))
-            })))
+            )))
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */
   private def demandedClusterNodeUris(state: AgentState): Option[Map[NodeId, Uri]] =

@@ -57,10 +57,10 @@ final class AsyncLockTest extends OurAsyncTestSuite:
         val expected = Vector.fill(n)(initial)
         0.tailRecM(i =>
           doTest(identity).flatMap(result =>
-            if i < maxTries && result == expected then {
+            if i < maxTries && result == expected then 
               logger.warn("Retry because IOs did not run concurrently")
               IO.left(i + 1)
-            } else
+            else
               IO.right(assert(result != expected))))
 
     "AsyncLock, not concurrent" in:

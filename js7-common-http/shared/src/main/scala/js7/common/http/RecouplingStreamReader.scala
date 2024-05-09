@@ -50,19 +50,17 @@ abstract class RecouplingStreamReader[
         IO {
           var logged = false
           lazy val msg = s"$api: coupling failed: $problem"
-          if inUse && !stopRequested && !coupledApiVar.isStopped then {
+          if inUse && !stopRequested && !coupledApiVar.isStopped then
             sym.onWarn()
             logger.warn(s"$sym $msg")
             logged = true
-          }
           for throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
                if api.hasRelevantStackTrace(throwable) do {
             logger.debug(s"💥 $msg", throwable)
             logged = true
           }
-          if !logged then {
+          if !logged then
             logger.debug(s"💥 $api: $msg")
-          }
           true  // Recouple and continue
         })
 
@@ -145,12 +143,12 @@ abstract class RecouplingStreamReader[
             if eof(after) || isStopped then
               Stream.emit(Right(Stream.empty))
             else
-              Right(
+              Right:
                 streamAfter(after)
                   .map: v =>
                     lastIndex = toIndex(v)
                     v
-                  .handleErrorWith {
+                  .handleErrorWith:
                     case t: ProblemException if isSevereProblem(t.problem) =>
                       Stream.raiseError[IO](t)
                     case t =>
@@ -160,8 +158,7 @@ abstract class RecouplingStreamReader[
                         .flatMap:
                           case false => Stream.raiseError[IO](t)
                           case true => Stream.empty
-                  }
-              ) +:
+              +:
                 Stream.eval:
                   pauseBeforeNextTry(conf.delay) *>
                     IO.defer(IO.left(lastIndex))
@@ -179,41 +176,39 @@ abstract class RecouplingStreamReader[
 
     /** Retries until web request returns an Stream. */
     private def tryEndlesslyToGetStream(after: I): IO[Stream[IO, V]] =
-      ().tailRecM(_ =>
+      ().tailRecM: _ =>
         if isStopped then
           IO.right(Stream.empty)
           //IO.right(Stream.raiseError[IO](
           //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
         else
           coupleIfNeeded(after = after)
-            .flatMap(after => /*`after` may have changed after initial AgentDedicated.*/
+            .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
               getStreamX(after = after)
                 .materialize.map(Checked.flattenTryChecked)
-                .flatMap {
+                .flatMap:
                   case Left(problem) =>
                     if isStopped then
                       IO.left(())  // Fail in next iteration
                     else if isSevereProblem(problem) then
                       IO.raiseError(problem.throwable)
                     else
-                      (problem match {
+                      problem.match
                         case InvalidSessionTokenProblem =>
-                          IO {
+                          IO:
                             logger.debug(s"🔒 $api: $InvalidSessionTokenProblem")
                             true
-                          }
                         case _ =>
                           onCouplingFailed(api, problem)
-                      }).flatMap(continue =>
+                      .flatMap: continue =>
                         decouple *>
                           (if continue then
                             pauseBeforeRecoupling.as(Left(()))
                           else
-                            IO.right(Stream.empty)))
+                            IO.right(Stream.empty))
 
                   case Right(stream) =>
                     IO.right(stream)
-                }))
 
     private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
       logger.traceIO("getStreamX", s"after=$after")(IO.defer:
@@ -258,10 +253,10 @@ abstract class RecouplingStreamReader[
           ) .materializeIntoChecked
             .flatMap {
               case Left(problem) =>
-                if isStopped then {
-                  IO.left((()))
-                } // Fail in next iteration
+                if isStopped then
+                  IO.left(())
                 else
+                  // Fail in next iteration
                   for
                     _ <- IO.whenA(problem == InvalidSessionTokenProblem)(
                       api.tryLogout.void)

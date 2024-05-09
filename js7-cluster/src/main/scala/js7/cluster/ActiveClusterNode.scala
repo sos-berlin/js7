@@ -120,10 +120,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         awaitAcknowledgement(clusterState.passiveUri, eventId)
           .flatMapT(ackEventId =>
             // In case of ClusterWatchRegistered, check journal.currentState.eventId too
-            if ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId then {
+            if ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId then
               logger.info("Passive node acknowledged the recovered state")
               IO.right(Completed)
-            } else
+            else
               IO.left(Problem(
                 s"Passive Cluster node acknowledged $ackEventId which is not the expected EventId")))
       case _ => IO.right(Completed)
@@ -382,8 +382,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       case _ => IO.completed
 
   private def proceedNodesAppointed(clusterState: HasNodes): IO[Completed] =
-    logger.traceIO(
-      clusterState match {
+    logger.traceIO:
+      clusterState match
         case clusterState: NodesAppointed =>
           IO.unlessA(startingBackupNode.getAndSet(true)):
             startSendingClusterStartBackupNode(clusterState)
@@ -391,7 +391,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
         case _ =>
           IO.completed
-      })
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): IO[Unit] =
     journal.eventWatch.started
@@ -495,7 +494,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
         case o =>
           IO.pure(o)
-      .materialize.flatTap(tried => IO { tried match {
+      .materialize.flatTap(tried => IO { tried match
         case Success(Right(Completed)) =>
           if !stopAcknowledgingRequested then
             logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
@@ -515,7 +514,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           logger.error(
             s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}",
             t)
-      }})
+      })
       .dematerialize
       .guarantee(IO {
         logger.debug("isFetchingAcks := false")

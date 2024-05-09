@@ -225,10 +225,10 @@ object ClusterWatch:
                     if requireManualNodeLossConfirmation && !confirmer.isDefined =>
                     Left(ClusterNodeLossNotConfirmedProblem(from, event))
                   case _ =>
-                    if updatedClusterState == reportedClusterState then {
+                    if updatedClusterState == reportedClusterState then
                       logger.info(s"$from changes ClusterState to $reportedClusterState")
                       Right(confirmer -> reportedClusterState)
-                    } else {
+                    else
                       // The node may have died just between sending the event to
                       // ClusterWatch and persisting it. Then we have a different state.
                       val previouslyActive = clusterState.activeId.string
@@ -236,7 +236,6 @@ object ClusterWatch:
                         s"maybe because heartbeat of up to now active $previouslyActive " +
                         s"is too long ago (${lastHeartbeat.elapsed.pretty})")
                       Right(confirmer -> reportedClusterState)
-                    }
                 }
             })
           .tap:
