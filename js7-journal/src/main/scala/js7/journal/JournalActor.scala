@@ -421,15 +421,15 @@ extends Actor, Stash, JournalLogging:
       case _ =>
 
   private def maybeDoASnapshot(): Unit =
-    if snapshotRequesters.isEmpty &&
-      eventWriter.bytesWritten >= conf.snapshotSizeLimit &&
-      fileEventCount >= 2 * estimatedSnapshotSize then
-      logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
-      snapshotRequesters += self
-    tryTakeSnapshotIfRequested()  // TakeSnapshot has been delayed until last event has been acknowledged
-    if snapshotSchedule == null then
-      snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod):
-        if !isHalted then
+    if !isHalted then
+      if snapshotRequesters.isEmpty &&
+        eventWriter.bytesWritten >= conf.snapshotSizeLimit &&
+        fileEventCount >= 2 * estimatedSnapshotSize then
+        logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
+        snapshotRequesters += self
+      tryTakeSnapshotIfRequested()  // TakeSnapshot has been delayed until last event has been acknowledged
+      if snapshotSchedule == null then
+        snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod):
           self ! Input.TakeSnapshot
 
   private def estimatedSnapshotSize =
