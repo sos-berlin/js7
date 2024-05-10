@@ -52,34 +52,37 @@ extends SignatureVerifier, Service.StoppableByCancel:
     "(DirectoryWatchingSignatureVerifier)"
 
   protected def start =
-    IO.defer:
-      val companionToDir = companionToDirectory
-        .map { case (companion, directory) =>
-          companion -> (directory -> readDirectory(directory).orThrow)
-        }
+    companionToDirectory
+      .toVector
+      .traverse: (companion, directory) =>
+        readDirectory(directory)
+          .map(_.orThrow) // Directory must be readable at start !!!
+          .map: directoryState =>
+            companion -> (directory -> directoryState)
+      .flatMap: companionToDir =>
+        IO.defer:
+          state = State(
+            companionToDir
+              .map { case (companion, (directory, directoryState)) =>
+                companion -> toVerifier(companion, directory, directoryState)
+              }
+              .toMap)
 
-      state = State(
-        companionToDir
-          .map { case (companion, (directory, directoryState)) =>
-            companion -> toVerifier(companion, directory, directoryState)
-          })
+          startService:
+            companionToDir
+              .map { case (companion, (directory, directoryState)) =>
+                CorrelId.bindNew:
+                  watchDirectory(companion, directory, directoryState)
+                    .onErrorRestartLoop(()): (t, _, retry) =>
+                      IO.defer:
+                        logger.error(s"${companion.typeName}: ${t.toStringWithCauses}",
+                          t.nullIfNoStackTrace)
+                        retry(()).delayBy(10.s)
+              }
+              .parSequence
+              .map(_.combineAll)
 
-      startService(
-        companionToDir
-          .toVector
-          .map { case (companion, (directory, directoryState)) =>
-            CorrelId.bindNew:
-              observeDirectory(companion, directory, directoryState)
-                .onErrorRestartLoop(()): (t, _, retry) =>
-                  IO.defer:
-                    logger.error(s"${companion.typeName}: ${t.toStringWithCauses}",
-                      t.nullIfNoStackTrace)
-                    retry(()).delayBy(10.s)
-          }
-          .parSequence
-          .map(_.combineAll))
-
-  private def observeDirectory(
+  private def watchDirectory(
     companion: SignatureVerifier.Companion,
     directory: Path,
     directoryState: DirectoryState)
@@ -96,16 +99,14 @@ extends SignatureVerifier, Service.StoppableByCancel:
       .drain
 
   private def rereadDirectory(directory: Path): IO[Unit] =
-    logger.debugF(IO.defer:
+    logger.debugIO(IO.defer:
       companionToDirectory
-        .collect { case (companion, `directory`) =>
-          IO
-            .interruptible:
-              readDirectory(directory)
-            .flatMapT(directoryState => IO(
-              toVerifier(companion, directory, directoryState)))
-            .map(companion -> _)
-        }
+        .collect:
+          case (companion, `directory`) =>
+            readDirectory(directory)
+              .flatMapT(directoryState => IO:
+                toVerifier(companion, directory, directoryState))
+              .map(companion -> _)
         .toVector
         .sequence
         .map: updated =>
@@ -139,9 +140,10 @@ extends SignatureVerifier, Service.StoppableByCancel:
 
     checked
 
-  private def readDirectory(directory: Path): Checked[DirectoryState] =
-    catchNonFatal(
-      DirectoryStateJvm.readDirectory(directory, isRelevantFile))
+  private def readDirectory(directory: Path): IO[Checked[DirectoryState]] =
+    IO.interruptible:
+      catchNonFatal:
+        DirectoryStateJvm.readDirectory(directory, isRelevantFile)
 
   private def isRelevantFile(file: Path) =
     !file.getFileName.startsWith(".")
