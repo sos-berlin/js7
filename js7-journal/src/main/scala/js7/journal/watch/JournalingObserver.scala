@@ -1,9 +1,9 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer

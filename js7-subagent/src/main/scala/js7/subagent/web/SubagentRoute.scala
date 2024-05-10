@@ -1,18 +1,16 @@
 package js7.subagent.web
 
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
-import org.apache.pekko.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix}
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.server.RouteConcatenation.*
-import org.apache.pekko.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.BuildInfo
 import js7.base.auth.SimpleUser
 import js7.base.log.Logger
 import js7.base.stream.Numbered
-import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
+import js7.base.system.SystemInformations.systemInformation
+import js7.base.system.startup.StartUp
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
@@ -20,14 +18,16 @@ import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
-import js7.base.system.SystemInformations.systemInformation
-import js7.base.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
+import org.apache.pekko.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.RouteConcatenation.*
+import org.apache.pekko.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 
 private final class SubagentRoute(
   routeBinding: RouteBinding,

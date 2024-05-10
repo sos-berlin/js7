@@ -1,16 +1,15 @@
 package js7.common.files
 
 import cats.effect.{IO, Resource}
+import fs2.{Chunk, Stream}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import java.nio.file.{Files, Path}
 import java.nio.file.StandardOpenOption.READ
+import java.nio.file.{Files, Path}
 import js7.base.data.ByteSequence
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.log.Logger
 import js7.common.files.ByteSeqFileReader.*
-import fs2.{Chunk, Stream}
-import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import scala.concurrent.duration.FiniteDuration
 
 /** Reads ByteSequences from a file. **/

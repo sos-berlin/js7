@@ -58,9 +58,9 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
-import scala.util.{Success, Try}
 import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
+import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer

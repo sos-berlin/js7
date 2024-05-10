@@ -1,11 +1,14 @@
 package js7.journal.recover
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import io.circe.Json
 import java.nio.file.Path
+import js7.base.ProvisionalAssumptions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.StreamExtensions.{+:, mapParallelBatch}
 import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.*
@@ -14,10 +17,6 @@ import js7.common.utils.untilNoneIterator
 import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.recover.JournalReader.*
-import cats.effect.IO
-import fs2.Stream
-import js7.base.ProvisionalAssumptions
-import js7.base.fs2utils.StreamExtensions.{+:, mapParallelBatch}
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 

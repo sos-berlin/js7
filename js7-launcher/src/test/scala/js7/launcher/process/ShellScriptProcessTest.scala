@@ -159,7 +159,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
             .await(99.s)
         }
 
-  @deprecated
   private def runShellScript(
     processConfiguration: ProcessConfiguration,
     executable: Path)

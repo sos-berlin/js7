@@ -1,11 +1,11 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import fs2.Stream
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalPosition}
-import cats.effect.IO
-import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 trait FileEventWatch extends EventWatch:

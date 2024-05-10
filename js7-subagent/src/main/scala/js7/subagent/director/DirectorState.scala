@@ -1,5 +1,6 @@
 package js7.subagent.director
 
+import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Allocated
@@ -7,7 +8,6 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.subagent.director.DirectorState.*
-import cats.effect.IO
 import scala.collection.MapView
 
 private final case class DirectorState(

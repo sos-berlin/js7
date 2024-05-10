@@ -1,18 +1,26 @@
 package js7.tests.core
 
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
+import fs2.Stream
 import io.circe.Decoder
 import izumi.reflect.Tag
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
+import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.https.HttpsConfig
-import js7.base.test.{OurTestSuite}
-import js7.base.thread.Futures.implicits.*
+import js7.base.monixlike.MonixLikeExtensions.{completedL, toListL, unsafeToCancelableFuture}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.base.web.Uri
 import js7.base.web.Uris.{encodePath, encodeQuery}
 import js7.common.http.PekkoHttpClient
@@ -35,14 +43,6 @@ import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.GenericEventRoute
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.core.GenericEventRouteTest.*
-import cats.effect.{Deferred, IO}
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import js7.base.data.ByteArray
-import js7.base.fs2utils.StreamExtensions.onStart
-import js7.base.monixlike.MonixLikeExtensions.{completedL, toListL, unsafeToCancelableFuture}
-import js7.base.utils.Tests
-import js7.base.utils.Tests.isIntelliJIdea
 import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable

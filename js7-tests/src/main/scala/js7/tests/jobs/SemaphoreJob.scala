@@ -1,8 +1,8 @@
 package js7.tests.jobs
 
-import cats.effect.{IO, Outcome}
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Outcome}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop

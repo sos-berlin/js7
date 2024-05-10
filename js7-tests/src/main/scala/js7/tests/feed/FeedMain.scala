@@ -2,9 +2,9 @@ package js7.tests.feed
 
 import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import java.io.InputStream
+import js7.base.catsutils.OurApp
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.catsutils.OurApp
 
 object FeedMain extends OurApp:
 

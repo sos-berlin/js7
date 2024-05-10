@@ -3,7 +3,6 @@ package js7.common.system.startup
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, ResourceIO}
 import izumi.reflect.Tag
-import js7.base.{BuildInfo, utils}
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, MainServiceTerminationException}
@@ -15,6 +14,7 @@ import js7.base.utils.AllocatedForJvm.useSync
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.{BuildInfo, utils}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import scala.concurrent.duration.{Deadline, Duration}

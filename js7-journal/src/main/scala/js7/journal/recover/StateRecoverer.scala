@@ -1,6 +1,7 @@
 package js7.journal.recover
 
-import cats.effect.{Resource, ResourceIO}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import js7.base.log.Logger
@@ -15,8 +16,6 @@ import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.StateRecoverer.*
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 

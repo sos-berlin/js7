@@ -2,6 +2,7 @@ package js7.agent.data
 
 //diffx import com.softwaremill.diffx
 //diffx import com.softwaremill.diffx.generic.auto.*
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
 import java.util.UUID
@@ -10,6 +11,7 @@ import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
+import js7.base.monixlike.MonixLikeExtensions.toListL
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
@@ -37,8 +39,6 @@ import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.{removeJNull, testJson, testJsonDecoder}
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.toListL
 
 /**
   * @author Joacim Zschimmer

@@ -1,20 +1,20 @@
 package js7.agent.data.orderwatch
 
 import cats.effect.IO
+import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}
 import js7.agent.data.orderwatch.FileWatchState.{EntrySnapshot, HeaderSnapshot, ItemState, Snapshot}
 import js7.base.circeutils.JavaFileJsonCodecs.PathJsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
+import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
-import fs2.Stream
-import js7.base.problem.Checked
 import scala.collection.{View, mutable}
 
 final case class FileWatchState(

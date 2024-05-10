@@ -11,7 +11,7 @@ import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.service.Service
-import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest

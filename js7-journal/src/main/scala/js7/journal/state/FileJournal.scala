@@ -8,6 +8,8 @@ import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -25,8 +27,6 @@ import js7.journal.recover.Recovered
 import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
 import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.Promise
 import sourcecode.Enclosing
 

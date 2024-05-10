@@ -4,14 +4,13 @@ import cats.effect.{IO, Outcome, Resource, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.startup.Halt.haltJava
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Delayer, OneTimeToken, OneTimeTokenProvider, SetOnce}
 import js7.cluster.ClusterCommon.*
@@ -23,7 +22,6 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
-import scala.math.Ordered.orderingToOrdered
 import scala.reflect.ClassTag
 
 private[cluster] final class ClusterCommon private(

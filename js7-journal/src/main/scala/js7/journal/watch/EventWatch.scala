@@ -1,21 +1,21 @@
 package js7.journal.watch
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.*
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import js7.base.catsutils.UnsafeMemoizable.memoize
 
 /**
   * @author Joacim Zschimmer

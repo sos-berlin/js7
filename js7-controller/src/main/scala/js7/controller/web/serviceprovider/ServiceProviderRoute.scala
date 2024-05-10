@@ -1,6 +1,5 @@
 package js7.controller.web.serviceprovider
 
-import org.apache.pekko.http.scaladsl.server.Route
 import com.typesafe.config.Config
 import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
@@ -10,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.StandardDirectives.combineRoutes
 import js7.controller.web.serviceprovider.ServiceProviderRoute.*
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
   * @author Joacim Zschimmer

@@ -7,9 +7,9 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*

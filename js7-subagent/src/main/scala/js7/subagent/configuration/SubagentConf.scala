@@ -133,14 +133,14 @@ object SubagentConf:
     internalConfig: Config = DefaultConfig)
   : SubagentConf =
     val common = CommonConfiguration.Common.fromCommandLineArguments(args)
-    import common.configDirectory as configDir
+    import common.configDirectory
 
     def toKillScriptSetting(path: String): Option[ProcessKillScript] =
       path.nonEmpty ? ProcessKillScript(Paths.get(path).toAbsolutePath)
 
-    val config = resolvedConfig(configDir, extra = extraConfig, internal = internalConfig)
+    val config = resolvedConfig(configDirectory, extra = extraConfig, internal = internalConfig)
     val conf = SubagentConf.fromResolvedConfig(
-      configDirectory = configDir,
+      configDirectory = configDirectory,
       dataDirectory = common.dataDirectory,
       workDirectory = common.workDirectory,
       logDirectory = args.optionAs("--log-directory=")(asAbsolutePath)

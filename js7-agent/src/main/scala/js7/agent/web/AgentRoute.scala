@@ -1,5 +1,7 @@
 package js7.agent.web
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -17,8 +19,6 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
 import js7.subagent.SubagentSession
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Route
 

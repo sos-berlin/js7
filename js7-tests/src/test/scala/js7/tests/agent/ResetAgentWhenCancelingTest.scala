@@ -1,10 +1,12 @@
 package js7.tests.agent
 
+import cats.effect.unsafe.IORuntime
+import js7.agent.data.commands.AgentCommand
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
@@ -18,8 +20,6 @@ import js7.tests.agent.ResetAgentWhenCancelingTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
-import js7.agent.data.commands.AgentCommand
 
 final class ResetAgentWhenCancelingTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:

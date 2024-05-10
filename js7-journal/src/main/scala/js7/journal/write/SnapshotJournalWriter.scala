@@ -1,5 +1,6 @@
 package js7.journal.write
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
@@ -10,7 +11,6 @@ import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 

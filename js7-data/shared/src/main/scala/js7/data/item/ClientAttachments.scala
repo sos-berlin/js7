@@ -1,6 +1,7 @@
 package js7.data.item
 
 import cats.effect.IO
+import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -11,7 +12,6 @@ import js7.data.delegate.DelegateId
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
 import js7.data.item.ClientAttachments.*
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
-import fs2.Stream
 import scala.collection.View
 import scala.reflect.ClassTag
 

@@ -5,9 +5,8 @@ import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.position.BranchId.try_
-import js7.data.workflow.position.Position
-import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.*
 
 private[instructions] final class TryExecutor(protected val service: InstructionExecutorService)
 extends PositionInstructionExecutor, EventInstructionExecutor:

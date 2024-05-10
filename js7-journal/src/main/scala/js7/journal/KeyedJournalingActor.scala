@@ -1,11 +1,11 @@
 package js7.journal
 
+import cats.effect.IO
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.Tests.isTest
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
-import cats.effect.IO
 import scala.concurrent.Future
 
 /**

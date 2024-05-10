@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{Deferred, Fiber, FiberIO, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.{Applicative, Functor}

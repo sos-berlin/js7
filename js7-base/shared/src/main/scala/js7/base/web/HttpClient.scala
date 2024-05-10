@@ -1,13 +1,13 @@
 package js7.base.web
 
+import cats.effect.IO
+import fs2.Stream
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.auth.SessionToken
 import js7.base.data.ByteArray
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import cats.effect.IO
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
 import js7.base.utils.UseDefault
 import org.jetbrains.annotations.TestOnly
 import scala.util.{Failure, Success, Try}

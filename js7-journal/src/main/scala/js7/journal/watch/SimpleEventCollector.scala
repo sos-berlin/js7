@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.{Decoder, Encoder}
 import java.nio.file.Files.createTempDirectory
@@ -10,7 +11,6 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.write.EventJournalWriter
-import cats.effect.unsafe.IORuntime
 import org.jetbrains.annotations.TestOnly
 import scala.reflect.ClassTag
 

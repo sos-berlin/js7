@@ -3,7 +3,6 @@ package js7.tests.controller.proxy;
 import com.typesafe.config.ConfigFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeoutException;
 import js7.data.event.Event;

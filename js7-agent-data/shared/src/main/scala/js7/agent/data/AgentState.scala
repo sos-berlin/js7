@@ -1,6 +1,7 @@
 package js7.agent.data
 
 import cats.effect.IO
+import fs2.Stream
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Decoder, Encoder}
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
@@ -32,7 +33,6 @@ import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import fs2.Stream
 import scala.collection.MapView
 
 /**

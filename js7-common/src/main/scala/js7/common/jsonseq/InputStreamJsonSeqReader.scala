@@ -1,6 +1,6 @@
 package js7.common.jsonseq
 
-import cats.effect.{Resource, ResourceIO}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import io.circe.Json
@@ -11,11 +11,10 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.utils.Ascii.{LF, RS}
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.InputStreamJsonSeqReader.*
 import js7.common.utils.UntilNoneIterator
-import cats.effect.IO
-import js7.base.utils.Atomic
 import scala.collection.mutable
 
 /**

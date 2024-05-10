@@ -17,9 +17,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope.evalExpressionMap
-import js7.launcher.{OrderProcess, ProcessOrder}
 import js7.launcher.internal.InternalJob.{JobContext, Step}
 import js7.launcher.internal.InternalJobLauncher.*
+import js7.launcher.{OrderProcess, ProcessOrder}
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 

@@ -1,13 +1,18 @@
 package js7.tests.order
 
+import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.traverse.*
+import fs2.Stream
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.EventRequest
@@ -21,11 +26,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.ManyAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
-import cats.effect.IO
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.utils.Tests
-import js7.base.utils.Tests.isIntelliJIdea
 import scala.util.Random
 
 // Try to resemble a failed manual test

@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{SimpleUser, UpdateItemPermission, UserId, ValidUserPermission}
@@ -8,7 +9,7 @@ import js7.base.crypt.SignedString
 import js7.base.crypt.x509.X509Signer
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -19,7 +20,6 @@ import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
-import fs2.Stream
 
 final class VerifiedUpdateItemsTest extends OurTestSuite:
 

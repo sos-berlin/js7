@@ -1,5 +1,7 @@
 package js7.controller.web
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -27,8 +29,6 @@ import js7.data.agent.AgentRefState
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route

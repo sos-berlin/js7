@@ -1,13 +1,13 @@
 package js7.journal.watch
 
-import com.typesafe.config.Config
-import java.nio.file.{Files, Path}
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsDeadline
-import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalLocation
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import com.typesafe.config.Config
+import java.nio.file.{Files, Path}
+import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.data.event.{EventId, JournalId}
+import js7.journal.data.JournalLocation
 
 /**
   * @author Joacim Zschimmer

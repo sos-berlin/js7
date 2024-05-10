@@ -22,8 +22,8 @@ import scala.collection.{AbstractMapView, Factory, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
-import scala.util.{Success, Try, Failure}
 import scala.util.chaining.*
+import scala.util.{Failure, Success, Try}
 
 object ScalaUtils:
 

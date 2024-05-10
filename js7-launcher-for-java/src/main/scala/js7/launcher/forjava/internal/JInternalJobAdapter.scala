@@ -1,9 +1,9 @@
 package js7.launcher.forjava.internal
 
+import cats.effect.IO
 import js7.base.problem.Checked
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
-import cats.effect.IO
 import scala.jdk.FutureConverters.CompletionStageOps
 
 private[js7] final class JInternalJobAdapter(jobContext: JobContext)

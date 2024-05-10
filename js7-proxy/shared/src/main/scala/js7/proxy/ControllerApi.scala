@@ -1,13 +1,16 @@
 package js7.proxy
 
 import cats.effect.{IO, Resource, ResourceIO}
+import fs2.Stream
 import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, onErrorRestartLoop}
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -32,9 +35,6 @@ import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.+:
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, onErrorRestartLoop}
 import scala.collection.immutable
 import scala.concurrent.duration.Deadline.now
 import scala.util.Failure

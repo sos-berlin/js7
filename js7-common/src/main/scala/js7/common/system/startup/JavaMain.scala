@@ -2,8 +2,8 @@ package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO}
 import js7.base.log.Logger
-import js7.base.system.startup.StartUp.printlnWithClock
 import js7.base.system.startup.Halt
+import js7.base.system.startup.StartUp.printlnWithClock
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.message.ProblemCodeMessages

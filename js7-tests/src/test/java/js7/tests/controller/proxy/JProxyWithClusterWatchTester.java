@@ -1,6 +1,8 @@
 package js7.tests.controller.proxy;
 
 import io.vavr.control.Either;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import js7.base.eventbus.StandardEventBus;
 import js7.base.problem.Problem;
 import js7.cluster.watch.ClusterWatchService;
@@ -15,10 +17,6 @@ import js7.proxy.javaapi.JProxyContext;
 import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

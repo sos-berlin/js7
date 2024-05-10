@@ -6,9 +6,9 @@ import js7.data.order.Order.{Broken, Failed, FailedWhileFresh}
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.If
+import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.*
 
 private[instructions] final class IfExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor, PositionInstructionExecutor:

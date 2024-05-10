@@ -1,5 +1,10 @@
 package js7.common.http
 
+import io.circe.Encoder
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.utils.Ascii
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import org.apache.pekko.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
@@ -8,11 +13,6 @@ import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, MediaRange, MediaType}
 import org.apache.pekko.stream.scaladsl.Flow
 import org.apache.pekko.util.ByteString
-import io.circe.Encoder
-import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.utils.Ascii
-import js7.common.pekkoutils.ByteStrings.syntax.*
 
 /**
   * @author Joacim Zschimmer

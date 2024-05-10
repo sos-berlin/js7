@@ -1,17 +1,17 @@
 package js7.controller.web.controller.api
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.BuildInfo
 import js7.base.problem.Checked
+import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.*
 import js7.common.pekkohttp.CirceJsonSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.system.JavaInformations.javaInformation
-import js7.base.system.SystemInformations.systemInformation
 import js7.controller.web.common.ControllerRouteProvider
 import js7.data.controller.{ControllerId, ControllerOverview, ControllerState}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import org.apache.pekko.http.scaladsl.server.Directives.{get, pathEndOrSingleSlash}
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.Deadline

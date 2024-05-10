@@ -7,11 +7,11 @@ import java.util.concurrent.ExecutorService
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
+import js7.base.system.startup.Halt.haltJava
 import js7.base.thread.ThreadPoolsBase.{labeledExecutionContextExecutorService, newBlockingExecutorService, newBlockingNonVirtualExecutor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.system.startup.Halt.haltJava
 import org.apache.pekko
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}

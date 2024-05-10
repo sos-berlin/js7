@@ -1,10 +1,10 @@
 package js7.journal.test
 
+import fs2.Stream
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder}
-import fs2.Stream
 
 /**
   * @author Joacim Zschimmer

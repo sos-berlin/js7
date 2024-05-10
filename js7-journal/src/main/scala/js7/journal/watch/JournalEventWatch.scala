@@ -36,8 +36,8 @@ import js7.journal.watch.JournalEventWatch.*
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /** Watches a complete journal consisting of n `JournalFile`.

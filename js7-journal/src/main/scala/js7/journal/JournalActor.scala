@@ -2,20 +2,19 @@ package js7.journal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
-import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
-import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, SupervisorStrategy}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.problem.{Checked, Problem}
+import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
@@ -39,6 +38,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, SupervisorStrategy}
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now

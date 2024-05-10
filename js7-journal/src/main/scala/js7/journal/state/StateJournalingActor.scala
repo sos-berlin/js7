@@ -1,8 +1,11 @@
 package js7.journal.state
 
-import org.apache.pekko.actor.{ActorRef, Props}
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectUtils
+import js7.base.catsutils.CatsEffectUtils.promiseIO
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
@@ -11,10 +14,7 @@ import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.state.StateJournalingActor.*
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.CatsEffectUtils
-import js7.base.catsutils.CatsEffectUtils.promiseIO
+import org.apache.pekko.actor.{ActorRef, Props}
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
 

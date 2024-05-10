@@ -3,8 +3,8 @@ package js7.common.utils
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
