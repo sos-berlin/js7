@@ -160,7 +160,7 @@ val commonSettings = Seq(
   publishTo := publishRepositoryUri.map(uri => publishRepositoryName getOrElse uri at uri))
 
 useJGit
-git.uncommittedSignifier := Some("UNCOMMITTED")
+//git.uncommittedSignifier := Some("UNCOMMITTED")
 
 val universalPluginSettings = Seq(
   Universal / packageZipTarball / universalArchiveOptions :=
