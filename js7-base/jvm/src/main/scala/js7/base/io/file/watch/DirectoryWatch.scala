@@ -29,9 +29,9 @@ private final class DirectoryWatch(
         readDirectoryThenStream(state)
           .tapEach((_, state) => lastState = state)
           .map(Right(_))
-          .append(Stream.eval(
+          .append(Stream.eval:
             IO.left(lastState)
-              .delayBy((since + hotLoopBrake).timeLeftOrZero)))
+              .delayBy((since + hotLoopBrake).timeLeftOrZero))
 
   private[watch] def readDirectoryThenStream(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
@@ -43,8 +43,8 @@ private final class DirectoryWatch(
         // Then we end, allowing the caller to restart and
         // to handle an exchanged directory.
         .takeWhile(_.nonEmpty))
-      .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
-        pair._1.applyAndReduceEvents(events).swap)
+      .scan(state -> Seq.empty[DirectoryEvent]): (pair, events) =>
+        pair._1.applyAndReduceEvents(events).swap
       .drop(1) // Drop initial value
       .map(_.swap)
       .filter(_._1.nonEmpty)

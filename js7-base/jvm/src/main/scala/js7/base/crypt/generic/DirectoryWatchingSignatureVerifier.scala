@@ -180,7 +180,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
   def prepare(config: Config): Checked[Prepared] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
-      .map { case (typeName, v) =>
+      .map: (typeName, v) =>
         checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
           .map(Paths.get(_))
           .flatMap(directory => SignatureServices
@@ -192,16 +192,15 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
                   s"Signature key directory '$directory' for '$typeName' does not exists"))
               else
                 Right(companion -> directory)))
-      }
       .toVector
       .sequence
       .map(_.toMap)
-      .flatMap(companionToDirectory =>
+      .flatMap: companionToDirectory =>
         if companionToDirectory.isEmpty then
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else
           for settings <- DirectoryWatchSettings.fromConfig(config) yield
-            new Prepared(companionToDirectory, settings))
+            new Prepared(companionToDirectory, settings)
 
   final class Prepared(
     companionToDirectory: Map[SignatureVerifier.Companion, Path],

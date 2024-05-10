@@ -22,7 +22,6 @@ import scala.annotation.nowarn
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
-import scala.util.control.NonFatal
 
 final class BasicDirectoryWatch private(options: WatchOptions)(using iox: IOExecutor)
 extends Service.StoppableByRequest:
