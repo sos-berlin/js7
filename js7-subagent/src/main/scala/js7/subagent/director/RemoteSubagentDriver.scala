@@ -458,7 +458,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             .flatMapT(subagentItemState => processingAllowed.isOff
               .flatMap(isStopped =>
                 // Double-check subagentRunId to be sure.
-                if isStopped || !subagentItemState.subagentRunId.contains(subagentRunId) then 
+                if isStopped || !subagentItemState.subagentRunId.contains(subagentRunId) then
                   logger.debug(s"postQueuedCommand($commandString) stopped")
                   IO.right(())
                 else
@@ -514,7 +514,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             }
 
           case Left(problem) =>
-            processingAllowed.isOff.flatMap(if _ then 
+            processingAllowed.isOff.flatMap(if _ then
               logger.debug(s"⚠️ postQueuedCommand($commandString) error after stop ignored: $problem")
               IO.right(())
             else

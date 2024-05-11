@@ -90,7 +90,7 @@ object X509Cert:
       certs.headOption
     else
       val notExpiredCerts = certs.flatMap(cert =>
-        if cert.notAfter < timestamp then 
+        if cert.notAfter < timestamp then
           logger.error(s"Ignoring $cert because it expired at ${cert.notAfter}")
           None
         else

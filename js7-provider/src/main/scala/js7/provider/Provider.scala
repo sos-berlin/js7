@@ -133,7 +133,7 @@ extends Observing, MainService, Service.StoppableByRequest:
         .map(_.flatten)
     yield
       checkedCompleted.flatMap(completed =>
-        if !lastEntries.compareAndSet(last, currentEntries) then 
+        if !lastEntries.compareAndSet(last, currentEntries) then
           val problem = Problem.pure("Provider has been concurrently used")
           logger.debug(problem.toString)
           Left(problem)

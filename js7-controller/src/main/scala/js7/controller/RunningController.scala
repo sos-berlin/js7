@@ -425,7 +425,7 @@ object RunningController:
           if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
             IO.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else {
-            if command.dontNotifyActiveNode && clusterNode.isPassive then 
+            if command.dontNotifyActiveNode && clusterNode.isPassive then
               clusterNode.dontNotifyActiveNodeAboutShutdown()
             clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {

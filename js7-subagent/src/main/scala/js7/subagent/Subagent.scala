@@ -156,14 +156,14 @@ extends MainService, Service.StoppableByRequest:
       .toAllocated
       .flatMap(allocatedDedicatedSubagent => IO.defer {
         val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
-        if !isFirst then 
+        if !isFirst then
           // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
           //if (cmd.subagentId == dedicatedAllocated.orThrow.subagentId)
           //  IO.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
           //else
           logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedAllocated")
           IO.left(SubagentAlreadyDedicatedProblem)
-        else 
+        else
           // TODO Check agentPath, controllerId (handle in SubagentState?)
           logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
           IO.right(

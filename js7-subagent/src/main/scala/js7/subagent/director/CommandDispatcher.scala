@@ -56,8 +56,8 @@ private trait CommandDispatcher:
         queue.stop
           .flatMap { numberedExecutes =>
             queue = new StreamNumberedQueue[Execute]
-            for numberedExecute <- numberedExecutes do 
-              commandToProblem.lift(numberedExecute.value.command) match 
+            for numberedExecute <- numberedExecutes do
+              commandToProblem.lift(numberedExecute.value.command) match
                 case None =>
                   logger.debug(s"⚠️ $numberedExecute => discarded")
 

@@ -103,7 +103,7 @@ object SessionApi:
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
               val isTemporary = isTemporaryUnreachable(throwable)
               onError(throwable).flatMap(continue =>
-                if continue/*normally true*/ && delays.hasNext && isTemporary then 
+                if continue/*normally true*/ && delays.hasNext && isTemporary then
                   val prefix = isTemporary ?? {
                     sym.onWarn()
                     s"$sym "
@@ -180,7 +180,7 @@ object SessionApi:
 
                   case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
                     onError(e).flatMap(continue =>
-                    if continue then 
+                    if continue then
                       sym.onWarn()
                       warn(s"$sym $toString", e)
                         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)

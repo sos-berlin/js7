@@ -87,7 +87,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
                 else {
                   val files = autoClosing(Files.list(directory))(_
                     .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
-                  if files.isEmpty then 
+                  if files.isEmpty then
                     logger.warn(
                       s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
                   companion.checked(

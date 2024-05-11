@@ -212,7 +212,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
         if controllerOrAgents.sizeIs == 1 then
           // All children start at the Controller or the same Agent
           val enoughChildren = orderForked.children.sizeIs >= MinimumChildCountForParentAttachment
-          (order.attachedState, controllerOrAgents.head) match 
+          (order.attachedState, controllerOrAgents.head) match
             case (Some(Order.Attached(agentPath)), Some(childrensAgentPath)) =>
               // If parent order's attachment and the orders first agent differs,
               // detach the parent order!
