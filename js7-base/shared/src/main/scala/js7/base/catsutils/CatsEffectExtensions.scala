@@ -135,13 +135,7 @@ object CatsEffectExtensions:
       IO.unsafeRuntime.map(_.scheduler)
 
     def unsafeRuntime: IO[IORuntime] =
-      for
-        ec <- IO.executionContext
-        rt <- OurIORuntimeRegister.toIORuntime(ec).map(IO.pure).getOrElse:
-          val msg = "IO.runsafeRuntime: current IORuntime is not registered in OurIORuntimeRegister"
-          logger.error(msg)
-          IO.raiseError(new RuntimeException(msg))
-      yield rt
+      IO.executionContext.map(OurIORuntimeRegister.toIORuntime)
 
     //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =
     //  for

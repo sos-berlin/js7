@@ -4,7 +4,7 @@
  *  It gives access to the Scheduler.
  * ——————————————————————————————————————————————————————————————————————————
  *
- * Copyright 2020-2023 Typelevel
+ * Copyright 2020-2024 Typelevel
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -365,21 +365,20 @@ object OurTestControl:
     config: IORuntimeConfig = IORuntimeConfig(),
     seed: Option[String] = None)
   : IO[OurTestControl[A]] =
-    IO
-      .defer:
-        val ctx = OurTestControl.newTestContext(seed = seed)
-        val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
-        execute_(ctx, ioRuntime)(program)
+    IO.defer:
+      val ctx = newTestContext(seed = seed)
+      val ioRuntime = newIORuntime(ctx, newScheduler(ctx), config)
+      execute_(ctx, ioRuntime)(program)
 
-  def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
+  private def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
   : IO[OurTestControl[A]] =
     IO:
-      OurIORuntimeRegister.add(ctx, ioRuntime)
+      OurIORuntimeRegister.add(ioRuntime)
       val results = new AtomicReference[Option[Outcome[Id, Throwable, A]]](None)
       given IORuntime = ioRuntime
       program.unsafeRunAsyncOutcome: outcome =>
         results.set(Some(outcome))
-        OurIORuntimeRegister.remove(ctx)
+        OurIORuntimeRegister.remove(ioRuntime)
 
       new OurTestControl(ctx, results)
 
@@ -440,11 +439,11 @@ object OurTestControl:
     seed: Option[String] = None)
   : IO[A] =
     IO.defer:
-      val ctx = OurTestControl.newTestContext(seed = seed)
-      val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
+      val ctx = newTestContext(seed = seed)
+      val ioRuntime = newIORuntime(ctx, newScheduler(ctx), config)
       executeEmbed_(ctx, ioRuntime)(program(using ioRuntime, ioRuntime.scheduler))
 
-  def executeEmbed_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A]): IO[A] =
+  private def executeEmbed_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A]): IO[A] =
     execute_(ctx, runtime)(program) flatMap { c =>
       val nt = new (Id ~> IO) { def apply[E](e: E) = IO.pure(e) }
 

@@ -116,7 +116,7 @@ object OurIORuntime:
           .setFailureReporter(reportFailure)
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
-      _ <- OurIORuntimeRegister.register(compute, ioRuntime)
+      _ <- OurIORuntimeRegister.register(ioRuntime)
     yield
       ioRuntime
 
