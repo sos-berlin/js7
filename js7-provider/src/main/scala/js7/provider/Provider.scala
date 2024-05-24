@@ -221,8 +221,8 @@ object Provider:
 
   def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for
-      actorSystem <- Pekkos.actorSystemResource("Providor", conf.config)
-      iox <- IOExecutor.resource[IO](conf.config, "Provider")
+      actorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
+      iox <- IOExecutor.resource[IO](conf.config, "Provider I/O")
       provider <- resource2(conf)(using ioRuntime, iox, actorSystem)
     yield provider
 

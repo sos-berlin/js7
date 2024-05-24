@@ -42,7 +42,8 @@ import org.scalatest.compatible.Assertion
 final class ProcessDriverTest
   extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
 
-  private lazy val ioxAllocated = IOExecutor.resource[IO](SubagentConf.DefaultConfig, "ProcessDriverTest")
+  private lazy val ioxAllocated = IOExecutor
+    .resource[IO](SubagentConf.DefaultConfig, "ProcessDriverTest I/O")
     .toAllocated.await(99.s)
 
   private given IORuntime = ioRuntime
