@@ -7,7 +7,7 @@ object Dependencies
 {
   val pekkoVersion = "1.0.2"
   val pekkoHttpVersion = "1.0.1"
-  val slf4jVersion = "2.0.12"  // See also plugins.sbt
+  val slf4jVersion = "2.0.13"  // See also plugins.sbt
   val log4jVersion = "2.23.1"  // See also plugins.sbt
   val catsVersion = "2.10.0"
   val catsEffectVersion = "3.5.4"
@@ -20,7 +20,7 @@ object Dependencies
   val circeGenericExtrasVersion = "0.14.3"
   val scalaTestVersion = "3.2.18"
   val scalaTestCheckVersion = "3.2.14.0"
-  val scalaCheckVersion= "1.17.0"
+  val scalaCheckVersion= "1.18.0"
   val sourcecodeVersion = "0.4.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
@@ -28,9 +28,9 @@ object Dependencies
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
-  val softwaremillTaggingVersion = "2.3.4"
+  val softwaremillTaggingVersion = "2.3.5"
   val diffxVersion = "0.9.0"
-  val reactorVersion = "3.6.4"
+  val reactorVersion = "3.6.5"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.14.0"
 
@@ -78,7 +78,7 @@ object Dependencies
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk18on" % "1.77"
+  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk18on" % "1.78.1"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
