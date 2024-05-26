@@ -6,8 +6,6 @@ import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
 import js7.base.data.{ByteArray, ByteSequence, Writable}
-import js7.base.io.JavaResource.*
-import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
@@ -24,9 +22,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
   private lazy val checkedUrl: Checked[URL] =
     classLoader.getResource(path) match
       case null => Left(Problem(s"Unknown JavaResource '$path'"))
-      case url =>
-        logger.trace(s"Using JavaResource $url")
-        Right(url)
+      case url => Right(url)
 
   def requireExistence(): JavaResource =
     url
@@ -106,8 +102,6 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
 
 object JavaResource:
-
-  private val logger = Logger[this.type]
 
   def apply(classLoader: ClassLoader, path: String): JavaResource =
     new JavaResource(classLoader, path)

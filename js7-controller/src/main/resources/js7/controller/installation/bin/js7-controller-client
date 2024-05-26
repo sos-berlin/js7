@@ -34,7 +34,7 @@ done
 execute=(
   "$java"
   "${javaOptions[@]}"
-  -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml
+  -Dlog4j.configurationFile=classpath:js7/log4j2.xml,js7/controller/client/main/log4j2.xml
   "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   js7.controller.client.main.ControllerClientMain

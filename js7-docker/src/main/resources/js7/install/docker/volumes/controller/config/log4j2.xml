@@ -1,102 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration status="WARN" shutdownHook="disable" monitorInterval="10">
+<configuration monitorInterval="10">
   <properties>
-    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
+    <property name="productKebab">controller</property>
   </properties>
-
-  <appenders>
-    <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
-    </console>
-
-    <rollingRandomAccessFile name="file-info"
-                             fileName="${logDirectory}/controller.log"
-                             filePattern="${logDirectory}/controller-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout>
-        <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n</pattern>
-        <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</header>
-        <footer>%d{DEFAULT_MICROS} End of logging%n</footer>
-        <charset>UTF-8</charset>
-      </patternLayout>
-      <policies>
-        <timeBasedTriggeringPolicy/>
-        <sizeBasedTriggeringPolicy size="1GB"/>
-      </policies>
-      <defaultRolloverStrategy fileIndex="nomax">
-        <delete basePath="${logDirectory}">
-          <ifFileName glob="controller-*.log.gz"/>
-          <ifAny>
-            <ifLastModified age="8d"/>
-            <ifAccumulatedFileSize exceeds="2GB"/>
-          </ifAny>
-        </delete>
-      </defaultRolloverStrategy>
-    </rollingRandomAccessFile>
-
-    <rollingRandomAccessFile name="file-debug"
-                             fileName="${logDirectory}/controller-debug.log"
-                             filePattern="${logDirectory}/controller-debug-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout>
-        <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger %notEmpty{»%marker« }- %message%n</pattern>
-        <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</header>
-        <footer>%d{DEFAULT_MICROS} End of logging%n</footer>
-        <charset>UTF-8</charset>
-      </patternLayout>
-      <policies>
-        <timeBasedTriggeringPolicy/>
-        <sizeBasedTriggeringPolicy size="1GB"/>
-      </policies>
-      <defaultRolloverStrategy fileIndex="nomax">
-        <delete basePath="${logDirectory}">
-          <ifFileName glob="controller-debug-*.log.gz"/>
-          <ifAny>
-            <ifLastModified age="8d"/>
-            <ifAccumulatedFileSize exceeds="2GB"/>
-          </ifAny>
-        </delete>
-      </defaultRolloverStrategy>
-    </rollingRandomAccessFile>
-
-    <rollingRandomAccessFile name="js7.web.log"
-                             fileName="${logDirectory}/web.log"
-                             filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %message%n"
-                     charset="UTF-8"/>
-      <policies>
-        <timeBasedTriggeringPolicy/>
-        <sizeBasedTriggeringPolicy size="1GB"/>
-      </policies>
-      <defaultRolloverStrategy fileIndex="nomax">
-        <delete basePath="${logDirectory}">
-          <ifFileName glob="web-*.log.gz"/>
-          <ifAny>
-            <ifLastModified age="8d"/>
-            <ifAccumulatedFileSize exceeds="2GB"/>
-          </ifAny>
-        </delete>
-      </defaultRolloverStrategy>
-    </rollingRandomAccessFile>
-  </appenders>
-
   <loggers>
-    <root level="info">
-      <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
-      <appenderRef level="warn"  ref="stderr"/>
-      <appenderRef level="info"  ref="file-info"/>
-      <appenderRef level="trace" ref="file-debug"/>
-    </root>
-    <logger level="debug" name="js7.web">
-      <appenderRef ref="js7.web.log"/>
+    <logger level="trace" name="js7">
+      <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
     </logger>
-    <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown"/>
-    <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
-    <logger level="debug" name="js7"/>
-
-    <!-- Change to trace for detailed logging -->
-    <logger level="debug" name="js7.journal.Journal"/>
-    <logger level="debug" name="js7.common.http.PekkoHttpClient"/>
   </loggers>
 </configuration>

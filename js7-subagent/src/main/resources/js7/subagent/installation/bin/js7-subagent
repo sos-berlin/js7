@@ -101,7 +101,7 @@ ln -sf "$logs"/agent-debug.log "$HOME"/js7-debug.log
 
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
-  javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
+  javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
 fi
 if $log4Async; then :
   javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
@@ -160,7 +160,6 @@ while true; do
       "$JS7_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
     else
       "$java" -Xmx50m \
-        -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
         "${standardJavaOptions[@]}" \
         -classpath "$classpathString" \
         js7.agent.client.main.AgentClientMain \

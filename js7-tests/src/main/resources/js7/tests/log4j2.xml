@@ -6,7 +6,7 @@
 
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
 
     <rollingRandomAccessFile name="file-info"
@@ -39,11 +39,13 @@
                              filePattern="${logDirectory}/test-debug-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout>
-        <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger %notEmpty{»%marker« }- %message%n</pattern>
+        <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message%n</pattern>
         <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</header>
         <footer>%d{DEFAULT_MICROS} End of logging%n</footer>
         <charset>UTF-8</charset>
       </patternLayout>
+      <!-- Suppress heartbeat messages -->
+      <markerFilter marker="Hearbeat" onMatch="DENY" onMismatch="ACCEPT"/>
       <policies>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>

@@ -7,7 +7,7 @@ declare -a standardJavaOptions
 
 "$java"\
   -classpath "$classpathString"\
-  -Dlog4j.configurationFile="js7/agent/client/main/log4j2.xml"\
+  -Dlog4j.configurationFile="classpath:js7/log4j2.xml,js7/agent/client/main/log4j2.xml"\
   "${standardJavaOptions[@]}" \
   js7.agent.client.mainMainThenExit.AgentClientMain \
   "$@"

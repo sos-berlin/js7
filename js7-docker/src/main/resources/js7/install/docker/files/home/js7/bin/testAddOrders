@@ -41,7 +41,7 @@ fi
 
 logs="$directory"
 export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
-javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
+javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$log4jXml")
 javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
 javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
 javaOptions+=("-Djs7.log4j.immediateFlush=false")

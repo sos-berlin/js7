@@ -1,7 +1,7 @@
 package js7.controller
 
-import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO}
 import js7.common.system.startup.ServiceApp
 import js7.controller.configuration.ControllerConfiguration
 

@@ -2,6 +2,7 @@ package js7.base.log
 
 import java.lang.reflect.Method
 import java.time.LocalDateTime
+import js7.base.io.JavaResource
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.ifFailed
@@ -18,6 +19,7 @@ object Log4j:
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
   private val ifNotInitialized = new Once
+  private val logj42Xml = JavaResource("js7/log4j2.xml")
 
   // Do not touch the logger before initialize has been called !!!
   private lazy val logger = Logger[this.type]
@@ -32,14 +34,11 @@ object Log4j:
 
   def initialize(name: String): Unit =
     ifNotInitialized:
+      if !sys.props.contains("log4j.configurationFile") then
+        val uri = s"classpath:$logj42Xml"
+        System.setProperty("log4j.configurationFile", uri)
       CorrelIdLog4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
-
-  def setDefaultConfiguration(resource: String): Unit =
-    if !sys.props.contains("log4j.configurationFile") then
-      val uri = s"classpath:$resource"
-      System.setProperty("log4j.configurationFile", uri)
-      logger.debug(s"Default log4j.configurationFile=$uri")
 
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
