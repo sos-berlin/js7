@@ -37,7 +37,7 @@ import js7.base.utils.{OneTimeToken, SetOnce}
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.PassiveClusterNode.*
-import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
+import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.PassiveClusterNodeResetProblem
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
@@ -478,8 +478,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                 Stream.empty  // Ignore
 
           case Right((_, h @ StampedHeartbeatByteArray, _)) =>
-            if !PekkoHttpClient.LogData then
-              logger.trace(h.utf8String.trim)
+            // Already logged by PekkoHttpClient:
+            //logger.trace(h.utf8String.trim)
             Stream.empty
 
           case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
@@ -491,9 +491,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           case Right((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
-            if !PekkoHttpClient.LogData/*avoid duplicate logging*/ then
-              logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
-                s"${line.utf8StringTruncateAt(200).trim}")
+            // Already logged by PekkoHttpClient:
+            //logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
+            //  s"${line.utf8StringTruncateAt(200).trim}")
             val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {
               case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
               case _ => false

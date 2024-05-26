@@ -52,7 +52,8 @@ extends Service.StoppableByRequest:
     startService:
       untilStopRequested
 
-  def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
+  def checkClusterState(
+    clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean, isHeartbeat: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
@@ -69,7 +70,8 @@ extends Service.StoppableByRequest:
             check(
               clusterState.setting.clusterWatchId,
               ClusterWatchCheckState(_, correlId, ownId, clusterState),
-              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
+              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
+              isHeartbeat = isHeartbeat,
             ).map(_.map(Some(_)))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
@@ -102,7 +104,8 @@ extends Service.StoppableByRequest:
   private def check(
     clusterWatchId: Option[ClusterWatchId],
     toRequest: RequestId => ClusterWatchRequest,
-    clusterWatchIdChangeAllowed: Boolean)
+    clusterWatchIdChangeAllowed: Boolean,
+    isHeartbeat: Boolean = false)
   : IO[Checked[ClusterWatchConfirmation]] =
     if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
       IO.left(NoClusterWatchProblem)
@@ -112,7 +115,9 @@ extends Service.StoppableByRequest:
         val request = toRequest(reqId)
         lock.lock(
           logger.traceIOWithResult("check",
-            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
+            s"${isHeartbeat ?? "🩶 "
+            }$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
+            marker = if isHeartbeat then Logger.Heartbeat else null,
             body = check2(
               clusterWatchId, request,
               new Requested(clusterWatchId, request,

@@ -49,7 +49,7 @@ import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import org.apache.pekko.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import org.apache.pekko.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as PekkoUri}
+import org.apache.pekko.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMessage, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as PekkoUri}
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
@@ -62,9 +62,28 @@ import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
 import scala.util.{Success, Try}
 
-/**
-  * @author Joacim Zschimmer
-  */
+/** General HTTP client.
+ * <p>
+ *   Supports streaming, JSON, logging.
+ * <h3>Meaning of logged arrows</h3>
+ * Looks better with Fire Code font.
+ * <p>Request
+ * <br><code>>-->  </code> chunked request HTTP header
+ * <br><code>->->  </code> chunk of request stream
+ * <br><code>~~> 💥</code> error while preparing a chunk of a request
+ * <br><code>|-->  </code> last chunk of request stream or
+ * <br><code>|-->  </code> non-chunked request
+ * <p>Response
+ * <br><code>&lt;--&lt;✔</code> HTTP header of chunked response, ok
+ * <br><code>&lt;-&lt;-  </code> chunk of response stream
+ * <br><code>&lt;--| </code> last chunk of response stream
+ * <br><code>&lt;~~ 💥</code> error while receiving chunks
+ * <br><code>&lt;--|✔</code> non-chunked response, ok
+ * <p>Cancellation
+ * <br><code>🗑 &nbsp; ↘</code> start of response cancellation
+ * <br><code>🗑 &nbsp; ↙</code> end of response cancellation
+ * <br><code>&lt;~~ ⚫️</code> canceled
+ */
 trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrace:
 
   implicit protected def actorSystem: ActorSystem
@@ -276,7 +295,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         val number = requestCounter.incrementAndGet()
 
         val req =
-          logRequestStream("#" + number):
+          logStream("#" + number, "->->  ", "|-->  ", "~~> 💥"):
             val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
               `x-js7-request-id`(number) ::
               CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
@@ -303,7 +322,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               val future = http.singleRequest(req, httpsCtx)
               //————————————————————————————————————————————
               val cancel = IO.executionContext.flatMap(implicit ec => IO:
-                logger.debug(s"🗑    ↘$responseLogPrefix cancel ...")
+                logger.debug(s"🗑   ↘ $responseLogPrefix cancel ...")
                 // TODO Pekko's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Pekko
                 //  until the server has responded or some Pekko (idle connection) timed out.
@@ -313,7 +332,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                   .flatMap(_
                     .discardEntityBytes().future)
                   .andThen: tried =>
-                    logger.debug(s"🗑 <-|↙$responseLogPrefix canceled with discardEntityBytes => " +
+                    logger.debug(s"🗑   ↙ $responseLogPrefix canceled with discardEntityBytes => " +
                       tried.fold(_.toStringWithCauses, _ => "OK"))
                   .map((_: Done) => ())
                   .handleError(_ => ())
@@ -333,7 +352,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             logResponding(request, _, responseLogPrefix)
               .map: response =>
                 if logger.isTraceEnabled then
-                  logResponseStream("#" + number)(response)
+                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥")(response)
                 else
                   response
           .guaranteeCaseLazy:
@@ -408,68 +427,36 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     val arrow = if response.entity.isChunked then "<--<" else "<--|"
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
 
-  // |-->  non-chunked request
-  // <--|✔ non-chunked response, ok
-  // <-<-✔ header of chunked response, ok
-  // <-<-  chunk of stream
-  // <--|  last chunk of stream
-
-  // TODO Similar to logRestreamStream
-  private def logRequestStream(requestLogPrefix: => String)(request: HttpRequest)
-  : HttpRequest =
-    request.entity match
+  private def logStream[M <: HttpMessage](prefix: => String, msgArrow: String, lastArrow: String, errArrow: String)
+    (message: M)
+  : M =
+    message.entity match
       case chunked: Chunked =>
-        val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
-          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
-        request
+        lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
+        message
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map: chunk =>
-                if LogData || chunk.isLastChunk then
-                  def arrow = if chunk.isLastChunk then "|-->  " else "->->  "
-                  def data =
+                if logger.isTraceEnabled then
+                  def arrow = if chunk.isLastChunk then lastArrow else msgArrow
+                  def string =
                     if isUtf8 then
                       chunk.data.utf8String.truncateWithEllipsis(
                         200, showLength = true, firstLineOnly = true, quote = true)
                     else
                       s"${chunk.data.length} bytes"
-                  if chunk.data == HttpHeartbeatByteString then
-                    loggerHeartbeat.trace(s"$arrow$requestLogPrefix $data")
-                  else
-                    loggerStream.trace(s"$arrow$requestLogPrefix $data")
-                chunk
-              .mapError: t =>
-                logger.trace(s"~~> 💥$requestLogPrefix ${t.toStringWithCauses}")
-                t))
-      case _ => request
 
-  private def logResponseStream(responseLogPrefix: => String)(response: HttpResponse)
-  : HttpResponse =
-    response.entity match
-      case chunked: Chunked =>
-        val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
-          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
-        response
-          .withEntity(chunked.copy(
-            chunks = chunked.chunks
-              .map: chunk =>
-                if LogData || chunk.isLastChunk then
-                  def arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
-                  def data =
-                    if isUtf8 then
-                      chunk.data.utf8String.truncateWithEllipsis(
-                        200, showLength = true, firstLineOnly = true, quote = true)
-                    else
-                      s"${chunk.data.length} bytes"
-                  if chunk.data == HttpHeartbeatByteString then
-                    loggerHeartbeat.trace(s"$arrow$responseLogPrefix $data")
+                  if isJson && chunk.data == HttpHeartbeatByteString then
+                    logger.trace(Logger.Heartbeat, s"$arrow$prefix $string 🩶")
                   else
-                    loggerStream.trace(s"$arrow$responseLogPrefix $data")
+                    logger.trace(Logger.Stream, s"$arrow$prefix $string")
                 chunk
               .mapError: t =>
-                logger.trace(s"<~~ 💥$responseLogPrefix ${t.toStringWithCauses}")
+                logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
                 t))
-      case _ => response
+          .asInstanceOf[M]
+      case _ => message
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
@@ -543,14 +530,6 @@ object PekkoHttpClient:
   val HttpHeartbeatByteArray: ByteArray = ByteArray("\n")
   val HttpHeartbeatByteString: ByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
 
-  val LogData: Boolean = true
-    //val key = "js7.PekkoHttpClient.log-data"
-    //val value = sys.props.get(key)
-    //try value.fold(false)(StringAsBoolean(_))
-    //catch case NonFatal(_) =>
-    //  logger.error(s"Invalid property key $key=$value")
-    //  false
-
   def resource(
     uri: Uri,
     uriPrefixPath: String,
@@ -620,7 +599,6 @@ object PekkoHttpClient:
 
   private val logger = Logger[this.type]
   private val loggerStream = Logger(getClass.scalaName + ".stream")
-  private val loggerHeartbeat = Logger(getClass.scalaName + ".heartbeat")
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
   private val requestCounter = Atomic(0L)

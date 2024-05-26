@@ -21,7 +21,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.annotation.unused
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.Deadline
 import scala.reflect.ClassTag
 
 object Logger extends AdHocLogger:
@@ -70,6 +70,8 @@ object Logger extends AdHocLogger:
   val Java: Marker = MarkerFactory.getMarker("Java")
   //val Repo: Marker = MarkerFactory.getMarker("Repo")
   val SignatureVerified: Marker = MarkerFactory.getMarker("SignatureVerified")
+  val Heartbeat: Marker = MarkerFactory.getMarker("Heartbeat")
+  val Stream: Marker = MarkerFactory.getMarker("Stream")
 
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])
@@ -121,19 +123,19 @@ object Logger extends AdHocLogger:
       /** Can be used to import these extensions. */
       inline def forceImportExtensions: Unit = ()
 
-      def isEnabled(level: LogLevel): Boolean =
+      inline def isEnabled(level: LogLevel): Boolean =
         logger.underlying.isEnabled(level)
 
-      def isEnabled(level: LogLevel, marker: Marker): Boolean =
+      inline def isEnabled(level: LogLevel, marker: Marker): Boolean =
         logger.underlying.isEnabled(level, marker)
 
-      def log(level: LogLevel, message: => String): Unit =
+      inline def log(level: LogLevel, message: => String): Unit =
         logger.underlying.log(level, message)
 
-      def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
+      inline def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
         logger.underlying.log(level, message, throwable)
 
-      def log(level: LogLevel, marker: Marker, message: => String): Unit =
+      inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
       inline def trace(inline msg: String): Unit =
@@ -197,26 +199,13 @@ object Logger extends AdHocLogger:
       : IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, args, result)(io)
 
-      inline def traceIO[A](inline body: IO[A])(using inline src: sourcecode.Name): IO[A] =
-        traceIOif(functionName = src.value)(body)
+      def traceIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
+        traceF(functionName = src.value)(body)
 
-      inline def traceIO[A](inline functionName: String, inline args: Any = "")(inline body: IO[A])
-      : IO[A] =
-        traceIOif(functionName, args)(body)
-
-      private inline def traceIOif[A](inline functionName: String, inline args: Any = "")
-        (inline body: IO[A])
-      : IO[A] =
-        if isTraceEnabled /*not deferred*/ then
-          traceIO_(functionName, args)(body)
-        else
-          body
-
-      private def traceIO_[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
+      def traceIO[A](functionName: String, args: Any = "")(body: IO[A]): IO[A] =
         traceF(functionName, args)(body)
 
-      def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
-      : F[A] =
+      def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name): F[A] =
         traceF(functionName = src.value)(body)
 
       def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
@@ -229,12 +218,13 @@ object Logger extends AdHocLogger:
       def traceIOWithResult[A](
         function: String,
         args: => Any = "",
-        result: A => Any = identity[A](_),
+        result: A => Any = identity[A],
+        marker: Marker | Null = null,
         body: IO[A])
       : IO[A] =
-        logF[IO, A](logger, LogLevel.Trace, function, args, result)(body)
+        logF[IO, A](logger, LogLevel.Trace, function, args, result, marker = marker)(body)
 
-      def traceCall[A](body: => A)(implicit src: sourcecode.Name): A =
+      inline def traceCall[A](body: => A)(implicit src: sourcecode.Name): A =
         traceCall[A](src.value)(body)
 
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
@@ -243,7 +233,7 @@ object Logger extends AdHocLogger:
       def traceCallWithResult[A](
         function: String,
         args: => Any = "",
-        result: A => Any = identity[A](_),
+        result: A => Any = identity[A],
         body: => A)
       : A =
         logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
@@ -308,15 +298,16 @@ object Logger extends AdHocLogger:
         logStream[F, A](logger, LogLevel.Trace, function, args)(stream)
 
       def logStart(logLevel: LogLevel, function: String, args: => Any = ""): Unit =
-        Logger.logStart(logger, logLevel, function, args)
+        Logger.logStart(logger, logLevel, marker = null, function, args)
 
-      def logOutcome[F[_], A](
-        logLevel: LogLevel,
-        function: String,
-        duration: FiniteDuration,
-        outcome: Outcome[F, Throwable, A])
-      : Unit =
-        Logger.logOutcome[F, A](logger, logLevel, function, args = "", duration.pretty + " ", outcome)
+      //def logOutcome[F[_], A](
+      //  logLevel: LogLevel,
+      //  marker: Marker | Null,
+      //  function: String,
+      //  duration: FiniteDuration,
+      //  outcome: Outcome[F, Throwable, A])
+      //: Unit =
+      //  Logger.logOutcome[F, A](logger, logLevel, marker, function, args = "", duration.pretty + " ", outcome)
 
       inline def isErrorEnabled: Boolean =
         logger.underlying.isErrorEnabled
@@ -339,7 +330,8 @@ object Logger extends AdHocLogger:
       logLevel: LogLevel,
       function: String,
       args: => Any = "",
-      resultToLoggable: A => Any = null)
+      resultToLoggable: A => Any = null,
+      marker: Marker | Null = null)
       (body: F[A])
       (implicit F: Sync[F])
     : F[A] =
@@ -347,7 +339,7 @@ object Logger extends AdHocLogger:
         if !logger.isEnabled(logLevel) then
           body
         else
-          val ctx = new StartReturnLogContext(logger, logLevel, function, args)
+          val ctx = new StartReturnLogContext(logger, logLevel, marker, function, args)
           body
             .flatTap:
               case left @ Left(_: Throwable | _: Problem) =>
@@ -369,8 +361,8 @@ object Logger extends AdHocLogger:
       (resource: Resource[F, A])
       (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
     : Resource[F, A] =
-        logResource[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
-          resource
+      logResource[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
+        resource
 
     private def logResource[F[_], A](
       logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
@@ -400,7 +392,7 @@ object Logger extends AdHocLogger:
         .makeCase(
           acquire = F.delay:
             logger.isEnabled(logLevel) ?
-              new StartReturnLogContext(logger, logLevel, function, args))(
+              new StartReturnLogContext(logger, logLevel, marker = null, function, args))(
           release = (maybeCtx, exitCase) => F.delay:
             for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome))
         .map(_ => ())
@@ -410,7 +402,7 @@ object Logger extends AdHocLogger:
       (stream: Stream[F, A])
       (using F: Sync[F])
     : Stream[F, A] =
-      Stream.suspend:
+      fs2.Stream.suspend:
         if !logger.isEnabled(logLevel) then
           stream
         else
@@ -418,21 +410,22 @@ object Logger extends AdHocLogger:
           val startedAt = Deadline.now
           stream
             .onStart(F.delay:
-              Logger.logStart(logger, logLevel, function, args))
+              Logger.logStart(logger, logLevel, marker = null, function, args))
             .mapChunks: chunk =>
               n += chunk.size
               chunks += 1
               chunk
             .onFinalizeCase(exitCase => F.delay:
-              Logger.logOutcome(logger, logLevel, function, args, duration = "",
+              Logger.logOutcome(logger, logLevel, marker = null, function, args, duration = "",
                 exitCase.toOutcome[F],
                 result =
                   s"$chunks chunks, ${itemsPerSecondString(startedAt.elapsed, n, "elems")}"))
 
-  private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
+  private final class StartReturnLogContext(
+    logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
     function: String, args: => Any = ""):
 
-    logStart(logger, logLevel, function, args)
+    logStart(logger, logLevel, marker, function, args)
     private val startedAt = System.nanoTime()
 
     private def duration: String =
@@ -441,13 +434,14 @@ object Logger extends AdHocLogger:
       else
         (System.nanoTime() - startedAt).ns.pretty + " "
 
-    def logOutcome[F[_], A](outcome: Outcome[F, Throwable, A]): Unit =
-      Logger.logOutcome(logger, logLevel, function, "", duration, outcome)
+    inline def logOutcome[F[_], A](outcome: Outcome[F, Throwable, A]): Unit =
+      Logger.logOutcome(logger, logLevel, marker, function, "", duration, outcome)
 
-    def logReturn(marker: String, msg: AnyRef): Unit =
-      Logger.logReturn(logger, logLevel, function, "", duration, marker, msg)
+    inline def logReturn(symbol: String, inline result: AnyRef): Unit =
+      Logger.logReturn(logger, logLevel, marker, function, "", duration, symbol, result)
 
-  private def logStart(logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
+  private def logStart(logger: ScalaLogger, logLevel: LogLevel, marker: Marker | Null,
+    function: String, args: => Any = "")
   : Unit =
     lazy val argsString = args match
       case null => "null"
@@ -455,26 +449,47 @@ object Logger extends AdHocLogger:
         try o.toString
         catch case t: Throwable => t.toStringWithCauses
 
-    if argsString.isEmpty then
-      logLevel match
-        case LogLevel.None =>
-        case LogLevel.Trace => logger.trace(s"↘ $function ↘")
-        case LogLevel.Debug => logger.debug(s"↘ $function ↘")
-        case LogLevel.Info  => logger.info (s"↘ $function ↘")
-        case LogLevel.Warn  => logger.warn (s"↘ $function ↘")
-        case LogLevel.Error => logger.error(s"↘ $function ↘")
-    else
-      logLevel match
-        case LogLevel.None =>
-        case LogLevel.Trace => logger.trace(s"↘ $function($argsString) ↘")
-        case LogLevel.Debug => logger.debug(s"↘ $function($argsString) ↘")
-        case LogLevel.Info  => logger.info (s"↘ $function($argsString) ↘")
-        case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ↘")
-        case LogLevel.Error => logger.error(s"↘ $function($argsString) ↘")
+    marker match
+      case null =>
+        if argsString.isEmpty then
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(s"↘ $function ↘")
+            case LogLevel.Debug => logger.debug(s"↘ $function ↘")
+            case LogLevel.Info  => logger.info (s"↘ $function ↘")
+            case LogLevel.Warn  => logger.warn (s"↘ $function ↘")
+            case LogLevel.Error => logger.error(s"↘ $function ↘")
+        else
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(s"↘ $function($argsString) ↘")
+            case LogLevel.Debug => logger.debug(s"↘ $function($argsString) ↘")
+            case LogLevel.Info  => logger.info (s"↘ $function($argsString) ↘")
+            case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ↘")
+            case LogLevel.Error => logger.error(s"↘ $function($argsString) ↘")
+
+      case marker: Marker =>
+        if argsString.isEmpty then
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(marker, s"↘ $function ↘")
+            case LogLevel.Debug => logger.debug(marker, s"↘ $function ↘")
+            case LogLevel.Info  => logger.info (marker, s"↘ $function ↘")
+            case LogLevel.Warn  => logger.warn (marker, s"↘ $function ↘")
+            case LogLevel.Error => logger.error(marker, s"↘ $function ↘")
+        else
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(marker, s"↘ $function($argsString) ↘")
+            case LogLevel.Debug => logger.debug(marker, s"↘ $function($argsString) ↘")
+            case LogLevel.Info  => logger.info (marker, s"↘ $function($argsString) ↘")
+            case LogLevel.Warn  => logger.warn (marker, s"↘ $function($argsString) ↘")
+            case LogLevel.Error => logger.error(marker, s"↘ $function($argsString) ↘")
 
   private def logOutcome[F[_], A](
     logger: ScalaLogger,
     logLevel: LogLevel,
+    marker: Marker | Null,
     function: String,
     args: => Any,
     duration: String,
@@ -485,35 +500,56 @@ object Logger extends AdHocLogger:
     def res = result_.nonEmpty ?? " • " + result_
     outcome match
       case Outcome.Errored(t) =>
-        logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses + res)
+        logReturn(logger, logLevel, marker, function, args, duration, "💥️", t.toStringWithCauses + res)
       case Outcome.Canceled() =>
-        logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled" + res)
+        logReturn(logger, logLevel, marker, function, args, duration, "⚫️", "Canceled" + res)
       case Outcome.Succeeded(_) =>
-        logReturn(logger, logLevel, function, args, duration, "", "Completed" + res)
+        logReturn(logger, logLevel, marker, function, args, duration, "", "Completed" + res)
 
   private def logReturn(
     logger: ScalaLogger,
     logLevel: LogLevel,
+    marker: Marker | Null,
     function: String,
     args: => Any = "",
-    duration: String,
-    marker: String,
-    msg: AnyRef)
+    duration: => String,
+    symbol: String,
+    result: => Any)
   : Unit =
     lazy val argsString = args.toString
-    if argsString.isEmpty then
-      logLevel match
-        case LogLevel.None =>
-        case LogLevel.Trace => logger.trace(s"↙$marker $function => $duration$msg ↙")
-        case LogLevel.Debug => logger.debug(s"↙$marker $function => $duration$msg ↙")
-        case LogLevel.Info  => logger.info (s"↙$marker $function => $duration$msg ↙")
-        case LogLevel.Warn  => logger.warn (s"↙$marker $function => $duration$msg ↙")
-        case LogLevel.Error => logger.error(s"↙$marker $function => $duration$msg ↙")
-    else
-      logLevel match
-        case LogLevel.None =>
-        case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg ↙")
-        case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg ↙")
-        case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg ↙")
-        case LogLevel.Warn  => logger.warn (s"↙$marker $function($argsString) => $duration$msg ↙")
-        case LogLevel.Error => logger.error(s"↙$marker $function($argsString) => $duration$msg ↙")
+    marker match
+      case null =>
+        if argsString.isEmpty then
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Debug => logger.debug(s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Info  => logger.info (s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Warn  => logger.warn (s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Error => logger.error(s"↙$symbol $function => $duration$result ↙")
+        else
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Debug => logger.debug(s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Info  => logger.info (s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Warn  => logger.warn (s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Error => logger.error(s"↙$symbol $function($argsString) => $duration$result ↙")
+
+      case marker: Marker =>
+        if argsString.isEmpty then
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function => $duration$result ↙")
+            case LogLevel.Error => logger.error(marker, s"↙$symbol $function => $duration$result ↙")
+        else
+          logLevel match
+            case LogLevel.None =>
+            case LogLevel.Trace => logger.trace(marker, s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Debug => logger.debug(marker, s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Info  => logger.info (marker, s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Warn  => logger.warn (marker, s"↙$symbol $function($argsString) => $duration$result ↙")
+            case LogLevel.Error => logger.error(marker, s"↙$symbol $function($argsString) => $duration$result ↙")

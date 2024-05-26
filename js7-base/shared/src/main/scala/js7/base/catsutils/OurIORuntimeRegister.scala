@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext
 /** Used for Environment and for tests having their own IORuntimes. */
 object OurIORuntimeRegister:
 
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
   private val ecToRuntime = new ConcurrentHashMap[ExecutionContext, Entry]
 
   def toIORuntime(compute: ExecutionContext): IORuntime =

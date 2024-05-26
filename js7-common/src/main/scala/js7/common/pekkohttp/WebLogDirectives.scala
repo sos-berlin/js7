@@ -106,8 +106,8 @@ trait WebLogDirectives extends ExceptionHandling:
       case _ => response
 
   private def log(request: HttpRequest, response: Option[HttpResponse],
-    correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = ""): Unit
-  =
+    correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = "")
+  : Unit =
     correlId.bind:
       webLogger.log(
         logLevel,

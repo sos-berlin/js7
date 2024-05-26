@@ -130,11 +130,12 @@ transparent trait AdHocLogger:
   inline def traceIOWithResult[A](
     function: String,
     args: => Any = "",
-    result: A => Any = identity[A](_),
+    result: A => Any = identity[A],
+    marker: Marker | Null = null,
     body: IO[A])
     (using sourcecode.Enclosing)
   : IO[A] =
-    logger.traceIOWithResult(function, args, result, body)
+    logger.traceIOWithResult(function, args, result, marker, body)
 
   inline def traceCall[A](body: => A)(using sourcecode.Name, sourcecode.Enclosing): A =
     logger.traceCall(body)
@@ -147,7 +148,7 @@ transparent trait AdHocLogger:
   inline def traceCallWithResult[A](
     function: String,
     args: => Any = "",
-    result: A => Any = identity[A](_),
+    result: A => Any = identity[A],
     body: => A)
     (using sourcecode.Enclosing)
   : A =
