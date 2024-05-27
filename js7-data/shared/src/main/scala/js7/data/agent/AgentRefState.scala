@@ -9,6 +9,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.delegate.DelegateCouplingState
@@ -27,7 +28,7 @@ final case class AgentRefState(
   eventId: EventId,
   problem: Option[Problem],
   clusterState: ClusterState,
-  nodeToClusterNodeProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
+  nodeToLossNotConfirmedProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
 extends UnsignedSimpleItemState:
 
@@ -121,12 +122,12 @@ extends UnsignedSimpleItemState:
 
       case AgentClusterWatchConfirmationRequired(problem) =>
         Right(copy(
-          nodeToClusterNodeProblem =
-            nodeToClusterNodeProblem.updated(problem.fromNodeId, problem)))
+          nodeToLossNotConfirmedProblem =
+            nodeToLossNotConfirmedProblem.updated(problem.fromNodeId, problem)))
 
       case AgentClusterWatchManuallyConfirmed =>
         Right(copy(
-          nodeToClusterNodeProblem = Map.empty))
+          nodeToLossNotConfirmedProblem = Map.empty))
 
 
 object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
@@ -149,7 +150,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson,
       "clusterState" -> o.clusterState.asJson,
-      "clusterNodeProblems" -> emptyToNone(o.nodeToClusterNodeProblem.values).asJson,
+      "clusterNodeProblems" -> emptyToNone(o.nodeToLossNotConfirmedProblem.values).asJson,
       "platformInfo" -> o.platformInfo.asJson)
 
   implicit val jsonDecoder: Decoder[AgentRefState] =

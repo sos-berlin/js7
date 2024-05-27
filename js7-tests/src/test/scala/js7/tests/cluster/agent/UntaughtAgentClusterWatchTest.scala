@@ -93,8 +93,8 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
             ke.key == agentPath && ke.event.problem.fromNodeId == NodeId("Backup"))
 
           val nodeToClusterWatchConfirmationRequired =
-            controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToClusterNodeProblem
-          logger.info(s"nodeToClusterNodeProblem=$nodeToClusterWatchConfirmationRequired")
+            controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToLossNotConfirmedProblem
+          logger.info(s"nodeToLossNotConfirmedProblem=$nodeToClusterWatchConfirmationRequired")
 
           assert(nodeToClusterWatchConfirmationRequired(NodeId.primary) ==
             ClusterNodeLossNotConfirmedProblem(
@@ -119,7 +119,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
           controller.eventWatch.await[AgentClusterWatchManuallyConfirmed](_.key == agentPath)
           assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
-            .nodeToClusterNodeProblem.isEmpty)
+            .nodeToLossNotConfirmedProblem.isEmpty)
 
           backupDirector.eventWatch.await[ClusterFailedOver]()
         }

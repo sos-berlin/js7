@@ -455,7 +455,7 @@ extends Service.StoppableByRequest:
       .persist(_
         .keyTo(AgentRefState)
         .checked(agentPath)
-        .map(_.nodeToClusterNodeProblem)
+        .map(_.nodeToLossNotConfirmedProblem)
         .flatMap: nodeToClusterWatchConfirmationRequired =>
           Right(maybeProblem match
             case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
