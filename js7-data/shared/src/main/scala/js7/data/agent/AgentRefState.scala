@@ -113,9 +113,16 @@ extends UnsignedSimpleItemState:
       case AgentMirroredEvent(keyedEvent) =>
         keyedEvent match
           case KeyedEvent(_: NoKey, event: ClusterEvent) =>
-            clusterState.applyEvent(event)
+            var checked = clusterState.applyEvent(event)
               .map(clusterState => copy(clusterState = clusterState))
               .left.map(_.withPrefix(s"$agentPath <-: AgentMirroredEvent:"))
+
+            for cs <- checked do
+              if event.isInstanceOf[ClusterNodeLostEvent] then
+                // Required when active node restarts before used has confirmed
+                checked = Right(cs.copy(nodeToLossNotConfirmedProblem = Map.empty))
+
+            checked
 
           case _ => Left(Problem(
             s"Unknown mirrored Event in AgentMirroredEvent: ${keyedEvent.getClass.shortClassName}"))
