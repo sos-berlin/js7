@@ -3,7 +3,7 @@ package js7.journal.log
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
 import js7.base.log.CorrelId
-import js7.base.log.LoggingEscapeCodes.{bold, resetColor}
+import js7.base.log.LoggingEscapeCodes.{isColorAllowed, resetColor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
@@ -115,11 +115,21 @@ private[journal] final class JournalLogger(
       sb.append(' ')
       sb.append(stamped.value.key)
       sb.append(spaceArrow)
-    val event = stamped.value.event
-    if !event.isMinor then sb.append(bold)
-    sb.append(' ')
-    sb.append(event.toString.truncateWithEllipsis(200, firstLineOnly = true))
-    if !event.isMinor then sb.append(resetColor)
+
+    locally:
+      val event = stamped.value.event
+      val eventString = event.toString.truncateWithEllipsis(200, firstLineOnly = true)
+      if isColorAllowed && !event.isMinor then
+        sb.append(" \u001b[39m\u001b[1m") // default color, bold
+        val i = eventString.indexOfOrLength('(')
+        sb.underlying.append(eventString, 0, i)
+        sb.append("\u001b[0m") // all attributes off
+        sb.underlying.append(eventString, i, eventString.length)
+        sb.append(resetColor)
+      else
+        sb.append(' ')
+        sb.append(eventString)
+
     logger.trace(sb.toString)
 
   private def infoLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
