@@ -13,7 +13,6 @@ httpPort=127.0.0.1:4444
 httpsPort=4443
 agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
-log4Async=false
 terminateCommand='{ "TYPE": "ShutDown" }'
 execOptions=()
 
@@ -59,9 +58,6 @@ for arg in "$@"; do :
     --https-port=*)
       httpsPort="${arg#*=}"
       ;;
-    --log4j-async)
-      log4Async=true
-      ;;
     *)
       agentOptions+=("$arg")
       ;;
@@ -102,11 +98,6 @@ ln -sf "$logs"/agent-debug.log "$HOME"/js7-debug.log
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
-fi
-if $log4Async; then :
-  javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
-  javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
-  javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
 agentOptions+=("--config-directory=$config")

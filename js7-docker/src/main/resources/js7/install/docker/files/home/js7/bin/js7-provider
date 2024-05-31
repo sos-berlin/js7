@@ -11,7 +11,6 @@ if [ "$HOME" = "/home/js7" ]; then
 fi
 
 exec /opt/js7/bin/js7-provider \
-  --log4j-async \
   -J"-XX:+HeapDumpOnOutOfMemoryError" \
   -J"-XX:HeapDumpPath=$hprof" \
   "$@"

@@ -15,7 +15,6 @@ httpPort=4444
 httpsPort=4443
 controllerOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
-log4jAsync=false
 execOptions=()
 
 for arg in "$@"; do :
@@ -47,9 +46,6 @@ for arg in "$@"; do :
       ;;
     --https-port=*)
       httpsPort="${arg#*=}"
-      ;;
-    --log4j-async)
-      log4jAsync=true
       ;;
     --rmx-port=*)
       a="${arg#*=}"
@@ -102,11 +98,6 @@ ln -sf "$logs"/controller-debug.log "$HOME"/js7-debug.log
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
-fi
-if $log4jAsync; then :
-  javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
-  javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
-  javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
 controllerOptions+=("--config-directory=$config" "--data-directory=$data")

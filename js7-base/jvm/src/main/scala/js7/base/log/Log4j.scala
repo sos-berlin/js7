@@ -32,6 +32,17 @@ object Log4j:
           case o => Success(o)
         })
 
+  def earlyInitializeForProduction(): Unit =
+    useAsyncLogger()
+
+  private def useAsyncLogger(): Unit =
+    sys.props("log4j2.contextSelector") =
+      classOf[org.apache.logging.log4j.core.async.AsyncLoggerContextSelector].getName
+    // Use less CPU when idling than default "Timeout":
+    sys.props("log4j2.asyncLoggerWaitStrategy") = "Block"
+    // Because AsyncLoggerContextSelector flushes:
+    sys.props("js7.log4j.immediateFlush") = "false"
+
   def initialize(name: String): Unit =
     ifNotInitialized:
       // Inactive as long as SOS places its log4j2.xml in the class path:
