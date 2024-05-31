@@ -661,6 +661,12 @@ object ScalaUtils:
       inline def utf8Length: Int =
         ScalaUtils.utf8Length(char)
 
+    extension (string: String)
+      def indexOfOrLength(char: Char): Int =
+        string.indexOf(char) match
+          case -1 => string.length
+          case i => i
+
     implicit final class RichString(private val underlying: String) extends AnyVal:
       /** Counts bytes of UTF-16 to UTF-8 encoding, the result may be bigger. */
       def estimateUtf8Length: Int =

@@ -665,6 +665,11 @@ final class ScalaUtilsTest extends OurTestSuite:
     //    val string = (base to base + 0xffff).map(_.toChar).mkString
     //    assert(string.estimatedUtf8Length == string.getBytes(UTF_8).length)
 
+    "indexOfOrLength" in:
+      assert("012".indexOfOrLength('0') == 0)
+      assert("012".indexOfOrLength('1') == 1)
+      assert("012".indexOfOrLength('?') == 3)
+
     "truncateWithEllipsis" in:
       assert("".truncateWithEllipsis(0) == "")
       assert("".truncateWithEllipsis(1) == "")
