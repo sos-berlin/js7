@@ -87,7 +87,7 @@ final class ProcessDriver(
                 .flatTapT { richProcess =>
                   richProcessOnce := richProcess
                   logger.info(
-                    s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
+                    s"$orderId ↘ Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
                   richProcess.watchProcess
                     .startAndForget
                     .flatTap: _ =>
@@ -101,7 +101,7 @@ final class ProcessDriver(
       .materialize.flatMap { tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
         logger.info(
-          s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
+          s"$orderId ↙ Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
         IO.fromTry(tried)
       }
       .flatMap { returnCode =>
@@ -132,7 +132,7 @@ final class ProcessDriver(
         case None =>
           IO:
             killedBeforeStart = Some(signal)
-            logger.debug(s"$orderId: Kill before start")
+            logger.debug(s"$orderId ⚫️ Kill before start")
         case Some(richProcess) =>
           sendProcessSignal(richProcess, signal)
       }
@@ -140,7 +140,7 @@ final class ProcessDriver(
 
   private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      logger.info(s"$orderId: Process $richProcess: kill \"$signal\"")
+      logger.info(s"$orderId ⚫️ Process $richProcess: kill \"$signal\"")
       richProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
