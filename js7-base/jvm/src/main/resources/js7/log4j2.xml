@@ -1,29 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration status="WARN" shutdownHook="disable">
+<!-- js7/log4j2.xml is provided as log4j2.xml, too. -->
+
+<configuration status="warn" shutdownHook="disable">
   <!-- User may want to set the 'productKebab' property (defaults to "js7"). -->
   <properties>
-    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
-    <property name="infoPattern">%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n</property>
-    <property name="debugPattern">%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message%n</property>
-    <property name="fileHeader">%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</property>
-    <property name="fileFooter">%d{DEFAULT_MICROS} End of logging%n</property>
+    <property name="logDirectory" value="${sys:js7.log4j.directory:-logs}"/>
+    <property name="infoLine">
+      %d{DEFAULT}%d{XX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
+    </property>
+    <property name="infoPattern">
+      %highlight{${infoLine}}{ERROR=red bold,WARN=red,INFO=default}%n
+    </property>
+    <property name="debugLine">
+      %d{DEFAULT_MICROS}%d{XX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }%-6replace{%threadName}{^$}{·} %logger - %message
+    </property>
+    <property name="debugPattern">
+      %highlight{${debugLine}}{ERROR=red bold,WARN=red,INFO=default,DEBUG=green,TRACE=bright_black}%n
+    </property>
+    <property name="fileHeader">
+      %d{DEFAULT_MICROS}%d{XX} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n
+    </property>
+    <property name="fileFooter">
+      %d{DEFAULT_MICROS}%d{XX} End of logging%n
+    </property>
   </properties>
 
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="$infoPattern"/>
+      <patternLayout pattern="${infoPattern}"/>
     </console>
 
-    <rollingRandomAccessFile name="file-info"
-                             fileName="${logDirectory}/${productKebab:-js7}.log"
-                             filePattern="${logDirectory}/${productKebab:-js7}-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout>
-        <pattern>${infoPattern}</pattern>
-        <header>${fileHeader}</header>
-        <footer>${fileFooter}</footer>
-        <charset>UTF-8</charset>
-      </patternLayout>
+    <rollingRandomAccessFile
+      name="infoLog"
+      fileName="${logDirectory}/${productKebab:-js7}.log"
+      filePattern="${logDirectory}/${productKebab:-js7}-%d{yyyy-MM-dd}-%i.log.gz"
+      immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout
+        pattern="${infoPattern}"
+        header="${fileHeader}"
+        footer="${fileFooter}"
+        charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
@@ -39,16 +55,16 @@
       </defaultRolloverStrategy>
     </rollingRandomAccessFile>
 
-    <rollingRandomAccessFile name="file-debug"
-                             fileName="${logDirectory}/${productKebab:-js7}-debug.log"
-                             filePattern="${logDirectory}/${productKebab:-js7}-debug-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout>
-        <pattern>${debugPattern}</pattern>
-        <header>${fileHeader}</header>
-        <footer>${fileFooter}</footer>
-        <charset>UTF-8</charset>
-      </patternLayout>
+    <rollingRandomAccessFile
+      name="debugLog"
+      fileName="${logDirectory}/${productKebab:-js7}-debug.log"
+      filePattern="${logDirectory}/${productKebab:-js7}-debug-%d{yyyy-MM-dd}-%i.log.gz"
+      immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout
+        pattern="${debugPattern}"
+        header="${fileHeader}"
+        footer="${fileFooter}"
+        charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
@@ -64,12 +80,14 @@
       </defaultRolloverStrategy>
     </rollingRandomAccessFile>
 
-    <rollingRandomAccessFile name="web.log"
-                             fileName="${logDirectory}/web.log"
-                             filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %message%n"
-                     charset="UTF-8"/>
+    <rollingRandomAccessFile
+      name="web.log"
+      fileName="${logDirectory}/web.log"
+      filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
+      immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout
+        pattern="%d{EE HH:mm:ss.SSS} %message%n"
+        charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
@@ -90,12 +108,12 @@
     <root level="info">
       <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="warn"  ref="stderr"/>
-      <appenderRef level="info"  ref="file-info"/>
-      <appenderRef level="trace" ref="file-debug"/>
+      <appenderRef level="info"  ref="infoLog"/>
+      <appenderRef level="trace" ref="debugLog"/>
     </root>
     <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
     <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown">
-      <appenderRef level="trace" ref="file-debug"/>
+      <appenderRef level="trace" ref="debugLog"/>
     </logger>
 
     <logger level="debug" name="js7.web">

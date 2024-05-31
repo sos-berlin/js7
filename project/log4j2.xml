@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration status="WARN" shutdownHook="disable">
+<configuration status="warn" shutdownHook="disable">
   <!-- TestResultCollector will shut down Log4j -->
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{ERROR=red bold,WARN=red,INFO=default}%n"/>
     </console>
     <!-- rollingRandomAccessFile swallows text chunks when uses with parallel test execution. -->
     <rollingFile
@@ -17,13 +17,11 @@
            Event parts are not written
           How to use a single file handle for all subprojects ???-->
       <!-- append=true is required to let forked tests append. -->
-      <patternLayout>
-        <pattern>%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message%n</pattern>
-        <header>%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n</header>
-        <footer>%d{DEFAULT_MICROS} End of logging%n</footer>
-        <charset>UTF-8</charset>
-      </patternLayout>
-
+      <patternLayout
+        pattern="%highlight{%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message}{ERROR=red bold,WARN=red,INFO=default,DEBUG=blue,TRACE=bright_black}%n"
+        header="%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n"
+        footer="%d{DEFAULT_MICROS} End of logging%n"
+        charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
       </policies>
