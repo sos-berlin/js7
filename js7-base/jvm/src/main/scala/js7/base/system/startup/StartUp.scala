@@ -1,7 +1,7 @@
 package js7.base.system.startup
 
 import java.io.File
-import java.time.Instant
+import java.time.ZonedDateTime
 import js7.base.BuildInfo
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
@@ -68,7 +68,10 @@ object StartUp:
   def printlnWithClock(line: String): Unit =
     System.err.println(s"$nowString $line")
 
+  // Pattern like in log4j2.xml
   def nowString: String =
-    Instant.now.toString
+    val now = ZonedDateTime.now
+    now.toString
       .replace('T', ' ')
       .take(23)/*ms*/
+      + now.getOffset.toString.replace(":", "")

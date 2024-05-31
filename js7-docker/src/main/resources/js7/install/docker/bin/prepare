@@ -20,6 +20,20 @@ if [ -d build ] && [ ! -f build/bin/prepare ]; then :
   exit 1
 fi
 
+if [ -z "${TZ:-}" ]; then
+  if [ -f /etc/timezone ]; then
+    TZ=$(cat /etc/timezone)
+    echo "TZ=$TZ"
+  elif [ -d /usr/share/zoneinfo ]; then
+    TZ=$(realpath --relative-to /usr/share/zoneinfo /etc/localtime)
+    echo "TZ=$TZ"
+  else
+    echo "Missing environment variable TZ (time zone)"
+    exit 1
+  fi
+fi
+export TZ
+
 rm -rf build
 tar xzf "$dockerTgz"
 cp "${installTgz[@]}" build/
