@@ -7,7 +7,6 @@ declare classpathString java
 declare -a standardJavaOptions
 
 directory=/var/opt/js7/testControllerAgent
-log4jXml="js7/tests/log4j2.xml"   # Java resource
 javaOptions=()
 args=()
 
@@ -36,7 +35,6 @@ done
 
 logs="$directory"
 export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
-javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$log4jXml")
 
 execute=(
   "$java"

@@ -45,10 +45,6 @@ object Log4j:
 
   def initialize(name: String): Unit =
     ifNotInitialized:
-      // Inactive as long as SOS places its log4j2.xml in the class path:
-      //if !sys.props.contains("log4j.configurationFile") then
-      //  val uri = s"classpath:$logj42Xml"
-      //  System.setProperty("log4j.configurationFile", uri)
       CorrelIdLog4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 

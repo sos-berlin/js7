@@ -350,7 +350,13 @@ lazy val `js7-base` = crossProject(JVMPlatform)
     Compile / resourceGenerators += Def.task {
       val versionFile = (Compile / resourceManaged).value / "js7/base/installation/VERSION"
       IO.write(versionFile, BuildInfos.info.value.prettyVersion + "\n")
-      Seq(versionFile)
+
+      val log4jFile = (Compile / resourceManaged).value / "logj42.xml"
+      IO.copyFile(
+        (Compile / resourceDirectory).value / "js7" / "log4j2.xml",
+        log4jFile)
+
+      Seq(versionFile, log4jFile)
     }.taskValue)
   .enablePlugins(BuildInfoPlugin)
   .settings(
