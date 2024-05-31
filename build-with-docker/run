@@ -7,7 +7,7 @@ set -eu
 cd "${0%/*}"/../build-with-docker/..
 user=build
 
-if which podman >/dev/null && test "$(uname)" != "Darwin"; then
+if which podman >/dev/null 2>&1 && test "$(uname)" != "Darwin"; then
   docker=podman
   # For proper ownership of mounted volumes
   extras="--userns=keep-id"
@@ -20,7 +20,7 @@ fi
 docker rmi js7-builder >/dev/null 2>&1 || true
 
 ( cd build-with-docker
-  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false $docker build --tag=js7-builder .
+  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false $docker build --tag=js7-builder  .
 )
 
 $docker run \
