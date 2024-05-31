@@ -27,7 +27,7 @@ object OurIORuntime:
   // Lazy, to allow proper initialisation of logging first
   private lazy val logger = Logger[this.type]
 
-  val commonThreadPrefix = "JS7"
+  val commonThreadPrefix = "js7"
 
   val useCommonIORuntime: Boolean =
     isTest && (
@@ -84,9 +84,9 @@ object OurIORuntime:
     computeExecutor: Option[Executor])
     (using F: Sync[F])
   : Resource[F, IORuntime] =
-    val computeLabel = s"$label-compute"
-    val computeBlockerLabel = s"$label-compute-blocker"
-    val blockingLabel = s"$label-blocking"
+    val computeLabel = s"$label"
+    val computeBlockerLabel = s"$label-blocker"
+    val blockingLabel = s"$label-I/O"
 
     for
       _ <- logAllocation[F](label, threads)

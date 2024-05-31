@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.pekkohttp.web.data.WebServerPort
@@ -36,7 +36,7 @@ final class SubagentConfTest extends OurTestSuite:
         jobWorkingDirectory = WorkingDirectory,
         webServerPorts = Nil,
         killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
-        name = "JS7"))
+        name = "js7"))
     }
 
   "--http-port=" in:

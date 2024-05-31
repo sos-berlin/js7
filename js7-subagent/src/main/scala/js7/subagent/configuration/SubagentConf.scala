@@ -128,7 +128,7 @@ object SubagentConf:
 
   def fromCommandLine(
     args: CommandLineArguments,
-    name: String = "JS7",
+    name: String = "js7",
     extraConfig: Config = ConfigFactory.empty,
     internalConfig: Config = DefaultConfig)
   : SubagentConf =

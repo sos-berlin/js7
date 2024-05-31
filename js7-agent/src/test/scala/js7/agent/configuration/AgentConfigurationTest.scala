@@ -38,7 +38,7 @@ final class AgentConfigurationTest extends OurTestSuite:
           webServerPorts = Nil,
           killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
           internalConfig = DefaultConfig,
-          name = "JS7")
+          name = "js7")
         AgentConfiguration(
           subagentConf,
           pekkoAskTimeout = 1.hour,
