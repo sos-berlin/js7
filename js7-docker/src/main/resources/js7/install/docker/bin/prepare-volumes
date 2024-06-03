@@ -17,5 +17,13 @@ cp -Rrnv build/volumes/* volumes || true
 chmod -R go-wrx volumes/*/config/private
 chmod -R +x volumes/subagent-*/config/executables/*
 
+(cd volumes
+  for v in *; do
+    if [ -d "$v"/data/logs ]; then
+      ln -sf data/logs $v/logs
+    fi
+  done
+)
+
 build/bin/generate-certificate --install
 build/bin/prepare-pgp-keys
