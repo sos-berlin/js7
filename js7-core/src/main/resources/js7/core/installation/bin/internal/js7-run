@@ -86,11 +86,6 @@ if [ -e "$logs/stdouterr.log" ]; then
 fi
 exec &> >(exec tee -a "$logs"/stdouterr.log)
 
-ln -sf "$logs/$kebabName.log" "$HOME"/js7.log
-ln -sf "$logs/$kebabName-debug.log" "$HOME"/js7-debug.log
-ln -sf "$kebabName".log "$logs"/js7.log
-ln -sf "$kebabName"-debug.log "$logs"/js7-debug.log
-
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 

@@ -13,7 +13,4 @@ mkdir -p /var/opt/js7/testControllerAgent
 groupadd --gid "$uid" js7
 useradd --uid "$uid" --gid js7 --home-dir /home/js7 --no-create-home --shell /bin/bash js7
 
-ln -sf data/logs/js7.log /home/js7/js7.log
-ln -sf data/logs/js7-debug.log /home/js7/js7-debug.log
-
 chown js7:js7 -R /home/js7 /var/opt/js7
