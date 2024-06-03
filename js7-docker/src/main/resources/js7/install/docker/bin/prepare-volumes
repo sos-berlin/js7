@@ -11,7 +11,7 @@ mkdir -p volumes/{subagent-1-a,subagent-1-b,subagent-2-a}/config/executables
 
 cp -Rrnv build/volumes/* volumes || true
 ( umask go-rwx
-  cp -nv volumes/controller/config/private/* volumes/backup-controller/config/private || true
+  cp -rnv volumes/controller/config/private/* volumes/backup-controller/config/private || true
 )
 
 chmod -R go-wrx volumes/*/config/private

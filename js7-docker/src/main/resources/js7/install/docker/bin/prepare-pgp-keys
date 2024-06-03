@@ -21,7 +21,8 @@ else
   }
   echo "🔸 Exporting secret PGP key. If you are being asked for a passphrase, type each time: $passphrase"
   if [ -d "$homedir" ]; then
-    gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
+    # "--batch --pinentry-mode loopback" is required for --passphrase
+    gpg --homedir "$homedir" --batch --pinentry-mode loopback --passphrase "$passphrase" --export-secret-keys --armor --output="$privateKeyFile"
     gpg --homedir "$homedir" --export --armor --output="$controllerPublicKeyFile"
   fi
   if [ -s "$privateKeyFile" ] && [ -s "$controllerPublicKeyFile" ]; then
