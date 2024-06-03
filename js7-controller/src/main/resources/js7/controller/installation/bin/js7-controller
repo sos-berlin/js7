@@ -92,12 +92,9 @@ if [ -e "$logs/stdouterr.log" ]; then
 fi
 exec &> >(exec tee -a "$logs"/stdouterr.log)
 
-ln -sf "$logs"/controller.log "$HOME"/js7.log
-ln -sf "$logs"/controller-debug.log "$HOME"/js7-debug.log
-
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
-  javaOptions+=("-Dlog4j.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
+  javaOptions+=("-Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml")
 fi
 
 controllerOptions+=("--config-directory=$config" "--data-directory=$data")
