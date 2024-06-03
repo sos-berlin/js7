@@ -45,7 +45,7 @@ extends (UserId => Option[U]):
 
   def distinguishedNameToIdsOrUser(distinguishedName: DistinguishedName): Checked[Either[Set[UserId], U]] =
     val userIds = distinguishedNameToUserIds(distinguishedName)
-    def unknownDN = Problem(s"Unknown distinguished name '$distinguishedName'")
+    def unknownDN = Problem(s"Unknown distinguished name (not defined as an user): $distinguishedName")
     if userIds.isEmpty then
       Left(unknownDN)
     else if userIds.sizeIs == 1 then

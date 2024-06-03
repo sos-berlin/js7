@@ -96,7 +96,8 @@ final class IdToUserTest extends OurTestSuite:
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN = IdToUserTest")) == Right(Right(d)))
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=D")) == Right(Right(d)))
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=E")) == Right(Left(Set(e1.id, e2.id))))
-      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=UNKNOWN")) == Left(Problem("Unknown distinguished name 'CN=UNKNOWN'")))
+      assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=UNKNOWN")) == 
+        Left(Problem("Unknown distinguished name (not defined as an user): CN=UNKNOWN")))
 
       val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD")): @unchecked
       assert(emptyPasswordUser.hashedPassword equalsClearText SecretString(""))
