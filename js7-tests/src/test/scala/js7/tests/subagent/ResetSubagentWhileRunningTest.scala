@@ -74,7 +74,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
 
     assert(eventWatch.allKeyedEvents[SubagentItemStateEvent]
       .collect {
-        case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)) =>
+        case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))) =>
           Some(event)
 
         case KeyedEvent(`bareSubagentId`, SubagentDedicated(runId, _)) =>
@@ -92,7 +92,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
         SubagentResetStarted(false),
         SubagentCouplingFailed(Problem("decoupled")),
         SubagentReset,
-        SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)/*time dependent?*/))
+        SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))/*time dependent?*/))
 
     assert(eventWatch.allKeyedEvents[OrderEvent] == Seq(
       aOrderId <-: OrderAdded(workflow.id),

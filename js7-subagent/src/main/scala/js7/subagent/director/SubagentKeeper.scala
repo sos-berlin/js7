@@ -321,9 +321,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           .get(subagentId)
           .fold(IO.unit)(subagentDriver =>
             subagentDriver.tryShutdown
-              .*>(stateVar.update(state => IO(
-                state.removeSubagent(subagentId))))
-              .*>(subagentDriver.terminate))))
+              .*>(stateVar.update(state => IO:
+                state.removeSubagent(subagentId)))
+              .*>(subagentDriver.terminate)))
               .*>(journal
                 .persistKeyedEvent(ItemDetached(subagentId, agentPath))
                 .orThrow

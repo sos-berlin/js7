@@ -12,7 +12,7 @@ import js7.base.problem.Checked
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
@@ -49,6 +49,7 @@ object SubagentCommand extends CommonCommand.Companion:
   final case class DedicateSubagent(
     subagentId: SubagentId,
     agentPath: AgentPath,
+    agentRunId: AgentRunId,
     controllerId: ControllerId)
   extends SubagentCommand:
     type Response = DedicateSubagent.Response
@@ -58,6 +59,17 @@ object SubagentCommand extends CommonCommand.Companion:
       subagentEventId: EventId,
       version/*COMPATIBLE with v2.3*/: Option[Version])
     extends SubagentCommand.Response
+
+    given Encoder.AsObject[DedicateSubagent] = deriveCodec[DedicateSubagent]
+    given Decoder[DedicateSubagent] =
+      c =>
+        for
+          subagentId <- c.get[SubagentId]("subagentId")
+          agentPath <- c.get[AgentPath]("agentPath")
+          agentRunId <- c.getOrElse[AgentRunId]("agentRunId")(AgentRunId.pastAgentVersion)
+          controllerId <- c.get[ControllerId]("controllerId")
+        yield
+          DedicateSubagent(subagentId, agentPath, agentRunId, controllerId)
 
   final case class CoupleDirector(
     subagentId: SubagentId,
@@ -143,7 +155,7 @@ object SubagentCommand extends CommonCommand.Companion:
 
   implicit val jsonCodec: TypedJsonCodec[SubagentCommand] = TypedJsonCodec[SubagentCommand](
     Subtype(deriveCodec[Batch]),
-    Subtype(deriveCodec[DedicateSubagent]),
+    Subtype[DedicateSubagent],
     Subtype(deriveCodec[CoupleDirector]),
     //Subtype(deriveCodec[AttachItem]),
     Subtype[AttachSignedItem],

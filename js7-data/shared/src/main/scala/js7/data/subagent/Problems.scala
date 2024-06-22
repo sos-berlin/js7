@@ -16,8 +16,9 @@ object Problems:
     def arguments: Map[String, String] = Map(
       "subagentId" -> subagentId.string)
 
-  type SubagentAlreadyDedicatedProblem = SubagentAlreadyDedicatedProblem.type
-  case object SubagentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded
+  final case class SubagentAlreadyDedicatedProblem(reasons: String)
+  extends Problem.Coded:
+    def arguments = Map("reasons" -> reasons)
 
   type SubagentNotDedicatedProblem = SubagentNotDedicatedProblem.type
   case object SubagentNotDedicatedProblem extends Problem.ArgumentlessCoded

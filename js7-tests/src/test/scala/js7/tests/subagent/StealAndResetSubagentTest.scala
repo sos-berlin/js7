@@ -74,12 +74,12 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       controller.api.addOrder(FreshOrder(thieveOrderId, thieveWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == thieveOrderId)
 
-      // STEAL
+      // STEAL THE SUBAGENT
       controller.api.executeCommand(ResetSubagent(stolenSubagentItem.id, force = true))
         .await(99.s).orThrow
       eventWatch.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
 
-      // The stolen orders are killed
+      // The stolen orders are canceled (and its processes have been killed)
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
       assert(processed.value.event ==
         OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))))

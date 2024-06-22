@@ -3,6 +3,7 @@ package js7.data.subagent
 import js7.base.crypt.Signed
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.agent.AgentRunId
 import js7.data.event.JournaledState
 import js7.data.item.SignableItem
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
@@ -17,6 +18,7 @@ trait SubagentDirectorState[S <: SubagentDirectorState[S]]
 extends JournaledState[S]:
   this: S =>
 
+  def agentRunId: AgentRunId
   def idToOrder: Map[OrderId, Order[Order.State]]
   def idToWorkflow: Map[WorkflowId, Workflow]
   def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob]

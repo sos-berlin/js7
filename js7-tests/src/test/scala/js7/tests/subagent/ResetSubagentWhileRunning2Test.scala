@@ -65,7 +65,8 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
       val eventId = eventWatch.await[SubagentReset](_.key == bareSubagentId).head.eventId
       val failed1 = eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId,
         after = eventId).head
-      assert(failed1.value.event == SubagentCouplingFailed(SubagentAlreadyDedicatedProblem))
+      assert(failed1.value.event ==
+        SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use")))
       //subagent.shutdown(Some(SIGKILL))
     }
     // SubagentShutdown is suppressed like any other event from Subagent after Reset
@@ -73,7 +74,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
 
     assert(eventWatch.allKeyedEvents[SubagentItemStateEvent]
       .collect {
-        case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)) =>
+        case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))) =>
           Some(event)
 
         case ke @ KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
@@ -97,7 +98,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
         SubagentResetStarted(false),
         SubagentCouplingFailed(Problem("decoupled")),
         SubagentReset,
-        SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)/*time dependent?*/))
+        SubagentCouplingFailed(SubagentAlreadyDedicatedProblem("Subagent is already in use"))/*time dependent?*/))
 
     assert(eventWatch.allKeyedEvents[OrderEvent] == Seq(
       aOrderId <-: OrderAdded(workflow.id),

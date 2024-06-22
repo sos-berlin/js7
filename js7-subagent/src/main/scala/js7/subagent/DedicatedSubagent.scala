@@ -18,7 +18,7 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
@@ -46,6 +46,7 @@ final class DedicatedSubagent private(
   val commandExecutor: SubagentCommandExecutor,
   val journal: Journal[SubagentState],
   val agentPath: AgentPath,
+  val agentRunId: AgentRunId,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
   subagentConf: SubagentConf)
@@ -59,10 +60,12 @@ extends Service.StoppableByRequest:
   private val stoppingLock = AsyncLock()
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
   //private val director = AsyncVariable(none[Allocated[IO, DirectorRegisterable]])
+  private var _isUsed = false
   @volatile private var _dontWaitForDirector = false
   private val shuttingDown = Atomic(false)
 
-  def isLocal = true
+  def isUsed: Boolean =
+    _isUsed || isShuttingDown
 
   def isShuttingDown: Boolean =
     shuttingDown.get()
@@ -93,9 +96,8 @@ extends Service.StoppableByRequest:
             .both(
               orderIdToJobDriver.stop,
               signal.fold(IO.unit)(killAndStopAllJobs))
-            .*>(IO {
-              fileValueState.close()
-            })
+            .*>(IO:
+              fileValueState.close())
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
             .*>(
               if dontWaitForDirector then IO:
@@ -194,6 +196,7 @@ extends Service.StoppableByRequest:
     executeDefaultArguments: Map[String, Expression])
   : IO[Checked[FiberIO[OrderProcessed]]] =
     IO.defer:
+      _isUsed = true
       orderToProcessing
         .updateChecked(order.id, {
           case Some(processing) =>
@@ -375,6 +378,7 @@ object DedicatedSubagent:
     commandExecutor: SubagentCommandExecutor,
     journal: Journal[SubagentState],
     agentPath: AgentPath,
+    agentRunId: AgentRunId,
     controllerId: ControllerId,
     jobLauncherConf: JobLauncherConf,
     subagentConf: SubagentConf)
@@ -382,7 +386,7 @@ object DedicatedSubagent:
   : ResourceIO[DedicatedSubagent] =
   Service.resource(IO(
     new DedicatedSubagent(
-      subagentId, subagentRunId, commandExecutor, journal, agentPath, controllerId,
+      subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
       jobLauncherConf, subagentConf)))
 
   private final class Processing(

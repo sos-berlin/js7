@@ -6,8 +6,9 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.{ControllerId, ControllerState}
+import js7.data.event.JournalId
 import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
@@ -25,6 +26,21 @@ final class SubagentCommandTest extends OurTestSuite:
         DedicateSubagent(
           SubagentId("SUBAGENT"),
           AgentPath("AGENT"),
+          AgentRunId(JournalId(Base64UUID.zero)),
+          ControllerId("CONTROLLER")),
+        json"""{
+          "TYPE": "DedicateSubagent",
+          "subagentId": "SUBAGENT",
+          "agentPath": "AGENT",
+          "agentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "controllerId": "CONTROLLER"
+        }""")
+
+      testJsonDecoder[SubagentCommand](
+        DedicateSubagent(
+          SubagentId("SUBAGENT"),
+          AgentPath("AGENT"),
+          AgentRunId.pastAgentVersion,
           ControllerId("CONTROLLER")),
         json"""{
           "TYPE": "DedicateSubagent",

@@ -1,13 +1,11 @@
 package js7.subagent
 
-import cats.effect.Deferred
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{FiberIO, IO, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -43,6 +41,7 @@ import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import org.apache.pekko.actor.ActorSystem
+import scala.collection.mutable
 
 final class Subagent private(
   val webServer: PekkoWebServer,
@@ -119,14 +118,6 @@ extends MainService, Service.StoppableByRequest:
         //  release = unregisterDirector)
       yield ())
 
-  //def directorRegisteringResource(registerable: DirectorRegisterable): ResourceIO[Unit] =
-  //  for {
-  //    _ <- webServer.registeringRouteResource(registerable.toRoute)
-  //    //_ <- Resource.make(
-  //    //  acquire = registerDirector(registerable))(
-  //    //  release = unregisterDirector)
-  //  } yield ()
-
   //private def registerDirector(registerable: DirectorRegisterable): IO[registerable.type] =
   //  directorRegisterable
   //    .update {
@@ -150,23 +141,39 @@ extends MainService, Service.StoppableByRequest:
   def executeDedicateSubagent(cmd: DedicateSubagent): IO[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent
       .resource(cmd.subagentId, subagentRunId, commandExecutor, journal,
-        cmd.agentPath, cmd.controllerId, jobLauncherConf, conf)
+        cmd.agentPath, cmd.agentRunId, cmd.controllerId, jobLauncherConf, conf)
       .toAllocated
-      .flatMap(allocatedDedicatedSubagent => IO.defer {
-        val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
-        if !isFirst then
-          // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
-          //if (cmd.subagentId == dedicatedAllocated.orThrow.subagentId)
-          //  IO.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
-          //else
-          logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedAllocated")
-          IO.left(SubagentAlreadyDedicatedProblem)
-        else
-          // TODO Check agentPath, controllerId (handle in SubagentState?)
-          logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
-          IO.right(
-            DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
-      })
+      .flatMap: allocatedDedicatedSubagent =>
+        IO:
+          dedicatedAllocated.trySet(allocatedDedicatedSubagent)
+        .flatMap: isFirst =>
+          val ok = IO:
+            logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
+            Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
+          if isFirst then
+            ok
+          else
+            // Maybe it's a duplicate, idempotent command?
+            val errors = mutable.Buffer.empty[String]
+            val existing = dedicatedAllocated.orThrow.allocatedThing
+            if existing.subagentId != cmd.subagentId then
+              errors += s"Renaming dedication as ${cmd.subagentId} rejected"
+            if existing.agentPath != cmd.agentPath then
+              errors += s"Subagent is dedicated to an other ${existing.agentPath}"
+            if existing.controllerId != cmd.controllerId then
+              errors += s"Subagent is dedicated to ${existing.agentPath} of alien ${existing.controllerId}"
+            else if existing.agentPath == cmd.agentPath && existing.agentRunId != cmd.agentRunId then
+              errors += s"Subagent is dedicated to a past or alien ${existing.agentPath}"
+            if errors.isEmpty && existing.isUsed then
+              errors += s"Subagent is already in use"
+            if errors.nonEmpty then
+              val problem = SubagentAlreadyDedicatedProblem(reasons = errors.mkString(", "))
+              logger.warn(s"$cmd => $problem")
+              IO.unlessA(isFirst):
+                allocatedDedicatedSubagent.release
+              .as(Left(problem))
+            else
+              ok
 
   def startOrderProcess(
     order: Order[Order.Processing],
@@ -279,7 +286,7 @@ object Subagent:
     ioExecutor: IOExecutor,
     testEventBus: StandardEventBus[Any],
     actorSystem: ActorSystem):
-    implicit def iox: IOExecutor = ioExecutor
+    given iox: IOExecutor = ioExecutor
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

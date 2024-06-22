@@ -58,6 +58,9 @@ extends SignedItemContainer,
   override def maybeAgentPath: Option[AgentPath] =
     Some(meta.agentPath)
 
+  def agentRunId: AgentRunId =
+    meta.agentRunId
+
   def controllerId: ControllerId =
     meta.controllerId
 
