@@ -45,7 +45,9 @@ extends SubagentEnv:
   def subagentResource: ResourceIO[Subagent] =
     for
       given IORuntime <- OurIORuntime.resource[IO](subagentConf.name, subagentConf.config)
-      subagent <- Subagent.resource(subagentConf, new StandardEventBus[Any])
+      subagent <- Subagent
+        .resource(subagentConf, new StandardEventBus)
+        .evalOn(given_IORuntime.compute)
     yield
       subagent
 
