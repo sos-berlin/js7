@@ -96,12 +96,11 @@ final case class Order[+S <: Order.State](
     if problem != null then Left(problem) else Right(order)
 
   def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
-    val force = false
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)
     def inapplicable = Left(inapplicableProblem)
 
     def check[A](okay: => Boolean, updated: A) =
-      if force || okay then Right(updated) else inapplicable
+      if okay then Right(updated) else inapplicable
 
     event match
       case _: OrderAdded | _: OrderAttachedToAgent =>
@@ -257,11 +256,7 @@ final case class Order[+S <: Order.State](
             check(isState[IsFreshOrReady] || isState[Forked],
               copy(attachedState = Some(Attached(agentPath))))
           case _ =>
-            if force then
-              Right(copy(
-                attachedState = Some(Attached(agentPath))))
-            else
-              inapplicable
+            inapplicable
 
       case OrderDetachable =>
         attachedState match
@@ -304,7 +299,7 @@ final case class Order[+S <: Order.State](
         Right(this)
 
       case OrderSuspended =>
-        check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
+        check(isSuspendibleNow && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
           copy(
             isSuspended = true,
             mark = None,
@@ -332,13 +327,13 @@ final case class Order[+S <: Order.State](
           inapplicable
 
       case OrderResumptionMarked(position, historyOperations, asSucceeded) =>
-        if !force && !isMarkable then
+        if !isMarkable then
           inapplicable
         else if isSuspended then
           Right(copy(
             mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded)),
             isResumed = true))
-        else if !force && (position.isDefined || historyOperations.nonEmpty) then
+        else if position.isDefined || historyOperations.nonEmpty then
             // Inhibited because we cannot be sure whether order will pass a fork barrier
           inapplicable
         else if !isSuspended && isSuspending then
@@ -347,7 +342,7 @@ final case class Order[+S <: Order.State](
             isResumed = true))
         else
           Right(copy(
-            mark = Some(OrderMark.Resuming(None, Vector.empty, false)),
+            mark = Some(OrderMark.Resuming()),
             isResumed = true))
 
       case OrderResumed(maybePosition, historyOps, asSucceeded) =>
@@ -411,7 +406,7 @@ final case class Order[+S <: Order.State](
           val maybeSucceeded =
             (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
-          check(isResumable,
+          check(isResumableNow,
             withPosition(maybePosition getOrElse position)
               .copy(
                 isSuspended = false,
@@ -436,7 +431,7 @@ final case class Order[+S <: Order.State](
 
       case _: OrderLocksReleased =>
         // LockState handles this event, too
-        if force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/ then
+        if isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/ then
           position
             .checkedParent
             .map(pos => withPosition(pos.increment))
@@ -746,9 +741,18 @@ final case class Order[+S <: Order.State](
     mark.isDefined
 
   def isSuspendible: Boolean =
-    (isState[IsFreshOrReady]
-      || isState[ProcessingKilled] && isSuspendingWithKill
-    ) && (isDetached || isAttached)
+    !isState[IsFailed] && !isState[IsTerminated] &&
+      mark.match
+        case Some(_: OrderMark.Cancelling) => false
+        case _ => true
+
+  /** Order is immediately suspendible (no OrderMark Suspending required).
+   * <p>
+   * ❗️ Also true when isAttached and an OrderDetachable event may be required first.
+   */
+  def isSuspendibleNow: Boolean =
+    (isState[IsFreshOrReady] || isState[ProcessingKilled] && isSuspendingWithKill) &&
+      (isDetached || isAttached)
 
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])
@@ -762,10 +766,14 @@ final case class Order[+S <: Order.State](
       && !isState[Cancelled]/*COMPATIBLE Before v2.6 OrderCancelled did not reset isSuspended*/
       || isState[Stopped])
 
+  def isResumable: Boolean =
+    isState[IsFreshOrReady] && isSuspendedOrStopped
+      || isState[Stopped]
+
   def isResuming: Boolean =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
-  def isResumable: Boolean =
+  def isResumableNow: Boolean =
     (isState[IsFreshOrReady] && isSuspendedOrStopped
       || isState[Stopped]
       || isState[StoppedWhileFresh]
@@ -773,7 +781,7 @@ final case class Order[+S <: Order.State](
       || isState[Broken]
     ) && (isDetached || isAttached)
 
-  def isProcessable: Boolean =
+  def isProcessable =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
   def isInOutermostBlock: Boolean =
@@ -898,6 +906,8 @@ object Order:
   /** Terminal state — the order can only be removed. */
   sealed trait IsTerminated extends State
 
+  sealed trait IsFailed extends State
+
   type Fresh = Fresh.type
   case object Fresh extends IsFreshOrReady
 
@@ -958,13 +968,13 @@ object Order:
       cycleState.map(_.next)
 
   type Failed = Failed.type
-  case object Failed extends IsStarted
+  case object Failed extends IsStarted with IsFailed
 
   type FailedWhileFresh = FailedWhileFresh.type
-  case object FailedWhileFresh extends State
+  case object FailedWhileFresh extends IsFailed
 
   type FailedInFork = FailedInFork.type
-  case object FailedInFork extends IsStarted //with IsTerminated
+  case object FailedInFork extends IsStarted with IsFailed //with IsTerminated
 
   type Stopped = Stopped.type
   case object Stopped extends IsStarted

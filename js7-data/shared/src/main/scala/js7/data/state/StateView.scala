@@ -108,8 +108,7 @@ trait StateView extends ItemContainer:
 
   def isOrderAtBreakpoint(order: Order[Order.State]): Boolean =
     order.isState[Order.IsFreshOrReady] &&
-      order.isSuspendible &&
-      !order.isResumed &&
+      order.isSuspendibleNow && !order.isResumed &&
       keyTo(WorkflowControl)
         .get(WorkflowControlId(order.workflowId))
         .exists(_.breakpoints contains order.position.normalized)

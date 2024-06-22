@@ -12,6 +12,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
@@ -21,6 +23,7 @@ import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderTerminated}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
@@ -442,7 +445,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderDetached extends OrderCoreEvent
 
   final case class OrderFinished(outcome: Option[OrderOutcome.Completed] = None)
-  extends OrderActorEvent, OrderTerminated
+  extends OrderActorEvent, OrderTerminated:
+    override def toString = "OrderFinished" + parameterListToString(outcome)
 
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
@@ -464,6 +468,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def kill: Option[CancellationMode.Kill] = mode match
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
+
+    override def toString = "OrderCancellationMarked" +
+      parameterListToString((mode != CancellationMode.Default) ? mode)
 
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
@@ -506,7 +513,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends OrderActorEvent, Big
+  extends OrderActorEvent, Big:
+    override def toString = "OrderResumed" +
+      parameterListToString(position.view, historyOperations, asSucceeded ? "asSucceeded")
   object OrderResumed:
     sealed trait HistoryOperation:
       def positions: Iterable[Position]

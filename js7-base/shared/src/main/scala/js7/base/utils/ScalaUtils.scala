@@ -928,3 +928,10 @@ object ScalaUtils:
     else if c <= 0x07ff then 2
     else if c <= 0xffff then 3
     else 4
+
+  def parameterListToString(args: IterableOnce[Any]*): String =
+    val iterator = args.iterator.flatten
+    if iterator.isEmpty then
+      ""
+    else
+      iterator.mkString("(", ", ", ")")

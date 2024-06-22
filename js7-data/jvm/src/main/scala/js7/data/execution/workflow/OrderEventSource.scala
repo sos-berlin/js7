@@ -239,25 +239,23 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     if order.deleteWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty then
       Some(OrderDeleted :: Nil)
     else
-      order.mark.flatMap(mark =>
-        mark match {
-          case OrderMark.Cancelling(mode) =>
-            tryCancel(order, mode)
+      order.mark.flatMap:
+        case OrderMark.Cancelling(mode) =>
+          tryCancel(order, mode)
 
-          case OrderMark.Suspending(_) =>
-            trySuspend(order)
-              .map(_ :: Nil)
+        case OrderMark.Suspending(_) =>
+          trySuspendNow(order)
+            .map(_ :: Nil)
 
-          case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
-            tryResume(order, position, historyOperations, asSucceeded)
-              .map(_ :: Nil)
+        case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
+          tryResume(order, position, historyOperations, asSucceeded)
+            .map(_ :: Nil)
 
-          case OrderMark.Go(_) =>
-            // OrderMark.go is used only at the Controller to remember sending a MarkOrder command
-            // to the Agent.
-            // The Agent executes the MarkOrder command immediately
-            None
-        })
+        case OrderMark.Go(_) =>
+          // OrderMark.go is used only at the Controller to remember sending a MarkOrder command
+          // to the Agent.
+          // The Agent executes the MarkOrder command immediately
+          None
 
   def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[List[OrderActorEvent]]] =
     catchNonFatalFlatten:
@@ -313,17 +311,15 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     catchNonFatalFlatten:
       withOrder(orderId)(order =>
         order.mark match {
-          case Some(_: OrderMark.Cancelling) =>
-            Left(CannotSuspendOrderProblem)
           case Some(_: OrderMark.Suspending) =>  // Already marked
             Right(None)
-          case None | Some(_: OrderMark.Resuming) | Some(_: OrderMark.Go) =>
-            if order.isState[Failed] || order.isState[IsTerminated] then
+          case _ =>
+            if !order.isSuspendible then
               Left(CannotSuspendOrderProblem)
             else
               Right(
                 (!order.isSuspended || order.isResuming) ?
-                  trySuspend(order).match
+                  trySuspendNow(order).match
                     case Some(event) => event :: Nil
                     case None =>
                       val events = OrderSuspensionMarked(mode) :: Nil
@@ -333,8 +329,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                         events)
         })
 
-  private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
-    if !weHave(order) || !order.isSuspendible then
+  private def trySuspendNow(order: Order[Order.State]): Option[OrderActorEvent] =
+    if !weHave(order) || !order.isSuspendibleNow then
       None
     else if isAgent then
       Some(OrderDetachable)
@@ -445,7 +441,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     historyOperations: Seq[OrderResumed.HistoryOperation],
     asSucceeded: Boolean)
   : Option[OrderActorEvent] =
-    (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations, asSucceeded)
+    (weHave(order) && order.isResumableNow) ? OrderResumed(position, historyOperations, asSucceeded)
 
   def answerPrompt(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     catchNonFatalFlatten:

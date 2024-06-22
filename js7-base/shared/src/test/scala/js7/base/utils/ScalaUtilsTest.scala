@@ -833,6 +833,11 @@ final class ScalaUtilsTest extends OurTestSuite:
       List("a", "bc", "def", "ghij", "klmnopqr", "1234567890ABCDEFHIJ")) ==
       List("abcdefg", "hijklmn", "opqr123", "4567890", "ABCDEFH", "IJ"))
 
+  "parameterListToString" in:
+    assert(parameterListToString() == "")
+    assert(parameterListToString(Nil, None) == "")
+    assert(parameterListToString(Some("A"), None, Nil, List("B", "C")) == "(A, B, C)")
+
   "compilable" in:
     compilable(1 / 0)
 

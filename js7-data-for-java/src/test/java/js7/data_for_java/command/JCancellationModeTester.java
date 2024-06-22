@@ -17,9 +17,9 @@ class JCancellationModeTester
        assertThat(JCancellationMode.freshOnly().toString(),
            equalTo("FreshOnly"));
        assertThat(JCancellationMode.kill().toString(),
-           equalTo("FreshOrStarted(Some(Kill(false,None)))"));
+           equalTo("FreshOrStarted(Kill)"));
        assertThat(JCancellationMode.kill(true).toString(),
-           equalTo("FreshOrStarted(Some(Kill(true,None)))"));
+           equalTo("FreshOrStarted(Kill(immediately))"));
        assertThat(
            JCancellationMode.kill(
                true,
@@ -29,6 +29,6 @@ class JCancellationModeTester
                        getOrThrow(
                            JPosition.fromList(asList(0, "Then", 1)))))
                ).toString(),
-           equalTo("FreshOrStarted(Some(Kill(true,Some(WORKFLOW~1.0:0/Then:1))))"));
+           equalTo("FreshOrStarted(Kill(immediately, WORKFLOW~1.0:0/Then:1))"));
     }
 }
