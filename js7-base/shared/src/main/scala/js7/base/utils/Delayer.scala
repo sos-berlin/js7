@@ -42,14 +42,14 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
     nextDelay2.map(_._2)
 
   private def nextDelay2: F[(FiniteDuration, FiniteDuration)] =
-    F.tailRecM(())(_ =>
-      F.monotonic.map(CatsDeadline.fromMonotonic).flatMap(now =>
-        F.delay {
+    F.tailRecM(()): _ =>
+      F.monotonic.map(CatsDeadline.fromMonotonic).flatMap: now =>
+        F.delay:
           val state = _state.get()
           val (elapsed, delay, next) = _state.get().next(now)
           val ok = _state.compareAndSet(state, next)
           if !ok then Left(()) else Right(elapsed -> delay)
-        }))
+
 
   private sealed case class State(since: CatsDeadline, nextDelays: LazyList[FiniteDuration]):
     def next(now: CatsDeadline): (FiniteDuration, FiniteDuration, State) =
@@ -96,14 +96,13 @@ object Delayer:
         onSleep: FiniteDuration => IO[Unit] = _ => IO.unit)
       : IO[A] =
         Delayer.start[IO](conf)
-          .flatMap { delayer =>
-            ().tailRecM(_ =>
+          .flatMap: delayer =>
+            ().tailRecM: _ =>
               io.attempt.flatMap:
                 case Left(throwable) =>
                   onFailure(throwable) *> delayer.sleep(onSleep).as(Left(()))
                 case Right(a) =>
-                  IO.right(a))
-          }
+                  IO.right(a)
 
   private def resetDelays(delays: NonEmptySeq[FiniteDuration]): LazyList[FiniteDuration] =
     LazyList.from(delays.toSeq)
