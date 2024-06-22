@@ -20,6 +20,7 @@ import js7.tests.subagent.StealAndResetSubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import fs2.Stream
+import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
 import scala.concurrent.TimeoutException
 
 final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
@@ -82,7 +83,8 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       // The stolen orders are canceled (and its processes have been killed)
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
       assert(processed.value.event ==
-        OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))))
+        OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)))
+        //OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))))
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted

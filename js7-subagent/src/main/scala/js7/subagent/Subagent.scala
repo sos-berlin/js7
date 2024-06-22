@@ -74,14 +74,11 @@ extends MainService, Service.StoppableByRequest:
   val forDirector: ForDirector = toForDirector(this)
 
   protected def start =
-    startService(IO
-      .race(
-        untilStopRequested *>
-          shutdown(
-            processSignal = Some(SIGKILL),
-            dontWaitForDirector = true),
+    startService:
+      IO.race(
+        untilStopRequested *> shutdown(processSignal = Some(SIGKILL), dontWaitForDirector = true),
         untilTerminated)
-      .void)
+      .void
 
   def isShuttingDown: Boolean =
     dedicatedAllocated.toOption.fold(false)(_.allocatedThing.isShuttingDown)
@@ -91,8 +88,8 @@ extends MainService, Service.StoppableByRequest:
 
   def shutdown(
     processSignal: Option[ProcessSignal] = None,
-    restart: Boolean = false,
-    dontWaitForDirector: Boolean = false)
+    dontWaitForDirector: Boolean = false,
+    restart: Boolean = false)
   : IO[ProgramTermination] =
     logger.debugIO(IO.defer:
       logger.info(s"❗ Shutdown ${

@@ -76,7 +76,7 @@ private[subagent] final class SubagentCommandExecutor(
               .rightAs(SubagentCommand.Accepted)
 
           case ShutDown(processSignal, dontWaitForDirector, restart) =>
-            subagent.shutdown(processSignal, dontWaitForDirector, restart)
+            subagent.shutdown(processSignal, dontWaitForDirector = dontWaitForDirector, restart = restart)
               .as(Right(SubagentCommand.Accepted))
 
           case DetachProcessedOrder(orderId) =>
