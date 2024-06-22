@@ -111,8 +111,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     }
 
   def reset(force: Boolean, dontContinue: Boolean = false): IO[Unit] =
-    logger.debugIO(
-      resetLock.lock(IO.defer {
+    logger.debugIO:
+      resetLock.lock(IO.defer:
         val wasHeartbeating = isHeartbeating
         // Stop listening events before we mark order processes as lost.
         // Eventual event from Subagent must not interfere without
@@ -124,8 +124,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             // May delay ProcessLost and SubagentReset for connection timeout.
             tryShutdownSubagent(processSignal = Some(SIGKILL), dontWaitForDirector = true)))
           .*>(onSubagentDied(ProcessLostDueToResetProblem, SubagentReset))
-          .*>(IO.unlessA(dontContinue)(startEventListener))
-      }))
+          .*>(IO.unlessA(dontContinue)(startEventListener)))
 
   private def suppressResetShutdown =
     conf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")

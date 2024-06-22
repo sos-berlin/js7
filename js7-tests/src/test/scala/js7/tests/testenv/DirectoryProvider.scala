@@ -89,13 +89,11 @@ final class DirectoryProvider(
 extends HasCloser:
   private lazy val controllerPort_ = controllerPort
 
-  val directory = useDirectory.getOrElse(
+  val directory = useDirectory.getOrElse:
     createTempDirectory(testName.fold("test-")(_ + "-"))
-      .withCloser { dir =>
-        repeatUntilNoException(10.s, 10.ms) {  // Windows
+      .withCloser: dir =>
+        repeatUntilNoException(10.s, 10.ms):  // Windows
           deleteDirectoryRecursively(dir)
-        }
-      })
 
   val controllerEnv = new ControllerEnv(directory / "controller",
     verifier = verifier,
@@ -109,7 +107,7 @@ extends HasCloser:
   val agentToEnv: Map[AgentPath, DirectorEnv] =
     agentPaths
       .zip(agentPorts ++ Seq.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort()))
-      .map { case (agentPath, port) =>
+      .map: (agentPath, port) =>
         val localSubagentId = toLocalSubagentId(agentPath, isBackup = isBackup)
         val localhost = if agentHttps then "https://localhost" else "http://127.0.0.1"
 
@@ -121,7 +119,6 @@ extends HasCloser:
           localSubagentItem,
           otherSubagentIds = bareSubagentItems
             .collect { case o: SubagentItem if o.agentPath == agentPath => o.id })
-      }
       .toMap
 
   val agentEnvs: Vector[DirectorEnv] = agentToEnv.values.toVector
@@ -138,11 +135,10 @@ extends HasCloser:
       .collect { case o: SubagentItem => o }
       .map(_.agentPath)
       .distinct
-      .foreach { agentPath =>
+      .foreach: agentPath =>
         controllerEnv.writeAgentAuthentication(
           agentPath,
           SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in DirectorEnv*/)
-      }
 
   val itemSigner = new ItemSigner(signer, signableItemJsonCodec)
 
@@ -175,29 +171,28 @@ extends HasCloser:
     (using IORuntime)
   : A =
     testControllerResource(httpPort = httpPort, config = config)
-      .blockingUse(99.s) { testController =>
+      .blockingUse(99.s): testController =>
         val result =
           try
             if !dontWaitUntilReady then
               testController.waitUntilReady()
             body(testController)
-          catch { case NonFatal(t) =>
+          catch case NonFatal(t) =>
             // Pekko may crash before the caller gets the error so we log the error here
             logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             try testController.terminate() await 99.s
-            catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+            catch case t2: Throwable if t2 ne t =>
+              t.addSuppressed(t2)
             throw t
-          }
         try testController.stop await 99.s
-        catch { case NonFatal(t) =>
+        catch case NonFatal(t) =>
           // Pekko may crash before the caller gets the error so we log the error here
           logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
           try testController.stop.await(99.s)
-          catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+          catch case t2: Throwable if t2 ne t =>
+            t.addSuppressed(t2)
           throw t
-        }
         result
-      }
 
   def newController(
     testWiring: TestWiring = controllerTestWiring,
@@ -286,13 +281,13 @@ extends HasCloser:
 
     val result =
       try body(agents)
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         // Pekko may crash before the caller gets the error so we log the error here
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         try agents.parTraverse(_.stop) await 99.s
-        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+        catch case t2: Throwable if t2 ne t =>
+          t.addSuppressed(t2)
         throw t
-      }
 
     agents.traverse(_.terminate()) await 99.s
     result

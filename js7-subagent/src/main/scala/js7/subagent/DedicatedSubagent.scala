@@ -81,11 +81,11 @@ extends Service.StoppableByRequest:
     signal: Option[ProcessSignal],
     dontWaitForDirector: Boolean = false)
   : IO[Unit] =
-    stoppingLock.lock(IO.defer {
+    stoppingLock.lock(IO.defer:
       _dontWaitForDirector |= dontWaitForDirector
       val first = !shuttingDown.getAndSet(true)
       IO
-        .whenA(first)(IO.defer {
+        .whenA(first)(IO.defer:
           val orderCount = orderIdToJobDriver.toMap.size
           if orderCount > 0 then
             logger.info(s"Stopping, waiting for $orderCount processes")
@@ -97,23 +97,21 @@ extends Service.StoppableByRequest:
               fileValueState.close()
             })
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
-            .*>(IO.defer {
-              if dontWaitForDirector then IO {
-                for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn(
-                  s"Shutdown: Agent Director has not yet acknowledged processing of $orderId")
-              } else
+            .*>(
+              if dontWaitForDirector then IO:
+                for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn:
+                  s"Shutdown: Agent Director has not yet acknowledged processing of $orderId"
+              else
                 awaitOrderAcknowledgements *>
                   // Await process termination and DetachProcessedOrder commands
                   orderToProcessing.whenStopped
-                    .logWhenItTakesLonger("Director-acknowledged Order processes")
-            })
+                    .logWhenItTakesLonger("Director-acknowledged Order processes"))
             .*>(journal
               // The event may get lost due to immediate shutdown !!!
               .persistKeyedEvent(NoKey <-: SubagentShutdown)
               .rightAs(())
-              .map(_.onProblemHandle(problem => logger.warn(s"SubagentShutdown: $problem"))))
-        })
-    })
+              .map(_.onProblemHandle: problem =>
+                logger.warn(s"SubagentShutdown: $problem")))))
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
     val jobKeySet = jobKeys.toSet
@@ -172,14 +170,13 @@ extends Service.StoppableByRequest:
   private def awaitOrderAcknowledgements: IO[Unit] =
     IO.defer:
       val oToP = orderToProcessing.toMap.toVector
-      for orderId <- oToP.map(_._1).sorted do logger.info(
-        s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId")
+      for orderId <- oToP.map(_._1).sorted do logger.info:
+        s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId"
       oToP
-        .parTraverse { case (orderId, processing) =>
-          processing.acknowldeged.get
-            .flatMap(_ =>
-              IO(logger.info(s"🟢 Director has acknowledged processing of $orderId")))
-        }
+        .parTraverse: (orderId, processing) =>
+          processing.acknowledged.get
+            .flatMap: _ =>
+              IO(logger.info(s"🟢 Director has acknowledged processing of $orderId"))
         .map(_.combineAll)
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =
@@ -307,7 +304,7 @@ extends Service.StoppableByRequest:
 
   def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     orderToProcessing.remove(orderId)
-      .flatMap(_.fold(IO.unit)(_.acknowldeged.complete(())))
+      .flatMap(_.fold(IO.unit)(_.acknowledged.complete(())))
       .as(Checked.unit)
 
   private val stdoutCommitDelayOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)
@@ -391,4 +388,4 @@ object DedicatedSubagent:
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,
     val fiber: FiberIO[OrderProcessed]):
-    val acknowldeged = Deferred.unsafe[IO, Unit]
+    val acknowledged = Deferred.unsafe[IO, Unit]

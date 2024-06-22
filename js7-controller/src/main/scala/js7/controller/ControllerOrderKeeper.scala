@@ -1228,49 +1228,46 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case _ =>
 
   private def proceedWithItem(itemKey: InventoryItemKey): Unit =
-    itemKey match
-      case itemKey: InventoryItemKey =>
-        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
-        for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do
-          for (agentPath, attachedState) <- agentToAttachedState do
-            // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for agentEntry <- agentRegister.get(agentPath) do
-              val agentDriver = agentEntry.agentDriver
-              if !agentEntry.isResetting then
-                attachedState match
-                  case Attachable =>
-                    itemKey match
-                      case itemKey: SignableItemKey =>
-                        for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do
-                          agentDriver
-                            .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
-                            .recoverWith(t => IO(logger.error(
-                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
-                            .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
-                            .awaitInfinite // TODO
-
-                      case itemKey: UnsignedItemKey =>
-                        for item <- _controllerState.keyToItem.get(itemKey) do
-                          val unsignedItem = item.asInstanceOf[UnsignedItem]
-                          agentDriver
-                            .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
-                            .recoverWith(t => IO(logger.error(
-                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
-                            .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
-                            .awaitInfinite // TODO
-
-                  case Detachable =>
-                    if /*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey) then
-                      agentEntry.detachingItems += itemKey
+    // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
+    for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do
+      for (agentPath, attachedState) <- agentToAttachedState do
+        // TODO Does nothing if Agent is added later! (should be impossible, anyway)
+        for agentEntry <- agentRegister.get(agentPath) do
+          val agentDriver = agentEntry.agentDriver
+          if !agentEntry.isResetting then
+            attachedState match
+              case Attachable =>
+                itemKey match
+                  case itemKey: SignableItemKey =>
+                    for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do
                       agentDriver
-                        .send(AgentDriver.Queueable.DetachItem(itemKey))
+                        .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
                         .recoverWith(t => IO(logger.error(
-                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
-                        .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
+                          s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
+                        .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
                         .awaitInfinite // TODO
 
-                  case _ =>
-    end match
+                  case itemKey: UnsignedItemKey =>
+                    for item <- _controllerState.keyToItem.get(itemKey) do
+                      val unsignedItem = item.asInstanceOf[UnsignedItem]
+                      agentDriver
+                        .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
+                        .recoverWith(t => IO(logger.error(
+                          s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
+                        .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
+                        .awaitInfinite // TODO
+
+              case Detachable =>
+                if /*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey) then
+                  agentEntry.detachingItems += itemKey
+                  agentDriver
+                    .send(AgentDriver.Queueable.DetachItem(itemKey))
+                    .recoverWith(t => IO(logger.error(
+                      s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
+                    .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
+                    .awaitInfinite // TODO
+
+              case _ =>
 
     // ResetSubagent
     itemKey match

@@ -451,14 +451,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
             }
 
     case AgentCommand.ResetSubagent(subagentId, force) =>
-      val task =
-        if journal.unsafeCurrentState().meta.directors.contains(subagentId) then
-          IO.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
-        else
-          subagentKeeper.startResetSubagent(subagentId, force)
-            .rightAs(AgentCommand.Response.Accepted)
-
-      task.unsafeToFuture()
+      subagentKeeper.startResetSubagent(subagentId, force)
+        .rightAs(AgentCommand.Response.Accepted)
+        .unsafeToFuture()
 
     case AgentCommand.ClusterSwitchOver =>
       switchOver(cmd)

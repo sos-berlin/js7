@@ -14,8 +14,8 @@ import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenRight, joinSt
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
-import js7.base.log.Logger.syntax.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
@@ -299,13 +299,14 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .flatMapT:
         case driver: RemoteSubagentDriver =>
           journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
-            .flatMapT(_ =>
+            .flatMapT: _ =>
               driver.reset(force)
-                .handleError(t =>
-                  logger.error(s"$subagentId reset => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .handleError: t =>
+                  logger.error(s"$subagentId reset => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                 .startAndForget
-                .map(Right(_)))
-        case _ =>
+                .map(Right(_))
+        case _: LocalSubagentDriver =>
+          // Reset of the local Subagent (running in our JVM) would require a restart of the JVM
           IO.pure(Problem.pure(s"$subagentId as the Agent Director cannot be reset"))
 
   def startRemoveSubagent(subagentId: SubagentId): IO[Unit] =
@@ -314,7 +315,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .startAndForget
 
   private def removeSubagent(subagentId: SubagentId): IO[Unit] =
-    logger.debugIO("removeSubagent", subagentId)(
+    logger.debugIO("removeSubagent", subagentId):
       stateVar.value
         .flatMap(_.idToDriver
           .get(subagentId)
