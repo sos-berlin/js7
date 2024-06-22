@@ -18,7 +18,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
   private val suiteName = testClass.shortClassName
   private val longSuiteName = testClass.scalaName
 
-  logger.info(s"$magenta${"━" * barLength} $bold↘ $longSuiteName$resetColor")
+  logger.info(s"$magenta┏${"━" * barLength}┓$bold ↘ $longSuiteName$resetColor")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
@@ -38,7 +38,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
       (ctx, testBody) => {
         if !firstTestCalled then
           firstTestCalled = true
-          logger.info("\n" + magenta + "━" * barLength + resetColor)
+          logger.info(s"$magenta$bar$resetColor")
 
         if suppressCorrelId then
           executeTest(ctx, testBody)
@@ -66,7 +66,7 @@ private final class LoggingTestAdder(testClass: Class[?]):
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty)
-    logger.info(s"$magenta${"▲" * barLength} $bold↙ $longSuiteName$resetColor\n")
+    logger.info(s"$magenta┗${"╼" * barLength}┛$bold ↙ $longSuiteName$resetColor\n")
 
 
 private object LoggingTestAdder:
@@ -172,7 +172,7 @@ private object LoggingTestAdder:
     val dropTop = st.indexWhere(o => !o.getClassName.startsWith("org.scalatest."))
     val dropBottom = st.lastIndexWhere { o =>
       val c = o.getClassName
-      !droppableStackTracePrefixes.exists(c startsWith _)
+      !droppableStackTracePrefixes.exists(c.startsWith)
     }
     t.setStackTrace(st.slice(dropTop, dropBottom + 1 max dropTop + 1))
 
