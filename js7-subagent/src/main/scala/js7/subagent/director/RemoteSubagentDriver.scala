@@ -1,7 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.Deferred
-import cats.effect.{FiberIO, IO, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
@@ -22,7 +21,7 @@ import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, SetOnce}
+import js7.base.utils.{AsyncLock, DelayConf, SetOnce}
 import js7.base.web.HttpClient
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -181,7 +180,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(subagentRunId -> _)
 
   private def dedicate: IO[DedicateSubagent.Response] =
-    val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
+    val agentRunId = journal.unsafeCurrentState().agentRunId
+    val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
     logger.debugIO(
       postCommandUntilSucceeded(cmd)
         .flatMap(response => journal
@@ -377,18 +377,18 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         case Right(_) =>
 
   private def postCommandUntilSucceeded(command: SubagentCommand): IO[command.Response] =
-    logger.traceIO("postCommandUntilSucceeded", command.toShortString)(
-      cancelAndFailWhenStopping(
-        api.login(onlyIfNotLoggedIn = true)
-          .*>(api.executeSubagentCommand(Numbered(0, command)).orThrow)
-          .map(_.asInstanceOf[command.Response])
-          .onErrorRestartLoop(()) { (throwable, _, retry) =>
-            logger.warn(
-              s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
-            emitSubagentCouplingFailed(Some(Problem.reverseThrowable(throwable)))
-              .*>(IO.sleep(5.s/*TODO*/))
-              .*>(retry(()))
-          }))
+    logger.traceIO("postCommandUntilSucceeded", command.toShortString):
+      DelayConf.default.run[IO].apply: delayer =>
+        cancelAndFailWhenStopping:
+          api.login(onlyIfNotLoggedIn = true)
+            .*>(api.executeSubagentCommand(Numbered(0, command)).orThrow)
+            .map(_.asInstanceOf[command.Response])
+            .onErrorRestartLoop(()): (throwable, _, retry) =>
+              logger.warn:
+                s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}"
+              emitSubagentCouplingFailed(Some(Problem.reverseThrowable(throwable)))
+                *> delayer.sleep
+                *> retry(())
 
   private def cancelAndFailWhenStopping[A](io: IO[A]): IO[A] =
     IO
