@@ -5,6 +5,14 @@ import js7.base.time.ScalaTime.*
 
 final class DelayConfTest extends OurTestSuite:
 
-  "iterator" in:
+  "stream" in:
     assert:
-      DelayConf.default.iterator().take(6).toSeq == Seq(1.s, 3.s, 6.s, 10.s, 10.s, 10.s)
+      DelayConf(1.s).stream.take(3).toList == List(1.s, 1.s, 1.s)
+    assert:
+      DelayConf.default.stream.take(6).toList == List(1.s, 3.s, 6.s, 10.s, 10.s, 10.s)
+
+  "lazyList" in:
+    assert:
+      DelayConf(1.s).lazyList.take(3).toList == List(1.s, 1.s, 1.s)
+    assert:
+      DelayConf.default.lazyList.take(6).toList == List(1.s, 3.s, 6.s, 10.s, 10.s, 10.s)

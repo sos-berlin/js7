@@ -19,7 +19,7 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
 
   import conf.{delays, resetWhen}
 
-  private val _state = Atomic(State(initialNow, resetDelays(delays)))
+  private val _state = Atomic(State(initialNow, conf.lazyList))
   private val sym = BlockingSymbol()
 
   export sym.{logLevel, symbol, relievedLogLevel}
@@ -59,11 +59,9 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
         now + delay,
         nextDelays =
           if elapsed >= resetWhen then
-            resetDelays(delays)
-          else if nextDelays.tail.nonEmpty then
-            nextDelays.tail
+            conf.lazyList
           else
-            nextDelays)
+            nextDelays.tail)
       (elapsed, delay, next)
 
     override def toString =
@@ -103,6 +101,3 @@ object Delayer:
                   onFailure(throwable) *> delayer.sleep(onSleep).as(Left(()))
                 case Right(a) =>
                   IO.right(a)
-
-  private def resetDelays(delays: NonEmptySeq[FiniteDuration]): LazyList[FiniteDuration] =
-    LazyList.from(delays.toSeq)

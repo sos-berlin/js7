@@ -3,6 +3,7 @@ package js7.base.utils
 import cats.data.{NonEmptyList, NonEmptySeq}
 import cats.effect.Async
 import cats.syntax.flatMap.*
+import fs2.{Pure, Stream}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import scala.concurrent.duration.*
@@ -11,8 +12,11 @@ final case class DelayConf(
   delays: NonEmptySeq[FiniteDuration],
   resetWhen: FiniteDuration):
 
-  def iterator(): Iterator[FiniteDuration] =
-    delays.iterator ++ Iterator.continually(delays.last)
+  def stream: Stream[Pure, FiniteDuration] =
+    Stream.iterable(delays.toSeq) ++ Stream.constant(delays.last)
+
+  def lazyList: LazyList[FiniteDuration] =
+    LazyList.from(delays.toSeq) ++ LazyList.continually(delays.last)
 
   def run[F[_]](using Async[F]): Run[F] =
     new Run[F]
