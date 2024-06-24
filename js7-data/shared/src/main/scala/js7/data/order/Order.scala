@@ -331,7 +331,7 @@ final case class Order[+S <: Order.State](
             isResumed = true))
         else
           Right(copy(
-            mark = Some(OrderMark.Resuming(None, Vector.empty, false)),
+            mark = Some(OrderMark.Resuming()),
             isResumed = true))
 
       case OrderResumed(maybePosition, historyOps, asSucceeded) =>
