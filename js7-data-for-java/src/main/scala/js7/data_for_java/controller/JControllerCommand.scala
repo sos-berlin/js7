@@ -6,11 +6,12 @@ import java.util.Objects.requireNonNull
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflow, ControlWorkflowPath, PostNotice}
+import js7.data.controller.ControllerCommand.{AddOrder, Batch, ControlWorkflow, ControlWorkflowPath, PostNotice}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Label
 import js7.data_for_java.common.JJsonable
@@ -35,6 +36,13 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
   @Nonnull
   def addOrder(@Nonnull jFreshOrder: JFreshOrder): JControllerCommand =
     JControllerCommand(AddOrder(jFreshOrder.asScala))
+
+  def batch(@Nonnull commands: java.util.List[JControllerCommand]): JControllerCommand =
+    JControllerCommand(Batch(
+      commands.asScala
+        .map(cmd =>
+          CorrelIdWrapped(CorrelId.current, cmd.asScala))
+        .toVector))
 
   @Nonnull
   def postNotice(
