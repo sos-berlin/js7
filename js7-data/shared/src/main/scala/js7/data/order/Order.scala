@@ -743,6 +743,13 @@ final case class Order[+S <: Order.State](
   private def isMarked =
     mark.isDefined
 
+  def isSuspendible: Boolean =
+    !isState[Failed] && !isState[IsTerminated] && (
+      mark match {
+        case Some(_: OrderMark.Cancelling) => false
+        case _ => true
+      })
+
   /** Order is immediately suspendible (no OrderMark Suspending required).
    * <p>
    * ❗️ Also true when isAttached and an OrderDetachable event may be required first.

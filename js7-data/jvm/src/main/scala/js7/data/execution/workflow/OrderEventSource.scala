@@ -318,12 +318,10 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     catchNonFatalFlatten {
       withOrder(orderId)(order =>
         order.mark match {
-          case Some(_: OrderMark.Cancelling) =>
-            Left(CannotSuspendOrderProblem)
           case Some(_: OrderMark.Suspending) =>  // Already marked
             Right(None)
-          case None | Some(_: OrderMark.Resuming) =>
-            if (order.isState[Failed] || order.isState[IsTerminated])
+          case _ =>
+            if (!order.isSuspendible)
               Left(CannotSuspendOrderProblem)
             else
               Right(
