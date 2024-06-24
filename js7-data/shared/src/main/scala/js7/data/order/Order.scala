@@ -309,7 +309,7 @@ final case class Order[+S <: Order.State](
         Right(this)
 
       case OrderSuspended =>
-        check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
+        check(isSuspendibleNow && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),
           copy(
             isSuspended = true,
             mark = None,
@@ -743,10 +743,13 @@ final case class Order[+S <: Order.State](
   private def isMarked =
     mark.isDefined
 
-  def isSuspendible =
-    (isState[IsFreshOrReady]
-      || isState[ProcessingKilled] && isSuspendingWithKill
-    ) && (isDetached || isAttached)
+  /** Order is immediately suspendible (no OrderMark Suspending required).
+   * <p>
+   * ❗️ Also true when isAttached and an OrderDetachable event may be required first.
+   */
+  def isSuspendibleNow: Boolean =
+    (isState[IsFreshOrReady] || isState[ProcessingKilled] && isSuspendingWithKill) &&
+      (isDetached || isAttached)
 
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])

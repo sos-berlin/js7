@@ -254,7 +254,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             tryCancel(order, mode)
 
           case OrderMark.Suspending(_) =>
-            trySuspend(order)
+            trySuspendNow(order)
               .map(_ :: Nil)
 
           case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
@@ -328,7 +328,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             else
               Right(
                 (!order.isSuspended || order.isResuming) ?
-                  (trySuspend(order) match {
+                  (trySuspendNow(order) match {
                     case Some(event) => event :: Nil
                     case None =>
                       val events = OrderSuspensionMarked(mode) :: Nil
@@ -340,8 +340,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         })
     }
 
-  private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
-    if (!weHave(order) || !order.isSuspendible)
+  private def trySuspendNow(order: Order[Order.State]): Option[OrderActorEvent] =
+    if (!weHave(order) || !order.isSuspendibleNow)
       None
     else if (isAgent)
       Some(OrderDetachable)
