@@ -766,6 +766,9 @@ final case class Order[+S <: Order.State](
       && !isState[Cancelled]/*COMPATIBLE Before v2.6 OrderCancelled did not reset isSuspended*/
       || isState[Stopped]
 
+  def isResumable: Boolean =
+    ???
+
   def isResuming =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 

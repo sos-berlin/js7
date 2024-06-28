@@ -923,7 +923,10 @@ final class ExpressionTest extends OurTestSuite
 
   "ListValue" - {
     implicit val scope: Scope = NameToCheckedValueScope(MapView(
-      "list" -> Right(ListValue(Seq[Value](-1, 111, 222)))))
+      "list" -> Right(ListValue(Seq[Value](
+        -1, 111,
+        ObjectValue(Map("elem" -> ListValue(Seq(StringValue("CONTENT"))))),
+        ListValue(Seq(StringValue("DEEP"))))))))
 
     testEval("$list(0)",
       result = Right(-1),
@@ -937,16 +940,20 @@ final class ExpressionTest extends OurTestSuite
       result = Right(111),
       ArgumentExpr(NamedValue("list"), 1))
 
-    testEval("$list(2)",
-      result = Right(222),
-      ArgumentExpr(NamedValue("list"), 2))
+    testEval("$list(2).elem(0)",
+      result = Right(StringValue("CONTENT")),
+      ArgumentExpr(DotExpr(ArgumentExpr(NamedValue("list"), 2), "elem"), 0))
 
-    testEval("$list(3)",
-      result = Left(Problem.pure("Index 3 out of range 0...2")),
-      ArgumentExpr(NamedValue("list"), 3))
+    testEval("$list(3)(0)",
+      result = Right(StringValue("DEEP")),
+      ArgumentExpr(ArgumentExpr(NamedValue("list"), 3), 0))
+
+    testEval("$list(4)",
+      result = Left(Problem.pure("Index 4 out of range 0...3")),
+      ArgumentExpr(NamedValue("list"), 4))
 
     testEval("$list(-1)",
-      result = Left(Problem.pure("Index -1 out of range 0...2")),
+      result = Left(Problem.pure("Index -1 out of range 0...3")),
       ArgumentExpr(NamedValue("list"), -1))
 
     testEval("$list(1.5)",
