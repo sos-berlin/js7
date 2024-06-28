@@ -13,6 +13,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
@@ -487,7 +488,9 @@ object OrderEvent
   case object OrderDetached extends OrderCoreEvent
 
   final case class OrderFinished(outcome: Option[Outcome.Completed] = None)
-  extends OrderActorEvent with OrderTerminated
+  extends OrderActorEvent with OrderTerminated {
+    override def toString = "OrderFinished" + parameterListToString(outcome)
+  }
 
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
@@ -512,6 +515,9 @@ object OrderEvent
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
     }
+
+    override def toString = "OrderCancellationMarked" +
+      parameterListToString((mode != CancellationMode.Default) ? mode)
   }
 
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
@@ -549,7 +555,10 @@ object OrderEvent
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends OrderActorEvent with Big
+  extends OrderActorEvent with Big {
+    override def toString = "OrderResumed" +
+      parameterListToString(position.view, historyOperations, asSucceeded ? "asSucceeded")
+  }
   object OrderResumed
   {
     sealed trait HistoryOperation {

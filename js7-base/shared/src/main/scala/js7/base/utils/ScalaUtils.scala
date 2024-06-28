@@ -1008,4 +1008,12 @@ object ScalaUtils
       case 3 => "3rd"
       case n => s"${n}th"
     }
+
+  def parameterListToString(args: IterableOnce[Any]*): String = {
+    val iterator = args.iterator.flatten
+    if (iterator.isEmpty)
+      ""
+    else
+      iterator.mkString("(", ", ", ")")
+  }
 }

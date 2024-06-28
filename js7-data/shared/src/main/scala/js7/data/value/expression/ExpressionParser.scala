@@ -220,26 +220,29 @@ object ExpressionParser
       jobResourceVariable |
       errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
 
-  private val dotExpression =
-    (factor ~ (char('.').surroundedBy(w).backtrack.with1 *> identifier).rep0).flatMap {
+  private val dotOrArgumentExpression = {
+    sealed trait Suffix
+    final case class DotName(name: String) extends Suffix
+    final case class Arg(expr: Expression) extends Suffix
+    val dotName = (char('.').surroundedBy(w).backtrack.with1 *> identifier).map(DotName)
+    val arg = inParentheses(expression).map(Arg)
+    ((factor <* w) ~ (dotName | arg).rep0).flatMap {
       case (o, Seq()) => pure(o)
       // TODO Don't use these legacy names:
-      case (o, Seq("toNumber")) => pure(ToNumber(o))
-      case (o, Seq("toBoolean")) => pure(ToBoolean(o))
-      case (o, Seq("stripMargin")) => pure(StripMargin(o))
-      case (o, Seq("mkString")) => pure(MkString(o))
-      case (o, fields) => pure(fields.scanLeft[Expression](o)(DotExpr(_, _)).last)
+      case (o, Seq(DotName("toNumber"))) => pure(ToNumber(o))
+      case (o, Seq(DotName("toBoolean"))) => pure(ToBoolean(o))
+      case (o, Seq(DotName("stripMargin"))) => pure(StripMargin(o))
+      case (o, Seq(DotName("mkString"))) => pure(MkString(o))
+      case (o, seq) => pure(
+        seq.scanLeft[Expression](o) {
+          case (expr, DotName(name)) => DotExpr(expr, name)
+          case (expr, Arg(arg)) => ArgumentExpr(expr, arg)
+        }.last)
     }
-
-  private val argumentExpression =
-    (dotExpression ~~ inParentheses(expression).?)
-      .map {
-        case (o, None) => o
-        case (o, Some(arg)) => ArgumentExpr(o, arg)
-      }
+  }
 
   private val questionMarkExpr: Parser[Expression] =
-    ((argumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> argumentExpression.?).rep0)
+    ((dotOrArgumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> dotOrArgumentExpression.?).rep0)
       .map { case (a, more) =>
         more.foldLeft(a) {
           case (a, None) => OrMissing(a)
