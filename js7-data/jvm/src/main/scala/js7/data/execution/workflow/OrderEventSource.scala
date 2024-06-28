@@ -427,7 +427,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     historyOperations: Seq[OrderResumed.HistoryOperation],
     asSucceeded: Boolean)
   : Option[OrderActorEvent] =
-    (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations, asSucceeded)
+    (weHave(order) && order.isResumableNow) ? OrderResumed(position, historyOperations, asSucceeded)
 
   def answerPrompt(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     catchNonFatalFlatten {

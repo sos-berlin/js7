@@ -404,7 +404,7 @@ final case class Order[+S <: Order.State](
           val maybeSucceeded =
             (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
               HistoricOutcome(position, Outcome.succeeded)
-          check(isResumable,
+          check(isResumableNow,
             withPosition(maybePosition getOrElse position)
               .copy(
                 isSuspended = false,
@@ -769,7 +769,7 @@ final case class Order[+S <: Order.State](
   def isResuming =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
-  def isResumable =
+  def isResumableNow =
     (isState[IsFreshOrReady] && isSuspendedOrStopped ||
       isState[Stopped] ||
       isState[StoppedWhileFresh] ||
