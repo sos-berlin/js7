@@ -739,7 +739,7 @@ final case class Order[+S <: Order.State](
     mark.isDefined
 
   def isSuspendible: Boolean =
-    !isState[Failed] && !isState[IsTerminated] && (
+    !isState[IsFailed] && !isState[IsTerminated] && (
       mark match {
         case Some(_: OrderMark.Cancelling) => false
         case _ => true
@@ -913,6 +913,8 @@ object Order
   /** Terminal state — the order can only be removed. */
   sealed trait IsTerminated extends State
 
+  sealed trait IsFailed extends State
+
   type Fresh = Fresh.type
   case object Fresh extends IsFreshOrReady
 
@@ -982,13 +984,13 @@ object Order
   }
 
   type Failed = Failed.type
-  case object Failed extends IsStarted
+  case object Failed extends IsStarted with IsFailed
 
   type FailedWhileFresh = FailedWhileFresh.type
-  case object FailedWhileFresh extends State
+  case object FailedWhileFresh extends IsFailed
 
   type FailedInFork = FailedInFork.type
-  case object FailedInFork extends IsStarted //with IsTerminated
+  case object FailedInFork extends IsStarted with IsFailed //with IsTerminated
 
   type Stopped = Stopped.type
   case object Stopped extends IsStarted
