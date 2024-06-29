@@ -741,10 +741,11 @@ final case class Order[+S <: Order.State](
     mark.isDefined
 
   def isSuspendible: Boolean =
-    !isState[IsFailed] && !isState[IsTerminated] &&
+    !isState[IsTerminated] && !isState[IsFailed] &&
       mark.match
+        case None => true
+        case Some(_: OrderMark.Suspending | _: OrderMark.Resuming | _: OrderMark.Go) => true
         case Some(_: OrderMark.Cancelling) => false
-        case _ => true
 
   /** Order is immediately suspendible (no OrderMark Suspending required).
    * <p>
