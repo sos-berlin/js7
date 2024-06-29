@@ -12,7 +12,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
@@ -23,7 +22,7 @@ import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderTerminated}
+import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
