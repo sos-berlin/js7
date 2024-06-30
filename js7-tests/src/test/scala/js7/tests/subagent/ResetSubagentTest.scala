@@ -36,14 +36,13 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
     runSubagent(bareSubagentItem) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-
       controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
-      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true, restart = true).await(99.s)
+      assert(subagent.untilTerminated.await(99.s).restart)
     }
     eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId)
 
