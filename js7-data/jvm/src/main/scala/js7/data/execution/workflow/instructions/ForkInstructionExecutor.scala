@@ -32,25 +32,27 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
   protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
     now: Timestamp): OrderOutcome.Completed
 
-  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView): Checked[List[KeyedEvent[OrderActorEvent]]] =
+  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     readyOrStartable(order)
-      .map(order =>
+      .map: order =>
         for event <- forkOrder(fork, order, state) yield
-          (order.id <-: event) :: Nil)
-      .orElse(
+          (order.id <-: event) :: Nil
+      .orElse:
         for
           order <- order.ifState[Order.Forked]
           joined <- toJoined(order, fork, state)
-        yield Right(joined :: Nil))
-      .orElse(
+        yield Right(joined :: Nil)
+      .orElse:
         for order <- order.ifState[Order.Processed] yield {
           val event = if order.lastOutcome.isSucceeded then
             OrderMoved(order.position.increment)
           else
             OrderFailedIntermediate_()
           Right((order.id <-: event) :: Nil)
-        })
-      .getOrElse(Right(Nil))
+        }
+      .getOrElse:
+        Right(Nil)
 
   private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
   : Checked[OrderActorEvent] =
@@ -64,14 +66,14 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
     for
       maybe <- fork.agentPath
         .map(agentPath => Right(Some(Some(agentPath))))
-        .getOrElse(
+        .getOrElse:
           checkedOrderForked.flatMap(
-            predictControllerOrAgent(order, _, state)))
-        .map(_.flatMap(controllerOrAgent =>
-          attachOrDetach(order, controllerOrAgent)))
+            predictControllerOrAgent(order, _, state))
+        .map(_.flatMap: maybeAgentPath =>
+          attachOrDetach(order, maybeAgentPath))
       event <- maybe
         .map(event => Right(event))
-        .getOrElse(
+        .getOrElse:
           for
             orderForked <- checkedOrderForked
             _ <- checkOrderIdCollisions(orderForked, state)
@@ -79,7 +81,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
             if order.isState[Order.Fresh] then
               OrderStarted
             else
-              orderForked)
+              orderForked
     yield event
 
   private def attachOrDetach(

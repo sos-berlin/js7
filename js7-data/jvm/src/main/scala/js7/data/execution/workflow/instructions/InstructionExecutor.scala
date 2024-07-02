@@ -59,7 +59,7 @@ trait EventInstructionExecutor extends InstructionExecutor:
 
   private def maybeStart(order: Order[Order.State]): Option[Option[OrderStarted]] =
     order.isState[Order.Fresh] ?
-      (isNotDelayed(order) ?
+      (!isDelayed(order) ?
         OrderStarted)
 
   protected final def readyOrStartable(order: Order[Order.State])
@@ -68,10 +68,10 @@ trait EventInstructionExecutor extends InstructionExecutor:
       .ifState[Order.Ready]
       .orElse(order
         .ifState[Order.Fresh]
-        .filter(isNotDelayed))
+        .filterNot(isDelayed))
 
-  protected final def isNotDelayed(order: Order[Order.State]): Boolean =
-    order.maybeDelayedUntil.forall(_ <= clock.now())
+  private def isDelayed(order: Order[Order.State]): Boolean =
+    order.maybeDelayedUntil.exists(clock.now() < _)
 
   protected final def attach(order: Order[Order.State], agentPath: AgentPath)
   : Option[Checked[List[KeyedEvent[OrderAttachable]]]] =
