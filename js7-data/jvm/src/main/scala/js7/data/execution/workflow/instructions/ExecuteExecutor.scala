@@ -1,5 +1,7 @@
 package js7.data.execution.workflow.instructions
 
+import cats.instances.either.*
+import cats.instances.option.*
 import cats.syntax.traverse.*
 import java.time.LocalDate
 import js7.base.problem.Checked
@@ -7,9 +9,10 @@ import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
+import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
-import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached}
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
@@ -26,60 +29,64 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   val instructionClass = classOf[Execute]
 
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
-    state.workflowJob(order.workflowPosition)
-      .flatMap(job => order
-        .ifState[IsFreshOrReady]
-        .flatMap(order =>
+    order
+      .ifState[IsFreshOrReady].map: order =>
+        state.workflowJob(order.workflowPosition).flatMap: job =>
           skippedReason(order, job, state)
-            .map(reason =>
-              // If order should start, change nextMove function, too!
-              //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-              Right((order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil))
-            .orElse(if order.isProcessable && order.isDetached then
-              attach(order, job.agentPath)
-            else {
-              val checked = for
-                job <- state.workflowJob(order.workflowPosition)
-                scope <- state.toPureOrderScope(order)
-                maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
-                  .evalAsString(scope)
-                  .flatMap(SubagentSelectionId.checked))
-                maybeSubagentSelection <- maybeSubagentSelectionId
-                  .traverse(o => state
-                    .keyToItem(SubagentSelection)
-                    .checked(o)
-                    .orElse(state
-                      .keyToItem(SubagentItem)
-                      .checked(o.toSubagentId)))
-              yield Nil
-              Some(
-                checked.left.flatMap(problem => Right(
-                  (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem)))) :: Nil)))
-            }))
-        .orElse(
-          // Order.Ready: Execution has to be started by the caller
-          //order.ifState[Order.Fresh].map(order =>
-          //  OrderStarted)
-          //.orElse(
-          order
-            .ifState[Processed]
-            .map { order =>
-              val event = order.lastOutcome match {
-                case OrderOutcome.Disrupted(_: ProcessLost, _) =>
-                  OrderMoved(order.position) // Repeat
+          .map: reason =>
+            // If order should start, change nextMove function, too!
+            //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
+            Right:
+              (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
+          .getOrElse:
+            (if order.isProcessable then attach(order, job.agentPath) else None)
+              .getOrElse:
+                Right:
+                  checkSubagentSelection(order, state) match
+                    case Right(()) => Nil
+                    case Left(problem) =>
+                      (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
+                        :: Nil
+      .orElse:
+        // Order.Ready: Execution has to be started by the caller
+        //order.ifState[Order.Fresh].map(order =>
+        //  OrderStarted)
+        //.orElse(
+        order
+          .ifState[Processed]
+          .map: order =>
+            val event = order.lastOutcome match
+              case OrderOutcome.Disrupted(_: ProcessLost, _) =>
+                OrderMoved(order.position) // Repeat
 
-                case _: OrderOutcome.Killed =>
-                  OrderProcessingKilled
+              case _: OrderOutcome.Killed =>
+                OrderProcessingKilled
 
-                case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
-                  OrderFailedIntermediate_()
+              case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
+                OrderFailedIntermediate_()
 
-                case _: OrderOutcome.Succeeded =>
-                  OrderMoved(order.position.increment)
-              }
-              Right((order.id <-: event) :: Nil)
-            })
-        .getOrElse(Right(Nil)))
+              case _: OrderOutcome.Succeeded =>
+                OrderMoved(order.position.increment)
+            Right:
+              (order.id <-: event) :: Nil
+      .getOrElse:
+        Right(Nil)
+
+  private def checkSubagentSelection(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
+    for
+      scope <- state.toPureOrderScope(order)
+      job <- state.workflowJob(order.workflowPosition)
+      maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
+        .evalAsString(scope)
+        .flatMap(SubagentSelectionId.checked))
+      maybeSubagentSelection <- maybeSubagentSelectionId
+        .traverse(o => state
+          .keyToItem(SubagentSelection)
+          .checked(o)
+          .orElse(state
+            .keyToItem(SubagentItem)
+            .checked(o.toSubagentId)))
+    yield ()
 
   def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
     for job <- state.workflowJob(order.workflowPosition) yield
@@ -122,9 +129,9 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       job.skipIfNoAdmissionStartForOrderDay &&
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)
-          .fold(false)(localDate =>
+          .fold(false): localDate =>
             !admissionTimeScheme
-              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)))
+              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset))
 
 
 object ExecuteExecutor:
