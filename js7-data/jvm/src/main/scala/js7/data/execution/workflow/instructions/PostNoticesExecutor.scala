@@ -20,8 +20,9 @@ extends EventInstructionExecutor:
 
   def toEvents(postNotices: PostNotices, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
-      .getOrElse(
+      .orElse:
+        start(order)
+      .getOrElse:
         if order.isState[Order.Ready] then
           for
             boardStates <- postNotices.boardPaths.traverse(state.keyTo(BoardState).checked)
@@ -34,7 +35,7 @@ extends EventInstructionExecutor:
           yield
             postingOrderEvents ++: expectingOrderEvents.toList
         else
-          Right(Nil))
+          Right(Nil)
 
 
 object PostNoticesExecutor:
@@ -76,4 +77,5 @@ object PostNoticesExecutor:
               }
           }
           .map(_.flatten))
-    yield events
+    yield
+      events

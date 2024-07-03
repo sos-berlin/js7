@@ -23,42 +23,40 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   def toEvents(cycle: Cycle, order: Order[Order.State], state: StateView) =
     val now = clock.now()
     start(order)
-      .orElse(order.ifState[Ready].map(order =>
+      .orElse(order.ifState[Ready].map: order =>
         for
           workflow <- state.keyToItem(Workflow).checked(order.workflowId)
           pair <- toCalendarAndScheduleCalculator(workflow, cycle, state)
           (calendar, calculator) = pair
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
-        yield {
+        yield
           val cycleState = calculator.nextCycleState(now, CycleState(
             next = timeInterval.start,
             end = timeInterval.end,
             schemeIndex = -1,
             periodIndex = -1,
             index = 0))
-          nextCycleStateToEvent(cycleState, order)
-        }))
-      .orElse(order.ifState[BetweenCycles].map(order =>
-        order.state.cycleState match {
+          nextCycleStateToEvent(cycleState, order))
+      .orElse(order.ifState[BetweenCycles].map: order =>
+        order.state.cycleState match
           case None =>
-            Right(
-              (order.id <-: OrderMoved(order.position.increment)) :: Nil)
+            Right:
+              (order.id <-: OrderMoved(order.position.increment)) :: Nil
 
           case Some(cycleState) =>
             toScheduleCalculator(order, cycle, state)
               .flatMap(_.maybeRecalcCycleState(now, cycleState))
-              .map {
+              .map:
                 case None =>
                   // cycleState is still valid
                   (cycleState.next <= now).thenList(
                     order.id <-: OrderCycleStarted)
 
                 case Some(maybeRecalculatedCycleState) =>
-                  nextCycleStateToEvent(maybeRecalculatedCycleState, order)
-              }
-        }))
-      .getOrElse(Right(Nil))
+                  nextCycleStateToEvent(maybeRecalculatedCycleState, order))
+      .getOrElse:
+        Right(Nil)
 
   private def nextCycleStateToEvent(cycleState: Option[CycleState], order: Order[Order.State])
   : List[KeyedEvent[OrderActorEvent]] =

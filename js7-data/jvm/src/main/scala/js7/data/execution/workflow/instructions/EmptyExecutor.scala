@@ -12,4 +12,5 @@ extends EventInstructionExecutor:
   val instructionClass = classOf[EmptyInstruction]
 
   def toEvents(instr: EmptyInstruction, order: Order[Order.State], state: StateView) =
-    Right((order.id <-: OrderMoved(order.position.increment)) :: Nil)
+    Right:
+      (order.id <-: OrderMoved(order.position.increment)) :: Nil

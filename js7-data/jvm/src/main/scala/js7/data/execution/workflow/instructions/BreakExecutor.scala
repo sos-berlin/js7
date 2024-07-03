@@ -19,26 +19,26 @@ extends EventInstructionExecutor:
 
   def toEvents(instr: Break, order: Order[Order.State], state: StateView) =
     // OrderStarted may be needed if Order is placed into a Cycle block
-    start(order).getOrElse:
-      for
-        workflow <- state.idToWorkflow.checked(order.workflowId)
-        events <- leaveBlocks(
-          workflow, order,
-          until = _.isCycle,
-          events = {
-            case Some(branchId) if branchId.isCycle =>
-              OrderCycleFinished(None) :: Nil
-            case None =>
-              state.atController(OrderFinished() :: Nil)
-            case Some(branchId) =>
-              // Just in case
-              logger.warn:
-                s"Unexpected BranchId:$branchId encountered. ${order.id} position=${order.position}"
-              // Best guess, to avoid a crash:
-              state.atController(OrderFinished() :: Nil)
-          })
-      yield
-        events.map(order.id <-: _)
+    start(order)
+      .getOrElse:
+        for
+          workflow <- state.idToWorkflow.checked(order.workflowId)
+          events <- leaveBlocks(
+            workflow, order,
+            until = _.isCycle,
+            events =
+              case Some(branchId) if branchId.isCycle =>
+                OrderCycleFinished(None) :: Nil
+              case None =>
+                state.atController(OrderFinished() :: Nil)
+              case Some(branchId) =>
+                // Just in case
+                logger.warn:
+                  s"Unexpected BranchId:$branchId encountered. ${order.id} position=${order.position}"
+                // Best guess, to avoid a crash:
+                state.atController(OrderFinished() :: Nil))
+        yield
+          events.map(order.id <-: _)
 
 object BreakExecutor:
  private val logger = Logger[this.type]

@@ -12,18 +12,16 @@ extends EventInstructionExecutor:
 
   def toEvents(fail: Fail, order: Order[Order.State], state: StateView) =
     start(order)
-      .getOrElse(
-        order.state match {
+      .getOrElse:
+        order.state match
           case Order.Ready =>
-            val maybeErrorMessage = fail.message
+            val msg = fail.message
               .map(messageExpr => state
                 .toImpureOrderExecutingScope(order, clock.now())
                 .flatMap(messageExpr.evalAsString(_))
                 .fold(_.toString, identity))
-            val outcome =
-              OrderOutcome.Failed(maybeErrorMessage, fail.namedValues, uncatchable = fail.uncatchable)
+            val outcome = OrderOutcome.Failed(msg, fail.namedValues, uncatchable = fail.uncatchable)
             val event = OrderFailedIntermediate_(Some(outcome))
             Right((order.id <-: event) :: Nil)
 
           case _ => Right(Nil)
-        })

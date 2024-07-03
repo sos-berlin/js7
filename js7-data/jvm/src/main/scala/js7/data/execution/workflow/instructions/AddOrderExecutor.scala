@@ -16,7 +16,8 @@ extends EventInstructionExecutor:
 
   def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
+      .orElse:
+        start(order)
       .getOrElse:
         order.state match
           case Order.Ready =>

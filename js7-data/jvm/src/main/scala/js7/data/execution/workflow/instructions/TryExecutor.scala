@@ -4,9 +4,9 @@ import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.TryInstruction
+import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchId.try_
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.*
 
 private[instructions] final class TryExecutor(protected val service: InstructionExecutorService)
 extends PositionInstructionExecutor, EventInstructionExecutor:
@@ -18,10 +18,10 @@ extends PositionInstructionExecutor, EventInstructionExecutor:
     Right(Some(nextOrderMoved(order)))
 
   def toEvents(instruction: TryInstruction, order: Order[Order.State], stateView: StateView) =
-    Right(
-      order.ifState[Order.IsFreshOrReady].map(order =>
-        order.id <-: nextOrderMoved(order))
-      .toList)
+    Right:
+      order.ifState[Order.IsFreshOrReady].map: order =>
+        order.id <-: nextOrderMoved(order)
+      .toList
 
   private def nextOrderMoved(order: Order[Order.State]) =
     OrderMoved(order.position / try_(0) % 0)

@@ -30,11 +30,10 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       scope <- state.toPureOrderScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)
     yield
-      Some(OrderMoved(
-        condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
+      Some(OrderMoved:
+        condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match
           case Some(thenOrElse) => order.position / thenOrElse % 0
-          case None => order.position.increment  // No else-part, skip instruction
-        }))
+          case None => order.position.increment)  // No else-part, skip instruction
 
   override def subworkflowEndToPosition(parentPos: Position) =
     Some(parentPos.increment)

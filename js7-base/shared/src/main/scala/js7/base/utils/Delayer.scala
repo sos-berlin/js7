@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.data.NonEmptySeq
 import cats.effect.{Async, IO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*

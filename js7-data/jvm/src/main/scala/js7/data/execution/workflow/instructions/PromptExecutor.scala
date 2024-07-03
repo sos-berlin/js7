@@ -16,14 +16,17 @@ extends EventInstructionExecutor:
 
   def toEvents(prompt: Prompt, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
+      .orElse:
+        start(order)
       .orElse(order
-        .ifState[Ready].map(_ =>
+        .ifState[Ready].map: _ =>
           for
             scope <- state.toImpureOrderExecutingScope(order, clock.now())
             question <- prompt.question.evalAs(GoodValue.companion, scope)
-          yield (order.id <-: OrderPrompted(question)) :: Nil))
-      .getOrElse(Right(Nil))
+          yield
+            (order.id <-: OrderPrompted(question)) :: Nil)
+      .getOrElse:
+        Right(Nil)
 
   override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
     order.state match

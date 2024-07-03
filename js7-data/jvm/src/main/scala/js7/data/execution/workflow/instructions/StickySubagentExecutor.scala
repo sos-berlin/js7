@@ -34,9 +34,9 @@ extends EventInstructionExecutor:
               .keyToItem(SubagentItem).checked(subagentSelectionId.toSubagentId)
               .orElse(state.keyToItem(SubagentSelection).checked(subagentSelectionId))
               .rightAs(Some(subagentSelectionId))))
-        .map(subagentSelectionId =>
+        .map: subagentSelectionId =>
           (order.id <-: OrderStickySubagentEntered(instr.agentPath, subagentSelectionId))
-            :: Nil)
+            :: Nil
 
   override def onReturnFromSubworkflow(
     instr: StickySubagent,

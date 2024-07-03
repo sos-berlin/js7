@@ -14,7 +14,8 @@ extends EventInstructionExecutor:
 
   def toEvents(instr: Stop, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(
-        start(order))
-      .getOrElse(Right(
-        (order.id <-: OrderStopped) :: Nil))
+      .orElse:
+        start(order)
+      .getOrElse:
+        Right:
+          (order.id <-: OrderStopped) :: Nil

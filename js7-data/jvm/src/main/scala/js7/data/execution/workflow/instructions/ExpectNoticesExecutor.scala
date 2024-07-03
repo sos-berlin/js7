@@ -20,14 +20,15 @@ extends EventInstructionExecutor:
 
   def toEvents(expectNotices: ExpectNotices, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
+      .orElse:
+        start(order)
       .getOrElse(order
         .ifState[Order.Ready]
-        .map(order =>
+        .map: order =>
           expectNotices.referencedBoardPaths
             .toVector
             .traverse(state.keyTo(BoardState).checked)
-            .flatMap(boardStates =>
+            .flatMap: boardStates =>
               for
                 scope <- state.toPureOrderScope(order)
                 expected <- boardStates.traverse(boardState =>
@@ -37,14 +38,16 @@ extends EventInstructionExecutor:
               yield
                 tryFulfill(expectNotices, order, expected, state)
                   .emptyToNone
-                  .getOrElse(OrderNoticesExpected(expected) :: Nil)))
+                  .getOrElse(OrderNoticesExpected(expected) :: Nil)
         .orElse(order
           .ifState[Order.ExpectingNotices]
           .map(order =>
             if order.state.expected.map(_.boardPath).toSet != expectNotices.referencedBoardPaths then
-              Left(Problem.pure(
-                s"Instruction does not match Order.State: $expectNotices <-> ${order.state}"))
+              Left(Problem.pure:
+                s"Instruction does not match Order.State: $expectNotices <-> ${order.state}")
             else
-              Right(tryFulfillExpectingOrder(expectNotices, order, state))))
-        .getOrElse(Right(Nil))
+              Right:
+                tryFulfillExpectingOrder(expectNotices, order, state)))
+        .getOrElse:
+          Right(Nil)
         .map(_.map(order.id <-: _)))

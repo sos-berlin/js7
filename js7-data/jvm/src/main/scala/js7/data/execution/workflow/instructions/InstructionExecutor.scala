@@ -45,6 +45,7 @@ object InstructionExecutor:
   private def noObstacles: Checked[Set[OrderObstacle]] =
     Right(Set.empty)
 
+
 trait EventInstructionExecutor extends InstructionExecutor:
   final def clock: WallClock =
     service.clock
@@ -61,6 +62,9 @@ trait EventInstructionExecutor extends InstructionExecutor:
     order.isState[Order.Fresh] ?
       (!isDelayed(order) ?
         OrderStarted)
+
+  protected final def isStartable(order: Order[Order.State]): Boolean =
+    order.isState[Order.Fresh] && !isDelayed(order)
 
   protected final def readyOrStartable(order: Order[Order.State])
   : Option[Order[Order.IsFreshOrReady]] =
@@ -80,6 +84,7 @@ trait EventInstructionExecutor extends InstructionExecutor:
   protected final def detach(order: Order[Order.State])
   : Option[Checked[List[KeyedEvent[OrderDetachable]]]] =
     order.isAttached ? Right((order.id <-: OrderDetachable) :: Nil)
+
 
 trait PositionInstructionExecutor extends InstructionExecutor:
   def nextMove(instruction: Instr, order: Order[Order.State], stateView: StateView)

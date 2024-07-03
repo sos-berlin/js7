@@ -20,14 +20,15 @@ extends EventInstructionExecutor:
   // TODO Similar to ExpectNoticesExecutor
   def toEvents(instr: ConsumeNotices, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
+      .orElse:
+        start(order)
       .getOrElse(order
         .ifState[Order.Ready]
-        .map(order =>
+        .map: order =>
           instr.referencedBoardPaths
             .toVector
             .traverse(state.keyTo(BoardState).checked)
-            .flatMap(boardStates =>
+            .flatMap: boardStates =>
               for
                 scope <- state.toPureOrderScope(order)
                 expected <- boardStates.traverse(boardState =>
@@ -37,7 +38,7 @@ extends EventInstructionExecutor:
               yield
                 tryFulfill(instr, expected, state)
                   .emptyToNone
-                  .getOrElse(OrderNoticesExpected(expected) :: Nil)))
+                  .getOrElse(OrderNoticesExpected(expected) :: Nil)
         .orElse(order
           .ifState[Order.ExpectingNotices]
           .map(order =>
@@ -46,21 +47,24 @@ extends EventInstructionExecutor:
                 s"Instruction does not match Order.State: $instr <-> ${order.state}"))
             else
               Right(tryFulfillExpectingOrder(instr, order, state))))
-        .getOrElse(Right(Nil))
+        .getOrElse:
+          Right(Nil)
         .map(_.map(order.id <-: _)))
 
   override def onReturnFromSubworkflow(
     instr: ConsumeNotices,
     order: Order[Order.State],
     state: StateView) =
-    Right(List(
+    Right(List:
       order.id <-: (
         if order.isAttached then
           OrderDetachable
         else
-          OrderNoticesConsumed())))
+          OrderNoticesConsumed()))
+
 
 private object ConsumeNoticesExecutor:
+
   def tryFulfillExpectingOrder(
     instr: ConsumeNotices,
     order: Order[Order.ExpectingNotices],

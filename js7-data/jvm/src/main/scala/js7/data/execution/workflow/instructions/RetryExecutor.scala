@@ -28,17 +28,17 @@ extends EventInstructionExecutor:
       Right(Nil)
     else
       order.workflowPosition.position.nextRetryBranchPath
-        .flatMap(branchPath =>
+        .flatMap: branchPath =>
           branchPath.parent
-            .flatMap(parent =>
+            .flatMap: parent =>
               Some(state.instruction(order.workflowId /: parent))
                 .collect { case o: TryInstruction => o }
                 .flatMap(_try =>
                   branchPath.lastOption.map(_.branchId).collect {
                     case TryBranchId(index) => (_try.maxTries, _try.retryDelay(index))
-                  }))
+                  })
             .toChecked(missingTryProblem(branchPath))
-            .map {
+            .map:
               case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
                 (order.id <-: OrderFailedIntermediate_()) :: Nil
               case (_, delay) =>
@@ -46,7 +46,6 @@ extends EventInstructionExecutor:
                   movedTo = branchPath % 0,
                   delayedUntil = (delay.isPositive) ? nextTimestamp(delay))
                 ):: Nil
-              })
 
   private def nextTimestamp(delay: FiniteDuration) =
     clock.now() + delay match

@@ -18,16 +18,17 @@ extends EventInstructionExecutor, ForkInstructionExecutor:
   : Checked[OrderForked] =
     for
       children <- fork.branches
-        .traverse(branch =>
+        .traverse: branch =>
           order.id.withChild(branch.id.string)
-            .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
-    yield OrderForked(children)
+            .map(childOrderId => OrderForked.Child(branch.id, childOrderId))
+    yield
+      OrderForked(children)
 
   protected def forkResult(fork: Fork, order: Order[Order.Forked], state: StateView, now: Timestamp)
   : OrderOutcome.Completed =
     OrderOutcome.Completed.fromChecked(
       fork.branches
-        .traverse(branch =>
-          calcResult(branch.result, order.id / branch.id.string, state, now))
-        .map(results =>
-          OrderOutcome.Succeeded(results.view.flatten.toMap)))
+        .traverse: branch =>
+          calcResult(branch.result, order.id / branch.id.string, state, now)
+        .map: results =>
+          OrderOutcome.Succeeded(results.view.flatten.toMap))

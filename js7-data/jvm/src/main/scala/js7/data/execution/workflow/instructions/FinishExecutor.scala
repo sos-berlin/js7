@@ -20,13 +20,14 @@ extends EventInstructionExecutor:
   val instructionClass = classOf[Finish]
 
   def toEvents(instr: Finish, order: Order[Order.State], state: StateView) =
-    state.idToWorkflow
-      .checked(order.workflowId)
-      .flatMap(workflow =>
+    detach(order)
+      .orElse:
         start(order)
-          .orElse(detach(order))
-          .getOrElse(
-            execute(instr, order, workflow, state)))
+      .getOrElse:
+        state.idToWorkflow
+          .checked(order.workflowId)
+          .flatMap: workflow =>
+            execute(instr, order, workflow, state)
 
   private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
@@ -51,7 +52,8 @@ extends EventInstructionExecutor:
                 instr.outcome.map(OrderOutcomeAdded(_)) ++:
                   (instr.outcome.forall(_.isSucceeded) && order.position != gotoEnd)
                     .thenList(OrderMoved(gotoEnd)))
-            yield events
+            yield
+              events
 
       case _ => Right(Nil)
 

@@ -45,7 +45,8 @@ extends ForkInstructionExecutor:
           order.id.withChild(childId)
             .map(OrderForked.Child(_, args.nameToValue))
         }
-    yield OrderForked(children)
+    yield
+      OrderForked(children)
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =
@@ -55,7 +56,8 @@ extends ForkInstructionExecutor:
           .map(_.orderId)
           .traverse(childOrderId =>
             calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now))
-      yield OrderOutcome.Succeeded(results.view
-        .flatten
-        .groupMap(_._1)(_._2).view
-        .mapValues(values => ListValue(values.toVector)).toMap))
+      yield
+        OrderOutcome.Succeeded(results.view
+          .flatten
+          .groupMap(_._1)(_._2).view
+          .mapValues(values => ListValue(values.toVector)).toMap))

@@ -33,7 +33,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
           service.onReturnFromSubworkflow(instr, order, state)
 
   def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
-    Right(
+    Right:
       if order.isInOutermostBlock then
         None
       else
@@ -41,4 +41,5 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
           parentPos <- order.position.parent
           exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
           next <- exec.subworkflowEndToPosition(parentPos)
-        yield OrderMoved(next))
+        yield 
+          OrderMoved(next)

@@ -16,19 +16,20 @@ extends EventInstructionExecutor:
 
   def toEvents(instruction: LockInstruction, order: Order[Order.State], state: StateView) =
     detach(order)
-      .orElse(start(order))
-      .getOrElse(
+      .orElse:
+        start(order)
+      .getOrElse:
         if order.isState[Order.Ready] || order.isState[Order.WaitingForLock] then
           state
             .foreachLockDemand(instruction.demands)(_
               .isAvailable(order.id, _))
-            .flatMap(availability =>
+            .flatMap:availability =>
               if availability.forall(identity) then
                 state
                   .foreachLockDemand(instruction.demands)(_
                     .acquire(order.id, _)/*check only*/)
-                  .rightAs(
-                    OrderLocksAcquired(instruction.demands) :: Nil)
+                  .rightAs:
+                    OrderLocksAcquired(instruction.demands) :: Nil
               else if order.isState[Order.WaitingForLock] then
                 // Caller trys too often ???
                 logger.trace(s"🟡 ${order.id} is still WaitingForLock: ${
@@ -40,21 +41,21 @@ extends EventInstructionExecutor:
                   .foreachLockDemand(instruction.demands)(_
                     .enqueue(order.id, _)/*check only*/)
                   .rightAs(
-                    OrderLocksQueued(instruction.demands) :: Nil))
+                    OrderLocksQueued(instruction.demands) :: Nil)
             .map(_.map(order.id <-: _))
         else
-          Right(Nil))
+          Right(Nil)
 
   override def onReturnFromSubworkflow(
     instr: LockInstruction,
     order: Order[Order.State],
     state: StateView) =
-    Right(List(
+    Right(List:
       order.id <-: (
         if order.isAttached then
           OrderDetachable
         else
-          OrderLocksReleased(instr.lockPaths))))
+          OrderLocksReleased(instr.lockPaths)))
 
 
 object LockExecutor:
