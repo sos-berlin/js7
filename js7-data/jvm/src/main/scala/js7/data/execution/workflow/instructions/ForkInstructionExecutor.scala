@@ -37,25 +37,25 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
     readyOrStartable(order)
       .map: order =>
         for event <- forkOrder(fork, order, state) yield
-          (order.id <-: event) :: Nil
+          event.map(order.id <-: _)
       .orElse:
         for
           order <- order.ifState[Order.Forked]
           joined <- toJoined(order, fork, state)
-        yield Right(joined :: Nil)
+        yield
+          Right(joined :: Nil)
       .orElse:
-        for order <- order.ifState[Order.Processed] yield {
+        for order <- order.ifState[Order.Processed] yield
           val event = if order.lastOutcome.isSucceeded then
             OrderMoved(order.position.increment)
           else
             OrderFailedIntermediate_()
           Right((order.id <-: event) :: Nil)
-        }
       .getOrElse:
         Right(Nil)
 
   private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
-  : Checked[OrderActorEvent] =
+  : Checked[List[OrderActorEvent]] =
     // toForkedEvent may be called three times:
     // 1) to predict the Agent and before OrderAttachable
     // 2) if Order.Fresh then OrderStart
@@ -71,18 +71,17 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
             predictControllerOrAgent(order, _, state))
         .map(_.flatMap: maybeAgentPath =>
           attachOrDetach(order, maybeAgentPath))
-      event <- maybe
-        .map(event => Right(event))
+      events <- maybe
+        .map(event => Right(event :: Nil))
         .getOrElse:
           for
             orderForked <- checkedOrderForked
             _ <- checkOrderIdCollisions(orderForked, state)
           yield
-            if order.isState[Order.Fresh] then
-              OrderStarted
-            else
-              orderForked
-    yield event
+            isStartable(order).thenList(OrderStarted)
+              ::: orderForked :: Nil
+    yield
+      events
 
   private def attachOrDetach(
     order: Order[Order.IsFreshOrReady],

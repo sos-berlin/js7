@@ -203,7 +203,11 @@ final class OrderEventSourceTest extends OurTestSuite:
 
         "Detached" in:
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.nextEvents(order.id) == Seq(order.id <-: OrderStarted))
+            assert(controller.nextEvents(order.id) == Seq(
+              order.id <-: OrderStarted,
+              order.id <-: OrderForked(Vector(
+                OrderForked.Child(Fork.Branch.Id("🥕"), order.id / "🥕"),
+                OrderForked.Child(Fork.Branch.Id("🍋"), order.id / "🍋")))))
 
           testController(freshOrder, detached): (order, controller) =>
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancelled))))
