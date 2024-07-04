@@ -6,15 +6,16 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.ControlWorkflowPath
+import js7.data.controller.ControllerCommand.{ControlWorkflowPath, ResumeOrder}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.{ItemRevision, VersionId}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderTerminated}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, If}
@@ -22,7 +23,7 @@ import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ControlWorkflowPathSkipJobTest.*
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
@@ -147,6 +148,44 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     assert(agent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
     awaitAndAssert(controllerState.keyTo(WorkflowPathControl).isEmpty)
+  }
+
+  "JS-2132 Skip a statement when an Order has been failed" in {
+    val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
+      label @: FailingJob.execute(agentPath)))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("JS-2132")
+      val events = controller
+        .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .map(_.value)
+      assert(events == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(FailingJob.outcome),
+        OrderDetachable,
+        OrderDetached,
+        OrderFailed(Position(0))))
+
+      val eventId = eventWatch.lastAddedEventId
+      // The Order must not be moved due to skip, because it has failed
+      skipJob(workflow.path, true, ItemRevision(1))
+
+      controllerApi
+        .executeCommand(
+          ResumeOrder(orderId, asSucceeded = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](after = eventId)
+      assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
+        OrderResumed(asSucceeded = true),
+        OrderMoved(Position(1), Some(SkippedDueToWorkflowPathControl)),
+        OrderFinished(),
+        OrderDeleted))
+    }
   }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
