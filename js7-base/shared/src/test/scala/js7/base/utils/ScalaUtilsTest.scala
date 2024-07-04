@@ -611,6 +611,13 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "Boolean" - {
+    "Boolean ?& option" in:
+      assert((true ?& 7.some: Option[Int]) == Some(7))
+      assert((true ?& none: Option[Int]) == None)
+      assert((false ?& 7.some: Option[Int]) == None)
+      assert((false ?& none: Option[Int]) == None)
+      assert((true ?& (true ? 7): Option[Int]) == Some(7))
+
     "Boolean ? value" in:
       assert((true ? 7: Option[Int]) == Some(7))
       assert((false ? 7: Option[Int]) == None)

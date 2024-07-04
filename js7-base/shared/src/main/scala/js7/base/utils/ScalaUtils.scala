@@ -478,6 +478,14 @@ object ScalaUtils:
       def ?[A](a: => A): Option[A] =
         option(a)
 
+      /**
+        * Chainable conditional `Option`, similar to `orElse`.
+        * <p>`(true ? option) == option`
+        * <br>`(false ? option) == None`
+        */
+      def ?&[A](option: => Option[A]): Option[A] =
+        if underlying then option else None
+
       /** Optional false.
         * <p>`true.? == Some(a)`
         * <br>`false.? == None`

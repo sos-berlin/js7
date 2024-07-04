@@ -16,8 +16,9 @@ object StateViewForEvents:
         events
 
     def ifSkippedThenMove(order: Order[Order.State]): Option[OrderMoved] =
-      skippedReason(order).map: reason =>
-        OrderMoved(order.position.increment, Some(reason))
+      !order.isFailed ?&
+        skippedReason(order).map: reason =>
+          OrderMoved(order.position.increment, Some(reason))
 
     private def skippedReason(order: Order[Order.State]): Option[OrderMoved.Reason] =
       state.isSkippedDueToWorkflowPathControl(order) ?
