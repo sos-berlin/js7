@@ -151,8 +151,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   "JS-2132 Skip a statement when an Order has been failed" in:
     val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
-      label @: FailingJob.execute(agentPath),
-      EmptyInstruction()))
+      label @: FailingJob.execute(agentPath)))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("JS-2132")
@@ -177,13 +176,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       controller.api
         .executeCommand:
-          ResumeOrder(orderId, /*position = Some(Position(0)), */asSucceeded = true)
+          ResumeOrder(orderId, asSucceeded = true)
         .await(99.s).orThrow
       eventWatch.await[OrderTerminated](after = eventId)
       assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
         OrderResumed(asSucceeded = true),
         OrderMoved(Position(1), Some(SkippedDueToWorkflowPathControl)),
-        OrderMoved(Position(2)),
         OrderFinished(),
         OrderDeleted))
 
