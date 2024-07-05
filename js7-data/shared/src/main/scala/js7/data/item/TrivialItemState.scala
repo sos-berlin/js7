@@ -4,15 +4,15 @@ import cats.effect.IO
 import fs2.Stream
 import js7.base.problem.Checked
 
-/** For orthogonality, for Items which are the (empty) ItemState. */
+/** For orthogonality, an InventoryItem which is also an (empty) InventoryItemState. */
 trait TrivialItemState[A <: TrivialItemState[A]]
 extends InventoryItemState, InventoryItem:
   this: A =>
 
   protected type Self = A
-  
+
   val companion: TrivialItemState.Companion[Self]
-  val item = this
+  val item: A = this
 
   def toInitialItemState: A = this
 
@@ -20,7 +20,7 @@ extends InventoryItemState, InventoryItem:
     Right(item.toInitialItemState)
 
   override final def toSnapshotStream: Stream[IO, Any] =
-    Stream.emit(item)
+    Stream.emit(item) // This InventoryItem is the InventoryItemState
 
 
 object TrivialItemState:
