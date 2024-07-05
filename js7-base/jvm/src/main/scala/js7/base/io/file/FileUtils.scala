@@ -253,7 +253,7 @@ object FileUtils:
       private val javaStream = Files.walk(directory, options*)
       private val underlyingIterator = javaStream.asScala
 
-      def close() = javaStream.close()
+      def close(): Unit = javaStream.close()
       def hasNext = underlyingIterator.hasNext
       def next() = underlyingIterator.next()
 

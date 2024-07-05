@@ -1,6 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.metrics.CpuStarvationWarningMetrics
+import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{IO, IOApp}
 import js7.base.catsutils.CpuStarvationCheck.*
 import js7.base.log.Logger.syntax.*
@@ -10,7 +11,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 
 transparent trait CpuStarvationCheck extends IOApp:
 
-  override def runtimeConfig =
+  override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig.copy(
       cpuStarvationCheckInterval = cpuStarvationCheckInterval,
       cpuStarvationCheckThreshold = cpuStarvationCheckThreshold / cpuStarvationCheckInterval,

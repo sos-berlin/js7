@@ -72,7 +72,7 @@ object AlarmClock:
 
     protected def scheduler: Scheduler
 
-    def stop() = {}
+    def stop(): Unit = {}
 
     def scheduleOnce(delay: FiniteDuration, label: => String)(callback: => Unit) =
       SyncCancelable:

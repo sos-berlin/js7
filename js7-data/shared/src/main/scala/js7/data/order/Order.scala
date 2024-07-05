@@ -353,8 +353,8 @@ final case class Order[+S <: Order.State](
           else
             // historyOutcomes positions should be unique, but is this sure?
             final class Entry(h: Option[HistoricOutcome]):
-              val inserted: mutable.Buffer[HistoricOutcome] = mutable.Buffer.empty[HistoricOutcome]
-              var current: Option[HistoricOutcome] = h
+              val inserted = mutable.Buffer.empty[HistoricOutcome]
+              var current = h
               def result = inserted.view ++ current
             var positionFound = false
             val array = historicOutcomes.view
@@ -782,7 +782,7 @@ final case class Order[+S <: Order.State](
       || isState[Broken]
     ) && (isDetached || isAttached)
 
-  def isProcessable =
+  def isProcessable: Boolean =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
   def isInOutermostBlock: Boolean =

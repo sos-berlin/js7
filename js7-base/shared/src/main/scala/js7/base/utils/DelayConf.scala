@@ -22,7 +22,7 @@ final case class DelayConf(
     new Run[F]
 
   final class Run[F[_]](using Async[F]):
-    def apply[A](body: Delayer[F] => F[A]) =
+    def apply[A](body: Delayer[F] => F[A]): F[A] =
       start[F].flatMap(body)
 
   def start[F[_]](using Async[F]): F[Delayer[F]] =
