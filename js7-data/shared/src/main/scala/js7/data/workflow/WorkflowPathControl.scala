@@ -13,8 +13,8 @@ final case class WorkflowPathControl(
 extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[WorkflowPathControl]:
 
   protected type Self = WorkflowPathControl
+  
   val companion: WorkflowPathControl.type = WorkflowPathControl
-  val item: WorkflowPathControl = this
 
   def rename(path: WorkflowPathControlPath): WorkflowPathControl =
     copy(path = path)

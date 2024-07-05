@@ -10,7 +10,6 @@ final case class AItem(id: VersionedItemId[APath], content: String)
 extends VersionedItem, TrivialItemState[AItem]:
 
   protected type Self = AItem
-  val item: AItem = this
 
   val companion: AItem.type = AItem
 

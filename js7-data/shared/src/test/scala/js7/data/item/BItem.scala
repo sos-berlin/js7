@@ -10,7 +10,6 @@ final case class BItem(id: VersionedItemId[BPath], content: String)
 extends VersionedItem, TrivialItemState[BItem]:
 
   protected type Self = BItem
-  val item: BItem = this
 
   val companion: BItem.type = BItem
 

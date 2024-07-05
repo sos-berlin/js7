@@ -85,8 +85,6 @@ extends VersionedItem, TrivialItemState[Workflow]:
   def withId(id: VersionedItemId[WorkflowPath]): Workflow =
     reuseIfEqual(this, copy(id = id))
 
-  val item: Workflow = this
-
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
   def completelyChecked: Checked[Workflow] =
     val chk =

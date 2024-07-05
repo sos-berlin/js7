@@ -13,8 +13,8 @@ final case class WorkflowControl(
 extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
 
   protected type Self = WorkflowControl
+  
   val companion: WorkflowControl.type = WorkflowControl
-  val item: WorkflowControl = this
 
   def workflowId: WorkflowId =
     id.workflowId
@@ -25,8 +25,10 @@ extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
   def workflowPath: WorkflowPath = id.path.workflowPath
 
 
-object WorkflowControl
-extends VersionedControl.Companion[WorkflowControl], UnsignedItemState.Companion[WorkflowControl]:
+object WorkflowControl extends
+  VersionedControl.Companion[WorkflowControl],
+  UnsignedItemState.Companion[WorkflowControl],
+  TrivialItemState.Companion[WorkflowControl]:
 
   type Item = WorkflowControl
   val cls: Class[WorkflowControl] = classOf[WorkflowControl]

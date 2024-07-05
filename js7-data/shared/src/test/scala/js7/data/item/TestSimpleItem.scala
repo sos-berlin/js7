@@ -19,7 +19,7 @@ final case class TestSimpleItem(
 extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[TestSimpleItem]:
 
   protected type Self = TestSimpleItem
-  val item: TestSimpleItem = this
+  
   val companion: TestSimpleItem.type = TestSimpleItem
 
   def withId(id: TestSimplePath) = copy(id)

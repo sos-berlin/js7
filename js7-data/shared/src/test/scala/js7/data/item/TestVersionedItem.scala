@@ -15,7 +15,7 @@ final case class TestVersionedItem(id: TestVersionedItem.Key, content: String)
 extends VersionedItem, TrivialItemState[TestVersionedItem]:
 
   protected type Self = TestVersionedItem
-  val item: TestVersionedItem = this
+  
   val companion: TestVersionedItem.type = TestVersionedItem
 
   def withId(id: VersionedItemId[Path]) = copy(id)

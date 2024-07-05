@@ -19,7 +19,6 @@ final case class ScheduledOrderGenerator(
 extends VersionedItem, TrivialItemState[ScheduledOrderGenerator]:
 
   protected type Self = ScheduledOrderGenerator
-  val item: ScheduledOrderGenerator = this
 
   val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
