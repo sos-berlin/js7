@@ -18,8 +18,6 @@ final case class TestSimpleItem(
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[TestSimpleItem]:
 
-  protected type Self = TestSimpleItem
-  
   val companion: TestSimpleItem.type = TestSimpleItem
 
   def withId(id: TestSimplePath) = copy(id)

@@ -9,8 +9,6 @@ import io.circe.generic.semiauto.deriveCodec
 final case class AItem(id: VersionedItemId[APath], content: String)
 extends VersionedItem, TrivialItemState[AItem]:
 
-  protected type Self = AItem
-
   val companion: AItem.type = AItem
 
   def withId(id: VersionedItemId[APath]) = copy(id = id)

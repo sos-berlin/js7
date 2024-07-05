@@ -99,7 +99,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       nameToJob = Map(
         WorkflowJob.Name("JOB") -> EmptyJob.workflowJob(agentPath)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withTemporaryItem(workflow): workflow =>
       skipInstruction(workflow.path, true, ItemRevision(1))
       val orderId = OrderId("B")
       val events = controller
@@ -130,7 +130,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDetached,
         OrderFinished(),
         OrderDeleted))
-    }
 
   "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId

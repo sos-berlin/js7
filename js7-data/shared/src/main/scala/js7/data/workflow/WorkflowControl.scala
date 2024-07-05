@@ -12,8 +12,6 @@ final case class WorkflowControl(
   itemRevision: Option[ItemRevision] = None)
 extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
 
-  protected type Self = WorkflowControl
-  
   val companion: WorkflowControl.type = WorkflowControl
 
   def workflowId: WorkflowId =

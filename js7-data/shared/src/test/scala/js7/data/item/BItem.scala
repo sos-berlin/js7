@@ -9,8 +9,6 @@ import io.circe.generic.semiauto.deriveCodec
 final case class BItem(id: VersionedItemId[BPath], content: String)
 extends VersionedItem, TrivialItemState[BItem]:
 
-  protected type Self = BItem
-
   val companion: BItem.type = BItem
 
   def withId(id: VersionedItemId[BPath]) = copy(id = id)

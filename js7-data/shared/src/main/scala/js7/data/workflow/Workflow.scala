@@ -66,8 +66,6 @@ extends VersionedItem, TrivialItemState[Workflow]:
 
   assertThat(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
 
-  protected type Self = Workflow
-
   val companion: Workflow.type = Workflow
 
   override def path: WorkflowPath = super.path

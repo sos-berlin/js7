@@ -18,8 +18,6 @@ final case class ScheduledOrderGenerator(
   schedule: OldSchedule)
 extends VersionedItem, TrivialItemState[ScheduledOrderGenerator]:
 
-  protected type Self = ScheduledOrderGenerator
-
   val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
   def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]): ScheduledOrderGenerator =

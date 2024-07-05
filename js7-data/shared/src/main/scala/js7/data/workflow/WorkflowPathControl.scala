@@ -12,8 +12,6 @@ final case class WorkflowPathControl(
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
 extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[WorkflowPathControl]:
 
-  protected type Self = WorkflowPathControl
-  
   val companion: WorkflowPathControl.type = WorkflowPathControl
 
   def rename(path: WorkflowPathControlPath): WorkflowPathControl =
