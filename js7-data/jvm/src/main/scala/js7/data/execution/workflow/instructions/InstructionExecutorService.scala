@@ -10,6 +10,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
+import org.jetbrains.annotations.TestOnly
 
 final class InstructionExecutorService(val clock: WallClock):
 
@@ -54,6 +55,7 @@ final class InstructionExecutorService(val clock: WallClock):
         executor.nextMove(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
 
+  @TestOnly
   def toEvents(orderId: OrderId, stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     for
@@ -61,6 +63,7 @@ final class InstructionExecutorService(val clock: WallClock):
       events <- toEvents(stateView.instruction(order.workflowPosition), order, stateView)
     yield events
 
+  @TestOnly
   def toEvents(order: Order[Order.State], stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     toEvents(stateView.instruction(order.workflowPosition), order, stateView)

@@ -75,7 +75,7 @@ trait EventInstructionExecutor extends InstructionExecutor:
         .filterNot(isDelayed))
 
   private def isDelayed(order: Order[Order.State]): Boolean =
-    order.maybeDelayedUntil.exists(clock.now() < _)
+    order.isDelayed(clock.now())
 
   protected final def attach(order: Order[Order.State], agentPath: AgentPath)
   : Option[Checked[List[KeyedEvent[OrderAttachable]]]] =

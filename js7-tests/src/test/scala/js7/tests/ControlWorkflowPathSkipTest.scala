@@ -148,7 +148,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     awaitAndAssert:
       controllerState.keyTo(WorkflowPathControl).isEmpty
 
-  "JS-2132 Skip a statement when an Order has been failed" in:
+  "JS-2132 Skip a statement when an Order has failed" in:
     val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
       label @: FailingJob.execute(agentPath)))
 

@@ -34,7 +34,7 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
-  (implicit executorService: InstructionExecutorService):
+  (using executorService: InstructionExecutorService):
 
   import executorService.clock
   import state.{idToWorkflow, isAgent}
@@ -529,10 +529,10 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State]): Boolean =
     !order.isState[Order.BetweenCycles] &&
       state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
-        .exists(control => state.workflowPositionToLabel(order.workflowPosition)
-          .toOption
-          .flatten
-          .exists(control.skip.contains))
+        .exists: control =>
+          state.workflowPositionToLabel(order.workflowPosition)
+            .toOption.flatten
+            .exists(control.skip.contains)
 
   private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] =
     for

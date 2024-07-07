@@ -141,11 +141,11 @@ final case class Order[+S <: Order.State](
           copy(
             state = if isState[Fresh] then FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
-            mark = mark match {
+            mark = mark match
               case Some(_: OrderMark.Suspending) => None
-              case o => o
-            },
-            historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+              case o => o,
+            historicOutcomes = outcome_.fold(historicOutcomes): outcome =>
+              historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderFailedInFork(movedTo, outcome) =>
         check(parent.nonEmpty
@@ -161,8 +161,8 @@ final case class Order[+S <: Order.State](
             //   case o => o
             // },
             isResumed = false,
-            historicOutcomes =
-              outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+            historicOutcomes = outcome.fold(historicOutcomes): outcome =>
+              historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderFailedIntermediate_(_) =>
         inapplicable  // Intermediate event, internal only
@@ -175,22 +175,23 @@ final case class Order[+S <: Order.State](
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
             isResumed = false,
-            historicOutcomes =
-              outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+            historicOutcomes = outcome.fold(historicOutcomes): outcome =>
+              historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderCaught(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
-          (isAttached | isDetached), {
-          var h = outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
-          if !h.lastOption.exists(_.outcome.isSucceeded) then
-            h :+= HistoricOutcome(movedTo, OrderOutcome.succeeded)
-          copy(
-            state = Ready,
-            workflowPosition = workflowPosition.copy(position = movedTo),
-            isResumed = false,
-            historicOutcomes = h)
-        })
+          (isAttached | isDetached),
+          locally:
+            var h = outcome.fold(historicOutcomes): outcome =>
+              historicOutcomes :+ HistoricOutcome(position, outcome)
+            if !h.lastOption.exists(_.outcome.isSucceeded) then
+              h :+= HistoricOutcome(movedTo, OrderOutcome.succeeded)
+            copy(
+              state = Ready,
+              workflowPosition = workflowPosition.copy(position = movedTo),
+              isResumed = false,
+              historicOutcomes = h))
 
       case OrderRetrying(to, maybeDelayUntil) =>
         check(isState[Ready] && !isSuspendedOrStopped && (isDetached || isAttached),
@@ -226,8 +227,8 @@ final case class Order[+S <: Order.State](
         check(isState[Ready] && isDetached && !isSuspendedOrStopped,
           copy(
             state = Finished,
-            historicOutcomes = maybeOutcome.fold(historicOutcomes)(o =>
-              historicOutcomes :+ HistoricOutcome(position, o)),
+            historicOutcomes = maybeOutcome.fold(historicOutcomes): outcome =>
+              historicOutcomes :+ HistoricOutcome(position, outcome),
             mark = None,
             isResumed = false))
 
@@ -243,8 +244,8 @@ final case class Order[+S <: Order.State](
         check(!isState[IsTerminated],
           copy(
             state = Broken(maybeProblem),
-            historicOutcomes = maybeProblem.fold(historicOutcomes)(problem =>
-              historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem)))))
+            historicOutcomes = maybeProblem.fold(historicOutcomes): problem =>
+              historicOutcomes :+ HistoricOutcome(position, OrderOutcome.Disrupted(problem))))
 
       case OrderAttachable(agentPath) =>
         check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
@@ -358,18 +359,17 @@ final case class Order[+S <: Order.State](
               def result = inserted.view ++ current
             var positionFound = false
             val array = historicOutcomes.view
-              .map { h =>
+              .map: h =>
                 for pos <- maybePosition do
                   if !positionFound && (h.position == pos || h.position.normalized == pos) then
                     positionFound = true
                 new Entry(!positionFound ? h)
-              }
               .concat(new Entry(None) :: Nil)
               .toArray
             val append = mutable.Buffer.empty[HistoricOutcome]
             val pToi = historicOutcomes.view
               .zipWithIndex
-              .map { case (h, i) => h.position -> i }
+              .map { (h, i) => h.position -> i }
               .toMap
             var checked: Checked[Unit] = Right(())
 
@@ -396,13 +396,13 @@ final case class Order[+S <: Order.State](
               case DeleteHistoricOutcome(pos) =>
                 for i <- get(pos) do
                   array(i).current = None
-            checked.map(_ =>
+            checked.map: _ =>
               array.view
                 .flatMap(_.result)
                 .concat(append)
-                .toVector)
+                .toVector
 
-        updatedHistoryOutcomes.flatMap { updatedHistoricOutcomes =>
+        updatedHistoryOutcomes.flatMap: updatedHistoricOutcomes =>
           val maybeSucceeded =
             (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
@@ -420,7 +420,6 @@ final case class Order[+S <: Order.State](
                   else
                     state,
                 historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
-        }
 
       case _: OrderLocksAcquired =>
         // LockState handles this event, too
@@ -481,10 +480,10 @@ final case class Order[+S <: Order.State](
 
       case OrderNoticesConsumed(_) =>
         check(isDetached,
-          position.checkedParent.map(parentPos =>
+          position.checkedParent.map: parentPos =>
             withPosition(parentPos.increment)
               .copy(
-                state = Ready))
+                state = Ready)
         ).flatten
 
       case OrderStickySubagentEntered(agentPath, subagentSelectionId) =>
@@ -500,10 +499,10 @@ final case class Order[+S <: Order.State](
         if (isAttached || isDetached) && stickySubagents.nonEmpty then
           position.parent
             .toChecked(inapplicableProblem)
-            .map(stickySubagentPosition =>
+            .map: stickySubagentPosition =>
               withPosition(stickySubagentPosition.increment)
                 .copy(
-                  stickySubagents = stickySubagents.tail))
+                  stickySubagents = stickySubagents.tail)
         else
           inapplicable
 
@@ -545,10 +544,10 @@ final case class Order[+S <: Order.State](
       case OrderCycleFinished(cycleState) =>
         position.parent
           .toChecked(inapplicableProblem)
-          .map(cyclePosition =>
+          .map: cyclePosition =>
             withPosition(cyclePosition)
               .copy(
-                state = BetweenCycles(cycleState)))
+                state = BetweenCycles(cycleState))
 
       case OrderTransferred(workflowPosition) =>
         if isDetached then
@@ -576,16 +575,18 @@ final case class Order[+S <: Order.State](
   def isFailable: Boolean =
     !isSuspendedOrStopped &&
       (isDetached || isAttached) &&
-      (state match {
+      state.match
         case _: IsFreshOrReady => true
         case _: Processed => true
         case _: ProcessingKilled => true
         case _: Broken => true
         case _ => false
-      })
 
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
+
+  def isDelayed(now: Timestamp): Boolean =
+    maybeDelayedUntil.exists(now < _)
 
   def maybeDelayedUntil: Option[Timestamp] =
     if isState[Fresh] then
@@ -799,8 +800,8 @@ final case class Order[+S <: Order.State](
     stickySubagents.find(_.agentPath == agentPath)
 
   def toOrderAttachedToAgent: Checked[OrderAttachedToAgent] =
-    checkedState[IsFreshOrReady].flatMap(order =>
-      order.attachedState match {
+    checkedState[IsFreshOrReady].flatMap: order =>
+      order.attachedState match
         case Some(Attached(agentPath)) =>
           assertThat(!isState[Stopped])
           Right(OrderAttachedToAgent(
@@ -818,7 +819,6 @@ final case class Order[+S <: Order.State](
             innerBlock, stopPositions))
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
-    })
 
 
 object Order:
