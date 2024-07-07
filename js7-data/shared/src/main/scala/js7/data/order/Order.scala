@@ -585,6 +585,15 @@ final case class Order[+S <: Order.State](
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
 
+  /** Whether WorkflowPathControl skip is applicable. */
+  def isSkippable(now: Timestamp): Boolean =
+    state.match
+      case Fresh => !isDelayed(now)
+      case Ready => true
+      case _: DelayedAfterError => !isDelayed(now)
+      case _ => false
+    && !isSuspended
+
   def isDelayed(now: Timestamp): Boolean =
     maybeDelayedUntil.exists(now < _)
 

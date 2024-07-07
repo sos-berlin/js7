@@ -518,13 +518,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 
   private def ifSkippedDueToWorkflowPathControlThenMove(order: Order[Order.State])
   : Option[OrderMoved] =
-    !order.isFailed ?&
-      skippedReason(order).map: reason =>
-        OrderMoved(order.position.increment, Some(reason))
-
-  private def skippedReason(order: Order[Order.State]): Option[OrderMoved.Reason] =
-    isSkippedDueToWorkflowPathControl(order) ?
-      OrderMoved.SkippedDueToWorkflowPathControl
+    (order.isSkippable(clock.now()) && isSkippedDueToWorkflowPathControl(order)) ?
+      OrderMoved(order.position.increment, Some(OrderMoved.SkippedDueToWorkflowPathControl))
 
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State]): Boolean =
     !order.isState[Order.BetweenCycles] &&

@@ -2,12 +2,16 @@ package js7.tests
 
 import cats.syntax.option.*
 import fs2.Stream
+import java.time.ZoneId
+import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
+import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflowPath, ResumeOrder}
@@ -46,6 +50,17 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(aWorkflow, bWorkflow, calendar)
+
+  private val clock =
+    given ZoneId = ZoneId.of("Europe/Stockholm")
+    TestAlarmClock(local("2024-07-06T12:00"))
+
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
+
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    alarmClock = Some(clock))
+
 
   "Skip the only Job" in:
     val orderId = OrderId("A")
@@ -130,6 +145,35 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDetached,
         OrderFinished(),
         OrderDeleted))
+
+  "JS-2134 skip is lazy" in:
+    eventWatch.resetLastWatchedEventId()
+    val workflow = Workflow(WorkflowPath("LAZY"), Seq(
+      label @: EmptyJob.execute(agentPath)))
+    withTemporaryItem(workflow): workflow =>
+      skipInstruction(workflow.path, true, ItemRevision(1))
+      val orderId = OrderId("LAZY")
+      val scheduledFor = clock.now() + 1.s
+      controller
+        .addOrderBlocking(FreshOrder(orderId, workflow.path, scheduledFor = Some(scheduledFor),
+          deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderAttached](_.key == orderId)
+
+      clock += 1.s
+      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, scheduledFor = Some(scheduledFor), deleteWhenTerminated = true),
+        // skipped
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderMoved(Position(1), reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+        OrderDetachable,
+        OrderDetached,
+        OrderStarted,
+        OrderFinished(),
+        OrderDeleted))
+
 
   "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId
