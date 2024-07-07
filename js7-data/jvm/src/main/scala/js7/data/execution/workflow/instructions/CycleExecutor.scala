@@ -15,7 +15,7 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 
 private[instructions] final class CycleExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor, PositionInstructionExecutor:
+extends EventInstructionExecutor:
 
   type Instr = Cycle
   val instructionClass = classOf[Cycle]
@@ -64,9 +64,6 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       case Some(cycleState) => OrderCyclingPrepared(cycleState)
       case None => OrderMoved(order.position.increment)
     (order.id <-: event) :: Nil
-
-  def nextMove(instruction: Cycle, order: Order[Order.State], stateView: StateView) =
-    Right(None)
 
   override def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
