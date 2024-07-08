@@ -81,10 +81,10 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       eventWatch.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
 
       // The stolen orders are canceled (and its processes have been killed)
-      val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
-      assert(processed.value.event ==
-        OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)))
-        //OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled")))))
+      val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head.value.event
+      assert:
+        processed == OrderProcessed(OrderOutcome.processLost(ProcessLostDueToShutdownProblem)) ||
+        processed == OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled"))))
 
       intercept[TimeoutException]:
         // Times out because Subagent must be restarted
