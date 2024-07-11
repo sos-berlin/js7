@@ -5,18 +5,18 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val pekkoVersion = "1.0.2"
+  val pekkoVersion = "1.0.3"
   val pekkoHttpVersion = "1.0.1"
   val slf4jVersion = "2.0.13"  // See also plugins.sbt
   val log4jVersion = "2.23.1"  // See also plugins.sbt
-  val catsVersion = "2.10.0"
+  val catsVersion = "2.12.0"
   val catsEffectVersion = "3.5.4"
   val catsEffectTestingVersion = catsEffectVersion
   val catsSTMVersion = "0.13.4"
   val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.0.0"
-  val circeVersion = "0.14.7"
+  val circeVersion = "0.14.9"
   val circeGenericExtrasVersion = "0.14.3"
   val scalaTestVersion = "3.2.18"
   val scalaTestCheckVersion = "3.2.14.0"
