@@ -76,8 +76,8 @@ abstract class RichProcess protected[process](
     ifAlive("executeKillScript"):
       if isMac then
         IO:
-          // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
-          logger.warn("Execution of kill script is suppressed on MacOS")
+          // TODO On macOS, the kill script may kill a foreign process like the developers IDE
+          logger.warn("Execution of kill script is suppressed on macOS")
       else
         IO.defer:
           logger.info("Executing kill script: " + args.mkString("  "))

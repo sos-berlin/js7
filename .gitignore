@@ -27,7 +27,7 @@ idea-shared-test
 /.vscode/
 /project/metals.sbt
 
-# MacOS
+# macOS
 .DS_Store
 
 # Eclipse

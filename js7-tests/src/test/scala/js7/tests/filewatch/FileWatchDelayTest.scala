@@ -99,7 +99,7 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
         whenArised.await(99.s)
         val expectedDuration = fileWatch.delay + i * writeDuration
         val duration = since.elapsed
-        // TODO On MacOS, files arise 3s or 4s later then expected
+        // TODO On macOS, files arise 3s or 4s later then expected
         logger.info(s"file-$i arised ⭐️ after ${duration.pretty}, " +
           s"${(duration - expectedDuration).pretty} later than expected")
         assert(duration >= expectedDuration)

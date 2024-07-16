@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
   * How to generate SHA512?
   * <ul>
   *   <li>Gnu (Linux): <code>sha512sum <(echo -n "password")</code>.
-  *   <li>MacOS: <code>shasum -a 512 <(echo -n "password")</code>.
+  *   <li>macOS: <code>shasum -a 512 <(echo -n "password")</code>.
   * </ul>
   *
   * @author Joacim Zschimmer

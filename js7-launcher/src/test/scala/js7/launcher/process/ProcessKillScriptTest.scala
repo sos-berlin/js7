@@ -36,7 +36,7 @@ final class ProcessKillScriptTest extends OurAsyncTestSuite:
 
   "Kill script kills descendants" in:
     if isMac then
-      info("Disabled on MacOS because it kills our builder process")
+      info("Disabled on macOS because it kills our builder process")
       pending
     else
       val out = createTempFile("test-", ".log")

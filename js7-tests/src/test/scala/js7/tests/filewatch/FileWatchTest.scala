@@ -290,7 +290,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           bothFile.toString,
           newFile.toString))
 
-      // Java for MacOS needs 2s to detect a file (maybe oldFile)
+      // Java for macOS needs 2s to detect a file (maybe oldFile)
       if isMac then sleep(2500.ms)
 
       assert(eventWatch

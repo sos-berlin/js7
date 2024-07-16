@@ -42,7 +42,7 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll:
       super.afterAll()
 
   if isMac then
-    "Java's WatchService does not work properly under MacOS" in:
+    "Java's WatchService does not work properly under macOS" in:
       // https://bugs.openjdk.java.net/browse/JDK-7133447
       awaitAndAssert(counter > 0)
   else

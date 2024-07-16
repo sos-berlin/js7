@@ -92,7 +92,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
 
   "sendProcessSignal SIGKILL" in:
     if isMac then
-      info("Disabled on MacOS because it kills our builder process")
+      info("Disabled on macOS because it kills our builder process")
       pending
     else
       val taskId = TaskId("TEST-PROCESS-ID")
@@ -141,7 +141,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
   if !isWindows then
     "sendProcessSignal SIGTERM (Unix only)" in:
       if isMac then
-        info("Disabled on MacOS because it kills our builder process")
+        info("Disabled on macOS because it kills our builder process")
         pending
       else
         withScriptFile { scriptFile =>

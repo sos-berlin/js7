@@ -27,7 +27,7 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
         (((flushCount > 0 && stopwatch.duration >= 1.s) ?? s"$flushesTimingString, ") + {
           val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
           factorFormat.setMaximumFractionDigits(1)
-          factorFormat.setGroupingUsed(false)  // For MacOS
+          factorFormat.setGroupingUsed(false)  // For macOS
           ((flushCount > 0) ?? factorFormat.format(commits.toDouble / flushCount) + " commits/flush") +
           ((syncCount >= 10) ?? // syncOnCommit?
             (", " +

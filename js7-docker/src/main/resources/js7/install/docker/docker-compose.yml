@@ -49,7 +49,7 @@ services:
     networks:
     - default
     #ports:
-    #Does not work for Docker 2.2.3.0 MacOS:  - "127.0.0.2:4444:4444"
+    #Does not work for Docker 2.2.3.0 macOS:  - "127.0.0.2:4444:4444"
     working_dir: /home/js7
     environment:
       - TZ=$TZ
