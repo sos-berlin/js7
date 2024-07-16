@@ -130,8 +130,7 @@ object FileUtils:
         write(string, UTF_8)
 
       def contentString(encoding: Charset) =
-        // Java 11: Files.readString(encoding)
-        new String(ByteArray.fromFileUnlimited(delegate).unsafeArray, encoding)
+        Files.readString(delegate, encoding)
 
       def writeUtf8Executable(string: String): Unit =
         write(string, UTF_8)

@@ -86,7 +86,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def fromInputStreamUnlimited(in: InputStream): ByteSeq =
     fromInputStreamLimited(in, Int.MaxValue)
-      .getOrElse(throw new RuntimeException("fromInputStreamUnlimited")/*do not happen*/)
+      .getOrElse(throw new RuntimeException("fromInputStreamUnlimited")/*doesn't happen*/)
 
   def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteSeq, ByteSeq] =
     ByteArray.fromInputStreamLimited(in, limit) match
