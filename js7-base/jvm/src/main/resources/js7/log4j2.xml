@@ -100,7 +100,7 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
       </defaultRolloverStrategy>
     </rollingRandomAccessFile>
 
-    <rollingRandomAccessFile
+    <!--rollingRandomAccessFile
       name="web.log"
       fileName="${logDirectory}/web.log"
       filePattern="${logDirectory}/web-%d{yyyy-MM-dd}-%i.log.gz"
@@ -121,7 +121,7 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
           </ifAny>
         </delete>
       </defaultRolloverStrategy>
-    </rollingRandomAccessFile>
+    </rollingRandomAccessFile-->
   </appenders>
 
   <loggers>
