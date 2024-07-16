@@ -3,6 +3,7 @@ package js7.tests.testenv
 import cats.effect
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
@@ -97,17 +98,16 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
     directorResource
 
   def directorResource: ResourceIO[RunningAgent] =
-    for
-      given IORuntime <- ioRuntimeResource
-      agent <- RunningAgent.resource(agentConf)
-      _ <- programRegistering(agent)
-    yield
-      agent
+    ioRuntimeResource.flatMap: ioRuntime =>
+      given IORuntime = ioRuntime
+      RunningAgent.resource(agentConf)
+        .flatTap(programRegistering)
+        .evalOn(ioRuntime.compute)
 
   def restartableDirectorResource: ResourceIO[RestartableDirector] =
     for
       given IORuntime <- ioRuntimeResource
-      agent <- RunningAgent.restartable(agentConf)
+      agent <- RunningAgent.restartable(agentConf).evalOn(given_IORuntime.compute)
     yield
       agent
 

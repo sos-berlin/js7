@@ -127,21 +127,22 @@ object TestAgent:
     terminateProcessesWith: Option[ProcessSignal] = None)
   : IO[TestAgent] =
     CorrelId.bindNew:
-      ioRuntimeResource[IO](conf).flatMap(implicit ioRuntime =>
-        RunningAgent
-          .resource(conf, testWiring)(using ioRuntime))
-          .toAllocated
-          .map(new TestAgent(_, terminateProcessesWith))
+      ioRuntimeResource[IO](conf)
+        .flatMap: ioRuntime =>
+          given IORuntime = ioRuntime
+          RunningAgent.resource(conf, testWiring).evalOn(ioRuntime.compute)
+        .toAllocated
+        .map(new TestAgent(_, terminateProcessesWith))
 
   def blockingRun(
     conf: AgentConfiguration,
     timeout: FiniteDuration = 99.s,
     terminateProcessesWith: Option[ProcessSignal] = None)
     (body: TestAgent => Unit)
-    (using IORuntime)
+    (using ioRuntime: IORuntime)
   : ProgramTermination =
     ServiceMain.blockingRun(conf.name, timeout = timeout)(
-      resource = resource(conf),
+      resource = resource(conf).evalOn(ioRuntime.compute),
       use = (agent: RunningAgent) =>
         try
           val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
@@ -164,19 +165,20 @@ object TestAgent:
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
     RunningAgent.resource(conf, testWiring)
-      .flatMap(agent => Resource.makeCase(
-        acquire = IO.pure(agent))(
-        release = (agent, exitCase) => IO.defer:
-          exitCase match {
-            case ExitCase.Errored(throwable) =>
-              logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
-            case _ =>
-          }
-          // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
-          agent.untilTerminated.void
-            .timeoutTo(3.s, IO.unit)
-            .tapError(t => IO(
-              logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))))
+      .flatMap: agent =>
+        Resource.makeCase(
+          acquire = IO.pure(agent))(
+          release = (agent, exitCase) => IO.defer:
+            exitCase match
+              case ExitCase.Errored(throwable) =>
+                logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
+              case _ =>
+            // Avoid Akka 2.6 StackTraceError which occurs when
+            // agent.terminate() has not been executed:
+            agent.untilTerminated.void
+              .timeoutTo(3.s, IO.unit)
+              .tapError: t =>
+                IO(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
 
 
   private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])

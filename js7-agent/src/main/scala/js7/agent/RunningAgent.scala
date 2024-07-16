@@ -164,24 +164,22 @@ object RunningAgent:
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
-    locally:
-      for
-        subagent <- subagentResource(conf)
-        director <- director(subagent, conf, testWiring)
-      yield director
-    .evalOn(ioRuntime.compute)
+    for
+      subagent <- subagentResource(conf)
+      director <- director(subagent, conf, testWiring)
+    yield
+      director
 
   def restartable(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RestartableDirector] =
-    locally:
-      for
-        subagent <- subagentResource(conf)
-        director <- RestartableDirector(subagent, conf, testWiring)
-      yield director
-    .evalOn(ioRuntime.compute)
+    for
+      subagent <- subagentResource(conf)
+      director <- RestartableDirector(subagent, conf, testWiring)
+    yield
+      director
 
   def subagentResource(conf: AgentConfiguration)(implicit ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
