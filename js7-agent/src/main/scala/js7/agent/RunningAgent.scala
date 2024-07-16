@@ -181,7 +181,7 @@ object RunningAgent:
     yield
       director
 
-  def subagentResource(conf: AgentConfiguration)(implicit ioRuntime: IORuntime)
+  private def subagentResource(conf: AgentConfiguration)(using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
     Resource.suspend(IO {
       val testEventBus = new StandardEventBus[Any]

@@ -1,6 +1,7 @@
 package js7.base.io
 
 import cats.effect.SyncIO
+import cats.effect.Resource
 import java.io.{File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
@@ -58,9 +59,8 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
   def copyToFile(file: Path, copyOptions: CopyOption*): Path =
-    autoClosing(openStream()) { in =>
+    autoClosing(openStream()): in =>
       Files.copy(in, file, copyOptions*)
-    }
     file
 
   def writeToStream(out: OutputStream): Unit =
@@ -80,8 +80,8 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   def isValid: Boolean = checkedUrl.isRight
 
-  val asResource: cats.effect.Resource[SyncIO, InputStream] =
-    cats.effect.Resource.fromAutoCloseable(SyncIO { openStream() })
+  val asResource: Resource[SyncIO, InputStream] =
+    Resource.fromAutoCloseable(SyncIO { openStream() })
 
   def openStream(): InputStream = url.openStream()
 
@@ -116,7 +116,7 @@ object JavaResource:
   //  q"_root_.js7.base.io.JavaResource(this.getClass.getClassLoader, $path)"
   //}
 
-  implicit def asResource(o: JavaResource): cats.effect.Resource[SyncIO, InputStream] =
+  def asResource(o: JavaResource): Resource[SyncIO, InputStream] =
     o.asResource
 
   implicit val writable: Writable[JavaResource] = _ writeToStream _

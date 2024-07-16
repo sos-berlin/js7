@@ -179,7 +179,8 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
         backup.controllerEnv.privateConf,
         REPLACE_EXISTING)
 
-      for a <- primary.agentEnvs ++ backup.agentEnvs do a.writeExecutable(TestPathExecutable, shellScript)
+      for a <- primary.agentEnvs ++ backup.agentEnvs do
+        a.writeExecutable(TestPathExecutable, shellScript)
 
       val setting = ClusterSetting(
         Map(
@@ -200,13 +201,11 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (TestController, TestController) => Unit)
   : Unit =
-    backup.runController(dontWaitUntilReady = true) { backupController =>
-      primary.runController() { primaryController =>
+    backup.runController(dontWaitUntilReady = true): backupController =>
+      primary.runController(): primaryController =>
         primaryController.eventWatch.await[ClusterCoupled]()
         backupController.eventWatch.await[ClusterCoupled]()
         body(primaryController, backupController)
-      }
-    }
 
   protected final def withOptionalClusterWatchService[A](
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
@@ -239,10 +238,9 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
         controllerAdmissions,
         HttpsConfig.empty,
         clusterWatchConfig,
-        onUndecidableClusterNodeLoss = {
+        onUndecidableClusterNodeLoss =
           case Some(prblm) => IO(eventbus.publish(prblm))
-          case None => IO.unit
-        })
+          case None => IO.unit)
     yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */

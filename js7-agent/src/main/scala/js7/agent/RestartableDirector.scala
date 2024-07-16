@@ -34,40 +34,40 @@ extends MainService, Service.StoppableByRequest:
     RunningAgent
       .director(subagent, conf, testWiring)
       .toAllocated
-      .flatMap(allocated =>
+      .flatMap: allocated =>
         _currentDirector.set(allocated.allocatedThing) *>
-          startService(
+          startService:
             onStopRequested(allocated.release)
-              .use(_ =>
-                allocated.allocatedThing.untilTerminated)
+              .surround:
+                allocated.allocatedThing.untilTerminated
               .guarantee(allocated.release)
-              .flatMap(terminated =>
+              .flatMap: terminated =>
                 if terminated.restartDirector then
                   restartLoop
                 else
-                  IO.pure(terminated))
-              .flatTap(termination =>
-                _untilTerminated.complete(Success(termination)).as(Right(())))
-              .tapError(t => // ???
-                _untilTerminated.complete(Failure(t)).void)
-              .void))
+                  IO.pure(terminated)
+              .flatTap: termination =>
+                _untilTerminated.complete(Success(termination)).as(Right(()))
+              .tapError: t => // ???
+                _untilTerminated.complete(Failure(t)).void
+              .void
 
   private def restartLoop: IO[DirectorTermination] =
-    ().tailRecM(_ =>
+    ().tailRecM: _ =>
       IO(logger.info(s"⟲ Restart Agent Director after ${Delay.pretty}...")) *>
         IO.sleep(Delay) *>
         RunningAgent
           .director(subagent, conf, testWiring)
-          .use(director =>
+          .use: director =>
             onStopRequested(director.terminate().void)
-              .use(_ =>
+              .surround:
                 _currentDirector.set(director) *>
-                  director.untilTerminated)
-              .map(termination =>
+                  director.untilTerminated
+              .map: termination =>
                 if termination.restartDirector then
                   Left(())
                 else
-                  Right(termination))))
+                  Right(termination)
 
   private def onStopRequested(stop: IO[Unit]): ResourceIO[Unit] =
     Resource
@@ -87,6 +87,7 @@ extends MainService, Service.StoppableByRequest:
 
   override def toString = "RestartableDirector"
 
+
 private object RestartableDirector:
   private val logger = Logger[this.type]
   private val Delay = 1.s // Give Pekko Actors time to terminate and release their names
@@ -97,5 +98,5 @@ private object RestartableDirector:
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RestartableDirector] =
-    Service.resource(IO(
-      new RestartableDirector(subagent, conf, testWiring)))
+    Service.resource(IO:
+      new RestartableDirector(subagent, conf, testWiring))

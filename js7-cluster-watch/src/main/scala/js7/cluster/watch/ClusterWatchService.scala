@@ -4,17 +4,19 @@ import cats.data.NonEmptySeq
 import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.configutils.Configs.RichConfig
-import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
-import js7.base.utils.{DelayConf, Delayer, ProgramTermination}
+import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
@@ -53,67 +55,64 @@ extends MainService, Service.StoppableByRequest:
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
-    startServiceAndLog(logger, nodeApis.toList.mkString(", "))(
-      run)
+    startServiceAndLog(logger, nodeApis.toList.mkString(", ")):
+      run
 
   val untilTerminated: IO[ProgramTermination] =
     untilStopped.as(ProgramTermination())
 
   private def run: IO[Unit] =
     Stream
-      .iterable(
-        for nodeApi <- nodeApis.toList yield {
+      .iterable:
+        for nodeApi <- nodeApis.toList yield
           val nodeWatch = new NodeServer(nodeApi)
           nodeWatch.stream.map(nodeWatch -> _)
-        })
       .parJoinUnbounded
-      .evalMap { case (nodeWatch, request) =>
+      .evalMap: (nodeWatch, request) =>
         // Synchronize requests from both nodes
-        request.correlId.bind(
-          nodeWatch.processRequest(request))
-      }
+        request.correlId.bind:
+          nodeWatch.processRequest(request)
       .interruptWhenF(untilStopRequested)
       .compile
       .drain
 
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
+    private val streamFailed = Atomic(false)
+
     def stream: Stream[IO, ClusterWatchRequest] =
       streamAgainAndAgain(clusterWatchRequestStream)
 
     private def streamAgainAndAgain[A](stream: Stream[IO, A]): Stream[IO, A] =
-      Delayer.stream[IO](delayConf)
-        .flatMap { _ =>
-          var failed = false
-          stream
-            .onStart(IO {
-              if failed then logger.info(s"🟢 $nodeApi is being watched again")
-              failed = false
-            })
-            .handleErrorWith { t =>
-              logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
-              failed = true
-              Stream.empty
-            }
-        }
-        //.interruptWhenF(untilStopRequested)
+      Stream.suspend:
+        Delayer.stream[IO](delayConf)
+          .flatMap: _ =>
+            stream
+              .handleErrorWith: t =>
+                logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
+                streamFailed := true
+                Stream.empty
+          //.interruptWhenF(untilStopRequested)
 
     private def clusterWatchRequestStream: Stream[IO, ClusterWatchRequest] =
-      logger.traceStream("clusterWatchRequestStream", nodeApi)(
+      logger.traceStream("clusterWatchRequestStream", nodeApi):
         Stream
           .eval(nodeApi
-            .retryUntilReachable()(
-              nodeApi.retryIfSessionLost()(
+            .retryUntilReachable():
+              nodeApi.retryIfSessionLost():
                 nodeApi
                   .clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))
-                  /*.map(_.interruptWhenF(untilStopRequested))*/))
-            .attempt.map {
+                  /*.map(_.interruptWhenF(untilStopRequested))*/)
+            .attempt.evalMap:
               case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
-                Left(t) // Trigger onErrorRestartLoop
-              case o => HttpClient.attemptedToChecked(o)
-            }
+                IO.left(t) // Trigger onErrorRestartLoop
+              case attempted =>
+                IO:
+                  if attempted.isRight && streamFailed.getAndSet(false) then
+                    logger.info(s"🟢 $nodeApi is being watched again")
+                  HttpClient.attemptedToChecked(attempted)
             .rethrow
-            .map(_.orThrow))
-          .flatten)
+            .map(_.orThrow)
+          .flatten
 
     def processRequest(request: ClusterWatchRequest): IO[Unit] =
       clusterWatch.processRequest(request)
@@ -123,11 +122,11 @@ extends MainService, Service.StoppableByRequest:
       HttpClient
         .liftProblem(nodeApi
           .retryIfSessionLost()(nodeApi
-            .executeClusterWatchingCommand(
+            .executeClusterWatchingCommand:
               ClusterWatchConfirm(
                 request.requestId, clusterWatchId, clusterWatchRunId,
                 manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
-                problem = confirmed.left.toOption))
+                problem = confirmed.left.toOption)
             .void))
         .map:
           case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>

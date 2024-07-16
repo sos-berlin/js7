@@ -2,7 +2,7 @@ package js7.launcher.process
 
 import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.startAndForget
+import js7.base.catsutils.CatsEffectExtensions.{left, startAndForget}
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.materialize
@@ -56,15 +56,15 @@ final class ProcessDriver(
     IO.defer:
       killedBeforeStart match
         case Some(signal) =>
-          IO.pure(Left(Problem.pure("Processing killed before start")))
+          IO.left(Problem.pure("Processing killed before start"))
 
         case None =>
           IO(checkedWindowsLogon
-            .flatMap { maybeWindowsLogon =>
-              catchNonFatal {
+            .flatMap: maybeWindowsLogon =>
+              catchNonFatal:
                 for o <- maybeWindowsLogon do
                   WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
-              }.map(_ =>
+              .map: _ =>
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
                   encoding = jobLauncherConf.systemEncoding,
@@ -75,36 +75,33 @@ final class ProcessDriver(
                   killWithSigterm = jobLauncherConf.killWithSigterm,
                   killWithSigkill = jobLauncherConf.killWithSigkill,
                   killForWindows = jobLauncherConf.killForWindows,
-                  killScriptOption = jobLauncherConf.killScript,
-                  maybeWindowsLogon))
-            }
-          ).flatMapT(processConfiguration =>
-            startProcessLock.lock("startProcess")(
+                  maybeKillScript = jobLauncherConf.killScript,
+                  maybeWindowsLogon)
+          ).flatMapT: processConfiguration =>
+            startProcessLock.lock("startProcess"):
               globalStartProcessLock
-                .lock(orderId.toString)(
+                .lock(orderId.toString):
                   startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
-                    name = s"$orderId ${conf.jobKey}"))
-                .flatTapT { richProcess =>
+                    name = s"$orderId ${conf.jobKey}")
+                .flatTapT: richProcess =>
                   richProcessOnce := richProcess
-                  logger.info(
-                    s"$orderId ↘ Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
+                  logger.info:
+                    s"$orderId ↘ Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}"
                   richProcess.watchProcess
                     .startAndForget
                     .flatTap: _ =>
                       killedBeforeStart.traverse(sendProcessSignal(richProcess, _))
                     .as(Right(()))
-                }))
 
   private def outcomeOf(richProcess: RichProcess): IO[OrderOutcome.Completed] =
     richProcess
       .terminated
-      .materialize.flatMap { tried =>
+      .materialize.flatMap: tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
-        logger.info(
-          s"$orderId ↙ Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
+        logger.info:
+          s"$orderId ↙ Process $richProcess terminated with $rc after ${richProcess.duration.pretty}"
         IO.fromTry(tried)
-      }
-      .flatMap { returnCode =>
+      .flatMap: returnCode =>
         fetchReturnValuesThenDeleteFile.map:
           case Left(problem) =>
             OrderOutcome.Failed.fromProblem(
@@ -113,10 +110,8 @@ final class ProcessDriver(
 
           case Right(namedValues) =>
             conf.toOutcome(namedValues, returnCode)
-      }
-      .guarantee(IO.interruptible {
-        returnValuesProvider.tryDeleteFile()
-      })
+      .guarantee(IO.interruptible:
+        returnValuesProvider.tryDeleteFile())
 
   private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
     IO.interruptible:
@@ -127,16 +122,14 @@ final class ProcessDriver(
     .logWhenItTakesLonger(s"fetchReturnValuesThenDeleteFile $orderId") // Because IO.interruptible does not execute ?
 
   def kill(signal: ProcessSignal): IO[Unit] =
-    startProcessLock.lock("kill")(IO.defer {
-      richProcessOnce.toOption match {
+    startProcessLock.lock("kill")(IO.defer:
+      richProcessOnce.toOption match
         case None =>
           IO:
             killedBeforeStart = Some(signal)
             logger.debug(s"$orderId ⚫️ Kill before start")
         case Some(richProcess) =>
-          sendProcessSignal(richProcess, signal)
-      }
-    })
+          sendProcessSignal(richProcess, signal))
 
   private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
     IO.defer:

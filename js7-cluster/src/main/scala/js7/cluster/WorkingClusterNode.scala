@@ -1,7 +1,7 @@
 package js7.cluster
 
-import cats.effect.{IO, Resource, ResourceIO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.eventbus.EventPublisher
@@ -44,9 +44,7 @@ final class WorkingClusterNode[
   val journalAllocated: Allocated[IO, FileJournal[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
-  (implicit
-    nodeNameToPassword: NodeNameToPassword[S],
-    ioRuntime: IORuntime):
+  (using nodeNameToPassword: NodeNameToPassword[S]):
 //TODO extends Service
 
   val journal: FileJournal[S] = journalAllocated.allocatedThing

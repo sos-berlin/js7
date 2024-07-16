@@ -79,8 +79,8 @@ extends ControllerApiWithHttp:
     fromEventId: Option[EventId] = None)
   : Stream[IO, EventAndState[Event, ControllerState]] =
     // CorrelId.bind ???
-    logger.debugStream(
-      JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf))
+    logger.debugStream:
+      JournaledProxy.stream(apisResource, fromEventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,

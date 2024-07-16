@@ -80,12 +80,12 @@ final class JavaResourceTest extends OurTestSuite:
       })
     assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
 
-  "Implicit cats.effect.Resource" in:
-    val io = javaResource.use(in =>
-      SyncIO {
-        new BufferedReader(new InputStreamReader(in)).readLine()
-      })
-    assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
+  //"Implicit cats.effect.Resource" in:
+  //  val io = javaResource.use(in =>
+  //    SyncIO {
+  //      new BufferedReader(new InputStreamReader(in)).readLine()
+  //    })
+  //  assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
 
 
 object JavaResourceTest:

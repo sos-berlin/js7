@@ -57,9 +57,9 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
     bindingAndResources
       .traverse(_.resource.toAllocated.map(Some(_)))
       .flatMap(portWebServersAllocated.set)
-      .*>(startService(
+      .*>(startService:
         untilStopRequested
-          .guarantee(stopPortWebServers)))
+          .guarantee(stopPortWebServers))
 
 
   def stopPortWebServers: IO[Unit] =
@@ -69,7 +69,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         .flatMap(_.parSequence)
         .map(_.combineAll)
 
-  def restartWhenHttpsChanges(implicit iox: IOExecutor): ResourceIO[Unit] =
+  def restartWhenHttpsChanges(using iox: IOExecutor): ResourceIO[Unit] =
     HttpsDirectoryWatch
       .resource(
         DirectoryWatchSettings.fromConfig(config).orThrow,
@@ -78,16 +78,15 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
       .void
 
   private[web] def onHttpsKeyOrCertChanged: IO[Unit] =
-    logger.debugIO(IO.defer {
+    logger.debugIO(IO.defer:
       testEventBus.publish(BeforeRestartEvent)
 
       portWebServersAllocated
-        .update(sequence =>
+        .update: sequence =>
           sequence
             .zip(bindingAndResources)
-            .parTraverse((checkFilesThenRestart _).tupled))
-        .void
-    })
+            .parTraverse((checkFilesThenRestart _).tupled)
+        .void)
 
   private def checkFilesThenRestart(
     previouslyAllocated: Option[Allocated[IO, SinglePortPekkoWebServer]],
@@ -95,7 +94,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     IO.defer:
       val binding = bindingAndResource.webServerBinding
-      readFileTimes(binding).flatMap { fileToTime =>
+      readFileTimes(binding).flatMap: fileToTime =>
         val prevFileToTime = _addrToHttpsFileToTime.getOrElse(binding.address, Map.empty)
         val diff = fileToTime.filterNot:
           case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
@@ -109,38 +108,35 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
           previouslyAllocated.fold(IO.unit)(_.release) *>
             startPortWebServer(bindingAndResource) <*
             IO(testEventBus.publish(RestartedEvent))
-        ).<*(IO(
-          _addrToHttpsFileToTime(binding.address) = prevFileToTime))
-      }
+        ).<*(IO:
+          _addrToHttpsFileToTime(binding.address) = prevFileToTime)
 
   private def startPortWebServer(bindingAndResource: BindingAndResource)
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     import bindingAndResource.{resource, webServerBinding as binding}
 
     Delayer.start[IO](DelayConf.default)
-      .flatMap { delayer =>
+      .flatMap: delayer =>
         var errorLogged = false
         readFileTimes(binding)
-          .flatMap(fileTimes =>
+          .flatMap: fileTimes =>
             resource.toAllocated
-              .map(allo => (fileTimes -> allo).some))
+              .map(allo => (fileTimes -> allo).some)
           .onErrorRestartLoop(()):
-            case ((throwable, _, retry)) =>
+            case (throwable, _, retry) =>
               errorLogged = true
-              logger.error(
-                s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}")
+              logger.error:
+                s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}"
               for t <- throwable.ifStackTrace do logger.debug(s"💥 ${t.toStringWithCauses}", t)
               IO
                 .race(
                   untilStopRequested,
                   delayer.sleep(logDelay(_, bindingAndResource.toString)))
                 .flatMap(_.fold(_ => IO.none/*stop requested*/, _ => retry(())))
-          .map(_.map { case (fileTimes, allocated) =>
+          .map(_.map: (fileTimes, allocated) =>
             _addrToHttpsFileToTime(binding.address) = fileTimes
             if errorLogged then logger.info(s"🟢 Web server for $bindingAndResource restarted")
-            allocated
-          })
-      }
+            allocated)
 
   private def readFileTimes(binding: WebServerBinding)
   : IO[Map[Path, Try[FileTime]]] =
@@ -160,33 +156,38 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 object PekkoWebServer:
   private val logger = Logger[this.type]
 
-  private[web] val testConfig = config"""
+  @TestOnly
+  private val testConfig = config"""
     js7.web.server.auth.https-client-authentication = off
     js7.web.server.shutdown-timeout = 10s
     js7.web.server.shutdown-delay = 500ms
     """
 
   @TestOnly
-  def testResource()(route: Route)(implicit as: ActorSystem): ResourceIO[PekkoWebServer] =
+  def testResource()(route: Route)(using ActorSystem): ResourceIO[PekkoWebServer] =
     testUriAndResource()(route)._2
 
   @TestOnly
-  def testUriAndResource()(route: Route)(implicit as: ActorSystem)
+  def testUriAndResource()(route: Route)(using ActorSystem)
   : (Uri, ResourceIO[PekkoWebServer]) =
     testResource(ConfigFactory.empty)(route)
 
   @TestOnly
-  def testResource(config: Config)(route: Route)(implicit as: ActorSystem)
+  private def testResource(config: Config)(route: Route)(using ActorSystem)
   : (Uri, ResourceIO[PekkoWebServer]) =
     testResource(findFreeTcpPort(), config, route = route)
 
   @TestOnly
-  def testResource(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
+  private def testResource(
+    port: Int = findFreeTcpPort(),
+    config: Config = ConfigFactory.empty,
+    route: Route)
+    (using ActorSystem)
   : (Uri, ResourceIO[PekkoWebServer]) =
-    Uri(s"http://127.0.0.1:$port") -> httpResource(port = port, config.withFallback(testConfig), route)
+    Uri(s"http://127.0.0.1:$port") ->
+      httpResource(port = port, config.withFallback(testConfig), route)
 
-  def httpResource(port: Int, config: Config, route: Route)
-    (implicit actorSystem: ActorSystem)
+  def httpResource(port: Int, config: Config, route: Route)(using ActorSystem)
   : ResourceIO[PekkoWebServer] =
     resource(
       Seq(WebServerBinding.http(port)),
@@ -197,16 +198,16 @@ object PekkoWebServer:
     webServerBindings: Seq[WebServerBinding],
     config: Config,
     toBoundRoute: RouteBinding => BoundRoute)
-    (implicit actorSystem: ActorSystem,
+    (using actorSystem: ActorSystem,
       testEventBus: StandardEventBus[Any] = new StandardEventBus)
   : ResourceIO[PekkoWebServer] =
-    Resource.suspend(IO {
+    Resource.suspend(IO:
       val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
       val shutdownDelay = config.finiteDuration("js7.web.server.shutdown-delay").orThrow
       val httpsClientAuthRequired = config.getBoolean(
         "js7.web.server.auth.https-client-authentication")
 
-      Service.resource(IO(
+      Service.resource(IO:
         new PekkoWebServer(
           for webServerBinding <- webServerBindings.toVector yield
             BindingAndResource(
@@ -218,7 +219,6 @@ object PekkoWebServer:
                 shutdownDelay = shutdownDelay,
                 httpsClientAuthRequired = httpsClientAuthRequired)),
           config)))
-    })
 
   private lazy val stillNotAvailableRoute: Route =
     complete(WebServiceStillNotAvailableProblem)

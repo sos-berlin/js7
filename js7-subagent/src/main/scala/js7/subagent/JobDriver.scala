@@ -59,8 +59,8 @@ private final class JobDriver(
           .flatMap: _ =>
             lastProcessTerminated.get
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
-      ).flatMap(_ =>
-        checkedJobLauncher.toOption.fold(IO.unit) { jobLauncher =>
+      ).flatMap: _ =>
+        checkedJobLauncher.toOption.fold(IO.unit): jobLauncher =>
           logger.trace("JobLauncher stop")
           jobLauncher
             .stop
@@ -68,7 +68,6 @@ private final class JobDriver(
             .handleError(throwable =>
               logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
                 throwable.nullIfNoStackTrace))
-        })
 
   /** Starts the process and returns a Fiber returning the process' outcome. */
   def runOrderProcess(
@@ -107,17 +106,17 @@ private final class JobDriver(
   : IO[Checked[OrderOutcome]] =
     jobLauncher.startIfNeeded
       .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
-      .flatMapT { orderProcess =>
+      .flatMapT: orderProcess =>
         entry.orderProcess = Some(orderProcess)
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
         orderProcess
           .start(processOrder.order.id, jobKey)
-          .flatMap { runningProcess =>
+          .flatMap: runningProcess =>
             val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
             val awaitTermination =
               SyncDeadline.usingNow: now ?=>
                 entry.runningSince = now
-                scheduleTimeout(entry)
+              .*>(scheduleTimeoutCancellation(entry))
               .*>(IO.defer:
                 runningProcess.joinStd
                   .map(entry.modifyOutcome)
@@ -126,13 +125,10 @@ private final class JobDriver(
                     case outcome => outcome)
             IO.both(maybeKillAfterStart, awaitTermination)
               .map((_, outcome) => outcome)
-          }
-          .handleError { t =>
+          .handleError: t =>
             logger.error(s"${processOrder.order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             OrderOutcome.Failed.fromThrowable(t)
-          }
           .map(Right(_))
-      }
 
   private def processOrderResource(
     order: Order[Order.Processing],
@@ -167,33 +163,30 @@ private final class JobDriver(
 
   private def readErrorLine(processOrder: ProcessOrder): Option[OrderOutcome.Failed] =
     processOrder.stdObservers.errorLine
-      .map { errorLine =>
+      .map: errorLine =>
         assert(workflowJob.failOnErrWritten) // see OrderActor
         OrderOutcome.Failed(Some(s"The job's error channel: $errorLine"))
-      }
 
   private def removeEntry(entry: Entry): IO[Unit] =
-    IO.defer:
-      import entry.orderId
-      entry.timeoutSchedule.cancel()
+    entry.timeoutFiber.cancel *>
       orderToProcess
-        .remove(orderId)
+        .remove(entry.orderId)
         .flatMap: _ =>
           IO.whenA(orderToProcess.isEmpty && lastProcessTerminated != null):
             lastProcessTerminated.complete(()).void
 
-  private def killOrderAndForget(entry: Entry, signal: ProcessSignal): Unit =
+  private def killOrderAndForget(entry: Entry, signal: ProcessSignal): IO[Unit] =
     killOrder(entry, signal)
-      .handleError(t =>
-        logger.error(t.toStringWithCauses + " - " + entry.orderId, t))
-      .unsafeRunAndForget()
+      .handleError: t =>
+        logger.error(s"${t.toStringWithCauses} - ${entry.orderId}", t)
+      .startAndForget
 
   def killOrder(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
-    IO.defer(
+    IO.defer:
       orderToProcess
         .get(orderId)
         .fold(IO(logger.debug(s"⚠️ killOrder $orderId => no process for Order")))(
-          killOrder(_, signal)))
+          killOrder(_, signal))
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): IO[Unit] =
     IO.defer:
@@ -209,14 +202,14 @@ private final class JobDriver(
   private def killAll(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       val entries = orderToProcess.toMap.values
-      if entries.nonEmpty then logger.warn(
-        s"Terminating, sending $signal to $orderProcessCount processes")
+      if entries.nonEmpty then
+        logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
       entries
         .toVector
         .traverse(killProcess(_, signal))
         .map(_.combineAll)
-        .handleError(t =>
-          logger.error(t.toStringWithCauses, t))
+        .handleError: t =>
+          logger.error(t.toStringWithCauses, t)
 
   private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
     IO.defer:

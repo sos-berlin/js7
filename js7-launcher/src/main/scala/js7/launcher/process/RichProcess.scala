@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
 abstract class RichProcess protected[process](
   val processConfiguration: ProcessConfiguration,
   process: Js7Process)
-  (implicit iox: IOExecutor):
+  (using IOExecutor):
 
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
@@ -45,7 +45,6 @@ abstract class RichProcess protected[process](
           .getOrElse:
             waitForProcessTermination(process)
 
-
   def duration: FiniteDuration = runningSince.elapsed
 
   def terminated: IO[ReturnCode] =
@@ -56,7 +55,7 @@ abstract class RichProcess protected[process](
       if signal != SIGKILL && !isWindows then
         destroy(force = false)
       else
-        ifAlive("sendProcessSignal SIGKILL")(
+        ifAlive("sendProcessSignal SIGKILL"):
           processConfiguration
             .toKillScriptCommandArgumentsOption(pidOption)
             .fold(destroy(force = true)): args =>
@@ -65,7 +64,7 @@ abstract class RichProcess protected[process](
                 .handleError(t => logger.error(
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
                 .<*(destroy(force = true))
-        ).guarantee:
+        .guarantee:
           // The process may have terminated while long running child processes have inherited the
           // file handles and still use them.
           // So we forcibly close stdout and stderr.
@@ -74,14 +73,13 @@ abstract class RichProcess protected[process](
           onSigkill
 
   private def executeKillScript(args: Seq[String]): IO[Unit] =
-    ifAlive("executeKillScript")(
+    ifAlive("executeKillScript"):
       if isMac then
-        IO {
+        IO:
           // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
           logger.warn("Execution of kill script is suppressed on MacOS")
-        }
       else
-        IO.defer {
+        IO.defer:
           logger.info("Executing kill script: " + args.mkString("  "))
           val processBuilder = new ProcessBuilder(args.asJava)
             .redirectOutput(INHERIT)
@@ -92,8 +90,7 @@ abstract class RichProcess protected[process](
               waitForProcessTermination(JavaProcess(onKillProcess))
             .flatMap(returnCode => IO:
               val logLevel = if returnCode.isSuccess then LogLevel.Debug else LogLevel.Warn
-              logger.log(logLevel, s"Kill script '${args(0)}' has returned $returnCode"))
-        })
+              logger.log(logLevel, s"Kill script '${args.head}' has returned $returnCode"))
 
   private def destroy(force: Boolean): IO[Unit] =
     (process, pidOption) match
@@ -121,30 +118,26 @@ abstract class RichProcess protected[process](
           case "$pid" => pid.number.toString
           case o => o
         executeKillCommand(args)
-          .flatMap { rc =>
+          .flatMap: rc =>
             if rc.isSuccess then
               IO.unit
             else IO:
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
-          }
 
   private def ifAlive(label: String)(body: IO[Unit]): IO[Unit] =
-    IO.defer(
+    IO.defer:
       if !process.isAlive then
-        IO(logger.debug(s"$label: Process has already terminated"))
+        IO(logger.debug(s"$label: Process has already terminated (not isAlive)"))
       else
-        body)
+        body
 
   private def executeKillCommand(args: Seq[String]): IO[ReturnCode] =
     IO.defer:
       logger.info(args.mkString(" "))
-
-      val processBuilder = new ProcessBuilder(args.asJava)
+      ProcessBuilder(args.asJava)
         .redirectOutput(INHERIT)  // TODO Pipe to stdout
         .redirectError(INHERIT)
-
-      processBuilder
         .startRobustly()
         .flatMap: killProcess =>
           waitForProcessTermination(JavaProcess(killProcess))
@@ -184,8 +177,7 @@ object RichProcess:
       try
         logger.debug(s"Delete file '$file'")
         delete(file)
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         allFilesDeleted = false
         logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}")
-      }
     allFilesDeleted

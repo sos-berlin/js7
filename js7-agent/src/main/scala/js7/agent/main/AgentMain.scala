@@ -15,6 +15,6 @@ object AgentMain extends ServiceApp:
         for
           agent <- RunningAgent.restartable(conf)(using runtime)
           iox <- IOExecutor.resource[IO](conf.config, conf.name + " I/O")
-          _ <- agent.webServer.restartWhenHttpsChanges(iox)
+          _ <- agent.webServer.restartWhenHttpsChanges(using iox)
         yield
           agent

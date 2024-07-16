@@ -72,12 +72,12 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
           })))
 
   final def logout(): IO[Completed] =
-    IO.defer(
+    IO.defer:
       if sessionTokenRef.get().isEmpty then
         IO.completed // avoid lock logging
       else
-        lock.lock(IO.defer(
-          sessionTokenRef.get() match {
+        lock.lock(IO.defer:
+          sessionTokenRef.get() match
             case None => IO.completed
             case sometoken @ Some(sessionToken) =>
               val cmd = Logout(sessionToken)
@@ -87,8 +87,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
                   // Change nothing in case of a concurrent successful Logout or Login
                   sessionTokenRef.compareAndSet(sometoken, None))
                 .map((_: SessionCommand.Response.Accepted) => Completed)
-                .logWhenItTakesLonger(s"logout $httpClient")
-          })))
+                .logWhenItTakesLonger(s"logout $httpClient"))
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
   : IO[command.Response] =
