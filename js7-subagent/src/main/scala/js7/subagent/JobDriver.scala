@@ -6,12 +6,10 @@ import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.SyncDeadline
+import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.monixlike.SerialSyncCancelable
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -33,7 +31,6 @@ private final class JobDriver(
   fileValueState: FileValueState)
   (using ioRuntime: IORuntime):
 
-  import ioRuntime.scheduler
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
@@ -153,14 +150,20 @@ private final class JobDriver(
           jobConf.controllerId, stdObservers,
           fileValueState))
 
-  private def scheduleTimeout(entry: Entry)(using SyncDeadline.Now): Unit =
-    requireNonNull(entry.runningSince)
-    for t <- workflowJob.timeout do
-      entry.timeoutSchedule := scheduler.scheduleOnce(t):
-        entry.timedOut = true
-        logger.warn("OrderProcess for " + entry.orderProcess + " has been timed out after " +
-          entry.runningSince.elapsed.pretty + " and will be killed now")
-        killOrderAndForget(entry, SIGTERM)
+  private def scheduleTimeoutCancellation(entry: Entry): IO[Unit] =
+    IO.defer:
+      requireNonNull(entry.runningSince)
+      workflowJob.timeout.fold(IO.unit): timeout =>
+        IO.sleep(timeout)
+          .flatMap: _ =>
+            SyncDeadline.usingNow:
+              entry.timedOut = true
+              logger.warn(s"OrderProcess for ${entry.orderProcess} has been timed out after ${
+                entry.runningSince.elapsed.pretty} and will be killed now")
+          .flatMap: _ =>
+            killOrderAndForget(entry, SIGTERM)
+        .start
+        .flatMap(entry.timeoutFiber.set)
 
   private def readErrorLine(processOrder: ProcessOrder): Option[OrderOutcome.Failed] =
     processOrder.stdObservers.errorLine
@@ -228,9 +231,7 @@ private final class JobDriver(
             logger.debug(s"Kill $signal ${entry.orderId}")
             entry.isKilled = true
             entry.sigkilled |= signal == SIGKILL
-            IO
-              .defer/*catch inside io*/ :
-                orderProcess.cancel(immediately = signal == SIGKILL)
+            orderProcess.cancel(immediately = signal == SIGKILL)
               .handleError(t => logger.error(
                 s"Kill ${entry.orderId}}: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
@@ -242,7 +243,7 @@ private object JobDriver:
   private final class Entry(val orderId: OrderId):
     var orderProcess: Option[OrderProcess] = None
     var killSignal: Option[ProcessSignal] = None
-    val timeoutSchedule = SerialSyncCancelable()
+    val timeoutFiber = FiberVar[Unit]()
     var runningSince: SyncDeadline = null
     var isKilled = false
     var sigkilled = false
