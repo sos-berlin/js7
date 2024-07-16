@@ -20,6 +20,8 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{AddOrder, Fail, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -122,9 +124,9 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
           scheduledFor = Some(local("2100-01-01T00:00"))))
         .await(99.s).orThrow
       var eventId = eventWatch.await[OrderAdded](_.key == orderId).head.eventId
-      sleep(200.ms)
-      assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
-
+      awaitAndAssert:
+        val order = controllerState.idToOrder(orderId)
+        order.isState[Order.Fresh] && order.isAttached
       controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
         .await(99.s).orThrow
       eventId = eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
