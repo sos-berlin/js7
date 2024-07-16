@@ -117,7 +117,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
             delete(killScriptFile)
           val processConfig = ProcessConfiguration.forTest.copy(
             maybeTaskId = Some(taskId),
-            killScriptOption = Some(ProcessKillScript(killScriptFile)))
+            maybeKillScript = Some(ProcessKillScript(killScriptFile)))
           runningShellScript(processConfig, scriptFile)
             .use: (shellProcess, sink) =>
               IO:

@@ -26,6 +26,7 @@ import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -67,7 +68,7 @@ extends CommonConfiguration:
 
   def finishAndProvideFiles(): SubagentConf =
     provideDataSubdirectories()
-    if killScript.contains(ProcessKillScriptProvider.directoryToProcessKillScript(workDirectory)) then
+    if killScript.contains(ProcessKillScriptProvider.fromDirectory(workDirectory)) then
       // After Subagent termination, leave behind the kill script,
       // in case of regular termination after error.
       new ProcessKillScriptProvider() //.closeWithCloser
@@ -146,25 +147,26 @@ object SubagentConf:
       logDirectory = args.optionAs("--log-directory=")(asAbsolutePath)
         .orElse(config.optionAs("js7.job.execution.log.directory")(asAbsolutePath))
         .getOrElse(common.logDirectory),
-      jobWorkingDirectory =
-        args.as("--job-working-directory=", WorkingDirectory)(asAbsolutePath),
+      jobWorkingDirectory = args.as("--job-working-directory=", WorkingDirectory)(asAbsolutePath),
       common.webServerPorts,
       killScript =
-        args.optionAs[String]("--kill-script=") match {
-          case Some(path) => toKillScriptSetting(path)
+        args.optionAs[String]("--kill-script=") match
+          case Some(path) =>
+            toKillScriptSetting(path)
           case None =>
-            config.optionAs[String]("js7.job.execution.kill.script") match {
-              case Some(path) => toKillScriptSetting(path)
-              case None => Some(
-                ProcessKillScriptProvider.directoryToProcessKillScript(common.workDirectory))
-            }
-        },
+            config.optionAs[String]("js7.job.execution.kill.script") match
+              case Some(path) =>
+                toKillScriptSetting(path)
+              case None =>
+                Some(ProcessKillScriptProvider.fromDirectory(common.workDirectory)),
       name = name,
       config)
 
     args.requireNoMoreArguments()
     conf
+  end fromCommandLine
 
+  @TestOnly
   def forTest(
     configAndData: Path,
     name: String,
@@ -173,19 +175,21 @@ object SubagentConf:
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
   : SubagentConf =
+    val workDirectory = configAndData / "data" / "work"
     of(
       configDirectory = configAndData / "config",
       dataDirectory = configAndData / "data",
       logDirectory = configAndData / "data" / "logs",
-      jobWorkingDirectory = configAndData / "data" / "work",
+      jobWorkingDirectory = workDirectory,
       webServerPorts =
         httpPort.map(port => WebServerPort.localhost(port)) ++:
           httpsPort.map(port => WebServerPort.localHttps(port)).toList,
-      killScript = None,
+      killScript = Some(ProcessKillScriptProvider.fromDirectory(workDirectory)),
       extraConfig = extraConfig,
       internalConfig = internalConfig,
       name = name)
 
+  @TestOnly
   def of(
     configDirectory: Path,
     dataDirectory: Path,

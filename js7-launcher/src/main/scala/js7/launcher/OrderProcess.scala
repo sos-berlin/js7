@@ -66,4 +66,5 @@ object OrderProcess:
       fiberOnce := fiber
 
     def cancel(immediately: Boolean): IO[Unit] =
-      fiberOnce.orThrow.cancel
+      IO.defer:
+        fiberOnce.orThrow.cancel

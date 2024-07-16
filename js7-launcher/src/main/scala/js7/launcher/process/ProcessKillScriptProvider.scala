@@ -6,13 +6,11 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.HasCloser
-import js7.common.utils.Exceptions.ignoreException
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.ProcessKillScriptProvider.*
 
@@ -20,18 +18,20 @@ import js7.launcher.process.ProcessKillScriptProvider.*
  * @author Joacim Zschimmer
  */
 final class ProcessKillScriptProvider extends HasCloser:
+
   def provideTo(directory: Path): ProcessKillScript =
     val file = toKillScriptFile(directory)
     val content = javaResource.contentBytes
     if !isUnchanged(file, content) then
       if isUnix then
         try setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
-        catch { case _: IOException => }
+        catch case _: IOException => {}
       file := content
       file.makeExecutable()
+      logger.debug(s"Kill script placed in $file")
       onClose:
-        ignoreException(logger.asLazy.error):
-          delete(file)
+        try delete(file)
+        catch case t: IOException => logger.error(s"Deletion of '$file' failed: $t")
 
     ProcessKillScript(file)
 
@@ -40,7 +40,7 @@ final class ProcessKillScriptProvider extends HasCloser:
     * Under production, the function should return immediately with `true`.
     */
   private def isUnchanged(file: Path, content: Array[Byte]): Boolean =
-    waitForCondition(1.s, 100.ms):
+    waitForCondition(1.s, 10.ms):
       val okay = !exists(file) || file.contentBytes.sameElements(content)
       if !okay then logger.debug("Kill script has been written concurrently")
       okay
@@ -54,7 +54,7 @@ object ProcessKillScriptProvider:
 
   private val javaResource = if isWindows then WindowsScriptResource else UnixScriptResource
 
-  def directoryToProcessKillScript(directory: Path): ProcessKillScript =
+  def fromDirectory(directory: Path): ProcessKillScript =
     ProcessKillScript(toKillScriptFile(directory))
 
   private def toKillScriptFile(directory: Path): Path =
