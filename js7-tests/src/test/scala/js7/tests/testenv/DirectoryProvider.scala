@@ -11,6 +11,7 @@ import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.orIfNone
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString
@@ -230,7 +231,7 @@ extends HasCloser:
   : ResourceIO[RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
-      config.withFallback(controllerConfig),
+      config.withFallback(controllerConfig).withFallback(TestConfig),
       httpPort = httpPort,
       httpsPort = httpsPort,
       name = controllerName)
@@ -309,7 +310,7 @@ extends HasCloser:
   def startBareSubagents()(using IORuntime): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
-        bareSubagentResource(subagentItem, config = agentConfig)
+        bareSubagentResource(subagentItem, config = agentConfig.withFallback(TestConfig))
           .toAllocated
           .map(subagentItem.id -> _))
       .map(_.toMap)
@@ -372,7 +373,7 @@ extends HasCloser:
       isClusterBackup = isClusterBackup,
       suppressSignatureKeys = suppressSignatureKeys,
       otherSubagentIds = otherSubagentIds,
-      extraConfig = extraConfig.withFallback(agentConfig))
+      extraConfig = extraConfig.withFallback(agentConfig).withFallback(TestConfig))
 
   def bareSubagentResource(
     subagentItem: SubagentItem,
@@ -411,7 +412,7 @@ extends HasCloser:
           provideHttpsCertificate = provideAgentHttpsCertificate,
           provideClientCertificate = provideAgentClientCertificate,
           suppressSignatureKeys = suppressSignatureKeys,
-          extraConfig = extraConfig.withFallback(agentConfig))))
+          extraConfig = extraConfig.withFallback(agentConfig).withFallback(TestConfig))))
 
   def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
     directory / "subagents" / subagentName(subagentId, suffix)
@@ -423,6 +424,17 @@ extends HasCloser:
 object DirectoryProvider:
   private val Vinitial = VersionId("INITIAL")
   private val logger = Logger[this.type]
+
+  // TODO Maybe change js7.conf?
+  private val TestConfig = config"""
+    # Accelerate tests
+    # Very short keep-alive (heartbeat), because a connection close is only detected when
+    # a message (keep-alive) arrives
+    js7.web.client.keep-alive = 100ms
+    js7.web.server.delay-shutdown = 0s
+    js7.web.server.shutdown-delay = 100ms
+    js7.web.server.shutdown-timeout = 100ms
+  """
 
   def toLocalSubagentId(agentPath: AgentPath, isBackup: Boolean = false): SubagentId =
     SubagentId(agentPath.string + (if !isBackup then "-0" else "-1"))
