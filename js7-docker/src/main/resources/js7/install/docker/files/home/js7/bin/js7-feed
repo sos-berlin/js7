@@ -6,6 +6,8 @@ export JS7_HOME=/opt/js7
 declare classpathString java
 declare -a standardJavaOptions
 
+config=/var/opt/js7/feed/config
+data=/var/opt/js7/feed/data
 directory=/var/opt/js7/feed
 javaOptions=()
 args=()
@@ -34,9 +36,8 @@ if [ $explicitController == 0 ]; then
   args+=("--controller=http://controller:4444" "--controller=http://backup-controller:4444")
 fi
 
-logs="$directory"
-export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
-javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
+logs="$data/logs"
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logj42.xml
 
 execute=(
   "$java"
@@ -44,6 +45,7 @@ execute=(
   "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   "js7.tests.feed.FeedMain"
+  --config-directory="$config"
   "${args[@]}"
 )
 #echo "${execute[@]}"

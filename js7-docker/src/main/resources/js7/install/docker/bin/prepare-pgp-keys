@@ -13,7 +13,7 @@ mkdir -p volumes/{controller,backup-controller,subagent-1-a,subagent-1-b,subagen
 umask go-rwx
 
 if [ -s "$privateKeyFile" ] && [ -s "$controllerPublicKeyFile" ]; then
-  echo "PGP files exist already. Nothing to do"
+  echo "PGP files exist. Nothing to do"
 else
   which gpg >/dev/null || {
     echo "Missing gpg (GnuPG)"
@@ -50,4 +50,8 @@ fi
 for a in volumes/backup-controller volumes/subagent-*; do
   cp -p "$controllerPublicKeyFile" "$a/config/private/trusted-pgp-keys/test.asc"
 done
+
+mkdir -p volumes/feed/config/private
+cp "$privateKeyFile" volumes/feed/config/private/private-pgp-key.asc
+
 ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys/test.asc

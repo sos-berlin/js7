@@ -5,14 +5,19 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 test -d volumes || (echo "Missing 'volumes' directory" && exit 1)
 
-mkdir -p volumes/feed/data/logs
+hostDir="$PWD/volumes/feed"
+mkdir -p "$hostDir"/{config,data}
+mkdir -p "$hostDir"/data/logs
 
-dir="$PWD/volumes/testAddOrders"
-rm -rf "${dir:?}"/*
+containerDir=/var/opt/js7/feed
+
 docker run \
-  --volume="$dir":/var/opt/js7/testAddOrders \
+  --volume="$hostDir":$containerDir \
   --network=js7_default \
   --interactive \
-  --rm --name=Feed \
+  --rm \
+  --name=js7-feed \
+  --workdir=$containerDir \
   js7 \
-  js7-feed "$@"
+  js7-feed \
+  "$@"
