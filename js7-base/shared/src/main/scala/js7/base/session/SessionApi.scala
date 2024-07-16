@@ -223,7 +223,7 @@ object SessionApi:
 
     def clearSession(): Unit = {}
 
-  private val tryLogoutTimeout = 5.s
+  private val tryLogoutTimeout = 1.s
 
   private val initialLoginDelays =
     val seq = Seq(
