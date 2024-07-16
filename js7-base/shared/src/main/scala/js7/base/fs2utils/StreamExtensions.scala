@@ -199,18 +199,17 @@ object StreamExtensions:
     def onStart(onStart: F[Unit]): Stream[F, O] =
       Stream.exec(onStart) ++ stream
 
+    def onFirst(onFirst: O => F[Unit])(using F: Sync[F]): Stream[F, O] =
+      Stream.suspend:
+        val used = Atomic(false)
+        stream.evalTap: o =>
+          F.unlessA(used.getAndSet(true)):
+            onFirst(o)
 
     def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
       stream.evalMap(a => F.delay:
         f(a)
         a)
-
-    def evalTapFirst(f: O => F[Unit])(using F: Sync[F]): Stream[F, O] =
-      Stream.suspend:
-        val used = Atomic(false)
-        stream.evalMap: o =>
-          F.unlessA(used.getAndSet(true))(f(o))
-            .as(o)
 
     def tapEachChunk(f: Chunk[O] => Unit)(using F: Sync[F]): Stream[F, O] =
       stream

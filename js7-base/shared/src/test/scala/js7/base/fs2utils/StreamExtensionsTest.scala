@@ -79,10 +79,10 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         _ <- IO(assert(subscribed.get == 2 && a == List(1, 2, 3) && a == b))
       yield succeed
 
-    "evalTapFirst" in:
+    "onFirst" in:
       val first = SetOnce[Int]
       val list = Stream(1, 2, 3).covary[SyncIO]
-        .evalTapFirst(o => SyncIO(first := o))
+        .onFirst(o => SyncIO(first := o))
         .compile
         .toList
         .unsafeRunSync()
