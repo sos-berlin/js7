@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.{CancelStartedOrderProblem, GoOrderNotAtPositionProblem}
+import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
@@ -332,7 +332,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   def go(orderId: OrderId, position: Position): Checked[Option[List[OrderActorEvent]]] =
     idToOrder.checked(orderId).flatMap: order =>
       if !order.isGoCommandable(position) then
-        Left(GoOrderNotAtPositionProblem(order.id))
+        Left(GoOrderInapplicableProblem(order.id))
       else if weHave(order) then
         if order.isState[Order.BetweenCycles] then
           Right(Some(OrderGoes :: OrderCycleStarted :: Nil))
@@ -341,14 +341,14 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         else if order.isState[Order.Fresh] && order.maybeDelayedUntil.isDefined then
           Right(Some(OrderGoes :: OrderStarted :: Nil))
         else
-          Left(GoOrderNotAtPositionProblem(order.id)) // Just in case
+          Left(GoOrderInapplicableProblem(order.id)) // Just in case
       else if order.isAttached then
         // Emit OrderGoMarked event even if already marked. The user wishes so.
         // In case the last OrderMark.Go was futile, the repeated OrderGoMarked event induces a
         // new AgentCommand.MarkOrder which may be effective this time.
         Right(Some(OrderGoMarked(position) :: Nil))
       else
-        Left(GoOrderNotAtPositionProblem(order.id)) // Just in case
+        Left(GoOrderInapplicableProblem(order.id)) // Just in case
 
   /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))`
    * iff order is not already marked as resuming. */

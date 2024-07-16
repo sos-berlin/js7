@@ -135,7 +135,7 @@ object Problems:
 
   case object AckFromActiveClusterNodeProblem extends Problem.ArgumentlessCoded
 
-  final case class GoOrderNotAtPositionProblem(orderId: OrderId) extends Problem.Coded:
+  final case class GoOrderInapplicableProblem(orderId: OrderId) extends Problem.Coded:
     def arguments: Map[String, String] = Map1("orderId", orderId.toString)
 
   case object ClusterNodeHasBeenSwitchedOverProblem extends Problem.ArgumentlessCoded

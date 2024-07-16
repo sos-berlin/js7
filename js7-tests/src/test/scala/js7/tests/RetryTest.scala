@@ -10,7 +10,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
-import js7.data.Problems.GoOrderNotAtPositionProblem
+import js7.data.Problems.GoOrderInapplicableProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
@@ -586,7 +586,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         val checked = controller.api
           .executeCommand(GoOrder(orderId, position = Position(0) / "try+999" % 0))
           .await(99.s)
-        assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
+        assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
       // GoOrder
       controller.api
@@ -644,14 +644,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       //val checked = controller.api
       //  .executeCommand(GoOrder(orderId, position = Position(0)))
       //  .await(99.s)
-      //assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
+      //assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
       locally:
         assert(!controllerState.idToOrder(orderId).isGoCommandable(Position(0) / "try+1" % 0))
         val checked = controller.api
           .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
           .await(99.s)
-        assert(checked == Left(GoOrderNotAtPositionProblem(orderId)))
+        assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
       // GoOrder
       controller.api
