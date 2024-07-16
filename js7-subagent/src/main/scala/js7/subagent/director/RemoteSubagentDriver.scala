@@ -1,7 +1,6 @@
 package js7.subagent.director
 
 import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
-import cats.implicits.catsSyntaxEitherId
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*

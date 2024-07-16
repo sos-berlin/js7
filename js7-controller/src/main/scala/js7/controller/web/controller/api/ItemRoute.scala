@@ -1,5 +1,6 @@
 package js7.controller.web.controller.api
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import io.circe.Json
 import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
@@ -15,6 +16,8 @@ import js7.base.utils.LineSplitterPipe
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
+import js7.common.pekkohttp.PekkoHttpServerUtils
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.item.ItemUpdater
 import js7.controller.web.common.ControllerRouteProvider
@@ -28,7 +31,7 @@ import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.HttpEntity
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, OK}
-import org.apache.pekko.http.scaladsl.server.Directives.{as, complete, entity, pathEnd, post, withSizeLimit}
+import org.apache.pekko.http.scaladsl.server.Directives.{as, entity, pathEnd, post, withSizeLimit}
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.Deadline.now
 
@@ -43,48 +46,41 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
   private given ActorSystem = actorSystem
 
   final lazy val itemRoute: Route =
-    post:
-      pathEnd:
-        authorizedUser(Set[Permission](ValidUserPermission, UpdateItemPermission)) { user =>
-          withSizeLimit(entitySizeLimit) (
-            entity(as[HttpEntity]) { httpEntity =>
-              complete {
-                val startedAt = now
-                var byteCount = 0L
-                val operations = httpEntity
-                  .dataBytes
-                  .asFs2Stream(bufferSize = prefetch)
-                  .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                  .through(LineSplitterPipe())
-                  .mapParallelBatch()(_
-                    .parseJsonAs[ItemOperation].orThrow)
-                VerifiedUpdateItems.fromOperations(operations, verify, user)
-                  .flatMapT { verifiedUpdateItems =>
-                    val itemCount = verifiedUpdateItems.itemCount
-                    val d = startedAt.elapsed
-                    if d > 1.s then logger.debug("POST controller/api/item received and verified - " +
+    (post & pathEnd):
+      authorizedUser(Set[Permission](ValidUserPermission, UpdateItemPermission)): user =>
+        (withSizeLimit(entitySizeLimit) & entity(as[HttpEntity])): httpEntity =>
+          completeIO(IO.defer:
+            val startedAt = now
+            var byteCount = 0L
+            val operations = httpEntity
+              .dataBytes
+              .asFs2Stream(bufferSize = prefetch)
+              .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
+              .through(LineSplitterPipe())
+              .mapParallelBatch():
+                _.parseJsonAs[ItemOperation].orThrow
+            VerifiedUpdateItems.fromOperations(operations, verify, user)
+              .flatMapT: verifiedUpdateItems =>
+                IO.defer:
+                  val itemCount = verifiedUpdateItems.itemCount
+                  val d = startedAt.elapsed
+                  if d > 1.s then
+                    logger.debug("POST controller/api/item received and verified - " +
                       itemsPerSecondString(d, itemCount, "items") + " · " +
                       bytesPerSecondString(d, byteCount))
 
-                    itemUpdater
-                      .updateItems(verifiedUpdateItems)
-                      .map { o =>
-                        if startedAt.elapsed > 1.s then logger.debug("POST controller/api/item totally: " +
-                          itemsPerSecondString(startedAt.elapsed, itemCount, "items"))
-                        o
-                      }
-                  }
-                  .map[ToResponseMarshallable] {
-                    case Left(problem) =>
-                      logger.warn(problem.toString)
-                      BadRequest -> problem
-                    case Right(Completed) =>
-                      OK -> emptyJsonObject
-                  }
-                  .unsafeToFuture()
-              }
-            })
-        }
+                  itemUpdater
+                    .updateItems(verifiedUpdateItems)
+                    .flatTap(o => IO:
+                      if startedAt.elapsed > 1.s then
+                        logger.debug("POST controller/api/item totally: " +
+                          itemsPerSecondString(startedAt.elapsed, itemCount, "items")))
+              .map[ToResponseMarshallable]:
+                case Left(problem) =>
+                  logger.warn(problem.toString)
+                  BadRequest -> problem
+                case Right(Completed) =>
+                  OK -> emptyJsonObject)
 
   private def verify(signedString: SignedString): Checked[Verified[SignableItem]] =
     val verified = itemUpdater.signedItemVerifier.verify(signedString)

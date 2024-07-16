@@ -20,7 +20,7 @@ chmod -R +x volumes/subagent-*/config/executables/*
 (cd volumes
   for v in *; do
     if [ -d "$v"/data/logs ]; then
-      ln -sf data/logs $v/logs
+      ln -snf data/logs "$v"/logs
     fi
   done
 )

@@ -1,6 +1,5 @@
 package js7.cluster
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, FiberIO, IO}
 import cats.syntax.monoid.*
 import fs2.Stream
@@ -52,8 +51,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   journal: FileJournal[S],
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,
-  clusterConf: ClusterConf)
-  (implicit ioRuntime: IORuntime):
+  clusterConf: ClusterConf):
 
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout

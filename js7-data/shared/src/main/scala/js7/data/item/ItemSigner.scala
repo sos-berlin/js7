@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{DocumentSigner, Signed, SignedString}
 
 final class ItemSigner[A <: SignableItem](val signer: DocumentSigner, jsonEncoder: Encoder[A]):
+
   def sign[A1 <: A](item: A1): Signed[A1] =
     toSigned_(item)
 

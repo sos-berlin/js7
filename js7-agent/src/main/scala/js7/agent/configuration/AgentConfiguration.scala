@@ -21,6 +21,7 @@ import js7.journal.data.JournalLocation
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import js7.subagent.director.RemoteSubagentDriver
 import org.apache.pekko.util.Timeout
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author Joacim Zschimmer
@@ -90,6 +91,7 @@ object AgentConfiguration:
     args.requireNoMoreArguments()
     fromDirectories(subagentConf)
 
+  @TestOnly
   def forTest(
     configAndData: Path,
     name: String,

@@ -29,7 +29,7 @@ object Logger extends AdHocLogger:
   type Underlying = ScalaLogger
 
   private val ifNotInitialized = new Once
-  private val ifNotAboutMissingIniatializingWarned = new Once
+  private val ifNotAboutMissingInitializingWarned = new Once
 
   Slf4jUtils.initialize()
 
@@ -38,10 +38,8 @@ object Logger extends AdHocLogger:
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
   def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, Unit] =
-    Resource.make(
-      acquire = F.delay:
-        initialize(name))(
-      release = _ => F.delay:
+    Resource(F.delay:
+      initialize(name) -> F.delay:
         Log4j.shutdown())
 
   def initialize(name: String, suppressInfo: Boolean = false): Unit =
@@ -98,7 +96,7 @@ object Logger extends AdHocLogger:
 
   private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = ""): Unit =
     if !ifNotInitialized.isInitializing then
-      ifNotAboutMissingIniatializingWarned:
+      ifNotAboutMissingInitializingWarned:
         val classArg = if cls == null then "" else s"[${cls.scalaName}]"
         val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
         val t = new Exception("")
