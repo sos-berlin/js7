@@ -15,7 +15,7 @@ final case class ProcessConfiguration(
   workingDirectory: Option[Path] = None,
   encoding: Charset,
   additionalEnvironment: Map[String, Option[String]] = Map.empty,
-  maybeTaskId: Option[TaskId] = None,
+  maybeTaskId: Option[TaskId],
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],
   killForWindows: Seq[String],
@@ -39,6 +39,7 @@ final case class ProcessConfiguration(
 object ProcessConfiguration:
   def forTest: ProcessConfiguration = ProcessConfiguration(
     encoding = UTF_8/*Windows ???*/,
+    maybeTaskId = None,
     killWithSigterm = Seq("/bin/kill", "$pid"),
     killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"),
     killForWindows = Seq("taskkill", "/pid", "$pid"))
