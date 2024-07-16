@@ -351,7 +351,7 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       val versionFile = (Compile / resourceManaged).value / "js7/base/installation/VERSION"
       IO.write(versionFile, BuildInfos.info.value.prettyVersion + "\n")
 
-      val log4jFile = (Compile / resourceManaged).value / "logj42.xml"
+      val log4jFile = (Compile / resourceManaged).value / "log4j2.xml"
       IO.copyFile(
         (Compile / resourceDirectory).value / "js7" / "log4j2.xml",
         log4jFile)
