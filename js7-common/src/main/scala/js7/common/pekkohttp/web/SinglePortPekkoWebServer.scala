@@ -199,8 +199,8 @@ private object SinglePortPekkoWebServer:
           IO(Deadline.now).flatMap: now =>
             whenTerminating.complete(now + shutdownTimeout) *>
               IO.whenA(shutdownDelay.isPositive):
-                IO(logger.debug(s"Delay web server termination for ${shutdownDelay.pretty} ..."))
-                  .andWait(shutdownDelay))
+                logger.debugIO(s"Delay web server termination for ${shutdownDelay.pretty}"):
+                  IO.sleep(shutdownDelay))
         .void
 
     override def toString = webServerPort.toString

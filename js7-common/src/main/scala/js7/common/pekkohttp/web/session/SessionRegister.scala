@@ -124,7 +124,7 @@ extends Service.StoppableByRequest:
                     " ✔)"
                   else
                     s" ⚠️ version differs from this server's version $Js7Version!)")) +
-              (session.isEternal ?? " (eternal)"))
+              (isEternalSession ?? " (eternal)"))
 
             clientVersion match
               case None => logger.warn("Client does not provide its version")

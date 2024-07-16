@@ -140,7 +140,7 @@ final class ProcessDriver(
 
   private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      logger.info(s"$orderId ⚫️ Process $richProcess: kill \"$signal\"")
+      logger.info(s"""$orderId ⚫️ Process $richProcess: kill "$signal"""")
       richProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"

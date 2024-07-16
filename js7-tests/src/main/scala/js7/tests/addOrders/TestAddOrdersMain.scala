@@ -13,7 +13,7 @@ object TestAddOrdersMain extends OurApp:
       if args.isEmpty || args.sameElements(Array("--help")) then
         IO:
           println:
-            "Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD"
+            "Usage: testAddOrders --workflow=WORKFLOWPATH --count=1 --user=USER:PASSWORD"
           ExitCode.Success
       else
         TestAddOrders.run(Settings.parseArguments(args), logToStdout = true)

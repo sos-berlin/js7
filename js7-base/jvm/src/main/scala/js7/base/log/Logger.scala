@@ -228,6 +228,12 @@ object Logger extends AdHocLogger:
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).unsafeRunSync()
 
+      def traceCallWithResult[A](function: String)(body: => A): A =
+        traceCallWithResult[A](function, body = body)
+
+      def traceCallWithResult[A](function: String, args: => Any)(body: => A): A =
+        traceCallWithResult[A](function, args, body = body)
+
       def traceCallWithResult[A](
         function: String,
         args: => Any = "",

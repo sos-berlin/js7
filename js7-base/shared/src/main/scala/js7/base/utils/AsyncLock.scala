@@ -70,9 +70,7 @@ object AsyncLock:
 
     @TestOnly
     private[utils] def isLocked: Boolean =
-      val n = queueLength.get()
-      logger.trace(s"### queueLength=$n")
-      n > 0
+      queueLength.get() > 0
 
     override def lock[A](acquirer: => String)(body: IO[A]): IO[A] =
       mutex.flatMap: mutex =>

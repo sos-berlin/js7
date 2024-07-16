@@ -47,7 +47,8 @@ extends AutoCloseable:
     flush(sync = false)
 
   def beginEventSection(sync: Boolean): Unit =
-    if _eventsStarted then throw new IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
+    if _eventsStarted then
+      throw IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
     jsonWriter.write(EventHeader.toByteArray)
     flush(sync = sync)
     _eventsStarted = true
@@ -57,12 +58,13 @@ extends AutoCloseable:
 
   protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
     for stamped <- stampedEvents do
-      if stamped.eventId <= _lastEventId then throw new IllegalArgumentException(
-        s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
-          s" <= lastEventId ${EventId.toString(_lastEventId)}")
+      if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
+        s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
+          s" <= lastEventId ${EventId.toString(_lastEventId)}: ${stamped.value}"
       _lastEventId = stamped.eventId
     import S.keyedEventJsonCodec
-    if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold then
+    if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold
+    then
       writeJsonInParallel(stampedEvents)
     else
       writeJsonSerially(stampedEvents)

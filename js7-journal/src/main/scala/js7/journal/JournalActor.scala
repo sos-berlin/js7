@@ -812,10 +812,10 @@ object JournalActor:
       if persistCount == 0 then
         ""
       else
-        s"$persistCount persists" +
-          f" · $eventCount events (${1.0 * eventCount / persistCount}%.1f/persist)" +
-          s" ${persistDurationMin.ns.pretty}" +
-          s" ... ∅ ${persistDurationAvg.pretty}" +
-          s" ... ${persistDurationMax.ns.pretty}"
+        val persist = 1.0 * eventCount / persistCount
+        val min = persistDurationMin.ns.pretty
+        val max = persistDurationMax.ns.pretty
+        val avg = persistDurationAvg.pretty
+        f"$persistCount persists · $eventCount events ($persist%.1f/persist) $min…∅$avg…$max"
 
     private def persistDurationAvg = (persistDurationSum / persistCount).ns

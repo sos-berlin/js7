@@ -60,7 +60,7 @@ object Log4j:
         // Log complete timestamp in case of short log timestamp
         logger.info("shutdown at " +
           LocalDateTime.now.toString.replace('T', ' ') +
-          ", started at " + startedAt.roundDownTo(1.s).pretty +
-          " (" + runningSince.elapsed.pretty + " ago)" + "\n" +
+          " (started at " + startedAt.roundDownTo(1.s).pretty +
+          " " + runningSince.elapsed.pretty + " ago)" + "\n" +
           "┄" * 80 + "\n")
         shutdown.invoke(null, false, false)

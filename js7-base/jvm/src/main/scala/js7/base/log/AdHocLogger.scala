@@ -145,6 +145,14 @@ transparent trait AdHocLogger:
   : A =
     logger.traceCall(functionName, args)(body)
 
+  inline def traceCallWithResult[A](function: String)(body: => A)(using sourcecode.Enclosing): A =
+    logger.traceCallWithResult(function)(body)
+
+  inline def traceCallWithResult[A](function: String, args: => Any)(body: => A)
+    (using sourcecode.Enclosing)
+  : A =
+    logger.traceCallWithResult(function, args)(body)
+
   inline def traceCallWithResult[A](
     function: String,
     args: => Any = "",
