@@ -14,7 +14,6 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -55,7 +54,7 @@ abstract class RichProcess protected[process](
       if signal != SIGKILL && !isWindows then
         destroy(force = false)
       else
-        ifAlive("sendProcessSignal SIGKILL"):
+        ifAliveForKilling("sendProcessSignal SIGKILL"):
           processConfiguration
             .toKillScriptCommandArgumentsOption(pidOption)
             .fold(destroy(force = true)): args =>
@@ -73,7 +72,7 @@ abstract class RichProcess protected[process](
           onSigkill
 
   private def executeKillScript(args: Seq[String]): IO[Unit] =
-    ifAlive("executeKillScript"):
+    ifAliveForKilling("executeKillScript"):
       if isMac then
         IO:
           // TODO On macOS, the kill script may kill a foreign process like the developers IDE
@@ -86,8 +85,8 @@ abstract class RichProcess protected[process](
             .redirectError(INHERIT)
           processBuilder
             .startRobustly()
-            .flatMap: onKillProcess =>
-              waitForProcessTermination(JavaProcess(onKillProcess))
+            .flatMap: killProcess =>
+              waitForProcessTermination(JavaProcess(killProcess))
             .flatMap(returnCode => IO:
               val logLevel = if returnCode.isSuccess then LogLevel.Debug else LogLevel.Warn
               logger.log(logLevel, s"Kill script '${args.head}' has returned $returnCode"))
@@ -103,7 +102,7 @@ abstract class RichProcess protected[process](
         IO { destroyWithJava(force) }
 
   private def destroyWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
-    ifAlive("destroyWithUnixCommand"):
+    ifAliveForKilling("destroyWithUnixCommand"):
       val argsPattern =
         if isWindows then processConfiguration.killForWindows
         else if force then processConfiguration.killWithSigkill
@@ -125,10 +124,11 @@ abstract class RichProcess protected[process](
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
 
-  private def ifAlive(label: String)(body: IO[Unit]): IO[Unit] =
+  private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
     IO.defer:
       if !process.isAlive then
-        IO(logger.debug(s"$label: Process has already terminated (not isAlive)"))
+        IO(logger.info(s"$label: 🚫 Not killed because process has already terminated with ${
+          process.returnCode.fold("?")(_.pretty(isWindows))}"))
       else
         body
 

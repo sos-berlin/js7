@@ -154,7 +154,7 @@ private final class JobDriver(
           .flatMap: _ =>
             SyncDeadline.usingNow:
               entry.timedOut = true
-              logger.warn(s"OrderProcess for ${entry.orderProcess} has been timed out after ${
+              logger.warn(s"OrderProcess for ${entry.orderProcess} has timed out after ${
                 entry.runningSince.elapsed.pretty} and will be killed now")
           .flatMap: _ =>
             killOrderAndForget(entry, SIGTERM)
