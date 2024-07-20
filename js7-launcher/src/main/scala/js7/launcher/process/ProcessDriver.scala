@@ -2,13 +2,11 @@ package js7.launcher.process
 
 import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.{left, startAndForget}
-import js7.base.io.process.ProcessSignal
+import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -46,13 +44,29 @@ final class ProcessDriver(
   : IO[OrderOutcome.Completed] =
     startProcess(env, stdObservers)
       .flatMap:
-        case Left(problem) => IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed)
-        case Right(richProcess) => outcomeOf(richProcess)
+        case Left(problem) =>
+          IO.pure(OrderOutcome.Failed.fromProblem(problem))
+
+        case Right(process) =>
+          IO.defer:
+            logger.info:
+              s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
+            killedBeforeStart.traverse:
+              sendProcessSignal(process, _)
+            .flatMap: _ =>
+              process.watchProcess
+                .attempt.flatMap: either =>
+                  IO.defer:
+                    logger.info(s"$orderId ↙ Process $process terminated with ${either.merge
+                    } after ${process.duration.pretty}")
+                    IO.fromEither(either)
+                .flatMap: returnCode =>
+                  outcomeOf(process, returnCode)
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : IO[Checked[RichProcess]] =
+  : IO[Checked[ShellScriptProcess]] =
     IO.defer:
       killedBeforeStart match
         case Some(signal) =>
@@ -84,34 +98,22 @@ final class ProcessDriver(
                   startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
                     name = s"$orderId ${conf.jobKey}")
                 .flatTapT: richProcess =>
-                  richProcessOnce := richProcess
-                  logger.info:
-                    s"$orderId ↘ Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}"
-                  richProcess.watchProcess
-                    .startAndForget
-                    .flatTap: _ =>
-                      killedBeforeStart.traverse(sendProcessSignal(richProcess, _))
-                    .as(Right(()))
+                  IO:
+                    richProcessOnce := richProcess
+                    Checked.unit
 
-  private def outcomeOf(richProcess: RichProcess): IO[OrderOutcome.Completed] =
-    richProcess
-      .terminated
-      .materialize.flatMap: tried =>
-        val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
-        logger.info:
-          s"$orderId ↙ Process $richProcess terminated with $rc after ${richProcess.duration.pretty}"
-        IO.fromTry(tried)
-      .flatMap: returnCode =>
-        fetchReturnValuesThenDeleteFile.map:
-          case Left(problem) =>
-            OrderOutcome.Failed.fromProblem(
-              problem.withPrefix("Reading return values failed:"),
-              Map(ProcessExecutable.toNamedValue(returnCode)))
+  private def outcomeOf(richProcess: RichProcess, returnCode: ReturnCode)
+  : IO[OrderOutcome.Completed] =
+    fetchReturnValuesThenDeleteFile.map:
+      case Left(problem) =>
+        OrderOutcome.Failed.fromProblem(
+          problem.withPrefix("Reading return values failed:"),
+          Map(ProcessExecutable.toNamedValue(returnCode)))
 
-          case Right(namedValues) =>
-            conf.toOutcome(namedValues, returnCode)
-      .guarantee(IO.interruptible:
-        returnValuesProvider.tryDeleteFile())
+      case Right(namedValues) =>
+        conf.toOutcome(namedValues, returnCode)
+    .guarantee(IO.interruptible:
+      returnValuesProvider.tryDeleteFile())
 
   private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
     IO.interruptible:

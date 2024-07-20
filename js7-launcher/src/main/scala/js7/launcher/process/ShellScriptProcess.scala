@@ -12,14 +12,15 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.TenSecondsWorryDurations
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, CatsUtils}
 import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 
 abstract class ShellScriptProcess private(
@@ -28,33 +29,34 @@ abstract class ShellScriptProcess private(
   (implicit iox: IOExecutor)
 extends RichProcess(processConfiguration, process):
 
-  def watchProcess: IO[ReturnCode]
-
   stdin.close() // Process gets an empty stdin
 
-  private val sigkilled = Deferred.unsafe[IO, Unit]
+  private[ShellScriptProcess] val sigkilled = Deferred.unsafe[IO, Unit]
+  private[ShellScriptProcess] val sigtermed = Deferred.unsafe[IO, Unit]
 
-  protected final val whenSigkilled: IO[Unit] =
-    sigkilled.get
+  def watchProcess: IO[ReturnCode]
 
-  override protected def onSigkill =
-    // We do not super.onSigkill(), because Process.destroyForcibly closes stdout and stderr
-    // leading to blocked child processes trying to write to stdout (as observed by a customer).
+  protected def onSigkill =
     sigkilled.complete(()).void
+
+  protected def onSigterm =
+    sigtermed.complete(()).void
 
 
 object ShellScriptProcess:
   private val logger = Logger[this.type]
-  private val stdoutAndStderrDetachDelay = 1.s  // Grace period between kill and destroyForcibly
+  /** Grace period between SIGKILL and (second) destroyForcibly. */
+  private val stdoutAndStderrDetachDelay = 500.ms
   private val pumpFiberCount = Atomic(0)
+  private val TerminationWorryDurations: Seq[FiniteDuration] =
+    Seq(1.s, 2.s, 7.s) ++ TenSecondsWorryDurations
 
   def startPipedShellScript(
     commandLine: CommandLine,
     conf: ProcessConfiguration,
     stdObservers: StdObservers,
-    name: String,
-    onTerminated: IO[Unit] = IO.unit)
-    (implicit iox: IOExecutor)
+    name: String)
+    (using IOExecutor)
   : IO[Checked[ShellScriptProcess]] =
     IO.defer:
       val commandArgs = toShellCommandArguments(
@@ -66,7 +68,8 @@ object ShellScriptProcess:
         .map(_.map: process =>
           new ShellScriptProcess(conf, process):
             val watchProcess = watchProcess2.unsafeMemoize
-            override val terminated = watchProcess
+
+            override def awaitProcessTermination = watchProcess
 
             private def pumpOutErrToSink(outErr: StdoutOrStderr, in: InputStream): IO[Unit] =
               stdObservers
@@ -95,39 +98,44 @@ object ShellScriptProcess:
                       // Then we destroyForcibly. Because this closes stdout and stderr, we
                       // wait a short while to allow the last outstanding data to handled by
                       // the InputStream pump. See also RichProcess superclass.
-                      whenSigkilled
+                      sigkilled.get
                         .andWait(stdoutAndStderrDetachDelay)
                         .map: _ =>
                           //IO.whenA(process.isAlive):
-                            IO(logger.debug(s"$name destroyForcibly $process")) *>
+                          IO(logger.debug(s"$name destroyForcibly $process")) *>
                             IO.blocking(process.destroyForcibly()),
                       pumpBothStdoutAndStderrToSink)
                     .flatMap:
-                      case Left((_, pumpFiber)) => joinFiberInBackground(pumpFiber, name)
+                      case Left((_, pumpFiber)) => joinPumpFiber(pumpFiber, name).startAndForget
                       case Right((whenSigkilledFiber, _)) => whenSigkilledFiber.cancel
-                returnCode <- super.terminated
-                _ <- onTerminated
+                returnCode <- super.awaitProcessTermination
               yield returnCode)
 
-  private def joinFiberInBackground(fiber: FiberIO[Unit], name: String): IO[Unit] =
-    val since = Deadline.now
-    @volatile var logged = false
-    IO
-      .race(
-        fiber.joinStd *> IO:
-          pumpFiberCount -= 1
-          if logged then
-            logger.info:
-              s"⚪️ $name pumpBothStdoutAndStderrToSink has finally completed after ${
-                since.elapsed.pretty} ($pumpFiberCount)",
-        IO.defer:
-          pumpFiberCount += 1  // Maybe not reliable
-          IO.sleep(3.s) *> IO:
-            logged = true
-            logger.warn:
-              s"🟤 $name pumpBothStdoutAndStderrToSink is still running after process termination ${
-                since.elapsed.pretty} ago ($pumpFiberCount)")
-      .startAndForget
+  private def joinPumpFiber(fiber: FiberIO[Unit], name: String): IO[Unit] =
+    IO.defer:
+      val since = Deadline.now
+      var logged = false
+      import ShellScriptProcess.pumpFiberCount as n
+      n += 1
+      IO
+        .both(
+          fiber.joinStd
+            .*>(IO:
+              if logged then
+                // Not reliable due to race condition
+                logger.info:
+                  s"⚪️ $name stdout and stderr have finally ended after ${
+                    since.elapsed.pretty}${(n.get > 0) ?? s" (n=$n)"}")
+            .guarantee:
+              IO(n -= 1).void,
+          IO.defer:
+            IO.sleep(3.s) *> IO:
+              logged = true
+              logger.warn:
+                s"🟤 $name still reading stdout or stderr after process termination ${
+                  since.elapsed.pretty} ago${
+                  (n.get > 1) ?? s" (n=$n)"}")
+        .void
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration)
   : IO[Checked[Js7Process]] =

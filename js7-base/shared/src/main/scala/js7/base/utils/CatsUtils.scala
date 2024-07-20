@@ -30,8 +30,11 @@ object CatsUtils:
 
   private val logger = Logger[this.type]
 
+  val TenSecondsWorryDurations: Seq[FiniteDuration] =
+    Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
+
   val DefaultWorryDurations: Seq[FiniteDuration] =
-    Seq(3.s, 7.s) ++ Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
+    Seq(3.s, 7.s) ++ TenSecondsWorryDurations
 
   val InfoWorryDuration: FiniteDuration = 30.s
 
@@ -66,15 +69,19 @@ object CatsUtils:
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 
-      def logWhenItTakesLonger(what: => String): IO[A] =
-        logWhenItTakesLonger2("for", "completed", what)
+      def logWhenItTakesLonger(
+        what: => String,
+        durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+      : IO[A] =
+        logWhenItTakesLonger2("for", "completed", what, durations)
 
-      private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
+      private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String,
+        durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
       : IO[A] =
         CatsDeadline.now.flatMap: since =>
           var level: LogLevel = LogLevel.None
           underlying
-            .whenItTakesLonger()(duration => IO:
+            .whenItTakesLonger(durations)(duration => IO:
               val m = if duration < InfoWorryDuration then "🟡" else "🟠"
 
               def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"

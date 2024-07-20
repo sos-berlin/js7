@@ -55,7 +55,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         _ <- runningShellScript(ProcessConfiguration.forTest, scriptFile)
           .use: (shellProcess, sink) =>
             for
-              rc <- shellProcess.terminated
+              rc <- shellProcess.awaitProcessTermination
             yield
               assert(rc == ReturnCode(0) &&
                 sink.out.await(99.s) == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
@@ -125,7 +125,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 assert(shellProcess.isAlive)
                 shellProcess.sendProcessSignal(SIGKILL).await(99.s)
                 awaitAndAssert { !shellProcess.isAlive }
-                val rc = shellProcess.terminated await 99.s
+                val rc = shellProcess.awaitProcessTermination await 99.s
                 assert(rc == (
                   if isWindows then ReturnCode(1/* This is Java destroy()*/)
                   else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
@@ -154,7 +154,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 assert(shellProcess.isAlive)
                 shellProcess.sendProcessSignal(SIGTERM).await(99.s)
                 awaitAndAssert { !shellProcess.isAlive }
-                val rc = shellProcess.terminated await 99.s
+                val rc = shellProcess.awaitProcessTermination await 99.s
                 assert(rc == ReturnCode(7))
             .await(99.s)
         }
@@ -165,7 +165,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
   : IO[(ReturnCode, StdObserversForTest.TestSink)] =
     runningShellScript(processConfiguration, executable)
       .use: (shellScriptProcess, sink) =>
-        shellScriptProcess.terminated
+        shellScriptProcess.awaitProcessTermination
           .map(_ -> sink)
 
   private def runningShellScript(

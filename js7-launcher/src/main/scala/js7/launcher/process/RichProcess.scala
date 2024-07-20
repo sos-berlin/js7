@@ -1,6 +1,7 @@
 package js7.launcher.process
 
 import cats.effect.IO
+import cats.syntax.functor.*
 import java.io.OutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.delete
@@ -14,6 +15,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -36,8 +38,9 @@ abstract class RichProcess protected[process](
   protected final def isKilling = _isKilling
 
   protected def onSigkill: IO[Unit]
+  protected def onSigterm: IO[Unit]
 
-  private val _terminated: IO[ReturnCode] =
+  private val _awaitProcessTermination: IO[ReturnCode] =
     memoize:
       IO.defer:
         process.returnCode.map(IO.pure)
@@ -46,23 +49,25 @@ abstract class RichProcess protected[process](
 
   def duration: FiniteDuration = runningSince.elapsed
 
-  def terminated: IO[ReturnCode] =
-    _terminated
+  def awaitProcessTermination: IO[ReturnCode] =
+    _awaitProcessTermination
 
   final def sendProcessSignal(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       if signal != SIGKILL && !isWindows then
-        destroy(force = false)
+        kill(force = false)
+          .guarantee:
+            onSigterm
       else
         ifAliveForKilling("sendProcessSignal SIGKILL"):
           processConfiguration
             .toKillScriptCommandArgumentsOption(pidOption)
-            .fold(destroy(force = true)): args =>
+            .fold(kill(force = true)): args =>
               _isKilling = true
               executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
                 .handleError(t => logger.error(
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
-                .<*(destroy(force = true))
+                .<*(kill(force = true))
         .guarantee:
           // The process may have terminated while long running child processes have inherited the
           // file handles and still use them.
@@ -91,47 +96,42 @@ abstract class RichProcess protected[process](
               val logLevel = if returnCode.isSuccess then LogLevel.Debug else LogLevel.Warn
               logger.log(logLevel, s"Kill script '${args.head}' has returned $returnCode"))
 
-  private def destroy(force: Boolean): IO[Unit] =
+  private def kill(force: Boolean): IO[Unit] =
     (process, pidOption) match
       case (_: JavaProcess, Some(pid)) =>
         // Do not destroy with Java because Java closes stdout and stdin immediately,
         // not allowing a signal handler to write to stdout
-        destroyWithUnixCommand(pid, force)
+        killWithUnixCommand(pid, force)
 
       case _ =>
-        IO { destroyWithJava(force) }
+        destroyWithJava(force)
 
-  private def destroyWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
-    ifAliveForKilling("destroyWithUnixCommand"):
+  private def killWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
+    ifAliveForKilling("killWithUnixCommand"):
       val argsPattern =
         if isWindows then processConfiguration.killForWindows
         else if force then processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
       if argsPattern.isEmpty then
-        IO(destroyWithJava(force))
+        destroyWithJava(force)
       else if !argsPattern.contains("$pid") then
         logger.error(s"Missing '$pid' in configured kill command")
-        IO(destroyWithJava(force))
+        destroyWithJava(force)
       else
-        val args = argsPattern.map:
+        val args = argsPattern.mapOrKeep:
           case "$pid" => pid.number.toString
-          case o => o
         executeKillCommand(args)
           .flatMap: rc =>
             if rc.isSuccess then
               IO.unit
-            else IO:
+            else IO.defer:
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
 
-  private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
-    IO.defer:
-      if !process.isAlive then
-        IO(logger.info(s"$label: 🚫 Not killed because process has already terminated with ${
-          process.returnCode.fold("?")(_.pretty(isWindows))}"))
-      else
-        body
-
+  /** Kill process per command as Java's Process destroy closes stdout and stderr.
+   * Closing stdout or stderr may block child processes trying to write to stdout
+   * (as observed by a customer).
+   */
   private def executeKillCommand(args: Seq[String]): IO[ReturnCode] =
     IO.defer:
       logger.info(args.mkString(" "))
@@ -142,13 +142,23 @@ abstract class RichProcess protected[process](
         .flatMap: killProcess =>
           waitForProcessTermination(JavaProcess(killProcess))
 
-  private def destroyWithJava(force: Boolean): Unit =
-    if force then
-      logger.debug("destroyForcibly")
-      process.destroyForcibly()
-    else
-      logger.debug("destroy (SIGTERM)")
-      process.destroy()
+  private def destroyWithJava(force: Boolean): IO[Unit] =
+    IO:
+      if force then
+        logger.debug("destroyForcibly")
+        process.destroyForcibly()
+      else
+        logger.debug("destroy (SIGTERM)")
+        process.destroy()
+
+  private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
+    IO.defer:
+      if !process.isAlive then
+        IO(logger.info(s"$label: 🚫 Not killed because process has already terminated with ${
+          process.returnCode.fold("?")(_.pretty(isWindows))
+        }"))
+      else
+        body
 
   @TestOnly
   private[process] final def isAlive = process.isAlive
