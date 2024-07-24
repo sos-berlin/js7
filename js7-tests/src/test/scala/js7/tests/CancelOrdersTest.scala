@@ -1,5 +1,7 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
@@ -34,8 +36,6 @@ import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -48,11 +48,13 @@ final class CancelOrdersTest
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 0ms"""
+    js7.controller.agent-driver.event-buffer-delay = 0ms
+    """
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     js7.job.execution.sigkill-delay = 30s
+    js7.order.stdout-stderr.delay = 10ms
     """
 
   protected val agentPaths = Seq(agentPath)
@@ -104,7 +106,7 @@ final class CancelOrdersTest
     eventWatch.await[OrderTerminated](_.key == order.id)
 
   "Cancel a started order between two jobs" in:
-    val order = FreshOrder(OrderId("♣️"), twoJobsWorkflow.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("♣️"), twoJobsWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
@@ -126,7 +128,7 @@ final class CancelOrdersTest
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
 
   "Cancel an order but not the first job" in:
-    val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.path, Map("sleep" -> 1))
     testCancel(order, Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
       expectedEvents = mode => Vector(
         OrderProcessingStarted(subagentId),
@@ -187,7 +189,7 @@ final class CancelOrdersTest
         OrderCancelled))
 
   "Cancel a forking order and kill job" in:
-    val order = FreshOrder(OrderId("FORK"), forkWorkflow.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("FORK"), forkWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
 
@@ -217,7 +219,7 @@ final class CancelOrdersTest
         OrderId("FORK") <-: OrderCancelled))
 
   "Cancel a forked child order and kill job" in:
-    val order = FreshOrder(OrderId("CANCEL-CHILD"), forkJoinIfFailedWorkflow.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("CANCEL-CHILD"), forkJoinIfFailedWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
     sleep(100.ms)  // Try to avoid "killed before start"
@@ -374,15 +376,15 @@ final class CancelOrdersTest
 
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
+    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
     controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
+    eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+    val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
     assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted(subagentId),
@@ -428,15 +430,15 @@ final class CancelOrdersTest
 
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
+    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
     controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
+    eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+    val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
     assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted(subagentId),
@@ -474,16 +476,16 @@ final class CancelOrdersTest
 
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
+    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
     sleep(500.ms)
     controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
+    eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+    val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
     assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted(subagentId),
@@ -528,16 +530,16 @@ final class CancelOrdersTest
 
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderStdoutWritten](after = eventId)
+      eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
       sleep(500.ms)
       controller.api
         .executeCommand(
           CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow
-      eventWatch.await[OrderTerminated](after = eventId)
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-      val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+      val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
         .collect { case KeyedEvent(`orderId`, event) => event }
       assert(onlyRelevantEvents(events) == Seq(
         OrderProcessingStarted(subagentId),
@@ -584,16 +586,16 @@ final class CancelOrdersTest
 
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderStdoutWritten](after = eventId)
+      eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
       sleep(500.ms)
       controller.api
         .executeCommand(
           CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow
-      eventWatch.await[OrderTerminated](after = eventId)
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-      val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+      val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
         .collect { case KeyedEvent(`orderId`, event) => event }
       assert(onlyRelevantEvents(events) == Seq(
         OrderProcessingStarted(subagentId),
@@ -605,7 +607,7 @@ final class CancelOrdersTest
         OrderCancelled))
   }
 
-  if isUnix then "Sleep in a background script and do not wait for it" in:
+  if isUnix then "Sleep in a background script and don't wait for it" in:
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "BACKGROUND"
     val orderId = OrderId(name)
@@ -617,7 +619,7 @@ final class CancelOrdersTest
         ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
-            |trap "wait && exit 143" SIGTERM  # 15+128
+            |trap "wait && exit 7" SIGTERM
             |trap "rc=$? && wait && exit $?" EXIT
             |
             |if [ "$1" == "-child" ]; then
@@ -632,16 +634,16 @@ final class CancelOrdersTest
 
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
+    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
-    sleep(1.s)
+    sleep(500.ms)
     controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
+    eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+    val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
     assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted(subagentId),
@@ -770,7 +772,7 @@ object CancelOrdersTest:
       |done
       |""".stripMargin)
 
-  private val sigkillDelay = 1.s
+  private val sigkillDelay = 500.ms
   private val sigkillDelayWorkflow = Workflow.of(
     WorkflowPath("SIGKILL-DELAY") ~ versionId,
     Execute(WorkflowJob(agentPath, sigtermIgnoringExecutable, sigkillDelay = Some(sigkillDelay))))
