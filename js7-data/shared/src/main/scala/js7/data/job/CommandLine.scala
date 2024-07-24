@@ -10,17 +10,18 @@ final case class CommandLine(arguments: Seq[String]):
   def file: Path = Paths.get(arguments.head)
 
   override def toString = arguments
-    .map { arg =>
+    .map: arg =>
       if arg.contains(' ') || arg.contains('\'') then
         "'" + arg.replace("'", "\''") + "'"
       else
         arg
-    }
     .mkString(" ")
 
 
 object CommandLine:
-  def fromFile(file: Path) = new CommandLine(Seq(file.toString))
+
+  def fromFile(file: Path): CommandLine =
+    new CommandLine(Seq(file.toString))
 
   def checked(arguments: Seq[String]): Checked[CommandLine] =
     if arguments.isEmpty then Left(Problem.pure("Command line must not be empty"))

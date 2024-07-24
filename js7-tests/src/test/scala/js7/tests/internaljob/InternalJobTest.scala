@@ -66,7 +66,7 @@ final class InternalJobTest
   "One InternalJob.start for multiple InternalJob.toOrderProcess" in:
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(workflowPathIterator.next(), execute_[AddOneJob])
-    withTemporaryItem(workflow) { workflow =>
+    withTemporaryItem(workflow): workflow =>
       directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
       for processNumber <- 1 to 3 do withClue(s"#$processNumber "):
@@ -79,7 +79,6 @@ final class InternalJobTest
             "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
             "PROCESS" -> NumberValue(processNumber),
             "RESULT" -> NumberValue(301)))))
-    }
 
   addInternalJobTest(
     execute_[AddOneJob],
@@ -130,12 +129,12 @@ final class InternalJobTest
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
           processLimit = n)),
         indexedOrderIds
-          .map { case (i, orderId) => orderId -> Map("ORDER_ARG" -> NumberValue(i)) }
+          .map: (i, orderId) =>
+            orderId -> Map("ORDER_ARG" -> NumberValue(i))
           .toMap,
         expectedOutcomes = indexedOrderIds
-          .map { case (i, orderId) =>
+          .map: (i, orderId) =>
             orderId -> Seq(OrderOutcome.Succeeded(Map("RESULT" -> NumberValue(i + 1))))
-          }
           .toMap)
     }
 
@@ -226,15 +225,13 @@ final class InternalJobTest
     val eventId = eventWatch.lastAddedEventId
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next())
     var workflowId: WorkflowId = null
-    val result = withTemporaryItem(workflow) { workflow =>
+    val result = withTemporaryItem(workflow): workflow =>
       workflowId = workflow.id
       val eventId = eventWatch.lastAddedEventId
-      controller.api.addOrders(
-        Stream.iterable(ordersArguments)
-          .map { case (orderId, args) =>
-            FreshOrder(orderId, workflow.path, arguments = args, deleteWhenTerminated = true)
-          })
-        .await(99.s).orThrow: @unchecked
+      controller.api.addOrders:
+        Stream.iterable(ordersArguments).map: (orderId, args) =>
+          FreshOrder(orderId, workflow.path, arguments = args, deleteWhenTerminated = true)
+      .await(99.s).orThrow: @unchecked
       val orderIds = ordersArguments.keySet
       val _runningOrderIds = orderIds.to(mutable.Set)
       eventWatch
@@ -250,7 +247,7 @@ final class InternalJobTest
         .toVector
         .await(99.s)
         .groupMap(_.key)(_.event)
-    }
+
     // When Workflow has been deleted, its Jobs are stopped
     eventWatch.await[ItemDeleted](_.event.key == workflowId, after = eventId)
     result
@@ -267,17 +264,17 @@ object InternalJobTest:
   private val agentPath = AgentPath("AGENT")
 
   private def execute_[A: ClassTag] =
-    Execute(
+    Execute:
       WorkflowJob(
         agentPath,
         InternalExecutable(
           implicitClass[A].getName,
           script = "TEST SCRIPT",
           arguments = Map(
-            "STEP_ARG" -> NamedValue("ORDER_ARG")))))
+            "STEP_ARG" -> NamedValue("ORDER_ARG"))))
 
   private object SimpleJob extends InternalJob:
-    var started = false
+    private var started = false
     var stopped = false
 
     override def start = IO:
@@ -307,17 +304,18 @@ object InternalJobTest:
       IO.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
 
     def toOrderProcess(step: Step) =
-      OrderProcess(IO {
-        processCount += 1
-        OrderOutcome.Completed.fromChecked(
-          step.arguments
-            .checked("STEP_ARG")
-            .flatMap(_.toNumberValue)
-            .map(value => OrderOutcome.Succeeded(NamedValues(
-              "START" -> NumberValue(startCount.get()),
-              "PROCESS" -> NumberValue(processCount.get()),
-              "RESULT" -> NumberValue(value.number + 1)))))
-        })
+      OrderProcess:
+        IO:
+          processCount += 1
+          OrderOutcome.Completed.fromChecked:
+            step.arguments
+              .checked("STEP_ARG")
+              .flatMap(_.toNumberValue)
+              .map: value =>
+                OrderOutcome.Succeeded(NamedValues(
+                  "START" -> NumberValue(startCount.get()),
+                  "PROCESS" -> NumberValue(processCount.get()),
+                  "RESULT" -> NumberValue(value.number + 1)))
 
   private class CancelableJob extends InternalJob:
     def toOrderProcess(step: Step) =

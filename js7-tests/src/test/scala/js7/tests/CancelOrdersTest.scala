@@ -100,8 +100,8 @@ final class CancelOrdersTest
     assert(controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("♠️"))))
     controller.api
-      .executeCommand(
-        CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
+      .executeCommand:
+        CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill())))
       .await(99.seconds).orThrow
     eventWatch.await[OrderTerminated](_.key == order.id)
 
@@ -480,8 +480,8 @@ final class CancelOrdersTest
 
     sleep(500.ms)
     controller.api
-      .executeCommand(
-        CancelOrders(Seq(orderId), CancellationMode.kill()))
+      .executeCommand:
+        CancelOrders(Seq(orderId), CancellationMode.kill())
       .await(99.s).orThrow
     eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
@@ -534,8 +534,8 @@ final class CancelOrdersTest
 
       sleep(500.ms)
       controller.api
-        .executeCommand(
-          CancelOrders(Seq(orderId), CancellationMode.kill()))
+        .executeCommand:
+          CancelOrders(Seq(orderId), CancellationMode.kill())
         .await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
@@ -638,8 +638,8 @@ final class CancelOrdersTest
 
     sleep(500.ms)
     controller.api
-      .executeCommand(
-        CancelOrders(Seq(orderId), CancellationMode.kill()))
+      .executeCommand:
+        CancelOrders(Seq(orderId), CancellationMode.kill())
       .await(99.s).orThrow
     eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 

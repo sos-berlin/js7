@@ -74,8 +74,8 @@ final class ProcessDriver(
           IO.left(Problem.pure("Processing killed before start"))
 
         case None =>
-          IO(checkedWindowsLogon
-            .flatMap: maybeWindowsLogon =>
+          IO:
+            checkedWindowsLogon.flatMap: maybeWindowsLogon =>
               catchNonFatal:
                 for o <- maybeWindowsLogon do
                   WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
@@ -92,7 +92,7 @@ final class ProcessDriver(
                   killForWindows = jobLauncherConf.killForWindows,
                   maybeKillScript = jobLauncherConf.killScript,
                   maybeWindowsLogon)
-          ).flatMapT: processConfiguration =>
+          .flatMapT: processConfiguration =>
             startProcessLock.lock("startProcess"):
               globalStartProcessLock
                 .lock(orderId.toString):

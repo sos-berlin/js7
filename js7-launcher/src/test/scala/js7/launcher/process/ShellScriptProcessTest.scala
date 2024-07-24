@@ -37,13 +37,12 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
     val envValue = "ENVVALUE"
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> Some(envValue)))
-    withScriptFile { scriptFile =>
+    withScriptFile: scriptFile =>
       scriptFile.writeUtf8Executable((isWindows ?? "@") + s"exit $exitCode")
       val (returnCode, sink) = runShellScript(processConfig, scriptFile)
         .await(99.s)
       assert(returnCode == ReturnCode(exitCode))
       succeed
-    }
 
   "stdout" in:
     temporaryShellFileResource[IO]("stdout").use: scriptFile =>
@@ -67,14 +66,14 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         pending
     else
       "#! (shebang) is respected" in:
-        withScriptFile { interpreter =>
+        withScriptFile: interpreter =>
           interpreter :=
             """#! /bin/sh
               |echo INTERPRETER-START
               |sh "$@"
               |echo INTERPRETER-END
               |""".stripMargin
-          withScriptFile { scriptFile =>
+          withScriptFile: scriptFile =>
             scriptFile.writeUtf8Executable(
               s"""#! $interpreter
                  |echo TEST-SCRIPT
@@ -87,8 +86,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 |INTERPRETER-END
                 |""".stripMargin)
             succeed
-          }
-        }
 
   "sendProcessSignal SIGKILL" in:
     if isMac then
@@ -96,15 +93,15 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
       pending
     else
       val taskId = TaskId("TEST-PROCESS-ID")
-      withScriptFile { scriptFile =>
-        scriptFile.writeUtf8Executable(
+      withScriptFile: scriptFile =>
+        scriptFile.writeUtf8Executable:
           if isWindows then
             """echo SCRIPT-ARGUMENTS=%*
               |ping -n 7 127.0.0.1
               |""".stripMargin
           else
-            "echo SCRIPT-ARGUMENTS=$*; sleep 6")
-        withCloser { closer =>
+            "echo SCRIPT-ARGUMENTS=$*; sleep 3"
+        withCloser: closer =>
           val killScriptOutputFile = createTempFile("test-", ".tmp")
           val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
           killScriptFile := (
@@ -135,8 +132,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 assert(sink.out.await(99.s) contains s"SCRIPT-ARGUMENTS=--agent-task-id=${taskId.string}")
                 assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${taskId.string}")
             .await(99.s)
-        }
-      }
 
   if !isWindows then
     "sendProcessSignal SIGTERM (Unix only)" in:
@@ -144,9 +139,9 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         info("Disabled on macOS because it kills our builder process")
         pending
       else
-        withScriptFile { scriptFile =>
-          scriptFile.writeUtf8Executable(
-            "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3")
+        withScriptFile: scriptFile =>
+          scriptFile.writeUtf8Executable:
+            "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3"
           runningShellScript(ProcessConfiguration.forTest, scriptFile)
             .use: (shellProcess, sink) =>
               IO:
@@ -157,7 +152,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 val rc = shellProcess.awaitProcessTermination await 99.s
                 assert(rc == ReturnCode(7))
             .await(99.s)
-        }
 
   private def runShellScript(
     processConfiguration: ProcessConfiguration,

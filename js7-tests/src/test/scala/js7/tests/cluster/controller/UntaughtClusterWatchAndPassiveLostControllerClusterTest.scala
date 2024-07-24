@@ -46,26 +46,25 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       var backupController = backup.newController()
       import primaryController.eventWatch
 
-      withClusterWatchService(primaryClusterWatchId) { (cwService, _) =>
+      withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
         eventWatch.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
-      }
 
       logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testAckLossPropertyKey) = "true"
       sys.props(testHeartbeatLossPropertyKey) = "true"
 
       primaryController.testEventBus
-        .whenPF[WaitingForConfirmation, Unit](_.request match {
-          case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
-        })
+        .whenPF[WaitingForConfirmation, Unit]:
+          _.request match
+            case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterPassiveLost, _, _) =>
         .await(99.s)
 
       if stopBackup then
         logger.info("💥 Stop Backup Controller 💥")
         backupController.terminate(dontNotifyActiveNode = true).await(99.s)
 
-      withClusterWatchService(restartedClusterWatchId) { (clusterWatchService, eventBus) =>
+      withClusterWatchService(restartedClusterWatchId): (clusterWatchService, eventBus) =>
         // ClusterWatch is untaught
         val clusterPassiveLost = eventBus
           .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
@@ -111,8 +110,8 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
 
         primaryController.terminate().await(99.s)
         backupController.terminate(dontNotifyActiveNode = true).await(99.s)
-      }
     }
+
 
 object UntaughtClusterWatchAndPassiveLostControllerClusterTest:
   private val logger = Logger[this.type]
