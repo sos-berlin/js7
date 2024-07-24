@@ -11,7 +11,6 @@ import js7.base.log.{BlockingSymbol, LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
 import js7.base.utils.Atomic.extensions.*
-import js7.base.utils.CatsUtils.DefaultWorryDurations
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import org.jetbrains.annotations.TestOnly
@@ -38,7 +37,7 @@ object AsyncLock:
 
   def apply(
     name: String,
-    logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,
+    logWorryDurations: IterableOnce[FiniteDuration] = Worry.Default.durations,
     suppressLog: Boolean = false,
     logMinor: Boolean = false)
   : AsyncLock =

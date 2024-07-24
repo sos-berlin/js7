@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.{Applicative, Functor}
@@ -9,10 +9,9 @@ import fs2.{Pure, Stream}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.catsutils.CatsEffectExtensions.guaranteeCaseLazy
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
 import js7.base.fs2utils.StreamExtensions.repeatLast
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -30,14 +29,6 @@ object CatsUtils:
 
   private val logger = Logger[this.type]
 
-  val TenSecondsWorryDurations: Seq[FiniteDuration] =
-    Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
-
-  val DefaultWorryDurations: Seq[FiniteDuration] =
-    Seq(3.s, 7.s) ++ TenSecondsWorryDurations
-
-  val InfoWorryDuration: FiniteDuration = 30.s
-
   def combine[A: Monoid](as: A*): A =
     as.combineAll
 
@@ -45,15 +36,16 @@ object CatsUtils:
     bytesToInputStreamResource(bytes.toArray)
 
   private def bytesToInputStreamResource(bytes: Array[Byte]): Resource[SyncIO, InputStream] =
-    Resource.fromAutoCloseable(SyncIO { new ByteArrayInputStream(bytes): InputStream })
+    Resource.fromAutoCloseable:
+      SyncIO:
+        new ByteArrayInputStream(bytes): InputStream
 
   private def base64ToStreamResource(base64: String): Resource[SyncIO, InputStream] =
-    Resource.fromAutoCloseable(SyncIO[InputStream] {
-      try new ByteArrayInputStream(Base64.getMimeDecoder.decode(base64))
-      catch { case e: IllegalArgumentException =>
-        throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
-      }
-    })
+    Resource.fromAutoCloseable:
+      SyncIO[InputStream]:
+        try new ByteArrayInputStream(Base64.getMimeDecoder.decode(base64))
+        catch case e: IllegalArgumentException =>
+          throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
 
   object syntax:
     implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal:
@@ -69,39 +61,19 @@ object CatsUtils:
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 
-      def logWhenItTakesLonger(
-        what: => String,
-        durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+      def logWhenItTakesLonger(what: => String, worry: Worry = Worry.Default)
       : IO[A] =
-        logWhenItTakesLonger2("for", "completed", what, durations)
+        logWhenItTakesLonger2("for", "completed", what, worry)
 
       private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String,
-        durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+        worry: Worry = Worry.Default)
       : IO[A] =
-        CatsDeadline.now.flatMap: since =>
-          var level: LogLevel = LogLevel.None
-          underlying
-            .whenItTakesLonger(durations)(duration => IO:
-              val m = if duration < InfoWorryDuration then "🟡" else "🟠"
+        worry.logWhenItTakesLonger(preposition, completed, what, underlying)
 
-              def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
-
-              if duration < InfoWorryDuration then
-                level = LogLevel.Debug
-                logger.debug(msg)
-              else
-                level = LogLevel.Info
-                logger.info(msg))
-            .guaranteeCaseLazy: exitCode =>
-              IO.whenA(level != LogLevel.None):
-                for elapsed <- since.elapsed yield
-                  exitCode match
-                    case Outcome.Succeeded(_) => logger.log(level,
-                      s"🔵 $what $completed after ${elapsed.pretty}")
-                    case Outcome.Canceled() => logger.log(level,
-                      s"⚫ $what canceled after ${elapsed.pretty}")
-                    case Outcome.Errored(t) => logger.log(level,
-                      s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}")
+      def logWhenItTakesLonger(worry: Worry)(
+        onDelayedOrCompleted: (Option[OutcomeIO[A]], FiniteDuration, LogLevel, String) => IO[String])
+      : IO[A] =
+        worry.logWhenItTakesLonger(underlying)(onDelayedOrCompleted)
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       @deprecated("Use whenItTakesLongerThan", "v2.7")
@@ -121,16 +93,16 @@ object CatsUtils:
        *                  The last entry is repeated until `this` completes.
        *                  A zero or negative duration terminates calling of `thenDo`.
        * @param thenDo    A function which gets the elapsed time since start as argument. */
-      def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+      def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = Worry.Default.durations)
         (thenDo: FiniteDuration => IO[Unit])
       : IO[A] =
         val durationIterator = durations.iterator
         if durationIterator.isEmpty then
           underlying
         else
-          CatsDeadline.now.flatMap(since =>
+          CatsDeadline.now.flatMap: since =>
             ZeroDuration
-              .tailRecM { lastDuration =>
+              .tailRecM: lastDuration =>
                 val d = durationIterator.nextOption() getOrElse lastDuration
                 if d.isPositive then
                   IO.sleep(d)
@@ -138,10 +110,9 @@ object CatsUtils:
                     .flatMap(thenDo)
                     .as(Left(d))
                 else
-                  IO.pure(Right(()))
-              }
-              .start
-              .bracket(_ => underlying)(_.cancel))
+                  IO.right(())
+              .background.surround:
+                underlying
 
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
