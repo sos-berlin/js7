@@ -21,12 +21,12 @@ final case class ReturnCode private(number: Int) extends GenericInt:
 
   def pretty(isWindows: Boolean): String =
     if isWindows || !isProcessSignal then
-      s"ReturnCode($number)"
+      s"ReturnCode:$number"
     else
       number - 128 match
         case SIGTERM.number => s"ReturnCode:$number=SIGTERM"
         case SIGKILL.number => s"ReturnCode:$number=SIGKILL"
-        case signal => s"ReturnCode$number=128+$signal"
+        case signal => s"ReturnCode:$number=128+$signal"
 
   def toExitCode: ExitCode =
     ExitCode(number)

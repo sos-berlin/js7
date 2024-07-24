@@ -31,8 +31,8 @@ final class ReturnCodeTest extends OurTestSuite:
     assert(ReturnCode(SIGTERM) == ReturnCode(128 + 15))
 
   "pretty" in:
-    assert(ReturnCode(1).pretty(isWindows = false) == "ReturnCode(1)")
-    assert(ReturnCode(1).pretty(isWindows = true) == "ReturnCode(1)")
-    assert(ReturnCode(143).pretty(isWindows = false) == "ReturnCode(143/SIGTERM)")
-    assert(ReturnCode(143).pretty(isWindows = true) == "ReturnCode(143)")
-    assert(ReturnCode(255).pretty(isWindows = false) == "ReturnCode(255=128+127)")
+    assert(ReturnCode(1).pretty(isWindows = false) == "ReturnCode:1")
+    assert(ReturnCode(1).pretty(isWindows = true) == "ReturnCode:1")
+    assert(ReturnCode(143).pretty(isWindows = false) == "ReturnCode:143=SIGTERM")
+    assert(ReturnCode(143).pretty(isWindows = true) == "ReturnCode:143")
+    assert(ReturnCode(255).pretty(isWindows = false) == "ReturnCode:255=128+127")
