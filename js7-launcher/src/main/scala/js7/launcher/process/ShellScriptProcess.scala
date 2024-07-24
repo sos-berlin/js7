@@ -55,9 +55,11 @@ object ShellScriptProcess:
     commandLine: CommandLine,
     conf: ProcessConfiguration,
     stdObservers: StdObservers,
-    name: String)
+    orderId: OrderId,
+    jobKey: JobKey)
     (using IOExecutor)
   : IO[Checked[ShellScriptProcess]] =
+    val name = s"$orderId $jobKey"
     IO.defer:
       val commandArgs = toShellCommandArguments(
         commandLine.file,

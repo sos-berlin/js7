@@ -57,8 +57,9 @@ final class ProcessDriver(
               process.watchProcess
                 .attempt.flatMap: either =>
                   IO.defer:
-                    logger.info(s"$orderId ↙ Process $process terminated with ${either.merge
-                    } after ${process.duration.pretty}")
+                    // Don't log PID because the process may have terminated long before
+                    // stdout or stderr ended (due to still running child processes)
+                    logger.info(s"$orderId ↙ Process terminated with ${either.merge} after ${process.duration.pretty}")
                     IO.fromEither(either)
                 .flatMap: returnCode =>
                   outcomeOf(process, returnCode)
@@ -96,7 +97,7 @@ final class ProcessDriver(
               globalStartProcessLock
                 .lock(orderId.toString):
                   startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
-                    name = s"$orderId ${conf.jobKey}")
+                    orderId, conf.jobKey)
                 .flatTapT: richProcess =>
                   IO:
                     richProcessOnce := richProcess
