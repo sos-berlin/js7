@@ -240,7 +240,8 @@ extends Service.StoppableByRequest:
             && !requested.clusterWatchIdChangeAllowed =>
             Left(ClusterWatchIdDoesNotMatchProblem(
               rejectedClusterWatchId = confirm.clusterWatchId,
-              requestedClusterWatchId = o))
+              requestedClusterWatchId = o,
+              requested.request))
 
           case _ =>
             if confirm.requestId != requested.id then

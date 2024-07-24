@@ -161,17 +161,17 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     extraEvent: Option[ItemAttachedToMe] = None)
   : IO[Checked[Unit]] =
     logger.debugIO:
-      common.requireValidLicense.flatMapT(_ =>
-        clusterStateLock.lock(
-          suspendHeartbeat(forEvent = true)(
-            persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true/*Since v2.7*/) {
+      common.requireValidLicense.flatMapT: _ =>
+        clusterStateLock.lock:
+          suspendHeartbeat(forEvent = true):
+            persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true/*Since v2.7*/):
               case clusterState: Coupled =>
-                Right(
+                Right:
                   (passiveUri != clusterState.setting.passiveUri) ?
-                    ClusterPassiveLost(clusterState.passiveId)) // Forces recoupling
+                    ClusterPassiveLost(clusterState.passiveId) // Forces recoupling
               case _ => Right(None)
-            }.flatMapT(_ =>
-              persistWithoutTouchingHeartbeat(extraEvent) {
+            .flatMapT: _ =>
+              persistWithoutTouchingHeartbeat(extraEvent):
                 case clusterState: HasNodes =>
                   if passiveUri == clusterState.setting.passiveUri then
                     Right(None)
@@ -183,12 +183,11 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
                 case clusterState =>
                   Left(ClusterSettingNotUpdatable(clusterState))
-              }.flatMapT {
+              .flatMapT:
                 case (stampedEvents, state: HasNodes) if stampedEvents.nonEmpty =>
                   proceedNodesAppointed(state).as(Right(()))
                 case _ =>
                   IO.right(())
-              }))))
 
   private[cluster] def onRestartActiveNode: IO[Checked[Completed]] =
     clusterStateLock.lock(
@@ -360,16 +359,16 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       //  - Derweil kann ClusterPassiveLost auftreten.
       //  - Erst nach Erfolg oder ClusterPassiveLost die Acks abschalten.
       //  --> Das alles in eine stopJournaling-Routine? --> ResourceIO["Journaling"]
-      clusterStateLock.lock(
-        persist() {
+      clusterStateLock.lock:
+        persist():
           case _: Coupled =>
             Right(Some(ClusterActiveNodeShutDown))
           case _ =>
             Right(None)
-        } .flatMapT: (_: (Seq[Stamped[?]], _)) =>
+        .flatMapT: (_: (Seq[Stamped[?]], _)) =>
           stopAcknowledgingRequested = true
           stopAcknowledging.complete(())
-            .as(Right(Completed)))
+            .as(Right(Completed))
 
   private def proceed(state: ClusterState): IO[Completed] =
     state match
@@ -469,8 +468,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             journal.clusterState.flatMap {
               case clusterState: Coupled =>
                 val passiveLost = ClusterPassiveLost(passiveId)
-                suspendHeartbeat(forEvent = true)(
-                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
+                suspendHeartbeat(forEvent = true):
+                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
                     IO.fromFuture(IO:
                       // Release a concurrent persist operation, which waits for the missing acknowledgement and
                       // blocks the persist lock. Avoid a deadlock.
@@ -479,15 +478,15 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                       logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
                       journalActor ? JournalActor.Input.PassiveLost(passiveLost)
                     ) >>
-                      persistWithoutTouchingHeartbeat() {
+                      persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                      } .map(_.toCompleted.map(_ => true)))
-                ).map(_.flatMap(allowed =>
+                      .map(_.toCompleted.map(_ => true))
+                .map(_.flatMap: allowed =>
                   if !allowed then
                     Right(Completed)
                   else
-                    Left(missingHeartbeatProblem)))
+                    Left(missingHeartbeatProblem))
               case _ =>
                 IO.pure(Left(missingHeartbeatProblem))
             })
@@ -572,14 +571,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     logger.debugIOWithResult(common
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api => HttpClient
-        .liftProblem(
+        .liftProblem:
           streamEventIds(api, heartbeat = keepAlive)
             .dropWhile(_ < eventId)
             .head
             .compile
             .last
             .map(_.toRight(Problem.pure(
-              s"awaitAcknowledgement($eventId): Stream ended unexpectedly"))))
+              s"awaitAcknowledgement($eventId): Stream ended unexpectedly")))
         .map(_.flatten))
       .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
@@ -615,8 +614,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         if alreadyLocked then
           nonLockingRegisterClusterWatchId(confirmation)
         else
-          clusterStateLock.lock(
-            nonLockingRegisterClusterWatchId(confirmation)))
+          clusterStateLock.lock:
+            nonLockingRegisterClusterWatchId(confirmation))
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : IO[Checked[Unit]] =

@@ -73,11 +73,13 @@ object ClusterWatchProblems:
 
   final case class ClusterWatchIdDoesNotMatchProblem(
     rejectedClusterWatchId: ClusterWatchId,
-    requestedClusterWatchId: ClusterWatchId)
+    requestedClusterWatchId: ClusterWatchId,
+    request: ClusterWatchRequest)
   extends Problem.Coded:
-    def arguments: Map[String, String] = Map2(
+    def arguments: Map[String, String] = Map3(
       "rejectedClusterWatchId", rejectedClusterWatchId.toString,
-      "requestedClusterWatchId", requestedClusterWatchId.toString)
+      "requestedClusterWatchId", requestedClusterWatchId.toString,
+      "request", request.toShortString)
 
   final case class OtherClusterWatchStillAliveProblem(
     rejectedClusterWatchId: ClusterWatchId,

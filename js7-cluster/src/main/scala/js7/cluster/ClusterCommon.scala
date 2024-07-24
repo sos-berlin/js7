@@ -169,7 +169,7 @@ private[cluster] final class ClusterCommon private(
                   testEventBus.publish(ClusterWatchAgreedToActivation)
                   body
           case ClusterState.Empty => IO.left(Problem.pure(
-            "ClusterState.Empty in ifClusterWatchAllowsActivation ??"))
+            "ClusterState:Empty in ifClusterWatchAllowsActivation ??"))
 
 private[js7] object ClusterCommon:
   private val logger = Logger[this.type]

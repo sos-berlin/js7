@@ -45,7 +45,7 @@ extends ClusterWatchRequest:
     Some(event)
 
   override def toShortString =
-    s"$requestId ${event.getClass.simpleScalaName} event"
+    s"$requestId:Event:${event.getClass.simpleScalaName}"
 
 final case class ClusterWatchCheckState(
   requestId: RequestId,
@@ -67,7 +67,7 @@ extends ClusterWatchRequest:
   def forceWhenUntaught = false
 
   override def toShortString =
-    s"$requestId ClusterState.${clusterState.toShortString}"
+    s"$requestId:ClusterState:${clusterState.toShortString}"
 
 
 object ClusterWatchRequest:

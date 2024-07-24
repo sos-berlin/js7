@@ -1,17 +1,17 @@
 package js7.data.cluster
 
+import fs2.{Pure, Stream}
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.compilable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
-import fs2.{Pure, Stream}
-import js7.base.web.Uri
 
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]:
@@ -87,7 +87,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
 
   def toShortString: String =
     this match
-      case Empty => "ClusterState.Empty"
+      case Empty => "ClusterState:Empty"
       case hasNodes: HasNodes =>
         s"${hasNodes.getClass.simpleScalaName}(${hasNodes.activeId} is active)"
 

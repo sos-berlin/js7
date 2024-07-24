@@ -668,14 +668,15 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     !dontActivateBecauseOtherFailedOver && clusterState.isNonEmptyActive(ownId)
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S): Unit =
-    for recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot do
-      var msg = s"Calculated '$S' from recovered or replicated journal file" +
-        s" ${recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
-      // msg may get very big
-      logger.error(msg)
-      //diffx msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
-      logger.info(msg)  // Without colors because msg is already colored
-      sys.error(msg)
+    for recoveredJournalFile <- continuation.maybeRecoveredJournalFile do
+      if recoveredJournalFile.state != snapshot then
+        val msg = s"Calculated '$S' from recovered or replicated journal file ${
+          recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
+        logger.error(msg)
+        // msg may get very big
+        //diffx msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
+        //logger.info(msg)  // Without colors because msg is already colored
+        sys.error(msg)
 
   private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition)
   : Stamped[KeyedEvent[ClusterFailedOver]] =
