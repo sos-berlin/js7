@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Clock, Fiber, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
+import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
@@ -92,7 +92,6 @@ object CatsEffectExtensions:
           case Left(problem) => release.as(Left(problem))
           case Right(_) => IO.unit
 
-
   private val trueIO = IO.pure(true)
   private val falseIO = IO.pure(false)
   private val completedIO = IO.pure(Completed)
@@ -130,6 +129,16 @@ object CatsEffectExtensions:
         ec <- IO.executionContext
         a <- IO.fromFuture(io(ec))
       yield a
+
+    /** Like racePair but resolves the returned OutcomeIO[x]. */
+    def raceBoth[L, R](left: IO[L], right: IO[R]): IO[Either[(L, FiberIO[R]), (FiberIO[L], R)]] =
+      def resolve[A](outcome: OutcomeIO[A]): IO[A] =
+        outcome.match
+          case Outcome.Succeeded(io) => io
+          case o => IO.fromOutcome(o)
+      IO.racePair(left, right).flatMap:
+        case Left((l, rFiber)) => resolve(l).map(l => Left(l -> rFiber))
+        case Right((lFiber, r)) => resolve(r).map(r => Right(lFiber -> r))
 
     def unsafeScheduler: IO[Scheduler] =
       IO.unsafeRuntime.map(_.scheduler)

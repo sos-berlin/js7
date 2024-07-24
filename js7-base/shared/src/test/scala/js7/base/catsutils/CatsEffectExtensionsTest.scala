@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect
 import cats.effect.Resource.ExitCase
-import cats.effect.{Deferred, IO, Outcome, OutcomeIO, Resource, SyncIO}
+import cats.effect.{Deferred, FiberIO, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.effect.testkit.TestControl
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -39,6 +39,16 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
           .map: _ =>
             assert(outcomes.toString == "ArrayBuffer(Succeeded(IO(7)))")
     }
+
+    "raceBoth" in:
+      IO.raceBoth(
+          IO.sleep(1.s).as(1),
+          IO.sleep(2.s).as("2"))
+        .flatMap:
+          case Left((left: Int, fiber: FiberIO[String])) => fiber.cancel.as(left)
+          case Right((fiber: FiberIO[Int]), right: String) => fiber.cancel.as(right)
+        .map: value =>
+          assert(value == 1)
 
     "onCancelLazy" - {
       "ERROR: onCancel evaluates the handler even when not canceled" in :
