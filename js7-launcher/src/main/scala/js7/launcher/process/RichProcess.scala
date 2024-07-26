@@ -37,8 +37,8 @@ abstract class RichProcess protected[process](
 
   protected final def isKilling = _isKilling
 
-  protected def onSigkill: IO[Unit]
-  protected def onSigterm: IO[Unit]
+  protected def afterSigkill: IO[Unit]
+  protected def afterSigterm: IO[Unit]
 
   private val _awaitProcessTermination: IO[ReturnCode] =
     memoize:
@@ -47,17 +47,17 @@ abstract class RichProcess protected[process](
           .getOrElse:
             waitForProcessTermination(process)
 
-  def duration: FiniteDuration = runningSince.elapsed
-
-  def awaitProcessTermination: IO[ReturnCode] =
+  final def awaitProcessTermination: IO[ReturnCode] =
     _awaitProcessTermination
+
+  def duration: FiniteDuration = runningSince.elapsed
 
   final def sendProcessSignal(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       if signal != SIGKILL && !isWindows then
         kill(force = false)
           .guarantee:
-            onSigterm
+            afterSigterm
       else
         ifAliveForKilling("sendProcessSignal SIGKILL"):
           processConfiguration
@@ -65,26 +65,22 @@ abstract class RichProcess protected[process](
             .fold(kill(force = true)): args =>
               _isKilling = true
               executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
-                .handleError(t => logger.error(
-                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
+                .handleError(t => logger.error:
+                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}")
                 .<*(kill(force = true))
         .guarantee:
-          // The process may have terminated while long running child processes have inherited the
-          // file handles and still use them.
-          // So we forcibly close stdout and stderr.
-          // The child processes write operations will fail with EPIPE or may block !!!
-          // Let destroyForcibly try to close the handles (implementation dependent)
-          onSigkill
+          afterSigkill
 
   private def executeKillScript(args: Seq[String]): IO[Unit] =
     ifAliveForKilling("executeKillScript"):
       if isMac then
-        IO:
+        IO.defer:
           // TODO On macOS, the kill script may kill a foreign process like the developers IDE
-          logger.warn("Execution of kill script is suppressed on macOS")
+          logger.warn("Execution of the kill script is suppressed on macOS")
+          kill(force = true)
       else
         IO.defer:
-          logger.info("Executing kill script: " + args.mkString("  "))
+          logger.info("⚫️ Executing kill script: " + args.mkString("  "))
           val processBuilder = new ProcessBuilder(args.asJava)
             .redirectOutput(INHERIT)
             .redirectError(INHERIT)
@@ -104,7 +100,7 @@ abstract class RichProcess protected[process](
         killWithUnixCommand(pid, force)
 
       case _ =>
-        destroyWithJava(force)
+        killWithJava(force)
 
   private def killWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
     ifAliveForKilling("killWithUnixCommand"):
@@ -113,10 +109,10 @@ abstract class RichProcess protected[process](
         else if force then processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
       if argsPattern.isEmpty then
-        destroyWithJava(force)
+        killWithJava(force)
       else if !argsPattern.contains("$pid") then
         logger.error(s"Missing '$pid' in configured kill command")
-        destroyWithJava(force)
+        killWithJava(force)
       else
         val args = argsPattern.mapOrKeep:
           case "$pid" => pid.number.toString
@@ -126,7 +122,7 @@ abstract class RichProcess protected[process](
               IO.unit
             else IO.defer:
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
-              destroyWithJava(force)
+              killWithJava(force)
 
   /** Kill process per command as Java's Process destroy closes stdout and stderr.
    * Closing stdout or stderr may block child processes trying to write to stdout
@@ -134,7 +130,7 @@ abstract class RichProcess protected[process](
    */
   private def executeKillCommand(args: Seq[String]): IO[ReturnCode] =
     IO.defer:
-      logger.info(args.mkString(" "))
+      logger.info(s"⚫️ ${args.mkString(" ")}")
       ProcessBuilder(args.asJava)
         .redirectOutput(INHERIT)  // TODO Pipe to stdout
         .redirectError(INHERIT)
@@ -142,21 +138,20 @@ abstract class RichProcess protected[process](
         .flatMap: killProcess =>
           waitForProcessTermination(JavaProcess(killProcess))
 
-  private def destroyWithJava(force: Boolean): IO[Unit] =
+  private def killWithJava(force: Boolean): IO[Unit] =
     IO:
       if force then
-        logger.debug("destroyForcibly")
+        logger.info("⚫️ destroyForcibly (SIGKILL)")
         process.destroyForcibly()
       else
-        logger.debug("destroy (SIGTERM)")
+        logger.info("⚫️ destroy (SIGTERM)")
         process.destroy()
 
   private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
     IO.defer:
       if !process.isAlive then
-        IO(logger.info(s"$label: 🚫 Not killed because process has already terminated with ${
-          process.returnCode.fold("?")(_.pretty(isWindows))
-        }"))
+        IO(logger.debug(s"$label: 🚫 Process not killed because it has already terminated with ${
+          process.returnCode.fold("?")(_.pretty(isWindows))}"))
       else
         body
 

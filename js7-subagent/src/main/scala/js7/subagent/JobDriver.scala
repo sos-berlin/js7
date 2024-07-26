@@ -10,6 +10,7 @@ import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -44,30 +45,25 @@ private final class JobDriver(
   for problem <- checkedJobLauncher.left do logger.error(problem.toString)
 
   def stop(signal: ProcessSignal): IO[Unit] =
-    IO.defer:
-      logger.debug("Stop")
-      lastProcessTerminated = Deferred.unsafe
-      (if orderToProcess.isEmpty then
-        IO.unit
-      else
-        killAll(signal)
-          .flatMap: _ =>
+    logger.debugIO("stop", signal):
+      IO.defer:
+        lastProcessTerminated = Deferred.unsafe
+        IO.unlessA(orderToProcess.isEmpty):
+          killAll(signal) *>
             IO.unlessA(signal == SIGKILL):
-              (IO.sleep(sigkillDelay) *> killAll(SIGKILL))
-                // TODO Cancel Fiber when process has terminated before sigkillDelay
-                .startAndForget
-          .flatMap: _ =>
-            lastProcessTerminated.get
+              IO.sleep(sigkillDelay) *> killAll(SIGKILL)
+            .background.surround:
+              lastProcessTerminated.get
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
-      ).flatMap: _ =>
-        checkedJobLauncher.toOption.fold(IO.unit): jobLauncher =>
-          logger.trace("JobLauncher stop")
-          jobLauncher
-            .stop
-            .logWhenItTakesLonger
-            .handleError(throwable =>
-              logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
-                throwable.nullIfNoStackTrace))
+        .flatMap: _ =>
+          checkedJobLauncher.toOption.fold(IO.unit): jobLauncher =>
+            logger.traceIO("JobLauncher stop"):
+              jobLauncher
+                .stop
+                .logWhenItTakesLonger
+                .handleError: throwable =>
+                  logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
+                    throwable.nullIfNoStackTrace)
 
   /** Starts the process and returns a Fiber returning the process' outcome. */
   def runOrderProcess(
@@ -125,6 +121,8 @@ private final class JobDriver(
                     case outcome => outcome)
             IO.both(maybeKillAfterStart, awaitTermination)
               .map((_, outcome) => outcome)
+          .flatTap: _ =>
+            entry.sigkillFiber.cancel
           .handleError: t =>
             logger.error(s"${processOrder.order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             OrderOutcome.Failed.fromThrowable(t)
@@ -192,12 +190,14 @@ private final class JobDriver(
     IO.defer:
       val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
       entry.killSignal = Some(signal)
-      killProcess(entry, signal)
-        .flatMap: _ =>
-          IO.unlessA(signal == SIGKILL):
-            (IO.sleep(sigkillDelay) *> killProcess(entry, SIGKILL))
-              // TODO Cancel Fiber when process has terminated before sigkillDelay
-              .startAndForget
+      killProcess(entry, signal) *>
+        IO.unlessA(signal == SIGKILL):
+          (IO.sleep(sigkillDelay) *>
+            IO.defer:
+              logger.warn("SIGKILL after sigkillDelay elapsed")
+              killProcess(entry, SIGKILL))
+            .start
+            .flatMap(entry.sigkillFiber.set)
 
   private def killAll(signal: ProcessSignal): IO[Unit] =
     IO.defer:
@@ -213,9 +213,7 @@ private final class JobDriver(
 
   private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      if  signal == SIGKILL && entry.sigkilled then
-        IO.unit
-      else
+      IO.unlessA(signal == SIGKILL && entry.sigkilled):
         entry.orderProcess match
           case None =>
             logger.debug(s"killProcess(${entry.orderId},  $signal): no OrderProcess")
@@ -237,6 +235,7 @@ private object JobDriver:
     var orderProcess: Option[OrderProcess] = None
     var killSignal: Option[ProcessSignal] = None
     val timeoutFiber = FiberVar[Unit]()
+    val sigkillFiber = FiberVar[Unit]()
     var runningSince: SyncDeadline = null
     var isKilled = false
     var sigkilled = false

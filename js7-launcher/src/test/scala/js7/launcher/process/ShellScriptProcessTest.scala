@@ -16,13 +16,15 @@ import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.job.{CommandLine, TaskId}
+import js7.data.job.{CommandLine, JobKey, TaskId}
+import js7.data.order.OrderId
+import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.RichProcess.tryDeleteFile
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import js7.launcher.{StdObservers, StdObserversForTest}
-import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.Future
 
 /**
@@ -54,7 +56,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         _ <- runningShellScript(ProcessConfiguration.forTest, scriptFile)
           .use: (shellProcess, sink) =>
             for
-              rc <- shellProcess.awaitProcessTermination
+              rc <- shellProcess.watchProcessAndStdouterr
             yield
               assert(rc == ReturnCode(0) &&
                 sink.out.await(99.s) == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
@@ -97,7 +99,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         scriptFile.writeUtf8Executable:
           if isWindows then
             """echo SCRIPT-ARGUMENTS=%*
-              |ping -n 7 127.0.0.1
+              |ping -n 4 127.0.0.1
               |""".stripMargin
           else
             "echo SCRIPT-ARGUMENTS=$*; sleep 3"
@@ -118,11 +120,14 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           runningShellScript(processConfig, scriptFile)
             .use: (shellProcess, sink) =>
               IO:
-                sleep(3.s)
+                sleep(1.s)
                 assert(shellProcess.isAlive)
                 shellProcess.sendProcessSignal(SIGKILL).await(99.s)
-                awaitAndAssert { !shellProcess.isAlive }
-                val rc = shellProcess.awaitProcessTermination await 99.s
+                val rc0 = shellProcess.awaitProcessTermination.await(99.s)
+                assert(!shellProcess.isAlive)
+
+                val rc = shellProcess.watchProcessAndStdouterr await 99.s
+                assert(rc == rc0)
                 assert(rc == (
                   if isWindows then ReturnCode(1/* This is Java destroy()*/)
                   else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
@@ -145,11 +150,10 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           runningShellScript(ProcessConfiguration.forTest, scriptFile)
             .use: (shellProcess, sink) =>
               IO:
-                sleep(3.s)
+                sleep(1.s)
                 assert(shellProcess.isAlive)
                 shellProcess.sendProcessSignal(SIGTERM).await(99.s)
-                awaitAndAssert { !shellProcess.isAlive }
-                val rc = shellProcess.awaitProcessTermination await 99.s
+                val rc = shellProcess.watchProcessAndStdouterr await 99.s
                 assert(rc == ReturnCode(7))
             .await(99.s)
 
@@ -159,7 +163,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
   : IO[(ReturnCode, StdObserversForTest.TestSink)] =
     runningShellScript(processConfiguration, executable)
       .use: (shellScriptProcess, sink) =>
-        shellScriptProcess.awaitProcessTermination
+        shellScriptProcess.watchProcessAndStdouterr
           .map(_ -> sink)
 
   private def runningShellScript(
@@ -174,7 +178,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
             CommandLine(List(executable.toString)),
             processConfiguration,
             testSink.stdObservers,
-            name = "ShellScriptProcessTest")
+            OrderId("ORDER"), JobKey.Anonymous(WorkflowPath("WORKFLOW") /: Position(0)))
         yield
           checkedProcess.orThrow -> testSink
 

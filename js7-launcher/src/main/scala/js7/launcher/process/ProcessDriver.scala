@@ -54,12 +54,13 @@ final class ProcessDriver(
             killedBeforeStart.traverse:
               sendProcessSignal(process, _)
             .flatMap: _ =>
-              process.watchProcess
+              process.watchProcessAndStdouterr
                 .attempt.flatMap: either =>
                   IO.defer:
                     // Don't log PID because the process may have terminated long before
                     // stdout or stderr ended (due to still running child processes)
-                    logger.info(s"$orderId ↙ Process terminated with ${either.merge} after ${process.duration.pretty}")
+                    logger.info:
+                      s"$orderId ↙ Process completed with ${either.merge} after ${process.duration.pretty}"
                     IO.fromEither(either)
                 .flatMap: returnCode =>
                   outcomeOf(process, returnCode)
@@ -135,9 +136,7 @@ final class ProcessDriver(
           sendProcessSignal(richProcess, signal))
 
   private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
-    IO.defer:
-      logger.info(s"""$orderId ⚫️ Process $richProcess: kill $signal""")
-      richProcess.sendProcessSignal(signal)
+    richProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
 
