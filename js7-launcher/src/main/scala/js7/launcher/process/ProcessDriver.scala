@@ -95,7 +95,7 @@ final class ProcessDriver(
                   maybeWindowsLogon)
           .flatMapT: processConfiguration =>
             startProcessLock.lock("startProcess"):
-              globalStartProcessLock
+              GlobalStartProcessLock
                 .lock(orderId.toString):
                   startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
                     orderId, conf.jobKey)
@@ -145,7 +145,7 @@ object ProcessDriver:
   private val logger = Logger[this.type]
 
   /** Linux may return a "busy" error when starting many processes at once. */
-  private val globalStartProcessLock = AsyncLock("Process start")
+  private val GlobalStartProcessLock = AsyncLock("Process start")
 
   private object taskIdGenerator extends AbstractIterator[TaskId]:
     private val generator = newGenerator()

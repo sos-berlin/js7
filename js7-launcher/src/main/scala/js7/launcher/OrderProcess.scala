@@ -29,6 +29,7 @@ trait OrderProcess:
           OrderOutcome.Failed.fromThrowable(t)
         .start
 
+
 object OrderProcess:
   private val logger = Logger[this.type]
 
@@ -43,8 +44,7 @@ object OrderProcess:
 
   private final class Simple(io: IO[OrderOutcome.Completed])
   extends OrderProcess.FiberCancelling:
-    val run = io
-      .start
+    val run = io.start
 
     override def toString = "OrderProcess.Simple"
 

@@ -148,23 +148,24 @@ final class InternalJobTest
 
   private def testCancelJob[J: ClassTag](): Unit =
     val versionId = versionIdIterator.next()
-    val workflow = Workflow.of(execute_[J])
-      .withId(workflowPathIterator.next() ~ versionId)
+    val workflow = Workflow.of(execute_[J]).withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(1)))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    // Let cancel handler throw its exception
-    controller.api.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill()))
-      .await(99.s).orThrow
+    // Let the cancel handler throw its exception
+    controller.api.executeCommand:
+      CancelOrders(Seq(order.id), CancellationMode.kill())
+    .await(99.s).orThrow
     eventWatch.await[OrderCancellationMarked](_.key == order.id)
     sleep(50.ms)
 
     // Now cancel immediately
-    controller.api.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
-      .await(99.s).orThrow
+    controller.api.executeCommand:
+      CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true))
+    .await(99.s).orThrow
     val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
     assert(outcome == OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled"))))
     eventWatch.await[OrderProcessingKilled](_.key == order.id)

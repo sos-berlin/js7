@@ -2,7 +2,7 @@ package js7.launcher.forjava.internal
 
 import cats.effect.IO
 import js7.base.catsutils.CatsEffectExtensions.blockingOn
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.launcher.OrderProcess
@@ -31,16 +31,16 @@ extends InternalJob:
   def toOrderProcess(step: Step) =
     val jStep = BlockingInternalJob.Step(step)(using jobContext.ioRuntime)
 
-    helper.callProcessOrder { jInternalJob =>
-      val orderProcessIO: IO[BlockingInternalJob.OrderProcess] =
-        IO.blockingOn(blockingJobEC):
-          jInternalJob.toOrderProcess(jStep)
-        .unsafeMemoize
+    helper.callProcessOrder: jInternalJob =>
+      val memoizedOrderProcess: IO[BlockingInternalJob.OrderProcess] =
+        memoize:
+          IO.blockingOn(blockingJobEC):
+            jInternalJob.toOrderProcess(jStep)
 
       new OrderProcess:
         protected def run =
           for
-            orderProcess <- orderProcessIO
+            orderProcess <- memoizedOrderProcess
             fiber <-
               IO.blockingOn(blockingJobEC):
                 orderProcess.run()
@@ -56,4 +56,3 @@ extends InternalJob:
 
         override def toString =
           s"BlockingINternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"
-    }

@@ -123,7 +123,7 @@ object OrderOutcome:
     def show: String =
       "Failed" +
         ((uncatchable || errorMessage.isDefined) ??
-          ("(" + (View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ")) + ")"))
+          ("(" + View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ") + ")"))
 
   object Failed extends Completed.Companion[Failed]:
     def apply(

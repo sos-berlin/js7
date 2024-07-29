@@ -36,7 +36,7 @@ private final class JobDriver(
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
   private val orderToProcess = AsyncMap.empty[OrderId, Entry]
-  @volatile private var lastProcessTerminated: Deferred[IO, Unit] = null
+  @volatile private var lastProcessTerminated: Deferred[IO, Unit] | Null = null
 
   for launcher <- checkedJobLauncher do
     // TODO JobDriver.start(): IO[Checked[JobDriver]]
@@ -230,13 +230,15 @@ private final class JobDriver(
 
   private def orderProcessCount = orderToProcess.size
 
+
 private object JobDriver:
+
   private final class Entry(val orderId: OrderId):
     var orderProcess: Option[OrderProcess] = None
     var killSignal: Option[ProcessSignal] = None
     val timeoutFiber = FiberVar[Unit]()
     val sigkillFiber = FiberVar[Unit]()
-    var runningSince: SyncDeadline = null
+    var runningSince: SyncDeadline | Null = null
     var isKilled = false
     var sigkilled = false
     var timedOut = false
