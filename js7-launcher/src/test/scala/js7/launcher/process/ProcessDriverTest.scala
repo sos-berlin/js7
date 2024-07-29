@@ -9,6 +9,7 @@ import java.nio.file.Files.createTempDirectory
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileDeleter.tryDeleteFiles
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
@@ -122,7 +123,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         IO(info(Stopwatch.itemsPerSecondString(duration, n, "ProcessDriver")))
       .as(succeed)
     .guarantee(IO:
-      PipedProcess.tryDeleteFiles(shellFile :: Nil)
+      tryDeleteFiles(shellFile :: Nil)
       deleteDirectoryRecursively(executableDirectory))
 
 

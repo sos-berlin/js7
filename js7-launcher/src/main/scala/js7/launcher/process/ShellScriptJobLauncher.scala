@@ -18,7 +18,7 @@ import js7.data.job.{JobConf, ShellScriptExecutable}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
-import js7.launcher.process.PipedProcess.{tryDeleteFile, tryDeleteFiles}
+import js7.base.io.file.FileDeleter.{tryDeleteFile, tryDeleteFiles}
 import js7.launcher.process.ShellScriptJobLauncher.writeScriptToFile
 import scala.collection.mutable
 
@@ -49,10 +49,10 @@ extends PathProcessJobLauncher:
                 userToFile.update(maybeUserName, path)
                 path)
 
-  def stop: IO[Unit] = IO(
-    userToFile.synchronized {
-      tryDeleteFiles(userToFile.values)
-    })
+  def stop: IO[Unit] =
+    IO.interruptible:
+      userToFile.synchronized:
+        tryDeleteFiles(userToFile.values)
 
 
 object ShellScriptJobLauncher:

@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
 import java.nio.file.Files.*
 import java.nio.file.Path
+import js7.base.io.file.FileDeleter.tryDeleteFile
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.{newTemporaryShellFile, temporaryShellFileResource}

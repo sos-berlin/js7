@@ -4,8 +4,6 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.functor.*
 import java.io.{IOException, InputStream, OutputStream}
 import java.lang.ProcessBuilder.Redirect.{INHERIT, PIPE}
-import java.nio.file.Files.delete
-import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, right, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -32,7 +30,6 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
-import scala.util.control.NonFatal
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
@@ -350,17 +347,3 @@ object PipedProcess:
         .flatMap:
           case Left(((), logging)) => logging.cancel
           case Right((_, ())) => IO.unit // Forget fiber
-
-  def tryDeleteFile(file: Path): Boolean =
-    tryDeleteFiles(file :: Nil)
-
-  def tryDeleteFiles(files: Iterable[Path]): Boolean =
-    var allFilesDeleted = true
-    for file <- files do
-      try
-        logger.debug(s"Delete file '$file'")
-        delete(file)
-      catch case NonFatal(t) =>
-        allFilesDeleted = false
-        logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}")
-    allFilesDeleted

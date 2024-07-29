@@ -1,15 +1,14 @@
 package js7.launcher.process
 
 import java.nio.charset.Charset
-import java.nio.file.Files.{createTempFile, deleteIfExists}
+import java.nio.file.Files.createTempFile
 import java.nio.file.Path
+import js7.base.io.file.FileDeleter
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.value.{NamedValues, StringValue}
 import js7.launcher.process.ShellReturnValuesProvider.*
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -31,11 +30,7 @@ private final class ShellReturnValuesProvider(
 
   def tryDeleteFile(): Unit =
     if fileExists then
-      try deleteIfExists(file)
-      catch { case NonFatal(t) =>
-        logger.error(s"Cannot delete file '$file': ${t.toStringWithCauses}")
-        // TODO When Windows locks the file, try delete it later, asynchronously
-      }
+      FileDeleter.tryDeleteFile(file)
       fileExists = false
 
   def toEnv: (String, String) =
