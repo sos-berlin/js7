@@ -5,6 +5,8 @@ import cats.syntax.traverse.*
 import java.nio.charset.Charset
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
+import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.io.file.FileDeleter.{tryDeleteFile, tryDeleteFiles}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.Checked
@@ -18,7 +20,6 @@ import js7.data.job.{JobConf, ShellScriptExecutable}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
-import js7.base.io.file.FileDeleter.{tryDeleteFile, tryDeleteFiles}
 import js7.launcher.process.ShellScriptJobLauncher.writeScriptToFile
 import scala.collection.mutable
 
@@ -36,18 +37,20 @@ extends PathProcessJobLauncher:
       executable.login
         .traverse(login => WindowsProcessCredential.keyToUser(login.credentialKey))
     .flatMapT: maybeUserName =>
-        userToFileLock.lock(IO:
-          userToFile.get(maybeUserName) match
-            case Some(path) => Right(path)
-            case None =>
-              writeScriptToFile(
-                executable.script,
-                jobLauncherConf.shellScriptTmpDirectory,
-                jobLauncherConf.systemEncoding,
-                maybeUserName
-              ).map: path =>
-                userToFile.update(maybeUserName, path)
-                path)
+        userToFileLock.lock:
+          IO.defer:
+            userToFile.get(maybeUserName) match
+              case Some(path) => IO.right(path)
+              case None =>
+                IO.blocking:
+                  writeScriptToFile(
+                    executable.script,
+                    jobLauncherConf.shellScriptTmpDirectory,
+                    jobLauncherConf.systemEncoding,
+                    maybeUserName)
+                .flatTapT: path =>
+                  IO.right:
+                    userToFile.update(maybeUserName, path)
 
   def stop: IO[Unit] =
     IO.interruptible:
@@ -56,6 +59,7 @@ extends PathProcessJobLauncher:
 
 
 object ShellScriptJobLauncher:
+
   def checked(
     executable: ShellScriptExecutable,
     jobConf: JobConf,
@@ -71,20 +75,19 @@ object ShellScriptJobLauncher:
   private[process] def writeScriptToFile(script: String, tmpDir: Path, encoding: Charset,
     userName: Option[WindowsUserName], isWindows: Boolean = OperatingSystem.isWindows)
   : Checked[Path] =
-    catchNonFatal {
+    catchNonFatal:
       val ext = if isWindows then ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes*)
-    }.flatMap { file =>
+    .flatMap: file =>
       catchNonFatal:
         val scrpt = if isWindows then crRegex.replaceAllIn(script, "\r\n") else script
         file.write(scrpt, encoding)
-      .flatMap(_ => makeFileUserAccessible(userName, file))
-      .left.map { problem =>
+      .flatMap:
+        _ => makeFileUserAccessible(userName, file)
+      .left.map: problem =>
         tryDeleteFile(file)
         problem
-      }
       .map(_ => file)
-    }
 
   private def makeFileUserAccessible(userName: Option[WindowsUserName], file: Path): Checked[Unit] =
     userName match
