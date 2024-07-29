@@ -149,6 +149,7 @@ final class SuspendResumeOrdersTest
     val order = FreshOrder(OrderId("♣️"), singleJobWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    sleep(200.ms) // Wait until process has been started
 
     executeCommand(SuspendOrders(Set(order.id), SuspensionMode(Some(CancellationMode.Kill()))))
       .await(99.s).orThrow

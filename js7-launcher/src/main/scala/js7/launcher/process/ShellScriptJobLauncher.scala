@@ -18,7 +18,7 @@ import js7.data.job.{JobConf, ShellScriptExecutable}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
-import js7.launcher.process.RichProcess.{tryDeleteFile, tryDeleteFiles}
+import js7.launcher.process.PipedProcess.{tryDeleteFile, tryDeleteFiles}
 import js7.launcher.process.ShellScriptJobLauncher.writeScriptToFile
 import scala.collection.mutable
 
@@ -32,12 +32,12 @@ extends PathProcessJobLauncher:
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 
   protected def checkFile =
-    IO(
+    IO:
       executable.login
         .traverse(login => WindowsProcessCredential.keyToUser(login.credentialKey))
-    ).flatMapT(maybeUserName =>
-        userToFileLock.lock(IO {
-          userToFile.get(maybeUserName) match {
+    .flatMapT: maybeUserName =>
+        userToFileLock.lock(IO:
+          userToFile.get(maybeUserName) match
             case Some(path) => Right(path)
             case None =>
               writeScriptToFile(
@@ -45,12 +45,9 @@ extends PathProcessJobLauncher:
                 jobLauncherConf.shellScriptTmpDirectory,
                 jobLauncherConf.systemEncoding,
                 maybeUserName
-              ).map { path =>
+              ).map: path =>
                 userToFile.update(maybeUserName, path)
-                path
-              }
-          }
-        }))
+                path)
 
   def stop: IO[Unit] = IO(
     userToFile.synchronized {

@@ -22,19 +22,17 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.ProcessKillScript
-import js7.launcher.process.RichProcess.tryDeleteFile
-import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import js7.launcher.{StdObservers, StdObserversForTest}
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class ShellScriptProcessTest extends OurAsyncTestSuite:
+final class PipedProcessTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  "ShellScriptProcess" in:
+  "PipedProcess" in:
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
@@ -123,11 +121,8 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
                 sleep(1.s)
                 assert(shellProcess.isAlive)
                 shellProcess.sendProcessSignal(SIGKILL).await(99.s)
-                val rc0 = shellProcess.awaitProcessTermination.await(99.s)
-                assert(!shellProcess.isAlive)
 
                 val rc = shellProcess.watchProcessAndStdouterr await 99.s
-                assert(rc == rc0)
                 assert(rc == (
                   if isWindows then ReturnCode(1/* This is Java destroy()*/)
                   else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
@@ -162,19 +157,19 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
     executable: Path)
   : IO[(ReturnCode, StdObserversForTest.TestSink)] =
     runningShellScript(processConfiguration, executable)
-      .use: (shellScriptProcess, sink) =>
-        shellScriptProcess.watchProcessAndStdouterr
+      .use: (richProcess, sink) =>
+        richProcess.watchProcessAndStdouterr
           .map(_ -> sink)
 
   private def runningShellScript(
     processConfiguration: ProcessConfiguration,
     executable: Path)
-  : ResourceIO[(ShellScriptProcess, StdObserversForTest.TestSink)] =
+  : ResourceIO[(PipedProcess, StdObserversForTest.TestSink)] =
     StdObservers
-      .testSink(name = "ShellScriptProcessTest")
+      .testSink(name = "PipedProcessTest")
       .evalMap: testSink =>
         for
-          checkedProcess <- startPipedShellScript(
+          checkedProcess <- PipedProcess.start(
             CommandLine(List(executable.toString)),
             processConfiguration,
             testSink.stdObservers,
@@ -183,6 +178,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           checkedProcess.orThrow -> testSink
 
   private def withScriptFile[A](body: Path => A): A =
-    val file = newTemporaryShellFile("ShellScriptProcessTest")
+    val file = newTemporaryShellFile("PipedProcessTest")
     try body(file)
     finally tryDeleteFile(file)

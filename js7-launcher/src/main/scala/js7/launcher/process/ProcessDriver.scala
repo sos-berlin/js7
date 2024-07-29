@@ -18,8 +18,8 @@ import js7.data.value.NamedValues
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
+import js7.launcher.process.PipedProcess.start
 import js7.launcher.process.ProcessDriver.*
-import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import scala.collection.AbstractIterator
 
 final class ProcessDriver(
@@ -36,7 +36,7 @@ final class ProcessDriver(
     jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
   //private val terminatedPromise = Deferred.unsafe[IO, Either[Throwable, Completed]]
-  private val richProcessOnce = SetOnce[RichProcess]
+  private val richProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
@@ -68,7 +68,7 @@ final class ProcessDriver(
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : IO[Checked[ShellScriptProcess]] =
+  : IO[Checked[PipedProcess]] =
     IO.defer:
       killedBeforeStart match
         case Some(signal) =>
@@ -97,14 +97,14 @@ final class ProcessDriver(
             startProcessLock.lock("startProcess"):
               GlobalStartProcessLock
                 .lock(orderId.toString):
-                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
+                  PipedProcess.start(conf.commandLine, processConfiguration, stdObservers,
                     orderId, conf.jobKey)
                 .flatTapT: richProcess =>
                   IO:
                     richProcessOnce := richProcess
                     Checked.unit
 
-  private def outcomeOf(richProcess: RichProcess, returnCode: ReturnCode)
+  private def outcomeOf(richProcess: PipedProcess, returnCode: ReturnCode)
   : IO[OrderOutcome.Completed] =
     fetchReturnValuesThenDeleteFile.map:
       case Left(problem) =>
@@ -135,7 +135,7 @@ final class ProcessDriver(
         case Some(richProcess) =>
           sendProcessSignal(richProcess, signal))
 
-  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
+  private def sendProcessSignal(richProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
     richProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"

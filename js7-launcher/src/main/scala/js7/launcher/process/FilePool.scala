@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.base.log.Logger
 import js7.data.job.JobKey
 import js7.launcher.process.FilePool.*
-import js7.launcher.process.RichProcess.tryDeleteFiles
+import js7.launcher.process.PipedProcess.tryDeleteFiles
 import scala.collection.mutable
 
 // Not used !!!

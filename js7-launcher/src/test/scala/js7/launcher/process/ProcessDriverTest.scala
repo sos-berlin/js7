@@ -122,7 +122,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         IO(info(Stopwatch.itemsPerSecondString(duration, n, "ProcessDriver")))
       .as(succeed)
     .guarantee(IO:
-      RichProcess.tryDeleteFiles(shellFile :: Nil)
+      PipedProcess.tryDeleteFiles(shellFile :: Nil)
       deleteDirectoryRecursively(executableDirectory))
 
 

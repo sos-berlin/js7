@@ -87,7 +87,7 @@ final class StdObservers private(
         case exitCase @ ExitCase.Canceled =>
           // FIXME When cancelling the stream, io.blocking happens to block itself.
           //  It does not execute its body and instead waits forever. Why?
-          //  ShellScriptProcess inhibits cancellation and instead waits (forever) for
+          //  PipedProcess inhibits cancellation and instead waits (forever) for
           //  stream termination.
           IO.blocking(())
             .logWhenItTakesLonger:
