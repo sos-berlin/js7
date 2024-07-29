@@ -533,7 +533,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   val suppress = sys.props(k).toBoolean
                   if suppress then
                     logger.warn:
-                      s"🚫🚫 Acknowledgement receiving is suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k"
+                      s"❌❌ Acknowledgement receiving is suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k"
                     logged = true
                   !suppress
             .detectPauses(timing.passiveLostTimeout)

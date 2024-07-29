@@ -55,4 +55,4 @@ extends InternalJob:
               orderProcess.cancel(immediately)
 
         override def toString =
-          s"BlockingINternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"
+          s"BlockingInternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"

@@ -302,7 +302,7 @@ object InternalJobTest:
       Right(())
 
     override def stop =
-      IO.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
+      IO.raiseError(new RuntimeException("AddOneJob.stop FAILS"))
 
     def toOrderProcess(step: Step) =
       OrderProcess:

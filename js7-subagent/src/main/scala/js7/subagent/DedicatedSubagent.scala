@@ -239,7 +239,7 @@ extends Service.StoppableByRequest:
           val orderProcessed = OrderProcessed(outcome)
           if journal.isHalted then
             // We simulate !!!
-            logger.debug(s"⚠️  $orderProcessed suppressed because journal is halted")
+            logger.debug(s"⚠️ $orderProcessed suppressed because journal is halted")
             IO.pure(orderProcessed)
           else
             journal

@@ -132,7 +132,7 @@ extends SignatureVerifier, Service.StoppableByCancel:
         logger.error(s"${companion.typeName} signature keys are not readable: $problem")
 
       case Right(verifier) =>
-        logger.info("Trusting signature key")
+        logger.info("Trusting signature keys:")
         for o <- verifier.publicKeysToStrings do logger.info(s"  $o")
         if files.isEmpty then
           logger.warn(

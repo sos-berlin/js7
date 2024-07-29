@@ -153,8 +153,8 @@ private final class JobDriver(
           .flatMap: _ =>
             SyncDeadline.usingNow:
               entry.timedOut = true
-              logger.warn(s"OrderProcess has timed out after ${entry.runningSince.elapsed.pretty
-              } and will be killed now")
+              logger.warn(s"${entry.orderId}: OrderProcess has timed out after ${
+                entry.runningSince.elapsed.pretty} and will be killed now")
           .flatMap: _ =>
             killOrderAndForget(entry, SIGTERM)
         .start
@@ -177,15 +177,15 @@ private final class JobDriver(
   private def killOrderAndForget(entry: Entry, signal: ProcessSignal): IO[Unit] =
     killOrder(entry, signal)
       .handleError: t =>
-        logger.error(s"${t.toStringWithCauses} - ${entry.orderId}", t)
+        logger.error(s"${entry.orderId}: ${t.toStringWithCauses}", t)
       .startAndForget
 
   def killOrder(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:
       orderToProcess
         .get(orderId)
-        .fold(IO(logger.debug(s"⚠️ killOrder $orderId => no process for Order")))(
-          killOrder(_, signal))
+        .fold(IO(logger.debug(s"⚠️ $orderId: killOrder $orderId => no process for Order"))):
+          killOrder(_, signal)
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): IO[Unit] =
     IO.defer:
@@ -195,7 +195,7 @@ private final class JobDriver(
         IO.unlessA(signal == SIGKILL):
           (IO.sleep(sigkillDelay) *>
             IO.defer:
-              logger.warn("SIGKILL after sigkillDelay elapsed")
+              logger.warn(s"${entry.orderId}: SIGKILL after sigkillDelay elapsed")
               killProcess(entry, SIGKILL))
             .start
             .flatMap(entry.sigkillFiber.set)
@@ -210,7 +210,7 @@ private final class JobDriver(
         .traverse(killProcess(_, signal))
         .map(_.combineAll)
         .handleError: t =>
-          logger.error(t.toStringWithCauses, t)
+          logger.error(s"killAll: ${t.toStringWithCauses}", t)
 
   private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
     IO.defer:
