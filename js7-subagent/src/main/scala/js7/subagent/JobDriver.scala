@@ -101,7 +101,8 @@ private final class JobDriver(
   private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder, entry: Entry)
   : IO[Checked[OrderOutcome]] =
     jobLauncher.startIfNeeded
-      .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
+      .flatMapT: _ =>
+        jobLauncher.toOrderProcess(processOrder)
       .flatMapT: orderProcess =>
         entry.orderProcess = Some(orderProcess)
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
