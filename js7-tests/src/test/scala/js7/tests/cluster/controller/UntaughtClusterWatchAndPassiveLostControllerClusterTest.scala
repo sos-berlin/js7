@@ -9,13 +9,15 @@ import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
-import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
+import js7.data.cluster.{ClusterTiming, ClusterWatchCheckEvent, ClusterWatchId}
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.UntaughtClusterWatchAndPassiveLostControllerClusterTest.*
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends ControllerClusterTester:
+
+  override protected val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 1.s)
 
   protected override def agentPaths = Nil // No Agent needed
   protected override def items = Nil // No Workflow needed
