@@ -37,9 +37,8 @@ private final class ShellReturnValuesProvider(
     varName -> file.toString
 
   def read(): NamedValues =
-    autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)) { source =>
-      (source.getLines() map lineToNamedvalue).toMap
-    }
+    autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)): source =>
+      source.getLines().map(lineToNamedvalue).toMap
 
   private def lineToNamedvalue(line: String): (String, StringValue) =
     line match
@@ -48,7 +47,8 @@ private final class ShellReturnValuesProvider(
         "Not the expected syntax NAME=VALUE in files denoted by environment variable " +
           s"$varName: $line")
 
-  def varName = if v1Compatible then V1VarName else VarName
+  def varName: String =
+    if v1Compatible then V1VarName else VarName
 
   override def toString = file.toString
 
