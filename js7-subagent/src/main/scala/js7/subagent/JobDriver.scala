@@ -3,6 +3,8 @@ package js7.subagent
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.foldable.*
+import cats.syntax.functor.*
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -14,11 +16,14 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.OrderOutcome.Succeeded
 import js7.data.order.{Order, OrderId, OrderOutcome}
+import js7.data.subagent.Problems
+import js7.data.subagent.Problems.ProcessCancelledBeforeStartProblem
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
@@ -104,24 +109,28 @@ private final class JobDriver(
       .flatMapT: _ =>
         jobLauncher.toOrderProcess(processOrder)
       .flatMapT: orderProcess =>
-        entry.orderProcess = Some(orderProcess)
-        // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-        orderProcess
-          .start(processOrder.order.id, jobKey)
-          .flatMap: runningProcess =>
-            val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
-            val awaitTermination =
-              SyncDeadline.usingNow: now ?=>
-                entry.runningSince = now
-              .*>(scheduleTimeoutCancellation(entry))
-              .*>(IO.defer:
-                runningProcess.joinStd
-                  .map(entry.modifyOutcome)
-                  .map:
-                    case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome)
-                    case outcome => outcome)
-            IO.both(maybeKillAfterStart, awaitTermination)
-              .map((_, outcome) => outcome)
+        entry.orderProcess.getAndSet(Some(Right(orderProcess))).match
+          case None => IO.right(orderProcess)
+          case Some(Left(signal)) => // Canceled before start
+            cancelProcess(entry.orderId, orderProcess, signal)
+              .as(Left(ProcessCancelledBeforeStartProblem))
+          case Some(Right(_)) => IO(sys.error("Duplicate orderProcess?")) // Does not happen
+      .flatMap:
+        case Left(ProcessCancelledBeforeStartProblem) => IO.right:
+          OrderOutcome.Killed(OrderOutcome.Failed.fromProblem(ProcessCancelledBeforeStartProblem))
+        case Left(problem) => IO.left(problem)
+        case Right(orderProcess) =>
+          IO.defer:
+            orderProcess.start(processOrder.order.id, jobKey)
+          .flatMap: fiber =>
+            SyncDeadline.usingNow: now ?=>
+              entry.runningSince = now
+            .*>(scheduleTimeoutCancellation(entry))
+            .*>(IO.defer:
+              fiber.joinStd
+                .map(entry.modifyOutcome)
+                .mapOrKeep:
+                  case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome))
           .flatTap: _ =>
             entry.sigkillFiber.cancel
           .handleError: t =>
@@ -190,9 +199,8 @@ private final class JobDriver(
   private def killOrder(entry: Entry, signal_ : ProcessSignal): IO[Unit] =
     IO.defer:
       val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
-      entry.killSignal = Some(signal)
       killProcess(entry, signal) *>
-        IO.unlessA(signal == SIGKILL):
+        IO.whenA(signal != SIGKILL && entry.orderProcess.get.exists(_.isRight)/*OrderProcess?*/):
           (IO.sleep(sigkillDelay) *>
             IO.defer:
               logger.warn(s"${entry.orderId}: SIGKILL after sigkillDelay elapsed")
@@ -213,19 +221,25 @@ private final class JobDriver(
           logger.error(s"killAll: ${t.toStringWithCauses}", t)
 
   private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
+    import entry.orderId
     IO.defer:
       IO.unlessA(signal == SIGKILL && entry.sigkilled):
-        entry.orderProcess match
-          case None =>
-            logger.debug(s"killProcess(${entry.orderId},  $signal): no OrderProcess")
-            IO.unit
-          case Some(orderProcess) =>
-            logger.debug(s"Kill $signal ${entry.orderId}")
-            entry.isKilled = true
-            entry.sigkilled |= signal == SIGKILL
-            orderProcess.cancel(immediately = signal == SIGKILL)
-              .handleError(t => logger.error(
-                s"Kill ${entry.orderId}}: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+        entry.orderProcess.compareAndExchange(None, Some(Left(signal))) match
+          case None => IO(logger.debug(s"⚠️ $orderId: killProcess($signal) BEFORE STARTED"))
+          case Some(Left(signal)) => IO.unit // Ignore duplicate kill before started
+          case Some(Right(orderProcess)) =>
+            IO.defer:
+              logger.debug(s"$orderId: Kill $signal")
+              entry.isKilled = true
+              entry.sigkilled |= signal == SIGKILL
+              cancelProcess(orderId, orderProcess, signal)
+
+  private def cancelProcess(orderId: OrderId, orderProcess: OrderProcess, signal: ProcessSignal)
+  : IO[Unit] =
+    IO.defer:
+      orderProcess.cancel(immediately = signal == SIGKILL)
+    .handleError(t => logger.error(
+      s"$orderId: Kill $signal => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
   override def toString = s"JobDriver($jobKey ${workflowJob.executable})"
 
@@ -235,8 +249,7 @@ private final class JobDriver(
 private object JobDriver:
 
   private final class Entry(val orderId: OrderId):
-    var orderProcess: Option[OrderProcess] = None
-    var killSignal: Option[ProcessSignal] = None
+    val orderProcess = Atomic(none[Either[ProcessSignal/*killed before started*/, OrderProcess]])
     val timeoutFiber = FiberVar[Unit]()
     val sigkillFiber = FiberVar[Unit]()
     var runningSince: SyncDeadline | Null = null

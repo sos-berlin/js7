@@ -50,7 +50,7 @@ extends InternalJob:
             fiber
 
         def cancel(immediately: Boolean) =
-          orderProcessIO.flatMap: orderProcess =>
+          memoizedOrderProcess.flatMap: orderProcess =>
             IO.blockingOn(blockingJobEC):
               orderProcess.cancel(immediately)
 

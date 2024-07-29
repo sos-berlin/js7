@@ -58,3 +58,6 @@ object Problems:
   type NoDirectorProblem = NoDirectorProblem.type
   case object NoDirectorProblem extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503 // Service Unavailable
+
+  type ProcessCancelledBeforeStartProblem = ProcessCancelledBeforeStartProblem.type
+  case object ProcessCancelledBeforeStartProblem extends Problem.ArgumentlessCoded

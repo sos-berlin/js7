@@ -14,8 +14,10 @@ trait OrderProcess:
 
   protected def run: IO[FiberIO[OrderOutcome.Completed]]
 
-  protected def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit = {}
+  protected[OrderProcess] def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit = {}
 
+  /** Cancel this process.
+   * May be called before or after `onStarted` or `run`. */
   def cancel(immediately: Boolean): IO[Unit]
 
   /** Returns an IO for the started and running process. */
