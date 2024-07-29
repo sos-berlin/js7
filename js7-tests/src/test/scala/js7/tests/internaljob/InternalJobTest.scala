@@ -154,13 +154,13 @@ final class InternalJobTest
     val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(1)))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    sleep(300.ms) // Wait until OrderProcess has been started
 
     // Let the cancel handler throw its exception
     controller.api.executeCommand:
       CancelOrders(Seq(order.id), CancellationMode.kill())
     .await(99.s).orThrow
     eventWatch.await[OrderCancellationMarked](_.key == order.id)
-    sleep(50.ms)
 
     // Now cancel immediately
     controller.api.executeCommand:
@@ -331,6 +331,7 @@ object InternalJobTest:
            if immediately then
              super.cancel(immediately)
            else
-             sys.error("TEST EXCEPTION FOR KILL")
+             IO.raiseError(new RuntimeException("JOB'S CANCEL OPERATION THROWS EXCEPTION"))
+
   private object CancelableJob:
     val semaphore = Semaphore[IO](0).unsafeMemoize
