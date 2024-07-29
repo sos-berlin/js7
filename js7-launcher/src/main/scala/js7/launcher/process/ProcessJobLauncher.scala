@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.OrderOutcome
 import js7.data.value.StringValue
-import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
+import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.launcher.process.ProcessJobLauncher.*
 import js7.launcher.{OrderProcess, ProcessOrder}
@@ -27,7 +27,7 @@ trait ProcessJobLauncher extends JobLauncher:
 
     val processDriver = new ProcessDriver(
       order.id,
-      TaskConfiguration(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,
+      ProcessDriver.Conf(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,
         v1Compatible = v1Compatible),
       jobLauncherConf)
 

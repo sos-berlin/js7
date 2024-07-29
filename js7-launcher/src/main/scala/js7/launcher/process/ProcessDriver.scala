@@ -3,7 +3,7 @@ package js7.launcher.process
 import cats.effect.IO
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.left
-import js7.base.io.process.{ProcessSignal, ReturnCode}
+import js7.base.io.process.{KeyLogin, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -12,11 +12,11 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
-import js7.data.job.{ProcessExecutable, TaskId}
+import js7.data.job.{CommandLine, JobKey, ProcessExecutable, TaskId}
 import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.launcher.StdObservers
-import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
+import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
 import js7.launcher.process.ProcessDriver.*
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
@@ -24,7 +24,7 @@ import scala.collection.AbstractIterator
 
 final class ProcessDriver(
   orderId: OrderId,
-  conf: TaskConfiguration,
+  conf: Conf,
   jobLauncherConf: JobLauncherConf):
 
   import jobLauncherConf.implicitIox
@@ -151,3 +151,10 @@ object ProcessDriver:
     private val generator = newGenerator()
     def hasNext = generator.hasNext
     def next() = generator.next()
+
+  private[process] final case class Conf(
+    jobKey: JobKey,
+    toOutcome: (NamedValues, ReturnCode) => OrderOutcome.Completed,
+    commandLine: CommandLine,
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean = false)
