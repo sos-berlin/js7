@@ -39,15 +39,11 @@ extends InternalJob:
 
       new OrderProcess:
         protected def run =
-          for
-            orderProcess <- memoizedOrderProcess
-            fiber <-
+          memoizedOrderProcess
+            .flatMap: orderProcess =>
               IO.blockingOn(blockingJobEC):
                 orderProcess.run()
-              .map(_.asScala)
-              .start
-          yield
-            fiber
+            .map(_.asScala)
 
         def cancel(immediately: Boolean) =
           memoizedOrderProcess.flatMap: orderProcess =>

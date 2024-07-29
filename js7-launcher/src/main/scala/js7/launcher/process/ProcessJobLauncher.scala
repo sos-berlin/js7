@@ -32,16 +32,16 @@ trait ProcessJobLauncher extends JobLauncher:
       jobLauncherConf)
 
     new OrderProcess:
-      def run: IO[FiberIO[OrderOutcome.Completed]] =
+      def run: IO[OrderOutcome.Completed] =
         val checkedEnv = for
           jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
         yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
         checkedEnv match
           case Left(problem) =>
-            IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed).start
+            IO.pure(OrderOutcome.Failed.fromProblem(problem))
           case Right(env) =>
-            processDriver.runProcess(env, processOrder.stdObservers).start
+            processDriver.runProcess(env, processOrder.stdObservers)
 
       def cancel(immediately: Boolean) =
         processDriver.kill(if immediately then SIGKILL else SIGTERM)

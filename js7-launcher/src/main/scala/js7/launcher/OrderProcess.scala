@@ -12,7 +12,7 @@ import js7.launcher.OrderProcess.*
 
 trait OrderProcess:
 
-  protected def run: IO[FiberIO[OrderOutcome.Completed]]
+  protected def run: IO[OrderOutcome.Completed]
 
   protected[OrderProcess] def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit = {}
 
@@ -22,7 +22,7 @@ trait OrderProcess:
 
   /** Returns an IO for the started and running process. */
   final def start(orderId: OrderId, jobKey: JobKey): IO[FiberIO[OrderOutcome.Completed]] =
-    run.flatMap: fiber =>
+    run.start.flatMap: fiber =>
       onStarted(fiber)
       fiber
         .joinWith(onCancel = IO.pure(CanceledOutcome))
@@ -44,16 +44,16 @@ object OrderProcess:
   def fromCheckedOutcome(checkedOutcome: Checked[OrderOutcome.Completed]): OrderProcess =
     OrderProcess(IO.pure(OrderOutcome.Completed.fromChecked(checkedOutcome)))
 
-  private final class Simple(io: IO[OrderOutcome.Completed])
+  private final class Simple(
+    protected val run: IO[OrderOutcome.Completed])
   extends OrderProcess.FiberCancelling:
-    val run = io.start
-
     override def toString = "OrderProcess.Simple"
 
   final case class Failed(problem: Problem)
   extends OrderProcess:
     protected def run =
-      IO.pure(OrderOutcome.Failed.fromProblem(problem): OrderOutcome.Completed).start
+      IO.pure:
+        OrderOutcome.Failed.fromProblem(problem)
 
     def cancel(immediately: Boolean): IO[Unit] =
       IO.unit
@@ -63,7 +63,7 @@ object OrderProcess:
   trait FiberCancelling extends OrderProcess:
     private val fiberOnce = SetOnce[FiberIO[OrderOutcome.Completed]]
 
-    override protected def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit =
+    override protected[OrderProcess] def onStarted(fiber: FiberIO[OrderOutcome.Completed]): Unit =
       super.onStarted(fiber)
       fiberOnce := fiber
 

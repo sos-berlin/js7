@@ -325,7 +325,6 @@ object InternalJobTest:
            CancelableJob.semaphore
              .flatMap(_.acquire)
              .as(OrderOutcome.succeeded)
-             .start
 
          override def cancel(immediately: Boolean) =
            if immediately then
