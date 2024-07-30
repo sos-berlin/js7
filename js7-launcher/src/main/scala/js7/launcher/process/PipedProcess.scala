@@ -141,7 +141,7 @@ final class PipedProcess private(
             .toKillScriptCommandArgumentsOption(process.pid)
             .fold(kill(force = true)): args =>
               _isKilling = true
-              executeKillScript(args ++ process.pid.map(o => s"--pid=${o.string}"))
+              executeKillScript(args)
                 .handleError(t => logger.error:
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}")
                 .<*(kill(force = true))
@@ -170,11 +170,11 @@ final class PipedProcess private(
               logger.log(logLevel, s"Kill script '${args.head}' has returned $returnCode"))
 
   private def kill(force: Boolean): IO[Unit] =
-    (process, process.pid) match
-      case (_: JavaProcess, Some(pid)) =>
+    process match
+      case _: JavaProcess =>
         // Do not destroy with Java because Java closes stdout and stdin immediately,
         // not allowing a signal handler to write to stdout
-        killWithUnixCommand(pid, force)
+        killWithUnixCommand(process.pid, force)
 
       case _ =>
         killWithJava(force)

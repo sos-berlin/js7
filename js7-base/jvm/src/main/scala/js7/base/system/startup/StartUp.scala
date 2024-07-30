@@ -3,7 +3,6 @@ package js7.base.system.startup
 import java.io.File
 import java.time.ZonedDateTime
 import js7.base.BuildInfo
-import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.base.system.SystemInformations.totalPhysicalMemory
@@ -56,8 +55,7 @@ object StartUp:
       sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
       cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
       totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
-      " · " +
-      maybeOwnPid.fold("")(pid => s"pid=${pid.number} ") +
+      s" · pid=${ProcessHandle.current.pid} " +
       (hostname.nonEmpty ?? s"host=$hostname ")
     ).trim
 

@@ -8,7 +8,6 @@ import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.StandardOpenOption.{CREATE, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.io.file.FileUtils.tryDeleteDirectoryContentRecursively
-import js7.base.io.process.ProcessPidRetriever
 import js7.base.system.startup.StartUp.printlnWithClock
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
@@ -55,7 +54,7 @@ object JavaMainLockfileSupport:
     else
       createDirectory(workDirectory)
 
-  // Also write PID to lockFile (Java >= 9)
+  // Also write PID to lockFile
   private def lock(lockFile: Path)(body: IO[ProgramTermination]): IO[ProgramTermination] =
     IO.defer:
       val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
@@ -73,8 +72,9 @@ object JavaMainLockfileSupport:
 
         case Success(_) =>
           try
-            for pid <- ProcessPidRetriever.maybeOwnPid do
-              lockFileChannel.write(ByteBuffer.wrap(pid.string.getBytes(UTF_8)))
+            lockFileChannel.write:
+              ByteBuffer.wrap:
+                ProcessHandle.current.pid.toString.getBytes(UTF_8)
             body
           finally
             lockFileChannel.close()

@@ -29,7 +29,7 @@ final case class ProcessConfiguration(
   def idArgumentOption: Option[String] =
     maybeTaskId.map(o => s"--agent-task-id=${o.string}")
 
-  def toKillScriptCommandArgumentsOption(pid: Option[Pid]): Option[Seq[String]] =
+  def toKillScriptCommandArgumentsOption(pid: Pid): Option[Seq[String]] =
     for
       id <- maybeTaskId
       killScript <- maybeKillScript

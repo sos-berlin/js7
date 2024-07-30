@@ -485,7 +485,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         OrderOutcome.Succeeded(NamedValues.rc(2))))
 
   "Command line arguments" in:
-    // TODO Replace --agent-io-id= by something different (for example, PID returned by Java 9)
+    // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
     def removeTaskId(string: String): String =
       Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
 

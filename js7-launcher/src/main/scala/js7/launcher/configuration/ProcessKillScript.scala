@@ -12,8 +12,11 @@ final case class ProcessKillScript(file: Path) extends GenericString:
   def string: String =
     file.toString
 
-  def toCommandArguments(id: TaskId, pid: Option[Pid]): Seq[String] =
-    Vector(file.toString, s"--kill-agent-task-id=${id.string}") ++ (pid map { o => s"--pid=${o.string}" })
+  def toCommandArguments(id: TaskId, pid: Pid): Seq[String] =
+    Vector(
+      file.toString,
+      s"--kill-agent-task-id=${id.string}",
+      s"--pid=${pid.number}")
 
 
 object ProcessKillScript extends GenericString.Companion[ProcessKillScript]:

@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
+import js7.base.io.process.Processes.RobustlyStartProcess
 import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
@@ -43,7 +43,7 @@ final class ProcessKillScriptTest extends OurAsyncTestSuite:
       val (scriptFile, process) = startNestedProcess(TestTaskId, out)
       sleep(2.s)
       logProcessTree()
-      runKillScript(TestTaskId, processToPidOption(process))
+      runKillScript(TestTaskId, Pid(process.pid))
       process.waitFor(10, SECONDS)
       assert(process.exitValue == SIGKILLexitValue)
       sleep(1.s) // Time to let kill take effect
@@ -68,20 +68,19 @@ final class ProcessKillScriptTest extends OurAsyncTestSuite:
     val args = List(file.toString, s"--agent-task-id=${taskId.string}")
     val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT)
       .startRobustly().await(99.s)
-    logger.info(s"Started process ${processToPidOption(process)}")
+    logger.info(s"Started process ${process.pid}")
     (file, process)
 
-  private def runKillScript(taskId: TaskId, pidOption: Option[Pid]): Unit =
-    autoClosing(new ProcessKillScriptProvider) { provider =>
+  private def runKillScript(taskId: TaskId, pid: Pid): Unit =
+    autoClosing(new ProcessKillScriptProvider): provider =>
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
-      val args = killScript.toCommandArguments(taskId, pidOption)
+      val args = killScript.toCommandArguments(taskId, pid)
       val killProcess = new ProcessBuilder(args.asJava).startRobustly().await(99.s)
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
       deleteDirectoryRecursively(tmp)
-    }
 
   private def logProcessTree(): Unit =
     if isUnix && !isMac then
@@ -107,7 +106,10 @@ private object ProcessKillScriptTest:
         JavaResource("js7/launcher/process/scripts/unix/test.sh")
     resource.asUTF8String
 
-  private val SIGKILLexitValue = if isWindows then 1 else if isSolaris then SIGKILL.number else 128 + SIGKILL.number
+  private val SIGKILLexitValue =
+    if isWindows then 1
+    else if isSolaris then SIGKILL.number
+    else 128 + SIGKILL.number
 
   private def logStream(in: InputStream, prefix: String): Unit =
     logger.info("\n" + readLines(in, prefix).mkString("\n"))

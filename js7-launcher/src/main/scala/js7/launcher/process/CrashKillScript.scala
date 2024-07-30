@@ -48,7 +48,7 @@ extends AutoCloseable:
     else
       for (taskId, e) <- tasks do logger.warn(s"CrashKillScript left with task $taskId $e")
 
-  def add(id: TaskId, pid: Option[Pid]): Unit =
+  def add(id: TaskId, pid: Pid): Unit =
     add(id, Entry(id, pid))
 
   private def add(id: TaskId, entry: Entry): Unit =
@@ -75,7 +75,7 @@ extends AutoCloseable:
       move(tmp, file, REPLACE_EXISTING)
 
   private def idToKillCommand(id: TaskId, entry: Entry) =
-    val args = killScript.toCommandArguments(id, entry.pidOption)
+    val args = killScript.toCommandArguments(id, entry.pid)
     val cleanTail = args.tail collect { case CleanArgument(o) => o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
 
@@ -85,8 +85,8 @@ object CrashKillScript:
   private val LineSeparator = sys.props("line.separator")
   private val CleanArgument = "([A-Za-z0-9=,;:.+_/#-]*)".r      // No shell meta characters
 
-  private case class Entry(taskId: TaskId, pidOption: Option[Pid]):
-    override def toString = s"${taskId.string} ${pidOption getOrElse "?"}".trim
+  private case class Entry(taskId: TaskId, pid: Pid):
+    override def toString = s"$pid-${taskId.string}".trim
 
   private def open(path: Path, append: Boolean = false): Writer =
     new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path.toFile, append), defaultCharset))

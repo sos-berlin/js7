@@ -1,7 +1,6 @@
 package js7.base.io.process
 
 import java.io.{InputStream, OutputStream}
-import js7.base.io.process.Processes.{processToPidOption, processToString}
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
@@ -10,8 +9,8 @@ final class JavaProcess(process: Process) extends Js7Process:
   def isAlive: Boolean =
     process.isAlive
 
-  def pid: Option[Pid] =
-    processToPidOption(process)
+  val pid: Pid =
+    Pid(process.pid)
 
   def stdin: OutputStream =
     process.getOutputStream
@@ -38,7 +37,7 @@ final class JavaProcess(process: Process) extends Js7Process:
     process.getErrorStream
 
   override def toString: String =
-    processToString(process, pid)
+    pid.toString
 
 
 object JavaProcess:

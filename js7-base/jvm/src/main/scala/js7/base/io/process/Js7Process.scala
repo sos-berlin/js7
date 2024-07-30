@@ -4,7 +4,8 @@ import java.io.{InputStream, OutputStream}
 import scala.concurrent.duration.FiniteDuration
 
 trait Js7Process:
-  def pid: Option[Pid]
+
+  def pid: Pid
 
   def isAlive: Boolean
 

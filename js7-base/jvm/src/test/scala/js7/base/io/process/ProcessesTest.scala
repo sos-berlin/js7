@@ -1,7 +1,7 @@
 package js7.base.io.process
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import cats.instances.future.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import java.io.IOException
@@ -13,12 +13,11 @@ import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTempora
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -31,11 +30,10 @@ final class ProcessesTest extends OurTestSuite:
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
 
-  "processToPidOption, toShellCommandArguments" in:
+  "directShellCommandArguments" in:
     if isWindows then
       val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
         .startRobustly().await(99.s)
-      //assert(processToPidOption(process).isEmpty)
       process.waitFor()
       succeed
     else
@@ -44,7 +42,6 @@ final class ProcessesTest extends OurTestSuite:
       val process = new ProcessBuilder(args.asJava).redirectInput(PIPE)
         .startRobustly().await(99.s)
       val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
-      assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
       succeed
 

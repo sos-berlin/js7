@@ -11,8 +11,6 @@ import js7.data.job.TaskId
 final class ProcessKillScriptTest extends OurTestSuite:
 
   "toCommandArguments" in:
-    val killScript = ProcessKillScript(Paths.get("KILL-SCRIPT"))
-    assert(killScript.toCommandArguments(TaskId(1, 2), None) ==
-      List("KILL-SCRIPT", "--kill-agent-task-id=1-2"))
-    assert(killScript.toCommandArguments(TaskId(1, 2), Some(Pid(777))) ==
-      List("KILL-SCRIPT", "--kill-agent-task-id=1-2", "--pid=777"))
+    assert:
+      ProcessKillScript(Paths.get("KILL-SCRIPT")).toCommandArguments(TaskId(1, 2), Pid(777)) ==
+        List("KILL-SCRIPT", "--kill-agent-task-id=1-2", "--pid=777")

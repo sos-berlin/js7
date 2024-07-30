@@ -48,31 +48,34 @@ final class CrashKillScriptTest extends OurTestSuite, HasCloser, BeforeAndAfterA
     assert(lines == Nil)
 
   "add" in:
-    crashKillScript.add(TaskId("1-111"), pid = None)
-    assert(file.contentString == """"test-kill.sh" --kill-agent-task-id=1-111""" + (if isWindows then "\r\n" else "\n"))
+    crashKillScript.add(TaskId("1-111"), Pid(1111))
+    assert:
+      file.contentString ==
+        """"test-kill.sh" --kill-agent-task-id=1-111 --pid=1111""" +
+          (if isWindows then "\r\n" else "\n")
 
   "add more" in:
-    crashKillScript.add(TaskId("2-222"), pid = Some(Pid(123)))
-    crashKillScript.add(TaskId("3-333"), pid = None)
-    assert(lines == List(""""test-kill.sh" --kill-agent-task-id=1-111""",
-                         """"test-kill.sh" --kill-agent-task-id=2-222 --pid=123""",
-                         """"test-kill.sh" --kill-agent-task-id=3-333"""))
+    crashKillScript.add(TaskId("2-222"), Pid(2222))
+    crashKillScript.add(TaskId("3-333"), Pid(3333))
+    assert(lines == List(""""test-kill.sh" --kill-agent-task-id=1-111 --pid=1111""",
+                         """"test-kill.sh" --kill-agent-task-id=2-222 --pid=2222""",
+                         """"test-kill.sh" --kill-agent-task-id=3-333 --pid=3333"""))
 
   "remove" in:
     crashKillScript.remove(TaskId("2-222"))
-    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
-                              """"test-kill.sh" --kill-agent-task-id=3-333"""))
+    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111 --pid=1111""",
+                              """"test-kill.sh" --kill-agent-task-id=3-333 --pid=3333"""))
 
   "add then remove" in:
-    crashKillScript.add(TaskId("4-444"), pid = None)
-    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
-                              """"test-kill.sh" --kill-agent-task-id=3-333""",
-                              """"test-kill.sh" --kill-agent-task-id=4-444"""))
+    crashKillScript.add(TaskId("4-444"), pid = Pid(4444))
+    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111 --pid=1111""",
+                              """"test-kill.sh" --kill-agent-task-id=3-333 --pid=3333""",
+                              """"test-kill.sh" --kill-agent-task-id=4-444 --pid=4444"""))
 
   "remove again" in:
     crashKillScript.remove(TaskId("3-333"))
-    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
-                              """"test-kill.sh" --kill-agent-task-id=4-444"""))
+    assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111 --pid=1111""",
+                              """"test-kill.sh" --kill-agent-task-id=4-444 --pid=4444"""))
 
   "remove last" in:
     crashKillScript.remove(TaskId("1-111"))
@@ -80,22 +83,22 @@ final class CrashKillScriptTest extends OurTestSuite, HasCloser, BeforeAndAfterA
     assert(!exists(file))
 
   "add again and remove last" in:
-    crashKillScript.add(TaskId("5-5555"), pid = None)
-    assert(lines == List(""""test-kill.sh" --kill-agent-task-id=5-5555"""))
+    crashKillScript.add(TaskId("5-5555"), Pid(5555))
+    assert(lines == List(""""test-kill.sh" --kill-agent-task-id=5-5555 --pid=5555"""))
     crashKillScript.remove(TaskId("5-5555"))
     assert(!exists(file))
 
   "Tries to suppress code injection" in:
     val evilJobPaths = Vector("/x$(evil)", "/x|evil ", "/x'|evil")
     for (evilJobPath, i) <- evilJobPaths.zipWithIndex do
-      crashKillScript.add(TaskId(s"$i"), pid = None)
-    assert(lines.toSet == (evilJobPaths.indices map { i => s""""test-kill.sh" --kill-agent-task-id=$i""" }).toSet)
+      crashKillScript.add(TaskId(s"$i"), Pid(i))
+    assert(lines.toSet == (evilJobPaths.indices map { i => s""""test-kill.sh" --kill-agent-task-id=$i --pid=$i""" }).toSet)
     for i <- evilJobPaths.indices do
       crashKillScript.remove(TaskId(s"$i"))
 
   "close with left tasks does not delete file" in:
-    crashKillScript.add(TaskId("LEFT"), pid = None)
+    crashKillScript.add(TaskId("LEFT"), Pid(9999))
     crashKillScript.close()
-    assert(lines == s""""test-kill.sh" --kill-agent-task-id=LEFT""" :: Nil)
+    assert(lines == s""""test-kill.sh" --kill-agent-task-id=LEFT --pid=9999""" :: Nil)
 
   private def lines = autoClosing(scala.io.Source.fromFile(file))(_.getLines().toList)

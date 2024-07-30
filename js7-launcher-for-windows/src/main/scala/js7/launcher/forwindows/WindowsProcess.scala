@@ -41,7 +41,8 @@ private final class WindowsProcess private(
   errRedirection: Redirection,
   loggedOn: LoggedOn)
 extends Js7Process:
-  val pid = Some(Pid(processInformation.dwProcessId.intValue))
+
+  val pid = Pid(processInformation.dwProcessId.intValue)
   private val returnCodeOnce = SetOnce[ReturnCode]
 
   private val hProcessGuard = ResourceGuard(processInformation.hProcess): hProcess =>

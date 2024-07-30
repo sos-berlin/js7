@@ -21,16 +21,6 @@ object Processes:
 
   private val logger = Logger[this.type]
 
-  def processToString(process: Process): String =
-    processToString(process, processToPidOption(process))
-
-  def processToString(process: Process, pid: Option[Pid]): String =
-    pid.map(_.toString) getOrElse process.toString
-
-  def processToPidOption(process: Process): Option[Pid] =
-    ProcessPidRetriever.processToPid(process)
-
-
   /**
    * Builds an argument list for [[ProcessBuilder]].
    */
