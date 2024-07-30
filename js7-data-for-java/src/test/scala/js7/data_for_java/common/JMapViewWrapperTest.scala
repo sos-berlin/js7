@@ -6,6 +6,7 @@ import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters.*
 
 final class JMapViewWrapperTest extends OurTestSuite:
+
   "test" in:
     assert(MapView.empty.asJava.isEmpty)
 
@@ -21,7 +22,6 @@ final class JMapViewWrapperTest extends OurTestSuite:
     assert(jMapView.keySet().asScala == Set(1, 2))
     assert(jMapView.values().asScala.toSeq == Seq("EINS", "ZWEI"))
 
-    // TODO Requires Java 9:
-    //assert(jMapView.entrySet.asScala == Set(
-    //  java.util.Map.entry(1, "EINS"),
-    //  java.util.Map.entry(2, "ZWEI")))
+    assert(jMapView.entrySet.asScala == Set(
+      java.util.Map.entry(1, "EINS"),
+      java.util.Map.entry(2, "ZWEI")))

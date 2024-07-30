@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import static io.vavr.control.Either.right;
 import static java.lang.System.lineSeparator;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -36,16 +37,6 @@ public final class TestJInternalJob implements JInternalJob
 
     private final String blockingThreadPoolName;
     private volatile String started = "NOT STARTED";
-
-    // Schedule like Java 9:
-    private final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(0);
-    private Executor delayedExecutor(long delay, TimeUnit unit) {
-      return runnable ->
-          scheduler.schedule(() ->
-              // Use internalJs7Executor only if you know what you do! DO NEVER BLOCK!
-              // Otherwise, use ForkJoinPool.commonPool() or any other Executor.
-              jobContext.internalJs7Executor().execute(runnable), delay, unit);
-    }
 
     public TestJInternalJob(JobContext jobContext) {
         logger.debug("Constructor");
@@ -71,7 +62,6 @@ public final class TestJInternalJob implements JInternalJob
                 logger.debug("stop");
                 assertThat(started, equalTo("STARTED"));
                 stoppedCalled.put(blockingThreadPoolName, true);
-                scheduler.shutdown();
                 return null;
             });
     }
