@@ -149,11 +149,7 @@ object ScalaUtils:
 
       def simpleScalaName: String = simpleName stripSuffix "$"
 
-      /**
-        * Workaround for JDK-8057919 Class#getSimpleName (resolved in Java 9).
-        * @see https://bugs.openjdk.java.net/browse/JDK-8057919
-        * @see https://issues.scala-lang.org/browse/SI-2034
-        */
+      /** Like getSimpleName, but even simpler. */
       def simpleName: String =
         simpleClassName(underlying.getName)
 
@@ -812,7 +808,10 @@ object ScalaUtils:
   private val removePackageRegex = """^([a-z0-9]*\.)*""".r
 
   private[utils] def simpleClassName[A](name: String): String =
-    name.substring(max(name.lastIndexOf('.', name.length - 2), name.lastIndexOf('$', name.length - 2)) + 1)
+    name.substring:
+      1 + max(
+        name.lastIndexOf('.', name.length - 2),
+        name.lastIndexOf('$', name.length - 2))
 
   /**
     * Replaces toString of the body (argumentless function), for logging and debugging.

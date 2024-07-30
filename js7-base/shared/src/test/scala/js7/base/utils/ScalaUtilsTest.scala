@@ -141,19 +141,12 @@ final class ScalaUtilsTest extends OurTestSuite:
     assert(ScalaUtilsTest.getClass.getSimpleName == "ScalaUtilsTest$")
     assert(ScalaUtilsTest.getClass.simpleScalaName == "ScalaUtilsTest")
 
-  "simpleClassName" in:
+  "simpleName" in:
     object A:
       object B:
         def getSimpleName = getClass.getSimpleName
         def simpleName = getClass.simpleName
 
-    //scala-js does not know Java SourceVersion:
-    //if (SourceVersion.values.map(_.toString) contains "RELEASE_9")
-    //  assert(A.B.getSimpleName == "B$")
-    //else
-    //  intercept[java.lang.InternalError] {  // Until Java 8: https://bugs.openjdk.java.net/browse/JDK-8057919
-    //    A.B.getSimpleName
-    //  }
     assert(A.B.simpleName == "B$")
     assert(simpleClassName("C") == "C")
     assert(simpleClassName("a.C") == "C")
