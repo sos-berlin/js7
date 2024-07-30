@@ -237,7 +237,7 @@ final class PipedProcess private(
 
   private def waitForProcessTermination(process: Js7Process): IO[ReturnCode] =
     IOExecutor.interruptible:
-      logger.traceCallWithResult("waitFor", process):
+      logger.traceCallWithResult(s"waitFor $process"):
         process.waitFor()
 
   def stdin: OutputStream =
