@@ -780,21 +780,11 @@ object ScalaUtils:
       try body
       finally lock.unlock()
 
-  @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =
     reuseIfEqual(a, f(a))
 
-  @inline
   def reuseIfEqual[A <: AnyRef](a: A, b: A): A =
     if a == b then a else b
-
-  @inline
-  def reuseIfIdentical[A <: AnyRef](a: A)(f: A => A): A =
-    reuseIfIdentical(a, f(a))
-
-  @inline
-  def reuseIfIdentical[A <: AnyRef](a: A, b: A): A =
-    if a eq b then a else b
 
   def implicitClass[A: ClassTag]: Class[A] =
     implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]

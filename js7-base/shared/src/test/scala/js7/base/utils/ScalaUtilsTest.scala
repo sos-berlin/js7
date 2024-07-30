@@ -116,19 +116,6 @@ final class ScalaUtilsTest extends OurTestSuite:
     assert(reuseIfEqual(a)(_.copy(number = 7)) ne a)
     assert(reuseIfEqual(a)(_.copy(number = 1)) eq a)
 
-  "reuseIfIdentical()" in:
-    case class A(number: Int)
-    val a = A(1)
-    val b = A(1)
-    val c = A(2)
-    assert(a == b && a.ne(b))
-    assert(reuseIfIdentical(a, b) eq b)
-    assert(reuseIfIdentical(b, c) eq c)
-    assert(reuseIfIdentical(a, a) eq a)
-    assert(reuseIfIdentical(b, b) eq b)
-    assert(reuseIfIdentical(a)(_.copy(number = 7)) ne a)
-    assert(reuseIfIdentical(a)(_.copy(number = 1)) ne a)
-
   "implicitClass" in:
     def f[A : ClassTag] = implicitClass[A]
     f[String] shouldEqual classOf[String]
