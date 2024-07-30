@@ -12,7 +12,7 @@ object BasicState:
     implicit final val implicitBasicState: Companion[S] =
       this
 
-    def name: String =
+    val name: String =
       getClass.shortClassName
 
     override def toString: String = name
