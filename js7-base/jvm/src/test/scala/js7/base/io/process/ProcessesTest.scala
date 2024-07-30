@@ -90,9 +90,8 @@ final class ProcessesTest extends OurTestSuite:
         file.writeUtf8Executable(":")
         val since = now
         (1 to n).toVector
-          .traverse(_ => Future {
-            runProcess(s"""'$file'""")
-          })
+          .traverse(_ => IO:
+            runProcess(s"""'$file'"""))
           .await(99.s)
         info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
 
@@ -100,9 +99,8 @@ final class ProcessesTest extends OurTestSuite:
     for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do
       val since = now
       (1 to n).toVector
-        .traverse(_ => Future {
-          runProcess("sleep 0")
-        })
+        .traverse(_ => IO:
+          runProcess("sleep 0"))
         .await(99.s)
       info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
   //"runProcess" in {
