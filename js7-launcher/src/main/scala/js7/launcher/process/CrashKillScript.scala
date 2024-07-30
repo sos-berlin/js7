@@ -69,10 +69,9 @@ extends AutoCloseable:
       deleteIfExists(file)
     else
       val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
-      autoClosing(open(tmp)) { writer =>
+      autoClosing(open(tmp)): writer =>
         for (id, entry) <- tasks do
           writer.write(idToKillCommand(id, entry))
-      }
       move(tmp, file, REPLACE_EXISTING)
 
   private def idToKillCommand(id: TaskId, entry: Entry) =

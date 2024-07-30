@@ -31,6 +31,7 @@ object FileUtils:
   private val logger = Logger[this.type]
   val EmptyPath: Path = Paths.get("")
   val WorkingDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath
+
   def temporaryDirectory: Path = Paths.get(sys.props("java.io.tmpdir"))
 
   /**
@@ -49,14 +50,13 @@ object FileUtils:
 
   def copyDirectoryContent(from: Path, to: Path, options: CopyOption*): Unit =
     if !exists(to) then createDirectory(to)
-    autoClosing(Files.list(from)) { stream =>
+    autoClosing(Files.list(from)): stream =>
       for file <- stream.asScala do
         val destination = to.resolve(file.getFileName)
         if isDirectory(file) then
           copyDirectoryContent(file, destination)
         else
           copy(file, destination, options*)
-    }
 
   object implicits:
     implicit def pathToFile(path: Path): File =
@@ -140,9 +140,9 @@ object FileUtils:
         autoClosing(new BufferedInputStream(new FileInputStream(delegate.toFile)))(body)
 
       def inputStreamResource[F[_]](implicit F: Sync[F]): Resource[F, InputStream] =
-        Resource.fromAutoCloseable(F.delay {
-          new BufferedInputStream(new FileInputStream(delegate.toFile))
-        })
+        Resource.fromAutoCloseable:
+          F.delay:
+            new BufferedInputStream(new FileInputStream(delegate.toFile))
 
       def makeExecutable(): Unit =
         if isUnix then
@@ -194,19 +194,17 @@ object FileUtils:
       release = file => F.delay(Files.deleteIfExists(file)))
 
   def autoDeleting[A](file: Path)(body: Path => A): A =
-    withCloser { closer =>
+    withCloser: closer =>
       closer.onClose:
         deleteIfExists(file)
       body(file)
-  }
 
   def withTemporaryDirectory[A](prefix: String = "")(body: Path => A): A =
     val dir = Files.createTempDirectory(prefix)
-    withCloser { closer =>
+    withCloser: closer =>
       closer.onClose:
         deleteDirectoryRecursively(dir)
       body(dir)
-    }
 
   def temporaryDirectoryResource[F[_]](using F: Sync[F])(prefix: String): Resource[F, Path] =
     Resource.make(
@@ -215,14 +213,12 @@ object FileUtils:
 
   def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(
-      acquire = F.delay {
+      acquire = F.delay:
         deleteIfExists(file)
-        file
-      })(
-      release = _ => F.delay {
+        file)(
+      release = _ => F.delay:
         try deleteIfExists(file)
-        catch { case t: IOException => logger.error(s"Delete $file => $t")}
-      })
+        catch case t: IOException => logger.error(s"Delete $file => $t"))
 
   def deleteDirectoryRecursively(dir: Path): Unit =
     if !isDirectory(dir) then throw new IOException(s"Not a directory: $dir")
@@ -239,9 +235,8 @@ object FileUtils:
     for f <- dir.directoryContents do
       if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
       try loggingDelete(f)
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         logger.warn(s"Delete $f => ${t.toStringWithCauses}")
-      }
 
   private def loggingDelete(file: Path): Unit =
     delete(file)

@@ -55,7 +55,7 @@ final class ProcessesTest extends OurTestSuite:
     assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
 
   "newTemporaryShellFile, toShellCommandArguments and script execution" in:
-    autoDeleting(newTemporaryShellFile("NAME")) { file =>
+    autoDeleting(newTemporaryShellFile("NAME")): file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
       file := ShellScript
@@ -69,13 +69,11 @@ final class ProcessesTest extends OurTestSuite:
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
       succeed
-    }
 
   "newLogFile" in:
-    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)) { file =>
+    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)): file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
-    }
 
   "TextFileBusyIOException" in:
     val (expected, exceptions) = List(
@@ -91,7 +89,7 @@ final class ProcessesTest extends OurTestSuite:
 
   "Many empty shell script processes" in:
     for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do
-      withTemporaryFile("ProcessesTest-", ".sh") { file =>
+      withTemporaryFile("ProcessesTest-", ".sh"): file =>
         file.writeUtf8Executable(":")
         val since = now
         (1 to n).toVector
@@ -100,7 +98,6 @@ final class ProcessesTest extends OurTestSuite:
           })
           .await(99.s)
         info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
-      }
 
   "Many processes" in:
     for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do

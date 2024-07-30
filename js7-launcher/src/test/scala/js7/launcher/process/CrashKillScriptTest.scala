@@ -30,17 +30,15 @@ final class CrashKillScriptTest extends OurTestSuite, HasCloser, BeforeAndAfterA
   "Overwrites file" in:
     val file = createTempFile("CrashKillScriptTest-", ".tmp")
     file := "garbage"
-    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ =>
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)): _ =>
       assert(size(file) == 0)
-    }
     assert(!exists(file))
 
   "Creates file" in:
     val file = createTempFile("CrashKillScriptTest-", ".tmp")
     delete(file)
-    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ =>
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)): _ =>
       assert(size(file) == 0)
-    }
     assert(!exists(file))
 
   private lazy val file = createTempFile("CrashKillScriptTest-", ".tmp")

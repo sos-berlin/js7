@@ -44,13 +44,12 @@ extends Js7Process:
   val pid = Some(Pid(processInformation.dwProcessId.intValue))
   private val returnCodeOnce = SetOnce[ReturnCode]
 
-  private val hProcessGuard = ResourceGuard(processInformation.hProcess) { hProcess =>
+  private val hProcessGuard = ResourceGuard(processInformation.hProcess): hProcess =>
     closeHandle(hProcess)
     inRedirection.closePipe()
     outRedirection.closePipe()
     errRedirection.closePipe()
     loggedOn.close()
-  }
 
   def isAlive =
     returnCodeOnce.isEmpty && !waitForProcess(timeout = 0)
@@ -114,7 +113,9 @@ extends Js7Process:
 
   override def toString = s"WindowsProcess($pid)"
 
+
 private[launcher] object WindowsProcess:
+
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
   private val logger = Logger[this.type]
 
@@ -160,10 +161,10 @@ private[launcher] object WindowsProcess:
         advapi32.CreateProcessAsUser(loggedOn.userToken, application, commandLine,
           null: SECURITY_ATTRIBUTES, null: SECURITY_ATTRIBUTES, /*inheritHandles=*/true, creationFlags,
           getEnvironmentBlock(env
-            .removedAll(
-              additionalEnv.collect { case (k, None) => k })
-            .concat(
-              additionalEnv.collect { case (k, Some(v)) => k -> v })
+            .removedAll:
+              additionalEnv.collect { case (k, None) => k }
+            .concat:
+              additionalEnv.collect { case (k, Some(v)) => k -> v }
             .asJava),
           workingDirectory, startupInfo, processInformation)
       inRedirection.releaseStartupInfoHandle()
@@ -171,7 +172,9 @@ private[launcher] object WindowsProcess:
       errRedirection.releaseStartupInfoHandle()
       closeHandle(processInformation.hThread)
       processInformation.hThread = INVALID_HANDLE_VALUE
-      new WindowsProcess(processInformation, inRedirection, outRedirection, errRedirection, loggedOn)
+
+      WindowsProcess(processInformation, inRedirection, outRedirection, errRedirection, loggedOn)
+
 
   private class LoggedOn(val userToken: HANDLE, val profileHandle: HANDLE = INVALID_HANDLE_VALUE)
   extends AutoCloseable:
@@ -188,14 +191,14 @@ private[launcher] object WindowsProcess:
     def logon(logonOption: Option[WindowsLogon]): LoggedOn =
       logonOption match
         case Some(o) => logon(o)
-        case None => new LoggedOn(openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS))
+        case None => LoggedOn(openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS))
 
     private def logon(logon: WindowsLogon): LoggedOn =
       import logon.{credential, userName, withUserProfile}
       logger.debug(s"LogonUser '$userName'")
       val userToken = handleCall("LogonUser")(
         advapi32.LogonUser(userName.string, null, credential.password.string, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, _))
-      new LoggedOn(
+      LoggedOn(
         userToken,
         profileHandle =
           if withUserProfile then
@@ -262,7 +265,9 @@ private[launcher] object WindowsProcess:
     * @param grant syntax is weakly checked!
     */
   private def grantFileAccess(file: Path, grant: String): file.type =
-    execute(windowsDirectory / "System32\\icacls.exe", "\"" + file.toString + '"', "/q", "/grant", grant)
+    execute(
+      windowsDirectory / "System32\\icacls.exe", "\"" + file.toString + '"', "/q", "/grant",
+      grant)
     file
 
   def execute(executable: Path, args: String*): Vector[String] =
@@ -272,9 +277,8 @@ private[launcher] object WindowsProcess:
     val lines =
       val commandCodec = new Codec(Charset.forName("cp850"))  // 850 contains all characters of ISO-8859-1
       try autoClosing(process.getInputStream) { in => scala.io.Source.fromInputStream(in)(commandCodec).getLines().toVector }
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         Vector(s"error message not readable: $t")
-      }
     val returnCode = process.waitFor()
     if returnCode != 0 then throw new RuntimeException(s"Windows command failed: $executable => ${lines mkString " / "}")
     lines

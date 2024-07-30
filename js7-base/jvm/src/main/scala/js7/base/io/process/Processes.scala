@@ -74,19 +74,17 @@ object Processes:
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
-    val exitCode = commandLine.!(new ProcessLogger {
-      def out(line: => String): Unit = {
-        stdout ++= line
-        stdout += '\n'
-      }
+    val exitCode = commandLine.!(
+      new ProcessLogger:
+        def out(line: => String): Unit =
+          stdout ++= line
+          stdout += '\n'
 
-      def err(line: => String): Unit = {
-        stdout ++= line
-        stdout += '\n'
-      }
+        def err(line: => String): Unit =
+          stdout ++= line
+          stdout += '\n'
 
-      def buffer[T](f: => T) = f
-    })
+        def buffer[T](f: => T) = f)
     if exitCode != 0 then
       throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString),
         ByteArray(stderr.toString))
