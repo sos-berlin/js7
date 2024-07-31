@@ -1,7 +1,7 @@
 package js7.base.io.process
 
 import cats.effect.{IO, Resource, Sync}
-import java.io.{ByteArrayOutputStream, IOException}
+import java.io.IOException
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{Files, Path}
 import js7.base.data.ByteArray
@@ -9,12 +9,9 @@ import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 object Processes:
@@ -80,28 +77,7 @@ object Processes:
         ByteArray(stderr.toString))
     stdout.toString
 
-  private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray =
-    // —— Does not interpret commandLine as expected ——
-    val out = new ByteArrayOutputStream
-    val err = new ByteArrayOutputStream
-
-    lazy val stdout = ByteArray.unsafeWrap(out.toByteArray)
-    lazy val stderr = ByteArray.unsafeWrap(err.toByteArray)
-
-    val processBuilder = new ProcessBuilder(commandLine)
-    val process = processBuilder.start()
-    process.getInputStream.close()
-    val stdoutClosed = ioFuture:
-      process.getInputStream.transferTo(out)
-    val stderrClosed = ioFuture:
-      process.getErrorStream.transferTo(err)
-    Await.result(stdoutClosed, Duration.Inf)
-    Await.result(stderrClosed, Duration.Inf)
-    val returnCode = process.waitFor()
-    if returnCode != 0 then
-      throw new ProcessException(commandLine, ReturnCode(returnCode), stdout, stderr)
-    stdout
-
+  
   final class ProcessException(
     commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray)
   extends RuntimeException:
