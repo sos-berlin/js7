@@ -14,6 +14,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
@@ -236,7 +237,7 @@ final class PipedProcess private(
   private[process] def isAlive = process.isAlive
 
   private def waitForProcessTermination(process: Js7Process): IO[ReturnCode] =
-    IOExecutor.interruptible:
+    interruptibleVirtualThread:
       logger.traceCallWithResult(s"waitFor $process"):
         process.waitFor()
 

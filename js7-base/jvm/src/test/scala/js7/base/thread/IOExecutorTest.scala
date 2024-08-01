@@ -10,16 +10,13 @@ import java.util.concurrent.ExecutorService
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.IOExecutor.ioFuture
 import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualExecutor
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import org.scalatest.Assertions.succeed
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
@@ -34,17 +31,16 @@ final class IOExecutorTest extends OurAsyncTestSuite:
   private val logger = Logger[this.type]
 
   "Success" in:
-    assert(ioFuture(7).await(10.seconds) == 7)
+    assert(IOExecutor.blocking(7).await(1.s) == 7)
 
   "Failure" in:
-    assert(Await.ready(ioFuture { sys.error("FAILED") }, 10.seconds).value.get.failed.get.toString ==
+    assert(IOExecutor.blocking(sys.error("FAILED")).attempt.await(1.s).left.toOption.get.toString ==
       "java.lang.RuntimeException: FAILED")
 
   if !VirtualThreads.isEnabled then
     "Thread name" in:
-      ioFuture {
-        assert(Thread.currentThread.getName startsWith "JS7 global I/O-")
-      } await 10.seconds
+      assert:
+        IOExecutor.blocking(Thread.currentThread.getName).await(99.s) startsWith "JS7 global I/O-"
 
   "interruptible" in:
     val expectedThreadPrefix = (!VirtualThreads.isEnabled) ? (IOExecutor.globalName + "-")
@@ -99,7 +95,7 @@ final class IOExecutorTest extends OurAsyncTestSuite:
     val iox = new IOExecutor(executor, "IOExecutorTest")
     val since = now
     val io = (1 to n).toVector
-      .traverse(_ => iox(IO { sleep(100.ms) }).start)
+      .traverse(_ => IOExecutor.blocking(sleep(100.ms)).start)
       .map(_.map(_.joinStd))
       .map(_.combineAll)
       .flatten

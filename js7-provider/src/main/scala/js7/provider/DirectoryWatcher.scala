@@ -9,6 +9,7 @@ import java.nio.file.StandardWatchEventKinds.*
 import java.nio.file.{Path, WatchEvent}
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.AutoClosing.closeOnError
@@ -54,7 +55,7 @@ extends AutoCloseable:
    * @return true, iff A matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
   private def waitForNextChange(timeout: Duration): IO[Boolean] =
-    IOExecutor.interruptible:
+    interruptibleVirtualThread:
       val remainingMillis = timeout.toMillis
       remainingMillis <= 0 || {
         logger.trace(s"$directory: poll ${timeout.pretty} ...")

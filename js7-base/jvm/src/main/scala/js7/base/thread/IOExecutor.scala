@@ -1,27 +1,19 @@
 package js7.base.thread
 
-import cats.effect.implicits.asyncOps
-import cats.effect.{Async, IO, Resource, Sync}
-import com.typesafe.config.Config
+import cats.effect.{IO, Resource, Sync}
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
 import js7.base.catsutils.CatsEffectExtensions.blockingOn
-import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.catsutils.Environment.environment
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
-import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newBlockingExecutorService
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.util.control.NonFatal
 
-/**
-  * For `ioFuture` which starts a blocking (I/O) `Future` in a (normally unlimited) thread pool.
-  * @author Joacim Zschimmer
-  */
 final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: String)
   extends Executor:
 
@@ -33,13 +25,6 @@ final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: 
 
   def execute(runnable: Runnable): Unit =
     executionContext.execute(runnable)
-
-  def apply[F[_], A](body: F[A])(using F: Async[F], src: sourcecode.FullName): F[A] =
-    // logger.traceF lets Monix check for cancellation, too (but why?)
-    // Without it, the body seems be executed after a cancellation,
-    // despite executor has already been terminated (observed with DirectoryWatch).
-    logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
-      body.evalOn(executionContext))
 
   private def reportException(throwable: Throwable): Unit =
     def msg = "Uncaught exception in thread " +
@@ -87,23 +72,11 @@ object IOExecutor:
           })
         .map(new IOExecutor(_, name)))
 
-  def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
-    try
-      promiseFuture[A] { promise =>
-        iox.execute { () =>
-          promise.complete(Try {
-            body
-          })
-        }
-      }
-    catch
-      case NonFatal(t) => Future.failed(t)
-
-  def blocking[A](body: => A)(using iox: IOExecutor): IO[A] =
+  private[thread] def blocking[A](body: => A)(using iox: IOExecutor): IO[A] =
     IO.blockingOn(iox.executionContext):
       body
 
-  def interruptible[A](body: => A)(using iox: IOExecutor): IO[A] =
+  private[thread] def interruptible[A](body: => A)(using iox: IOExecutor): IO[A] =
     IO.async: callback =>
       IO:
         val runnable: Runnable =
@@ -119,5 +92,16 @@ object IOExecutor:
 
         val future = iox.executor.submit(runnable)
         Some(IO(future.cancel(true)))
+
+  object env:
+    /** Like IO blocking, but executes in a virtual thread. */
+    def virtualThread[A](body: => A): IO[A] =
+      environment[IOExecutor].flatMap: iox =>
+        IOExecutor.blocking(body)(using iox)
+
+    /** Like IO interruptible, but executes in a virtual thread. */
+    def interruptibleVirtualThread[A](body: => A): IO[A] =
+      environment[IOExecutor].flatMap: iox =>
+        IOExecutor.interruptible(body)(using iox)
 
   java17Polyfill()

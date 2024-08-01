@@ -11,6 +11,7 @@ import java.util
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.thread.IOExecutor
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 
 object ReaderStreams:
 
@@ -27,7 +28,7 @@ object ReaderStreams:
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
       Stream.repeatEval:
-        IOExecutor.interruptible:
+        interruptibleVirtualThread:
           buffer.clear()
           channel.read(buffer)
         .map:
@@ -45,7 +46,7 @@ object ReaderStreams:
     Stream.suspend:
       val buffer = new Array[Char](bufferSize)
       Stream.repeatEval:
-        IOExecutor.interruptible:
+        interruptibleVirtualThread:
           reader.read(buffer)
         .map:
           case -1 =>

@@ -14,6 +14,7 @@ import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, raceFold}
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.continueWithLast
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -78,7 +79,7 @@ extends Service.StoppableByRequest:
 
   /** Wait for events. */
   private def pollWatchKey(): IO[Seq[DirectoryWatchEvent]] =
-    IOExecutor.interruptible:
+    interruptibleVirtualThread:
       logger.traceCallWithResult(
         s"WatchService.poll() $directory",
         result = events => if events.isEmpty then "timed out" else events.mkString(", "),
