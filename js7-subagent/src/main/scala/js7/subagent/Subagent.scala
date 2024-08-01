@@ -262,7 +262,6 @@ object Subagent:
     yield
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
-  //Monix??? .executeOn(scheduler)
 
   //def blockingInternalJobEC(name: String, config: Config, virtual: Boolean)
   //: ResourceIO[ExecutionContext] =

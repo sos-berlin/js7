@@ -10,7 +10,7 @@ trait ProgramTermination:
 
   def toExitCode: ExitCode
 
-  override def toString = s"ProgramTermination(${restart ?? "restart"})"
+  override def toString = s"ProgramTermination($toExitCode${restart ?? " restart"})"
 
 
 object ProgramTermination:
@@ -33,7 +33,8 @@ object ProgramTermination:
 
 
   trait Failure extends ProgramTermination:
-    def toExitCode: ExitCode = ExitCode.Error
+    def toExitCode: ExitCode =
+      ExitCode.Error
 
     override def toString = "ProgramTermination.Failure"
 
@@ -41,7 +42,8 @@ object ProgramTermination:
 
 
   trait Restart extends ProgramTermination:
-    val toExitCode: ExitCode = ExitCode(Js7ReturnCodes.Restart)
+    val toExitCode: ExitCode =
+      ExitCode(Js7ReturnCodes.Restart)
 
     override def restart = true
 

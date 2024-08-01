@@ -11,13 +11,13 @@ sealed trait DirectorTermination extends ProgramTermination:
 
   assert(restart == restartJvm | restartDirector)
 
-  def copy(restartJvm: Boolean = this.restartJvm, restartDirector: Boolean = this.restartDirector): DirectorTermination =
+  def copy(restartJvm: Boolean = restartJvm, restartDirector: Boolean = restartDirector)
+  : DirectorTermination =
     DirectorTermination(restartJvm, restartDirector)
 
   override def toString =
     s"DirectorTermination(${
-      ((restartJvm ? "restartJvm") ++ (restartDirector ? "restartDirector")).mkString(" ")
-    })"
+      ((restartJvm ? "restartJvm") ++ (restartDirector ? "restartDirector")).mkString(" ")})"
 
 
 object DirectorTermination:

@@ -15,16 +15,14 @@ final class ServiceMainTest extends OurAsyncTestSuite:
   "Normal run" in:
     val conf = TestConf(Js7Configuration.defaultConfig)
     for
-      exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(
-        toServiceResource = _ => TestService.resource)
+      exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(_ => TestService.resource)
     yield
       assert(exitCode == ExitCode(0))
 
   "MainServiceTerminationException is properly handeled" in:
     val conf = TestConf(Js7Configuration.defaultConfig)
     for
-      exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(
-        toServiceResource = _ => TerminatingService.resource)
+      exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(_ => TerminatingService.resource)
     yield
       assert(exitCode == ExitCode(Js7ReturnCodes.Restart))
 

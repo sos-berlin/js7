@@ -11,7 +11,6 @@ import js7.base.convert.As
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
-import js7.base.system.startup.Halt
 import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.*
@@ -29,9 +28,11 @@ object OurIORuntime:
 
   val commonThreadPrefix = "js7"
 
+  val useCommonIORuntime1: Boolean =
+    sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed")
+
   val useCommonIORuntime: Boolean =
-    isTest && (
-      sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed"))
+    isTest && useCommonIORuntime1
 
   final lazy val commonIORuntime: IORuntime =
     ownResource[SyncIO](

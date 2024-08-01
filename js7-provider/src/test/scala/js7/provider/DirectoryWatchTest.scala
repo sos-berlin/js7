@@ -1,17 +1,17 @@
 package js7.provider
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.{createTempDirectory, delete}
+import java.util.concurrent.CancellationException
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
+import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import cats.effect.unsafe.IORuntime
-import java.util.concurrent.CancellationException
-import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
 
