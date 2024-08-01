@@ -6,10 +6,11 @@ import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Files.createTempDirectory
+import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.file.FileDeleter.tryDeleteFiles
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.FileDeleter.tryDeleteFiles
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
@@ -18,7 +19,6 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, Stopwatch}
-import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
@@ -52,18 +52,10 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
     js7.job.execution.used-error-line-length = 4096
     """.withFallback(Js7Configuration.defaultConfig)
 
-  private lazy val ioxAllocated = IOExecutor
-    .resource[IO](config, "ProcessDriverTest I/O")
-    .toAllocated.await(99.s)
-
   private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler
 
-  override protected def afterAll() =
-    try
-      ioxAllocated.release.await(99.s)
-    finally
-      super.afterAll()
+  override protected val withIOExecutor = true
 
   "ProcessDriver" in:
     val executableDirectory = createTempDirectory("ProcessDriverTest-")
@@ -92,7 +84,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         systemEncoding = US_ASCII,
         killScript = None,
         scriptInjectionAllowed = false,
-        ioxAllocated.allocatedThing,
+        environment[IOExecutor].await(99.s),
         blockingJobEC = jobEC,
         AlarmClock(),
         config

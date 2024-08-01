@@ -27,6 +27,8 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
+  override protected val withIOExecutor = true
+
   "readDirectory, readDirectoryAsEvents" in:
     withTemporaryDirectory("DirectoryWatchTest-"): dir =>
       touchFile(dir / "TEST-1")

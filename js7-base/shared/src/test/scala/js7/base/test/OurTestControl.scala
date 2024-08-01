@@ -23,7 +23,7 @@ package js7.base.test
 import cats.effect.testkit.TestControl.NonTerminationException
 import cats.effect.testkit.{TestContext, TestControl}
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
-import cats.effect.{IO, Outcome}
+import cats.effect.{IO, Outcome, SyncIO}
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.catsutils.OurIORuntimeRegister
@@ -373,13 +373,12 @@ object OurTestControl:
   private def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
   : IO[OurTestControl[A]] =
     IO:
-      OurIORuntimeRegister.add(ioRuntime)
+      val release = OurIORuntimeRegister.register[SyncIO](ioRuntime).allocated.unsafeRunSync()._2
       val results = new AtomicReference[Option[Outcome[Id, Throwable, A]]](None)
       given IORuntime = ioRuntime
       program.unsafeRunAsyncOutcome: outcome =>
         results.set(Some(outcome))
-        OurIORuntimeRegister.remove(ioRuntime)
-
+        release.unsafeRunSync()
       new OurTestControl(ctx, results)
 
   def newTestContext(seed: Option[String] = None): TestContext =

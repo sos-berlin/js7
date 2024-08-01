@@ -13,6 +13,8 @@ import scala.collection.mutable
 
 final class ReaderStreamsTest extends OurAsyncTestSuite:
 
+  override protected val withIOExecutor = true
+
   "inputStreamToByteStream" in:
     val buffer = mutable.Buffer[ByteArray]()
 

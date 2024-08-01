@@ -45,6 +45,8 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
   private given IORuntime = ioRuntime
 
+  override protected val withIOExecutor = true
+
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoWebServerHttpsChangeTest", executionContext = ioRuntime.compute)
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)

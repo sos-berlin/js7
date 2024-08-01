@@ -118,6 +118,15 @@ object OurIORuntime:
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
       _ <- OurIORuntimeRegister.register(ioRuntime)
+      // The application should Environment.tryRegister its resources!
+      // Then we are sure the allocated resources will be released at termination.
+      //_ <- Resource.onFinalize(F.defer:
+      //  val releaseAll = OurIORuntimeRegister.toEnvironment(ioRuntime).releaseAll
+      //  if F eq Sync[IO] then
+      //    releaseAll.asInstanceOf[F[Unit]]
+      //  else
+      //    given IORuntime = ioRuntime
+      //    F.delay(releaseAll.awaitInfinite/*???*/))
     yield
       ioRuntime
 

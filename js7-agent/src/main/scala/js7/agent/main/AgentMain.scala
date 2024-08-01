@@ -1,8 +1,10 @@
 package js7.agent.main
 
+import cats.effect.kernel.Resource
 import cats.effect.{ExitCode, IO}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.{RestartableDirector, RunningAgent}
+import js7.base.catsutils.Environment.environment
 import js7.base.thread.IOExecutor
 import js7.common.system.startup.ServiceApp
 
@@ -14,7 +16,7 @@ object AgentMain extends ServiceApp:
       conf =>
         for
           agent <- RunningAgent.restartable(conf)(using runtime)
-          iox <- IOExecutor.resource[IO](conf.config, conf.name + " I/O")
-          _ <- agent.webServer.restartWhenHttpsChanges(using iox)
+          given IOExecutor <- Resource.eval(environment[IOExecutor])
+          _ <- agent.webServer.restartWhenHttpsChanges
         yield
           agent

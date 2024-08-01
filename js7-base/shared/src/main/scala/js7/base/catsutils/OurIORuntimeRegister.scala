@@ -17,12 +17,13 @@ object OurIORuntimeRegister:
 
   def register[F[_]](ioRuntime: IORuntime)(using F: Sync[F]): Resource[F, Unit] =
     Resource(F.delay:
-      add(ioRuntime) -> F.delay(remove(ioRuntime)))
+      add(ioRuntime)
+      () -> F.delay(remove(ioRuntime)))
 
-  def add(ioRuntime: IORuntime): Unit =
+  private def add(ioRuntime: IORuntime): Unit =
     ecToRuntime.put(ioRuntime.compute, Entry(ioRuntime))
 
-  def remove(ioRuntime: IORuntime): Unit =
+  private def remove(ioRuntime: IORuntime): Unit =
     ecToRuntime.remove(ioRuntime)
 
   private[catsutils] def environment: IO[Environment] =

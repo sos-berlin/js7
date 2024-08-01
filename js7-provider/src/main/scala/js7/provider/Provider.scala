@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.completed
+import js7.base.catsutils.Environment
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
@@ -221,9 +222,9 @@ object Provider:
 
   def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for
-      actorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
-      iox <- IOExecutor.resource[IO](conf.config, "Provider I/O")
-      provider <- resource2(conf)(using ioRuntime, iox, actorSystem)
+      given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
+      given IOExecutor <- Environment.getOrRegister(IOExecutor.resource("provider-iox"))
+      provider <- resource2(conf)
     yield provider
 
   private def resource2(conf: ProviderConfiguration)

@@ -2,8 +2,8 @@ package js7.base.catsutils
 
 import cats.effect
 import cats.effect.{IO, SyncIO}
-import js7.base.catsutils.Environment.environment
 import js7.base.catsutils.EnvironmentTest.*
+import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.system.OperatingSystem.isJVM
 import js7.base.test.OurAsyncTestSuite
@@ -11,7 +11,7 @@ import js7.base.test.OurAsyncTestSuite
 final class EnvironmentTest extends OurAsyncTestSuite:
 
   "simple" in:
-    ioRuntime.environment.add(X(7))
+    OurIORuntimeRegister.toEnvironment(ioRuntime).add(X(7))
     for
       _ <- Environment.add(X("Hej!"))
       x <- environment[X[Int]]
