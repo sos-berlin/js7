@@ -75,7 +75,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
       historicOutcomes = Vector:
         HistoricOutcome(Position(999), OrderOutcome.Succeeded(Map("a" -> StringValue("A")))))
 
-    unlimitedExecutionContextResource[IO]("ProcessDriverTest-blocking", config).use: jobEC =>
+    unlimitedExecutionContextResource[IO]("ProcessDriverTest-blocking").use: jobEC =>
       val jobLauncherConf = JobLauncherConf.checked(
         executablesDirectory = executableDirectory,
         shellScriptTmpDirectory = executableDirectory,

@@ -241,7 +241,7 @@ object Subagent:
       iox <- Environment.getOrRegister(IOExecutor.resource[IO](conf.name + "-iox"))
       blockingInternalJobEC <-
         unlimitedExecutionContextResource[IO](
-          s"${conf.name} blocking-job", conf.config, virtual = useVirtualForBlocking)
+          s"${conf.name} blocking-job", virtual = useVirtualForBlocking)
       clock <- AlarmClock.resource[IO](Some(alarmClockCheckingInterval))
       jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock).orThrow
       signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)

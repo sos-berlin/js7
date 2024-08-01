@@ -1,59 +1,78 @@
 package js7.agent.client.main
 
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO}
+import com.typesafe.config.ConfigFactory
 import java.nio.file.{Files, Path}
 import js7.agent.client.PekkoHttpAgentTextApi
 import js7.base.auth.SessionToken
-import js7.base.catsutils.OurApp
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
+import js7.base.service.Service
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ProgramTermination
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.JavaMain
+import js7.common.configuration.BasicConfiguration
+import js7.common.system.startup.ServiceApp
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*
 
 /**
  * @author Joacim Zschimmer
  */
-object AgentClientMain extends OurApp:
+object AgentClientMain extends ServiceApp:
 
   private given IORuntime = runtime
   private given ExecutionContext = runtime.compute
 
   def run(args: List[String]): IO[ExitCode] =
-    JavaMain.run("AgentClient")(IO:
-      run(args.toIndexedSeq, println))
+    runService(args, "AgentClient", Conf.fromCommandLine):
+      conf => Resource.eval(IO.pure(Service.simple(IO(run(conf, println)))))
 
-  def run(args: Seq[String], print: String => Unit)(using IORuntime /*for testing*/): ExitCode =
-    val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
-    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
-    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, configDirectory)): textApi =>
+  def run(
+    conf: Conf,
+    print: String => Unit)
+    (using IORuntime /*for testing*/)
+  : ProgramTermination =
+    import conf.{agentUri, dataDirectory, maybeConfigDirectory, operations}
+    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDirectory resolve "work/session-token").asScala mkString ""))
+    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, maybeConfigDirectory)): textApi =>
       textApi.setSessionToken(sessionToken)
       if operations.isEmpty then
-        ExitCode(if textApi.checkIsResponding() then 0 else 1)
+        if textApi.checkIsResponding()
+        then ProgramTermination.Success
+        else ProgramTermination.Failure
       else
         operations foreach :
           case StringCommand(command) => textApi.executeCommand(command)
           case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
           case Get(uri) => textApi.getApi(uri)
-        ExitCode(0)
+        ProgramTermination.Success
 
-  private def parseArgs(args: Seq[String]) =
-    CommandLineArguments.parse(args): arguments =>
-      val agentUri = Uri(arguments.keylessValue(0))
-      val configDirectory = arguments.optionAs[Path]("--config-directory=")
-      val dataDirectory = arguments.as[Path]("--data-directory=")
-      val operations = arguments.keylessValues.tail map:
+  sealed trait Operation
+  case class StringCommand(command: String) extends Operation
+  case object StdinCommand extends Operation
+  case class Get(uri: String) extends Operation
+
+  final case class Conf(
+    agentUri: Uri,
+    override val maybeConfigDirectory: Option[Path],
+    dataDirectory: Path,
+    operations: Seq[Operation])
+  extends BasicConfiguration:
+    val config = ConfigFactory.empty
+
+  object Conf:
+    def fromCommandLine(args: CommandLineArguments): Conf =
+      val agentUri = Uri(args.keylessValue(0))
+      val configDirectory = args.optionAs[Path]("--config-directory=")
+      val dataDirectory = args.as[Path]("--data-directory=")
+      val operations = args.keylessValues.tail map :
         case url if url.startsWith("?") || url.startsWith("/") => Get(url)
         case "-" => StdinCommand
         case command => StringCommand(command)
-      if operations.count(_ == StdinCommand) > 1 then throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      (agentUri, configDirectory, dataDirectory, operations)
-
-  private sealed trait Operation
-  private case class StringCommand(command: String) extends Operation
-  private case object StdinCommand extends Operation
-  private case class Get(uri: String) extends Operation
+      if operations.count(_ == StdinCommand) > 1 then
+        throw new IllegalArgumentException("Stdin ('-') can only be read once")
+      Conf(agentUri, configDirectory, dataDirectory, operations)

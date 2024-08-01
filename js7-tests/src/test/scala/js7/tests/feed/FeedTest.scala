@@ -9,6 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.common.commandline.CommandLineArguments
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.lock.{Lock, LockPath}
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -25,7 +26,7 @@ final class FeedTest extends OurTestSuite, ControllerAgentForScalaTest:
     val ops = Vector[Any](AddOrChangeSimple(Lock(LockPath("TEST"))))
     given TypedJsonCodec[Any] = Feed.opJsonCodec
     val in = Resource.eval(IO.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
-    val settings = Settings.parseArguments(Seq(
+    val settings = FeedConf.fromCommandLine(CommandLineArguments(Seq(
       s"--controller=${controller.localUri}",
-      "--user=TEST-USER:TEST-PASSWORD"))
+      "--user=TEST-USER:TEST-PASSWORD")))
     Feed.run(in, settings).await(99.s)

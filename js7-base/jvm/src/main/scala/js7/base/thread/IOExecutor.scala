@@ -49,28 +49,21 @@ object IOExecutor:
 
   lazy val globalIOX: IOExecutor =
     new IOExecutor(
-      newBlockingExecutorService(
-        globalName,
-        config"""
-          js7.thread-pools.long-blocking.keep-alive = 60s
-          js7.thread-pools.long-blocking.virtual = true
-          """,
-        virtual = true),
+      newBlockingExecutorService(globalName, virtual = true),
       globalName)
 
   object Implicits:
     implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
 
-  def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
-    logger.traceResource(
+  def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, IOExecutor] =
+    logger.traceResource:
       Resource
         .make(
-          acquire = F.delay(newBlockingExecutorService(name, config, virtual = true)))(
-          release = executor => F.delay {
+          acquire = F.delay(newBlockingExecutorService(name, virtual = true)))(
+          release = executor => F.delay:
             logger.debug(s"shutdown $executor")
-            executor.shutdown()
-          })
-        .map(new IOExecutor(_, name)))
+            executor.shutdown())
+        .map(new IOExecutor(_, name))
 
   private[thread] def blocking[A](body: => A)(using iox: IOExecutor): IO[A] =
     IO.blockingOn(iox.executionContext):

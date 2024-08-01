@@ -8,9 +8,9 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, ProgramTermination}
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
@@ -120,6 +120,13 @@ object Service:
   : ResourceIO[RestartAfterFailureService[S]] =
     resource(IO(
       new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
+
+  def simpleResource(body: IO[ProgramTermination]): ResourceIO[SimpleMainService] =
+    Resource.eval(IO(simple(body)))
+
+  def simple(body: IO[ProgramTermination]): SimpleMainService =
+    new SimpleMainService with StoppableByCancel:
+      def run = body
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 

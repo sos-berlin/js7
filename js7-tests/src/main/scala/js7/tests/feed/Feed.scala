@@ -26,10 +26,10 @@ import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.proxy.ControllerApi
 
-final class Feed(controllerApi: ControllerApi, settings: Settings):
+final class Feed(controllerApi: ControllerApi, conf: FeedConf):
 
   private lazy val itemSigner: Option[ItemSigner[SignableItem]] =
-    settings.documentSigner.map:
+    conf.documentSigner.map:
       ItemSigner(_, ControllerState.signableItemJsonCodec)
 
   def run(in: ResourceIO[InputStream]): IO[Unit] =
@@ -80,7 +80,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings):
         .rightAs(())
 
   private def logEvents(collector: Collector, started: Deferred[IO, Unit]): IO[Unit] =
-    if settings.watchOrders then
+    if conf.watchOrders then
       val orderIds = collector.freshOrders.map(_.id)
       logLine(s"Watching ${orderIds.mkString(", ")} ...") *>
         logOrderEvents(orderIds.toSet, started)
@@ -141,13 +141,13 @@ object Feed:
 
   private val logger = Logger[this.type]
 
-  def run(in: ResourceIO[InputStream], settings: Settings): IO[Unit] =
+  def run(in: ResourceIO[InputStream], conf: FeedConf): IO[Unit] =
     Pekkos.actorSystemResource("Feed")
       .flatMap: actorSystem =>
         ControllerApi.resource:
-          admissionsToApiResource(settings.admissions)(actorSystem)
+          admissionsToApiResource(conf.admissions)(actorSystem)
       .use: controllerApi =>
-        Feed(controllerApi, settings).run(in)
+        Feed(controllerApi, conf).run(in)
 
   private[feed] val opJsonCodec: TypedJsonCodec[Any] =
     import ControllerState.*

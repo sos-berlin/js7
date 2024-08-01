@@ -1,17 +1,22 @@
 package js7.tests.feed
 
 import cats.effect.{ExitCode, IO, Resource}
-import js7.base.catsutils.OurApp
-import js7.common.system.startup.JavaMain
+import js7.agent.main.AgentMain.runService
+import js7.base.service.Service
+import js7.base.utils.ProgramTermination
+import js7.common.system.startup.ServiceApp
 
-object FeedMain extends OurApp:
+object FeedMain extends ServiceApp:
 
   def run(args: List[String]): IO[ExitCode] =
-    JavaMain.run("JS7 Feed"):
-      if args.isEmpty || args.sameElements(Array("--help")) then IO:
-        println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
-        ExitCode.Success
-      else
-        IO.defer:
-          Feed.run(Resource.eval(IO.pure(System.in)), Settings.parseArguments(args))
-            .as(ExitCode.Success)
+    runService(args, "JS7 Feed", FeedConf.fromCommandLine):
+      conf =>
+        Service.simpleResource:
+          if args.isEmpty || args.sameElements(Array("--help")) then
+            IO:
+              println:
+                "Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD"
+              ProgramTermination.Success
+          else
+            Feed.run(Resource.eval(IO.pure(System.in)), conf)
+              .as(ProgramTermination.Success)

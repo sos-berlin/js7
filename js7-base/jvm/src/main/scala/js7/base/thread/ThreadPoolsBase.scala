@@ -1,11 +1,9 @@
 package js7.base.thread
 
-import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.log.Logger
 import js7.base.system.Java17Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, ExecutionContextExecutorService}
@@ -13,12 +11,11 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, ExecutionCo
 object ThreadPoolsBase:
   private val logger = Logger[this.type]
 
-  def newBlockingExecutorService(name: String, config: Config, virtual: Boolean = false)
+  def newBlockingExecutorService(name: String, virtual: Boolean = false)
   : ExecutorService =
-    val keepAlive = config.getDuration("js7.thread-pools.long-blocking.keep-alive").toFiniteDuration
-    val virtualAllowed = virtual && config.getBoolean("js7.thread-pools.long-blocking.virtual")
+    val keepAlive = 60.s
     labeledExecutorService(name):
-      if virtualAllowed then
+      if virtual then
         maybeNewVirtualThreadExecutorService() getOrElse
           newBlockingNonVirtualExecutor(name, keepAlive)
       else

@@ -1,7 +1,6 @@
 package js7.common.system
 
 import cats.effect.{Resource, Sync}
-import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.ExecutorService
 import js7.base.log.Logger
@@ -49,18 +48,17 @@ object ThreadPools:
         // Writes to stderr:
         throwable.printStackTrace(System.err)
 
-  def unlimitedExecutionContextResource[F[_]](
-    name: String, config: Config, virtual: Boolean = false)
+  def unlimitedExecutionContextResource[F[_]](name: String, virtual: Boolean = false)
     (using F: Sync[F])
   : Resource[F, ExecutionContext] =
       schedulerServiceToResource(F.delay:
-        newUnlimitedExecutionContext(name, config, virtual = virtual))
+        newUnlimitedExecutionContext(name, virtual = virtual))
 
-  private def newUnlimitedExecutionContext(name: String, config: Config, virtual: Boolean = false)
+  private def newUnlimitedExecutionContext(name: String, virtual: Boolean = false)
   : ExecutionContextExecutorService =
     labeledExecutionContextExecutorService(name):
       ExecutionContext.fromExecutorService(
-        newBlockingExecutorService(name, config, virtual = virtual),
+        newBlockingExecutorService(name, virtual = virtual),
         reportUncaughtException)
 
   def newUnlimitedNonVirtualExecutionContext(name: String): ExecutionContextExecutorService =
