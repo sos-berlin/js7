@@ -1,6 +1,6 @@
 package js7.launcher.process
 
-import cats.effect.{FiberIO, IO}
+import cats.effect.IO
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
