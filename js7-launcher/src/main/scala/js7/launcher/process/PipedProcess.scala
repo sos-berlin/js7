@@ -90,7 +90,7 @@ final class PipedProcess private(
                       ended.flatMap(ended => IO:
                         if ended
                         then s"🔵 $what ended after ${elapsed.pretty}"
-                        else s"🟣 $what ignored after ${elapsed.pretty}")
+                        else s"🟣 $what are ignored after ${elapsed.pretty}")
                     case (Some(Outcome.Canceled()), elapsed, level, sym) => IO.pure:
                       s"$sym $what canceled after ${elapsed.pretty}"
                     case (Some(Outcome.Errored(t)), elapsed, level, sym) => IO.pure:

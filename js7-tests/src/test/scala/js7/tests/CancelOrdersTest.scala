@@ -1,22 +1,26 @@
 package js7.tests
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.io.process.{ProcessSignal, ReturnCode}
+import js7.base.io.process.Processes.runProcess
+import js7.base.io.process.{Pid, ProcessSignal, Processes, ReturnCode}
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
+import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.time.{Timestamp, WaitForCondition}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
 import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Response, ResumeOrder}
-import js7.data.event.KeyedEvent
+import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
@@ -32,12 +36,14 @@ import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry,
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
+import scala.jdk.OptionConverters.*
 
 /**
   * @author Joacim Zschimmer
@@ -724,6 +730,90 @@ final class CancelOrdersTest
           OrderDeleted))
     }
 
+  "Child processes are killed, too" in:
+    val script =
+      if isWindows then
+        """@echo off
+          |start /b ping -n 200 127.0.0.1
+          |ping -n 200 127.0.0.1
+          |""".stripMargin
+      else
+        """#!/usr/bin/env bash
+          |set -euo pipefail
+          |
+          |sh <<< '
+          |  set -e
+          |  sleep 0.2s
+          |  sh <<< "
+          |    echo HANG-2a pid=\$$
+          |    sleep 200
+          |  " &
+          |  echo HANG-2 pid=$$
+          |  sleep 200
+          |' &
+          |
+          |hang() {
+          |  echo HANG-1 pid=$$
+          |  sleep 200
+          |}
+          |hang &
+          |hang
+          |
+          |""".stripMargin
+    val workflow = Workflow(WorkflowPath("KILL-CHILD-PROCESSES"), Seq(
+      Execute(WorkflowJob(agentPath, ShellScriptExecutable(script),
+        timeout = Some(3.s), sigkillDelay = Some(0.s)))))
+
+    withTemporaryItem(workflow): workflow =>
+      val pidRegex = ".*pid=([0-9]+).*".r
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId("KILL-CHILD-PROCESSES")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+
+      val pids = controller.api
+        .eventAndStateStream(fromEventId = Some(eventId))
+        .collect:
+          case EventAndState(Stamped(_, ms, KeyedEvent(`orderId`, event: OrderEvent)), _, _) =>
+            Timestamp.ofEpochMilli(ms) -> event
+        .evalTap: (ts, event) =>
+          IO(logger.info(s"$ts $event"))
+        .map(_._2)
+        .takeThrough(o => !o.isInstanceOf[OrderTerminated])
+        .compile
+        .fold(""):
+          case (string, event: OrderStdWritten) => string + event.chunk
+          case (string, _) => string
+        .await(33.s)
+        .split("\n").toSeq
+        .flatMap: line =>
+          pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
+        .distinct
+
+      var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
+      waitForCondition(5.s, 10.ms):
+        runningChildren = pids
+          .flatMap:
+            pid => ProcessHandle.of(pid.number).toScala.map(pid -> _)
+        runningChildren.isEmpty
+
+      if runningChildren.nonEmpty then
+        runningChildren.foreach: (pid, processHandle) =>
+          logger.error:
+            s"Not killed or zombie process: $pid ${processHandle.info.commandLine.toScala.getOrElse("")}"
+        def failMsg =
+          s"Some processes have not been killed: ${runningChildren.map(_._1).mkString(" ")}"
+        if !isUnix then
+          fail(failMsg)
+        else
+          val psOutput = runProcess(s"ps -o pid,ppid,stat,command ${runningChildren.map(_._1.number).mkString(" ")}")
+          logger.error(psOutput)
+          if psOutput.split("\n").tail.count(_.contains("<defunct>")) < runningChildren.size then
+            fail(s"$failMsg\n$psOutput")
+          else
+            info(s"⚠️ Killed child processes are left as zombies:\n$psOutput")
+
+
   private def addWorkflow(workflow: Workflow): Unit =
     controller.api
       .updateItems(Stream(
@@ -733,6 +823,8 @@ final class CancelOrdersTest
 
 
 object CancelOrdersTest:
+
+  private val logger = Logger[this.type]
 
   private val sleepingExecutable = ShellScriptExecutable(
     if isWindows then
