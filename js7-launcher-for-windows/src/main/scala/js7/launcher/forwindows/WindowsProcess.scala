@@ -27,6 +27,7 @@ import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Codec
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -111,6 +112,9 @@ extends Js7Process:
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
           hProcessGuard.releaseAfterUse()
         terminated
+
+  lazy val maybeHandle =
+    ProcessHandle.of(pid.number).toScala
 
   override def toString = s"WindowsProcess($pid)"
 

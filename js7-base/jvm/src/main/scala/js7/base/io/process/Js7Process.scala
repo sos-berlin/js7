@@ -24,3 +24,5 @@ trait Js7Process:
   def waitFor(): ReturnCode
 
   def waitFor(duration: FiniteDuration): Boolean
+
+  def maybeHandle: Option[ProcessHandle]

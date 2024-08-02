@@ -37,7 +37,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest.*
 import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
-import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import org.scalatest.BeforeAndAfterAll
 
@@ -70,9 +69,6 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
         val jobLauncherConf = JobLauncherConf(u, u, u, u,
           UTF_8,
-          killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
-          killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
-          killForWindows = ProcessConfiguration.forTest.killForWindows,
           None,
           scriptInjectionAllowed = true,
           errorLineLengthMax = 1024,

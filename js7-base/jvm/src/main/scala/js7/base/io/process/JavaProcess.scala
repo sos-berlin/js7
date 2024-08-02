@@ -4,7 +4,7 @@ import java.io.{InputStream, OutputStream}
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
-final class JavaProcess(process: Process) extends Js7Process:
+final case class JavaProcess(process: Process) extends Js7Process:
 
   def isAlive: Boolean =
     process.isAlive
@@ -35,6 +35,12 @@ final class JavaProcess(process: Process) extends Js7Process:
 
   def stderr: InputStream =
     process.getErrorStream
+
+  def handle: ProcessHandle =
+    process.toHandle
+
+  lazy val maybeHandle: Some[ProcessHandle] =
+    Some(process.toHandle)
 
   override def toString: String =
     pid.toString

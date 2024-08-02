@@ -88,9 +88,6 @@ final class ProcessDriver(
                     returnValuesProvider.varName,
                     Some(returnValuesProvider.file.toString)),
                   maybeTaskId = Some(taskId),
-                  killWithSigterm = jobLauncherConf.killWithSigterm,
-                  killWithSigkill = jobLauncherConf.killWithSigkill,
-                  killForWindows = jobLauncherConf.killForWindows,
                   maybeKillScript = jobLauncherConf.killScript,
                   maybeWindowsLogon)
           .flatMapT: processConfiguration =>

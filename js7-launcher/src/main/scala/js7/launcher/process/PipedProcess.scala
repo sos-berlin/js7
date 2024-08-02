@@ -1,14 +1,13 @@
 package js7.launcher.process
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
-import cats.syntax.functor.*
 import java.io.{IOException, InputStream, OutputStream}
 import java.lang.ProcessBuilder.Redirect.{INHERIT, PIPE}
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, right, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
-import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
@@ -172,35 +171,10 @@ final class PipedProcess private(
 
   private def kill(force: Boolean): IO[Unit] =
     process match
-      case _: JavaProcess =>
-        // Do not destroy with Java because Java closes stdout and stdin immediately,
-        // not allowing a signal handler to write to stdout
-        killWithUnixCommand(process.pid, force)
-
+      case process: JavaProcess =>
+        killViaProcessHandle(process.handle, force)
       case _ =>
         killWithJava(force)
-
-  private def killWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
-    ifAliveForKilling("killWithUnixCommand"):
-      val argsPattern =
-        if isWindows then conf.killForWindows
-        else if force then conf.killWithSigkill
-        else conf.killWithSigterm
-      if argsPattern.isEmpty then
-        killWithJava(force)
-      else if !argsPattern.contains("$pid") then
-        logger.error(s"Missing '$pid' in configured kill command")
-        killWithJava(force)
-      else
-        val args = argsPattern.mapOrKeep:
-          case "$pid" => pid.number.toString
-        executeKillCommand(args)
-          .flatMap: rc =>
-            if rc.isSuccess then
-              IO.unit
-            else IO.defer:
-              logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
-              killWithJava(force)
 
   private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
     IO.defer:
@@ -210,19 +184,15 @@ final class PipedProcess private(
       else
         body
 
-  /** Kill process per command as Java's Process destroy closes stdout and stderr.
-   * Closing stdout or stderr may block child processes trying to write to stdout
-   * (as observed by a customer).
-   */
-  private def executeKillCommand(args: Seq[String]): IO[ReturnCode] =
-    IO.defer:
-      logger.info(s"⚫️ ${args.mkString(" ")}")
-      ProcessBuilder(args.asJava)
-        .redirectOutput(INHERIT)  // TODO Pipe to stdout
-        .redirectError(INHERIT)
-        .startRobustly()
-        .flatMap: killProcess =>
-          waitForProcessTermination(JavaProcess(killProcess))
+  private def killViaProcessHandle(processHandle: ProcessHandle, force: Boolean): IO[Unit] =
+    // Kill via ProcessHandle because this doesn't close stdout and stdderr
+    IO:
+      if force then
+        logger.info("⚫️ destroyForcibly (SIGKILL)")
+        processHandle.destroyForcibly()
+      else
+        logger.info("⚫️ destroy (SIGTERM)")
+        processHandle.destroy()
 
   private def killWithJava(force: Boolean): IO[Unit] =
     IO:
