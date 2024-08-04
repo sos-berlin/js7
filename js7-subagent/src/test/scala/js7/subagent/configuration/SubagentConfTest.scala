@@ -14,7 +14,6 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.pekkohttp.web.data.WebServerPort
-import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConfTest.*
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
@@ -35,7 +34,6 @@ final class SubagentConfTest extends OurTestSuite:
         logDirectory = dataDir / "logs",
         jobWorkingDirectory = WorkingDirectory,
         webServerPorts = Nil,
-        killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
         name = "js7"))
     }
 
@@ -55,29 +53,6 @@ final class SubagentConfTest extends OurTestSuite:
 
   "--job-working-directory=" in:
     assert(dummyDirectoriesConf("--job-working-directory=DIR").jobWorkingDirectory == Paths.get("DIR").toAbsolutePath)
-
-  "--kill-script= is missing (default)" in:
-    provideConfigAndData { (config, data) =>
-      val expectedFile = data / s"work/kill_task.$shellExt"
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data")
-      myConf.finishAndProvideFiles()
-      assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
-    }
-
-  "--kill-script= (empty)" in:
-    provideConfigAndData { (config, data) =>
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=")
-      myConf.finishAndProvideFiles()
-      assert(myConf.killScript == None)
-    }
-
-  "--kill-script=FILE" in:
-    provideConfigAndData { (config, data) =>
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data",
-        "--kill-script=/my/kill/script")
-      myConf.finishAndProvideFiles()
-      assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
-    }
 
   "Unknown argument" in:
     provideConfigAndData { (config, data) =>
@@ -103,7 +78,6 @@ final class SubagentConfTest extends OurTestSuite:
       logDirectory = Paths.get("/tmp/LOGS"),
       jobWorkingDirectory = Paths.get(if isWindows then """c:\tmp\WORKING""" else "/tmp/WORKING"),
       webServerPorts = Nil,
-      killScript = None,
       config"""js7.windows.codepages.88888 = "UNKNOWN" """,
       name = "JS7")
 

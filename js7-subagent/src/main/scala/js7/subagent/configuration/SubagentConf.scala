@@ -22,9 +22,8 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
+import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forwindows.configuration.WindowsConf
-import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.ExecutionContext
@@ -39,7 +38,6 @@ final case class SubagentConf(
   jobWorkingDirectory: Path = WorkingDirectory,
   webServerPorts: Seq[WebServerPort],
   defaultJobSigkillDelay: FiniteDuration,
-  killScript: Option[ProcessKillScript],
   stdouterr: StdouterrConf,
   outerrByteBufferSize: Int,
   outerrQueueSize: Int,
@@ -68,11 +66,6 @@ extends CommonConfiguration:
 
   def finishAndProvideFiles(): SubagentConf =
     provideDataSubdirectories()
-    if killScript.contains(ProcessKillScriptProvider.fromDirectory(workDirectory)) then
-      // After Subagent termination, leave behind the kill script,
-      // in case of regular termination after error.
-      new ProcessKillScriptProvider() //.closeWithCloser
-        .provideTo(workDirectory)
     this
 
   private def provideDataSubdirectories(): this.type =
@@ -94,7 +87,6 @@ extends CommonConfiguration:
       systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
         .map(Charset.forName /*throws*/)
         .getOrElse(systemEncoding.orThrow),
-      killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,
       iox,
       blockingJobEC = blockingJobEC,
@@ -136,9 +128,6 @@ object SubagentConf:
     val common = CommonConfiguration.Common.fromCommandLineArguments(args)
     import common.configDirectory
 
-    def toKillScriptSetting(path: String): Option[ProcessKillScript] =
-      path.nonEmpty ? ProcessKillScript(Paths.get(path).toAbsolutePath)
-
     val config = resolvedConfig(configDirectory, extra = extraConfig, internal = internalConfig)
     val conf = SubagentConf.fromResolvedConfig(
       configDirectory = configDirectory,
@@ -149,16 +138,6 @@ object SubagentConf:
         .getOrElse(common.logDirectory),
       jobWorkingDirectory = args.as("--job-working-directory=", WorkingDirectory)(asAbsolutePath),
       common.webServerPorts,
-      killScript =
-        args.optionAs[String]("--kill-script=") match
-          case Some(path) =>
-            toKillScriptSetting(path)
-          case None =>
-            config.optionAs[String]("js7.job.execution.kill.script") match
-              case Some(path) =>
-                toKillScriptSetting(path)
-              case None =>
-                Some(ProcessKillScriptProvider.fromDirectory(common.workDirectory)),
       name = name,
       config)
 
@@ -184,7 +163,6 @@ object SubagentConf:
       webServerPorts =
         httpPort.map(port => WebServerPort.localhost(port)) ++:
           httpsPort.map(port => WebServerPort.localHttps(port)).toList,
-      killScript = Some(ProcessKillScriptProvider.fromDirectory(workDirectory)),
       extraConfig = extraConfig,
       internalConfig = internalConfig,
       name = name)
@@ -196,7 +174,6 @@ object SubagentConf:
     logDirectory: Path,
     jobWorkingDirectory: Path,
     webServerPorts: Seq[WebServerPort],
-    killScript: Option[ProcessKillScript],
     extraConfig: Config = ConfigFactory.empty,
     internalConfig: Config = DefaultConfig,
     name: String)
@@ -205,7 +182,7 @@ object SubagentConf:
       configDirectory, dataDirectory,
       workDirectory = dataDirectory / "work",
       logDirectory, jobWorkingDirectory,
-      webServerPorts, killScript, name,
+      webServerPorts, name,
       resolvedConfig(configDirectory, extraConfig, internalConfig))
 
   private def fromResolvedConfig(
@@ -215,7 +192,6 @@ object SubagentConf:
     logDirectory: Path,
     jobWorkingDirectory: Path,
     webServerPorts: Seq[WebServerPort],
-    killScript: Option[ProcessKillScript],
     name: String,
     config: Config)
   : SubagentConf =
@@ -228,7 +204,6 @@ object SubagentConf:
       jobWorkingDirectory = jobWorkingDirectory,
       webServerPorts,
       defaultJobSigkillDelay = config.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
-      killScript,
       outErrConf,
       outerrByteBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.byte-buffer-size")
         .orThrow.min(outErrConf.chunkSize),

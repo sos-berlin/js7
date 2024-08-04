@@ -69,7 +69,6 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
         val jobLauncherConf = JobLauncherConf(u, u, u, u,
           UTF_8,
-          None,
           scriptInjectionAllowed = true,
           errorLineLengthMax = 1024,
           RecouplingStreamReaderConf.forTest,

@@ -18,7 +18,6 @@ final case class JobLauncherConf(
   /** Working directory of the process to be started. */
   workingDirectory: Path,
   systemEncoding: Charset,
-  killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
   errorLineLengthMax: Int,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
@@ -37,7 +36,6 @@ object JobLauncherConf:
     workTmpDirectory: Path,
     jobWorkingDirectory: Path,
     systemEncoding: Charset,
-    killScript: Option[ProcessKillScript],
     scriptInjectionAllowed: Boolean = false,
     iox: IOExecutor, blockingJobEC: ExecutionContext, clock: AlarmClock, config: Config)
   : Checked[JobLauncherConf] =
@@ -50,7 +48,6 @@ object JobLauncherConf:
         systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
           .map(Charset.forName /*throws*/)
           .getOrElse(systemEncoding),
-        killScript = killScript,
         scriptInjectionAllowed = scriptInjectionAllowed,
         errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
         RecouplingStreamReaderConfs.fromConfig(config).orThrow,

@@ -88,7 +88,6 @@ final class ProcessDriver(
                     returnValuesProvider.varName,
                     Some(returnValuesProvider.file.toString)),
                   maybeTaskId = Some(taskId),
-                  maybeKillScript = jobLauncherConf.killScript,
                   maybeWindowsLogon)
           .flatMapT: processConfiguration =>
             startProcessLock.lock("startProcess"):

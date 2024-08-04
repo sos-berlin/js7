@@ -14,7 +14,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ClusterConf
 import js7.common.commandline.CommandLineArguments
 import js7.common.pekkohttp.web.data.WebServerPort
-import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConf
 import scala.concurrent.duration.*
 
@@ -36,7 +35,6 @@ final class AgentConfigurationTest extends OurTestSuite:
           logDirectory = dataDir / "logs",
           jobWorkingDirectory = WorkingDirectory,
           webServerPorts = Nil,
-          killScript = Some(ProcessKillScript(dataDir / "work" / "kill_task.sh")),
           internalConfig = DefaultConfig,
           name = "js7")
         AgentConfiguration(

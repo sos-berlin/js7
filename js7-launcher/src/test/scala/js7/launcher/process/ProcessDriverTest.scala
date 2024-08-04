@@ -82,7 +82,6 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
         workTmpDirectory = executableDirectory,
         jobWorkingDirectory = executableDirectory,
         systemEncoding = US_ASCII,
-        killScript = None,
         scriptInjectionAllowed = false,
         environment[IOExecutor].await(99.s),
         blockingJobEC = jobEC,
