@@ -418,7 +418,7 @@ final class CancelOrdersTest
           """#!/usr/bin/env bash
             |set -euo pipefail
             |
-            |if [ "$1" == "-child" ]; then
+            |if [ "${1-}" == "-child" ]; then
             |  # Sometimes, the echo does not take effect: trap "wait; echo CHILD EXIT" EXIT
             |  trap wait EXIT
             |  trap "echo CHILD SIGTERM; exit" SIGTERM
@@ -580,7 +580,7 @@ final class CancelOrdersTest
               |set -euo pipefail
               |""".stripMargin +
              traps + """
-              |if [ "$1" == "-child" ]; then
+              |if [ "${1-}" == "-child" ]; then
               |  sleep 120
               |else
               |  echo READY
@@ -628,7 +628,7 @@ final class CancelOrdersTest
             |trap "wait && exit 7" SIGTERM
             |trap "rc=$? && wait && exit $?" EXIT
             |
-            |if [ "$1" == "-child" ]; then
+            |if [ "${1-}" == "-child" ]; then
             |  sleep 120
             |else
             |  echo READY
