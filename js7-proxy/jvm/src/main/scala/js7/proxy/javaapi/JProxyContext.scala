@@ -23,7 +23,7 @@ import js7.proxy.javaapi.JProxyContext.*
 import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
-final class JProxyContext(config: Config, computeExecutor: Executor)
+final class JProxyContext(config: Config, computeExecutor: Executor | Null)
 extends HasCloser:
   def this() = this(ConfigFactory.empty, null)
   def this(config: Config) = this(config, null)
@@ -40,7 +40,7 @@ extends HasCloser:
 
   private val (ioRuntime, ioRuntimeShutdown) =
     OurIORuntime
-      .ownResource[SyncIO]("JS7 Proxy", config_, computeExecutor = Option(computeExecutor))
+      .resource[SyncIO]("JS7 Proxy", config_, computeExecutor = Option(computeExecutor))
       .allocated
       .unsafeRunSync()
 

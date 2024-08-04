@@ -15,7 +15,7 @@ import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.{isTest, isTestParallel}
+import js7.base.utils.Tests.isTestParallel
 import js7.base.utils.UseDefault.getOrElse
 import js7.base.utils.{Tests, UseDefault}
 import scala.concurrent.ExecutionContext
@@ -26,13 +26,10 @@ object OurIORuntime:
   // Lazy, to allow proper initialisation of logging first
   private lazy val logger = Logger[this.type]
 
-  val commonThreadPrefix = "js7"
-
-  val useCommonIORuntime1: Boolean =
+  val useCommonIORuntime: Boolean =
     sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed")
 
-  val useCommonIORuntime: Boolean =
-    isTest && useCommonIORuntime1
+  val commonThreadPrefix = "js7"
 
   final lazy val commonIORuntime: IORuntime =
     ownResource[SyncIO](
@@ -47,15 +44,16 @@ object OurIORuntime:
     label: String,
     config: Config,
     threads: Int | UseDefault = UseDefault,
-    shutdownHooks: Seq[() => Unit] = Nil)
+    shutdownHooks: Seq[() => Unit] = Nil,
+    computeExecutor: Option[Executor] = None)
     (using F: Sync[F])
   : Resource[F, IORuntime] =
-    if useCommonIORuntime then
+    if useCommonIORuntime && computeExecutor.isEmpty then
       Resource.pure(commonIORuntime)
     else
-      ownResource[F](label, config, threads, shutdownHooks)
+      ownResource[F](label, config, threads, shutdownHooks, computeExecutor)
 
-  def ownResource[F[_]](
+  private def ownResource[F[_]](
     label: String,
     config: Config,
     threads: Int | UseDefault = UseDefault,
@@ -66,7 +64,7 @@ object OurIORuntime:
     val indexedLabel = toIndexedName(label)
     val myThreads = threads.getOrElse:
       if isTestParallel then
-        2 // Room for some other concurrently running tests and "internal" nodes
+        2 // Room for some other concurrently running tests and nodes running in this JVM
       else
         2 max config.as("js7.thread-pools.compute.threads")(ThreadCount)
     val resource = resource2[F](indexedLabel, threads = myThreads, shutdownHooks, computeExecutor)

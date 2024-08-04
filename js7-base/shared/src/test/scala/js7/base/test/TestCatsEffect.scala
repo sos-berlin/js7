@@ -38,8 +38,6 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   protected final lazy val ioRuntime: IORuntime =
     if !afterAllMayBeCalled then
       throw new IllegalStateException("IORuntime used, but beforeAll() has not yet executed")
-    else if OurIORuntime.useCommonIORuntime1 then
-      OurIORuntime.commonIORuntime
     else
       val allocated =
         OurIORuntime.resource[SyncIO](
