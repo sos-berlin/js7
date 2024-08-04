@@ -2,30 +2,28 @@ package js7.launcher.process
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, ResourceIO}
-import java.nio.file.Files.*
 import java.nio.file.Path
 import js7.base.io.file.FileDeleter.tryDeleteFile
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.Processes.{newTemporaryShellFile, temporaryShellFileResource}
 import js7.base.io.process.{Processes, ReturnCode}
-import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLine, JobKey, TaskId}
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObserversForTest.testSink
-import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.{StdObservers, StdObserversForTest}
 import scala.concurrent.Future
 
+// See also CancelOrdersTest
 /**
  * @author Joacim Zschimmer
  */
@@ -34,7 +32,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   override protected val withIOExecutor = true
-  
+
   "PipedProcess" in:
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
@@ -90,70 +88,20 @@ final class PipedProcessTest extends OurAsyncTestSuite:
                 |""".stripMargin)
             succeed
 
-  "sendProcessSignal SIGKILL" in:
-    if isMac then
-      info("Disabled on macOS because it kills our builder process")
-      pending
-    else
-      val taskId = TaskId("TEST-PROCESS-ID")
-      withScriptFile: scriptFile =>
-        scriptFile.writeUtf8Executable:
-          if isWindows then
-            """echo SCRIPT-ARGUMENTS=%*
-              |ping -n 4 127.0.0.1
-              |""".stripMargin
-          else
-            "echo SCRIPT-ARGUMENTS=$*; sleep 3"
-        withCloser: closer =>
-          val killScriptOutputFile = createTempFile("test-", ".tmp")
-          val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
-          killScriptFile := (
-            if isWindows then
-              s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n"
-            else
-              s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
-          closer.onClose:
-            delete(killScriptOutputFile)
-            delete(killScriptFile)
-          val processConfig = ProcessConfiguration.forTest.copy(
-            maybeTaskId = Some(taskId),
-            maybeKillScript = Some(ProcessKillScript(killScriptFile)))
-          runningShellScript(processConfig, scriptFile)
-            .use: (shellProcess, sink) =>
-              IO:
-                sleep(1.s)
-                assert(shellProcess.isAlive)
-                shellProcess.sendProcessSignal(SIGKILL).await(99.s)
-
-                val rc = shellProcess.watchProcessAndStdouterr await 99.s
-                assert(rc == (
-                  if isWindows then ReturnCode(1/* This is Java destroy()*/)
-                  else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
-                  else ReturnCode(SIGKILL)))
-
-                assert(sink.out.await(99.s) contains "SCRIPT-ARGUMENTS=")
-                assert(sink.out.await(99.s) contains s"SCRIPT-ARGUMENTS=--agent-task-id=${taskId.string}")
-                assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${taskId.string}")
-            .await(99.s)
-
   if !isWindows then
     "sendProcessSignal SIGTERM (Unix only)" in:
-      if isMac then
-        info("Disabled on macOS because it kills our builder process")
-        pending
-      else
-        withScriptFile: scriptFile =>
-          scriptFile.writeUtf8Executable:
-            "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3"
-          runningShellScript(ProcessConfiguration.forTest, scriptFile)
-            .use: (shellProcess, sink) =>
-              IO:
-                sleep(1.s)
-                assert(shellProcess.isAlive)
-                shellProcess.sendProcessSignal(SIGTERM).await(99.s)
-                val rc = shellProcess.watchProcessAndStdouterr await 99.s
-                assert(rc == ReturnCode(7))
-            .await(99.s)
+      withScriptFile: scriptFile =>
+        scriptFile.writeUtf8Executable:
+          "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3"
+        runningShellScript(ProcessConfiguration.forTest, scriptFile)
+          .use: (shellProcess, sink) =>
+            IO:
+              sleep(1.s)
+              assert(shellProcess.isAlive)
+              shellProcess.sendProcessSignal(SIGTERM).await(99.s)
+              val rc = shellProcess.watchProcessAndStdouterr await 99.s
+              assert(rc == ReturnCode(7))
+          .await(99.s)
 
   private def runShellScript(
     processConfiguration: ProcessConfiguration,

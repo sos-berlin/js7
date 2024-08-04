@@ -2,6 +2,7 @@ package js7.base.io.process
 
 import java.io.{InputStream, OutputStream}
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.StreamConverters.*
 
 trait Js7Process:
 
@@ -26,3 +27,6 @@ trait Js7Process:
   def waitFor(duration: FiniteDuration): Boolean
 
   def maybeHandle: Option[ProcessHandle]
+
+  final def descendants: Vector[ProcessHandle] =
+    maybeHandle.fold(Vector.empty)(_.descendants.toScala(Vector))

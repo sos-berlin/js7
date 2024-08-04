@@ -15,6 +15,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Timestamp, WaitForCondition}
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -30,7 +31,7 @@ import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -731,6 +732,11 @@ final class CancelOrdersTest
     }
 
   "Child processes are killed, too" in:
+    // Big value (>4000 under macOS) may fail with
+    // - in bash fork with "Resource temporarily not available"
+    // - in ProcessHandle.descendants with "cannot allocate memory"
+    val numberOfChildren = sys.props.get("test.speed").fold(100)(_.toInt)
+
     val script =
       if isWindows then
         """@echo off
@@ -741,34 +747,34 @@ final class CancelOrdersTest
         """#!/usr/bin/env bash
           |set -euo pipefail
           |
-          |sh <<< '
-          |  set -e
-          |  sleep 0.2s
-          |  sh <<< "
-          |    echo HANG-2a pid=\$$
-          |    sleep 200
-          |  " &
-          |  echo HANG-2 pid=$$
-          |  sleep 200
-          |' &
+          |sh <<'END1' &
+          |  set -euo pipefail
+          |  for i in {1..»numberOfNestedChilds«}; do
+          |    sh <<<"
+          |      echo SLEEP-2-$i pid=\$\$
+          |      sleep 204
+          |    " &
+          |  done
+          |  echo SLEEP-2 pid=$$
+          |  sleep 203
+          |END1
           |
-          |hang() {
-          |  echo HANG-1 pid=$$
-          |  sleep 200
-          |}
+          |sleep 202 &
+          |echo SLEEP pid=$!
           |hang &
-          |hang
+          |echo pid=$$
+          |sleep 201
           |
-          |""".stripMargin
+          |""".stripMargin.replace("»numberOfNestedChilds«", (numberOfChildren - 3).toString)
     val workflow = Workflow(WorkflowPath("KILL-CHILD-PROCESSES"), Seq(
-      Execute(WorkflowJob(agentPath, ShellScriptExecutable(script),
-        timeout = Some(3.s), sigkillDelay = Some(0.s)))))
+      Execute:
+        WorkflowJob(agentPath, ShellScriptExecutable(script))))
 
     withTemporaryItem(workflow): workflow =>
       val pidRegex = ".*pid=([0-9]+).*".r
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("KILL-CHILD-PROCESSES")
-      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
 
       val pids = controller.api
@@ -776,19 +782,35 @@ final class CancelOrdersTest
         .collect:
           case EventAndState(Stamped(_, ms, KeyedEvent(`orderId`, event: OrderEvent)), _, _) =>
             Timestamp.ofEpochMilli(ms) -> event
-        .evalTap: (ts, event) =>
-          IO(logger.info(s"$ts $event"))
         .map(_._2)
-        .takeThrough(o => !o.isInstanceOf[OrderTerminated])
+        .evalTap:
+          case e: OrderTerminated =>
+            IO.unlessA(e.isInstanceOf[OrderFailed] &&
+                    controllerState.idToOrder(orderId).lastOutcome ==
+                      OrderOutcome.Killed(OrderOutcome.Failed(Map(
+                        "returnCode" -> NumberValue(ReturnCode(SIGKILL).number))))):
+              IO.raiseError(RuntimeException(s"Unexpected $e"))
+          case _ => IO.unit
+        .takeWhile(e => !e.isInstanceOf[OrderTerminated])
+        .collect:
+          case event: OrderStdWritten => event.chunk
+        .through(fs2.text.lines)
+        .scan(Vector.empty[Pid]): (allPids, line) =>
+          allPids ++ pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
+        .evalTap(pids => IO(pids.requireUniqueness))
+        .takeThrough(_.size < numberOfChildren)
         .compile
-        .fold(""):
-          case (string, event: OrderStdWritten) => string + event.chunk
-          case (string, _) => string
-        .await(33.s)
-        .split("\n").toSeq
-        .flatMap: line =>
-          pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
-        .distinct
+        .last.map(_.get)
+        .await(99.s)
+
+      assert(pids.size == numberOfChildren)
+
+      val cancelledAt = Deadline.now
+      controller.api.executeCommand:
+        CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
+      .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+      logger.info(s"⏱️ Cancellation took ${cancelledAt.elapsed.pretty}")
 
       var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
       waitForCondition(5.s, 10.ms):
@@ -799,14 +821,15 @@ final class CancelOrdersTest
 
       if runningChildren.nonEmpty then
         runningChildren.foreach: (pid, processHandle) =>
-          logger.error:
-            s"Not killed or zombie process: $pid ${processHandle.info.commandLine.toScala.getOrElse("")}"
+          logger.error(s"Not killed or zombie process: $pid ${
+            processHandle.info.commandLine.toScala.getOrElse("")}")
         def failMsg =
           s"Some processes have not been killed: ${runningChildren.map(_._1).mkString(" ")}"
         if !isUnix then
           fail(failMsg)
         else
-          val psOutput = runProcess(s"ps -o pid,ppid,stat,command ${runningChildren.map(_._1.number).mkString(" ")}")
+          val psOutput = runProcess:
+            s"ps -o pid,ppid,stat,command ${runningChildren.map(_._1.number).mkString(" ")}"
           logger.error(psOutput)
           if psOutput.split("\n").tail.count(_.contains("<defunct>")) < runningChildren.size then
             fail(s"$failMsg\n$psOutput")

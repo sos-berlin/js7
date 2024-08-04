@@ -10,7 +10,6 @@ import java.nio.channels.{Channels, ReadableByteChannel}
 import java.util
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 
 object ReaderStreams:
@@ -18,12 +17,10 @@ object ReaderStreams:
   private val DefaultBufferSize = 8192
 
   def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
-    (using IOExecutor)
   : Stream[IO, Byte] =
     blockingChannelToByteStream(newChannel(in), bufferSize)
 
   def blockingChannelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
-    (using IOExecutor)
   : Stream[IO, Byte] =
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
@@ -41,7 +38,6 @@ object ReaderStreams:
       .unchunks
 
   def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize)
-    (using IOExecutor)
   : Stream[IO, Char] =
     Stream.suspend:
       val buffer = new Array[Char](bufferSize)

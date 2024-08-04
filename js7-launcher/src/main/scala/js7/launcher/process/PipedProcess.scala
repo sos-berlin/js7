@@ -1,17 +1,21 @@
 package js7.launcher.process
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import java.io.{IOException, InputStream, OutputStream}
-import java.lang.ProcessBuilder.Redirect.{INHERIT, PIPE}
+import java.lang.ProcessBuilder.Redirect
+import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, right, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
-import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
-import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.system.OperatingSystem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
@@ -30,6 +34,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
@@ -65,7 +70,7 @@ final class PipedProcess private(
               case Left((), stdouterrFiber) =>
                 IO.defer:
                   logger.warn:
-                    s"$orderId $toString ignoring stdout and stderr after SIGKILL (maybe a child proces is still running)"
+                    s"Ignoring stdout and stderr after SIGKILL (maybe a child proces is still running)"
                   joinStdouterr(stdouterrFiber, orderId, jobKey, stdoutAndStderrAbandonAfter)
                     .startAndForget
                 .as(false /*stdout ignored*/)
@@ -75,10 +80,10 @@ final class PipedProcess private(
         .flatMap:
           case Left((returnCode, stdouterrFiber)) => // Process terminated
             IO.defer:
-              logger.debug(s"$orderId $toString terminated with $returnCode")
+              logger.debug(s"Tterminated with $returnCode")
               IO:
                 logger.info:
-                  s"$orderId $toString terminated with $returnCode, awaiting stdout or stderr (maybe a child proces is still running)"
+                  s"terminated with $returnCode, awaiting stdout or stderr (maybe a child proces is still running)"
               .delayBy(StdouterrWorryStart)
               .background.surround:
                 val what = s"$orderId stdout or stderr"
@@ -111,11 +116,11 @@ final class PipedProcess private(
     sigkilled.get
       .andWait(killStdoutAndStderrDelay)
       .flatMap(_ => IO:
-        logger.info(s"$orderId destroyForcibly to close stdout and stderr")
+        logger.info(s"destroyForcibly to close stdout and stderr")
         process.destroyForcibly())
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
-    logger.traceIO(s"$orderId pumpStdoutAndStderrToSink")(IO
+    logger.traceIO(s"pumpStdoutAndStderrToSink")(IO
       .both(
         pumpOutErrToSink(Stdout, process.stdout),
         pumpOutErrToSink(Stderr, process.stderr))
@@ -125,73 +130,81 @@ final class PipedProcess private(
     stdObservers
       .pumpInputStreamToSink(outErr, in, conf.encoding)
       .handleErrorWith:
-        case t: IOException if _isKilling /*Happens under Windows*/ => IO:
+        case t: IOException if isWindows && _isKilling => IO:
           logger.warn(
-            s"$orderId: While killing the process, $outErr became unreadable: ${t.toStringWithCauses}",
+            s"While killing the process, $outErr became unreadable: ${t.toStringWithCauses}",
             t)
-        case t => IO(logger.warn(s"$orderId $outErr: ${t.toStringWithCauses}"))
+        case t => IO(logger.warn(s"$outErr: ${t.toStringWithCauses}"))
 
   def sendProcessSignal(signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      if signal != SIGKILL && !isWindows then
-        kill(force = false)
-      else
-        ifAliveForKilling("sendProcessSignal SIGKILL"):
-          conf
-            .toKillScriptCommandArgumentsOption(process.pid)
-            .fold(kill(force = true)): args =>
-              _isKilling = true
-              executeKillScript(args)
-                .handleError(t => logger.error:
-                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}")
-                .<*(kill(force = true))
+      val force = signal == SIGKILL
+      _isKilling |= force
+      kill(force)
         .guarantee:
-          sigkilled.complete(()).void
-
-  private def executeKillScript(args: Seq[String]): IO[Unit] =
-    ifAliveForKilling("executeKillScript"):
-      if isMac then
-        IO.defer:
-          // TODO On macOS, the kill script may kill a foreign process like the developers IDE
-          logger.warn("Execution of the kill script is suppressed on macOS")
-          kill(force = true)
-      else
-        IO.defer:
-          logger.info("⚫️ Executing kill script: " + args.mkString("  "))
-          val processBuilder = new ProcessBuilder(args.asJava)
-            .redirectOutput(INHERIT)
-            .redirectError(INHERIT)
-          processBuilder
-            .startRobustly()
-            .flatMap: killProcess =>
-              waitForProcessTermination(JavaProcess(killProcess))
-            .flatMap(returnCode => IO:
-              val logLevel = if returnCode.isSuccess then LogLevel.Debug else LogLevel.Warn
-              logger.log(logLevel, s"Kill script '${args.head}' has returned $returnCode"))
+          IO.whenA(force):
+            sigkilled.complete(()).void
 
   private def kill(force: Boolean): IO[Unit] =
-    process match
-      case process: JavaProcess =>
-        killViaProcessHandle(process.handle, force)
-      case _ =>
-        killWithJava(force)
+    if !force then
+      killMainProcessOnly(force)
+    else
+      killWithDescendants(force)
 
-  private def ifAliveForKilling(label: String)(body: IO[Unit]): IO[Unit] =
+  private def killWithDescendants(force: Boolean): IO[Unit] =
+    logger.debugIO:
+      IO.defer:
+        val descendants = process.descendants
+        if descendants.isEmpty then
+          killMainProcessOnly(force)
+        else
+          // Try to stop all processes, then collect descendants again and kill them
+          sendStopSignal(process.pid.number +: descendants.map(_.pid))
+            .handleErrorWith: t =>
+              IO(logger.warn(t.toStringWithCauses))
+            .flatMap: _ =>
+              val descendants = process.descendants
+              killMainProcessOnly(force).flatMap: _ =>
+                descendants
+                  .traverse(killViaProcessHandle(_, force))
+                  .map(_.combineAll)
+
+  private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
     IO.defer:
-      if !process.isAlive then
-        IO(logger.debug(s"$label: 🚫 Process not killed because it has already terminated with ${
-          process.returnCode.fold("?")(_.pretty(isWindows))}"))
-      else
-        body
+      val firstArgs = Vector("/bin/kill", "-STOP")
+      val args = firstArgs ++ pids.map(_.toString)
+      logger.info(s"${args.mkString(" ")}")
+      runProcess(args): line =>
+        IO(logger.warn(s"${firstArgs.mkString(" ")}: $line"))
+      .flatMap(returnCode => IO:
+        if !returnCode.isSuccess then
+          logger.warn(s"${firstArgs.mkString(" ")} exited with $returnCode"))
 
-  private def killViaProcessHandle(processHandle: ProcessHandle, force: Boolean): IO[Unit] =
-    // Kill via ProcessHandle because this doesn't close stdout and stdderr
+  private def killMainProcessOnly(force: Boolean): IO[Unit] =
+    IO.defer:
+      process.match
+        case process: JavaProcess =>
+          // Kill via ProcessHandle because this doesn't close stdout and stdderr
+          killViaProcessHandle(process.handle, force)
+        case _ =>
+          killWithJava(force)
+
+  private def killViaProcessHandle(processHandle: ProcessHandle, force: Boolean, indent: Int = 0)
+  : IO[Unit] =
     IO:
+      logger.info:
+        val isMainProcesss = processHandle.pid == process.pid.number
+        (if isMainProcesss then "⚫️ " else "❌ ") +
+          (if force then """destroyForcibly "SIGKILL" """ else """destroy "SIGTERM" """) +
+          (!isMainProcesss ?? (
+            " " * (indent - 1) +
+              "child process " +
+              Pid(processHandle.pid) +
+              ' ' +
+              processHandle.info.commandLine.toScala.getOrElse("")))
       if force then
-        logger.info("⚫️ destroyForcibly (SIGKILL)")
         processHandle.destroyForcibly()
       else
-        logger.info("⚫️ destroy (SIGTERM)")
         processHandle.destroy()
 
   private def killWithJava(force: Boolean): IO[Unit] =
@@ -214,8 +227,8 @@ final class PipedProcess private(
   def stdin: OutputStream =
     process.stdin
 
-  override def toString: String =
-    process.toString
+  override def toString =
+    s"$orderId $process"
 
 
 object PipedProcess:
@@ -241,9 +254,7 @@ object PipedProcess:
     (using IOExecutor)
   : IO[Checked[PipedProcess]] =
     IO.defer:
-      val commandArgs = toShellCommandArguments(
-        commandLine.file,
-        commandLine.arguments.tail ++ conf.idArgumentOption /*TODO Should not be an argument*/)
+      val commandArgs = toShellCommandArguments(commandLine.file, commandLine.arguments.tail)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
 
       startProcess(commandArgs, conf).flatMapT: process =>

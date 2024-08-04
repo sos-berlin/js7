@@ -1,18 +1,24 @@
 package js7.base.io.process
 
 import cats.effect.{IO, Resource, Sync}
-import java.io.IOException
+import java.io.{IOException, InputStream}
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{Files, Path}
 import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 object Processes:
 
@@ -77,7 +83,38 @@ object Processes:
         ByteArray(stderr.toString))
     stdout.toString
 
-  
+  def runProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
+    IO.defer:
+      logger.info(s"${args.mkString(" ")}")
+      ProcessBuilder(args.asJava)
+        .startRobustly()
+        .flatMap: killProcess =>
+          IO.both(
+            logStdouterr(killProcess, logLine),
+            waitForProcessTermination(killProcess))
+        .map(_._2)
+
+  private def logStdouterr(process: Process, logLine: String => IO[Unit]): IO[Unit] =
+    IO
+      .both(
+        logStdouterr(process.getInputStream, logLine),
+        logStdouterr(process.getErrorStream, logLine))
+      .void
+
+  private def logStdouterr(in: InputStream, logLine: String => IO[Unit]): IO[Unit] =
+    inputStreamToByteStream(in)
+      .chunks
+      .map(_.utf8String)
+      .through(fs2.text.lines)
+      .evalTap(logLine)
+      .compile.drain
+
+  private def waitForProcessTermination(process: Process): IO[ReturnCode] =
+    interruptibleVirtualThread:
+      logger.traceCallWithResult(s"waitFor ${Pid(process.pid)}"):
+        ReturnCode(process.waitFor())
+
+
   final class ProcessException(
     commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray)
   extends RuntimeException:
