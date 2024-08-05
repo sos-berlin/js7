@@ -14,8 +14,8 @@ import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -146,6 +146,8 @@ extends MainService, Service.StoppableByRequest:
           dedicatedAllocated.trySet(allocatedDedicatedSubagent)
         .flatMap: isFirst =>
           val ok = IO:
+            /// log4j2.xml: %X{js7.instanceItemId} ///
+            Log4j.set("js7.instanceItemId", cmd.subagentId.string)
             logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
             Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
           if isFirst then

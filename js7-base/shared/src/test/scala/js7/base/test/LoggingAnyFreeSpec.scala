@@ -14,7 +14,7 @@ import scala.util.Try
  * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
  * take effect on your terminal.
  **/
-trait LoggingAnyFreeSpec extends AnyFreeSpec:
+trait LoggingAnyFreeSpec extends AnyFreeSpec, TestLogging:
 
   private val testAdder = new LoggingTestAdder(getClass)
 

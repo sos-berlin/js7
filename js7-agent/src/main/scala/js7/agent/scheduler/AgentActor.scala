@@ -17,7 +17,7 @@ import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, right}
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{CorrelId, Log4j, Logger}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AlarmClock
@@ -242,11 +242,13 @@ extends Actor, Stash, SimpleStateActor:
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
-        .flatMapT(eventAndState => IO {
+        .flatMapT(eventAndState => IO:
           logger.info(s"Dedicating $agentPath to '$controllerId'")
+          /// log4j2.xml: %X{js7.instanceItemId} ///
+          Log4j.set("js7.instanceItemId", agentPath.toString)
+
           addOrderKeeper(agentPath, controllerId)
-            .rightAs(agentRunId -> eventAndState._2.eventId)
-        })
+            .rightAs(agentRunId -> eventAndState._2.eventId))
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] =
     val agentState = journal.unsafeCurrentState()

@@ -24,7 +24,7 @@ final class Log4jTest extends OurTestSuite:
       sleep(500.ms)
       doTestSpeed(1000, 6000)
       logger.info(CorrelId.statistics)
-      logger.info(CorrelIdLog4jThreadContextMap.statistics)
+      logger.info(Log4jThreadContextMap.statistics)
 
   private def doTestSpeed(n: Int, m: Int): Unit =
     val started = now

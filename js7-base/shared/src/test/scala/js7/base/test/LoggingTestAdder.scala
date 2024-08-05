@@ -70,7 +70,6 @@ private final class LoggingTestAdder(testClass: Class[?]):
 
 
 private object LoggingTestAdder:
-  Logger.initialize("JS7 Test")  // In case it is not yet initialized
 
   private val logger = Logger("TEST")
   private val barLength = 100

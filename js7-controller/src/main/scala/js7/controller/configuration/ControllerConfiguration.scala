@@ -117,7 +117,9 @@ object ControllerConfiguration:
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, dataDir, extraDefaultConfig)
+
     val controllerId = maybeControllerId getOrElse ControllerId(config.getString("js7.controller.id"))
+
     new ControllerConfiguration(
       controllerId = controllerId,
       dataDirectory = dataDir,

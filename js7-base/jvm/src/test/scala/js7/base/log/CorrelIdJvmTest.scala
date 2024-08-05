@@ -37,7 +37,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll:
     super.afterAll()
     //underlyingScheduler.shutdown()
     CorrelId.logStatistics()
-    CorrelIdLog4jThreadContextMap.logStatistics()
+    Log4jThreadContextMap.logStatistics()
 
   "Manual tests" - {
     // Look at build.log (with debug enabled and %X{js7.correlId} in the pattern)!

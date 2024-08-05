@@ -42,25 +42,30 @@ object Log4j:
     sys.props("log4j2.asyncLoggerWaitStrategy") = "Block"
     // Because AsyncLoggerContextSelector flushes:
     sys.props("js7.log4j.immediateFlush") = "false"
+    if ifNotInitialized.isInitialized then
+      logger.error("useAsyncLogger but Log4j has already been initialized")
 
   def initialize(name: String): Unit =
     ifNotInitialized:
-      CorrelIdLog4jThreadContextMap.initialize(name)
+      Log4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.ifFailed do logger.warn(t.toString)
 
   /**
-    * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
+    * Call in case the shutdown hook is disabled in log4j2.xml: &lt;configuration shutdownHook="disable">.
     */
   def shutdown(fast: Boolean = false): Unit =
     if !isShutdown.getAndSet(true) then
       if !fast then
         CorrelId.logStatisticsIfEnabled()
-        CorrelIdLog4jThreadContextMap.logStatistics()
+        Log4jThreadContextMap.logStatistics()
       for shutdown <- shutdownMethod do
         // Log complete timestamp in case of short log timestamp
-        logger.info("shutdown at " +
+        logger.info("Shutdown at " +
           LocalDateTime.now.toString.replace('T', ' ') +
           " (started at " + startedAt.roundDownTo(1.s).pretty +
           " " + runningSince.elapsed.pretty + " ago)" + "\n" +
           "┄" * 80 + "\n")
         shutdown.invoke(null, false, false)
+
+  def set(key: String, value: String) =
+    Log4jThreadContextMap.set(key, value)
