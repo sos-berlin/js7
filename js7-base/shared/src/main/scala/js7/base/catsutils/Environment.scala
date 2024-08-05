@@ -1,43 +1,60 @@
 package js7.base.catsutils
 
-import cats.effect.{IO, Resource, ResourceIO}
-import cats.syntax.foldable.*
-import cats.syntax.parallel.*
+import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 import izumi.reflect.Tag
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.catsutils.Environment.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.utils.Allocated
-import js7.base.utils.CatsUtils.syntax.RichResource
-import scala.jdk.CollectionConverters.*
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 /** Maps a type (a Tag) to a value. */
 final class Environment:
-  private val tagToEntry = new ConcurrentHashMap[Tag[?], Entry]
+  private val tagToEntry = new ConcurrentHashMap[Tag[?], Entry[?]]
 
-  /** Add a value of unique type `A` to the `Environment` of our `IORuntime`.
+  def register[F[_], A](resource: Resource[F, A], ignoreDuplicate: Boolean = false)
+    (using F: Sync[F], tag: Tag[A])
+  : Resource[F, Unit] =
+    Resource:
+      F.delay:
+        val registered = tryRegister(resource)
+        if !registered && !ignoreDuplicate then
+          throw DuplicateEnvironmentTagException(tag)
+        else
+          () -> F.whenA(registered)(release[F, A])
+
+  /** Add a Resource of unique type `A` to the `Environment`.
    * <p>
-   * Fails if A already has been added.
+   * @return false, iff A type has already been registered
    */
-  private def tryRegister[A](resource: ResourceIO[A])(using tag: Tag[A]): Boolean =
+  private def tryRegister[F[_], A](resource: Resource[F, A])(using F: Sync[F], tag: Tag[A])
+  : Boolean =
+    if F.ne(IOSync) && F.ne(SyncIOSync) then throw IllegalArgumentException:
+      s"Environment#tryRegister[${F.getClass.simpleScalaName}[${tag.tag}]]: Must be IO[_] or SyncIO[_]"
     var added = false
-    tagToEntry.computeIfAbsent(tag, tag =>
+    tagToEntry.computeIfAbsent(tag, _ =>
       added = true
-      Entry.Resource(resource))
+      Entry.FResource(resource))
     added
 
-  @throws[DuplicateEnvironmentTagException]
-  private[catsutils] def add[A](a: A)(using tag: Tag[A]): Unit =
-    var added = false
-    tagToEntry.computeIfAbsent(tag, tag =>
-      added = true
-      Entry.Pure(a))
-    if !added then
-      throw DuplicateEnvironmentTagException(tag)
+  //def releaseAll: IO[Unit] =
+  //  IO.defer:
+  //    tagToEntry.keys.asScala.toVector
+  //      .parTraverse: tag =>
+  //        given Tag[?] = tag
+  //        release[IO, Any]
+  //      .map(_.combineAll)
 
-  private def remove[A](a: A)(using tag: Tag[A]): Unit =
-    tagToEntry.remove(tag, a)
+  private def release[F[_], A](using F: Sync[F], tag: Tag[A]): F[Unit] =
+    F.defer:
+      tagToEntry.remove(tag) match
+        case alloc: Entry.FAlloc[F @unchecked, A @unchecked] =>
+          logger.traceF(s"release ${tag.tag}"):
+            alloc.release
+        case _ =>
+          F.unit
 
   /** Get a previously added `A` value from the environment. */
   private def get[A](orRegister: Option[ResourceIO[A]] = None)(using tag: Tag[A]): IO[A] =
@@ -48,96 +65,94 @@ final class Environment:
           orRegister match
             case None => IO.raiseError(EnvironmentTagNotFoundException(tag))
             case Some(orRegister) =>
-              tagToEntry.replace(tag, entry, Entry.Resource(orRegister))
+              tagToEntry.replace(tag, entry, Entry.FResource(orRegister))
               get[A]()
 
-        case Entry.Pure(a) =>
-          IO.pure(a.asInstanceOf[A])
+        case pure: Entry.Pure[A @unchecked] =>
+          IO.pure(pure.a)
 
-        case Entry.Alloc(a) =>
-          IO.pure(a.allocatedThing.asInstanceOf[A])
+        case alloc: Entry.FAlloc[_, A @unchecked] =>
+          IO.pure(alloc.a)
 
-        case entry @ Entry.Resource(resource) =>
+        case entry: Entry.FResource[_, A @unchecked] =>
+          import entry.F // F is Sync[IO] or Sync[SyncIO]
           logger.debugIO(s"get[${tag.tag}] allocate"):
-            resource.toAllocated.flatMap: allocated =>
-              val replaced = tagToEntry.replace(tag, entry, Entry.Alloc(allocated))
-              IO.unlessA(replaced):
-                logger.debugIO(s"get[${tag.tag}] concurrent allocation, release it"):
-                  allocated.release
-              .as(allocated.allocatedThing.asInstanceOf[A])
-
-  private def release[A](using tag: Tag[A]): IO[Unit] =
-    IO.defer:
-      tagToEntry.get(tag) match
-        case null => IO.unit
-        case entry @ Entry.Alloc(a) =>
-          logger.traceIO(s"release ${tag.tag}"):
-            a.release *> IO(tagToEntry.remove(tag, entry))
-        case entry =>
-          IO(tagToEntry.remove(tag, entry))
-
-  def releaseAll: IO[Unit] =
-    IO.defer:
-      tagToEntry.keys.asScala.toVector
-        .parTraverse: tag =>
-          release(using tag.asInstanceOf[Tag[Any]])
-      .map(_.combineAll)
+            toIO:
+              entry.resource.allocated.flatMap: allocated =>
+                val (a, release) = allocated
+                val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
+                F.unlessA(replaced):
+                  logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, release it"):
+                    release
+                .as(a)
 
 
 object Environment:
 
   private lazy val logger = Logger[this.type]
 
+  /** Register a Resource which is allocated and its value is returned immediately. */
+  //def registerEagerly[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[A] =
+  //  register(resource).evalMap: _ =>
+  //    environment[A]
+
+  /** Register a Resource for lazy allocation. */
   def register[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[Unit] =
     register2(resource, ignoreDuplicate = false)
 
+  /** Try to (duplicate) register a Resource for lazy allocation. */
   def tryRegister[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[Unit] =
     register2(resource, ignoreDuplicate = true)
 
   private def register2[A](resource: ResourceIO[A], ignoreDuplicate: Boolean)(using tag: Tag[A])
   : ResourceIO[Unit] =
-    Resource:
-      OurIORuntimeRegister.environment.flatMap: env =>
-        IO:
-          val registered = env.tryRegister(resource)
-          if !ignoreDuplicate && !registered then
-            throw DuplicateEnvironmentTagException(tag)
-          else
-            () -> IO.whenA(registered)(env.release[A])
+    Resource.eval(OurIORuntimeRegister.environment).flatMap: env =>
+      env.register(resource, ignoreDuplicate)
 
-  def registerEagerly[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[A] =
-    register(resource).evalMap: _ =>
-      environment[A]
-
+  /** Return the value of a registered resource, register the Resource when needed. */
   def getOrRegister[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[A] =
     Resource:
       OurIORuntimeRegister.environment.flatMap: env =>
         IO.defer:
           val registered = env.tryRegister(resource)
           environment[A].map: a =>
-            a -> IO.whenA(registered)(env.release[A])
-  /** Add a value of unique type `A` to the `Environment` of our `IORuntime`.
-   * <p>
-   * Fails if A already has been added.
-   */
-  def add[A](a: A)(using tag: Tag[A]): IO[Unit] =
-    OurIORuntimeRegister.environment.map(_.add(a))
+            a -> IO.whenA(registered)(env.release[IO, A])
 
-  ///** Add a value of unique type `A` to the `Environment` of our `IORuntime`.
-  // * <p>
-  // * Fails if A already has been added.
-  // */
-  //def add[A](ioRuntime: IORuntime, a: A)(using tag: Tag[A]): Unit =
-  //  OurIORuntimeRegister.toEnvironment(ioRuntime).add(a)
-
-  /** Fetches a previously added `A` value from the `Environment` of our `IORuntime`. */
+  /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
   def environment[A](using tag: Tag[A]): IO[A] =
     OurIORuntimeRegister.environment.flatMap(_.get[A]())
 
-  private enum Entry:
-    case Pure(value: Any)
-    case Resource(resource: ResourceIO[Any])
-    case Alloc(allocated: Allocated[IO, Any])
+  private val IOSync: Sync[IO] = summon[Sync[IO]]
+  private val SyncIOSync: Sync[SyncIO] = summon[Sync[SyncIO]]
+  private val AllowedSyncs = Set(IOSync, SyncIOSync)
+
+  private def toIO[F[_], A](fa: F[A])(using F: Sync[F]): IO[A] =
+    if F eq SyncIOSync.asInstanceOf[Sync[F]] then
+      fa.asInstanceOf[SyncIO[A]].to[IO]
+    else if F eq IOSync.asInstanceOf[Sync[F]] then
+      fa.asInstanceOf[IO[A]]
+    else
+      IO.raiseError(RuntimeException:
+        s"Environment: Expected IO or SyncIO, but not: ${F.getClass.simpleScalaName}[_]")
+
+
+  private sealed trait Entry[A]
+  private object Entry:
+    final case class Pure[A](a: A)
+    extends Entry[A]
+
+    final case class FResource[Fa[_], A](
+      resource: Resource[Fa, A])(
+      using val F: Sync[Fa],
+      tag: Tag[A])
+    extends Entry[A]:
+      type F[x] = Fa[x]
+      given Tag[A] = tag
+
+    final case class FAlloc[F[_], A](allocated: (A, F[Unit]))(using val F: Sync[F])
+    extends Entry[A]:
+      def a: A = allocated._1
+      def release: F[Unit] = allocated._2
 
   private final class EnvironmentTagNotFoundException(val tag: Tag[?])
   extends IllegalArgumentException(s"environment[${tag.tag}] is not defined")
