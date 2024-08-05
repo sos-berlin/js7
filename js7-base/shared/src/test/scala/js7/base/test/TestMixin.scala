@@ -8,8 +8,6 @@ import org.scalatest.{Assertion, Succeeded, Suite}
 trait TestMixin extends TestCatsEffect:
   this: Suite =>
 
-  js7.base.log.Logger.initialize("JS7 Tests")
-
   /** For use as AdHocLogger. */
   protected final val Logger = js7.base.log.Logger
 

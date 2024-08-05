@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
  * The log lines are colored.
  * The Unix command `less -R` shows the colors on your terminal.
  **/
-trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
+trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
 
   protected def testTimeout: FiniteDuration = 99.s
   protected implicit def ioRuntime: IORuntime

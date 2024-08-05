@@ -18,9 +18,9 @@
           How to use a single file handle for all subprojects ???-->
       <!-- append=true is required to let forked tests append. -->
       <patternLayout
-        pattern="%highlight{%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message}{ERROR=red bold,WARN=red,INFO=default,DEBUG=blue,TRACE=bright_black}%n"
-        header="%d{DEFAULT_MICROS} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n"
-        footer="%d{DEFAULT_MICROS} End of logging%n"
+        pattern="%highlight{%d{yyyy-MM-dd HH:mm:ss.nnnnnn} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger - %message}{ERROR=red bold,WARN=red,INFO=default,DEBUG=blue,TRACE=bright_black}%n"
+        header="%d{yyyy-MM-dd HH:mm:ss.nnnnnn} Begin %X{js7.name} · %X{js7.prettyVersion} · %X{js7.system}%n"
+        footer="%d{yyyy-MM-dd HH:mm:ss.nnnnnn} End of logging%n"
         charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
