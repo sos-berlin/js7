@@ -27,8 +27,6 @@ final class ProcessDriver(
   conf: Conf,
   jobLauncherConf: JobLauncherConf):
 
-  import jobLauncherConf.implicitIox
-
   private val taskId = taskIdGenerator.next()
   private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(

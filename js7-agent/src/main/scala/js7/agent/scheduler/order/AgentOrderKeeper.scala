@@ -98,7 +98,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
-  import forDirector.{iox, subagent as localSubagent}
+  import forDirector.subagent as localSubagent
   import ioRuntime.scheduler
 
   private given ExecutionContext = ioRuntime.compute

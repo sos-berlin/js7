@@ -17,7 +17,6 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
 import js7.base.service.Service
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
@@ -69,7 +68,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         .flatMap(_.parSequence)
         .map(_.combineAll)
 
-  def restartWhenHttpsChanges(using iox: IOExecutor): ResourceIO[Unit] =
+  def restartWhenHttpsChanges: ResourceIO[Unit] =
     HttpsDirectoryWatch
       .resource(
         DirectoryWatchSettings.fromConfig(config).orThrow,

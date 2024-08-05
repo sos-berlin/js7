@@ -10,7 +10,6 @@ import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatch.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -58,15 +57,12 @@ object DirectoryWatch:
     directoryState: DirectoryState,
     settings: DirectoryWatchSettings,
     isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
-    (using iox: IOExecutor)
   : Stream[IO, DirectoryEvent] =
     stream2(
       directoryState,
       settings.toWatchOptions(directory, isRelevantFile))
 
-  private def stream2(state: DirectoryState, options: WatchOptions)
-    (using iox: IOExecutor)
-  : Stream[IO, DirectoryEvent] =
+  private def stream2(state: DirectoryState, options: WatchOptions): Stream[IO, DirectoryEvent] =
     logger.traceStream:
       Stream
         .resource(BasicDirectoryWatch.resource(options))

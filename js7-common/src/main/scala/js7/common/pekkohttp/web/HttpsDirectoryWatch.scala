@@ -8,7 +8,6 @@ import js7.base.io.file.watch.{DirectoryStateJvm, DirectoryWatch, DirectoryWatch
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.service.Service
-import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.web.HttpsDirectoryWatch.*
 
@@ -16,7 +15,6 @@ private final class HttpsDirectoryWatch private(
   settings: DirectoryWatchSettings,
   files: Seq[Path],
   onHttpsKeyOrCertChanged: IO[Unit])
-  (implicit iox: IOExecutor)
 extends Service.StoppableByRequest:
 
   protected def start =
@@ -40,7 +38,7 @@ extends Service.StoppableByRequest:
       .mapValues(_.toSet)
       .toVector
 
-  private def observeDirectory(directory: Path, files: Set[Path])(implicit iox: IOExecutor)
+  private def observeDirectory(directory: Path, files: Set[Path])
   : IO[Unit] =
     IO
       .defer:
@@ -62,6 +60,5 @@ private object HttpsDirectoryWatch:
 
   def resource(
     settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: IO[Unit])
-    (implicit iox: IOExecutor)
   : ResourceIO[HttpsDirectoryWatch] =
     Service.resource(IO(new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)))

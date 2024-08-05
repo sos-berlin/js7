@@ -4,9 +4,8 @@ import cats.effect.unsafe.Scheduler
 import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
-import js7.base.catsutils.Environment.environment
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.catsutils.{Environment, OurIORuntime}
+import js7.base.catsutils.OurIORuntime
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -36,7 +35,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -226,17 +224,14 @@ object RunningController:
     val eventIdGenerator: EventIdGenerator =
       testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
-    for
-      given IOExecutor <- Resource.eval(environment[IOExecutor])
-      runningController <- resource(conf, alarmClock, eventIdGenerator)
-    yield runningController
+    resource(conf, alarmClock, eventIdGenerator)
   }.evalOn(ioRuntime.compute)
 
   private def resource(
     conf: ControllerConfiguration,
     alarmClock: AlarmClock,
     eventIdGenerator: EventIdGenerator)
-    (implicit ioRuntime: IORuntime, iox: IOExecutor)
+    (implicit ioRuntime: IORuntime)
   : ResourceIO[RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
 
@@ -377,8 +372,7 @@ object RunningController:
 
   private def itemVerifierResource(
     config: Config,
-    testEventBus: StandardEventBus[Any])(
-    implicit iox: IOExecutor)
+    testEventBus: StandardEventBus[Any])
   : ResourceIO[SignedItemVerifier[SignableItem]] =
     DirectoryWatchingSignatureVerifier
       .checkedResource(

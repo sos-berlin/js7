@@ -24,7 +24,6 @@ import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.LockKeeper
@@ -47,8 +46,7 @@ import scala.concurrent.duration.Deadline.now
 final class FileWatchManager(
   ownAgentPath: AgentPath,
   journal: Journal[AgentState],
-  config: Config)
-  (implicit iox: IOExecutor):
+  config: Config):
 
   private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]

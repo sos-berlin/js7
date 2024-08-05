@@ -248,7 +248,7 @@ object Subagent:
       jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobEC, clock).orThrow
       signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
         .orThrow
-        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
+        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
       journal <- MemoryJournal.resource(
         SubagentState.empty,
         size = config.getInt("js7.journal.memory.event-count"),
@@ -258,7 +258,7 @@ object Subagent:
         new Subagent(webServer,
           directorRouteVariable,
           ForDirector(
-            _, signatureVerifier, sessionRegister, systemSessionToken, iox, testEventBus, actorSystem),
+            _, signatureVerifier, sessionRegister, systemSessionToken, testEventBus, actorSystem),
           journal, signatureVerifier,
           conf, jobLauncherConf, testEventBus)))
       _ <- Resource.eval(subagentDeferred.complete(subagent))
@@ -282,10 +282,8 @@ object Subagent:
     signatureVerifier: DirectoryWatchingSignatureVerifier,
     sessionRegister: SessionRegister[SubagentSession],
     systemSessionToken: SessionToken,
-    ioExecutor: IOExecutor,
     testEventBus: StandardEventBus[Any],
-    actorSystem: ActorSystem):
-    given iox: IOExecutor = ioExecutor
+    actorSystem: ActorSystem)
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

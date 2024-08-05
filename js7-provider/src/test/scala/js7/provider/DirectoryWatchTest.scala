@@ -9,7 +9,6 @@ import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.BeforeAndAfterAll

@@ -41,8 +41,7 @@ final class PipedProcess private(
   process: Js7Process,
   stdObservers: StdObservers,
   orderId: OrderId,
-  jobKey: JobKey)
-  (using IOExecutor):
+  jobKey: JobKey):
 
   private val logger = Logger.withPrefix[this.type](toString)
   private val sigkilled = Deferred.unsafe[IO, Unit]
@@ -251,7 +250,6 @@ object PipedProcess:
     stdObservers: StdObservers,
     orderId: OrderId,
     jobKey: JobKey)
-    (using IOExecutor)
   : IO[Checked[PipedProcess]] =
     IO.defer:
       val commandArgs = toShellCommandArguments(commandLine.file, commandLine.arguments.tail)

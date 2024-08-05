@@ -1,7 +1,7 @@
 package js7.provider
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
 import fs2.Stream
@@ -9,7 +9,6 @@ import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.completed
-import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
@@ -20,7 +19,6 @@ import js7.base.monixlike.MonixLikeExtensions.parZip2
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
-import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
@@ -57,9 +55,7 @@ final class Provider(
   protected val httpControllerApi: HttpControllerApi,
   controllerApi: ControllerApi,
   protected val conf: ProviderConfiguration)
-  (implicit
-    protected val IORuntime: IORuntime,
-    protected val iox: IOExecutor)
+  (using protected val IORuntime: IORuntime)
 extends Observing, MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
@@ -223,12 +219,11 @@ object Provider:
   def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
-      given IOExecutor <- Resource.eval(environment[IOExecutor])
       provider <- resource2(conf)
     yield provider
 
   private def resource2(conf: ProviderConfiguration)
-    (using ioRuntime: IORuntime, iox: IOExecutor, actorSystem: ActorSystem)
+    (using ioRuntime: IORuntime, actorSystem: ActorSystem)
   : ResourceIO[Provider] =
     val userAndPassword: Option[UserAndPassword] = for
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")

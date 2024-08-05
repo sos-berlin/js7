@@ -23,7 +23,6 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Labeled
 import js7.base.utils.ScalaUtils.checkedCast
@@ -35,7 +34,6 @@ final class DirectoryWatchingSignatureVerifier private(
   companionToDirectory: Map[SignatureVerifier.Companion, Path],
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
-  (using iox: IOExecutor)
 extends SignatureVerifier, Service.StoppableByCancel:
 
   @volatile private var state = State(Map.empty)
@@ -174,7 +172,6 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
 
   def checkedResource(config: Config, onUpdated: () => Unit)
-    (implicit iox: IOExecutor)
   : Checked[ResourceIO[DirectoryWatchingSignatureVerifier]] =
     prepare(config).map(_.toResource(onUpdated))
 
@@ -206,7 +203,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
     companionToDirectory: Map[SignatureVerifier.Companion, Path],
     settings: DirectoryWatchSettings):
 
-    def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
+    def toResource(onUpdated: () => Unit)
     : ResourceIO[DirectoryWatchingSignatureVerifier] =
       Service.resource(IO(
         new DirectoryWatchingSignatureVerifier(

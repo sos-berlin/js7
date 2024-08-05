@@ -12,7 +12,6 @@ import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLine, JobKey, TaskId}

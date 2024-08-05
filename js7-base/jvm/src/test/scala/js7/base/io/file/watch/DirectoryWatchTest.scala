@@ -17,7 +17,6 @@ import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert

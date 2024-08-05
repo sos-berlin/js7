@@ -20,7 +20,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcher(directory: Path, timeout: Duration)(using IOExecutor, IORuntime)
+final class DirectoryWatcher(directory: Path, timeout: Duration)(using IORuntime)
 extends AutoCloseable:
 
   private val watchService = directory.getFileSystem.newWatchService()

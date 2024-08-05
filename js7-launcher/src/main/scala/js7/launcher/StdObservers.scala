@@ -11,7 +11,6 @@ import js7.base.fs2utils.StreamExtensions.{chunkWithin, convertToString, fromStr
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.thread.IOExecutor
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.StdObservers.*
@@ -73,13 +72,11 @@ final class StdObservers private(
       channel(outErr).stream
 
   def pumpInputStreamToSink(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
-    (using IOExecutor)
   : IO[Unit] =
     pumpToSink(outErr):
       inputStreamAsStream(outErr, in, encoding)
 
   private def inputStreamAsStream(outErr: StdoutOrStderr, in: InputStream, encoding: Charset)
-    (using IOExecutor)
   : Stream[IO, String] =
     // inputStreamToByteStream is interruptible (fs2.io.readInputStream is Uninterruptible)
     inputStreamToByteStream(in, bufferSize = byteBufferSize/*TODO used for bytes*/)

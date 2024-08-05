@@ -12,9 +12,7 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileModified}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 

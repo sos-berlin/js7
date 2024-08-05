@@ -13,7 +13,6 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, raceFold}
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
-import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.continueWithLast
@@ -24,7 +23,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 
-final class BasicDirectoryWatch private(options: WatchOptions)(using iox: IOExecutor)
+final class BasicDirectoryWatch private(options: WatchOptions)
 extends Service.StoppableByRequest:
 
   import options.{directory, kinds, pollTimeout}
@@ -124,7 +123,7 @@ object BasicDirectoryWatch:
           logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
           Array.empty
 
-  def resource(options: WatchOptions)(using iox: IOExecutor): ResourceIO[BasicDirectoryWatch] =
+  def resource(options: WatchOptions): ResourceIO[BasicDirectoryWatch] =
     Service.resource(IO(new BasicDirectoryWatch(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
