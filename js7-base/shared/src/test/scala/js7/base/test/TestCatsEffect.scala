@@ -1,16 +1,13 @@
 package js7.base.test
 
+import cats.effect.SyncIO
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, SyncIO}
 import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
-import js7.base.catsutils.{Environment, OurIORuntime}
+import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteArray
-import js7.base.thread.CatsBlocking.syntax.await
-import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -22,10 +19,7 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   this: Suite =>
 
   private val _ioRuntime = Atomic(none[Allocated[SyncIO, IORuntime]])
-  private var ioxRelease = IO.unit
   private var afterAllMayBeCalled = false
-
-  protected def withIOExecutor: Boolean = false
 
   /** For tests that check the thread where blocking operations are executed. */
   final lazy val blockingThreadNamePrefix: String =
@@ -51,16 +45,10 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   override protected def beforeAll(): Unit =
     afterAllMayBeCalled = true
     super.beforeAll()
-    if withIOExecutor then
-      given IORuntime = ioRuntime
-      ioxRelease = Environment
-        .tryRegister(IOExecutor.resource[IO](getClass.shortClassName + "-iox"))
-        .allocated.await(99.s)._2
 
   override protected def afterAll(): Unit =
     try
       given IORuntime = ioRuntime
-      ioxRelease.await(99.s)
       for release <- _ioRuntime.get.map(_.release) do release.unsafeRunSync()
     finally
       super.afterAll()

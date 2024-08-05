@@ -3,7 +3,7 @@ package js7.base.thread
 import cats.effect.{IO, Resource, Sync}
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
-import js7.base.catsutils.CatsEffectExtensions.blockingOn
+import js7.base.catsutils.CatsEffectExtensions.{blockingOn, defer}
 import js7.base.catsutils.Environment.environment
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -43,7 +43,7 @@ final class IOExecutor(private[IOExecutor] val executor: ExecutorService, name: 
 
 
 object IOExecutor:
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
 
   val globalName = "JS7 global I/O"
 
@@ -56,14 +56,17 @@ object IOExecutor:
     implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
 
   def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, IOExecutor] =
-    logger.traceResource:
-      Resource
-        .make(
-          acquire = F.delay(newBlockingExecutorService(name, virtual = true)))(
-          release = executor => F.delay:
-            logger.debug(s"shutdown $executor")
-            executor.shutdown())
-        .map(new IOExecutor(_, name))
+    Resource.defer:
+      // Don't log here, because it may be called before Logger initialization,
+      // when called by OurIORuntime!
+      logger.debugResource:
+        Resource
+          .make(
+            acquire = F.delay(newBlockingExecutorService(name, virtual = true)))(
+            release = executor => F.delay:
+              logger.debug(s"shutdown $executor")
+              executor.shutdown())
+          .map(new IOExecutor(_, name))
 
   private[thread] def blocking[A](body: => A)(using iox: IOExecutor): IO[A] =
     IO.blockingOn(iox.executionContext):

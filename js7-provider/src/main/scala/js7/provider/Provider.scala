@@ -1,7 +1,7 @@
 package js7.provider
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
 import fs2.Stream
@@ -9,7 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.completed
-import js7.base.catsutils.Environment
+import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
@@ -223,7 +223,7 @@ object Provider:
   def resource(conf: ProviderConfiguration)(using ioRuntime: IORuntime): ResourceIO[Provider] =
     for
       given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
-      given IOExecutor <- Environment.getOrRegister(IOExecutor.resource("provider-iox"))
+      given IOExecutor <- Resource.eval(environment[IOExecutor])
       provider <- resource2(conf)
     yield provider
 

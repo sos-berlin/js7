@@ -30,8 +30,6 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  override protected val withIOExecutor = true
-  
   "InternalJobLauncher" in:
     val executable = InternalExecutable(
       classOf[TestInternalJob].getName,

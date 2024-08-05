@@ -12,6 +12,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
 import js7.base.system.startup.Halt.haltJava
+import js7.base.thread.IOExecutor
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -116,17 +117,18 @@ object OurIORuntime:
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
       _ <- OurIORuntimeRegister.register(ioRuntime)
-      // The application should Environment.tryRegister its resources!
-      // Then we are sure the allocated resources will be released at termination.
-      //_ <- Resource.onFinalize(F.defer:
-      //  val releaseAll = OurIORuntimeRegister.toEnvironment(ioRuntime).releaseAll
-      //  if F eq Sync[IO] then
-      //    releaseAll.asInstanceOf[F[Unit]]
-      //  else
-      //    given IORuntime = ioRuntime
-      //    F.delay(releaseAll.awaitInfinite/*???*/))
+      _ <- registerStandardResources(ioRuntime, label)
     yield
       ioRuntime
+
+  private def registerStandardResources[F[_]](ioRuntime: IORuntime, label: String)
+    (using F: Sync[F])
+  : Resource[F, Unit] =
+    val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
+    for
+      _ <- env.register[F, IOExecutor](IOExecutor.resource(label))
+    yield
+      ()
 
   private def logAllocation[F[_]](label: String, threads: Int)(using F: Sync[F])
   : Resource[F, Unit] =

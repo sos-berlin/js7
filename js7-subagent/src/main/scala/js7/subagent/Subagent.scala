@@ -6,7 +6,7 @@ import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
-import js7.base.catsutils.Environment
+import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -238,7 +238,7 @@ object Subagent:
           actorSystem, ioRuntime)
       _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
-      iox <- Environment.getOrRegister(IOExecutor.resource[IO](conf.name + "-iox"))
+      iox <- Resource.eval(environment[IOExecutor])
       blockingInternalJobEC <-
         unlimitedExecutionContextResource[IO](
           s"${conf.name} blocking-job", virtual = useVirtualForBlocking)

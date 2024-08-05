@@ -22,8 +22,6 @@ final class BasicDirectoryWatchTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  override protected val withIOExecutor = true
-
   "step for step" in:
     temporaryDirectoryResource[IO]("DirectoryWatchTest-").use { dir =>
       dir / "ALIEN-1" := ""

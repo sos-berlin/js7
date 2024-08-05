@@ -55,8 +55,6 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
   private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler
 
-  override protected val withIOExecutor = true
-
   "ProcessDriver" in:
     val executableDirectory = createTempDirectory("ProcessDriverTest-")
 

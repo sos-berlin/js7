@@ -44,8 +44,6 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
 
   private given IORuntime = ioRuntime
 
-  override protected val withIOExecutor = true
-
   private val blockingJobEC =
     newUnlimitedNonVirtualExecutionContext(
       name = blockingThreadNamePrefix + "-AGENT blocking-job"/*like Subagent.resource*/)

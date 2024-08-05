@@ -22,8 +22,6 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll:
 
   private given IORuntime = ioRuntime
 
-  override protected val withIOExecutor = true
-
   private val timeout = if isMac then 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatchTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)

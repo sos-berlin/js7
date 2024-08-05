@@ -4,6 +4,7 @@ import cats.effect.unsafe.Scheduler
 import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.catsutils.Environment.environment
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.catsutils.{Environment, OurIORuntime}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
@@ -226,7 +227,7 @@ object RunningController:
       testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
     for
-      given IOExecutor <- Environment.getOrRegister(IOExecutor.resource(conf.name + "-iox"))
+      given IOExecutor <- Resource.eval(environment[IOExecutor])
       runningController <- resource(conf, alarmClock, eventIdGenerator)
     yield runningController
   }.evalOn(ioRuntime.compute)

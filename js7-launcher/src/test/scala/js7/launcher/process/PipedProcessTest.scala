@@ -31,8 +31,6 @@ final class PipedProcessTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
 
-  override protected val withIOExecutor = true
-
   "PipedProcess" in:
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
