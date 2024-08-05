@@ -57,16 +57,16 @@ extends SubagentDriver, Service.StoppableByRequest:
         untilStopRequested)
 
   private def dedicate: IO[Checked[Unit]] =
-    logger.debugIO(IO.defer(
+    logger.debugIO(IO.defer:
       if wasRemote then
         IO.right(())
       else
         val agentRunId = journal.unsafeCurrentState().agentRunId
         subagent
-          .executeDedicateSubagent(
-            DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId))
-          .flatMapT(response =>
-            persistDedicated(response.subagentRunId))))
+          .executeDedicateSubagent:
+            DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
+          .flatMapT: response =>
+            persistDedicated(response.subagentRunId))
 
   private def persistDedicated(subagentRunId: SubagentRunId): IO[Checked[Unit]] =
     journal
@@ -105,7 +105,7 @@ extends SubagentDriver, Service.StoppableByRequest:
               // After an OrderProcessed event an DetachProcessedOrder must be sent,
               // to terminate StartOrderProcess command idempotency detection and
               // allow a new StartOrderProcess command for a next process.
-              .flatTap {
+              .flatTap:
                 case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
                   subagent.commandExecutor
                     .executeCommand(
@@ -113,10 +113,9 @@ extends SubagentDriver, Service.StoppableByRequest:
                       CommandMeta.System)
                     .orThrow
                 case _ => IO.unit
-              }
               // TODO Emit SubagentEventsObserved for a chunk of events (use fs2)
-              .*>(journal.persistKeyedEvent(
-                subagentId <-: SubagentEventsObserved(stampedEvent.eventId)))
+              .*>(journal.persistKeyedEvent:
+                subagentId <-: SubagentEventsObserved(stampedEvent.eventId))
               .*>(releaseEvents(stampedEvent.eventId)))
             .*>(followUp)
       .takeUntilEval(untilStopRequested)
@@ -226,15 +225,15 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    logger.traceIO("recoverOrderProcessing", order.id)(
+    logger.traceIO("recoverOrderProcessing", order.id):
       if wasRemote then
-        requireNotStopping.flatMapT(_ =>
-          startOrderProcessing(order)) // TODO startOrderProcessing again ?
+        requireNotStopping.flatMapT: _ =>
+          startOrderProcessing(order) // TODO startOrderProcessing again ?
       else
         emitOrderProcessLost(order)
           .map(_.orThrow)
           .start
-          .map(Right(_)))
+          .map(Right(_))
 
   def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
     logger.traceIO("startOrderProcessing", order.id)(
@@ -278,16 +277,15 @@ extends SubagentDriver, Service.StoppableByRequest:
                     case Some(deferred) =>
                       assert(deferred eq deferred)
 
-                      val orderProcessed = OrderProcessed(
-                        problem match {
+                      val orderProcessed = OrderProcessed:
+                        problem match
                           case SubagentIsShuttingDownProblem =>
                             OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
                           case _ => OrderOutcome.Disrupted(problem)
-                        })
 
                       if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed] then
-                        IO(logger.warn(
-                          s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed")
+                        IO(logger.warn:
+                          s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"
                         ).start
                       else
                         journal
@@ -313,20 +311,18 @@ extends SubagentDriver, Service.StoppableByRequest:
         .lock(subagentId)(
           journal.persist(_
             .idToSubagentItemState.checked(subagentId)
-            .map { subagentItemState =>
+            .map: subagentItemState =>
               val problem = maybeProblem
                 .orElse(subagentItemState.problem)
                 .getOrElse(Problem.pure("decoupled"))
-              (!subagentItemState.problem.contains(problem))
-                .thenList(subagentId <-: SubagentCouplingFailed(problem))
-            }))
+              (!subagentItemState.problem.contains(problem)).thenList:
+                subagentId <-: SubagentCouplingFailed(problem)))
         .map(_.orThrow)
         .void
-        .handleErrorWith(t => IO.defer {
+        .handleErrorWith(t => IO.defer:
           // Error isn't logged until stopEventListener is called
           logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
-          IO.raiseError(t)
-        }))
+          IO.raiseError(t)))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
     enqueueCommandAndForget(
@@ -343,9 +339,9 @@ extends SubagentDriver, Service.StoppableByRequest:
         .joinStd
         .map(_.orThrow)
         .void
-        .handleError(t =>
+        .handleError: t =>
           logger.error(s"${cmd.toShortString} => ${t.toStringWithCauses}",
-            t.nullIfNoStackTrace))
+            t.nullIfNoStackTrace)
         .startAndForget/* Don't await response */)
 
   def testFailover(): Unit =
@@ -363,6 +359,5 @@ object LocalSubagentDriver:
     controllerId: ControllerId,
     subagentConf: SubagentConf)
   : ResourceIO[LocalSubagentDriver] =
-    Service.resource(IO {
-      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
-    })
+    Service.resource(IO:
+      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf))

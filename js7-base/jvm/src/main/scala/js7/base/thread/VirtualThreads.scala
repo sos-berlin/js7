@@ -33,11 +33,10 @@ object VirtualThreads:
         _ => runnable => factory.newThread(runnable)
 
       case None =>
-        name => runnable => {
+        name => runnable =>
           val thread = new Thread(runnable)
           if name.nonEmpty then thread.setName(name)
           thread
-        }
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =
     if !hasVirtualThreads then
@@ -46,9 +45,9 @@ object VirtualThreads:
       try
         val method = classOf[Executors]
           .getMethod("newThreadPerTaskExecutor", classOf[ThreadFactory])
-        Some(
+        Some:
           threadFactory =>
-            method.invoke(null, threadFactory).asInstanceOf[ExecutorService])
+            method.invoke(null, threadFactory).asInstanceOf[ExecutorService]
       catch throwableToNone
 
   private lazy val newVirtualThreadFactory: Option[ThreadFactory] =
@@ -72,10 +71,9 @@ object VirtualThreads:
     val newThread: Runnable => Thread = runnable =>
       factory.newThread(runnable)
 
-    val testThread = newThread { () =>
-      logger.debug(
-        s"""Using Java VirtualThreads for some operations "${Thread.currentThread}"""")
-    }
+    val testThread = newThread: () =>
+      logger.debug:
+        s"""Using Java VirtualThreads for some operations "${Thread.currentThread}""""
     testThread.start()
     testThread.join()
 
