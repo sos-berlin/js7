@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig, parseConfigIfExists}
 import js7.base.convert.AsJava.asAbsolutePath
@@ -126,9 +126,10 @@ object SubagentConf:
     internalConfig: Config = DefaultConfig)
   : SubagentConf =
     val common = CommonConfiguration.Common.fromCommandLineArguments(args)
-    import common.configDirectory
+    import common.{configDirectory, dataDirectory}
 
-    val config = resolvedConfig(configDirectory, extra = extraConfig, internal = internalConfig)
+    val config = resolvedConfig(configDirectory, dataDirectory,
+      extra = extraConfig, internal = internalConfig)
     val conf = SubagentConf.fromResolvedConfig(
       configDirectory = configDirectory,
       dataDirectory = common.dataDirectory,
@@ -183,7 +184,7 @@ object SubagentConf:
       workDirectory = dataDirectory / "work",
       logDirectory, jobWorkingDirectory,
       webServerPorts, name,
-      resolvedConfig(configDirectory, extraConfig, internalConfig))
+      resolvedConfig(configDirectory, dataDirectory, extraConfig, internalConfig))
 
   private def fromResolvedConfig(
     configDirectory: Path,
@@ -214,13 +215,16 @@ object SubagentConf:
       name = name,
       config)
 
-  private def resolvedConfig(configDir: Path, extra: Config, internal: Config): Config =
+  private def resolvedConfig(configDir: Path, dataDir: Path, extra: Config, internal: Config)
+  : Config =
     ConfigFactory
       .systemProperties
       .withFallback(extra)
-      .withFallback(ConfigFactory
-        .parseMap(
-          Map("js7.config-directory" -> configDir.toString).asJava))
+      .withFallback(ConfigFactory.parseMap(
+        Map(
+          "js7.config-directory" -> configDir.toString,
+          "js7.data-directory" -> dataDir.toString
+        ).asJava))
       .withFallback(parseConfigIfExists(configDir / "private/private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDir / "agent.conf", secret = false))
       .withFallback(internal)
