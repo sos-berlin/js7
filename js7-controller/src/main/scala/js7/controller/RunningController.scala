@@ -205,10 +205,9 @@ object RunningController:
   : ProgramTermination =
     ioRuntimeResource[SyncIO](conf).useSync(implicit ioRuntime =>
       resource(conf)
-        .blockingUse(timeout) { runningController =>
+        .blockingUse(timeout): runningController =>
           whileRunning(runningController)
-          runningController.terminated.awaitInfinite
-        })
+          runningController.terminated.awaitInfinite)
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)

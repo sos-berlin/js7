@@ -40,8 +40,9 @@ trait ServerOperatingSystem:
 
 
 object ServerOperatingSystem:
-  lazy val unix = new Unix
-  lazy val windows = new Windows
+
+  private lazy val unix = new Unix
+  private lazy val windows = new Windows
   val LineEnd: String = if isWindows then "\r\n" else "\n"
   val operatingSystem: ServerOperatingSystem = if isWindows then windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
@@ -53,9 +54,12 @@ object ServerOperatingSystem:
     val file = new File(path)
     new File(file.getParent, System.mapLibraryName(file.getName)).toString
 
-  def makeExecutableFilename(name: String): String = operatingSystem.makeExecutableFilename(name)
+  def makeExecutableFilename(name: String): String =
+    operatingSystem.makeExecutableFilename(name)
 
-  def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.dynamicLibraryEnvironmentVariableName
+  def getDynamicLibraryEnvironmentVariableName: String =
+    operatingSystem.dynamicLibraryEnvironmentVariableName
+
 
   final class Windows private[system] extends ServerOperatingSystem:
     val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] = Nil  // TODO File must not be accessible for other Windows users
@@ -73,6 +77,7 @@ object ServerOperatingSystem:
     def sleepingShellScript(duration: FiniteDuration) =
       s"@ping -n ${(duration + 999.ms).toSeconds + 1} 127.0.0.1 >nul"
 
+
   final class Unix private[system] extends ServerOperatingSystem:
     val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] =
       Seq(asFileAttribute(PosixFilePermissions fromString "rw-------"))
@@ -86,30 +91,28 @@ object ServerOperatingSystem:
 
     lazy val distributionNameAndVersionOption: Option[String] =
       def readFirstLine(file: Path): String =
-        autoClosing(new FileInputStream(file.toFile)) { in =>
+        autoClosing(new FileInputStream(file.toFile)): in =>
           fromInputStream(in).getLines().next().trim
-        }
 
       def readFileOsRelease() =
         val prettyNamePrefix = "PRETTY_NAME="
         val file = "/etc/os-release"
-        autoClosing(new FileInputStream(file)) { in =>    // https://man7.org/linux/man-pages/man5/os-release.5.html
+        autoClosing(new FileInputStream(file)): in =>    // https://man7.org/linux/man-pages/man5/os-release.5.html
           fromInputStream(in).getLines() collectFirst:
             case line if line startsWith prettyNamePrefix =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
-        }
-        .getOrElse(sys.error(s"Key PRETTY_NAME not found in files $file"))
+        .getOrElse:
+          sys.error(s"Key PRETTY_NAME not found in files $file")
 
       def readFileAnyRelease() =
-        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream =>
+        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")): stream =>
           val iterator = stream.iterator
           if !iterator.hasNext then sys.error("No file matches /etc/*-release")
           iterator.next
-        }
         readFirstLine(anyFile)
 
       if isMac then
-        Try {
+        Try:
           val RegEx = "([a-zA-Z]+):\t+(.+)$".r
           val lines = ("/usr/bin/sw_vers").!!.trim.split('\n').toVector
           def read(key: String): Option[String] =
@@ -120,15 +123,16 @@ object ServerOperatingSystem:
             read("ProductVersion"),
             read("BuildVersion").map("build " + _)
           ).flatten.mkString(" ").??
-        }.toOption.flatten
+        .toOption.flatten
       else if isSolaris then
         None
       else
-        Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
-          .recover { _ => readFileOsRelease() }   // New standard ?
-          .recover { _ => readFileAnyRelease() }  // Vendor-specific
-          .recover { _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
-          .toOption
+        Try:
+          readFirstLine(Paths.get("/etc/system-release")) // Best result under CentOS 7.2 (more version details than in /etc/os-release)
+        .recover { _ => readFileOsRelease() }   // New standard ?
+        .recover { _ => readFileAnyRelease() }  // Vendor-specific
+        .recover { _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+        .toOption
 
     lazy val cpuModel: Option[String] =
       val fromOS =
@@ -137,13 +141,12 @@ object ServerOperatingSystem:
         else if isSolaris then
           None
         else
-          Try {
+          Try:
             val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
-            autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
+            autoClosing(new FileInputStream("/proc/cpuinfo")): in =>
               fromInputStream(in).getLines().collectFirst:  // We return the model of the first core
                 case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
-            }
-          } .toOption.flatten
+          .toOption.flatten
       fromOS orElse sys.props.get("os.arch")
 
     def sleepingShellScript(duration: FiniteDuration) =

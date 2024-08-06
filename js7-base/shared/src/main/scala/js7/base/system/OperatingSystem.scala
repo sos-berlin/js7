@@ -1,6 +1,7 @@
 package js7.base.system
 
 object OperatingSystem:
+
   val name: String = sys.props("os.name")
   val isJVM: Boolean = sys.props.contains("java.version")
   val isWindows: Boolean = name startsWith "Windows"
