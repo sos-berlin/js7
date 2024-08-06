@@ -82,6 +82,7 @@ final class ProcessDriver(
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
                   encoding = jobLauncherConf.systemEncoding,
+                  worryAboutStdoutAfterTermination = jobLauncherConf.worryAboutStdoutAfterTermination,
                   additionalEnvironment = env.updated(
                     returnValuesProvider.varName,
                     Some(returnValuesProvider.file.toString)),

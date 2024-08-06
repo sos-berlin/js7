@@ -17,7 +17,6 @@ import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedNonVirtualExecutionContext
 import js7.data.agent.AgentPath
@@ -69,7 +68,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           UTF_8,
           scriptInjectionAllowed = true,
           errorLineLengthMax = 1024,
-          RecouplingStreamReaderConf.forTest,
+          worryAboutStdoutAfterTermination = 100.ms,
           globalIOX, blockingJobEC = blockingJobEC,
           null: AlarmClock/*AlarmClock()*/)
 

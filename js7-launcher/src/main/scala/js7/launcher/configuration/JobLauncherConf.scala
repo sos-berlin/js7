@@ -7,9 +7,10 @@ import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
 
 final case class JobLauncherConf(
   executablesDirectory: Path,
@@ -20,7 +21,7 @@ final case class JobLauncherConf(
   systemEncoding: Charset,
   scriptInjectionAllowed: Boolean,
   errorLineLengthMax: Int,
-  recouplingStreamReaderConf: RecouplingStreamReaderConf,
+  worryAboutStdoutAfterTermination: FiniteDuration,
   iox: IOExecutor,
   blockingJobEC: ExecutionContext,
   clock: AlarmClock):
@@ -50,7 +51,8 @@ object JobLauncherConf:
           .getOrElse(systemEncoding),
         scriptInjectionAllowed = scriptInjectionAllowed,
         errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
-        RecouplingStreamReaderConfs.fromConfig(config).orThrow,
+        worryAboutStdoutAfterTermination =
+          config.finiteDuration("js7.job.execution.worry-about-stdout-after-termination").orThrow,
         iox,
         blockingJobEC = blockingJobEC,
         clock)

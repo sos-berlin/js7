@@ -82,8 +82,8 @@ final class PipedProcess private(
               logger.debug(s"Tterminated with $returnCode")
               IO:
                 logger.info:
-                  s"terminated with $returnCode, awaiting stdout or stderr (maybe a child proces is still running)"
-              .delayBy(StdouterrWorryStart)
+                  s"terminated with $returnCode, awaiting stdout or stderr (maybe a child process is still running)"
+              .delayBy(conf.worryAboutStdoutAfterTermination)
               .background.surround:
                 val what = s"$orderId stdout or stderr"
                 stdouterrFiber.joinStd
@@ -236,7 +236,6 @@ object PipedProcess:
   /** Grace period between SIGKILL and (second) destroyForcibly. */
   private val killStdoutAndStderrDelay = 500.ms
   private val stdoutAndStderrAbandonAfter = 3.s
-  private val StdouterrWorryStart = 100.ms
   private val StdouterrWorry = Worry(
     Seq(1.s, 3.s, 6.s) ++ AfterTenSecondsWorryDurations,
     infoLevel = 0.s, orangeLevel = 3.s)
