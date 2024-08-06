@@ -1,11 +1,12 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, Outcome, Ref, ResourceIO}
+import cats.effect.{Deferred, Outcome, Ref, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.log.Log4j
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -288,17 +289,22 @@ object ClusterNode:
       ioRuntime: IORuntime,
       pekkoTimeout: Timeout)
   : ResourceIO[ClusterNode[S]] =
-    StateRecoverer
-      .resource[S](journalLocation, clusterConf.config)
-      .both(pekkoResource/*start in parallel*/)
-      .flatMap { case (recovered, actorSystem) =>
-        given ActorSystem = actorSystem
-        resource(
-          recovered,
-          clusterNodeApi(_, _, actorSystem),
-          licenseChecker, journalLocation, clusterConf, eventIdGenerator, testEventBus
-        ).orThrow
-      }
+    for
+      _ <- Resource.eval(IO:
+        Log4j.set("js7.clusterNodeId", clusterConf.ownId.string))
+      clusterNode <- StateRecoverer
+        .resource[S](journalLocation, clusterConf.config)
+        .both(pekkoResource/*start in parallel*/)
+        .flatMap:
+          case (recovered, actorSystem) =>
+            given ActorSystem = actorSystem
+            resource(
+              recovered,
+              clusterNodeApi(_, _, actorSystem),
+              licenseChecker, journalLocation, clusterConf, eventIdGenerator, testEventBus
+            ).orThrow
+    yield
+      clusterNode
 
   private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     recovered: Recovered[S],

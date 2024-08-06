@@ -4,8 +4,9 @@ import cats.effect.unsafe.Scheduler
 import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
-import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.catsutils.OurIORuntime
+import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.log.Log4j
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -197,7 +198,7 @@ extends MainService, Service.StoppableByRequest:
 
 
 object RunningController:
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]
 
   @TestOnly
   def blockingRun(conf: ControllerConfiguration, timeout: FiniteDuration)
@@ -211,20 +212,22 @@ object RunningController:
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : ResourceIO[RunningController] = {
-    given Scheduler = ioRuntime.scheduler
+  : ResourceIO[RunningController] =
+    Resource.defer:
+      Log4j.set("js7.serverId", conf.controllerId.toString)
 
-    val alarmClock: AlarmClock =
-      testWiring.alarmClock getOrElse
-        AlarmClock(Some(conf.config
-          .getDuration("js7.time.clock-setting-check-interval")
-          .toFiniteDuration))
+      given Scheduler = ioRuntime.scheduler
+      val alarmClock: AlarmClock =
+        testWiring.alarmClock getOrElse
+          AlarmClock(Some(conf.config
+            .getDuration("js7.time.clock-setting-check-interval")
+            .toFiniteDuration))
 
-    val eventIdGenerator: EventIdGenerator =
-      testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
+      val eventIdGenerator: EventIdGenerator =
+        testWiring.eventIdGenerator getOrElse EventIdGenerator(alarmClock)
 
-    resource(conf, alarmClock, eventIdGenerator)
-  }.evalOn(ioRuntime.compute)
+      resource2(conf, alarmClock, eventIdGenerator)
+    .evalOn(ioRuntime.compute)
 
   private def resource2(
     conf: ControllerConfiguration,

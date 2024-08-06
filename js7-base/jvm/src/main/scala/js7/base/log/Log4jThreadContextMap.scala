@@ -1,13 +1,13 @@
 package js7.base.log
 
+import java.util.concurrent.ConcurrentHashMap
 import js7.base.BuildInfo
 import js7.base.log.Log4jThreadContextMap.*
 import js7.base.system.startup.StartUp
-import js7.base.utils.Atomic
+import js7.base.utils.Lazy
 import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap
-import scala.collection.mutable
 
 final class Log4jThreadContextMap
 extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
@@ -15,7 +15,7 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
   // Otherwise Log4j makes a copy with Log4jStringMap#forEach.
 
   private var lastLog4jStringMap: Log4jStringMap | Null = null
-  private val lastKeyToValueVersion = Atomic(keyToValueVersion - 1)
+  private var lastKeyToValueVersion = keyToValueVersion - 1
 
   def clear(): Unit = ()
 
@@ -56,12 +56,14 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
     getReadOnlyContextDataCount += 1
     val last = lastLog4jStringMap
     val correlId = CorrelId.local()
+    val v = keyToValueVersion
     if last != null
       && last.correlId.eq(correlId)
-      && keyToValueVersion == lastKeyToValueVersion.getAndSet(keyToValueVersion)
+      && v == lastKeyToValueVersion
     then
       last
     else
+      lastKeyToValueVersion = v
       getReadOnlyContextDataCount2 += 1
       val r = new Log4jStringMap(correlId)
       lastLog4jStringMap = r
@@ -73,12 +75,14 @@ object Log4jThreadContextMap:
    * The value is empty iff CorrelId are switched off (-Djs7.log.correlId=false). */
   private[log] val CorrelIdKey = "js7.correlId"
 
+  private val myClassName = classOf[Log4jThreadContextMap].getName.stripSuffix("$")
+
   private var keyToValueVersion = 0
-  private val keyToValue = mutable.Map[String, String](
-    "js7.version" -> BuildInfo.longVersion,
-    "js7.longVersion" -> BuildInfo.longVersion,
-    "js7.prettyVersion" -> BuildInfo.prettyVersion,
-    "js7.system" -> StartUp.startUpLine())
+  private val keyToValue = new ConcurrentHashMap[String, String | Lazy[String]]:
+    put("js7.version", BuildInfo.longVersion)
+    put("js7.longVersion", BuildInfo.longVersion)
+    put("js7.prettyVersion", BuildInfo.prettyVersion)
+    put("js7.system", Lazy(StartUp.startUpLine()))
 
   private val dummyNullCorrelId = CorrelId("__NULL__")
 
@@ -90,7 +94,9 @@ object Log4jThreadContextMap:
   private var getReadOnlyContextDataCount2 = 0L
 
   private[log] def getOtherKey(key: String): String =
-    keyToValue.getOrElse(key, null)
+    keyToValue.get(key) match
+      case o @ (null | _: String) => o
+      case lzy: Lazy[String] => lzy.value
 
   private val isDebug: Boolean =
     sys.props.get("log4j2.debug") match
@@ -98,12 +104,12 @@ object Log4jThreadContextMap:
       case _ => false
 
   def initialize(name: String): Unit =
-    keyToValue("js7.name") = name
+    keyToValue.put("js7.name", name)
     System.setProperty("log4j2.threadContextMap", myClassName)
     debug(s"log4j2.threadContextMap=$myClassName")
 
   private[log] def set(key: String, value: String) =
-    keyToValue(key) = value
+    keyToValue.put(key, value)
     keyToValueVersion += 1
 
   def statistics: String =
@@ -125,6 +131,3 @@ object Log4jThreadContextMap:
 
   private def debug(string: => String): Unit =
     if isDebug then println(myClassName + " - " + string)
-
-  private def myClassName =
-    classOf[Log4jThreadContextMap].getName.stripSuffix("$")

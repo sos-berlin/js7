@@ -146,8 +146,7 @@ extends MainService, Service.StoppableByRequest:
           dedicatedAllocated.trySet(allocatedDedicatedSubagent)
         .flatMap: isFirst =>
           val ok = IO:
-            /// log4j2.xml: %X{js7.instanceItemId} ///
-            Log4j.set("js7.instanceItemId", cmd.subagentId.string)
+            Log4j.set("js7.serverId", cmd.subagentId.toString)
             logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
             Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
           if isFirst then

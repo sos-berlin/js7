@@ -244,8 +244,7 @@ extends Actor, Stash, SimpleStateActor:
             Right(Nil))
         .flatMapT(eventAndState => IO:
           logger.info(s"Dedicating $agentPath to '$controllerId'")
-          /// log4j2.xml: %X{js7.instanceItemId} ///
-          Log4j.set("js7.instanceItemId", agentPath.toString)
+          Log4j.set("js7.serverId", agentPath.toString)
 
           addOrderKeeper(agentPath, controllerId)
             .rightAs(agentRunId -> eventAndState._2.eventId))
