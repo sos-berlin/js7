@@ -1,7 +1,7 @@
 package js7.controller.client.main
 
-import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO}
 import java.nio.file.{Files, Path}
 import js7.base.auth.SessionToken
 import js7.base.catsutils.OurApp

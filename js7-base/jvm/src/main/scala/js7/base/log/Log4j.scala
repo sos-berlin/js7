@@ -32,6 +32,9 @@ object Log4j:
           case o => Success(o)
         })
 
+  private def isInitialized: Boolean =
+    ifNotInitialized.isInitialized
+
   def earlyInitializeForProduction(): Unit =
     useAsyncLogger()
 
@@ -67,5 +70,6 @@ object Log4j:
           "┄" * 80 + "\n")
         shutdown.invoke(null, false, false)
 
+  /** Set variable accessible in the log4j2 configuration via %X{key}. */
   def set(key: String, value: String) =
     Log4jThreadContextMap.set(key, value)

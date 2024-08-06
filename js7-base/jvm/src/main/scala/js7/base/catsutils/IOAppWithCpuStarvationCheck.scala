@@ -3,13 +3,13 @@ package js7.base.catsutils
 import cats.effect.metrics.CpuStarvationWarningMetrics
 import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.{IO, IOApp}
-import js7.base.catsutils.CpuStarvationCheck.*
+import js7.base.catsutils.IOAppWithCpuStarvationCheck.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
-transparent trait CpuStarvationCheck extends IOApp:
+private transparent trait IOAppWithCpuStarvationCheck extends IOApp, InitializeLogger:
 
   override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig.copy(
@@ -21,10 +21,11 @@ transparent trait CpuStarvationCheck extends IOApp:
     // See https://typelevel.org/cats-effect/docs/core/starvation-and-tuning
     val d = metrics.starvationInterval * metrics.starvationThreshold
     IO:
-      logger.log(starvingLogLevel, s"🐌 Responsiveness was longer than ${d.pretty}")
+      if Logger.isInitialized then
+        logger.log(starvingLogLevel, s"🐌 Responsiveness was longer than ${d.pretty}")
 
 
-object CpuStarvationCheck:
+object IOAppWithCpuStarvationCheck:
   /** Use only after Logger.initialize! */
   private lazy val logger = Logger[this.type]
 

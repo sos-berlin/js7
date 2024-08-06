@@ -41,7 +41,7 @@ object ServiceMain:
   : IO[ExitCode] =
     IO
       .defer:
-        printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+        printlnWithClock(s"$name ${BuildInfo.longVersion}")
         StartUp.initializeMain()
 
         JavaMainLockfileSupport
@@ -92,7 +92,7 @@ object ServiceMain:
   /** For usage after logging system has properly been initialized. */
   private object logging:
     private lazy val logger =
-      Logger.initialize("JS7 Engine") // In case it has not yet been initialized
+      Logger.initialize("JS7 Engine") // Just in case it has not yet been initialized
       Logger[ServiceMain.type]
 
     def onProgramTermination(name: String, termination: ProgramTermination): ExitCode =

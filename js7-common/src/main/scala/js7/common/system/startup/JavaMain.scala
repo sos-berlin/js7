@@ -14,7 +14,6 @@ object JavaMain:
 
   def runMain(name: String)(body: => IO[ProgramTermination]): IO[ProgramTermination] =
     IO.defer:
-      Logger.initialize(name)
       initialize()
       body
 

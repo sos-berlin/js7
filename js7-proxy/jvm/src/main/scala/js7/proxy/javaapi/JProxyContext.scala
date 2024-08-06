@@ -28,8 +28,8 @@ extends HasCloser:
   def this() = this(ConfigFactory.empty, null)
   def this(config: Config) = this(config, null)
 
+  Logger.dontInitialize()
   logger.info(StartUp.startUpLine("JS7 Proxy"))
-
   ProblemCodeMessages.initialize()
 
   private val config_ = config
@@ -75,4 +75,4 @@ extends HasCloser:
 object JProxyContext:
 
   Logger.dontInitialize()
-  private val logger = Logger[this.type]
+  private lazy val logger = Logger[this.type]

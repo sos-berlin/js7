@@ -11,5 +11,5 @@ object ProviderMain extends ServiceApp:
 
   def run(args: List[String]): IO[ExitCode] =
     given IORuntime = runtime
-    runService(args, "JS7 Controller", ProviderConfiguration.fromCommandLine(_)):
+    runService(args, ProviderConfiguration.fromCommandLine(_)):
       Provider.resource

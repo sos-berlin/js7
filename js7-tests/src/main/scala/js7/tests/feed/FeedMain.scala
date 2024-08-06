@@ -9,14 +9,12 @@ import js7.common.system.startup.ServiceApp
 object FeedMain extends ServiceApp:
 
   def run(args: List[String]): IO[ExitCode] =
-    runService(args, "JS7 Feed", FeedConf.fromCommandLine):
-      conf =>
+    if args.isEmpty || args.sameElements(Array("--help")) then
+      IO:
+        println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
+        ExitCode(0)
+    else
+      runService(args, FeedConf.fromCommandLine): conf =>
         Service.simpleResource:
-          if args.isEmpty || args.sameElements(Array("--help")) then
-            IO:
-              println:
-                "Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD"
-              ProgramTermination.Success
-          else
-            Feed.run(Resource.eval(IO.pure(System.in)), conf)
-              .as(ProgramTermination.Success)
+          Feed.run(Resource.eval(IO.pure(System.in)), conf)
+            .as(ProgramTermination.Success)

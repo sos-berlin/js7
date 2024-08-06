@@ -24,11 +24,13 @@ import scala.jdk.CollectionConverters.*
  */
 object AgentClientMain extends ServiceApp:
 
+  override protected def productName = "JS7 AgentClient"
+
   private given IORuntime = runtime
   private given ExecutionContext = runtime.compute
 
   def run(args: List[String]): IO[ExitCode] =
-    runService(args, "AgentClient", Conf.fromCommandLine):
+    runService(args, Conf.fromCommandLine):
       conf => Resource.eval(IO.pure(Service.simple(IO(run(conf, println)))))
 
   def run(

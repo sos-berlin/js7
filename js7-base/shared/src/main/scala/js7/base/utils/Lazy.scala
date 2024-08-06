@@ -13,7 +13,7 @@ import scala.concurrent.blocking
   *
   * @author Joacim Zschimmer
   */
-private class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
+sealed class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
 
   private val lock = new ReentrantLock()
   @volatile

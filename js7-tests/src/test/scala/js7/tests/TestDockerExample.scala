@@ -35,9 +35,9 @@ import scala.concurrent.duration.*
   */
 object TestDockerExample extends OurApp:
 
-  private given IORuntime = runtime
-
   private val TestAgentPaths = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
+
+  private given IORuntime = runtime
 
   def run(args: List[String]) =
     IO:

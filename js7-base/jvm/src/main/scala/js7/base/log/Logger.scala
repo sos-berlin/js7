@@ -18,7 +18,7 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{Once, Tests}
+import js7.base.utils.{Atomic, Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.annotation.unused
 import scala.concurrent.duration.Deadline
@@ -29,7 +29,8 @@ object Logger extends AdHocLogger:
   type Underlying = ScalaLogger
 
   private val ifNotInitialized = new Once
-  private val ifNotAboutMissingInitializingWarned = new Once
+  private val initLogged = Atomic(false)
+  private val ifNotMissingInitializingWarned = new Once
 
   Slf4jUtils.initialize()
 
@@ -45,6 +46,7 @@ object Logger extends AdHocLogger:
   def initialize(name: String, suppressInfo: Boolean = false): Unit =
     ifNotInitialized:
       Log4j.initialize(name)
+    if !initLogged.getAndSet(true) then
       if !suppressInfo then
         ScalaLogger[this.type].info(StartUp.startUpLine(name))
       Tests.log()
@@ -75,8 +77,7 @@ object Logger extends AdHocLogger:
     apply(implicitClass[A])
 
   def apply(c: Class[?]): ScalaLogger =
-    warnIfNotInitialized(c)
-    ScalaLogger(normalizeClassName(c))
+    apply(normalizeClassName(c))
 
   def apply(name: String): ScalaLogger =
     warnIfNotInitialized(null, name)
@@ -95,13 +96,13 @@ object Logger extends AdHocLogger:
         LoggerFactory.getLogger(normalizeClassName(c))))
 
   private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = ""): Unit =
-    if !ifNotInitialized.isInitializing then
-      ifNotAboutMissingInitializingWarned:
-        val classArg = if cls == null then "" else s"[${cls.scalaName}]"
+    if !ifNotInitialized.isInitialized then
+      ifNotMissingInitializingWarned:
+        val classArg = (cls != null) ?? s"[${cls.scalaName}]"
         val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
-        val t = new Exception("")
-        ScalaLogger[this.type]
-          .warn(s"Logger$classArg$prefixArg before Logger has been initialized", t)
+        val msg =
+          s"Log4j will not be properly initialized because Logger$classArg$prefixArg is being created too early"
+        ScalaLogger[this.type].error(msg, Exception(msg))
 
   /** Removes '$' from Scala's companion object class. */
   private def normalizeClassName(c: Class[?]): String =

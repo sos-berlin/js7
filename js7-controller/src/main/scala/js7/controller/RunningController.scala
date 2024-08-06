@@ -226,7 +226,7 @@ object RunningController:
     resource(conf, alarmClock, eventIdGenerator)
   }.evalOn(ioRuntime.compute)
 
-  private def resource(
+  private def resource2(
     conf: ControllerConfiguration,
     alarmClock: AlarmClock,
     eventIdGenerator: EventIdGenerator)

@@ -49,7 +49,10 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
 
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="${infoPattern}"/>
+      <patternLayout
+        pattern="${infoPattern}"
+        header="${fileHeader}"
+      />
     </console>
 
     <rollingRandomAccessFile
