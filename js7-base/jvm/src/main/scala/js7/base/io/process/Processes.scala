@@ -85,7 +85,7 @@ object Processes:
 
   def runProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
     IO.defer:
-      logger.info(s"${args.mkString(" ")}")
+      logger.trace(s"${args.mkString(" ")}")
       ProcessBuilder(args.asJava)
         .startRobustly()
         .flatMap: killProcess =>

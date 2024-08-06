@@ -731,111 +731,136 @@ final class CancelOrdersTest
           OrderDeleted))
     }
 
-  "Child processes are killed, too" in:
-    // Big value (>4000 under macOS) may fail with
-    // - in bash fork with "Resource temporarily not available"
-    // - in ProcessHandle.descendants with "cannot allocate memory"
-    val numberOfChildren = sys.props.get("test.speed").fold(100)(_.toInt)
+  "Child processes are killed, too" - {
+    "SIGTERM" in:
+      testChildProcessesAreKilled(SIGTERM)
 
-    val script =
-      if isWindows then
-        """@echo off
-          |start /b ping -n 200 127.0.0.1
-          |ping -n 200 127.0.0.1
-          |""".stripMargin
-      else
-        """#!/usr/bin/env bash
-          |set -euo pipefail
-          |
-          |sh <<'END1' &
-          |  set -euo pipefail
-          |  for i in {1..»numberOfNestedChilds«}; do
-          |    sh <<<"
-          |      echo SLEEP-2-$i pid=\$\$
-          |      sleep 204
-          |    " &
-          |  done
-          |  echo SLEEP-2 pid=$$
-          |  sleep 203
-          |END1
-          |
-          |sleep 202 &
-          |echo SLEEP pid=$!
-          |hang &
-          |echo pid=$$
-          |sleep 201
-          |
-          |""".stripMargin.replace("»numberOfNestedChilds«", (numberOfChildren - 3).toString)
-    val workflow = Workflow(WorkflowPath("KILL-CHILD-PROCESSES"), Seq(
-      Execute:
-        WorkflowJob(agentPath, ShellScriptExecutable(script))))
+    "SIGKILL" in:
+      testChildProcessesAreKilled(SIGKILL)
 
-    withTemporaryItem(workflow): workflow =>
-      val pidRegex = ".*pid=([0-9]+).*".r
-      val eventId = eventWatch.lastAddedEventId
-      val orderId = OrderId("KILL-CHILD-PROCESSES")
-      controller.api.addOrder(FreshOrder(orderId, workflow.path))
+    def testChildProcessesAreKilled(signal: ProcessSignal): Unit =
+      // Big value (>4000 under macOS) may fail with
+      // - in bash fork with "Resource temporarily not available"
+      // - in ProcessHandle.descendants with "cannot allocate memory"
+      val numberOfChildren = sys.props.get("test.speed").fold(100)(_.toInt)
+
+      val script =
+        if isWindows then
+          """@echo off
+            |start /b ping -n 200 127.0.0.1
+            |ping -n 200 127.0.0.1
+            |""".stripMargin
+        else
+          """#!/usr/bin/env bash
+            |set -euo pipefail
+            |
+            |sh <<'END' &
+            |  set -euo pipefail
+            |  # Ignore SIGTERM, sleep will not be killed because started by the trap
+            |  trap "sleep 111" SIGTERM
+            |  echo SLEEP-2 pid=$$
+            |  for i in {1..»numberOfNestedChilds«}; do
+            |    sh <<<"
+            |      echo SLEEP-2-$i pid=\$\$
+            |      /bin/sleep 204
+            |    " &
+            |  done
+            |  /bin/sleep 203
+            |END
+            |
+            |/bin/sleep 202 &
+            |echo SLEEP pid=$!
+            |echo pid=$$
+            |/bin/sleep 201
+            |
+            |""".stripMargin.replace("»numberOfNestedChilds«", (numberOfChildren - 3).toString)
+      val workflow = Workflow(WorkflowPath(s"$signal-CHILD-PROCESSES"), Seq(
+        Execute:
+          WorkflowJob(agentPath, ShellScriptExecutable(script))))
+
+      withTemporaryItem(workflow): workflow =>
+        val pidRegex = ".*pid=([0-9]+).*".r
+        val eventId = eventWatch.lastAddedEventId
+        val orderId = OrderId(s"$signal-CHILD-PROCESSES")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path))
+          .await(99.s).orThrow
+
+        /// Wait until all child processes run ///
+        val pids = controller.api
+          .eventAndStateStream(fromEventId = Some(eventId))
+          .collect:
+            case EventAndState(Stamped(_, ms, KeyedEvent(`orderId`, event: OrderEvent)), _, _) =>
+              Timestamp.ofEpochMilli(ms) -> event
+          .map(_._2)
+          .evalTap:
+            case e: OrderTerminated =>
+              IO.unlessA(e.isInstanceOf[OrderFailed] &&
+                controllerState.idToOrder(orderId).lastOutcome ==
+                  OrderOutcome.Killed(OrderOutcome.Failed(Map(
+                    "returnCode" -> NumberValue(ReturnCode(signal).number))))):
+                IO.raiseError(RuntimeException(s"Unexpected $e"))
+            case _ => IO.unit
+          .takeWhile(e => !e.isInstanceOf[OrderTerminated])
+          .collect:
+            case event: OrderStdWritten => event.chunk
+          .through(fs2.text.lines)
+          .scan(Vector.empty[Pid]): (allPids, line) =>
+            allPids ++ pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
+          .evalTap(pids => IO(pids.requireUniqueness))
+          .takeThrough(_.size < numberOfChildren)
+          .compile
+          .last.map(_.get)
+          .await(99.s)
+
+        assert(pids.size == numberOfChildren)
+
+        val cancelledAt = Deadline.now
+        controller.api.executeCommand:
+          CancelOrders(Seq(orderId), CancellationMode.kill(immediately = signal == SIGKILL))
         .await(99.s).orThrow
 
-      val pids = controller.api
-        .eventAndStateStream(fromEventId = Some(eventId))
-        .collect:
-          case EventAndState(Stamped(_, ms, KeyedEvent(`orderId`, event: OrderEvent)), _, _) =>
-            Timestamp.ofEpochMilli(ms) -> event
-        .map(_._2)
-        .evalTap:
-          case e: OrderTerminated =>
-            IO.unlessA(e.isInstanceOf[OrderFailed] &&
-                    controllerState.idToOrder(orderId).lastOutcome ==
-                      OrderOutcome.Killed(OrderOutcome.Failed(Map(
-                        "returnCode" -> NumberValue(ReturnCode(SIGKILL).number))))):
-              IO.raiseError(RuntimeException(s"Unexpected $e"))
-          case _ => IO.unit
-        .takeWhile(e => !e.isInstanceOf[OrderTerminated])
-        .collect:
-          case event: OrderStdWritten => event.chunk
-        .through(fs2.text.lines)
-        .scan(Vector.empty[Pid]): (allPids, line) =>
-          allPids ++ pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
-        .evalTap(pids => IO(pids.requireUniqueness))
-        .takeThrough(_.size < numberOfChildren)
-        .compile
-        .last.map(_.get)
-        .await(99.s)
+        if signal == SIGTERM then
+          // Now, the main process has terminated, but it's child processes are still running
+          sleep(1.s)
 
-      assert(pids.size == numberOfChildren)
+          // OrderProcess does not terminate due to still open stdout
+          assert(eventWatch.eventsByKey[OrderTerminated](orderId, after = eventId).isEmpty)
 
-      val cancelledAt = Deadline.now
-      controller.api.executeCommand:
-        CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
-      .await(99.s).orThrow
-      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      logger.info(s"⏱️ Cancellation took ${cancelledAt.elapsed.pretty}")
+          // Now let kill the remembered child processes (despite the main process has terminated)
+          controller.api.executeCommand:
+            CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
+          .await(99.s).orThrow
 
-      var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
-      waitForCondition(5.s, 10.ms):
-        runningChildren = pids
-          .flatMap:
-            pid => ProcessHandle.of(pid.number).toScala.map(pid -> _)
-        runningChildren.isEmpty
+        eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+        logger.info(s"⏱️ Cancellation took ${cancelledAt.elapsed.pretty}")
 
-      if runningChildren.nonEmpty then
-        runningChildren.foreach: (pid, processHandle) =>
-          logger.error(s"Not killed or zombie process: $pid ${
-            processHandle.info.commandLine.toScala.getOrElse("")}")
-        def failMsg =
-          s"Some processes have not been killed: ${runningChildren.map(_._1).mkString(" ")}"
-        if !isUnix then
-          fail(failMsg)
-        else
-          val psOutput = runProcess:
-            s"ps -o pid,ppid,stat,command ${runningChildren.map(_._1.number).mkString(" ")}"
-          logger.error(psOutput)
-          if psOutput.split("\n").tail.count(_.contains("<defunct>")) < runningChildren.size then
-            fail(s"$failMsg\n$psOutput")
+        var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
+        waitForCondition(5.s, 10.ms):
+          runningChildren = pids
+            .flatMap:
+              pid => ProcessHandle.of(pid.number).toScala.map(pid -> _)
+          runningChildren.isEmpty
+
+        if runningChildren.nonEmpty then
+          runningChildren.foreach: (pid, processHandle) =>
+            logger.error(s"Not killed or zombie process: $pid ${
+              processHandle.info.commandLine.toScala.getOrElse("")}")
+
+          def failMsg =
+            s"Some processes have not been killed: ${runningChildren.map(_._1).mkString(" ")}"
+
+          if !isUnix then
+            fail(failMsg)
           else
-            info(s"⚠️ Killed child processes are left as zombies:\n$psOutput")
-
+            val psOutput = runProcess:
+              s"ps -o pid,ppid,stat,command ${runningChildren.map(_._1.number).mkString(" ")}"
+            logger.error(psOutput)
+            if psOutput.split("\n").tail.count(_.contains("<defunct>")) < runningChildren.size then
+              fail(s"$failMsg\n$psOutput")
+            else
+              info(s"⚠️ Killed child processes are left as zombies:\n$psOutput")
+    end testChildProcessesAreKilled
+  }
 
   private def addWorkflow(workflow: Workflow): Unit =
     controller.api

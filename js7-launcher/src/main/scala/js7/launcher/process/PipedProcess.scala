@@ -2,6 +2,7 @@ package js7.launcher.process
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.foldable.*
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.io.{IOException, InputStream, OutputStream}
 import java.lang.ProcessBuilder.Redirect
@@ -23,7 +24,7 @@ import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Worry.AfterTenSecondsWorryDurations
-import js7.base.utils.{Atomic, Worry}
+import js7.base.utils.{Atomic, BlockingLock, Worry}
 import js7.data.job.{CommandLine, JobKey}
 import js7.data.order.OrderId
 import js7.launcher.StdObservers
@@ -31,10 +32,13 @@ import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable.VectorBuilder
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
+import scala.jdk.StreamConverters.*
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
@@ -45,7 +49,10 @@ final class PipedProcess private(
 
   private val logger = Logger.withPrefix[this.type](toString)
   private val sigkilled = Deferred.unsafe[IO, Unit]
-  @volatile private var _isKilling = false
+  private var _isKilling = none[ProcessSignal]
+  private val _isKillingLock = BlockingLock()
+  private var sigtermDescendants: Seq[ProcessHandle] = Nil
+  private var sigtermDescendantsSince = Deadline(ZeroDuration)
 
   private val runningSince = now
 
@@ -79,7 +86,7 @@ final class PipedProcess private(
         .flatMap:
           case Left((returnCode, stdouterrFiber)) => // Process terminated
             IO.defer:
-              logger.debug(s"Tterminated with $returnCode")
+              logger.debug(s"terminated with $returnCode")
               IO:
                 logger.info:
                   s"terminated with $returnCode, awaiting stdout or stderr (maybe a child process is still running)"
@@ -94,7 +101,7 @@ final class PipedProcess private(
                       ended.flatMap(ended => IO:
                         if ended
                         then s"🔵 $what ended after ${elapsed.pretty}"
-                        else s"🟣 $what are ignored after ${elapsed.pretty}")
+                        else s"🟣 $what are still ignored after ${elapsed.pretty}")
                     case (Some(Outcome.Canceled()), elapsed, level, sym) => IO.pure:
                       s"$sym $what canceled after ${elapsed.pretty}"
                     case (Some(Outcome.Errored(t)), elapsed, level, sym) => IO.pure:
@@ -129,7 +136,7 @@ final class PipedProcess private(
     stdObservers
       .pumpInputStreamToSink(outErr, in, conf.encoding)
       .handleErrorWith:
-        case t: IOException if isWindows && _isKilling => IO:
+        case t: IOException if isWindows && _isKilling.isDefined => IO:
           logger.warn(
             s"While killing the process, $outErr became unreadable: ${t.toStringWithCauses}",
             t)
@@ -138,35 +145,63 @@ final class PipedProcess private(
   def sendProcessSignal(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       val force = signal == SIGKILL
-      _isKilling |= force
+      _isKillingLock.lock:
+        if !_isKilling.contains(SIGKILL) then
+          _isKilling = Some(signal)
       kill(force)
         .guarantee:
           IO.whenA(force):
             sigkilled.complete(()).void
 
   private def kill(force: Boolean): IO[Unit] =
-    if !force then
-      killMainProcessOnly(force)
+    if force then
+      sigkillWithDescendants
     else
-      killWithDescendants(force)
+      sigtermAndSaveDescendants
 
-  private def killWithDescendants(force: Boolean): IO[Unit] =
+  private def sigtermAndSaveDescendants: IO[Unit] =
     logger.debugIO:
       IO.defer:
-        val descendants = process.descendants
+        sigtermDescendants = process.descendants // Maybe we must sigkill them later
+        sigtermDescendantsSince = Deadline.now
+        killMainProcessOnly(force = false)
+
+  private def sigkillWithDescendants: IO[Unit] =
+    logger.debugIO:
+      IO.defer:
+        // sigtermDescendants may be old. The OS must not reuse PIDs too early.
+        val descendants = (dependenciesOf(sigtermDescendants) ++: process.descendants).distinct
         if descendants.isEmpty then
-          killMainProcessOnly(force)
+          killMainProcessOnly(force = true)
         else
           // Try to stop all processes, then collect descendants again and kill them
-          sendStopSignal(process.pid.number +: descendants.map(_.pid))
+          logger.info(s"Sending SIGSTOP and SIGKILL to child processes started before SIGTERM (${
+            sigtermDescendantsSince.elapsed} ago)")
+          sendStopSignal((process.isAlive ? process.pid.number) ++: descendants.map(_.pid))
             .handleErrorWith: t =>
               IO(logger.warn(t.toStringWithCauses))
             .flatMap: _ =>
-              val descendants = process.descendants
-              killMainProcessOnly(force).flatMap: _ =>
+              IO.whenA(process.isAlive):
+                killMainProcessOnly(force = true)
+              .flatMap: _ =>
                 descendants
-                  .traverse(killViaProcessHandle(_, force))
+                  .traverse(killViaProcessHandle(_, force = true))
                   .map(_.combineAll)
+
+  // Return a Seq of distinct ProcessHandles
+  private def dependenciesOf(processHandles: Seq[ProcessHandle]): Seq[ProcessHandle] =
+    val known = mutable.Set[Long]()
+    val result = VectorBuilder[ProcessHandle]()
+    for p <- processHandles if p.isAlive do
+      if !known(p.pid) then
+        known += p.pid
+        result += p
+        for d <- p.descendants().iterator().asScala do
+          if !known(d.pid) then
+            known += d.pid
+            result += d
+    result.result()
+
 
   private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
     IO.defer:
