@@ -13,7 +13,6 @@ import js7.base.utils.Atomic.extensions.*
 import org.apache.pekko
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.util.Timeout
-//diffx import com.softwaremill.diffx
 import cats.effect.IO
 import izumi.reflect.Tag
 import java.nio.file.Path
@@ -49,7 +48,7 @@ import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 
-final class ClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/: Tag] private(
+final class ClusterNode[S <: ClusterableState[S]: Tag] private(
   prepared: Prepared[S],
   passiveOrWorkingNode: AtomicReference[Option[Either[PassiveClusterNode[S], Allocated[IO, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[IO, IO[Checked[S]]],
@@ -275,7 +274,7 @@ extends Service.StoppableByRequest:
 object ClusterNode:
   private val logger = Logger[this.type]
 
-  def recoveringResource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
+  def recoveringResource[S <: ClusterableState[S]: Tag](
     pekkoResource: ResourceIO[ActorSystem],
     clusterNodeApi: (Admission, String, ActorSystem) => ResourceIO[ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -306,7 +305,7 @@ object ClusterNode:
     yield
       clusterNode
 
-  private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
+  private def resource[S <: ClusterableState[S]: Tag](
     recovered: Recovered[S],
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -344,7 +343,7 @@ object ClusterNode:
           testEventBus)
       yield clusterNode
 
-  private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
+  private def resource[S <: ClusterableState[S]: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     journalLocation: JournalLocation,

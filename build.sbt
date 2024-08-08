@@ -302,7 +302,6 @@ lazy val `js7-tester` = crossProject(JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion
   }
@@ -330,7 +329,6 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       "co.fs2" %% "fs2-io" % fs2Version ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
-      "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
       catsEffectTesting ++
@@ -549,7 +547,6 @@ lazy val `js7-core` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      diffx ++
       pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++ log4j % "test" ++
@@ -603,7 +600,6 @@ lazy val `js7-journal` = project
       pekkoHttp ++
       pekkoHttpTestkit % "test" ++
       tagging ++
-      diffx ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -624,7 +620,6 @@ lazy val `js7-cluster` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      diffx ++
       pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
@@ -643,7 +638,6 @@ lazy val `js7-cluster-watch-api` = crossProject(JVMPlatform)
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      diffx ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -660,7 +654,6 @@ lazy val `js7-cluster-watch` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      diffx ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -792,8 +785,6 @@ lazy val `js7-tests` = project
     libraryDependencies ++=
       pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
-      diffx % "test" ++
-      diffxScalaTest % "test" ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

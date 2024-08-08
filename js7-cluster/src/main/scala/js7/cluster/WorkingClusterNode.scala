@@ -38,7 +38,7 @@ import org.apache.pekko.actor.ActorRefFactory
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[
-  S <: ClusterableState[S]: ClusterableState.Companion/*: diffx.Diff*/: Tag
+  S <: ClusterableState[S]: ClusterableState.Companion: Tag
 ] private(
   val failedNodeId: Option[NodeId],
   val journalAllocated: Allocated[IO, FileJournal[S]],
@@ -185,7 +185,7 @@ object WorkingClusterNode:
   private val logger = Logger[this.type]
 
   private[cluster]
-  def resource[S <: ClusterableState[S]: ClusterableState.Companion/*: diffx.Diff*/: Tag](
+  def resource[S <: ClusterableState[S]: ClusterableState.Companion: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     clusterConf: ClusterConf,

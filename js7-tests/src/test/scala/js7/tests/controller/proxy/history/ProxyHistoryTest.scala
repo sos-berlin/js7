@@ -112,7 +112,6 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
                   case ProxyStarted =>
                     assert(!proxyStartedReceived)
                     proxyStartedReceived = true
-                    //diffx es.state shouldMatchTo lastState
                     assert(es.state == lastState)
                   case _ =>
                     assert(lastState.eventId < es.stampedEvent.eventId)

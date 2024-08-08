@@ -7,7 +7,6 @@ import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
-//diffx import com.softwaremill.diffx
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.{@@, Tagger}
@@ -138,7 +137,7 @@ extends Journal[S], FileJournal.PossibleFailover:
 object FileJournal:
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/: Tag](
+  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: Tag](
     recovered: Recovered[S],
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,

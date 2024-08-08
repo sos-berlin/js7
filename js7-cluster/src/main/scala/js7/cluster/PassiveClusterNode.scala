@@ -53,7 +53,7 @@ import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 
-private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/](
+private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   ownId: NodeId,
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
@@ -674,7 +674,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
         logger.error(msg)
         // msg may get very big
-        //diffx msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
         //logger.info(msg)  // Without colors because msg is already colored
         sys.error(msg)
 

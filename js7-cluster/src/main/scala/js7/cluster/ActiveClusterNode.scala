@@ -47,7 +47,7 @@ import scala.concurrent.duration.*
 import scala.util.{Failure, Right, Success, Try}
 
 /** Active Cluster node active which is part of a cluster (ClusterState != Empty). */
-final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[cluster](
+final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   journal: FileJournal[S],
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,

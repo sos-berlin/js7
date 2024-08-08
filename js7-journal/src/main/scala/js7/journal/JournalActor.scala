@@ -48,7 +48,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]/*: diffx.Diff*/] private(
+final class JournalActor[S <: SnapshotableState[S]] private(
   journalLocation: JournalLocation,
   protected val conf: JournalConf,
   keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
@@ -386,10 +386,6 @@ extends Actor, Stash, JournalLogging:
     if conf.slowCheckState && committedState != uncommittedState then
       val msg = "SnapshotableState update mismatch: committedState != uncommittedState"
       logger.error(msg)
-      //diffx implicit val showConfig = diffx.ShowConfig.default.copy(
-      //diffx   arrow = _.replace("->", "->>"),
-      //diffx   transformer = diffx.DiffResultTransformer.skipIdentical)
-      //diffx logger.error(diffx.compare(committedState, uncommittedState).show())
       sys.error(msg)
     uncommittedState = committedState    // Reduce duplicate allocated objects
     if conf.slowCheckState then
@@ -641,7 +637,6 @@ extends Actor, Stash, JournalLogging:
       logger.error(msg)
       for stamped <- stampedSeq do logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
-      //diffx msg ++= ":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
 
@@ -650,7 +645,7 @@ object JournalActor:
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
 
-  def props[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/](
+  def props[S <: SnapshotableState[S]: SnapshotableState.Companion](
     journalLocation: JournalLocation,
     conf: JournalConf,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],

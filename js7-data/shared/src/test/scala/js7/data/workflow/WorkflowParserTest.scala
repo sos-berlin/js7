@@ -1,7 +1,6 @@
 package js7.data.workflow
 
 import cats.syntax.show.*
-//diffx import com.softwaremill.diffx.generic.auto.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite

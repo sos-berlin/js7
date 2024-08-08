@@ -29,7 +29,6 @@ object Dependencies
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"
-  val diffxVersion = "0.9.0"
   val reactorVersion = "3.6.5"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.14.0"
@@ -53,8 +52,6 @@ object Dependencies
     "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test)
   val catsSTM             = "io.github.timwspence" %% "cats-stm" % catsSTMVersion
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
-  val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
-  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 

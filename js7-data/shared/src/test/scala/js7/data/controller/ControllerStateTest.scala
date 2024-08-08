@@ -1,6 +1,5 @@
 package js7.data.controller
 
-//diffx import com.softwaremill.diffx.generic.auto.*
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*

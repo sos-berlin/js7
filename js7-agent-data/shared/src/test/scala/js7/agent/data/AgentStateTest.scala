@@ -1,7 +1,5 @@
 package js7.agent.data
 
-//diffx import com.softwaremill.diffx
-//diffx import com.softwaremill.diffx.generic.auto.*
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
@@ -340,8 +338,6 @@ final class AgentStateTest extends OurAsyncTestSuite:
             val a = agentState.copy(eventId = 0)
             if fromSnapshot != a then  // Diff.compare do not uses our equals implementation
               fail("Eevent-build state differs from snapshot")
-              //diffx val diffResult = diffx.Diff.compare(fromSnapshot, a)
-              //diffx fail(diffResult.show())
             else
               succeed
           }
