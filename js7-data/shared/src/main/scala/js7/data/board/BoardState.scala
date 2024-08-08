@@ -75,10 +75,10 @@ extends UnsignedSimpleItemState:
       expectingOrderIds = noticePlace.expectingOrderIds + orderId)))
 
   def removeExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
-    Right(
-      idToNotice.get(noticeId).fold(this)(noticePlace =>
+    Right:
+      idToNotice.get(noticeId).fold(this) : noticePlace =>
         updateNoticePlace(noticePlace.copy(
-          expectingOrderIds = noticePlace.expectingOrderIds - orderId))))
+          expectingOrderIds = noticePlace.expectingOrderIds - orderId))
 
   def addConsumption(
     noticeId: NoticeId,
@@ -95,19 +95,18 @@ extends UnsignedSimpleItemState:
 
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
     orderToConsumptionStack.checked(orderId)
-      .flatMap { consumptions =>
+      .flatMap: consumptions =>
         val noticeId :: remainingConsumptions = consumptions: @unchecked
         idToNotice.checked(noticeId)
-          .map(noticePlace =>
-            updateNoticePlace(
-              noticePlace.finishConsumption(succeeded))
-              .copy(
-                orderToConsumptionStack =
-                  if remainingConsumptions.isEmpty then
-                    orderToConsumptionStack - orderId
-                  else
-                    orderToConsumptionStack.updated(orderId, remainingConsumptions)))
-      }
+          .map: noticePlace =>
+            updateNoticePlace:
+              noticePlace.finishConsumption(succeeded)
+            .copy(
+              orderToConsumptionStack =
+                if remainingConsumptions.isEmpty then
+                  orderToConsumptionStack - orderId
+                else
+                  orderToConsumptionStack.updated(orderId, remainingConsumptions))
 
   def containsNotice(noticeId: NoticeId): Boolean =
     idToNotice.get(noticeId).exists(_.notice.isDefined)
@@ -127,12 +126,8 @@ extends UnsignedSimpleItemState:
 
   def removeNotice(noticeId: NoticeId): Checked[BoardState] =
     for _ <- checkDelete(noticeId) yield
-      idToNotice.get(noticeId) match
-        case None =>
-          this
-
-        case Some(noticePlace) =>
-          updateNoticePlace(noticePlace.removeNotice)
+      idToNotice.get(noticeId).fold(this): noticePlace =>
+        updateNoticePlace(noticePlace.removeNotice)
 
   private def updateNoticePlace(noticePlace: NoticePlace): BoardState =
     copy(
@@ -151,7 +146,8 @@ extends UnsignedSimpleItemState:
       notice <- noticePlace.notice match
         case None => Left(Problem(s"$noticeId does not denote a Notice (but a Notice expectation)"))
         case Some(notice) => Right(notice)
-    yield notice
+    yield
+      notice
 
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:

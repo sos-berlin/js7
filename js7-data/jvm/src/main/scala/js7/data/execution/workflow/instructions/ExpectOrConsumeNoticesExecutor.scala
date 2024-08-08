@@ -7,6 +7,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction
 
 object ExpectOrConsumeNoticesExecutor:
+  
   def tryFulfillExpectingOrder(
     expectNotices: ExpectOrConsumeNoticesInstruction,
     order: Order[Order.ExpectingNotices],

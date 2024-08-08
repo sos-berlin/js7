@@ -201,7 +201,6 @@ extends EventDrivenState[Self, E], StateView:
     yield
       instr
 
-
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
     order.ifState[Order.ExpectingNotices] match
       case None => Right(Nil)

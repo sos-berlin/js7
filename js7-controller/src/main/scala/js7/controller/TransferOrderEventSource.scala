@@ -14,7 +14,7 @@ final class TransferOrderEventSource(controllerState: ControllerState):
 
   def transferOrders(cmd: TransferOrders): Checked[Seq[KeyedEvent[OrderTransferred]]] =
     controllerState.repo.pathTo(Workflow)(cmd.workflowId.path)
-      .flatMap(toWorkflow =>
+      .flatMap: toWorkflow =>
         if controllerState.repo.isCurrentItem(cmd.workflowId) then
           Left(Problem.pure(s"${cmd.workflowId} is already the current version"))
         else
@@ -28,7 +28,7 @@ final class TransferOrderEventSource(controllerState: ControllerState):
               checkTransferable(order) >>
                 transferOrder(order, toWorkflow)
                   .map(order.id <-: _))
-            .combineProblems)
+            .combineProblems
 
   private def checkTransferable(order: Order[Order.State]): Checked[Unit] =
     order.attachedState match
@@ -37,5 +37,5 @@ final class TransferOrderEventSource(controllerState: ControllerState):
 
   private def transferOrder(order: Order[Order.State], toWorkflow: Workflow)
   : Checked[OrderTransferred] =
-    for _ <- toWorkflow.checkPosition(order.position)/*same position exists?*/  yield
+    for _ <- toWorkflow.checkPosition(order.position) /*same position exists?*/ yield
       OrderTransferred(toWorkflow.id /: order.position)

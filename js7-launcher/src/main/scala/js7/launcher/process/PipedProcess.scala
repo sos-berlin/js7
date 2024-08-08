@@ -38,7 +38,6 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
-import scala.jdk.StreamConverters.*
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
