@@ -45,7 +45,7 @@ extends EventInstructionExecutor:
             if order.state.expected.map(_.boardPath).toSet != expectNotices.referencedBoardPaths
             then
               Left(Problem.pure:
-                s"Instruction does not match Order.State: $expectNotices <-> ${order.state}")
+                s"ExpectNotices instruction does not match Order.State: $expectNotices <-> ${order.state}")
             else
               Right:
                 tryFulfillExpectingOrder(expectNotices, order, state))

@@ -43,8 +43,8 @@ extends EventInstructionExecutor:
           .ifState[Order.ExpectingNotices]
           .map(order =>
             if order.state.expected.map(_.boardPath).toSet != instr.referencedBoardPaths then
-              Left(Problem.pure(
-                s"Instruction does not match Order.State: $instr <-> ${order.state}"))
+              Left(Problem.pure:
+                s"ConsumeNotices instruction does not match Order.State: $instr <-> ${order.state}")
             else
               Right(tryFulfillExpectingOrder(instr, order, state))))
         .getOrElse:
