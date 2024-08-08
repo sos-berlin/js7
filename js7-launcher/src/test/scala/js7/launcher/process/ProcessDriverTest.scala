@@ -50,6 +50,7 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
     js7.job.execution.kill-with-sigkill-command = [ "/bin/kill", "-KILL", "$$pid" ]
     js7.job.execution.kill-command-for-windows = [ "taskkill", "/pid", "$$pid" ]
     js7.job.execution.used-error-line-length = 4096
+    js7.job.execution.worry-about-stdout-after-termination = 100ms
     """.withFallback(Js7Configuration.defaultConfig)
 
   private given IORuntime = ioRuntime
