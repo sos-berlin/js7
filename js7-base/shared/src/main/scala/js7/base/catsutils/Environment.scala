@@ -64,9 +64,9 @@ final class Environment:
         case null =>
           orRegister match
             case None => IO.raiseError(EnvironmentTagNotFoundException(tag))
-            case Some(orRegister) =>
-              tagToEntry.replace(tag, entry, Entry.FResource(orRegister))
-              get[A]()
+            case Some(resource) =>
+              tagToEntry.replace(tag, entry, Entry.FResource(resource))
+              get[A](orRegister)
 
         case pure: Entry.Pure[A @unchecked] =>
           IO.pure(pure.a)
@@ -81,10 +81,14 @@ final class Environment:
               entry.resource.allocated.flatMap: allocated =>
                 val (a, release) = allocated
                 val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
-                F.unlessA(replaced):
+                if !replaced then
                   logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, release it"):
-                    release
-                .as(a)
+                    release.as(None)
+                else
+                  F.pure(Some(a))
+            .flatMap:
+              case None => get[A](orRegister)
+              case Some(a) => IO.pure(a)
 
 
 object Environment:
