@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config=/var/opt/js7/agent/config
+data=/var/opt/js7/agent/data
+hprof=$data/logs/OutOfMemoryError.hprof
+
+if [ "$HOME" = "/home/js7" ]; then
+  [ -e "$HOME/config" ] || ln -ns $config "$HOME/config"
+  [ -e "$HOME/data" ] || ln -ns $data "$HOME/data"
+fi
+
+exec /opt/js7/bin/js7-agent-client \
+  -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
+  "$@"

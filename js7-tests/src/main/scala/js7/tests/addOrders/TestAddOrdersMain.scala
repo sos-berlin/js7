@@ -1,7 +1,7 @@
 package js7.tests.addOrders
 
 import cats.effect.{ExitCode, IO}
-import js7.base.service.Service
+import js7.base.service.SimpleMainService
 import js7.base.utils.ProgramTermination
 import js7.common.system.startup.ServiceApp
 
@@ -16,7 +16,7 @@ object TestAddOrdersMain extends ServiceApp:
     else
       runService(args, Settings.fromCommandLine):
         conf =>
-          Service.simpleResource:
+          SimpleMainService.resource:
             TestAddOrders.run(conf, logToStdout = true).flatMap:
               case Left(problem) =>
                 IO:

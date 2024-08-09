@@ -74,6 +74,7 @@ trait Service:
 
 
 object Service:
+
   private val defaultRestartDelays: Seq[FiniteDuration] =
     RestartAfterFailureService.defaultRestartDelays
 
@@ -83,7 +84,7 @@ object Service:
 
   private val logger = Logger[this.type]
 
-  def resource[S <: Service](newService: IO[S]): ResourceIO[S] =
+  def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
     Resource.make(
       acquire =
         newService.flatTap(service =>
@@ -113,16 +114,13 @@ object Service:
         case Outcome.Canceled() => IO(logger.info(s"⚫ $serviceName canceled"))
         case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName stopped"))
 
-  def restartAfterFailure[S <: Service: Tag](
+  def restartAfterFailure[Svc <: Service: Tag](
     startDelays: Seq[FiniteDuration] = defaultRestartDelays,
     runDelays: Seq[FiniteDuration] = defaultRestartDelays)
-    (serviceResource: ResourceIO[S])
-  : ResourceIO[RestartAfterFailureService[S]] =
-    resource(IO(
-      new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
-
-  def simpleResource(body: IO[ProgramTermination]): ResourceIO[SimpleMainService] =
-    Resource.eval(IO(simple(body)))
+    (serviceResource: ResourceIO[Svc])
+  : ResourceIO[RestartAfterFailureService[Svc]] =
+    resource(IO:
+      new RestartAfterFailureService(startDelays, runDelays)(serviceResource))
 
   def simple(body: IO[ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:
@@ -136,4 +134,4 @@ object Service:
   /** Marker type to ensure call of `startFiber`. */
   final class Started private[Service]:
     override def toString = "Service.Started"
-  private val Started = new Started()
+  private val Started = new Started

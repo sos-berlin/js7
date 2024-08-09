@@ -21,6 +21,11 @@ object ProgramTermination:
     else
       Success
 
+  def fromExitCode(exitCode: ExitCode): ProgramTermination =
+    if exitCode == ExitCode.Success then
+      ProgramTermination.Success
+    else
+      FromExitCode(exitCode)
 
   trait Success extends ProgramTermination:
     def toExitCode: ExitCode =
@@ -50,3 +55,7 @@ object ProgramTermination:
     override def toString = "ProgramTermination.Restart"
 
   case object Restart extends Restart
+
+
+  final case class FromExitCode(toExitCode: ExitCode) extends ProgramTermination:
+    override def toString = s"ProgramTermination.FromExitCode($toExitCode)"

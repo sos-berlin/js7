@@ -7,7 +7,6 @@ export JS7_HOME
 declare classpathString java
 declare -a standardJavaOptions
 
-httpPort=4444
 args=()
 javaOptions=(
   -Xms50m
@@ -23,13 +22,13 @@ for arg in "$@"; do :
       a="${arg#-J}"
       javaOptions+=("$a")
       ;;
-    --http-port=*)
-      httpPort="${arg#*=}"
-      ;;
     *)
       args+=("$arg")
   esac
 done
+
+uri="$(cat data/work/http-uri)"
+uri="${uri%/controller}"
 
 execute=(
   "$java"
@@ -38,6 +37,7 @@ execute=(
   "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   js7.controller.client.main.ControllerClientMain
-  "http://127.0.0.1:$httpPort"
+  "$uri"
   "${args[@]}")
+
 exec "${execute[@]}"

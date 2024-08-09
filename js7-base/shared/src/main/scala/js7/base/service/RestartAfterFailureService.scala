@@ -15,15 +15,15 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, DelayConf, Delayer}
 import scala.concurrent.duration.*
 
-final class RestartAfterFailureService[S <: Service: Tag] private[service](
+final class RestartAfterFailureService[Svc <: Service: Tag] private[service](
   startDelays: Seq[FiniteDuration] = defaultRestartDelays,
   runDelays: Seq[FiniteDuration] = defaultRestartDelays)
-  (serviceResource: ResourceIO[S])
+  (serviceResource: ResourceIO[Svc])
 extends Service:
   self =>
 
-  private val serviceName = implicitly[Tag[S]].tag.toString
-  private val currentAllocatedService = Atomic(none[Allocated[IO, S]])
+  private val serviceName = implicitly[Tag[Svc]].tag.toString
+  private val currentAllocatedService = Atomic(none[Allocated[IO, Svc]])
   @volatile private var stopping = false
   private val untilStopRequested = Deferred.unsafe[IO, Unit]
 
@@ -43,7 +43,7 @@ extends Service:
       started <- startService(runUnderlyingService(service))
     yield started
 
-  private def startUnderlyingService: IO[S] =
+  private def startUnderlyingService: IO[Svc] =
     serviceResource
       .toAllocated
       .pipeMaybe(maybeStartDelay)(
@@ -56,14 +56,14 @@ extends Service:
       .flatTap(setCurrentService)
       .map(_.allocatedThing)
 
-  private def setCurrentService(allocated: Allocated[IO, S]): IO[Unit] =
+  private def setCurrentService(allocated: Allocated[IO, Svc]): IO[Unit] =
     IO.defer:
       currentAllocatedService
         .getAndSet(Some(allocated))
         .fold(IO.unit)(_.release.when(stopping))
         .*>(allocated.release.when(stopping))
 
-  private def runUnderlyingService(service: S) =
+  private def runUnderlyingService(service: Svc) =
     maybeRunDelay.fold(service.untilStopped)(delayConf =>
       Delayer.start[IO](delayConf).flatMap(delayer =>
         service.some.tailRecM { initialService =>
@@ -96,7 +96,7 @@ extends Service:
         (if duration.isZero then "now" else "in " + duration.pretty)))
 
   // Call only after this Service has been started!
-  def unsafeCurrentService(): S =
+  def unsafeCurrentService(): Svc =
     currentAllocatedService.get()
       .getOrElse(throw new IllegalStateException(s"$myName not yet started"))
       .allocatedThing

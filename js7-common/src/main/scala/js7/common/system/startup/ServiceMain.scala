@@ -20,24 +20,20 @@ import js7.common.configuration.BasicConfiguration
 import scala.concurrent.duration.{Deadline, Duration}
 
 object ServiceMain:
-  private var _runningSince: Option[Deadline] = None
-
-  locally:
-    _runningSince = Some(Deadline(Duration.fromNanos(System.nanoTime())))
+  private val runningSince: Deadline = Deadline.now
 
   // Run initialization code above.
   def initialize(): Unit = ()
 
   /** Returns the return code. */
-  def runAsMain[Conf <: BasicConfiguration, S <: MainService: Tag](
+  def runAsMain[Cnf <: BasicConfiguration, Svc <: MainService: Tag](
     args: Seq[String],
     name: String,
-    argsToConf: CommandLineArguments => Conf,
+    argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,
     suppressShutdownLogging: Boolean = false)
-    (toServiceResource: Conf => ResourceIO[S],
-    use: (Conf, S) => IO[ProgramTermination] =
-    (_: Conf, service: S) => service.untilTerminated)
+    (toServiceResource: Cnf => ResourceIO[Svc],
+    use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
     IO
       .defer:
@@ -54,20 +50,20 @@ object ServiceMain:
               logging.logFirstLines(commandLineArguments, conf)
               logging.run(toServiceResource(conf))(use(conf, _))
           .attempt.map:
-            case Left(throwable) => logging.throwableToExitCode(throwable)
+            case Left(throwable) => ExitCode.Error // Service has already logged an error
             case Right(termination) => logging.onProgramTermination(name, termination)
       .guarantee:
         IO.unlessA(suppressShutdownLogging)(IO:
           Log4j.shutdown())
 
-  def blockingRun[S <: MainService](
+  def blockingRun[Svc <: MainService](
     name: String,
     timeout: Duration = Duration.Inf)
-    (using rt: IORuntime, S: Tag[S])
-    (resource: ResourceIO[S],
-    use: S => ProgramTermination = (_: S)
+    (using rt: IORuntime, S: Tag[Svc])
+    (resource: ResourceIO[Svc],
+    use: Svc => ProgramTermination = (_: Svc)
       .untilTerminated
-      .map(o => o: ProgramTermination) // because we have no Tag[S#Termination]
+      .map(o => o: ProgramTermination) // because we have no Tag[Svc#Termination]
       .await(timeout))
   : ProgramTermination =
     resource
@@ -77,17 +73,8 @@ object ServiceMain:
 
   def readyMessageWithLine(prefix: String): String =
     prefix +
-      _runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
+      s" (after ${runningSince.elapsed.pretty})" +
       "\n" + "─" * 80
-
-  private def startUp(name: String): Unit =
-    val nanoTime = System.nanoTime() // Before anything else, fetch clock
-
-      printlnWithClock(s"JS7 $name ${BuildInfo.prettyVersion}")
-
-    _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
-    StartUp.initializeMain()
-
 
   /** For usage after logging system has properly been initialized. */
   private object logging:
@@ -96,22 +83,13 @@ object ServiceMain:
       Logger[ServiceMain.type]
 
     def onProgramTermination(name: String, termination: ProgramTermination): ExitCode =
-      try
-        // Log complete timestamp in case of short log timestamp
-        val msg = s"JS7 $name terminates now" +
-          (termination.restart ?? " and is expected to restart") + s" ($nowString)"
-        logger.info(msg)
-        printlnWithClock(msg)
+      // Log complete timestamp in case of short log timestamp
+      val msg = s"$name terminates now after ${runningSince.elapsed.pretty}" +
+        (termination.restart ?? " and is expected to restart") + s" ($nowString)"
+      logger.info(msg)
+      printlnWithClock(msg)
 
-        termination.toExitCode
-      catch throwableToExitCode
-
-    def throwableToExitCode: PartialFunction[Throwable, ExitCode] =
-      case t: Throwable =>
-        logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-        System.err.println(t.toStringWithCauses)
-        t.printStackTrace(System.err)
-        ExitCode.Error
+      termination.toExitCode
 
     def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)
     : Unit =
@@ -124,9 +102,9 @@ object ServiceMain:
       logConfig(conf.config)
       logJavaSettings()
 
-    private[ServiceMain] def run[S <: MainService: Tag](
-      resource: ResourceIO[S])
-      (use: S => IO[ProgramTermination])
+    private[ServiceMain] def run[Svc <: MainService: Tag](
+      resource: ResourceIO[Svc])
+      (use: Svc => IO[ProgramTermination])
     : IO[ProgramTermination] =
       resource
         .use: service =>
