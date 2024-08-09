@@ -4,7 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
-import java.io.{IOException, InputStream, OutputStream}
+import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, right, startAndForget}
@@ -94,35 +94,22 @@ final class PipedProcess private(
                 val what = s"$orderId stdout or stderr"
                 stdouterrFiber.joinStd
                   .logWhenItTakesLonger(StdouterrWorry):
-                    case (None, elapsed, level, sym) => IO.pure:
+                    case (None, elapsed, _, sym) => IO.pure:
                       s"$sym Still waiting for $what for ${elapsed.pretty}"
-                    case (Some(Outcome.Succeeded(ended)), elapsed, level, _) =>
+                    case (Some(Outcome.Succeeded(ended)), elapsed, _, _) =>
                       ended.flatMap(ended => IO:
                         if ended
                         then s"🔵 $what ended after ${elapsed.pretty}"
                         else s"🟣 $what are still ignored after ${elapsed.pretty}")
-                    case (Some(Outcome.Canceled()), elapsed, level, sym) => IO.pure:
+                    case (Some(Outcome.Canceled()), elapsed, _, sym) => IO.pure:
                       s"$sym $what canceled after ${elapsed.pretty}"
-                    case (Some(Outcome.Errored(t)), elapsed, level, sym) => IO.pure:
+                    case (Some(Outcome.Errored(t)), elapsed, _, sym) => IO.pure:
                       s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
             .as(returnCode)
 
           case Right((terminationFiber, _)) =>
             // Stdout and stderr ended or ignored after SIGKILL
             terminationFiber.joinStd
-
-  private def onSigkilledCloseStdouterr: IO[Unit] =
-    // The process may have terminated while long running child processes have inherited
-    // the file handles and still use them.
-    // After SIGKILL, we forcibly close stdout and stderr with destroyForcibly.
-    // We delay a short while to allow the last outstanding data to be handled by
-    // pumpStdoutAndStderrToSink.
-    // Still running child processes write operations will fail with EPIPE or may block !!!
-    sigkilled.get
-      .andWait(killStdoutAndStderrDelay)
-      .flatMap(_ => IO:
-        logger.info(s"destroyForcibly to close stdout and stderr")
-        process.destroyForcibly())
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
     logger.traceIO(s"pumpStdoutAndStderrToSink")(IO
@@ -201,7 +188,6 @@ final class PipedProcess private(
             result += d
     result.result()
 
-
   private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
     IO.defer:
       val firstArgs = Vector("/bin/kill", "-STOP")
@@ -256,9 +242,6 @@ final class PipedProcess private(
     interruptibleVirtualThread:
       logger.traceCallWithResult(s"waitFor $process"):
         process.waitFor()
-
-  def stdin: OutputStream =
-    process.stdin
 
   override def toString =
     s"$orderId $process"
