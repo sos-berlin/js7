@@ -95,50 +95,47 @@ extends MainService, Service.StoppableByRequest:
     clusterNode.currentState
 
   protected def start =
-    startService(
+    startService:
       forDirector.subagent.untilTerminated
-        .flatTap(termination => IO {
-          subagentTermination = termination
-        })
+        .flatTap(termination => IO:
+          subagentTermination = termination)
         .*>(stop/*TODO Subagent should terminate this Director ?*/)
         .startAndForget
         .*>(IO.race(
           untilStopRequested *> shutdown,
           untilTerminated))
-        .void)
+        .void
 
   private def shutdown: IO[Unit] =
-    logger.debugIO(
-      terminating(
+    logger.debugIO:
+      terminating:
         executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
           .attempt
-          .map {
+          .map:
             case Left(throwable) => logger.warn(throwable.toStringWithCauses)
             case Right(Left(problem)) => logger.warn(problem.toString)
             case Right(Right(_)) =>
-          }
           .startAndForget
-      ).void)
+      .void
 
   private[agent] def terminate(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
   : IO[DirectorTermination] =
-    logger.debugIO(
-      terminating {
+    logger.debugIO:
+      terminating:
         executeCommand(
           ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
           CommandMeta(SimpleUser.System)
         ).map(_.orThrow)
-      })
-      .evalOn(ioRuntime.compute) // Only for TestAgent
+    .evalOn(ioRuntime.compute) // Only for TestAgent
 
   private def terminating(body: IO[Unit]): IO[DirectorTermination] =
     IO.defer:
       IO
-        .unlessA(isTerminating.getAndSet(true))(
-          body)
+        .unlessA(isTerminating.getAndSet(true)):
+          body
         .*>(untilTerminated)
         .logWhenItTakesLonger
 
@@ -148,7 +145,8 @@ extends MainService, Service.StoppableByRequest:
       checkedSession <- forDirector.sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
-    yield checkedChecked.flatten
+    yield
+      checkedChecked.flatten
 
   def systemSessionToken: SessionToken =
     forDirector.systemSessionToken
@@ -224,7 +222,8 @@ object RunningAgent:
           journalLocation, clusterConf, eventIdGenerator, subagent.testEventBus)
         director <-
           resource2(forDirector, clusterNode, testWiring, conf, subagent.testEventBus, clock)
-      yield director
+      yield
+        director
   })
 
   private def resource2(
@@ -395,7 +394,7 @@ object RunningAgent:
     for
       _ <- Resource.make(IO.unit)(release = _ =>
         IO(for actor <- actors do actorSystem.stop(actor)))
-      agent <- Service.resource(IO(
+      agent <- Service.resource(IO:
         new RunningAgent(
           clusterNode,
           journalDeferred.get,
@@ -404,9 +403,9 @@ object RunningAgent:
           untilReady, executeCommand,
           forDirector,
           testEventBus,
-          actorSystem, conf)))
-      _ <- forDirector.subagent.directorRegisteringResource(
-        routeBinding => IO.pure(
+          actorSystem, conf))
+      _ <- forDirector.subagent.directorRegisteringResource:
+        routeBinding => IO.pure:
           new AgentRoute(
             agentOverview,
             routeBinding,
@@ -415,7 +414,7 @@ object RunningAgent:
             conf,
             gateKeeperConf,
             forDirector.sessionRegister
-          ).agentRoute))
+          ).agentRoute
     yield agent
 
   final case class TestWiring(

@@ -87,15 +87,15 @@ object Service:
   def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
     Resource.make(
       acquire =
-        newService.flatTap(service =>
+        newService.flatTap: service =>
           if service.started.getAndSet(true) then
-            IO.raiseError(new IllegalStateException(s"$toString started twice"))
+            IO.raiseError(IllegalStateException(s"$toString started twice"))
           else
-            logger.traceF(s"$service start")(
+            logger.traceF(s"$service start"):
               service.start
                 .onError(t =>
                   // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                  IO(logger.error(s"$service start => ${t.toStringWithCauses}"))))))(
+                  IO(logger.error(s"$service start => ${t.toStringWithCauses}"))))(
       release =
         service => service.stop
           .logWhenItTakesLonger(s"stopping $service"))
