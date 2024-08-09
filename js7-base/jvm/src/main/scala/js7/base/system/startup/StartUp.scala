@@ -7,8 +7,8 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.time.Timestamp
-import js7.base.utils.Atomic
 import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Once
 import js7.base.utils.ScalaUtils.syntax.*
 
 /**
@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 object StartUp:
   val startedAt: Timestamp = Timestamp.now
   private var _isMain = false
-  private val classPathLogged = Atomic(false)
+  private val logClasspathOnce = Once()
 
   def initializeMain(): Unit =
     _isMain = true
@@ -29,18 +29,20 @@ object StartUp:
     // Do not initialize logging framework to early
     val logger = Logger[this.type]
 
-    if !classPathLogged.getAndSet(true) then  // Log only once (for tests running controller and agents in same JVM)
+    logger.whenTraceEnabled:
+      logger.debug("TRACE level logging is enabled")
+
+    logClasspathOnce: // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
       for o <- paths do
         logger.debug(Logger.Java, s"Classpath $o")
+
     if CorrelId.isEnabled then
       // Check isEnabled after some debug line has been logged,
       // because CorrelIds may be enabled automatically on the first use by Log4j.
       CorrelId("CorrelId").bind:
         logger.debug("Correlation IDs are enabled")
-    logger.whenTraceEnabled:
-      logger.debug("TRACE level logging is enabled")
 
   def startUpLine(name: String): String =
     s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
