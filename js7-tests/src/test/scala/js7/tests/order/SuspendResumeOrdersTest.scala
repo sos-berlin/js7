@@ -11,7 +11,7 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -21,8 +21,9 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.{AddOrder, AnswerOrderPrompt, Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
+import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
-import js7.data.job.RelativePathExecutable
+import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
@@ -197,6 +198,58 @@ final class SuspendResumeOrdersTest
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
+
+  "Suspend with kill, trapped with exit 0" in:
+    if !isUnix then
+      alert("Unix-only test")
+    else
+      val name = "TRAP-EXIT-0"
+      val workflow = Workflow(
+        WorkflowPath(name),
+        Seq(
+          Execute(WorkflowJob(
+            agentPath,
+            ShellScriptExecutable(
+              """#!/usr/bin/env bash
+                |set -euo pipefail
+                |
+                |trap "exit 0" SIGTERM
+                |echo SLEEP
+                |for i in {0..99}; do
+                |  sleep 0.1
+                |done
+                |""".stripMargin))),
+          EmptyJob.execute(agentPath)))
+
+      withTemporaryItem(workflow): workflow =>
+        val eventId = eventWatch.lastAddedEventId
+        val orderId = OrderId(name)
+        controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+
+        controller.api
+          .executeCommand:
+            SuspendOrders(Seq(orderId), SuspensionMode.kill)
+          .await(99.s).orThrow
+        eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
+
+        controller.api
+          .executeCommand:
+            ResumeOrders(Seq(orderId))
+          .await(99.s).orThrow
+
+        val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+          .collect { case KeyedEvent(`orderId`, event) => event }
+        assert(onlyRelevantEvents(events) == Seq(
+          OrderProcessingStarted(subagentId),
+          OrderStdoutWritten("SLEEP\n"),
+          OrderSuspensionMarked(SuspensionMode.kill),
+          OrderSuspensionMarkedOnAgent,
+          OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
+          OrderProcessingKilled,
+          OrderSuspended,
+          OrderResumed(),
+          OrderFailed(Position(0))))
 
   "Suspend and resume orders between two jobs" in:
     deleteIfExists(triggerFile)
@@ -825,6 +878,16 @@ object SuspendResumeOrdersTest:
   private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
   private val executeJob = Execute(WorkflowJob(agentPath, pathExecutable, processLimit = 100))
+
+  private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =
+    events.filter:
+      case _: OrderAdded => false
+      case _: OrderStarted => false
+      case _: OrderAttachable => false
+      case _: OrderAttached => false
+      case _: OrderDetachable => false
+      case _: OrderDetached => false
+      case _ => true
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,

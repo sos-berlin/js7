@@ -353,6 +353,48 @@ final class CancelOrdersTest
     assert(response == Response.Accepted)
     for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id)
 
+  if isUnix then "Cancel a script trapping SIGTERM and exiting with 0" in:
+    val name = "TRAP-EXIT-0"
+    val workflow = Workflow(
+      WorkflowPath(name),
+      Seq(
+        Execute(WorkflowJob(
+          agentPath,
+          ShellScriptExecutable(
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |
+              |trap "exit 0" SIGTERM
+              |echo SLEEP
+              |for i in {0..99}; do
+              |  sleep 0.1
+              |done
+              |""".stripMargin))),
+        EmptyJob.execute(agentPath)))
+
+    withTemporaryItem(workflow): workflow =>
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId(name)
+      controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+
+      controller.api
+        .executeCommand:
+          CancelOrders(Seq(orderId), CancellationMode.kill())
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+
+      val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+        .collect { case KeyedEvent(`orderId`, event) => event }
+      assert(onlyRelevantEvents(events) == Seq(
+        OrderProcessingStarted(subagentId),
+        OrderStdoutWritten("SLEEP\n"),
+        OrderCancellationMarked(CancellationMode.kill()),
+        OrderCancellationMarkedOnAgent,
+        OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
+        OrderProcessingKilled,
+        OrderCancelled))
+
   if isUnix then "Cancel a script having a SIGTERM trap writing to stdout" in:
     val name = "TRAP-STDOUT"
     val orderId = OrderId(name)
@@ -450,7 +492,7 @@ final class CancelOrdersTest
     assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted(subagentId),
       OrderStdoutWritten("READY\n"),
-      OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
+      OrderCancellationMarked(FreshOrStarted(Some(Kill(false, None)))),
       OrderCancellationMarkedOnAgent,
       OrderStdoutWritten("CHILD SIGTERM\n"),
         // Sometimes, the echo "CHILD EXIT" does not take effect ???
