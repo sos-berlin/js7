@@ -7,8 +7,6 @@
 #
 # (export UID && docker-compose build)
 
-version: "3.8"
-
 services:
   controller:
     build:
@@ -34,8 +32,6 @@ services:
       - ./volumes/controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
-    depends_on:
-      - cluster-watch
 
   backup-controller:
     build:
@@ -60,8 +56,6 @@ services:
       - ./volumes/backup-controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
-    depends_on:
-      - cluster-watch
 
   provider:
     image: js7
@@ -139,8 +133,6 @@ services:
       - ./volumes/subagent-1-a/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
-    depends_on:
-      - controller
 
   subagent-1-b:
     image: js7
@@ -157,8 +149,6 @@ services:
       - ./volumes/subagent-1-b/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
-    depends_on:
-      - subagent-1-a
 
   subagent-2-a:
     image: js7
