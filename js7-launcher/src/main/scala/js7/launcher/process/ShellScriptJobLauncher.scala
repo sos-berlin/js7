@@ -6,6 +6,7 @@ import java.nio.charset.Charset
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.FileDeleter.{tryDeleteFile, tryDeleteFiles}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
@@ -34,28 +35,30 @@ extends PathProcessJobLauncher:
 
   protected def checkFile =
     IO:
-      executable.login
-        .traverse(login => WindowsProcessCredential.keyToUser(login.credentialKey))
+      executable.login.traverse: login =>
+        WindowsProcessCredential.keyToUser(login.credentialKey)
     .flatMapT: maybeUserName =>
-        userToFileLock.lock:
-          IO.defer:
-            userToFile.get(maybeUserName) match
-              case Some(path) => IO.right(path)
-              case None =>
-                IO.blocking:
-                  writeScriptToFile(
-                    executable.script,
-                    jobLauncherConf.shellScriptTmpDirectory,
-                    jobLauncherConf.systemEncoding,
-                    maybeUserName)
-                .flatTapT: path =>
-                  IO.right:
-                    userToFile.update(maybeUserName, path)
+      userToFileLock.lock:
+        IO.defer:
+          userToFile.get(maybeUserName) match
+            case Some(path) => IO.right(path)
+            case None =>
+              IO.blocking:
+                writeScriptToFile(
+                  executable.script,
+                  jobLauncherConf.shellScriptTmpDirectory,
+                  jobLauncherConf.systemEncoding,
+                  maybeUserName)
+              .flatTapT: path =>
+                IO.right:
+                  userToFile.update(maybeUserName, path)
 
-  def stop: IO[Unit] =
-    IO.interruptible:
-      userToFile.synchronized:
-        tryDeleteFiles(userToFile.values)
+  val stop: IO[Unit] =
+    memoize:
+      userToFileLock.lock:
+        IO.interruptible:
+          tryDeleteFiles(userToFile.values)
+          ()
 
 
 object ShellScriptJobLauncher:
