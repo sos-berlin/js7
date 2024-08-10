@@ -146,6 +146,25 @@ object Logger extends AdHocLogger:
       def infoCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).unsafeRunSync()
 
+      inline def infoCallWithResult[A](inline body: => A)(implicit inline src: sourcecode.Name)
+      : A =
+        infoCallWithResult(src.value)(body)
+
+      inline def infoCallWithResult[A](inline function: String)(inline body: => A): A =
+        infoCallWithResult[A](function, body = body)
+
+      def infoCallWithResult[A](function: String, args: => Any)(body: => A): A =
+        infoCallWithResult[A](function, args, body = body)
+
+      def infoCallWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A],
+        body: => A)
+      : A =
+        logF[SyncIO, A](logger, LogLevel.Info, function, args, result)(SyncIO(body))
+          .unsafeRunSync()
+
       def infoIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         infoF(functionName = src.value)(body)
 
@@ -228,6 +247,10 @@ object Logger extends AdHocLogger:
 
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).unsafeRunSync()
+
+      inline def traceCallWithResult[A](inline body: => A)(implicit inline src: sourcecode.Name)
+      : A =
+        traceCallWithResult(src.value)(body)
 
       def traceCallWithResult[A](function: String)(body: => A): A =
         traceCallWithResult[A](function, body = body)

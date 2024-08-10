@@ -2,7 +2,6 @@ package js7.base.log
 
 import java.lang.reflect.Method
 import java.time.LocalDateTime
-import js7.base.io.JavaResource
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.ifFailed
@@ -19,7 +18,7 @@ object Log4j:
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
   private val ifNotInitialized = new Once
-  private val logj42Xml = JavaResource("js7/log4j2.xml")
+  private var earlyInitialized = false
 
   // Do not touch the logger before initialize has been called !!!
   private lazy val logger = Logger[this.type]
@@ -37,6 +36,9 @@ object Log4j:
 
   def earlyInitializeForProduction(): Unit =
     useAsyncLogger()
+    if isInitialized && !earlyInitialized then
+      logger.error("earlyInitializeForProduction but Log4j has already been initialized")
+    earlyInitialized = true
 
   private def useAsyncLogger(): Unit =
     sys.props("log4j2.contextSelector") =
@@ -45,8 +47,6 @@ object Log4j:
     sys.props("log4j2.asyncLoggerWaitStrategy") = "Block"
     // Because AsyncLoggerContextSelector flushes:
     sys.props("js7.log4j.immediateFlush") = "false"
-    if ifNotInitialized.isInitialized then
-      logger.error("useAsyncLogger but Log4j has already been initialized")
 
   def initialize(name: String): Unit =
     ifNotInitialized:

@@ -9,7 +9,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
-private transparent trait IOAppWithCpuStarvationCheck extends IOApp, InitializeLogger:
+private transparent trait IOAppWithCpuStarvationCheck extends IOApp:
 
   override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig.copy(
