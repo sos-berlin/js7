@@ -1,9 +1,11 @@
 package js7.base.io.process
 
-import cats.effect.{IO, Resource, Sync}
-import java.io.{IOException, InputStream}
+import cats.effect.{IO, Outcome, Resource, Sync}
+import fs2.Stream
+import java.io.IOException
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{Files, Path}
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
@@ -83,33 +85,39 @@ object Processes:
         ByteArray(stderr.toString))
     stdout.toString
 
-  def runProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
+  def runAndLogProcess(args: Seq[String])(logLine: String => IO[Unit]): IO[ReturnCode] =
+    def logLines(stream: Stream[IO, Byte]): IO[Unit] =
+      stream.chunks.map(_.utf8String).through(fs2.text.lines).evalMap(logLine).compile.drain
+
+    startProcess(args).flatMap: (process, stdout, stderr) =>
+      IO.both(
+        left = IO.both(logLines(stdout), logLines(stderr))
+          .guaranteeCase:
+            case Outcome.Succeeded(_) => IO.unit
+            case _ =>
+              IO.blocking:
+                process.destroy()
+              .productR:
+                waitForProcessTermination(process)
+              .startAndForget,
+        right = waitForProcessTermination(process))
+    .map(_._2)
+
+  def startProcess(path: Path, args: String*): IO[(Process, Stream[IO, Byte], Stream[IO, Byte])] =
+    startProcess(path.toString +: args)
+
+  /** @return (Process, stdout as Stream, stderr as Stream) */
+  def startProcess(args: Seq[String]): IO[(Process, Stream[IO, Byte], Stream[IO, Byte])] =
     IO.defer:
       logger.trace(s"${args.mkString(" ")}")
       ProcessBuilder(args.asJava)
         .startRobustly()
-        .flatMap: killProcess =>
-          IO.both(
-            logStdouterr(killProcess, logLine),
-            waitForProcessTermination(killProcess))
-        .map(_._2)
+        .map: process =>
+          (process,
+            inputStreamToByteStream(process.getInputStream),
+            inputStreamToByteStream(process.getErrorStream))
 
-  private def logStdouterr(process: Process, logLine: String => IO[Unit]): IO[Unit] =
-    IO
-      .both(
-        logStdouterr(process.getInputStream, logLine),
-        logStdouterr(process.getErrorStream, logLine))
-      .void
-
-  private def logStdouterr(in: InputStream, logLine: String => IO[Unit]): IO[Unit] =
-    inputStreamToByteStream(in)
-      .chunks
-      .map(_.utf8String)
-      .through(fs2.text.lines)
-      .evalTap(logLine)
-      .compile.drain
-
-  private def waitForProcessTermination(process: Process): IO[ReturnCode] =
+  def waitForProcessTermination(process: Process): IO[ReturnCode] =
     interruptibleVirtualThread:
       logger.traceCallWithResult(s"waitFor ${Pid(process.pid)}"):
         ReturnCode(process.waitFor())

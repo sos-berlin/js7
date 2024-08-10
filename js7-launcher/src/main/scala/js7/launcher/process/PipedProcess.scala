@@ -1,9 +1,7 @@
 package js7.launcher.process
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
-import cats.syntax.foldable.*
 import cats.syntax.option.*
-import cats.syntax.traverse.*
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.PIPE
@@ -32,12 +30,9 @@ import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.VectorBuilder
-import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.jdk.CollectionConverters.*
-import scala.jdk.OptionConverters.*
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
@@ -47,13 +42,15 @@ final class PipedProcess private(
   jobKey: JobKey):
 
   private val logger = Logger.withPrefix[this.type](toString)
+  private lazy val processKiller = SubagentProcessKiller(label = toString)
   private val sigkilled = Deferred.unsafe[IO, Unit]
   private var _isKilling = none[ProcessSignal]
   private val _isKillingLock = BlockingLock()
-  private var sigtermDescendants: Seq[ProcessHandle] = Nil
-  private var sigtermDescendantsSince = Deadline(ZeroDuration)
 
   private val runningSince = now
+
+  def pid: Pid =
+    process.pid
 
   def duration: FiniteDuration = runningSince.elapsed
 
@@ -143,97 +140,10 @@ final class PipedProcess private(
     if force then
       sigkillWithDescendants
     else
-      sigtermAndSaveDescendants
-
-  private def sigtermAndSaveDescendants: IO[Unit] =
-    logger.debugIO:
-      IO.defer:
-        sigtermDescendants = process.descendants // Maybe we must sigkill them later
-        sigtermDescendantsSince = Deadline.now
-        killMainProcessOnly(force = false)
+      processKiller.killMainProcessOnly(process, force = false)
 
   private def sigkillWithDescendants: IO[Unit] =
-    logger.debugIO:
-      IO.defer:
-        // sigtermDescendants may be old. The OS must not reuse PIDs too early.
-        val descendants = (dependenciesOf(sigtermDescendants) ++: process.descendants).distinct
-        if descendants.isEmpty then
-          killMainProcessOnly(force = true)
-        else
-          // Try to stop all processes, then collect descendants again and kill them
-          logger.info(s"Sending SIGSTOP and SIGKILL to child processes started before SIGTERM (${
-            sigtermDescendantsSince.elapsed} ago)")
-          sendStopSignal((process.isAlive ? process.pid.number) ++: descendants.map(_.pid))
-            .handleErrorWith: t =>
-              IO(logger.warn(t.toStringWithCauses))
-            .flatMap: _ =>
-              IO.whenA(process.isAlive):
-                killMainProcessOnly(force = true)
-              .flatMap: _ =>
-                descendants
-                  .traverse(killViaProcessHandle(_, force = true))
-                  .map(_.combineAll)
-
-  // Return a Seq of distinct ProcessHandles
-  private def dependenciesOf(processHandles: Seq[ProcessHandle]): Seq[ProcessHandle] =
-    val known = mutable.Set[Long]()
-    val result = VectorBuilder[ProcessHandle]()
-    for p <- processHandles if p.isAlive do
-      if !known(p.pid) then
-        known += p.pid
-        result += p
-        for d <- p.descendants().iterator().asScala do
-          if !known(d.pid) then
-            known += d.pid
-            result += d
-    result.result()
-
-  private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
-    IO.defer:
-      val firstArgs = Vector("/bin/kill", "-STOP")
-      val args = firstArgs ++ pids.map(_.toString)
-      logger.info(s"${args.mkString(" ")}")
-      runProcess(args): line =>
-        IO(logger.warn(s"${firstArgs.mkString(" ")}: $line"))
-      .flatMap(returnCode => IO:
-        if !returnCode.isSuccess then
-          logger.warn(s"${firstArgs.mkString(" ")} exited with $returnCode"))
-
-  private def killMainProcessOnly(force: Boolean): IO[Unit] =
-    IO.defer:
-      process.match
-        case process: JavaProcess =>
-          // Kill via ProcessHandle because this doesn't close stdout and stdderr
-          killViaProcessHandle(process.handle, force)
-        case _ =>
-          killWithJava(force)
-
-  private def killViaProcessHandle(processHandle: ProcessHandle, force: Boolean, indent: Int = 0)
-  : IO[Unit] =
-    IO:
-      logger.info:
-        val isMainProcesss = processHandle.pid == process.pid.number
-        (if isMainProcesss then "⚫️ " else "❌ ") +
-          (if force then """destroyForcibly "SIGKILL" """ else """destroy "SIGTERM" """) +
-          (!isMainProcesss ?? (
-            " " * (indent - 1) +
-              "child process " +
-              Pid(processHandle.pid) +
-              ' ' +
-              processHandle.info.commandLine.toScala.getOrElse("")))
-      if force then
-        processHandle.destroyForcibly()
-      else
-        processHandle.destroy()
-
-  private def killWithJava(force: Boolean): IO[Unit] =
-    IO:
-      if force then
-        logger.info("⚫️ destroyForcibly (SIGKILL)")
-        process.destroyForcibly()
-      else
-        logger.info("⚫️ destroy (SIGTERM)")
-        process.destroy()
+    processKiller.sigkillWithDescendants(process)
 
   @TestOnly
   private[process] def isAlive = process.isAlive
