@@ -12,26 +12,23 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.common.system.startup.ServiceApp
+import js7.common.system.startup.SimpleServiceProgram
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*
 
 /**
  * @author Joacim Zschimmer
  */
-object AgentClientMain extends ServiceApp:
+object AgentClientMain extends SimpleServiceProgram[AgentClientMain.Conf]:
 
   override protected def productName = "JS7 AgentClient"
 
-  private given ExecutionContext = runtime.compute
+  protected def program(conf: Conf): IO[ExitCode] =
+    program(conf, println)(using runtime)
 
-  def run(args: List[String]): IO[ExitCode] =
-    runProgramAsService(args, Conf.fromCommandLine): conf =>
-      program(conf, println)(using runtime)
-
-  def program(conf: Conf, print: String => Unit)(using IORuntime /*for AgentClientMainTest*/)
-  : IO[ExitCode] =
-    IO.blocking:
+  def program(conf: Conf, print: String => Unit)(using ioRuntime: IORuntime): IO[ExitCode] =
+    given ExecutionContext = ioRuntime.compute
+    IO.interruptible:
       import conf.{agentUri, dataDirectory, maybeConfigDirectory, operations}
       val sessionToken = SessionToken(SecretString:
         Files.readAllLines(dataDirectory resolve "work/session-token").asScala.mkString)
@@ -59,10 +56,7 @@ object AgentClientMain extends ServiceApp:
   extends BasicConfiguration:
     val config: Config = ConfigFactory.empty
 
-  object Conf:
-    def args(args: String*): Conf =
-      CommandLineArguments.parse(args)(fromCommandLine)
-
+  object Conf extends BasicConfiguration.Companion[Conf]:
     def fromCommandLine(args: CommandLineArguments): Conf =
       val agentUri = Uri(args.keylessValue(0))
       val configDirectory = args.optionAs[Path]("--config-directory=")

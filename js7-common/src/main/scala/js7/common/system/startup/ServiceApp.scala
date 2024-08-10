@@ -17,7 +17,7 @@ trait ServiceApp extends OurApp:
     label: String = getClass.shortClassName)
     (program: Cnf => IO[ExitCode])
   : IO[ExitCode] =
-    runService[Cnf, MainService](args, toConf):
+    runService[Cnf, MainService](args, toConf, suppressTerminationLogging = true):
       conf => SimpleMainService.resource(
         program = program(conf).map(ProgramTermination.fromExitCode),
         label = label)
@@ -26,7 +26,8 @@ trait ServiceApp extends OurApp:
     args: List[String],
     argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,
-    suppressShutdownLogging: Boolean = false)
+    suppressTerminationLogging: Boolean = false,
+    suppressLogShutdown: Boolean = false)
     (program: Cnf => ResourceIO[Svc],
       use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
@@ -34,5 +35,6 @@ trait ServiceApp extends OurApp:
         args, productName,
         argsToConf,
         useLockFile = useLockFile,
-        suppressShutdownLogging = suppressShutdownLogging)(
+        suppressTerminationLogging = suppressTerminationLogging,
+        suppressLogShutdown = suppressLogShutdown)(
       program, use)

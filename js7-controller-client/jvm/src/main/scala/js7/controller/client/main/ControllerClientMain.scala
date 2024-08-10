@@ -25,11 +25,13 @@ object ControllerClientMain extends ServiceApp:
   private given ExecutionContext = runtime.compute
 
   def run(args: List[String]): IO[ExitCode] =
-    runProgramAsService(args, Conf.fromCommandLine): conf =>
-      program(conf, println)
+    runProgramAsService(args, Conf.fromCommandLine)(program)
+
+  protected def program(conf: Conf): IO[ExitCode] =
+    program(conf, println)
 
   def program(conf: Conf, print: String => Unit): IO[ExitCode] =
-    IO.blocking:
+    IO.interruptible:
       import conf.{controllerUri, dataDirectory, maybeConfigDirectory, operations}
       val sessionToken = SessionToken(SecretString:
         Files.readAllLines(dataDirectory resolve "work/session-token")

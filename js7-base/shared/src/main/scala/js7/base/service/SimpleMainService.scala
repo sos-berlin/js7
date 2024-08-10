@@ -29,7 +29,7 @@ object SimpleMainService:
   def resource(program: IO[ProgramTermination], label: String = ""): ResourceIO[SimpleMainService] =
     Service.resource:
       IO:
-        new SimpleMainService with Service.StoppableByRequest:
+        new SimpleMainService with Service.StoppableByCancel:
           def run = program
 
           override def toString =

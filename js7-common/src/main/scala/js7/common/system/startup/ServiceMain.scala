@@ -31,7 +31,8 @@ object ServiceMain:
     name: String,
     argsToConf: CommandLineArguments => Cnf,
     useLockFile: Boolean = false,
-    suppressShutdownLogging: Boolean = false)
+    suppressTerminationLogging: Boolean = false,
+    suppressLogShutdown: Boolean = false)
     (toServiceResource: Cnf => ResourceIO[Svc],
     use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
@@ -51,10 +52,13 @@ object ServiceMain:
               logging.run(toServiceResource(conf))(use(conf, _))
           .attempt.map:
             case Left(throwable) => ExitCode.Error // Service has already logged an error
-            case Right(termination) => logging.onProgramTermination(name, termination)
+            case Right(termination) =>
+              if !suppressTerminationLogging then
+                logging.logTermination(name, termination)
+              termination.toExitCode
       .guarantee:
-        IO.unlessA(suppressShutdownLogging)(IO:
-          Log4j.shutdown())
+        IO.unlessA(suppressLogShutdown)(IO:
+          Log4j.shutdown(suppressLogging = suppressTerminationLogging))
 
   def blockingRun[Svc <: MainService](
     name: String,
@@ -82,13 +86,12 @@ object ServiceMain:
       Logger.initialize("JS7 Engine") // Just in case it has not yet been initialized
       Logger[ServiceMain.type]
 
-    def onProgramTermination(name: String, termination: ProgramTermination): ExitCode =
+    def logTermination(name: String, termination: ProgramTermination): ExitCode =
       // Log complete timestamp in case of short log timestamp
       val msg = s"$name terminates now after ${runningSince.elapsed.pretty}" +
         (termination.restart ?? " and is expected to restart") + s" ($nowString)"
       logger.info(msg)
       printlnWithClock(msg)
-
       termination.toExitCode
 
     def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)

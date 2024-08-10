@@ -19,6 +19,6 @@ object ClusterWatchMain extends ServiceApp:
   def runAsTest(args: List[String])
     (use: ClusterWatchService => IO[ProgramTermination])
   : IO[ExitCode] =
-    runService(args, ClusterWatchConf.fromCommandLine, suppressShutdownLogging = true)(
+    runService(args, ClusterWatchConf.fromCommandLine, suppressLogShutdown = true)(
       ClusterWatchService.completeResource,
       use = (_, service: ClusterWatchService) => use(service))
