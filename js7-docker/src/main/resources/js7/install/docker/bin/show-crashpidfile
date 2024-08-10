@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 SUBDIRECTORY(SubagentId)"
+  exit 1
+fi
+subdir="$1"
+
+cat volumes/"$subdir"/data/work/crashpidfile |
+  od -tu8 --endian=big -w8 |
+  awk '/^[0-9a-f]+\s+([0-9]+) *$/ { if ($2 != 0) print $2 }'

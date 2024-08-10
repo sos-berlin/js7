@@ -33,6 +33,7 @@ import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.crashpidfile.CrashPidFile
 import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest.*
 import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
@@ -70,7 +71,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           errorLineLengthMax = 1024,
           worryAboutStdoutAfterTermination = 100.ms,
           globalIOX, blockingJobEC = blockingJobEC,
-          null: AlarmClock/*AlarmClock()*/)
+          null: AlarmClock,
+          CrashPidFile.Dummy)
 
         val jobConf = JobConf(
           JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),

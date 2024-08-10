@@ -1,13 +1,16 @@
 package js7.launcher.crashpidfile
 
-import cats.effect.ResourceIO
+import cats.effect.{IO, ResourceIO}
 import cats.effect.kernel.Resource
 import java.nio.ByteBuffer
 import java.nio.file.Path
 import js7.base.utils.ScalaUtils.*
 
 trait IndexedRecordSet[A]:
+
   def register(a: A): ResourceIO[Unit]
+
+  def remove(a: A): IO[Unit]
 
 
 object IndexedRecordSet:
@@ -28,6 +31,9 @@ object IndexedRecordSet:
   trait Dummy[A] extends IndexedRecordSet[A]:
     final def register(a: A): ResourceIO[Unit] =
       Resource.unit
+
+    final def remove(a: A): IO[Unit] =
+      IO.unit
 
     override def toString = s"IndexedRecordSet:Dummy"
 

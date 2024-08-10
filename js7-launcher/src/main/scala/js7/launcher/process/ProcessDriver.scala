@@ -27,13 +27,13 @@ final class ProcessDriver(
   conf: Conf,
   jobLauncherConf: JobLauncherConf):
 
+  import jobLauncherConf.crashPidFile
   private val taskId = taskIdGenerator.next()
   private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     jobLauncherConf.tmpDirectory,
     jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
-  //private val terminatedPromise = Deferred.unsafe[IO, Either[Throwable, Completed]]
   private val richProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
@@ -46,22 +46,27 @@ final class ProcessDriver(
           IO.pure(OrderOutcome.Failed.fromProblem(problem))
 
         case Right(process) =>
-          IO.defer:
-            logger.info:
-              s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
-            killedBeforeStart.traverse:
-              sendProcessSignal(process, _)
-            .flatMap: _ =>
-              process.watchProcessAndStdouterr
-                .attempt.flatMap: either =>
-                  IO.defer:
-                    // Don't log PID because the process may have terminated long before
-                    // stdout or stderr ended (due to still running child processes)
-                    logger.info:
-                      s"$orderId ↙ Process completed with ${either.merge} after ${process.duration.pretty}"
-                    IO.fromEither(either)
-                .flatMap: returnCode =>
-                  outcomeOf(process, returnCode)
+          crashPidFile.register(process.pid).surround:
+            IO.defer:
+              logger.info:
+                s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
+              killedBeforeStart.traverse:
+                sendProcessSignal(process, _)
+              .flatMap: _ =>
+                process.awaitProcessTermination
+              .flatMap: _ =>
+                crashPidFile.remove(process.pid)
+              .flatMap: _ =>
+                process.watchProcessAndStdouterr
+                  .attempt.flatMap: either =>
+                    IO.defer:
+                      // Don't log PID because the process may have terminated long before
+                      // stdout or stderr ended (due to still running child processes)
+                      logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
+                        process.duration.pretty}")
+                      IO.fromEither(either)
+                  .flatMap: returnCode =>
+                    outcomeOf(process, returnCode)
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 

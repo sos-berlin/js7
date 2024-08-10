@@ -39,7 +39,7 @@ extends IndexedRecordSet[A]:
         aToIndex(a) = index
         writeAtIndex(index, a)
 
-  private def remove(a: A): IO[Unit] =
+  def remove(a: A): IO[Unit] =
     lock.lock:
       IO.defer:
         aToIndex.remove(a).fold(IO.unit): index_ =>

@@ -23,6 +23,7 @@ import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.crashpidfile.CrashPidFile
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.subagent.configuration.SubagentConf.*
 import org.jetbrains.annotations.TestOnly
@@ -77,7 +78,11 @@ extends CommonConfiguration:
     autoCreateDirectory(valueDirectory)
     this
 
-  def toJobLauncherConf(iox: IOExecutor, blockingJobEC: ExecutionContext, clock: AlarmClock)
+  def toJobLauncherConf(
+    iox: IOExecutor,
+    blockingJobEC: ExecutionContext,
+    clock: AlarmClock,
+    crashPidFile: CrashPidFile)
   : Checked[JobLauncherConf] =
     JobLauncherConf.checked(
       executablesDirectory = executablesDirectory,
@@ -91,6 +96,7 @@ extends CommonConfiguration:
       iox,
       blockingJobEC = blockingJobEC,
       clock,
+      crashPidFile,
       config)
 
   private val systemEncoding: Checked[Charset] =

@@ -34,6 +34,7 @@ import js7.data.workflow.position.Position
 import js7.launcher.StdObservers
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.crashpidfile.CrashPidFileService
 import js7.launcher.process.ProcessDriverTest.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.compatible.Assertion
@@ -74,47 +75,49 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
       historicOutcomes = Vector:
         HistoricOutcome(Position(999), OrderOutcome.Succeeded(Map("a" -> StringValue("A")))))
 
-    unlimitedExecutionContextResource[IO]("ProcessDriverTest-blocking").use: jobEC =>
-      val jobLauncherConf = JobLauncherConf.checked(
-        executablesDirectory = executableDirectory,
-        shellScriptTmpDirectory = executableDirectory,
-        workTmpDirectory = executableDirectory,
-        jobWorkingDirectory = executableDirectory,
-        systemEncoding = US_ASCII,
-        scriptInjectionAllowed = false,
-        environment[IOExecutor].await(99.s),
-        blockingJobEC = jobEC,
-        AlarmClock(),
-        config
-      ).orThrow
+    CrashPidFileService.file(executableDirectory / "crashpidfile").use: pidFile =>
+      unlimitedExecutionContextResource[IO]("ProcessDriverTest-blocking").use: jobEC =>
+        val jobLauncherConf = JobLauncherConf.checked(
+          executablesDirectory = executableDirectory,
+          shellScriptTmpDirectory = executableDirectory,
+          workTmpDirectory = executableDirectory,
+          jobWorkingDirectory = executableDirectory,
+          systemEncoding = US_ASCII,
+          scriptInjectionAllowed = false,
+          environment[IOExecutor].await(99.s),
+          blockingJobEC = jobEC,
+          AlarmClock(),
+          pidFile,
+          config
+        ).orThrow
 
-      val n = if isIntelliJIdea then 100 else 10
-      Seq.fill(n)(()).traverse: _ =>
-        locally:
-          for
-            testSink <- StdObservers.testSink(charBufferSize = 7, name = "ProcessDriverTest")
-            processDriver = new ProcessDriver(order.id, conf, jobLauncherConf)
-            assertion <- Resource.eval:
-              for
-                outcome <- processDriver.runProcess(Map("VAR1" -> "VALUE1".some), testSink.stdObservers)
-                out <- testSink.out
-                err <- testSink.err
-              yield
-                assert(outcome == OrderOutcome.Succeeded(Map(
-                  "result" -> StringValue("TEST-RESULT-VALUE1"),
-                  "returnCode" -> NumberValue(0))))
-                val nl = System.lineSeparator
-                assert(out == s"Hej!${nl}var1=VALUE1$nl" &&
-                       err == s"THIS IS STDERR$nl")
-          yield
-            assertion
-        .use_
-      .timed.flatMap: (duration, _) =>
-        IO(info(Stopwatch.itemsPerSecondString(duration, n, "ProcessDriver")))
-      .as(succeed)
-    .guarantee(IO:
-      tryDeleteFiles(shellFile :: Nil)
-      deleteDirectoryRecursively(executableDirectory))
+        val n = if isIntelliJIdea then 100 else 10
+        Seq.fill(n)(()).traverse: _ =>
+          locally:
+            for
+              testSink <- StdObservers.testSink(charBufferSize = 7, name = "ProcessDriverTest")
+              processDriver = new ProcessDriver(order.id, conf, jobLauncherConf)
+              assertion <- Resource.eval:
+                for
+                  outcome <- processDriver.runProcess(Map("VAR1" -> "VALUE1".some), testSink.stdObservers)
+                  out <- testSink.out
+                  err <- testSink.err
+                yield
+                  assert(outcome == OrderOutcome.Succeeded(Map(
+                    "result" -> StringValue("TEST-RESULT-VALUE1"),
+                    "returnCode" -> NumberValue(0))))
+                  val nl = System.lineSeparator
+                  assert(out == s"Hej!${nl}var1=VALUE1$nl" &&
+                         err == s"THIS IS STDERR$nl")
+            yield
+              assertion
+          .use_
+        .timed.flatMap: (duration, _) =>
+          IO(info(Stopwatch.itemsPerSecondString(duration, n, "ProcessDriver")))
+        .as(succeed)
+      .guarantee(IO:
+        tryDeleteFiles(shellFile :: Nil)
+        deleteDirectoryRecursively(executableDirectory))
 
 
 object ProcessDriverTest:

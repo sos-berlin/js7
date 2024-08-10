@@ -10,15 +10,15 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
-import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
@@ -35,14 +35,16 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
   def run(in: ResourceIO[InputStream]): IO[Unit] =
     readObjects(in).flatMap: objects =>
       val collector = collect(objects)
-      Deferred[IO, Unit].flatMap: loggingStarted =>
-        IO.both(
-          logEvents(collector, loggingStarted),
-          loggingStarted.get *>
-            updateItems(collector.allItemOperations)
-              .flatMapT: _ =>
+      updateItems(collector.allItemOperations)
+        .flatMapT: _ =>
+          executeCommands(collector.commands)
+        .flatMapT: _ =>
+          Deferred[IO, Unit].flatMap: loggingStarted =>
+            IO.both(
+              logEvents(collector, loggingStarted),
+              loggingStarted.get *>
                 addOrders(collector.freshOrders)
-              .map(_.orThrow))
+            ).map(_._2)
       .void
 
   private def readObjects(in: ResourceIO[InputStream]): IO[Vector[Any]] =
@@ -59,6 +61,7 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
         obj match
           case o: InventoryItem => collector.copy(items = collector.items :+ o)
           case o: ItemOperation => collector.copy(itemOperations = collector.itemOperations :+ o)
+          case o: ControllerCommand => collector.copy(commands = collector.commands :+ o)
           case o: FreshOrder => collector.copy(freshOrders = collector.freshOrders :+ o)
       .last
 
@@ -69,6 +72,20 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
       controllerApi
         .updateItems(Stream.iterable(ops))
         .rightAs(())
+
+  private def executeCommands(commands: Seq[ControllerCommand]): IO[Checked[Unit]] =
+    CorrelId.use: correlId =>
+      if commands.isEmpty then
+        IO.right(())
+      else
+        val cmd =
+          if commands.sizeIs == 1 then
+            commands.head
+          else
+            ControllerCommand.Batch(commands.map(CorrelIdWrapped(correlId, _)))
+        controllerApi
+          .executeCommand(cmd)
+          .rightAs(())
 
   private def addOrders(orders: Seq[FreshOrder]): IO[Checked[Unit]] =
     if orders.isEmpty then
@@ -97,8 +114,8 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
         case Stamped(_, milli, KeyedEvent(orderId: OrderId, event: OrderEvent))
           if orderIds(orderId) =>
           (milli, orderId, event)
-      .evalTap((milli, orderId, event) =>
-        logLine(s"${Timestamp.ofEpochMilli(milli)} $orderId <-: $event"))
+      .evalTap: (milli, orderId, event) =>
+        logLine(s"${Timestamp.ofEpochMilli(milli)} $orderId <-: $event")
       .collect:
         case (_, orderId, _: OrderTerminated) => orderId
       .scan(orderIds): (remaining, orderId) =>
@@ -113,6 +130,7 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
   private case class Collector(
     itemOperations: Seq[ItemOperation] = Nil,
     items: Seq[InventoryItem] = Nil,
+    commands: Seq[ControllerCommand] = Nil,
     freshOrders: Seq[FreshOrder] = Nil):
 
     def allItemOperations: Seq[ItemOperation] =
@@ -139,8 +157,6 @@ final class Feed(controllerApi: ControllerApi, conf: FeedConf):
 
 object Feed:
 
-  private val logger = Logger[this.type]
-
   def run(in: ResourceIO[InputStream], conf: FeedConf): IO[Unit] =
     Pekkos.actorSystemResource("Feed")
       .flatMap: actorSystem =>
@@ -154,5 +170,6 @@ object Feed:
 
     TypedJsonCodec[Any](
       Subtype[ItemOperation],
+      Subtype[ControllerCommand],
       Subtype[FreshOrder])
     | ControllerState.inventoryItemJsonCodec

@@ -54,7 +54,7 @@ final class PipedProcess private(
 
   def duration: FiniteDuration = runningSince.elapsed
 
-  private val _awaitProcessTermination: IO[ReturnCode] =
+  val awaitProcessTermination: IO[ReturnCode] =
     memoize:
       IO.defer:
         process.returnCode.map(IO.pure)
@@ -64,7 +64,7 @@ final class PipedProcess private(
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
       IO.raceBoth(
-          _awaitProcessTermination,
+          awaitProcessTermination,
           IO.raceBoth(
               sigkilled.get.andWait(killStdoutAndStderrDelay),
               pumpStdoutAndStderrToSink)

@@ -9,6 +9,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.launcher.crashpidfile.CrashPidFile
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
@@ -24,7 +25,8 @@ final case class JobLauncherConf(
   worryAboutStdoutAfterTermination: FiniteDuration,
   iox: IOExecutor,
   blockingJobEC: ExecutionContext,
-  clock: AlarmClock):
+  clock: AlarmClock,
+  crashPidFile: CrashPidFile):
 
   implicit def implicitIox: IOExecutor = iox
 
@@ -38,7 +40,11 @@ object JobLauncherConf:
     jobWorkingDirectory: Path,
     systemEncoding: Charset,
     scriptInjectionAllowed: Boolean = false,
-    iox: IOExecutor, blockingJobEC: ExecutionContext, clock: AlarmClock, config: Config)
+    iox: IOExecutor,
+    blockingJobEC: ExecutionContext,
+    clock: AlarmClock,
+    crashPidFile: CrashPidFile,
+    config: Config)
   : Checked[JobLauncherConf] =
     Right:
       JobLauncherConf(
@@ -55,4 +61,5 @@ object JobLauncherConf:
           config.finiteDuration("js7.job.execution.worry-about-stdout-after-termination").orThrow,
         iox,
         blockingJobEC = blockingJobEC,
-        clock)
+        clock,
+        crashPidFile)

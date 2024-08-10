@@ -15,7 +15,10 @@ extends ProcessKiller[Pid]:
 
   def sigkillWithDescendants(pids: Seq[Pid]): IO[Unit] =
     genericSigkillWithDescendants:
-      pids.map(pid => pid -> pid.descendants)
+      pids
+        .filter(_.isAlive)
+        .map: pid =>
+          pid -> pid.descendants
 
   def killMainProcessOnly(pid: Pid, force: Boolean): IO[Unit] =
     pid.maybeProcessHandle.fold(IO.unit): h =>

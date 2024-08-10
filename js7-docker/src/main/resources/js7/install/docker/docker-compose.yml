@@ -131,6 +131,7 @@ services:
       - ./volumes/subagent-1-a/data/cache:/var/opt/js7/agent/data/cache:delegated
       - ./volumes/subagent-1-a/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-1-a/data/state:/var/opt/js7/agent/data/state:delegated
+      - ./volumes/subagent-1-a/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -147,6 +148,7 @@ services:
       - ./volumes/subagent-1-b/data/cache:/var/opt/js7/agent/data/cache:delegated
       - ./volumes/subagent-1-b/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-1-b/data/state:/var/opt/js7/agent/data/state:delegated
+      - ./volumes/subagent-1-b/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -163,6 +165,7 @@ services:
       - ./volumes/subagent-2-a/data/cache:/var/opt/js7/agent/data/cache:delegated
       - ./volumes/subagent-2-a/data/logs:/var/opt/js7/agent/data/logs:delegated
       - ./volumes/subagent-2-a/data/state:/var/opt/js7/agent/data/state:delegated
+      - ./volumes/subagent-2-a/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 10s
     restart: unless-stopped
     depends_on:
