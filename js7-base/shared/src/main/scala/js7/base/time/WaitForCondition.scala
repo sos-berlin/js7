@@ -17,13 +17,13 @@ object WaitForCondition:
     val deadline = sleeper.now + timeout
     try body
     catch case NonFatal(t) =>
-      @tailrec def retryUntilSuccess: A =
+      @tailrec def retryUntilSuccess(throwable: Throwable): A =
         val left = deadline.timeLeft min step
-        if left.isZeroOrBelow then throw t
+        if left.isZeroOrBelow then throw throwable
         sleeper.sleep(left)
         try body
-        catch case NonFatal(_) => retryUntilSuccess
-      retryUntilSuccess
+        catch case NonFatal(t) => retryUntilSuccess(t)
+      retryUntilSuccess(t)
 
   /** Wartet längstens t.timeout in Schritten von t.step, bis condition wahr wird.
     * condition wird bei t.timeout > 0 wenigsten zweimal aufgerufen: am Anfang und am Ende.
