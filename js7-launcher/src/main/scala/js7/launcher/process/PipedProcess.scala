@@ -138,12 +138,9 @@ final class PipedProcess private(
 
   private def kill(force: Boolean): IO[Unit] =
     if force then
-      sigkillWithDescendants
+      processKiller.sigkillWithDescendants(process)
     else
       processKiller.killMainProcessOnly(process, force = false)
-
-  private def sigkillWithDescendants: IO[Unit] =
-    processKiller.sigkillWithDescendants(process)
 
   @TestOnly
   private[process] def isAlive = process.isAlive

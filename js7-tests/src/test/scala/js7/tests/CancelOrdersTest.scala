@@ -862,7 +862,7 @@ final class CancelOrdersTest
         .await(99.s).orThrow
 
         if signal == SIGTERM then
-          // Now, the main process has terminated, but it's child processes are still running
+          // Now, the main process has terminated, but its child processes are still running
           sleep(1.s)
 
           // OrderProcess does not terminate due to still open stdout
@@ -878,8 +878,8 @@ final class CancelOrdersTest
 
         var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
         waitForCondition(5.s, 10.ms):
-          runningChildren = pids
-            .flatMap:
+          runningChildren =
+            pids.flatMap:
               pid => ProcessHandle.of(pid.number).toScala.map(pid -> _)
           runningChildren.isEmpty
 

@@ -1,13 +1,14 @@
 package js7.base.catsutils
 
 import cats.effect.std.AtomicCell
-import cats.effect.{FiberIO, IO}
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import cats.effect.{FiberIO, IO, Resource, ResourceIO}
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.utils.CatsUtils.canceledFiberIO
 
 final class FiberVar[A]:
 
-  private val ref = AtomicCell[IO].of(HasFiber(canceledFiberIO[A]): MyState).unsafeMemoize
+  private val ref = memoize:
+    AtomicCell[IO].of(HasFiber(canceledFiberIO[A]): MyState)
 
   def isCanceled: IO[Boolean] =
     ref.flatMap(_.get).map:
@@ -22,12 +23,19 @@ final class FiberVar[A]:
 
   def set(fiber: FiberIO[A] = canceledFiberIO): IO[Unit] =
     ref.flatMap(_.evalUpdate:
-      case Canceled => IO.defer:
+      case Canceled =>
         fiber.cancel.as(Canceled)
-      case HasFiber(previous) => IO.defer:
-        val hasFiber = HasFiber(fiber)
-        previous.cancel.as(hasFiber))
+      case HasFiber(previous) =>
+        previous.cancel.as(HasFiber(fiber)))
 
   private sealed trait MyState
   private final case class HasFiber(fiber: FiberIO[A]) extends MyState
   private case object Canceled extends MyState
+
+
+object FiberVar:
+
+  def resource[A]: ResourceIO[FiberVar[A]] =
+    Resource(IO:
+      val fiberVar = new FiberVar[A]
+      fiberVar -> fiberVar.cancel)

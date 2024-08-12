@@ -7,7 +7,6 @@ import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.launcher.crashpidfile.CrashPidFile
 import scala.concurrent.ExecutionContext

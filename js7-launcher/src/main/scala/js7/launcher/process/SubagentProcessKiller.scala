@@ -19,13 +19,6 @@ extends ProcessKiller[Js7Process]:
   private var sigtermDescendants: Seq[ProcessHandle] = Nil
   private var sigtermDescendantsSince = Deadline(ZeroDuration)
 
-  def sigkillWithDescendants(process: Js7Process): IO[Unit] =
-    genericSigkillWithDescendants:
-      Seq:
-        process ->
-          // sigtermDescendants may be old. The OS must not reuse PIDs too early.
-          (descendantsOf(sigtermDescendants) ++: process.descendants).distinct
-
   def killMainProcessOnly(process: Js7Process, force: Boolean): IO[Unit] =
     IO.defer:
       IO.whenA(process.isAlive):
@@ -39,6 +32,13 @@ extends ProcessKiller[Js7Process]:
             killViaProcessHandle(process.handle, force = force)
           case _ =>
             killWithJava(process, force)
+
+  def sigkillWithDescendants(process: Js7Process): IO[Unit] =
+    genericSigkillWithDescendants:
+      Seq:
+        process ->
+          // sigtermDescendants may be old. The OS must not reuse PIDs too early.
+          (descendantsOf(sigtermDescendants) ++: process.descendants).distinct
 
   protected def killingLogLine(
     processHandle: ProcessHandle,

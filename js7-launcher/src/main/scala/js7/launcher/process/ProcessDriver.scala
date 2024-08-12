@@ -34,7 +34,7 @@ final class ProcessDriver(
     jobLauncherConf.tmpDirectory,
     jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
-  private val richProcessOnce = SetOnce[PipedProcess]
+  private val pipedProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
@@ -66,7 +66,7 @@ final class ProcessDriver(
                         process.duration.pretty}")
                       IO.fromEither(either)
                   .flatMap: returnCode =>
-                    outcomeOf(process, returnCode)
+                    outcomeOf(returnCode)
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
@@ -99,12 +99,12 @@ final class ProcessDriver(
                 .lock(orderId.toString):
                   PipedProcess.start(conf.commandLine, processConfiguration, stdObservers,
                     orderId, conf.jobKey)
-                .flatTapT: richProcess =>
+                .flatTapT: pipedProcess =>
                   IO:
-                    richProcessOnce := richProcess
+                    pipedProcessOnce := pipedProcess
                     Checked.unit
 
-  private def outcomeOf(richProcess: PipedProcess, returnCode: ReturnCode)
+  private def outcomeOf(returnCode: ReturnCode)
   : IO[OrderOutcome.Completed] =
     fetchReturnValuesThenDeleteFile.map:
       case Left(problem) =>
@@ -127,16 +127,16 @@ final class ProcessDriver(
 
   def kill(signal: ProcessSignal): IO[Unit] =
     startProcessLock.lock("kill")(IO.defer:
-      richProcessOnce.toOption match
+      pipedProcessOnce.toOption match
         case None =>
           IO:
             killedBeforeStart = Some(signal)
             logger.debug(s"$orderId ⚫️ Kill before start")
-        case Some(richProcess) =>
-          sendProcessSignal(richProcess, signal))
+        case Some(pipedProcess) =>
+          sendProcessSignal(pipedProcess, signal))
 
-  private def sendProcessSignal(richProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
-    richProcess.sendProcessSignal(signal)
+  private def sendProcessSignal(pipedProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
+    pipedProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
 

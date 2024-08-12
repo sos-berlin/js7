@@ -105,8 +105,8 @@ final class PipedProcessTest extends OurAsyncTestSuite:
     executable: Path)
   : IO[(ReturnCode, StdObserversForTest.TestSink)] =
     runningShellScript(processConfiguration, executable)
-      .use: (richProcess, sink) =>
-        richProcess.watchProcessAndStdouterr
+      .use: (pipedProcess, sink) =>
+        pipedProcess.watchProcessAndStdouterr
           .map(_ -> sink)
 
   private def runningShellScript(

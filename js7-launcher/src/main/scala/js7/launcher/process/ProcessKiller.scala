@@ -37,25 +37,34 @@ trait ProcessKiller[P <: Pid | Js7Process]:
       IO.defer:
         val processes = processesAndDescs.map(_._1)
         if processesAndDescs.map(_._2).forall(_.isEmpty) then
-          processes.traverse(killMainProcessOnly(_, force = true))
+          processes
+            .traverse:
+              killMainProcessOnly(_, force = true)
             .map(_.combineAll)
         else
           // Try to stop all processes, then collect descendants again and kill them
           val pids = processesAndDescs.flatMap: (process, descendants) =>
             (process.isAlive ? process.toPid.number) ++: descendants.map(_.pid)
-          sendStopSignal(pids)
-            .handleErrorWith: t =>
-              IO(logger.warn(t.toStringWithCauses))
-            .productR:
-              processesAndDescs.traverse: (process, descendants) =>
-                val last = descendants.size - 1
-                killMainProcessOnly(process, force = true) *>
-                  descendants.zipWithIndex
-                    .traverse: (h, i) =>
-                      killViaProcessHandle(h, force = true,
-                        isDescendant = true, isLastDescendant = i == last)
-                    .map(_.combineAll)
-              .map(_.combineAll)
+          trySendStopSignal(pids) *>
+            killAll(force = true, processesAndDescs)
+
+  private def killAll(force: Boolean, processesAndDescs: Seq[(P, Seq[ProcessHandle])])
+  : IO[Unit] =
+    processesAndDescs
+      .traverse: (process, descendants) =>
+        val last = descendants.size - 1
+        killMainProcessOnly(process, force = force) *>
+          descendants.zipWithIndex
+            .traverse: (h, i) =>
+              killViaProcessHandle(h, force = force,
+                isDescendant = true, isLastDescendant = i == last)
+            .map(_.combineAll)
+      .map(_.combineAll)
+
+  private def trySendStopSignal(pids: Seq[Long]): IO[Unit] =
+    sendStopSignal(pids)
+      .handleErrorWith: t =>
+        IO(logger.warn(t.toStringWithCauses))
 
   private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
     IO.defer:
