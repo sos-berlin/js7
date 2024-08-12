@@ -5,7 +5,7 @@ import cats.syntax.option.*
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.PIPE
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, right, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
@@ -15,14 +15,12 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Worry.AfterTenSecondsWorryDurations
-import js7.base.utils.{Atomic, BlockingLock, Worry}
+import js7.base.utils.{Allocated, Atomic, BlockingLock, Worry}
 import js7.data.job.{CommandLine, JobKey}
 import js7.data.order.OrderId
 import js7.launcher.StdObservers
@@ -39,10 +37,12 @@ final class PipedProcess private(
   process: Js7Process,
   stdObservers: StdObservers,
   orderId: OrderId,
-  jobKey: JobKey):
+  jobKey: JobKey,
+  processKillerAlloc: Allocated[IO, SubagentProcessKiller],
+  label: String):
 
   private val logger = Logger.withPrefix[this.type](toString)
-  private lazy val processKiller = SubagentProcessKiller(label = toString)
+  private val processKiller = processKillerAlloc.allocatedThing
   private val sigkilled = Deferred.unsafe[IO, Unit]
   private var _isKilling = none[ProcessSignal]
   private val _isKillingLock = BlockingLock()
@@ -72,7 +72,7 @@ final class PipedProcess private(
               case Left((), stdouterrFiber) =>
                 IO.defer:
                   logger.warn:
-                    s"Ignoring stdout and stderr after SIGKILL (maybe a child proces is still running)"
+                    s"Ignoring stdout and stderr after SIGKILL (maybe a child process is still running)"
                   joinStdouterr(stdouterrFiber, orderId, jobKey, stdoutAndStderrAbandonAfter)
                     .startAndForget
                 .as(false /*stdout ignored*/)
@@ -107,6 +107,10 @@ final class PipedProcess private(
           case Right((terminationFiber, _)) =>
             // Stdout and stderr ended or ignored after SIGKILL
             terminationFiber.joinStd
+
+
+  def release: IO[Unit] =
+    processKillerAlloc.release
 
   private def pumpStdoutAndStderrToSink: IO[Unit] =
     logger.traceIO(s"pumpStdoutAndStderrToSink")(IO
@@ -145,13 +149,7 @@ final class PipedProcess private(
   @TestOnly
   private[process] def isAlive = process.isAlive
 
-  private def waitForProcessTermination(process: Js7Process): IO[ReturnCode] =
-    interruptibleVirtualThread:
-      logger.traceCallWithResult(s"waitFor $process"):
-        process.waitFor()
-
-  override def toString =
-    s"$orderId $process"
+  override def toString = label
 
 
 object PipedProcess:
@@ -174,14 +172,18 @@ object PipedProcess:
     orderId: OrderId,
     jobKey: JobKey)
   : IO[Checked[PipedProcess]] =
+    // TODO Make ResourceIO[PipedProcess]
     IO.defer:
       val commandArgs = toShellCommandArguments(commandLine.file, commandLine.arguments.tail)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
-
-      startProcess(commandArgs, conf).flatMapT: process =>
-        IO.right:
+      startProcess(commandArgs, conf)
+        .flatMapT: process =>
           process.stdin.close() // Process gets an empty stdin
-          new PipedProcess(conf, process, stdObservers, orderId, jobKey)
+          val label = s"$orderId $process"
+          SubagentProcessKiller.resource(label).toAllocated
+            .map: killer =>
+              Right:
+                PipedProcess(conf, process, stdObservers, orderId, jobKey, killer, label)
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration)
   : IO[Checked[Js7Process]] =

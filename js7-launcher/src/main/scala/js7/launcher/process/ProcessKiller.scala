@@ -2,6 +2,7 @@ package js7.launcher.process
 
 import cats.effect.IO
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{Js7Process, Pid, ReturnCode}
@@ -27,7 +28,7 @@ trait ProcessKiller[P <: Pid | Js7Process]:
     processHandle: ProcessHandle,
     force: Boolean,
     isDescendant: Boolean = false,
-    isLastDescendant: Boolean = false)
+    isLast: Boolean = false)
   : String
 
   protected final def genericSigkillWithDescendants(processesAndDescs: Seq[(P, Seq[ProcessHandle])])
@@ -54,9 +55,9 @@ trait ProcessKiller[P <: Pid | Js7Process]:
         val last = descendants.size - 1
         killMainProcessOnly(process, force = force) *>
           descendants.zipWithIndex
-            .traverse: (h, i) =>
-              killViaProcessHandle(h, force = force,
-                isDescendant = true, isLastDescendant = i == last)
+            // in parallel, because onExit for each process take a little time
+            .parTraverse: (h, i) =>
+              killViaProcessHandle(h, force = force, isDescendant = true, isLast = i == last)
             .map(_.combineAll)
       .map(_.combineAll)
 
@@ -71,7 +72,7 @@ trait ProcessKiller[P <: Pid | Js7Process]:
       val args = firstArgs ++ pids.map(_.toString)
       logger.info(args.mkString(" "))
       runAndLogProcess(args): line =>
-        IO(logger.warn(s"${firstArgs.mkString(" ")}: $line"))
+        IO(logger.warn(s"${firstArgs.mkString(" ")} >> $line"))
       .flatMap(returnCode => IO:
         if !returnCode.isSuccess then
           logger.warn(s"${firstArgs.mkString(" ")} exited with $returnCode"))
@@ -80,15 +81,28 @@ trait ProcessKiller[P <: Pid | Js7Process]:
     processHandle: ProcessHandle,
     force: Boolean,
     isDescendant: Boolean = false,
-    isLastDescendant: Boolean = false)
+    isLast: Boolean = false)
   : IO[Unit] =
-    IO:
-      logger.info(killingLogLine(processHandle, force, isDescendant, isLastDescendant))
-      if !dontExecute then
+    IO.defer:
+      logger.info(killingLogLine(processHandle, force, isDescendant, isLast))
+      IO.unlessA(dontExecute):
         if force then
-          processHandle.destroyForcibly()
+          IO:
+            val ok = processHandle.destroyForcibly()
+            if !ok then logger.debug(s"⚠️ destroyForcibly ${Pid(processHandle.pid)} returned false")
+            //avoidZombie(processHandle)
         else
-          processHandle.destroy()
+          IO(processHandle.destroy())
+
+  // Try to eliminate zombies under AlmaLinux 9:
+  //private final def avoidZombie(processHandle: ProcessHandle): IO[Unit] =
+  //  val pid = Pid(processHandle.pid)
+  //  val timeout = 3.s // ???
+  //  logger.traceIO(s"avoidZombie $pid"):
+  //    processHandle.onExitIO
+  //  //.logWhenItTakesLonger(s"termination of SIGKILLed $pid")
+  //  .timeoutTo(timeout, IO:
+  //    logger.warn(s"$pid has not terminated despite SIGKILL ${timeout.pretty} ago"))
 
   // Used only by SubagentProcessKiller subclass,
   // but we want to use the ProcessKiller.logger for all logging.
@@ -103,7 +117,7 @@ trait ProcessKiller[P <: Pid | Js7Process]:
         if !dontExecute then
           process.destroy()
 
-  def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
+  final def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
     logger.traceIOWithResult(s"waitFor $process"):
       IO.interruptible:
         process.waitFor()
@@ -115,16 +129,39 @@ trait ProcessKiller[P <: Pid | Js7Process]:
         case pid: Pid => pid
         case process: Js7Process => process.pid
 
-    private def isAlive: Boolean =
+    protected def isAlive: Boolean =
       process match
         case pid: Pid => pid.maybeProcessHandle.exists(_.isAlive)
         case process: Js7Process => process.isAlive
 
-    def descendants: Seq[ProcessHandle] =
-      process.maybeProcessHandle.fold(Nil):
+    //def untilTerminated: IO[Unit] =
+    //  process.maybeProcessHandle match
+    //    case Some(h) =>
+    //      h.untilTerminated // Avoid blocking in Js7Process#waitFor
+    //    case None => process match
+    //      case _: Pid => IO.unit
+    //      case process: Js7Process =>
+    //        waitForReturnCode(process).void
+
+    def descendants: Vector[ProcessHandle] =
+      process.maybeProcessHandle.fold(Vector.empty):
         _.descendants.toScala(Vector)
 
     def maybeProcessHandle: Option[ProcessHandle] =
       process match
         case pid: Pid => ProcessHandle.of(pid.number).toScala
         case process: Js7Process => process.maybeHandle
+
+  //extension (process: Js7Process)
+  //  def untilTerminated: IO[Unit] =
+  //    process
+  //      .maybeHandle.fold(IO.unit):
+  //        _.untilTerminated // Avoid blocking in Js7Process#waitFor
+  //      .productR:
+  //        waitForReturnCode(process).void
+
+  extension (processHandle: ProcessHandle)
+    def onExitIO: IO[Unit] =
+      IO.fromCompletableFuture(IO:
+        processHandle.onExit())
+      .void

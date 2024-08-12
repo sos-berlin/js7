@@ -1,9 +1,11 @@
 package js7.tests
 
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
 import fs2.Stream
+import js7.agent.RunningAgent
+import js7.base.catsutils.Environment.TaggedResource
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.runProcess
 import js7.base.io.process.{Pid, ProcessSignal, Processes, ReturnCode}
@@ -13,8 +15,9 @@ import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.time.WaitForCondition.{retryUntil, waitForCondition}
 import js7.base.time.{Timestamp, WaitForCondition}
+import js7.base.utils.Atomic
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
@@ -37,6 +40,7 @@ import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry,
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.process.SubagentProcessKiller.TestChildProcessTerminated
 import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
@@ -63,6 +67,12 @@ final class CancelOrdersTest
     js7.job.execution.sigkill-delay = 30s
     js7.order.stdout-stderr.delay = 10ms
     """
+
+  private lazy val testBus = StandardEventBus[TestChildProcessTerminated]()
+
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    envResources = Seq(TaggedResource(Resource.eval(IO:
+      testBus: EventPublisher[TestChildProcessTerminated]))))
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, sigkillImmediatelyWorkflow,
@@ -612,6 +622,7 @@ final class CancelOrdersTest
           |trap "rc=$? && wait && exit $?" EXIT
           |""".stripMargin,
         SIGKILL)
+
     def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit =
       // The child processes are not killed, but cut off from stdout and stderr.
       val orderId = OrderId(name)
@@ -778,17 +789,23 @@ final class CancelOrdersTest
   "Child processes are killed, too" - {
     "SIGTERM" in:
       unixOnly:
-        testChildProcessesAreKilled(SIGTERM)
+        testChildProcessesAreKilled(SIGTERM,
+          expectedOutcome = OrderOutcome.Killed(OrderOutcome.Failed(namedValues = Map(
+            "returnCode" -> NumberValue(7)))))
 
     "SIGKILL" in:
       unixOnly:
-        testChildProcessesAreKilled(SIGKILL)
+        testChildProcessesAreKilled(SIGKILL,
+          expectedOutcome = OrderOutcome.killed(SIGKILL))
 
-    def testChildProcessesAreKilled(signal: ProcessSignal): Unit =
+    // TODO Sometimes, ProcessKiller's SIGSTOP kills IntelliJ
+
+    def testChildProcessesAreKilled(signal: ProcessSignal, expectedOutcome: OrderOutcome): Unit =
       // Big value (>4000 under macOS) may fail with
       // - in bash fork with "Resource temporarily not available"
       // - in ProcessHandle.descendants with "cannot allocate memory"
       val numberOfChildren = sys.props.get("test.speed").fold(100)(_.toInt)
+      val numberOfSpecialChildren = 5
 
       val script =
         if isWindows then
@@ -799,6 +816,22 @@ final class CancelOrdersTest
         else
           """#!/usr/bin/env bash
             |set -euo pipefail
+            |
+            |# On SIGTERM, terminate watchedChildren properly:
+            |watchedChildren=()
+            |killWatchedChildren() {
+            |  if [[ ${#watchedChildren[*]} -gt 0 ]]; then
+            |    echo kill ${watchedChildren[*]}
+            |    kill ${watchedChildren[*]}
+            |    # On Linux (AlmaLinux 9), we wait for the termination let the kill take effect (?)
+            |    wait ${watchedChildren[*]} || true
+            |  fi
+            |}
+            |trap "echo '🔷Trapped SIGTERM🔷'; killWatchedChildren; exit 7" SIGTERM
+            |
+            |sleep 111 & pid=$!; echo TO BE KILLED BY TRAP pid=$pid; watchedChildren+=($pid)
+            |sleep 111 & pid=$!; echo TO BE KILLED BY TRAP pid=$pid; watchedChildren+=($pid)
+            |echo watchedChildren="${watchedChildren[*]}"
             |
             |sh <<'END' &
             |  set -euo pipefail
@@ -817,22 +850,29 @@ final class CancelOrdersTest
             |/bin/sleep 202 &
             |echo SLEEP pid=$!
             |echo pid=$$
-            |/bin/sleep 201
+            |for i in {1..2000}; do sleep 0.1; done
             |
-            |""".stripMargin.replace("»numberOfNestedChilds«", (numberOfChildren - 3).toString)
+            |""".stripMargin
+            .replace(
+              "»numberOfNestedChilds«",
+              (numberOfChildren - numberOfSpecialChildren).toString)
       val workflow = Workflow(WorkflowPath(s"$signal-CHILD-PROCESSES"), Seq(
         Execute:
           WorkflowJob(agentPath, ShellScriptExecutable(script))))
 
       withTemporaryItem(workflow): workflow =>
         val pidRegex = ".*pid=([0-9]+).*".r
+        val killedByTrapRegex = "TO BE KILLED BY TRAP pid=([0-9]+).*".r
         val eventId = eventWatch.lastAddedEventId
         val orderId = OrderId(s"$signal-CHILD-PROCESSES")
         controller.api.addOrder(FreshOrder(orderId, workflow.path))
           .await(99.s).orThrow
 
-        /// Wait until all child processes run ///
-        val pids = controller.api
+
+        /// Wait until all child processes are running ///
+        // pids: All started child Pids (detected by "pid=..." in stdout)
+        // toBeKilledByTrapPids: Pids of children which the script will kill on SIGTERM
+        val (pids, toBeKilledByTrapPids) = controller.api
           .eventAndStateStream(fromEventId = Some(eventId))
           .collect:
             case EventAndState(Stamped(_, ms, KeyedEvent(`orderId`, event: OrderEvent)), _, _) =>
@@ -850,41 +890,73 @@ final class CancelOrdersTest
           .collect:
             case event: OrderStdWritten => event.chunk
           .through(fs2.text.lines)
-          .scan(Vector.empty[Pid]): (allPids, line) =>
-            allPids ++ pidRegex.findAllMatchIn(line).flatMap(_.subgroups.map(o => Pid(o.toLong)))
-          .evalTap(pids => IO(pids.requireUniqueness))
-          .takeThrough(_.size < numberOfChildren)
+          .scan((Set.empty[Pid], Set.empty[Pid])):
+            case ((pids, killedByScriptPids), line) =>
+              logger.info(s"> $line")
+              val startedPids = pidRegex.findAllMatchIn(line)
+                .flatMap(_.subgroups.map(o => Pid(o.toLong)))
+
+              val addedToBeKilledByTrapPids = killedByTrapRegex.findAllMatchIn(line)
+                .flatMap(_.subgroups.map(o => Pid(o.toLong)))
+              (pids ++ startedPids) -> (killedByScriptPids ++ addedToBeKilledByTrapPids)
+          .evalTap((pids, kPids) => IO:
+            pids.requireUniqueness
+            kPids.requireUniqueness)
+          .takeThrough(_._1.size < numberOfChildren)
           .compile
           .last.map(_.get)
           .await(99.s)
 
-        assert(pids.size == numberOfChildren)
+        assert(pids.size == numberOfChildren && toBeKilledByTrapPids.size == 2)
 
         val cancelledAt = Deadline.now
-        controller.api.executeCommand:
-          CancelOrders(Seq(orderId), CancellationMode.kill(immediately = signal == SIGKILL))
-        .await(99.s).orThrow
 
-        if signal == SIGTERM then
-          // Now, the main process has terminated, but its child processes are still running
-          sleep(1.s)
+        signal match
+          case SIGTERM =>
+            // SubagentProcessKiller detects termination of descendant processes,
+            // to avoid killing of possibly reused PIDs.
+            val terminatedBeforeSigkill = Atomic(Set.empty[Pid])
+            testBus.subscribe[TestChildProcessTerminated]: event =>
+              if toBeKilledByTrapPids(event.pid) then
+                terminatedBeforeSigkill.updateAndGet(_ + event.pid)
 
-          // OrderProcess does not terminate due to still open stdout
-          assert(eventWatch.eventsByKey[OrderTerminated](orderId, after = eventId).isEmpty)
+            controller.api.executeCommand:
+              CancelOrders(Seq(orderId), CancellationMode.kill())
+            .await(99.s).orThrow
 
-          // Now let kill the remembered child processes (despite the main process has terminated)
-          controller.api.executeCommand:
-            CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
-          .await(99.s).orThrow
+            val t = Deadline.now
 
-        eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+            withClue(s"Waiting for termination of child processes killed by a trap: "):
+              retryUntil(30.s, 10.ms):
+                assert(terminatedBeforeSigkill.get == toBeKilledByTrapPids)
+
+            // Now, the main process has terminated, but its child processes are still running
+            sleepUntil(t + 1.s)
+
+            // OrderProcess does not terminate due to still open stdout
+            assert(eventWatch.eventsByKey[OrderTerminated](orderId, after = eventId).isEmpty)
+
+            // Now let kill the remembered child processes (despite the main process has terminated)
+            controller.api.executeCommand:
+              CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
+            .await(99.s).orThrow
+
+          case SIGKILL =>
+            controller.api.executeCommand:
+              CancelOrders(Seq(orderId), CancellationMode.kill(immediately = signal == SIGKILL))
+            .await(99.s).orThrow
+        end match
+
+        val event = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+          .head.value.event
+        assert(event == OrderCancelled &&
+          controllerState.idToOrder(orderId).lastOutcome == expectedOutcome)
         logger.info(s"⏱️ Cancellation took ${cancelledAt.elapsed.pretty}")
 
         var runningChildren: Seq[(Pid, ProcessHandle)] = Nil
         waitForCondition(5.s, 10.ms):
-          runningChildren =
-            pids.flatMap:
-              pid => ProcessHandle.of(pid.number).toScala.map(pid -> _)
+          runningChildren = pids.toSeq.flatMap: pid =>
+            ProcessHandle.of(pid.number).toScala.map(pid -> _)
           runningChildren.isEmpty
 
         if runningChildren.nonEmpty then
@@ -904,7 +976,10 @@ final class CancelOrdersTest
             if psOutput.split("\n").tail.count(_.contains("<defunct>")) < runningChildren.size then
               fail(s"$failMsg\n$psOutput")
             else
-              info(s"⚠️ Killed child processes are left as zombies:\n$psOutput")
+              // Under Docker with AlmaLinux 9, zombies are always left !!!
+              // Maybe PID 1 (the start script) could handle this.
+              logger.error(s"Killed child processes are left as zombies:\n$psOutput")
+              info(s"🔥 Killed child processes are left as zombies:\n$psOutput")
     end testChildProcessesAreKilled
   }
 

@@ -27,11 +27,11 @@ extends ProcessKiller[Pid]:
     processHandle: ProcessHandle,
     force: Boolean,
     isDescendant: Boolean,
-    isLastDescendant: Boolean)
+    isLast: Boolean)
   : String =
     "❌ " +
       (if force then """destroyForcibly (SIGKILL) """ else """destroy (SIGTERM) """) +
-      (isDescendant ?? (if isLastDescendant then "└ " else "├ ")) +
+      (isDescendant ?? (if isLast then "└ " else "├ ")) +
       Pid(processHandle.pid) +
       ' ' +
       processHandle.info.commandLine.toScala.getOrElse("")

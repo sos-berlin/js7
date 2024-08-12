@@ -67,6 +67,8 @@ final class ProcessDriver(
                       IO.fromEither(either)
                   .flatMap: returnCode =>
                     outcomeOf(returnCode)
+          .guarantee:
+            process.release
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
