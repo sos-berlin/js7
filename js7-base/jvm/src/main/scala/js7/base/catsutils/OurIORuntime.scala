@@ -117,7 +117,7 @@ object OurIORuntime:
         for hook <- shutdownHooks do builder.addShutdownHook(hook)
         builder.build()
       _ <- OurIORuntimeRegister.register(ioRuntime)
-      _ <- registerStandardResources(ioRuntime, label)
+      _ <- registerStandardResources[F](ioRuntime, label)
     yield
       ioRuntime
 

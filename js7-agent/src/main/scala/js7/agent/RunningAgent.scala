@@ -1,8 +1,7 @@
 package js7.agent
 
-import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.ConfigUtil
@@ -18,6 +17,7 @@ import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
+import js7.base.catsutils.Environment
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
@@ -421,7 +421,8 @@ object RunningAgent:
     alarmClock: Option[AlarmClock] = None,
     eventIdGenerator: Option[EventIdGenerator] = None,
     commandHandler: Option[CommandHandler] = None,
-    authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None)
+    authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None,
+    envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)
   object TestWiring:
     val empty: TestWiring = TestWiring()
 

@@ -29,7 +29,7 @@ object OurIORuntimeRegister:
   private[catsutils] def environment: IO[Environment] =
     entry.map(_.enviromment)
 
-  private[catsutils] def toEnvironment(ioRuntime: IORuntime): Environment =
+  def toEnvironment(ioRuntime: IORuntime): Environment =
     toEntry(ioRuntime.compute).enviromment
 
   private def entry: IO[Entry] =

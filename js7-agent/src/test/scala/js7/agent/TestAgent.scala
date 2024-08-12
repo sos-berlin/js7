@@ -1,9 +1,9 @@
 package js7.agent
 
 import cats.effect.Resource.ExitCase
-import cats.effect.Sync
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource, ResourceIO, kernel}
+import cats.effect.{IO, Resource, ResourceIO, Sync, kernel}
+import cats.syntax.flatMap.*
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
 import js7.agent.configuration.AgentConfiguration
@@ -11,7 +11,7 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
-import js7.base.catsutils.OurIORuntime
+import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
@@ -128,6 +128,9 @@ object TestAgent:
   : IO[TestAgent] =
     CorrelId.bindNew:
       ioRuntimeResource[IO](conf)
+        .flatTap: ioRuntime =>
+          OurIORuntimeRegister.toEnvironment(ioRuntime)
+            .registerMultiple(testWiring.envResources)
         .flatMap: ioRuntime =>
           given IORuntime = ioRuntime
           RunningAgent.resource(conf, testWiring).evalOn(ioRuntime.compute)
