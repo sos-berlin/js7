@@ -24,7 +24,7 @@ final class LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
 
   infix def ignore(testBody: => OwnResult): Unit =
     val ctx = testAdder.freezeContext(name)
-    underlying ignore:
+    underlying.ignore:
       executeTest(ctx, testBody)
 
   //infix def is(f: => PendingStatement): Unit =

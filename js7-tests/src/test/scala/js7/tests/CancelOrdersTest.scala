@@ -545,15 +545,17 @@ final class CancelOrdersTest
       OrderProcessingKilled,
       OrderCancelled))
 
-  if isUnix then "Cancel a SIGTERMed script with a still running child process" - {
+  "Cancel a SIGTERMed script with a still running child process" - {
     "Without traps" in:
-      run("TERMINATED-SCRIPT", "", SIGTERM)
+      unixOnly:
+        run("TERMINATED-SCRIPT", "", SIGTERM)
 
     "With traps" in:
-      run("TERMINATED-SCRIPT-TRAPPED", """
-        |trap "wait && exit 143" SIGTERM  # 15+128
-        |trap "rc=$? && wait && exit $?" EXIT
-        |""".stripMargin, SIGKILL)
+      unixOnly:
+        run("TERMINATED-SCRIPT-TRAPPED", """
+          |trap "wait && exit 143" SIGTERM  # 15+128
+          |trap "rc=$? && wait && exit $?" EXIT
+          |""".stripMargin, SIGKILL)
 
     def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit =
       // The child processes are not killed, but cut off from stdout and stderr.
@@ -775,10 +777,12 @@ final class CancelOrdersTest
 
   "Child processes are killed, too" - {
     "SIGTERM" in:
-      testChildProcessesAreKilled(SIGTERM)
+      unixOnly:
+        testChildProcessesAreKilled(SIGTERM)
 
     "SIGKILL" in:
-      testChildProcessesAreKilled(SIGKILL)
+      unixOnly:
+        testChildProcessesAreKilled(SIGKILL)
 
     def testChildProcessesAreKilled(signal: ProcessSignal): Unit =
       // Big value (>4000 under macOS) may fail with
