@@ -233,6 +233,9 @@ object Logger extends AdHocLogger:
       def traceIOWithResult[A](body: IO[A])(implicit src: sourcecode.Name): IO[A] =
         traceIOWithResult[A](src.value, body = body)
 
+      def traceIOWithResult[A](function: String)(body: IO[A]): IO[A] =
+        traceIOWithResult[A](function, body = body)
+
       def traceIOWithResult[A](
         function: String,
         args: => Any = "",

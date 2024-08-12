@@ -4,7 +4,6 @@ import cats.effect.IO
 import js7.base.io.process.Pid
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.process.ProcessKiller.{descendants, maybeProcessHandle}
 import scala.jdk.OptionConverters.*
 
 final class CrashProcessKiller(

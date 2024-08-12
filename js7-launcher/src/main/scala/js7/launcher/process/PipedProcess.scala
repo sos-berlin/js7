@@ -59,7 +59,7 @@ final class PipedProcess private(
       IO.defer:
         process.returnCode.map(IO.pure)
           .getOrElse:
-            waitForProcessTermination(process)
+            processKiller.waitForReturnCode(process)
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:

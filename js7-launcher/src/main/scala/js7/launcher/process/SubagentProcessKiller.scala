@@ -5,14 +5,13 @@ import js7.base.io.process.{JavaProcess, Js7Process, Pid}
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.collection.mutable
 import scala.collection.immutable.VectorBuilder
-import scala.jdk.OptionConverters.*
-import scala.jdk.CollectionConverters.*
-import js7.launcher.process.ProcessKiller.descendants
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
-final class SubagentProcessKiller(
+private final class SubagentProcessKiller(
   protected val label: String)
 extends ProcessKiller[Js7Process]:
 

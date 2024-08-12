@@ -4,11 +4,10 @@ import cats.effect.IO
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.io.process.Processes.*
-import js7.base.io.process.{Js7Process, Pid}
+import js7.base.io.process.{Js7Process, Pid, ReturnCode}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.process.ProcessKiller.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*
 
@@ -104,8 +103,11 @@ trait ProcessKiller[P <: Pid | Js7Process]:
         if !dontExecute then
           process.destroy()
 
+  def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
+    logger.traceIOWithResult(s"waitFor $process"):
+      IO.interruptible:
+        process.waitFor()
 
-object ProcessKiller:
 
   extension (process: Pid | Js7Process)
     private def toPid: Pid =
