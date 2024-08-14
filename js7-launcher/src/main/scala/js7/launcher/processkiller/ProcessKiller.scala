@@ -1,6 +1,7 @@
-package js7.launcher.process
+package js7.launcher.processkiller
 
 import cats.effect.IO
+import cats.syntax.apply.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -8,13 +9,14 @@ import js7.base.io.process.Processes.*
 import js7.base.io.process.{Js7Process, Pid, ReturnCode}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*
 
 /**
  * @tparam P denotes the main process (the order's process). */
-trait ProcessKiller[P <: Pid | Js7Process]:
+private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
 
   private val logger = Logger.withPrefix[this.type](label)
 
@@ -118,9 +120,11 @@ trait ProcessKiller[P <: Pid | Js7Process]:
           process.destroy()
 
   final def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
-    logger.traceIOWithResult(s"waitFor $process"):
-      IO.interruptible:
-        process.waitFor()
+    // Try onExit to avoid blocking a (virtual) thread
+    process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
+      interruptibleVirtualThread:
+        logger.traceCallWithResult(s"waitFor $process"):
+          process.waitFor()
 
 
   extension (process: Pid | Js7Process)
