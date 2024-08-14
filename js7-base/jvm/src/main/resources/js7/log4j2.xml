@@ -26,7 +26,7 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
   <properties>
     <property name="logDirectory" value="${sys:js7.log4j.directory:-logs}"/>
     <property name="infoLine">
-      %d{DEFAULT}%d{XX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
+      %d{yyyy-MM-dd HH:mm:ss.SSSXX} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message
     </property>
     <property name="infoPattern">
       %highlight{${infoLine}}{ERROR=red bold,WARN=red,INFO=default}%n
@@ -49,10 +49,7 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
 
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout
-        pattern="${infoPattern}"
-        header="${fileHeader}"
-      />
+      <patternLayout pattern="${infoPattern}"/>
     </console>
 
     <rollingRandomAccessFile
@@ -137,20 +134,14 @@ java ... -Dlog4j2.configurationFile=classpath:js7/log4j2.xml,$config/log4j2.xml 
       <appenderRef level="trace" ref="debugLog"/>
     </root>
     <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
-    <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown">
-      <appenderRef level="trace" ref="debugLog"/>
-    </logger>
+    <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown"/>
 
-    <logger level="debug" name="js7.web">
-      <!--appenderRef ref="web.log"/-->
-    </logger>
+    <!--logger level="debug" name="js7.web">
+      <appenderRef ref="web.log"/>
+    </logger-->
 
-    <logger level="debug" name="js7"/>
-    <!-- In case you want to override the js7 logger with trace level,
-         you may want to suppress the heartbeat (keep-alive) lines:
-    <logger level="trace" name="js7">
+    <logger level="debug" name="js7">
       <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
     </logger>
-    -->
   </loggers>
 </configuration>

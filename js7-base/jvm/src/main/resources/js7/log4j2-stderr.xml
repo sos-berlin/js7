@@ -2,15 +2,15 @@
 <configuration status="warn">
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <!-- Simple, readable format for agent client stderr output -->
-      <patternLayout pattern="%highlight{%-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{ERROR=red bold,WARN=red,INFO=default}%n"/>
+      <!-- Simple, readable format for agent client stderr output -
+      <patternLayout pattern="%highlight{%-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{ERROR=red bold,WARN=red,INFO=default}%n"/-->
+      <patternLayout pattern="${infoPattern}"/>
     </console>
   </appenders>
+
   <loggers>
-    <root level="warn">
-      <appenderRef ref="stderr"/>
+    <root level="info">
+      <appenderRef level="info"  ref="stderr"/>
     </root>
-    <logger level="warn"  name="org.apache.pekko.actor.CoordinatedShutdown"/>
-    <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
   </loggers>
 </configuration>
