@@ -2,7 +2,7 @@ package js7.launcher.process
 
 import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.catsutils.CatsEffectExtensions.{left, startAndForget}
 import js7.base.io.process.{KeyLogin, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -46,27 +46,29 @@ final class ProcessDriver(
           IO.pure(OrderOutcome.Failed.fromProblem(problem))
 
         case Right(process) =>
-          crashPidFile.register(process.pid).surround:
-            IO.defer:
-              logger.info:
-                s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
-              killedBeforeStart.traverse:
-                sendProcessSignal(process, _)
-              .flatMap: _ =>
-                process.awaitProcessTermination
-              .flatMap: _ =>
-                crashPidFile.remove(process.pid)
-              .flatMap: _ =>
-                process.watchProcessAndStdouterr
-                  .attempt.flatMap: either =>
-                    IO.defer:
-                      // Don't log PID because the process may have terminated long before
-                      // stdout or stderr ended (due to still running child processes)
-                      logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
-                        process.duration.pretty}")
-                      IO.fromEither(either)
-                  .flatMap: returnCode =>
-                    outcomeOf(returnCode)
+          crashPidFile
+            .register(process.pid).surround:
+              process.awaitProcessTermination
+                .guarantee:
+                  crashPidFile.remove(process.pid) // Immediately when process terminated
+                .startAndForget
+                .flatMap: _ =>
+                  IO.defer:
+                    logger.info:
+                      s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
+                    killedBeforeStart.traverse:
+                      sendProcessSignal(process, _)
+                .flatMap: _ =>
+                  process.watchProcessAndStdouterr
+                    .attempt.flatMap: either =>
+                      IO.defer:
+                        // Don't log PID because the process may have terminated long before
+                        // stdout or stderr ended (due to still running child processes)
+                        logger.info(s"$orderId ↙ Process completed with ${either.merge} after ${
+                          process.duration.pretty}")
+                        IO.fromEither(either)
+                    .flatMap: returnCode =>
+                      outcomeOf(returnCode)
           .guarantee:
             process.release
       //.guarantee:
