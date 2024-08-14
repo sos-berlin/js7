@@ -21,9 +21,12 @@ final class FiberVar[A]:
       case HasFiber(previous) => previous.cancel.as(Canceled))
 
   def startFiber(io: IO[A]): IO[Unit] =
-    io.start.flatMap(set)
+    cancelCurrent *> io.start.flatMap(set)
 
-  def set(fiber: FiberIO[A] = canceledFiberIO): IO[Unit] =
+  def cancelCurrent: IO[Unit] =
+    set(canceledFiberIO)
+
+  def set(fiber: FiberIO[A]): IO[Unit] =
     ref.flatMap(_.evalUpdate:
       case Canceled =>
         fiber.cancel.as(Canceled)

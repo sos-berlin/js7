@@ -42,7 +42,7 @@ final class FiberVarTest extends OurAsyncTestSuite:
         _ = assert(canceled1 && !canceled2)
 
         // Cancel the last fiber
-        _ <- fiberVar.set()
+        _ <- fiberVar.cancelCurrent
         _ = assert(canceled2)
 
         // Cancel the fiberVar itself and any future fiber
