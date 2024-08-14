@@ -837,7 +837,7 @@ final class CancelOrdersTest
             |  set -euo pipefail
             |  # Ignore SIGTERM, sleep will not be killed because started by the trap
             |  trap "sleep 111" SIGTERM
-            |  echo SLEEP-2 pid=$$
+            |  echo SIGTERM sleep 111 pid=$$
             |  for i in {1..»numberOfNestedChilds«}; do
             |    sh <<<"
             |      echo SLEEP-2-$i pid=\$\$

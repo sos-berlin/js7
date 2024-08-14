@@ -19,9 +19,9 @@ extends ProcessKiller[Pid]:
         .map: pid =>
           pid -> pid.descendants
 
-  def killMainProcessOnly(pid: Pid, force: Boolean): IO[Unit] =
+  protected def killMainProcessOnly(pid: Pid, force: Boolean): IO[Unit] =
     pid.maybeProcessHandle.fold(IO.unit): h =>
-      killViaProcessHandle(h, force = force)
+      killProcessHandle(h, force = force)
 
   protected def killingLogLine(
     processHandle: ProcessHandle,

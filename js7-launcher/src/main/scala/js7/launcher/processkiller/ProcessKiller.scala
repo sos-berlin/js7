@@ -1,7 +1,6 @@
 package js7.launcher.processkiller
 
 import cats.effect.IO
-import cats.syntax.apply.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -24,7 +23,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
 
   protected def dontExecute: Boolean = false
 
-  def killMainProcessOnly(process: P, force: Boolean): IO[Unit]
+  protected def killMainProcessOnly(process: P, force: Boolean): IO[Unit]
 
   protected def killingLogLine(
     processHandle: ProcessHandle,
@@ -50,36 +49,41 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
           trySendStopSignal(pids) *>
             killAll(force = true, processesAndDescs)
 
-  private def killAll(force: Boolean, processesAndDescs: Seq[(P, Seq[ProcessHandle])])
-  : IO[Unit] =
-    processesAndDescs
-      .traverse: (process, descendants) =>
-        val last = descendants.size - 1
-        killMainProcessOnly(process, force = force) *>
-          descendants.zipWithIndex
-            // in parallel, because onExit for each process take a little time
-            .parTraverse: (h, i) =>
-              killViaProcessHandle(h, force = force, isDescendant = true, isLast = i == last)
-            .map(_.combineAll)
-      .map(_.combineAll)
-
   private def trySendStopSignal(pids: Seq[Long]): IO[Unit] =
     sendStopSignal(pids)
       .handleErrorWith: t =>
         IO(logger.warn(t.toStringWithCauses))
 
   private def sendStopSignal(pids: Seq[Long]): IO[Unit] =
-    IO.defer:
-      val firstArgs = Vector("/bin/kill", "-STOP")
-      val args = firstArgs ++ pids.map(_.toString)
-      logger.info(args.mkString(" "))
-      runAndLogProcess(args): line =>
-        IO(logger.warn(s"${firstArgs.mkString(" ")} >> $line"))
-      .flatMap(returnCode => IO:
-        if !returnCode.isSuccess then
-          logger.warn(s"${firstArgs.mkString(" ")} exited with $returnCode"))
+    IO.whenA(pids.nonEmpty):
+      IO.defer:
+        val firstArgs = Vector("/bin/kill", "-STOP")
+        val args = firstArgs ++ pids.map(_.toString)
+        logger.info(args.mkString(" "))
+        runAndLogProcess(args): line =>
+          IO(logger.warn(s"${firstArgs.mkString(" ")} >> $line"))
+        .flatMap(returnCode => IO:
+          if !returnCode.isSuccess then
+            logger.warn(s"${firstArgs.mkString(" ")} exited with $returnCode"))
 
-  protected final def killViaProcessHandle(
+  private def killAll(force: Boolean, processesAndDescs: Seq[(P, Seq[ProcessHandle])])
+  : IO[Unit] =
+    processesAndDescs
+      .traverse: (process, descendants) =>
+        killMainProcessOnly(process, force = force) *>
+          killDescendants(descendants, force = force)
+      .map(_.combineAll)
+
+  protected final def killDescendants(descendants: Seq[ProcessHandle], force: Boolean)
+  : IO[Unit] =
+    val last = descendants.size - 1
+    descendants.zipWithIndex
+      // in parallel, because onExit for each process take a little time
+      .parTraverse: (h, i) =>
+        killProcessHandle(h, force = force, isDescendant = true, isLast = i == last)
+      .map(_.combineAll)
+
+  protected final def killProcessHandle(
     processHandle: ProcessHandle,
     force: Boolean,
     isDescendant: Boolean = false,
@@ -141,9 +145,10 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
     //def untilTerminated: IO[Unit] =
     //  process.maybeProcessHandle match
     //    case Some(h) =>
-    //      h.untilTerminated // Avoid blocking in Js7Process#waitFor
+    //      h.onExitIO // Avoid blocking in Js7Process#waitFor
     //    case None => process match
-    //      case _: Pid => IO.unit
+    //      case _: Pid =>
+    //        IO.unit
     //      case process: Js7Process =>
     //        waitForReturnCode(process).void
 
