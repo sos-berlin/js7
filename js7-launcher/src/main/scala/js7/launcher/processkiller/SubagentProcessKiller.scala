@@ -1,4 +1,4 @@
-package js7.launcher.process
+package js7.launcher.processkiller
 
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.catsutils.{Environment, FiberVar}
@@ -9,14 +9,14 @@ import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.process.SubagentProcessKiller.*
+import js7.launcher.processkiller.SubagentProcessKiller.*
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-private final class SubagentProcessKiller private(
+private[launcher] final class SubagentProcessKiller private(
   sigtermDescendantsWatch: FiberVar[Unit],
   protected val label: String)
 extends ProcessKiller[Js7Process]:

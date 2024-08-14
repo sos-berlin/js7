@@ -1,4 +1,4 @@
-package js7.launcher.process
+package js7.launcher.processkiller
 
 import cats.effect.IO
 import js7.base.io.process.Pid

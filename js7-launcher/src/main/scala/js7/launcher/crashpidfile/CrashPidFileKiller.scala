@@ -11,7 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.system.startup.ServiceApp
-import js7.launcher.process.CrashProcessKiller
+import js7.launcher.processkiller.CrashProcessKiller
 
 object CrashPidFileKiller extends ServiceApp:
 

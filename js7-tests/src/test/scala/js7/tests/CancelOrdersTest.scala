@@ -40,7 +40,7 @@ import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry,
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.launcher.process.SubagentProcessKiller.TestChildProcessTerminated
+import js7.launcher.processkiller.SubagentProcessKiller.TestChildProcessTerminated
 import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}

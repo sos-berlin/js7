@@ -27,6 +27,7 @@ import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.PipedProcess.*
+import js7.launcher.processkiller.SubagentProcessKiller
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -56,6 +57,7 @@ final class PipedProcess private(
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
+     logger.traceIO("### awaitProcessTermination")
       IO.defer:
         process.returnCode.map(IO.pure)
           .getOrElse:
@@ -63,6 +65,7 @@ final class PipedProcess private(
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
+     logger.traceIO("### watchProcessAndStdouterr"):
       IO.raceBoth(
           awaitProcessTermination,
           IO.raceBoth(
