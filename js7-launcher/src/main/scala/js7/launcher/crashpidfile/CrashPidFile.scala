@@ -19,7 +19,6 @@ object CrashPidFile:
 type PidFileService = IndexedRecordSet[Pid]
 
 
-
 object CrashPidFileService:
 
   /** File of binary encoded PIDs.

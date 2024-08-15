@@ -62,7 +62,6 @@ object CrashPidFileKiller extends ServiceApp:
   extends BasicConfiguration:
     val config = ConfigFactory.empty
 
-
   object Conf:
     val Default: Conf = Conf()
 

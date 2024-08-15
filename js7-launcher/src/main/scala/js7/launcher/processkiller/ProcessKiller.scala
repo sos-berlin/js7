@@ -66,10 +66,10 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   private def watchSigtermDescendants: IO[Unit] =
     Environment.maybe[EventPublisher[TestChildProcessTerminated]].flatMap: testBus =>
       IO.defer:
-        val descendants = _sigtermDescendants//.map((pid, descendands) => pid.values.flatten
-        IO.whenA(descendants.nonEmpty):
-          val handlesWithOwner = descendants.toVector
-            .flatMap((pid, descendants) => pid.maybeProcessHandle.map(_ -> pid) ++: descendants.map(_ -> pid))
+        IO.whenA(_sigtermDescendants.nonEmpty):
+          val handlesWithOwner =
+            _sigtermDescendants.toVector.flatMap: (pid, descendants) =>
+              (pid.maybeProcessHandle ++: descendants).map(_ -> pid)
           logger.debugIO("watchSigtermDescendants", handlesWithOwner.map(_._1.pid).mkString(" ")):
             fs2.Stream.iterable(handlesWithOwner)
               .covary[IO]
@@ -129,7 +129,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
         val stopPids = processToDescendants.flatMap: (process, descendants) =>
           (isAlive(process) ? process.toPid.number) ++: descendants.map(_.pid)
 
-        // Try to stop all processes, then collect descendants again and kill them
+        // Try to stop all processes, then kill them
         trySendStopSignal(stopPids) *>
           sigkillAll(processToDescendants)
 
@@ -228,7 +228,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
 
 
   extension (process: Pid | Js7Process)
-    protected def toPid: Pid =
+    private def toPid: Pid =
       process match
         case pid: Pid => pid
         case process: Js7Process => process.pid
@@ -259,7 +259,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
         s"ProcessHandle(${processHandle.pid}).descendants => ${r.size} PIDs (${t.elapsed.pretty})"
       r
 
-    protected def descendantsIterator: Iterator[ProcessHandle] =
+    private def descendantsIterator: Iterator[ProcessHandle] =
       val t = Deadline.now
       val r = processHandle.descendants.iterator.asScala
       logger.trace:
