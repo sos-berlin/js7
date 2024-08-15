@@ -8,10 +8,12 @@ import java.nio.BufferUnderflowException
 import js7.base.io.process.Pid
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.{StringAsDuration, ZeroDuration}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.system.startup.ServiceApp
 import js7.launcher.processkiller.CrashProcessKiller
+import scala.concurrent.duration.FiniteDuration
 
 object CrashPidFileKiller extends ServiceApp:
 
@@ -31,8 +33,12 @@ object CrashPidFileKiller extends ServiceApp:
         .compile
         .toVector
         .flatMap: pids =>
-          CrashProcessKiller(dontExecute = conf.dontExecute)
-            .sigkillWithDescendants(pids)
+          CrashProcessKiller
+            .resource(
+              dontExecute = conf.dontExecute,
+              sigkillDelay = conf.sigkillDelay)
+            .use:
+              _.killWithDescendants(pids)
 
   private def recordToPid: Pipe[IO, Byte, Checked[Pid]] =
     _.chunkN(8).map: chunk =>
@@ -50,13 +56,19 @@ object CrashPidFileKiller extends ServiceApp:
       case Right(o) =>
         Stream.emit(o)
 
-  final case class Conf(dontExecute: Boolean = false)
+  final case class Conf(
+    dontExecute: Boolean = false,
+    sigkillDelay: FiniteDuration = ZeroDuration)
   extends BasicConfiguration:
     val config = ConfigFactory.empty
 
 
   object Conf:
+    val Default: Conf = Conf()
+
     def fromCommandLine(args: CommandLineArguments): Conf =
-      val conf = Conf(dontExecute = args.boolean("-n"))
+      val conf = Conf(
+        dontExecute = args.boolean("-n"),
+        sigkillDelay = args.as[FiniteDuration]("--sigkill-delay=", Default.sigkillDelay))
       args.requireNoMoreArguments()
       conf

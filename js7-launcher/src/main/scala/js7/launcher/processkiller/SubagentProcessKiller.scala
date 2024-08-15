@@ -1,90 +1,23 @@
 package js7.launcher.processkiller
 
 import cats.effect.{IO, Resource, ResourceIO}
-import js7.base.catsutils.{Environment, FiberVar}
-import js7.base.eventbus.EventPublisher
-import js7.base.io.process.{JavaProcess, Js7Process, Pid}
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
-import js7.base.time.ScalaTime.*
+import js7.base.catsutils.FiberVar
+import js7.base.io.process.{Js7Process, Pid}
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.processkiller.SubagentProcessKiller.*
-import scala.collection.immutable.VectorBuilder
-import scala.collection.mutable
-import scala.concurrent.duration.Deadline
-import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 private[launcher] final class SubagentProcessKiller private(
-  sigtermDescendantsWatch: FiberVar[Unit],
+  protected val sigtermDescendantsWatch: FiberVar[Unit],
   protected val label: String)
 extends ProcessKiller[Js7Process]:
 
-  private val logger = Logger.withPrefix[this.type](label)
-
-  /** Remember the descendant processes just before SIGTERM. */
-  private var sigtermDescendants: Vector[ProcessHandle] = Vector.empty
-  private var sigtermDescendantsSince = Deadline(ZeroDuration)
-
-  def killMainProcessOnly(process: Js7Process, force: Boolean): IO[Unit] =
-    IO.defer:
-      IO.whenA(process.isAlive):
-        IO.unlessA(force):
-          saveSigtermDependencies(process.descendants)
-        .productR:
-          process match
-            case process: JavaProcess =>
-              // Kill via ProcessHandle because this doesn't close stdout and stderr
-              killProcessHandle(process.handle, force = force)
-            case _ =>
-              killWithJava(process, force)
-
-  private def saveSigtermDependencies(descendants: Vector[ProcessHandle]): IO[Unit] =
-    IO.defer:
-      sigtermDescendants = descendants // We will sigkill them later
-      sigtermDescendantsSince = Deadline.now
-      sigtermDescendantsWatch.startFiber:
-        watchSigtermDescendants
-
-  /** Watch for early termination of remembered descendant processes.
-   * <p>
-   * We watch the sigtermDescendants for termination to avoid killing a PID which has
-   * terminated long ago and is being reused by an ther alien process. */
-  private def watchSigtermDescendants: IO[Unit] =
-    Environment.maybe[EventPublisher[TestChildProcessTerminated]].flatMap: testBus =>
-      IO.defer:
-        val descendants = sigtermDescendants
-        IO.whenA(descendants.nonEmpty):
-          logger.debugIO("watchSigtermDescendants", descendants.map(_.pid).mkString(" ")):
-            fs2.Stream.iterable(descendants)
-              .covary[IO]
-              .parEvalMapUnorderedUnbounded: h =>
-                h.onExitIO.as(h)
-              .evalTap(h => IO:
-                val pid = Pid(h.pid)
-                logger.debug(s"Descendant process $pid terminated")
-                sigtermDescendants = sigtermDescendants.filter(_ != h)
-                testBus.foreach(_.publish(TestChildProcessTerminated(pid))))
-              .compile.drain
+  def sigtermMainProcessAndSaveDescendant(process: Js7Process): IO[Unit] =
+    IO.whenA(process.isAlive):
+      sigtermMainProcessesAndSaveDescendants(Seq(process))
 
   def sigkillWithDescendants(process: Js7Process): IO[Unit] =
-    IO.defer:
-      // if process isAlive then use its current descendants
-      // otherwise use the descendants as before SIGTERM.
-      val descendants =
-        if process.isAlive then
-          val d = process.descendants
-          if process.isAlive then // Still alive?
-            d
-          else
-            descendantsOf(sigtermDescendants)
-        else
-          descendantsOf(sigtermDescendants)
-
-      genericSigkillWithDescendants:
-        Seq:
-          process -> descendants
+    sigkillWithDescendants(Seq(process))
 
   protected def killingLogLine(
     processHandle: ProcessHandle,
@@ -98,23 +31,8 @@ extends ProcessKiller[Js7Process]:
         "child process " + Pid(processHandle.pid) +
           ' ' + processHandle.info.commandLine.toScala.getOrElse("")))
 
-  /** Return a Seq of distinct ProcessHandles */
-  private def descendantsOf(processHandles: Seq[ProcessHandle]): Seq[ProcessHandle] =
-    val known = mutable.Set[Long]()
-    val result = VectorBuilder[ProcessHandle]()
-    for p <- processHandles if p.isAlive do
-      if !known(p.pid) then
-        known += p.pid
-        result += p
-        for d <- p.descendants().iterator().asScala do
-          if !known(d.pid) then
-            known += d.pid
-            result += d
-    result.result()
-
 
 object SubagentProcessKiller:
-  final case class TestChildProcessTerminated(pid: Pid)
 
   def resource(label: String): ResourceIO[SubagentProcessKiller] =
     for

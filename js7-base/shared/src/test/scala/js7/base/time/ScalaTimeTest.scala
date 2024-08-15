@@ -215,6 +215,7 @@ final class ScalaTimeTest extends OurTestSuite:
     "parseDuration" in:
       intercept[IllegalArgumentException] { parseDuration(".1s") }
       intercept[IllegalArgumentException] { parseDuration(".1") }
+      assert(parseDuration("0") == 0.s)
       assert(parseDuration("123") == 123.s)
       assert(parseDuration("0.123") == 123.ms)
       assert(parseDuration("123s") == 123.s)

@@ -18,6 +18,19 @@ final class ProcessTreeTest extends OurTestSuite:
     if isIntelliJIdea then
       val n = 10
 
+      info("ProcessHandle.allProcesses: " +
+        measureTime(10 * n, "calls", warmUp = 5):
+          ProcessHandle.allProcesses)
+
+      info("ProcessHandle.allProcesses.to(Vector): " +
+        measureTime(10 * n, "calls", warmUp = 5):
+          ProcessHandle.allProcesses.toScala(Vector))
+
+      info("ProcessHandle.allProcesses.flatMap(_.parent ...): " +
+        measureTime(n, "allProcesses", warmUp = 5):
+          ProcessHandle.allProcesses.toScala(Vector)
+            .flatMap(h => h.parent.toScala.map(_ -> h)))
+
       info("lazyProcessHandleToTree of a process: " +
         measureTime(n, "trees", warmUp = 5):
           lazyProcessHandleToTree(processHandle))
@@ -35,28 +48,14 @@ final class ProcessTreeTest extends OurTestSuite:
           eagerProcessHandleToTree(ProcessHandle.of(1).get))
 
       info("descendants of PID 1: " +
-        measureTime(n, "descendants", warmUp = 5):
+        measureTime(10 * n, "descendants", warmUp = 5):
           ProcessHandle.of(1).toScala.get.descendants.toScala(Vector))
 
-      info("allProcesses: " +
-        measureTime(n, "allProcesses", warmUp = 5):
-          ProcessHandle.allProcesses.toScala(Vector))
-
-      info("allProcesses.flatMap: " +
-        measureTime(n, "allProcesses", warmUp = 5):
-          ProcessHandle.allProcesses.toScala(Vector)
-            .flatMap(h => h.parent.toScala.map(_ -> h)))
-
-  "Process tree of a process" - {
-    "lazyProcessHandleToTree" in:
-      log(lazyProcessHandleToTree(processHandle))
-
-    "fastProcessHandleToTree" in:
+  "Log trees"  - {
+    "eagerProcessHandleToTree" in:
       log(eagerProcessHandleToTree(processHandle))
-  }
 
-  "Process tree of PID 1" - {
-    "log" in :
+    "eagerProcessHandleToTree of PID 1" in:
       log(eagerProcessHandleToTree(ProcessHandle.of(1).toScala.get))
   }
 
@@ -75,7 +74,7 @@ object ProcessTreeTest:
   private def eagerProcessHandleToTree(processHandle: ProcessHandle): ProcessTree =
     val toChildren: Map[ProcessHandle, Vector[ProcessHandle]] =
       ProcessHandle.allProcesses.toScala(Vector)
-        .flatMap(h => h.parent.toScala.map(_ -> h))
+        .flatMap(h => h.parent/*SLOW!!!*/.toScala.map(_ -> h))
         .groupMap(_._1)(_._2)
 
     def toTree(h: ProcessHandle): ProcessTree =

@@ -57,7 +57,6 @@ final class PipedProcess private(
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
-     logger.traceIO("### awaitProcessTermination")
       IO.defer:
         process.returnCode.map(IO.pure)
           .getOrElse:
@@ -65,7 +64,6 @@ final class PipedProcess private(
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
-     logger.traceIO("### watchProcessAndStdouterr"):
       IO.raceBoth(
           awaitProcessTermination,
           IO.raceBoth(
@@ -111,7 +109,6 @@ final class PipedProcess private(
             // Stdout and stderr ended or ignored after SIGKILL
             terminationFiber.joinStd
 
-
   def release: IO[Unit] =
     processKillerAlloc.release
 
@@ -144,10 +141,11 @@ final class PipedProcess private(
             sigkilled.complete(()).void
 
   private def kill(force: Boolean): IO[Unit] =
-    if force then
-      processKiller.sigkillWithDescendants(process)
+    if !force then
+      processKiller.sigtermMainProcessAndSaveDescendant(process)
     else
-      processKiller.killMainProcessOnly(process, force = false)
+      // Kill saved descendants, too
+      processKiller.sigkillWithDescendants(process)
 
   @TestOnly
   private[process] def isAlive = process.isAlive

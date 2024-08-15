@@ -171,6 +171,21 @@ object Logger extends AdHocLogger:
       def infoIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
         infoF(functionName, args)(body)
 
+      def infoIOWithResult[A](body: IO[A])(implicit src: sourcecode.Name): IO[A] =
+        infoIOWithResult[A](src.value, body = body)
+
+      def infoIOWithResult[A](function: String)(body: IO[A]): IO[A] =
+        infoIOWithResult[A](function, body = body)
+
+      def infoIOWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A],
+        marker: Marker | Null = null,
+        body: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, LogLevel.Info, function, args, result, marker = marker)(body)
+
       def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
         infoF[F, A](functionName = src.value)(body)

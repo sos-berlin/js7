@@ -203,7 +203,7 @@ private final class JobDriver(
         IO.whenA(signal != SIGKILL && entry.orderProcess.get.exists(_.isRight)/*OrderProcess?*/):
           (IO.sleep(sigkillDelay) *>
             IO.defer:
-              logger.warn(s"${entry.orderId}: SIGKILL after sigkillDelay elapsed")
+              logger.warn(s"${entry.orderId}: SIGKILL now, because sigkillDelay elapsed")
               killProcess(entry, SIGKILL))
             .start
             .flatMap(entry.sigkillFiber.set)

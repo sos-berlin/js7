@@ -18,11 +18,18 @@ import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
+import js7.common.commandline.CommandLineArguments
 import js7.launcher.crashpidfile.CrashPidFileKiller.Conf
 import js7.launcher.crashpidfile.CrashPidFileKillerTest.*
 import scala.concurrent.duration.SECONDS
 
 final class CrashPidFileKillerTest extends OurAsyncTestSuite:
+
+  "Conf" in:
+    def toConf(args: Seq[String]) = Conf.fromCommandLine(CommandLineArguments(args))
+    assert(toConf(Nil) == Conf())
+    assert(toConf(Seq("-n")) == Conf(dontExecute = true))
+    assert(toConf(Seq("--sigkill-delay=3s")) == Conf(sigkillDelay = 3.s))
 
   "test" in:
     temporaryDirectoryResource[IO]("CrashPidFileKillerTest-").use: dir =>
@@ -33,8 +40,11 @@ final class CrashPidFileKillerTest extends OurAsyncTestSuite:
         IO.defer:
           scriptFile.writeUtf8Executable:
             """#!/usr/bin/env bash
-              |sh -c 'echo SLEEP A; sleep 111' &
+              |sh -c 'echo SLEEP A; sleep 110' &
               |sh -c 'echo SLEEP B; sleep 111' &
+              |bPid=$!
+              |trap "kill $bPid; sleep 112" SIGTERM
+              |
               |wait
               |""".stripMargin
 
@@ -47,7 +57,7 @@ final class CrashPidFileKillerTest extends OurAsyncTestSuite:
                     .merge:
                       stderr.through(bytesToLines)
                     .evalTap: line =>
-                      IO(logger.info(s"${Pid(process.pid)} -> $line"))
+                      IO(logger.info(s"${Pid(process.pid)} >> $line"))
                     .evalTap:
                       case "SLEEP A" => childA.complete(())
                       case "SLEEP B" => childB.complete(())
@@ -67,7 +77,7 @@ final class CrashPidFileKillerTest extends OurAsyncTestSuite:
               Resource.fromAutoCloseable:
                 IO(FileInputStream(pidFile.toFile))
               .use:
-                CrashPidFileKiller.program(Conf(), _)
+                CrashPidFileKiller.program(Conf(sigkillDelay = 100.ms), _)
             .flatMap:
               _.traverse: process =>
                 interruptibleVirtualThread:
