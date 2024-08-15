@@ -20,12 +20,16 @@ fi
 docker rmi js7-builder >/dev/null 2>&1 || true
 
 ( cd build-with-docker
-  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false $docker build --tag=js7-builder  .
+  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false \
+  $docker build \
+    --tag=js7-builder \
+    --network=host \
+    .
 )
 
 $docker run \
   $extras \
-  --network="host" \
+  --network=host \
   --volume=js7-builder:/home/$user/mount \
   --volume="$(pwd)":/home/$user/js7:Z,delegated \
   --workdir="/home/$user/js7" \
