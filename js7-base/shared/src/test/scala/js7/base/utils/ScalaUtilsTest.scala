@@ -591,12 +591,11 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "Boolean" - {
-    "Boolean ?& option" in:
-      assert((true ?& 7.some: Option[Int]) == Some(7))
-      assert((true ?& none: Option[Int]) == None)
-      assert((false ?& 7.some: Option[Int]) == None)
-      assert((false ?& none: Option[Int]) == None)
-      assert((true ?& (true ? 7): Option[Int]) == Some(7))
+    //"Boolean &? value" in:
+    //  assert((true &? 7: Option[Int]) == Some(7))
+    //  assert((true &? 7: Option[Int]) == Some(7))
+    //  assert((1 + 1 == 2 &? 7: Option[Int]) == Some(7))
+    //  assert((1 + 1 == 3 &? 7: Option[Int]) == None)
 
     "Boolean ? value" in:
       assert((true ? 7: Option[Int]) == Some(7))
@@ -606,9 +605,15 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert(true.? == Some(true))
       assert(false.? == None)
 
-    "Boolean.option" in:
-      assert((true option 7: Option[Int]) == Some(7))
-      assert((false option 7: Option[Int]) == None)
+    "Boolean.thenSome" in:
+      assert((true thenSome 7: Option[Int]) == Some(7))
+      assert((false thenSome 7: Option[Int]) == None)
+
+    "Boolean.thenMaybe" in:
+      assert((true.thenMaybe(Some(7)): Option[Int]) == Some(7))
+      assert((true.thenMaybe(None): Option[Int]) == None)
+      assert((false.thenMaybe(Some(7)): Option[Int]) == None)
+      assert((false.thenMaybe(None): Option[Int]) == None)
 
     "Boolean.thenList" in:
       assert((true thenList 7: List[Int]) == List(7))

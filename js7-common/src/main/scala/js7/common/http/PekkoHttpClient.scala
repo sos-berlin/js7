@@ -680,14 +680,12 @@ object PekkoHttpClient:
     private def shortDataString = dataAsString.truncateWithEllipsis(10000)
 
     lazy val problem: Option[Problem] =
-      if httpResponse.entity.contentType == `application/json` then
+      (httpResponse.entity.contentType == `application/json`).thenMaybe:
         io.circe.parser.decode[Problem](dataAsString) match
           case Left(error) =>
             logger.debug(s"$uri: $prefixString, Problem cannot be parsed: $error - $dataAsString")
             None
           case Right(o) => Some(o)
-      else
-        None
 
   def hasRelevantStackTrace(throwable: Throwable): Boolean =
     throwable != null && throwable.getStackTrace.nonEmpty &&

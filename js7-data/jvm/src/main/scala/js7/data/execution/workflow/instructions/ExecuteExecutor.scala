@@ -39,7 +39,9 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
             Right:
               (order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil
           .getOrElse:
-            (if order.isProcessable then attach(order, job.agentPath) else None)
+            order.isProcessable
+              .thenMaybe:
+                attach(order, job.agentPath)
               .getOrElse:
                 Right:
                   checkSubagentSelection(order, state) match

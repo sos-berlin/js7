@@ -1023,7 +1023,7 @@ object AgentOrderKeeper:
       queueSet.contains(orderId) || inProcess.contains(orderId)
 
     def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
-      queue.nonEmpty.option {
+      queue.nonEmpty.thenSome:
         queue.indexWhere(predicate) match
           case -1 => None
           case i =>
@@ -1031,7 +1031,7 @@ object AgentOrderKeeper:
             queueSet -= orderId
             inProcess += orderId
             Some(orderId)
-      }.flatten
+      .flatten
 
     def +=(orderId: OrderId): Unit =
       if inProcess(orderId) then throw new DuplicateKeyException(s"Duplicate $orderId")

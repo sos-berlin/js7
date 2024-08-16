@@ -28,7 +28,7 @@ extends Period:
     else
       val last = (t.toNanoOfDay + absoluteRepeat.toNanos - begin.toNanoOfDay) / absoluteRepeat.toNanos
       val next = begin.toNanoOfDay + last * absoluteRepeat.toNanos
-      next < end.toNanoOfDay option
+      next < end.toNanoOfDay thenSome
         LocalTime.ofNanoOfDay(next)
 
   //def contains(o: LocalTime) =

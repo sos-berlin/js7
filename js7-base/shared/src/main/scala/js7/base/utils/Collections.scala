@@ -4,7 +4,7 @@ import cats.Monoid
 import javax.annotation.Nullable
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass}
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, Factory, mutable}
@@ -20,7 +20,7 @@ object Collections:
   object implicits:
     implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal:
       def get(i: Int): Option[A] =
-        if underlying.indices contains i then Some(underlying(i)) else None
+        underlying.indices contains i thenSome underlying(i)
 
       def dropLastWhile(predicate: A => Boolean): IndexedSeq[A] =
         var i = underlying.length
@@ -239,7 +239,8 @@ object Collections:
       underlying map { case (k, v) => k -> f(v) }
 
   implicit final class RichBufferedIterator[A](private val delegate: BufferedIterator[A]) extends AnyVal:
-    def headOption: Option[A] = if delegate.hasNext then Some(delegate.head) else None
+    def headOption: Option[A] = 
+      delegate.hasNext thenSome delegate.head
 
   def emptyToNone(@Nullable o: String): Option[String] =
     if o == null || o.isEmpty then None else Some(o)

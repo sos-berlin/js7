@@ -25,7 +25,7 @@ extends Period:
   //def startOnce = true
 
   def nextLocalTime(from: LocalTime): Option[LocalTime] =
-    from <= at option at
+    from <= at thenSome at
 
 
 object SingleStartPeriod:

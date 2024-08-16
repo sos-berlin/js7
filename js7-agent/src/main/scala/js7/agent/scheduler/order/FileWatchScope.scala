@@ -1,6 +1,7 @@
 package js7.agent.scheduler.order
 
 import java.util.regex.Matcher
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.expression.Scope
 import js7.data.value.{StringValue, Value}
@@ -20,7 +21,7 @@ extends Scope:
             Some(Right(StringValue(orderWatchPath.string)))
 
           case _ =>
-            if key.nonEmpty && key.forall(c => c >= '0' && c <= '9') then
+            key.nonEmpty && key.forall(c => c >= '0' && c <= '9') thenMaybe
               Try(key.toInt)
                 .toOption
                 .flatMap(i =>
@@ -29,8 +30,6 @@ extends Scope:
                   else
                     Option(matchedMatcher.group(i))
                       .map(group => Right(StringValue(group))))
-            else
-              None
 
       def iterator: Iterator[(String, Right[Nothing, Value])] =
         get("orderWatchPath").iterator.map("orderWatchPath" -> _) ++

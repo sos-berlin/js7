@@ -383,7 +383,7 @@ object ScalaUtils:
 
       override def headOption: Option[A] =
         minimum match
-          case None => if hasNext then minimum else None
+          case None => hasNext thenMaybe minimum
           case o => o
 
       def hasNext: Boolean =
@@ -472,15 +472,15 @@ object ScalaUtils:
         * <br>`(false ? a) == None`
         */
       def ?[A](a: => A): Option[A] =
-        option(a)
+        thenSome(a)
 
-      /**
-        * Chainable conditional `Option`, similar to `orElse`.
-        * <p>`(true ? option) == option`
-        * <br>`(false ? option) == None`
-        */
-      def ?&[A](option: => Option[A]): Option[A] =
-        if underlying then option else None
+      ///**
+      //  * Conditional `Option`.
+      //  * <p>`(1 == 1 &? a) == Some(a)`
+      //  * <br>`(1 != 1 &? a) == None`
+      //  */
+      //def &?[A](a: => A): Option[A] =
+      //  thenSome(a)
 
       /** Optional false.
         * <p>`true.? == Some(a)`
@@ -489,16 +489,23 @@ object ScalaUtils:
       def ? : Option[Boolean] =
         if underlying then SomeTrue else None
 
-      def option[A](a: => A): Option[A] =
-        thenSome(a)
+      /**
+        * Conditional `Option`.
+        * <p>`true.thenSome(a) == Some(a)`
+        * <br>`false.thenSome(a) == None`
+        */
+      infix def thenSome[A](a: => A): Option[A] =
+        if underlying then Some(a) else None
 
       /**
         * Conditional `Option`.
-        * <p>`(true option a) == Some(a)`
-        * <br>`(false option a) == None`
+        * <p>`true.thenMaybe(Some(7)) == Some(7)`
+        * <p>`true.thenMaybe(None) == None`
+        * <br>`false.thenMaybe(Some(7)) == None`
+        * <br>`false.thenMaybe(None) == None`
         */
-      def thenSome[A](a: => A): Option[A] =
-        if underlying then Some(a) else None
+      infix def thenMaybe[A](maybe: => Option[A]): Option[A] =
+        if underlying then maybe else None
 
       /**
         * Conditional `List`.
