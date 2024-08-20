@@ -70,28 +70,28 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   @volatile private var processingStarted = false // Delays SubagentDriver#startObserving
 
   def stop: IO[Unit] =
-    logger.traceIO(
+    logger.traceIO:
       stateVar
-        .updateWithResult(state => IO(
-          state.clear -> state.subagentToEntry.values))
-        .flatMap(entries =>
+        .updateWithResult(state => IO:
+          state.clear -> state.subagentToEntry.values)
+        .flatMap: entries =>
           entries.toVector
             .map(_.driver)
             .parUnorderedTraverse(_.terminate)
-            .map(_.combineAll)))
+            .map(_.combineAll)
 
   // Call this, but not before recovering !!!
   def startProcessing: IO[Unit] =
-    logger.traceIO(IO.defer {
-      processingStarted = true
-      startObserving *> continueDetaching
-    })
+    logger.traceIO:
+      IO.defer:
+        processingStarted = true
+        startObserving *> continueDetaching
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
-    stateVar.value.flatMap(state =>
+    stateVar.value.flatMap: state =>
       state.subagentToEntry.values.toVector
         .parUnorderedTraverse(_.driver.stopJobs(jobKeys, signal))
-        .map(_.combineAll))
+        .map(_.combineAll)
 
   def orderIsLocal(orderId: OrderId): Boolean =
     orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
@@ -131,15 +131,14 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
       OrderProcessingStarted(subagentDriver.subagentId, stick = stick) :: Nil
     persist(order.id, events, onEvents)
-      .map(_.map { case (_, s) => s
-        .idToOrder
-        .checked(order.id)
-        .flatMap(_.checkedState[Order.Processing])
-        .orThrow
-      })
-      .flatMapT(order =>
+      .map(_.map: (_, s) =>
+        s.idToOrder
+          .checked(order.id)
+          .flatMap(_.checkedState[Order.Processing])
+          .orThrow)
+      .flatMapT: order =>
         forProcessingOrder(order.id, subagentDriver, onEvents)(
-          subagentDriver.startOrderProcessing(order)))
+          subagentDriver.startOrderProcessing(order))
       .handleErrorWith(t => IO:
         logger.error(s"processOrderAndForwardEvents ${order.id} => ${t.toStringWithCauses}",
           t.nullIfNoStackTrace)
@@ -151,31 +150,28 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    logger.traceIO("recoverOrderProcessing", order.id)(IO.defer {
+    logger.traceIO("recoverOrderProcessing", order.id)(IO.defer:
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.get.idToDriver.get(subagentId)
-        .match {
+        .match
           case None =>
-            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure(
-              s"$subagentId is missed")))
+            val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure:
+              s"$subagentId is missed"))
             persist(order.id, orderProcessed :: Nil, onEvents)
               .flatMapT(_ => IO.pure(orderProcessed).start.map(Right(_)))
 
           case Some(subagentDriver) =>
-            forProcessingOrder(order.id, subagentDriver, onEvents)(
+            forProcessingOrder(order.id, subagentDriver, onEvents):
               if failedOverSubagentId contains subagentDriver.subagentId then
                 subagentDriver.emitOrderProcessLost(order)
                   .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
               else
                 subagentDriver.recoverOrderProcessing(order)
-            ).materializeIntoChecked
-            .flatTap {
-              case Left(problem) => IO(logger.error(
-                s"recoverOrderProcessing ${order.id} => $problem"))
-              case Right(_) => IO.unit
-            }
-          }
-    })
+            .materializeIntoChecked
+            .flatTap:
+              case Left(problem) => IO(logger.error:
+                s"recoverOrderProcessing ${order.id} => $problem")
+              case Right(_) => IO.unit)
 
   private def persist(
     orderId: OrderId,
@@ -184,10 +180,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   : IO[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], S)]] =
     journal
       .persistKeyedEvents(events.map(orderId <-: _))
-      .map(_.map { o =>
+      .map(_.map: o =>
         onEvents(events)
-        o
-      })
+        o)
 
   private def forProcessingOrder(
     orderId: OrderId,
@@ -199,35 +194,33 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     orderToSubagent
       .put(orderId, subagentDriver)
       .*>(body
-        .flatMap {
+        .flatMap:
           case Left(problem) => IO.left(problem)
           case Right(fiber) =>
             // OrderProcessed event has been persisted by RemoteSubagentDriver
             fiber.joinStd
-              .map { orderProcessed =>
+              .map: orderProcessed =>
                 onEvents(orderProcessed :: Nil)
                 orderProcessed
-              }
               .guarantee(release)
               .start
-              .map(Right(_))
-        })
+              .map(Right(_)))
       .guaranteeExceptWhenRight(release)
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
     orderToSubagentSelectionId(order)
-      .flatMapT { case DeterminedSubagentSelection(subagentSelectionId, stick) =>
-        cancelableWhileWaitingForSubagent(order.id)
-          .use(canceledPromise =>
-            IO.race(
-              canceledPromise.get,
-              selectSubagentDriver(subagentSelectionId)))
-          .map(_
-            .toOption
-            .sequence
-            .map(_.map(SelectedDriver(_, stick))))
-      }
+      .flatMapT:
+        case DeterminedSubagentSelection(subagentSelectionId, stick) =>
+          cancelableWhileWaitingForSubagent(order.id)
+            .use: canceledPromise =>
+              IO.race(
+                canceledPromise.get,
+                selectSubagentDriver(subagentSelectionId))
+            .map(_
+              .toOption
+              .sequence
+              .map(_.map(SelectedDriver(_, stick))))
 
   private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
   : IO[Checked[DeterminedSubagentSelection]] =
@@ -246,18 +239,18 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   : ResourceIO[Deferred[IO, Unit]] =
     Resource
       .eval(Deferred[IO, Unit])
-      .flatMap(canceledDeferred =>
+      .flatMap: canceledDeferred =>
         Resource.make(
           acquire = orderToWaitForSubagent.put(orderId, canceledDeferred))(
-          release = _ => orderToWaitForSubagent.remove(orderId).void))
+          release = _ => orderToWaitForSubagent.remove(orderId).void)
 
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
   : IO[Checked[SubagentDriver]] =
     logger.traceIO:
       Stream
         .repeatEval(IO { stateVar.get.selectNext(maybeSelectionId) }
-          .flatTap(o => IO(
-              logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
+          .flatTap(o => IO:
+              logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}")))
         .evalTap:
           // TODO Do not poll (for each Order)
           case Right(None) => IO.sleep(reconnectDelayer.next())
@@ -274,28 +267,31 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .get(orderId)
         .fold(IO.unit)(_.complete(()))
         .*>(orderToSubagent
-          .get(orderId) match {
-            case None => IO(logger.error(
-              s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId"))
+          .get(orderId) match
+            case None => IO(logger.error:
+              s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
 
-            case Some(driver) => driver.killProcess(orderId, signal)
-          })
+            case Some(driver) => driver.killProcess(orderId, signal))
 
   def resetAllSubagents(except: Set[SubagentId]): IO[Unit] =
     logger.traceIO:
       stateVar.value
-        .flatMap(state =>
+        .flatMap: state =>
           state.subagentToEntry.values
             .toVector
             .map(_.driver)
-            .collect { case driver: RemoteSubagentDriver => driver }
-            .filterNot(driver => except(driver.subagentId))
-            .parUnorderedTraverse(_.reset(force = false, dontContinue = true))
-            .map(_.combineAll))
+            .collect:
+              case driver: RemoteSubagentDriver => driver
+            .filterNot: driver =>
+              except(driver.subagentId)
+            .parUnorderedTraverse:
+              _.reset(force = false, dontContinue = true)
+            .map(_.combineAll)
 
   def startResetSubagent(subagentId: SubagentId, force: Boolean = false): IO[Checked[Unit]] =
     stateVar.value
-      .flatMap(s => IO(s.idToDriver.checked(subagentId)))
+      .flatMap(s => IO:
+        s.idToDriver.checked(subagentId))
       .flatMapT:
         case driver: RemoteSubagentDriver =>
           journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
@@ -320,15 +316,15 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       stateVar.value
         .flatMap(_.idToDriver
           .get(subagentId)
-          .fold(IO.unit)(subagentDriver =>
+          .fold(IO.unit): subagentDriver =>
             subagentDriver.tryShutdown
               .*>(stateVar.update(state => IO:
                 state.removeSubagent(subagentId)))
-              .*>(subagentDriver.terminate)))
-              .*>(journal
-                .persistKeyedEvent(ItemDetached(subagentId, agentPath))
-                .orThrow
-                .void)
+              .*>(subagentDriver.terminate))
+        .*>(journal
+          .persistKeyedEvent(ItemDetached(subagentId, agentPath))
+          .orThrow
+          .void)
 
   def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
     subagentItemStates
@@ -346,16 +342,17 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     journal.state.flatMap(_
       .idToSubagentItemState.values
       .view
-      .collect { case o if o.isDetaching => o.subagentId }
+      .collect:
+        case o if o.isDetaching => o.subagentId
       .toVector
       .traverse(startRemoveSubagent)
       .map(_.combineAll))
 
   def recoverSubagentSelections(subagentSelections: Seq[SubagentSelection]): IO[Checked[Unit]] =
-    logger.debugIO(
+    logger.debugIO:
       subagentSelections
         .traverse(addOrReplaceSubagentSelection)
-        .map(_.combineAll))
+        .map(_.combineAll)
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): IO[Checked[Unit]] =
@@ -373,44 +370,40 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .flatMap:
           case Some(_: LocalSubagentDriver) =>
             stateVar
-              .updateChecked(state => IO(
-                state.setDisabled(subagentItem.id, subagentItem.disabled)))
+              .updateChecked(state => IO:
+                state.setDisabled(subagentItem.id, subagentItem.disabled))
               .rightAs(None)
 
           case _ =>
             // Don't use the matched RemoteAgentDriver. We update state with an atomic operation.
-            stateVar.updateCheckedWithResult(state =>
-              state.idToAllocatedDriver.get(subagentItem.id) match {
+            stateVar.updateCheckedWithResult: state =>
+              state.idToAllocatedDriver.get(subagentItem.id) match
                 case None =>
                   allocateSubagentDriver(subagentItem)
-                    .map(allocatedDriver =>
+                    .map: allocatedDriver =>
                       state.insertSubagentDriver(allocatedDriver, disabled = subagentItem.disabled)
                         .flatMap(_.setDisabled(subagentItem.id, subagentItem.disabled))
-                        .map(_ -> Some(None -> allocatedDriver.allocatedThing)))
+                        .map(_ -> Some(None -> allocatedDriver.allocatedThing))
 
                 case Some(existingAllo) =>
                   val existingAllocated = existingAllo
                     .asInstanceOf[Allocated[IO, SubagentDriver]]
                   val existingDriver = existingAllocated.allocatedThing
-                  IO
-                    .defer(
-                      if subagentItem.uri == existingDriver.subagentItem.uri then
-                        IO.right(state -> None)
-                      else {
-                        // Subagent moved
-                        remoteSubagentDriverResource(subagentItem)
-                          .toAllocated
-                          .map(allocatedDriver =>
-                            state.replaceSubagentDriver(allocatedDriver, subagentItem)
-                              .map(_ -> Some(Some(existingAllocated) -> allocatedDriver.allocatedThing)))
-                        // Continue after locking updateCheckedWithResult
-                      })
-                    .flatMapT { case (state, result) =>
-                      IO(state
-                        .setDisabled(subagentItem.id, subagentItem.disabled)
-                        .map(_ -> result))
-                    }
-              })
+                  IO.defer:
+                    if subagentItem.uri == existingDriver.subagentItem.uri then
+                      IO.right(state -> None)
+                    else
+                      // Subagent moved
+                      remoteSubagentDriverResource(subagentItem)
+                        .toAllocated
+                        .map: allocatedDriver =>
+                          state.replaceSubagentDriver(allocatedDriver, subagentItem)
+                            .map(_ -> Some(Some(existingAllocated) -> allocatedDriver.allocatedThing))
+                  // Continue after locking updateCheckedWithResult )
+                  .flatMapT: (state, result) =>
+                    IO(state
+                      .setDisabled(subagentItem.id, subagentItem.disabled)
+                      .map(_ -> result))
         .flatMapT:
           case Some((Some(Allocated(oldDriver: RemoteSubagentDriver, releaseOld)), newDriver: RemoteSubagentDriver)) =>
             assert(oldDriver.subagentId == newDriver.subagentId)
@@ -419,11 +412,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
               .stopDispatcherAndEmitProcessLostEvents(ProcessLostDueSubagentUriChangeProblem, None)
               .*>(releaseOld)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper
-                .lock(oldDriver.subagentId)(
-                  newDriver.startMovedSubagent(oldDriver))
+                .lock(oldDriver.subagentId):
+                  newDriver.startMovedSubagent(oldDriver)
                 .logWhenItTakesLonger(name)
-                  .handleError(t => logger.error(
-                    s"addOrChange $name => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .handleError(t => logger.error(
+                  s"addOrChange $name => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
                 .startAndForget
                 .as(Right(None)))
 
@@ -458,8 +451,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         journal,
         controllerId,
         directorConf.subagentConf)
-      .evalTap(driver => IO.whenA(processingStarted)(
-        driver.startObserving))
+      .evalTap(driver => IO.whenA(processingStarted):
+        driver.startObserving)
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
   : ResourceIO[RemoteSubagentDriver] =
@@ -473,9 +466,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           controllerId,
           directorConf.subagentDriverConf,
           directorConf.recouplingStreamReaderConf)
-        .evalTap(driver => IO.whenA(processingStarted)(
-          driver.startObserving))
-    yield driver
+        .evalTap(driver => IO.whenA(processingStarted):
+          driver.startObserving)
+    yield
+      driver
 
   private def subagentApiResource(subagentItem: SubagentItem): ResourceIO[HttpSubagentApi] =
     assertThat(subagentItem.id != localSubagentId)

@@ -57,23 +57,24 @@ extends SubagentDriver, Service.StoppableByRequest:
         untilStopRequested)
 
   private def dedicate: IO[Checked[Unit]] =
-    logger.debugIO(IO.defer:
-      if wasRemote then
-        IO.right(())
-      else
-        val agentRunId = journal.unsafeCurrentState().agentRunId
-        subagent
-          .executeDedicateSubagent:
-            DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
-          .flatMapT: response =>
-            persistDedicated(response.subagentRunId))
+    logger.debugIO:
+      IO.defer:
+        if wasRemote then
+          IO.right(())
+        else
+          val agentRunId = journal.unsafeCurrentState().agentRunId
+          subagent
+            .executeDedicateSubagent:
+              DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
+            .flatMapT: response =>
+              persistDedicated(response.subagentRunId)
 
   private def persistDedicated(subagentRunId: SubagentRunId): IO[Checked[Unit]] =
     journal
-      .persist(state => Right(
+      .persist(state => Right:
         state.idToSubagentItemState.get(subagentId).exists(_.subagentRunId.nonEmpty)
           .thenList(subagentId <-: SubagentRestarted)
-          .appended(subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo())))))
+          .appended(subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo()))))
       .rightAs(())
 
   def startObserving: IO[Unit] =
@@ -84,11 +85,10 @@ extends SubagentDriver, Service.StoppableByRequest:
 
   // TODO Similar to SubagentEventListener
   private def observe: IO[Unit] =
-    logger.debugIO(
+    logger.debugIO:
       journal.state
         .map(_.idToSubagentItemState(subagentId).eventId)
-        .flatMap(observeAfter))
-
+        .flatMap(observeAfter)
 
   // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): IO[Unit] =
@@ -120,7 +120,8 @@ extends SubagentDriver, Service.StoppableByRequest:
             .*>(followUp)
       .takeUntilEval(untilStopRequested)
       .completedL
-      .handleError(t => logger.error(s"observeEvents => ${t.toStringWithCauses}"))
+      .handleError: t =>
+        logger.error(s"observeEvents => ${t.toStringWithCauses}")
 
   // NEW VERSION, a little bit slower despite it should be faster, collects multiple events in a transaction, like the Controller
   // TODO Similar to SubagentEventListener
@@ -217,8 +218,8 @@ extends SubagentDriver, Service.StoppableByRequest:
           .stopJobs(jobKeys, signal)))
 
   def terminate: IO[Unit] =
-    logger.traceIO(
-      stop)
+    logger.traceIO:
+      stop
 
   def tryShutdown: IO[Unit] =
     IO.raiseError(new RuntimeException("The local Subagent cannot be shut down"))
@@ -236,10 +237,10 @@ extends SubagentDriver, Service.StoppableByRequest:
           .map(Right(_))
 
   def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
-    logger.traceIO("startOrderProcessing", order.id)(
+    logger.traceIO("startOrderProcessing", order.id):
       requireNotStopping
         .flatMapT(_ => attachItemsForOrder(order))
-        .flatMapT(_ => startProcessingOrder2(order)))
+        .flatMapT(_ => startProcessingOrder2(order))
 
   private def attachItemsForOrder(order: Order[Order.Processing]): IO[Checked[Unit]] =
     signableItemsForOrderProcessing(order.workflowPosition)

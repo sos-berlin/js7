@@ -1,7 +1,6 @@
 package js7.subagent.director
 
-import cats.effect.Deferred
-import cats.effect.{FiberIO, IO}
+import cats.effect.{Deferred, FiberIO, IO}
 import cats.syntax.all.*
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -65,15 +64,13 @@ trait SubagentDriver:
 
   protected final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
   : IO[Checked[Map[String, Expression]]] =
-    journal.state
-      .map(_
-        .idToWorkflow
-        .checked(order.workflowId)
-        .map(_.instruction(order.position))
-        .map {
-          case o: Execute => o.defaultArguments
-          case _ => Map.empty
-        })
+    journal.state.map(_
+      .idToWorkflow
+      .checked(order.workflowId)
+      .map(_.instruction(order.position))
+      .map:
+        case o: Execute => o.defaultArguments
+        case _ => Map.empty)
 
   // TODO Emit one batch for all recovered orders!
   final def emitOrderProcessLost(order: Order[Order.Processing])
@@ -92,4 +89,5 @@ trait SubagentDriver:
         job <- workflow.keyToJob.checked(jobKey)
         jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
         signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
-      yield signedJobResources :+ signedWorkflow
+      yield
+        signedJobResources :+ signedWorkflow

@@ -82,12 +82,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     startEventListener
 
   def startMovedSubagent(previous: RemoteSubagentDriver): IO[Unit] =
-    logger.debugIO(
+    logger.debugIO:
       //previous.stopDispatcherAndEmitProcessLostEvents(None) *>
       IO.race(
         untilStopRequested,
         initiallyCoupled.io)
-      .flatMap {
+      .flatMap:
         case Left(())/*stopped*/ => IO.unit
         case Right(subagentRunId) =>
           logger.debug(
@@ -99,16 +99,14 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           //else
             /*previous.stopDispatcherAndEmitProcessLostEvents(None)
           .*>*/(IO.unit/*dispatcher.start(subagentRunId)*/)
-      })
 
   def terminate: IO[Unit] =
-    logger.traceIO(
-      stop)
+    logger.traceIO:
+      stop
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
-    IO {
-      // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
-    }
+    // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
+    IO.unit
 
   def reset(force: Boolean, dontContinue: Boolean = false): IO[Unit] =
     logger.debugIO:
@@ -130,12 +128,13 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     conf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
 
   def tryShutdown: IO[Unit] =
-    logger.debugIO(IO.defer:
-      shuttingDown = true
-      // Wait until no Order is being processed
-      orderToDeferred.stop
+    logger.debugIO:
+      IO.defer:
+        shuttingDown = true
+        // Wait until no Order is being processed
+        orderToDeferred.stop
         // Emit event and change state ???
-        .*>(tryShutdownSubagent()))
+      .*>(tryShutdownSubagent())
 
   //def suspend: IO[Unit] =
   //  dispatcher.suspend *> stopEventListener
@@ -180,17 +179,16 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   private def dedicate: IO[DedicateSubagent.Response] =
     val agentRunId = journal.unsafeCurrentState().agentRunId
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, agentRunId, controllerId)
-    logger.debugIO(
+    logger.debugIO:
       postCommandUntilSucceeded(cmd)
         .flatMap(response => journal
-          .persistKeyedEvent(
-            subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo())))
-          .flatTap(checked => IO.whenA(checked.isRight)(IO {
+          .persistKeyedEvent:
+            subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo()))
+          .flatTap(checked => IO.whenA(checked.isRight)(IO:
             lastSubagentRunId = Some(response.subagentRunId)
-            shuttingDown = false
-          }))
+            shuttingDown = false))
           .rightAs(response)
-          .orThrow))
+          .orThrow)
 
   private def couple(subagentRunId: SubagentRunId, eventId: EventId): IO[EventId] =
     logger.traceIO(cancelAndFailWhenStopping:
@@ -200,10 +198,9 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         .as(subagentRunId -> eventId)
         .onErrorRestartLoop(()):
           case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
-            orderToDeferred.toMap.size match {
+            orderToDeferred.toMap.size match
               case 0 => logger.info("Subagent restarted")
               case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
-            }
             onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
               .*>(dedicate)
               .map(response => response.subagentRunId -> response.subagentEventId)
@@ -244,8 +241,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         val orderIds = oToP.keys
         val deferred = oToP.values
         IO
-          .whenA(subagentDiedEvent.isDefined)(
-            if isLocal then dispatcher.shutdown else dispatcher.stopAndFailCommands)
+          .whenA(subagentDiedEvent.isDefined):
+            if isLocal then dispatcher.shutdown else dispatcher.stopAndFailCommands
           .*>(attachedItemKeys.update(_ => IO.pure(Map.empty)))
           .*>(journal
             .persist(state => Right(orderIds.view
@@ -267,18 +264,19 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess, problem: Problem)
   : IO[Checked[Unit]] =
     journal
-      .persist(state => Right(
-        state.idToOrder.get(startOrderProcess.orderId)
-          .filter(o => // Just to be sure, condition should always be true:
-            o.state == Order.Processing(subagentId) &&
-              o.workflowPosition == startOrderProcess.order.workflowPosition)
-          .map(_.id <-: OrderProcessed.processLost(problem))
-          .toList))
+      .persist: state =>
+        Right:
+          state.idToOrder.get(startOrderProcess.orderId)
+            .filter(o => // Just to be sure, condition should always be true:
+              o.state == Order.Processing(subagentId) &&
+                o.workflowPosition == startOrderProcess.order.workflowPosition)
+            .map(_.id <-: OrderProcessed.processLost(problem))
+            .toList
       .rightAs(())
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    logger.traceIO("recoverOrderProcessing", order.id)(
+    logger.traceIO("recoverOrderProcessing", order.id):
       if isLocal then
         emitOrderProcessLost(order)
           .map(_.orThrow)
@@ -286,12 +284,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           .map(Right(_))
       else
         requireNotStopping.flatMapT(_ =>
-          startOrderProcessing(order)))
+          startOrderProcessing(order))
 
   def startOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]] =
-    logger.traceIO("startOrderProcessing", order.id)(
-      requireNotStopping.flatMapT(_ =>
-        startProcessingOrder2(order)))
+    logger.traceIO("startOrderProcessing", order.id):
+      requireNotStopping.flatMapT: _ =>
+        startProcessingOrder2(order)
 
   private def startProcessingOrder2(order: Order[Order.Processing])
   : IO[Checked[FiberIO[OrderProcessed]]] =
@@ -398,31 +396,29 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
       journal
-        .lock(subagentId)(
+        .lock(subagentId):
           journal.persist(_
             .idToSubagentItemState.checked(subagentId)
-            .map { subagentItemState =>
+            .map: subagentItemState =>
               val problem = maybeProblem
                 .orElse(subagentItemState.problem)
                 .getOrElse(Problem.pure("decoupled"))
               (!subagentItemState.problem.contains(problem))
-                .thenList(subagentId <-: SubagentCouplingFailed(problem))
-            }))
+                .thenList(subagentId <-: SubagentCouplingFailed(problem)))
         .map(_.orThrow)
         .void
-        .handleErrorWith(t => IO.defer {
+        .handleErrorWith(t => IO.defer:
           // Error isn't logged until stopEventListener is called
           logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
-          IO.raiseError(t)
-        })
+          IO.raiseError(t))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
-    enqueueCommandAndForget(
-      SubagentCommand.DetachProcessedOrder(orderId))
+    enqueueCommandAndForget:
+      SubagentCommand.DetachProcessedOrder(orderId)
 
   protected def releaseEvents(eventId: EventId): IO[Unit] =
-    enqueueCommandAndForget(
-      SubagentCommand.ReleaseEvents(eventId))
+    enqueueCommandAndForget:
+      SubagentCommand.ReleaseEvents(eventId)
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
     dispatcher
@@ -444,20 +440,20 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       val retryAfterError = new RetryAfterError(processingAllowed.whenOff)
       val command = numberedCommand.value
       lazy val commandString = numberedCommand.copy(value = command.toShortString).toString
-      logger.traceIO("postQueuedCommand", commandString)(
-        ().tailRecM(_ =>
+      logger.traceIO("postQueuedCommand", commandString):
+        ().tailRecM: _ =>
           // TODO Use processingAllowed when Order is being canceled
           currentSubagentItemState
-            .flatMapT(subagentItemState => processingAllowed.isOff
-              .flatMap(isStopped =>
+            .flatMapT: subagentItemState =>
+              processingAllowed.isOff.flatMap: isStopped =>
                 // Double-check subagentRunId to be sure.
                 if isStopped || !subagentItemState.subagentRunId.contains(subagentRunId) then
                   logger.debug(s"postQueuedCommand($commandString) stopped")
                   IO.right(())
                 else
-                  postQueuedCommand2(numberedCommand)))
+                  postQueuedCommand2(numberedCommand)
             .materialize
-            .flatMap {
+            .flatMap:
               case Failure(throwable) =>
                 retryAfterError(Problem.reverseThrowable(throwable))
 
@@ -468,8 +464,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               case Success(checked @ Left(problem)) =>
                 if HttpClient.isTemporaryUnreachableStatus(problem.httpStatusCode) then
                   // We don't check the error type,
-                  // because it's seems impossible to properly detect recoverable errors.
-                  // Instead we repeat the command until we are being stopped due
+                  // because it seems impossible to properly detect recoverable errors.
+                  // Instead, we repeat the command until we are being stopped due
                   // to heartbeat timeout detection or other reason.
                   retryAfterError(problem)
                 else
@@ -477,17 +473,16 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
               case Success(checked @ Right(_)) =>
                 IO.right(checked)
-            })
-        .flatMap {
+        .flatMap:
           case Left(SubagentNotDedicatedProblem) =>
             logger.debug(s"⚠️ $commandString => SubagentNotDedicatedProblem => ProcessLost")
-            command match {
+            command match
               case command: StartOrderProcess =>
                 orderToDeferred
                   .remove(command.orderId)
                   // Delay to let onSubagentDied go ahead and let it handle all orders at once
                   //?.delayBy(100.ms)
-                  .flatMap {
+                  .flatMap:
                     case None =>
                       // OrderProcessed has already been emitted by onSubagentDied)
                       // The command does not fail:
@@ -498,13 +493,11 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                       // at once, but just in case the SubagentEventListener does run, we issue
                       // an OrderProcess event here.
                       onStartOrderProcessFailed(command, SubagentNotDedicatedProblem)
-                        .flatTapT(_ =>
+                        .flatTapT: _ =>
                           deferred.complete(OrderProcessed.processLost(SubagentNotDedicatedProblem))
-                            .as(Checked.unit))
-                  }
+                            .as(Checked.unit)
               case _ =>
                 IO.right(SubagentNotDedicatedProblem)
-            }
 
           case Left(problem) =>
             processingAllowed.isOff.flatMap(if _ then
@@ -514,7 +507,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               IO.left(problem))
 
           case Right(()) => IO.right(())
-        })
 
   private final class RetryAfterError(whenStopped: IO[Unit]):
     private val startedAt = now
@@ -548,7 +540,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       val command = numberedCommand.value
       dependentSignedItems(command)
         .map(_.orThrow)
-        .flatMap { signedItems =>
+        .flatMap: signedItems =>
           val cmd = signedItems match
             case Nil => numberedCommand
             case signedSeq =>
@@ -561,10 +553,9 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
           api
             .executeSubagentCommand(cmd)
             .flatMapT(_ => attachedItemKeys
-              .update(o => IO.pure(
-                o ++ signedItems.view.map(_.value.keyAndRevision)))
+              .update(o => IO.pure:
+                o ++ signedItems.view.map(_.value.keyAndRevision))
               .as(Checked.unit))
-        }
 
   private def dependentSignedItems(command: SubagentCommand)
   : IO[Checked[Seq[Signed[SignableItem]]]] =
@@ -572,8 +563,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       case startOrderProcess: StartOrderProcess =>
         val alreadyAttached = attachedItemKeys.get
         signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
-          .map(_.map(_.filterNot(signed =>
-            alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
+          .map(_.map(_.filterNot: signed =>
+            alreadyAttached.get(signed.value.key) contains signed.value.itemRevision))
       case _ =>
         IO.right(Nil)
 
@@ -582,7 +573,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   override def toString =
     s"RemoteSubagentDriver(${subagentItem.pathRev})"
-
 
 
 object RemoteSubagentDriver:

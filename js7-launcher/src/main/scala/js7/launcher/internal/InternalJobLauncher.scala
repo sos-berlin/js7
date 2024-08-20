@@ -67,20 +67,19 @@ extends JobLauncher:
       Step(processOrder, args)
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
-    Checked.catchNonFatal(
+    catchNonFatalFlatten:
       loadClass(className)
-        .flatMap(cls =>
+        .flatMap: cls =>
           if classOf[InternalJob] isAssignableFrom cls then
             getConstructor(cls.asInstanceOf[Class[InternalJob]])
               .map(con => () => construct(con, toJobContext(cls)))
           else
-            tryAdapter(cls))
-    ).flatten
+            tryAdapter(cls)
 
   private def tryAdapter(cls: Class[?]): Checked[() => Checked[InternalJob]] =
     val internalJobs = superclassesOf(cls)
-      .flatMap(cls =>
-        Option(cls.getAnnotation(classOf[InternalJobAdapter])))
+      .flatMap: cls =>
+        Option(cls.getAnnotation(classOf[InternalJobAdapter]))
       .map(_.value)
     if internalJobs.sizeIs > 1 then
       Left(Problem(s"Class ${cls.getName} has multiple @InternalJobAdapter annotations"))
@@ -116,7 +115,7 @@ object InternalJobLauncher:
     classOf[InternalJob.JobContext])
 
   private def getConstructor(clas: Class[? <: InternalJob]): Checked[Constructor[InternalJob]] =
-    Checked.catchNonFatal {
+    catchNonFatalFlatten:
       val constructors = clas
         .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]
         .filter(o => isPublic(o.getModifiers))
@@ -124,7 +123,6 @@ object InternalJobLauncher:
         .find(_.getParameterTypes.forall(isAllowedConstructorParamameterClass))
         .toChecked(Problem.pure(
           s"Class '${clas.getName}' does not have an appropriate public constructor (empty or InternalJob.JobContext)"))
-    }.flatten
 
   private def construct(constructor: Constructor[InternalJob], jobContext: JobContext)
   : Checked[InternalJob] =
