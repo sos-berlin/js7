@@ -25,8 +25,7 @@ final class IndexedRecordSetTest extends OurAsyncTestSuite:
             "1                   \n")
 
           _ <- rel1
-          _ = assert(file.contentString ==
-            "                    \n")
+          _ = assert(file.contentString == "")
 
           rel2 <- add(2)
           rel3 <- add(3)
@@ -44,15 +43,10 @@ final class IndexedRecordSetTest extends OurAsyncTestSuite:
 
           _ <- rel4
           _ = assert(file.contentString ==
-            "2                   \n" +
-            "                    \n" +
-            "                    \n")
+            "2                   \n")
 
           _ <- rel2
-          _ = assert(file.contentString ==
-            "                    \n" +
-            "                    \n" +
-            "                    \n")
+          _ = assert(file.contentString == "")
 
           _ <- add(0)
           _ <- add(Long.MinValue)

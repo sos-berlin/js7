@@ -1,6 +1,7 @@
 package js7.launcher.crashpidfile
 
 import cats.effect.{IO, Resource, ResourceIO}
+import cats.syntax.option.*
 import java.io.RandomAccessFile
 import java.nio.ByteOrder.BIG_ENDIAN
 import java.nio.channels.FileChannel
@@ -9,6 +10,7 @@ import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Path
 import java.nio.{ByteBuffer, ByteOrder}
 import js7.base.catsutils.CatsEffectExtensions.defer
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,13 +18,17 @@ import js7.launcher.crashpidfile.IndexedRecordSetImpl.*
 import scala.collection.mutable
 
 /** A mutable Set[A], stored in an indexed thing, reusing the freed entries. */
-private final class IndexedRecordSetImpl[A] private(writeAtIndex: WriteAtIndex[A], label: String)
-extends IndexedRecordSet[A]:
+trait IndexedRecordSetImpl[A] private extends IndexedRecordSet[A]:
+
+  protected def writeAtIndex(index: Int, aOrDelete: A | Delete): IO[Unit]
+
+  protected def label: String
 
   private val lock = AsyncLock()
   private val aToIndex = mutable.Map.empty[A, Integer]
   private var size = 0
   private val freeIndices = mutable.BitSet()
+  private var throwable = none[Throwable]
 
   def register(a: A): ResourceIO[Unit] =
     Resource:
@@ -30,22 +36,40 @@ extends IndexedRecordSet[A]:
         () -> remove(a)
 
   private def add(a: A): IO[Unit] =
-    lock.lock:
-      IO.defer:
-        val index = freeIndices.headOption getOrElse:
-          size += 1
-          size - 1
-        freeIndices -= index
-        aToIndex(a) = index
-        writeAtIndex(index, a)
+    manipulate(a, "add"):
+      val index = freeIndices.headOption getOrElse:
+        size += 1
+        size - 1
+      freeIndices -= index
+      aToIndex(a) = index
+      writeAtIndex(index, a)
 
   def remove(a: A): IO[Unit] =
+    manipulate(a, "remove"):
+      aToIndex.remove(a).fold(IO.unit): index_ =>
+        val index = index_.intValue
+        freeIndices += index
+
+        // Delete free entries at end of file
+        var newSize = size
+        while newSize > 0 && freeIndices(newSize - 1) do
+          newSize -= 1
+          freeIndices -= newSize
+        val truncate = (newSize < size) ? newSize
+        size = newSize
+        writeAtIndex(index, Delete(truncate))
+
+  private def manipulate(a: A, name: String)(body: => IO[Unit]): IO[Unit] =
     lock.lock:
       IO.defer:
-        aToIndex.remove(a).fold(IO.unit): index_ =>
-          val index = index_.intValue
-          freeIndices += index
-          writeAtIndex(index, Delete)
+        throwable match
+          case Some(t) => IO(logger.warn:
+            s"$toString $name($a) ignored due to previous error $t")
+          case None =>
+            IO.defer(body)
+              .onError(t => IO:
+                throwable = t.some)
+
 
   override def toString =
     "IndexedRecordSetImpl" + (label.nonEmpty ?? s":$label")
@@ -53,12 +77,9 @@ extends IndexedRecordSet[A]:
 
 private object IndexedRecordSetImpl:
 
-  type WriteAtIndex[A] = (Int, A | Delete) => IO[Unit]
-  type Delete = Delete.type
-  object Delete
+  private val logger = Logger[this.type]
 
-  def apply[A](label: String = "")(writeAtIndex: WriteAtIndex[A]): IndexedRecordSetImpl[A] =
-    new IndexedRecordSetImpl(writeAtIndex, label)
+  final case class Delete(truncate: Option[Int])
 
   /** Creates an IndexedRecordSetImpl based on a fixed length text record file.
    * <ul>
@@ -76,7 +97,7 @@ private object IndexedRecordSetImpl:
     Resource.defer:
       val emptyLine = (" " * stringByteSize + '\n').getBytes(US_ASCII)
       file[A](path, stringByteSize + 1, label = label):
-        case (buf, Delete) =>
+        case (buf, _: Delete) =>
           buf.put(emptyLine)
         case (buf, a: A @unchecked) =>
           val pos0 = buf.position()
@@ -98,23 +119,26 @@ private object IndexedRecordSetImpl:
         channel.truncate(0)
         val myLabel = if label.nonEmpty then label else file.toString
         Resource.eval(IO:
-          IndexedRecordSetImpl[A](myLabel):
-            new WriteAtIndex[A]:
-              private val byteBuffer = ByteBuffer.wrap(new Array(recordSize)).order(byteOrder)
-              private val lock = AsyncLock()
+          new IndexedRecordSetImpl[A]:
+            val label = myLabel
 
-              def apply(index: Int, a: A | Delete) =
-                lock.lock:
-                  IO.defer:
-                    byteBuffer.clear()
-                    writeBuffer(byteBuffer, a)
-                    if byteBuffer.position != recordSize then throw AssertionError:
-                      s"Unexpected length=${byteBuffer.position}, expected was $recordSize"
-                    byteBuffer.flip()
-                    interruptibleVirtualThread:
-                      channel.position(index * recordSize)
-                      channel.write(byteBuffer)
-                      ())
+            private val byteBuffer = ByteBuffer.wrap(new Array(recordSize)).order(byteOrder)
+
+            protected def writeAtIndex(index: Int, aOrDelete: A | Delete) =
+              IO.defer:
+                byteBuffer.clear()
+                writeBuffer(byteBuffer, aOrDelete)
+                if byteBuffer.position != recordSize then throw AssertionError:
+                  s"Unexpected length=${byteBuffer.position}, expected was $recordSize"
+                byteBuffer.flip()
+                interruptibleVirtualThread:
+                  channel.position(index * recordSize)
+                  channel.write(byteBuffer)
+                  aOrDelete match
+                    case Delete(Some(truncate)) =>
+                      channel.truncate(truncate * recordSize)
+                    case _ =>
+                  ())
     yield
       service
 

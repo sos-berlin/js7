@@ -22,8 +22,7 @@ final class CrashPidFileTest extends OurAsyncTestSuite:
             "0000000000000001")
 
           _ <- rel1
-          _ = assert(readHex ==
-            "0000000000000000")
+          _ = assert(readHex == "")
 
           rel2 <- add(Pid(2))
           rel3 <- add(Pid(3))
@@ -41,21 +40,15 @@ final class CrashPidFileTest extends OurAsyncTestSuite:
 
           _ <- rel123
           _ = assert(readHex ==
-            "0000000000000002" +
-            "0000000000000000" +
-            "0000000000000000")
+            "0000000000000002")
 
           _ <- rel2
-          _ = assert(readHex ==
-            "0000000000000000" +
-            "0000000000000000" +
-            "0000000000000000")
+          _ = assert(readHex == "")
 
           _ <- add(Pid(Long.MinValue))
           _ <- add(Pid(Long.MaxValue))
           _ = assert(readHex ==
             "8000000000000000" +
-            "7fffffffffffffff" +
-            "0000000000000000")
+            "7fffffffffffffff")
         yield
           succeed

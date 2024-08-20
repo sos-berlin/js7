@@ -1,7 +1,7 @@
 package js7.launcher.crashpidfile
 
-import cats.effect.{IO, ResourceIO}
 import cats.effect.kernel.Resource
+import cats.effect.{IO, ResourceIO}
 import java.nio.ByteBuffer
 import java.nio.file.Path
 import js7.base.utils.ScalaUtils.*
@@ -15,7 +15,7 @@ trait IndexedRecordSet[A]:
 
 object IndexedRecordSet:
 
-  export IndexedRecordSetImpl.{apply,file}
+  export IndexedRecordSetImpl.file
 
   // TODO Use export
   // Because Scala 3.3.3 export looses the default argument:

@@ -41,5 +41,5 @@ object CrashPidFileService:
    */
   def file(file: Path): ResourceIO[PidFileService] =
     IndexedRecordSet.file(file, 8/*Long*/, CrashPidFile.byteOrder, s"CrashPidFile:$file"):
-      case (buf, Delete) => buf.putLong(0)
+      case (buf, _: Delete) => buf.putLong(0)
       case (buf, pid: Pid) => buf.putLong(pid.number)
