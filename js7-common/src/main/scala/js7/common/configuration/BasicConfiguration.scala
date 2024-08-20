@@ -2,6 +2,7 @@ package js7.common.configuration
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
+import js7.base.io.file.FileUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 
 trait BasicConfiguration:
@@ -11,6 +12,9 @@ trait BasicConfiguration:
 
 
 object BasicConfiguration:
+
+  def dataToLockFile(dataDir: Path): Path =
+    dataDir / "state" / "lock"
 
   trait Companion[Cnf <: BasicConfiguration]:
 

@@ -1,6 +1,6 @@
 package js7.common.system.startup
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets.*
@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.tryDeleteDirectoryContentRecursively
 import js7.base.system.startup.StartUp.printlnWithClock
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
+import js7.common.configuration.BasicConfiguration
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -42,8 +43,8 @@ object JavaMainLockfileSupport:
       val state = data.resolve("state")
       if !exists(state) then createDirectory(state)
       // The lockFile secures the state directory against double use.
-      val lockFile = state.resolve("lock")
-      lock(lockFile):
+      val lockFile = BasicConfiguration.dataToLockFile(data)
+      lock(lockFile, ProgramTermination.Failure):
         JavaMain.runMain(name):
           cleanWorkDirectory(data.resolve("work"))
           body(arguments)
@@ -54,28 +55,30 @@ object JavaMainLockfileSupport:
     else
       createDirectory(workDirectory)
 
-  // Also write PID to lockFile
-  private def lock(lockFile: Path)(body: IO[ProgramTermination]): IO[ProgramTermination] =
-    IO.defer:
-      val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
-      Try(lockFileChannel.tryLock()) match
-        case Failure(throwable) =>
-          IO:
-            printlnWithClock(s"tryLock: $throwable")
-            ProgramTermination.Failure
+  // Also writes PID to lockFile
+  // Do not delete the lockFile
+  // - to avoid race condition with concurrent start,
+  // - to allow the calling script to compare its content after the Engine terminated.
+  //   (Used by CrashPidFileKiller)
+  def lock[A](lockFile: Path, lockedValue: A)(body: IO[A]): IO[A] =
+    Resource
+      .fromAutoCloseable(IO:
+        FileChannel.open(lockFile, CREATE, WRITE))
+      .use: lockFileChannel =>
+        Try(lockFileChannel.tryLock()) match
+          case Failure(throwable) =>
+            IO:
+              printlnWithClock(s"tryLock: $throwable")
+              lockedValue
 
-        case Success(null) =>
-          IO:
-            lockFileChannel.close()
-            printlnWithClock("Duplicate start of JS7")
-            ProgramTermination.Failure
+          case Success(null) =>
+            IO:
+              printlnWithClock("Duplicate start of JS7")
+              lockedValue
 
-        case Success(_) =>
-          try
-            lockFileChannel.write:
-              ByteBuffer.wrap:
-                ProcessHandle.current.pid.toString.getBytes(UTF_8)
-            body
-          finally
-            lockFileChannel.close()
-          // Do not delete the lockFile, to avoid race condition with concurrent start.
+          case Success(_) =>
+            IO.defer:
+              lockFileChannel.write:
+                ByteBuffer.wrap:
+                  ProcessHandle.current.pid.toString.getBytes(UTF_8)
+              body
