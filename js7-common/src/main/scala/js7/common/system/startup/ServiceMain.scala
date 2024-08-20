@@ -89,7 +89,7 @@ object ServiceMain:
 
     def logTermination(name: String, termination: ProgramTermination): ExitCode =
       // Log complete timestamp in case of short log timestamp
-      val msg = s"$name terminates now after ${runningSince.elapsed.pretty}" +
+      val msg = s"$name terminates after ${runningSince.elapsed.pretty}" +
         (termination.restart ?? " and is expected to restart") + s" ($nowString)"
       logger.info(msg)
       printlnWithClock(msg)
