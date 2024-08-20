@@ -1,6 +1,6 @@
 package js7.launcher.crashpidfile
 
-import cats.effect.{ExitCode, IO, Ref}
+import cats.effect.{IO, Ref}
 import fs2.Stream
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -13,11 +13,10 @@ object TestPidReusage extends SimpleServiceProgram[BasicConfiguration.Empty]:
 
   private type Pid = Long
 
-  def program(conf: BasicConfiguration.Empty) =
+  def program(conf: BasicConfiguration.Empty): IO[Unit] =
     findDuplicateWhileShowingProgress.flatMap: (pid, duration) =>
       IO:
         println(s"Duplicate PID $pid after ${duration.pretty}")
-        ExitCode.Success
 
   private def findDuplicateWhileShowingProgress: IO[(Pid, Duration)] =
     Ref[IO].of[(Int, Pid)](0 -> 0).flatMap: ref =>

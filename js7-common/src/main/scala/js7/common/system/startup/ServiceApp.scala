@@ -10,17 +10,15 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 
 trait ServiceApp extends OurApp:
+  self =>
 
   protected final def runProgramAsService[Cnf <: BasicConfiguration](
     args: List[String],
-    toConf: CommandLineArguments => Cnf,
-    label: String = getClass.shortClassName)
-    (program: Cnf => IO[ExitCode])
+    toConf: CommandLineArguments => Cnf)
+    (program: Cnf => IO[ExitCode | Unit])
   : IO[ExitCode] =
     runService[Cnf, MainService](args, toConf, suppressTerminationLogging = true):
-      conf => SimpleMainService.resource(
-        program = program(conf).map(ProgramTermination.fromExitCode),
-        label = label)
+      conf => programAsService(program(conf))
 
   protected final def runService[Cnf <: BasicConfiguration, Svc <: MainService : Tag](
     args: List[String],
@@ -38,3 +36,8 @@ trait ServiceApp extends OurApp:
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
       program, use)
+
+  protected final def programAsService(program: IO[ExitCode | Unit]): ResourceIO[SimpleMainService] =
+    SimpleMainService.resource(program, label = self.toString)
+
+  override def toString = getClass.shortClassName

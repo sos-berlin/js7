@@ -9,4 +9,4 @@ extends ServiceApp:
   final def run(args: List[String]): IO[ExitCode] =
     runProgramAsService(args, Cnf.fromCommandLine)(program)
 
-  protected def program(conf: Cnf): IO[ExitCode]
+  protected def program(conf: Cnf): IO[ExitCode | Unit]

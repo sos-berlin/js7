@@ -1,7 +1,7 @@
 package js7.base.service
 
 import cats.effect.kernel.Outcome
-import cats.effect.{Deferred, IO, ResourceIO}
+import cats.effect.{Deferred, ExitCode, IO, ResourceIO}
 import js7.base.utils.ProgramTermination
 
 trait SimpleMainService extends MainService:
@@ -26,11 +26,13 @@ trait SimpleMainService extends MainService:
 
 object SimpleMainService:
 
-  def resource(program: IO[ProgramTermination], label: String = ""): ResourceIO[SimpleMainService] =
+  def resource(program: IO[ExitCode | Unit], label: String): ResourceIO[SimpleMainService] =
     Service.resource:
       IO:
         new SimpleMainService with Service.StoppableByCancel:
-          def run = program
+          def run = program.map:
+            case () => ProgramTermination.Success
+            case o: ExitCode => ProgramTermination.fromExitCode(o)
 
           override def toString =
-            if label.nonEmpty then label else super.toString
+            if label.nonEmpty then label else "SimpleMainService"

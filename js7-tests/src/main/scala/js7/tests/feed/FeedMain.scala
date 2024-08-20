@@ -3,7 +3,6 @@ package js7.tests.feed
 import cats.effect.{ExitCode, IO, Resource}
 import js7.agent.main.AgentMain.runService
 import js7.base.service.SimpleMainService
-import js7.base.utils.ProgramTermination
 import js7.common.system.startup.ServiceApp
 
 object FeedMain extends ServiceApp:
@@ -15,6 +14,5 @@ object FeedMain extends ServiceApp:
         ExitCode(0)
     else
       runService(args, FeedConf.fromCommandLine): conf =>
-        SimpleMainService.resource:
+        programAsService:
           Feed.run(Resource.eval(IO.pure(System.in)), conf)
-            .as(ProgramTermination.Success)

@@ -2,7 +2,6 @@ package js7.tests.addOrders
 
 import cats.effect.{ExitCode, IO}
 import js7.base.service.SimpleMainService
-import js7.base.utils.ProgramTermination
 import js7.common.system.startup.ServiceApp
 
 object TestAddOrdersMain extends ServiceApp:
@@ -16,12 +15,12 @@ object TestAddOrdersMain extends ServiceApp:
     else
       runService(args, Settings.fromCommandLine):
         conf =>
-          SimpleMainService.resource:
+          programAsService:
             TestAddOrders.run(conf, logToStdout = true).flatMap:
               case Left(problem) =>
                 IO:
                   println(problem.toString)
-                  ProgramTermination.Failure
+                  ExitCode.Error
 
               case Right(statistics) =>
-                IO.pure(ProgramTermination.Success)
+                IO.pure(ExitCode.Success)
