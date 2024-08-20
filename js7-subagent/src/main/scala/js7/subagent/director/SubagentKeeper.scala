@@ -311,7 +311,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def startRemoveSubagent(subagentId: SubagentId): IO[Unit] =
     removeSubagent(subagentId)
-      .handleError[Unit](t => IO(logger.error(s"removeSubagent($subagentId) => $t")))
+      .handleError[Unit]: t =>
+        logger.error(s"removeSubagent($subagentId) => $t")
       .startAndForget
 
   private def removeSubagent(subagentId: SubagentId): IO[Unit] =
