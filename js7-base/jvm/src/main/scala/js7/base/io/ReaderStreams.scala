@@ -16,6 +16,7 @@ object ReaderStreams:
 
   private val DefaultBufferSize = 8192
 
+  /** Returns a Chunk[Byte] immediately after each read operation. */
   def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
   : Stream[IO, Byte] =
     blockingChannelToByteStream(newChannel(in), bufferSize)
