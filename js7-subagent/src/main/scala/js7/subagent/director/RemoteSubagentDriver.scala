@@ -316,8 +316,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                         logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
                       IO.right(())
 
-                    case Some(deferred) =>
-                      assert(deferred eq deferred)
+                    case Some(deferred_) =>
+                      assert(deferred_ eq deferred)
 
                       val orderProcessed = OrderProcessed:
                         problem match
