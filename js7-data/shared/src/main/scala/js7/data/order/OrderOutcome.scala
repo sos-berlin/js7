@@ -203,7 +203,10 @@ object OrderOutcome:
         uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
       yield Disrupted(problem, uncatchable)
 
-    final case class ProcessLost(problem: Problem) extends Reason
+    /** Indicates that the Engine should restart the job.
+     * @see WorkflowJob#isNotRestartable.
+     */
+    final case class ProcessLost private[OrderOutcome](problem: Problem) extends Reason
     object ProcessLost:
       private val jsonEncoder: Encoder.AsObject[ProcessLost] =
         o => JsonObject("problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson)

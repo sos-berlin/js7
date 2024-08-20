@@ -2,10 +2,9 @@ package js7.subagent.director
 
 import cats.effect.{Deferred, FiberIO, IO, ResourceIO}
 import cats.syntax.flatMap.*
-import cats.syntax.foldable.*
-import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsExtensions.traverseCombine
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -26,7 +25,7 @@ import js7.base.web.HttpClient
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.controller.ControllerId
-import js7.data.event.EventId
+import js7.data.event.{EventId, KeyedEvent}
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.OrderProcessed
@@ -234,34 +233,37 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDiedEvent
     val processing = Order.Processing(subagentId)
-    val orderProcessed = OrderProcessed.processLost(orderProblem)
     logger.debugIO(orderToDeferred
       .removeAll
-      .flatMap: oToP =>
-        val orderIds = oToP.keys
-        val deferred = oToP.values
+      .flatMap: oToD =>
+        val orderIds = oToD.keys
         IO
           .whenA(subagentDiedEvent.isDefined):
             if isLocal then dispatcher.shutdown else dispatcher.stopAndFailCommands
           .*>(attachedItemKeys.update(_ => IO.pure(Map.empty)))
           .*>(journal
             .persist(state => Right(orderIds.view
-              .filter: orderId =>
-                // Just to be sure, condition should always be true:
-                state.idToOrder.get(orderId).exists(_.state == processing)
+              .flatMap:
+                state.idToOrder.get
+              .filter: order =>
+                order.state == processing // Just to be sure, condition should always be true
               // Filter Orders which have been sent to Subagent ???
-              .map(_ <-: orderProcessed)
+              .map: order =>
+                order.id <-: state.orderProcessLostIfRestartable(order, orderProblem)
               .concat(subagentDiedEvent.map(subagentId <-: _))
               .toVector)))
           .map(_.orThrow)
-          .*>(deferred.toVector
-            .traverse:
-              _.complete(orderProcessed).void
-            .map(_.combineAll)))
+          .flatMap: (stampedEvents, _) =>
+            stampedEvents.map(_.value).traverseCombine:
+              case KeyedEvent(orderId: OrderId, orderProcessed: OrderProcessed) =>
+                oToD(orderId).complete(orderProcessed).void
+              case _ => IO.unit)
 
   // May run concurrently with onSubagentDied !!!
   // Be sure that only on OrderProcessed event is emitted!
-  private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess, problem: Problem)
+  private def onStartOrderProcessFailed(
+    startOrderProcess: StartOrderProcess,
+    orderProcessed: OrderProcessed)
   : IO[Checked[Unit]] =
     journal
       .persist: state =>
@@ -270,7 +272,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             .filter(o => // Just to be sure, condition should always be true:
               o.state == Order.Processing(subagentId) &&
                 o.workflowPosition == startOrderProcess.order.workflowPosition)
-            .map(_.id <-: OrderProcessed.processLost(problem))
+            .map(_.id <-: orderProcessed)
             .toList
       .rightAs(())
 
@@ -278,7 +280,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceIO("recoverOrderProcessing", order.id):
       if isLocal then
-        emitOrderProcessLost(order)
+        emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)
           .start
           .map(Right(_))
@@ -493,9 +495,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                       // The SubagentEventListener should do the same for all lost processes
                       // at once, but just in case the SubagentEventListener does run, we issue
                       // an OrderProcess event here.
-                      onStartOrderProcessFailed(command, SubagentNotDedicatedProblem)
+                      val orderProcessed = OrderProcessed.processLost(SubagentNotDedicatedProblem)
+                      onStartOrderProcessFailed(command, orderProcessed)
                         .flatTapT: _ =>
-                          deferred.complete(OrderProcessed.processLost(SubagentNotDedicatedProblem))
+                          deferred.complete(orderProcessed)
                             .as(Checked.unit)
               case _ =>
                 IO.right(SubagentNotDedicatedProblem)

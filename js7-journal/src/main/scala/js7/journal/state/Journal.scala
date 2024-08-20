@@ -48,6 +48,13 @@ extends ReadableStateJournal[S]:
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Unit]]
 
+  final def persist1[E <: Event](stateToEvents: S => Checked[KeyedEvent[E]])
+  : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    persist: state =>
+      stateToEvents(state).map(_ :: Nil)
+    .map(_.map:
+      case (Seq(stampedEvent), updated) => stampedEvent -> updated)
+
   final def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     persistWithOptions(CommitOptions.default)(stateToEvents)

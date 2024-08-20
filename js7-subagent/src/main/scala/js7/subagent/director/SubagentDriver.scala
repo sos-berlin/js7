@@ -12,6 +12,7 @@ import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobKey, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
+import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression
 import js7.data.workflow.Workflow
@@ -73,10 +74,12 @@ trait SubagentDriver:
         case _ => Map.empty)
 
   // TODO Emit one batch for all recovered orders!
-  final def emitOrderProcessLost(order: Order[Order.Processing])
+  final def emitOrderProcessLostAfterRestart(order: Order[Order.Processing])
   : IO[Checked[OrderProcessed]] =
     journal
-      .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
+      .persist1: state =>
+        Right:
+          order.id <-: state.orderProcessLostIfRestartable(order, ProcessLostDueToRestartProblem)
       .map(_.map(_._1.value.event))
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)

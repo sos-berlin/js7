@@ -163,7 +163,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver, onEvents):
               if failedOverSubagentId contains subagentDriver.subagentId then
-                subagentDriver.emitOrderProcessLost(order)
+                subagentDriver.emitOrderProcessLostAfterRestart(order)
                   .flatMap(_.traverse(orderProcessed => IO.pure(orderProcessed).start))
               else
                 subagentDriver.recoverOrderProcessing(order)

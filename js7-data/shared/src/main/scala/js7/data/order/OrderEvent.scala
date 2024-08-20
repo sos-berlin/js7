@@ -224,11 +224,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderProcessed(outcome: OrderOutcome) extends OrderCoreEvent:
     override def isSucceeded: Boolean = outcome.isSucceeded
   object OrderProcessed:
+    @TestOnly
     val processLostDueToRestart: OrderProcessed = processLost(ProcessLostDueToRestartProblem)
+    @TestOnly
     val processLostDueToReset: OrderProcessed = processLost(ProcessLostDueToResetProblem)
 
     def processLost(problem: Problem): OrderProcessed =
-      OrderProcessed(OrderOutcome.Disrupted(OrderOutcome.Disrupted.ProcessLost(problem)))
+      OrderProcessed(OrderOutcome.processLost(problem))
 
     implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
 

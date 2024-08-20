@@ -33,7 +33,8 @@ final case class WorkflowJob(
   timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean,
   admissionTimeScheme: Option[AdmissionTimeScheme],
-  skipIfNoAdmissionStartForOrderDay: Boolean):
+  skipIfNoAdmissionStartForOrderDay: Boolean,
+  isNotRestartable: Boolean):
 
   def referencedJobResourcePaths: View[JobResourcePath] =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
@@ -47,6 +48,9 @@ final case class WorkflowJob(
         expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
       else
         Checked.unit)
+
+  def isRestartable: Boolean =
+    !isNotRestartable
 
 
 object WorkflowJob:
@@ -64,11 +68,12 @@ object WorkflowJob:
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
-    skipIfNoAdmissionStartForOrderDay: Boolean = false)
+    skipIfNoAdmissionStartForOrderDay: Boolean = false,
+    isNotRestartable: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
       processLimit, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
-      admissionTimeScheme, skipIfNoAdmissionStartForOrderDay
+      admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable
     ).orThrow
 
   def checked(
@@ -82,13 +87,14 @@ object WorkflowJob:
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
-    skipIfNoAdmissionStartForOrderDay: Boolean = false)
+    skipIfNoAdmissionStartForOrderDay: Boolean = false,
+    isNotRestartable: Boolean = false)
   : Checked[WorkflowJob] =
     for _ <- jobResourcePaths.checkUniqueness yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
         processLimit, sigkillDelay, timeout, failOnErrWritten,
-        admissionTimeScheme, skipIfNoAdmissionStartForOrderDay)
+        admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name]:
@@ -110,7 +116,8 @@ object WorkflowJob:
       "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
       "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson,
-      "skipIfNoAdmissionStartForOrderDay" -> workflowJob.skipIfNoAdmissionStartForOrderDay.?.asJson)
+      "skipIfNoAdmissionStartForOrderDay" -> workflowJob.skipIfNoAdmissionStartForOrderDay.?.asJson,
+      "isNotRestartable" -> workflowJob.isNotRestartable.?.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for
@@ -136,8 +143,10 @@ object WorkflowJob:
           case Some(o) => Right(o)
           case None => // COMPATIBLE with v2.4
             c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
+      isNotRestartable <- c.getOrElse[Boolean]("isNotRestartable")(false)
       job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
         maybeProcessLimit, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
-        skipIfNoAdmissionStartForOrderDay
+        skipIfNoAdmissionStartForOrderDay, isNotRestartable
       ).toDecoderResult(c.history)
-    yield job
+    yield
+      job

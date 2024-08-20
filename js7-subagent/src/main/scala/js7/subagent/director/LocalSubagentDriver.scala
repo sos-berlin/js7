@@ -231,7 +231,7 @@ extends SubagentDriver, Service.StoppableByRequest:
         requireNotStopping.flatMapT: _ =>
           startOrderProcessing(order) // TODO startOrderProcessing again ?
       else
-        emitOrderProcessLost(order)
+        emitOrderProcessLostAfterRestart(order)
           .map(_.orThrow)
           .start
           .map(Right(_))
