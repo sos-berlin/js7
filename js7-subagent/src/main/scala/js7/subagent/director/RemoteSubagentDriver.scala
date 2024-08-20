@@ -319,11 +319,12 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                     case Some(deferred_) =>
                       assert(deferred_ eq deferred)
 
-                      val orderProcessed = OrderProcessed:
+                      val orderProcessed =
                         problem match
                           case SubagentIsShuttingDownProblem =>
-                            OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
-                          case _ => OrderOutcome.Disrupted(problem)
+                            OrderProcessed.processLost(SubagentShutDownBeforeProcessStartProblem)
+                          case _ =>
+                            OrderProcessed(OrderOutcome.Disrupted(problem))
 
                       journal
                         .persistKeyedEvent(order.id <-: orderProcessed)
