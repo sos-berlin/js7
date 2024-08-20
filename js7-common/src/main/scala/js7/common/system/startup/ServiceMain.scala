@@ -49,7 +49,8 @@ object ServiceMain:
                 commandLineArguments.requireNoMoreArguments() // throws
                 conf
               logging.logFirstLines(commandLineArguments, conf)
-              logging.run(toServiceResource(conf))(use(conf, _))
+              logging.run(toServiceResource(conf)):
+                use(conf, _)
           .attempt.map:
             case Left(throwable) => ExitCode.Error // Service has already logged an error
             case Right(termination) =>

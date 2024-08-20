@@ -6,9 +6,14 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 
 trait BasicConfiguration:
+
   def config: Config
-  def maybeConfigDirectory: Option[Path] = None
-  def maybeDataDirectory: Option[Path] = None
+
+  def maybeConfigDirectory: Option[Path] =
+    None
+
+  def maybeDataDirectory: Option[Path] =
+    None
 
 
 object BasicConfiguration:

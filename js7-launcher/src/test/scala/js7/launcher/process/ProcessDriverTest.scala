@@ -99,7 +99,8 @@ final class ProcessDriverTest extends OurAsyncTestSuite, BeforeAndAfterAll:
               processDriver = new ProcessDriver(order.id, conf, jobLauncherConf)
               assertion <- Resource.eval:
                 for
-                  outcome <- processDriver.runProcess(Map("VAR1" -> "VALUE1".some), testSink.stdObservers)
+                  outcome <- processDriver
+                    .runProcess(Map("VAR1" -> "VALUE1".some), testSink.stdObservers)
                   out <- testSink.out
                   err <- testSink.err
                 yield
