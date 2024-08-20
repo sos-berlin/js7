@@ -22,8 +22,8 @@ END
 RUN <<END
   # Install sbt
   set -euo pipefail
-  sbtVersion=1.10.0
-  sbtSHA256=154b7de6c19207c73d0a304f901c8c4b6ead9a9c3a99a98a9d72ac19419d2640
+  sbtVersion=1.10.1
+  sbtSHA256=47fe98ce9498ee46e69f22672f3c12234cbe7e719e764410a13e58b725d659f3
   mkdir --parents /opt/lib/sbt-$sbtVersion
   cd /root
   curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz \
