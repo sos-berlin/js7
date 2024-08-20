@@ -12,9 +12,8 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
+import js7.data.job.{Executable, JobResourcePath}
 import js7.data.subagent.SubagentSelectionId
-import js7.data.value.ValuePrinter
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, Scope}
 import scala.collection.View
@@ -41,17 +40,6 @@ final case class WorkflowJob(
 
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
-
-  def argumentsString: String = s"agent=${agentPath.string}, " +
-    (executable match {
-      case PathExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"executable=$o"
-      case ShellScriptExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"script=$o"
-      case CommandLineExecutable(expr, login, returnCodeMeansing, env) => "command=" + ValuePrinter.quoteString(expr.toString)
-      case InternalExecutable(className, script, jobArguments, arguments) =>
-        "internalJobClass=" + ValuePrinter.quoteString(className) ++
-          (jobArguments.nonEmpty ?? ("jobArguments=" + ValuePrinter.nameToExpressionToString(jobArguments))) ++
-          (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
-    })
 
   def checked: Checked[Unit] =
     subagentSelectionId.fold(Checked.unit)(expr =>
