@@ -107,9 +107,6 @@ agentOptions+=("--data-directory=$data")
 [ -z "$httpPort" ] || agentOptions+=("--http-port=$httpPort")
 [ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort")
 
-crashpidfile="$data/work/crashpidfile"
-rm -f "$crashpidfile"
-
 while true; do
   loopJavaOptions=()
 
@@ -124,10 +121,6 @@ while true; do
       loopJavaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
     fi
   fi
-
-  # JS7 will delete the maybeDuplicateStartFile after lock file as been acquired
-  maybeDuplicateStartFile="$workDir/maybe-duplicate-start-$$"
-  touch "$maybeDuplicateStartFile"
 
   execute=(
     "$java"
@@ -183,8 +176,8 @@ while true; do
     log "JS7 Subagent exited with exit code $returnCode"
   fi
 
-  # Call CrashPidFileKiller only if maybeDuplicateStartFile has been deleted (no duplicate start)
-  if [ ! -e "$maybeDuplicateStartFile" ] && [ -s "$crashpidfile" ]; then :
+  # Call CrashPidFileKiller only if Engine could lock $data/state/lock
+  if [[ $(cat "$data/state/lock" 2>/dev/null || true) -eq $pid ]] && [[ -s "$data/work/crashpidfile" ]]; then
     ps fux || true
 
     "$java" -Xmx100m \
@@ -192,7 +185,7 @@ while true; do
       "${stderrLogJavaOptions[@]}" \
       -classpath "$classpathString" \
       js7.launcher.crashpidfile.CrashPidFileKiller \
-      <"$crashpidfile" || true
+      --data-directory="$data" || true
 
     ps fux || true
   fi

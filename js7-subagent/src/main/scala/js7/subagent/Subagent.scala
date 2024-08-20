@@ -38,7 +38,7 @@ import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
-import js7.launcher.crashpidfile.CrashPidFileService
+import js7.launcher.crashpidfile.{CrashPidFile, CrashPidFileService}
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
@@ -227,7 +227,7 @@ object Subagent:
     val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking")
 
     for
-      pidFile <- CrashPidFileService.file(conf.workDirectory / "crashpidfile")
+      pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
       actorSystem <- Pekkos.actorSystemResource(conf.name, config)
       sessionRegister <- SessionRegister.resource(SubagentSession(_), config)
       systemSessionToken <- sessionRegister

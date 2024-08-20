@@ -4,6 +4,7 @@ import cats.effect.ResourceIO
 import java.nio.ByteOrder
 import java.nio.ByteOrder.BIG_ENDIAN
 import java.nio.file.Path
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Pid
 import js7.launcher.crashpidfile.IndexedRecordSetImpl.Delete
 
@@ -16,8 +17,10 @@ object CrashPidFile:
 
   val byteOrder: ByteOrder = BIG_ENDIAN
 
-type PidFileService = IndexedRecordSet[Pid]
+  def dataDirToFile(dataDir: Path): Path =
+    dataDir / "work" / "crashpidfile"
 
+type PidFileService = IndexedRecordSet[Pid]
 
 object CrashPidFileService:
 
