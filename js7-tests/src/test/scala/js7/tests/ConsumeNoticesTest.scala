@@ -620,15 +620,14 @@ final class ConsumeNoticesTest
   "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, with Options" in:
     val workflow = Workflow(
       WorkflowPath("OPTION-CONSUME-NOTICE-IF-FAIL"),
-      Seq(
-        Options(stopOnFailure = Some(true),
-          Workflow.of(
-            PostNotices(Seq(aBoard.path)),
-            ConsumeNotices(
-              boardPathExpr(s"'${aBoard.path.string}'"),
-              Workflow.of(
-                If(expr("true"),
-                  Workflow.of(Fail()))))))))
+      Seq:
+        Options(stopOnFailure = true)(
+          PostNotices(Seq(aBoard.path)),
+          ConsumeNotices(
+            boardPathExpr(s"'${aBoard.path.string}'"),
+            Workflow.of:
+              If(expr("true"),
+                Workflow.of(Fail())))))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")

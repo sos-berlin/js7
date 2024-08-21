@@ -509,15 +509,14 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         timeZone = timezone,
         calendarPath = Some(calendar.path),
         instructions = Seq(
-          Options(stopOnFailure = Some(true),
-            block = Workflow.of(
-              Cycle(
-                Schedule.continuous(0.s, limit = Some(1)),
-                Workflow.of(
-                  EmptyJob.execute(agentPath),
-                  If(expr("true"), Workflow.of(
-                    Break())),
-                  Fail()))))))
+          Options(stopOnFailure = true):
+            Cycle(
+              Schedule.continuous(0.s, limit = Some(1)),
+              Workflow.of(
+                EmptyJob.execute(agentPath),
+                If(expr("true"), Workflow.of(
+                  Break())),
+                Fail()))))
 
       withTemporaryItem(workflow) { workflow =>
         val orderId = OrderId("#2023-03-21#OPTIONS-BREAK")

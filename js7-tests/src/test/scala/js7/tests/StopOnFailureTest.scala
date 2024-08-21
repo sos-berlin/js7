@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -22,7 +23,6 @@ import js7.tests.StopOnFailureTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
 
 final class StopOnFailureTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
@@ -42,9 +42,9 @@ final class StopOnFailureTest
 
   "Fail at Controller" in:
     val workflow = Workflow.of(WorkflowPath("CONTROLLER-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(Fail(Some(expr("'TEST-FAILURE'"))))))
+      Options(stopOnFailure = true):
+        Fail(Some(expr("'TEST-FAILURE'"))))
+    
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -72,12 +72,10 @@ final class StopOnFailureTest
 
   "Two nested Options instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-OPTIONS-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(
-          Options(
-            stopOnFailure = Some(false/*Switch off again*/),
-            block = Workflow.of(Fail(Some(expr("'TEST-FAILURE'"))))))))
+      Options(stopOnFailure = true):
+        Options(stopOnFailure = false/*Switch off again*/):
+          Fail(Some(expr("'TEST-FAILURE'"))))
+
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("NESTED-OPTIONS")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -94,15 +92,13 @@ final class StopOnFailureTest
 
   "Fail in two nested Lock instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-LOCK-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(
-          LockInstruction.single(aLockPath,
-            lockedWorkflow = Workflow.of(
-              EmptyJob.execute(agentPath),
-              LockInstruction.single(bLockPath,
-                lockedWorkflow = Workflow.of(
-                  FailingJob.execute(agentPath))))))))
+      Options(stopOnFailure = true):
+        LockInstruction.single(aLockPath,
+          lockedWorkflow = Workflow.of(
+            EmptyJob.execute(agentPath),
+            LockInstruction.single(bLockPath,
+              lockedWorkflow = Workflow.of(
+                FailingJob.execute(agentPath))))))
 
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("NESTED-LOCKS")
@@ -151,12 +147,10 @@ final class StopOnFailureTest
 
   "Cancel a stopped locking Order" in:
     val workflow = Workflow.of(WorkflowPath("LOCK-CANCEL-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(
-          LockInstruction.single(aLockPath,
-            lockedWorkflow = Workflow.of(
-              FailingJob.execute(agentPath))))))
+      Options(stopOnFailure = true):
+        LockInstruction.single(aLockPath,
+          lockedWorkflow = Workflow.of:
+            FailingJob.execute(agentPath)))
 
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("CANCEL-IN-LOCK")
@@ -193,10 +187,9 @@ final class StopOnFailureTest
 
   "Fail at Agent" in:
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(
-          FailingJob.execute(agentPath))))
+      Options(stopOnFailure = true):
+        FailingJob.execute(agentPath))
+    
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -229,10 +222,9 @@ final class StopOnFailureTest
 
   "Fail while Fresh" in:
     val workflow = Workflow.of(WorkflowPath("FRESH-WORKFLOW"),
-      Options(
-        stopOnFailure = Some(true),
-        block = Workflow.of(
-          If(expr("$param"), Workflow.empty))))
+      Options(stopOnFailure = true):
+        If(expr("$param"), Workflow.empty))
+   
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("FAIL-WHILE-FRESH-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow

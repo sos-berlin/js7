@@ -8,9 +8,11 @@ import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
 
 final class OptionsTest extends OurTestSuite:
+
   "JSON" in:
     testJson[Instruction.Labeled](
       Options(
+        stopOnFailure = None,
         block = Workflow.empty,
         sourcePos = Some(SourcePos(1, 2))),
       json"""{
@@ -24,7 +26,8 @@ final class OptionsTest extends OurTestSuite:
     testJson[Instruction.Labeled](
       Options(
         stopOnFailure = Some(false),
-        block = Workflow.empty),
+        block = Workflow.empty,
+        sourcePos = None),
       json"""{
         "TYPE": "Options",
         "stopOnFailure": false,
@@ -36,7 +39,8 @@ final class OptionsTest extends OurTestSuite:
     testJson[Instruction.Labeled](
       Options(
         stopOnFailure = Some(true),
-        block = Workflow.empty),
+        block = Workflow.empty,
+        sourcePos = None),
       json"""{
         "TYPE": "Options",
         "stopOnFailure": true,
