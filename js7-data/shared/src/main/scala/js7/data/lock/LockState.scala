@@ -76,9 +76,6 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
   def release(orderId: OrderId): Checked[LockState] =
     toLockState(acquired.release(orderId))
 
-  def firstQueuedOrderId: Option[OrderId] =
-    queue.headOption
-
   private def checkLimit(count: Option[Int]): Either[LockRefusal, Unit] =
     count match
       case None =>

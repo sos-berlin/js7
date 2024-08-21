@@ -1,5 +1,6 @@
 package js7.tests
 
+import fs2.Stream
 import java.nio.file.Files.delete
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
@@ -26,7 +27,7 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Options, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
@@ -34,8 +35,6 @@ import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import scala.collection.immutable.Queue
 import scala.util.Random
 
@@ -151,49 +150,60 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
 
   "After releasing a lock of 2, two orders with count=1 each start simultaneously" in:
     val workflow1 = updateItem(Workflow(
-      WorkflowPath("FINISH-IN-FORK"),
-      Seq(
+      WorkflowPath("RELEASE-2"),
+      Seq:
         LockInstruction.single(
           limit2LockPath,
           count = Some(1),
-          lockedWorkflow = Workflow.of(
-            SleepJob.execute(agentPath, processLimit = 99, arguments = Map(
-              "sleep" -> expr("0.050"))))))))
+          lockedWorkflow = Workflow.of:
+            Prompt(expr("'PROMPT'")))))
 
     val workflow2 = updateItem(Workflow(
       WorkflowPath("WORKFLOW-2"),
-      Seq(
+      Seq:
         LockInstruction.single(
           limit2LockPath,
           count = Some(2),
-          lockedWorkflow = Workflow.of(
-            SleepJob.execute(agentPath, processLimit = 99, arguments = Map(
-              "sleep" -> expr("0.100"))))))))
+          lockedWorkflow = Workflow.of:
+            Prompt(expr("'PROMPT'")))))
 
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
     val bOrderId = OrderId("🟥-B")
+    val cOrderId = OrderId("🟥-C")
     controller.api.addOrder(FreshOrder(order2Id, workflow2.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderLocksAcquired](_.key == order2Id)
-    controller.api.addOrder(FreshOrder(aOrderId, workflow1.path, deleteWhenTerminated = true))
-      .await(99.s).orThrow
-    controller.api.addOrder(FreshOrder(bOrderId, workflow1.path, deleteWhenTerminated = true))
-      .await(99.s).orThrow
+    controller.eventWatch.awaitNext[OrderLocksAcquired](_.key == order2Id)
+
+    for orderId <- Seq(aOrderId, bOrderId, cOrderId) do
+      controller.api.addOrder(FreshOrder(orderId, workflow1.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      controller.eventWatch.awaitNext[OrderLocksQueued](_.key == orderId)
+
+    controller.api.executeCommand(AnswerOrderPrompt(order2Id)).await(99.s).orThrow
+    controller.eventWatch.awaitNext[OrderLocksReleased](_.key == order2Id)
+
+    controller.eventWatch.await[OrderLocksAcquired](_.key == aOrderId)
+    controller.eventWatch.await[OrderLocksAcquired](_.key == bOrderId)
+    controller.eventWatch.await[OrderPrompted](_.key == aOrderId)
+    controller.eventWatch.await[OrderPrompted](_.key == bOrderId)
+    controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(AnswerOrderPrompt(bOrderId)).await(99.s).orThrow
+
+    controller.eventWatch.awaitNext[OrderLocksAcquired](_.key == cOrderId)
+    controller.api.executeCommand(AnswerOrderPrompt(cOrderId)).await(99.s).orThrow
+
     controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
     controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
-    val stampedEvents = controller.eventWatch.allStamped[OrderLockEvent]
-    val aAquired = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLocksAcquired]).get
-    val bAquired = stampedEvents.find(stamped => stamped.value.key == bOrderId && stamped.value.event.isInstanceOf[OrderLocksAcquired]).get
-    val aReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLocksReleased]).get
-    val bReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLocksReleased]).get
-    assert(aAquired.eventId < bReleased.eventId, "- a acquired lock after b released")
-    assert(bAquired.eventId < aReleased.eventId, "- b acquired lock after a released")
+    controller.eventWatch.await[OrderTerminated](_.key == cOrderId)
+
     assert(controllerState.keyTo(LockState)(limit2LockPath) ==
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
+    
+    deleteItems(workflow1.path, workflow2.path)
 
   "Multiple orders with count=1 and count=2 finish" in:
     val workflow1 = updateItem(Workflow.of(workflow1Path,
@@ -233,7 +243,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
 
   "Failed order" in:
     val workflow = updateItem(Workflow(
-      WorkflowPath("FINISH-IN-FORK"),
+      WorkflowPath("FAILED-ORDER"),
       Seq(
         EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
         LockInstruction.single(
@@ -291,6 +301,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available, Queue.empty))
+
+    deleteItems(workflow.path)
 
   "Failed order in try/catch" in:
     val workflow = defineWorkflow(workflowNotation = """
@@ -979,6 +991,198 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
+
+  "OrderLockReleased wakes waiting orders (JS-2157)" - {
+    "After OrderLocksReleased continue waiting Order" in:
+      val workflow = Workflow(
+        WorkflowPath("LOCK-CONTINUE-QUEUED"),
+        Seq:
+          LockInstruction.single(lockPath,
+            count = None,
+            lockedWorkflow = Workflow.of(
+              Prompt(expr("'PROMPT'")))))
+
+      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+        val eventId = eventWatch.lastAddedEventId
+
+        val aOrderId = OrderId("LOCK-CONTINUE-QUEUED-A")
+        controller.api
+          .addOrder:
+            FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == aOrderId)
+
+        val bOrderId = OrderId("LOCK-CONTINUE-QUEUED-B")
+        controller.api
+          .addOrder:
+            FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
+
+        controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+        eventWatch.awaitNext[OrderLocksReleased](_.key == aOrderId)
+        eventWatch.await[OrderTerminated](_.key == aOrderId, after = eventId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == aOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderStarted,
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderPrompted(StringValue("PROMPT")),
+            OrderPromptAnswered(),
+            OrderMoved(Position(0) / "lock" % 1),
+            OrderLocksReleased(List(lockPath)),
+            OrderFinished(),
+            OrderDeleted))
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
+        controller.api.executeCommand(AnswerOrderPrompt(bOrderId)).await(99.s).orThrow
+        eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == bOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderStarted,
+            OrderLocksQueued(List(LockDemand(lockPath))),
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderPrompted(StringValue("PROMPT")),
+            OrderPromptAnswered(),
+            OrderMoved(Position(0) / "lock" % 1),
+            OrderLocksReleased(List(lockPath)),
+            OrderFinished(),
+            OrderDeleted))
+
+    "After OrderLocksReleased due to cancellation in Prompt continue waiting Order" in :
+      val workflow = Workflow(
+        WorkflowPath("LOCK-CONTINUE-QUEUED"),
+        Seq:
+          LockInstruction.single(lockPath,
+            count = None,
+            lockedWorkflow = Workflow.of(
+              Prompt(expr("'PROMPT'")),
+              Fail())))
+
+      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+        val eventId = eventWatch.lastAddedEventId
+
+        val aOrderId = OrderId("LOCK-CONTINUE-QUEUED-A")
+        controller.api
+          .addOrder:
+            FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == aOrderId)
+
+        val bOrderId = OrderId("LOCK-CONTINUE-QUEUED-B")
+        controller.api
+          .addOrder:
+            FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
+
+        controller.api.executeCommand(CancelOrders(Seq(aOrderId))).await(99.s).orThrow
+        eventWatch.awaitNext[OrderLocksReleased](_.key == aOrderId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == aOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderStarted,
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderPrompted(StringValue("PROMPT")),
+            OrderOperationCancelled,
+            OrderLocksReleased(List(lockPath)),
+            OrderCancelled,
+            OrderDeleted))
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
+        controller.api.executeCommand(CancelOrders(Seq(bOrderId))).await(99.s).orThrow
+
+        eventWatch.await[OrderTerminated](_.key == aOrderId, after = eventId)
+        eventWatch.await[OrderTerminated](_.key == bOrderId, after = eventId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == bOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderStarted,
+            OrderLocksQueued(List(LockDemand(lockPath))),
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderPrompted(StringValue("PROMPT")),
+            OrderOperationCancelled,
+            OrderLocksReleased(List(lockPath)),
+            OrderCancelled,
+            OrderDeleted))
+
+    "After OrderLocksReleased in stopOnFailure-block continue waiting Order" in:
+      val workflow = Workflow(
+        WorkflowPath("STOP-ON-FAILURE-LOCK"),
+        Seq:
+          Options(stopOnFailure = true):
+            LockInstruction.single(lockPath,
+              count = None,
+              lockedWorkflow = Workflow.of(
+                Fail())))
+
+      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+        val eventId = eventWatch.lastAddedEventId
+
+        val aOrderId = OrderId("STOP-ON-FAILURE-LOCK-A")
+        controller.api
+          .addOrder:
+            FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == aOrderId)
+
+        val bOrderId = OrderId("STOP-ON-FAILURE-LOCK-B")
+        controller.api
+          .addOrder:
+            FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true)
+          .await(99.s).orThrow
+
+        eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
+
+        controller.api.executeCommand(CancelOrders(Seq(aOrderId))).await(99.s).orThrow
+        eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == aOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderMoved(Position(0) / "options" % 0),
+            OrderStarted,
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderOutcomeAdded(OrderOutcome.failed),
+            OrderStopped,
+            OrderLocksReleased(List(lockPath)),
+            OrderCancelled,
+            OrderDeleted))
+
+        eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
+        eventWatch.awaitNext[OrderStopped](_.key == bOrderId)
+        controller.api.executeCommand(CancelOrders(Seq(bOrderId))).await(99.s).orThrow
+        eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
+
+        locally:
+          val keyedEvents = eventWatch.keyedEvents[OrderEvent](_.key == bOrderId, after = eventId)
+          assert(keyedEvents.map(_.event) == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderMoved(Position(0) / "options" % 0),
+            OrderStarted,
+            OrderLocksQueued(List(LockDemand(lockPath))),
+            OrderLocksAcquired(List(LockDemand(lockPath))),
+            OrderOutcomeAdded(OrderOutcome.failed),
+            OrderStopped,
+            OrderLocksReleased(List(lockPath)),
+            OrderCancelled,
+            OrderDeleted))
+  }
 
   "Lock is not deletable while in use by a Workflow" in:
     val workflow = defineWorkflow(workflowNotation = """
