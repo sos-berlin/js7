@@ -574,19 +574,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderLockEvent extends OrderActorEvent:
     def lockPaths: Seq[LockPath]
 
-  object OrderLockEvent:
-    def unapply(event: OrderLockEvent): Some[Seq[LockPath]] = Some(event.lockPaths)
-
-  sealed trait OrderLockAcquiredOrQueuedEvent extends OrderLockEvent:
-    def demands: Seq[LockDemand]
-
   final case class OrderLocksQueued(demands: List[LockDemand])
-  extends OrderLockAcquiredOrQueuedEvent :
+  extends OrderLockEvent :
     def checked: Checked[OrderLocksQueued] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
   final case class OrderLocksAcquired(demands: List[LockDemand])
-    extends OrderLockAcquiredOrQueuedEvent:
+  extends OrderLockEvent:
     def checked: Checked[OrderLocksAcquired] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
