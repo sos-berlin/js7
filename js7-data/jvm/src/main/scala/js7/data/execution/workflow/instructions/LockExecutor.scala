@@ -4,8 +4,9 @@ import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.LockExecutor.*
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderDetachable, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
+import js7.data.order.OrderEvent.{OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
 import js7.data.state.StateView
+import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.LockInstruction
 
 private[instructions] final class LockExecutor(protected val service: InstructionExecutorService)
@@ -50,12 +51,10 @@ extends EventInstructionExecutor:
     instr: LockInstruction,
     order: Order[Order.State],
     state: StateView) =
-    Right(List:
-      order.id <-: (
-        if order.isAttached then
-          OrderDetachable
-        else
-          OrderLocksReleased(instr.lockPaths)))
+    Right:
+      state.atController:
+        OrderLocksReleased(instr.lockPaths) :: Nil
+      .map(order.id <-: _)
 
 
 object LockExecutor:
