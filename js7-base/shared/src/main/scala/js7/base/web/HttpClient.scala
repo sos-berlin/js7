@@ -7,8 +7,8 @@ import js7.base.auth.SessionToken
 import js7.base.data.ByteArray
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Missing
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.UseDefault
 import org.jetbrains.annotations.TestOnly
 import scala.util.{Failure, Success, Try}
 
@@ -21,7 +21,7 @@ trait HttpClient:
     uri: Uri,
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
-    prefetch: Int | UseDefault = UseDefault)
+    prefetch: Int | Missing =  Missing)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 

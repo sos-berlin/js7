@@ -14,11 +14,11 @@ import js7.base.system.Java17Polyfill.*
 import js7.base.system.startup.Halt.haltJava
 import js7.base.thread.IOExecutor
 import js7.base.utils.ByteUnits.toKiBGiB
+import js7.base.utils.Missing.getOrElse
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTestParallel
-import js7.base.utils.UseDefault.getOrElse
-import js7.base.utils.{Tests, UseDefault}
+import js7.base.utils.{Missing, Tests}
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
@@ -44,7 +44,7 @@ object OurIORuntime:
   def resource[F[_]](
     label: String,
     config: Config,
-    threads: Int | UseDefault = UseDefault,
+    threads: Int | Missing = Missing,
     shutdownHooks: Seq[() => Unit] = Nil,
     computeExecutor: Option[Executor] = None)
     (using F: Sync[F])
@@ -57,7 +57,7 @@ object OurIORuntime:
   private def ownResource[F[_]](
     label: String,
     config: Config,
-    threads: Int | UseDefault = UseDefault,
+    threads: Int | Missing = Missing,
     shutdownHooks: Seq[() => Unit] = Nil,
     computeExecutor: Option[Executor] = None)
     (using F: Sync[F])

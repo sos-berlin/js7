@@ -27,8 +27,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
+import js7.base.utils.Missing.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, LineSplitterPipe, UseDefault}
+import js7.base.utils.{Atomic, LineSplitterPipe, Missing}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
@@ -119,7 +120,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
-    prefetch: Int | UseDefault = UseDefault)
+    prefetch: Int | Missing = Missing)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
