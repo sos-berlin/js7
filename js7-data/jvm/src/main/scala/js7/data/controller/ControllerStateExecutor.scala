@@ -548,8 +548,8 @@ final case class ControllerStateExecutor private(
     buffer.to(ArraySeq)
 
   private def keyedEventToPendingOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =
-    View(keyedEvent.key) ++ (keyedEvent.event match {
-      case OrderLockEvent/*only OrderLocksReleased | OrderLocksDequeued ???*/(lockPaths) =>
+    View(keyedEvent.key) ++ keyedEvent.event.match
+      case OrderLocksReleased(lockPaths) =>
         lockPaths.view
           .flatMap(controllerState.keyTo(LockState).get)
           .flatMap(_.firstQueuedOrderId)
@@ -561,8 +561,6 @@ final case class ControllerStateExecutor private(
         new View.Single(orderOrderAdded.orderId)
 
       case _ => View.empty
-    })
-
 
 object ControllerStateExecutor:
   private val logger = Logger[this.type]

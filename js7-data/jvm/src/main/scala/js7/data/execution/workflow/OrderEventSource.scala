@@ -160,7 +160,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       workflow <- idToWorkflow.checked(order.workflowId)
       events <- fail(workflow, order, outcome,
         uncatchable = uncatchable || outcome.exists(isUncatchable))
-    yield events
+    yield
+      events
 
   private[workflow] def fail(
     workflow: Workflow,
@@ -634,15 +635,16 @@ object OrderEventSource:
 
             case Segment(_, _) :: prefix =>
               loop(prefix, failPosition)
+      end loop
 
       order
         .ifState[Order.WaitingForLock]
-        .traverse(order =>
-          for lock <- workflow.instruction_[LockInstruction](order.position) yield
-            OrderLocksDequeued(lock.lockPaths))
-        .flatMap(maybeEvent =>
+        .traverse: order =>
+          workflow.instruction_[LockInstruction](order.position).map: lock =>
+            OrderLocksDequeued(lock.lockPaths)
+        .flatMap: maybeEvent =>
           loop(order.position.branchPath.reverse, order.position)
-            .map(maybeEvent.toList ::: _))
+            .map(maybeEvent.toList ::: _)
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
