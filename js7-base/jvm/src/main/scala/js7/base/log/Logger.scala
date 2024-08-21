@@ -160,9 +160,10 @@ object Logger extends AdHocLogger:
         function: String,
         args: => Any = "",
         result: A => Any = identity[A],
+        marker: Marker | Null = null,
         body: => A)
       : A =
-        logF[SyncIO, A](logger, LogLevel.Info, function, args, result)(SyncIO(body))
+        logF[SyncIO, A](logger, LogLevel.Info, function, args, result, marker)(SyncIO(body))
           .unsafeRunSync()
 
       def infoIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =

@@ -53,6 +53,26 @@ transparent trait AdHocLogger:
   : A =
     logger.infoCall(functionName, args)(body)
 
+  inline def infoCallWithResult[A](inline body: => A)(using inline src: sourcecode.Name): A =
+    logger.infoCallWithResult(body)
+
+  inline def infoCallWithResult[A](inline function: String)(inline body: => A): A =
+    logger.infoCallWithResult(function)(body)
+
+  inline def infoCallWithResult[A](inline function: String, inline args: => Any)
+    (inline body: => A): A =
+    logger.infoCallWithResult(function, args)(body)
+
+  inline def infoCallWithResult[A](
+    inline function: String,
+    inline args: => Any = "",
+    inline result: A => Any = identity[A],
+    inline marker: Marker | Null = null,
+    inline body: => A)
+    (using inline enc: sourcecode.Enclosing)
+  : A =
+    logger.infoCallWithResult(function, args, result, marker, body)
+
   inline def infoIO[A](functionName: String, args: => Any = "")(body: IO[A])
     (using sourcecode.Enclosing)
   : IO[A] =
