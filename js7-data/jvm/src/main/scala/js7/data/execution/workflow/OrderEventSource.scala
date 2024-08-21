@@ -274,12 +274,15 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         if mode == CancellationMode.FreshOnly && order.isStarted then
           // On Agent, the Order may already have been started without notice of the Controller
           Left(CancelStartedOrderProblem(orderId))
-        else Right:
-          tryCancel(order, mode).orElse:
-            ( !order.isState[IsTerminated] &&
-              !order.isState[ProcessingKilled] &&
-              !order.mark.contains(OrderMark.Cancelling(mode))
-            ) ? (OrderCancellationMarked(mode) :: Nil)
+        else
+          Right:
+            tryCancel(order, mode)
+              .orElse:
+                ( !order.isState[IsTerminated] &&
+                  !order.isState[ProcessingKilled] &&
+                  !order.mark.contains(OrderMark.Cancelling(mode))
+                ).thenSome:
+                  OrderCancellationMarked(mode) :: Nil
 
   private def tryCancel(order: Order[Order.State], mode: CancellationMode)
   : Option[List[OrderActorEvent]] =
