@@ -7,8 +7,8 @@ import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
+import js7.data.workflow.Workflow
 import js7.data.workflow.position.{BranchId, Position}
-import js7.data.workflow.{ Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -32,10 +32,10 @@ extends ExpectOrConsumeNoticesInstruction:
     boardPaths.boardPaths
 
   def fulfilledEvents(
-    order: Order[Order.State],
-    consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
+    order: Order[Order.Ready | Order.ExpectingNotices],
+    expected: Vector[OrderNoticesConsumptionStarted.Consumption])
   : List[OrderEvent.OrderActorEvent] =
-    OrderNoticesConsumptionStarted(consumptions) :: Nil
+    OrderNoticesConsumptionStarted(expected) :: Nil
 
   override def workflows: Seq[Workflow] =
     subworkflow :: Nil

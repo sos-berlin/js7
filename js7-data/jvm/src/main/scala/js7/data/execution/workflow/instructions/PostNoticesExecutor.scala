@@ -66,16 +66,14 @@ object PostNoticesExecutor:
           .instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
           .map(expectingOrder -> _))
         .flatMap(_
-          .traverse { case (expectingOrder, expectNoticesInstr) =>
+          .traverse: (expectingOrder, expectNoticesInstr) =>
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
-              .map { expectingOrder =>
+              .map: expectingOrder =>
                 val postedBoards = postedNotices.map(_.boardState.path).toSet
-                ExpectOrConsumeNoticesExecutor
-                  .tryFulfillExpectingOrder(expectNoticesInstr, expectingOrder, state, postedBoards)
+                expectNoticesInstr
+                  .tryFulfillExpectingOrder(expectingOrder, state, postedBoards)
                   .map(expectingOrder.id <-: _)
-              }
-          }
           .map(_.flatten))
     yield
       events

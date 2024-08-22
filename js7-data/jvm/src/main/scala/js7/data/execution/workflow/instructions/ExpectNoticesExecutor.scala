@@ -5,7 +5,6 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.board.BoardState
-import js7.data.execution.workflow.instructions.ExpectOrConsumeNoticesExecutor.{tryFulfill, tryFulfillExpectingOrder}
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.state.StateView
@@ -36,7 +35,7 @@ extends EventInstructionExecutor:
                     .expectingOrderToNoticeId(scope)
                     .map(OrderNoticesExpected.Expected(boardState.path, _)))
               yield
-                tryFulfill(expectNotices, order, expected, state)
+                expectNotices.tryFulfill(order, expected, state)
                   .emptyToNone.getOrElse:
                     OrderNoticesExpected(expected) :: Nil
         .orElse(order
@@ -48,7 +47,7 @@ extends EventInstructionExecutor:
                 s"ExpectNotices instruction does not match Order.State: $expectNotices <-> ${order.state}")
             else
               Right:
-                tryFulfillExpectingOrder(expectNotices, order, state))
+                expectNotices.tryFulfillExpectingOrder(order, state))
         .getOrElse:
           Right(Nil)
         .map(_.map(order.id <-: _)))
