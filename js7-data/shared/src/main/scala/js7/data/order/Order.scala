@@ -728,6 +728,12 @@ final case class Order[+S <: Order.State](
     !isState[IsTerminated] && !isState[Deleted] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
+  def isCancelable(mode: CancellationMode): Boolean =
+    isCancelable &&
+      (mode != CancellationMode.FreshOnly ||
+        isState[Order.Fresh] ||
+        isState[Order.StoppedWhileFresh])
+
   def isCancelable: Boolean =
     (isState[IsFreshOrReady]
       || isState[ProcessingKilled]

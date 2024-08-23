@@ -293,10 +293,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             .orThrow/*???*/)
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
-    (mode != CancellationMode.FreshOnly
-      || order.isState[Order.Fresh]
-      || order.isState[Order.StoppedWhileFresh]) &&
-      order.isCancelable &&
+    weHave(order) &&
+      order.isCancelable(mode) &&
       // If workflow End is reached unsuspended, the order is finished normally
       // TODO Correct? Or should we check only the end of the main/forked workflow?
       (!instruction(order.workflowPosition).isInstanceOf[End]
