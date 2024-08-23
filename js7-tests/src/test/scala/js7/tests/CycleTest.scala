@@ -25,7 +25,7 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderInstructionReset, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -241,6 +241,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         end = local("2021-10-02T00:00"),
         index = 1,
         next = local("2021-10-01T18:00"))),
+      OrderInstructionReset,
       OrderCancelled))
 
 /*
@@ -882,6 +883,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           OrderResumed(Some(resumePosition)),
           OrderMoved(Position(0) / Then % 0 / resumeBranchId % 1),
           OrderCycleFinished(Some(CycleState(cycleEnd + 1.minute, index = 3, next = clock.now() + 1.s))),
+          OrderInstructionReset,
           OrderCancelled,
           OrderDeleted))
     }
@@ -937,6 +939,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         OrderCycleStarted,
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 5, next = clock.now() + 1.h))),
 
+        OrderInstructionReset,
         OrderCancelled,
         OrderDeleted))
 
@@ -1017,6 +1020,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         OrderDetachable,
         //OrderCancellationMarkedOnAgent,
         OrderDetached,
+        OrderInstructionReset,
         OrderCancelled,
         OrderDeleted))
 

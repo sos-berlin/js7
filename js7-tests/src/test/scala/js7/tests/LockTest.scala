@@ -202,7 +202,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
-    
+
     deleteItems(workflow1.path, workflow2.path)
 
   "Multiple orders with count=1 and count=2 finish" in:
@@ -773,7 +773,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAdded(queueingWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLocksQueued(List(LockDemand(lockPath))),
-      OrderLocksDequeued(List(lockPath)),
+      OrderInstructionReset,
       OrderCancelled,
       OrderDeleted))
 
@@ -814,7 +814,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderStarted,
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderPrompted(StringValue("PROMPT")),
-      OrderOperationCancelled,
+      OrderInstructionReset,
       OrderLocksReleased(List(lockPath)),
       OrderCancelled,
       OrderDeleted))
@@ -1095,7 +1095,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderStarted,
             OrderLocksAcquired(List(LockDemand(lockPath))),
             OrderPrompted(StringValue("PROMPT")),
-            OrderOperationCancelled,
+            OrderInstructionReset,
             OrderLocksReleased(List(lockPath)),
             OrderCancelled,
             OrderDeleted))
@@ -1114,7 +1114,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderLocksQueued(List(LockDemand(lockPath))),
             OrderLocksAcquired(List(LockDemand(lockPath))),
             OrderPrompted(StringValue("PROMPT")),
-            OrderOperationCancelled,
+            OrderInstructionReset,
             OrderLocksReleased(List(lockPath)),
             OrderCancelled,
             OrderDeleted))

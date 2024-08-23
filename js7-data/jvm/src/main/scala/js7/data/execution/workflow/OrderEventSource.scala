@@ -286,11 +286,11 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 
   private def tryCancel(order: Order[Order.State], mode: CancellationMode)
   : Option[List[OrderActorEvent]] =
-    (weHave(order) && isOrderCancelable(order, mode)) ?
-      atController(
-        order.state.isOperationCancelable.thenList(OrderOperationCancelled) :::
-          leaveBlocks(idToWorkflow(order.workflowId), order, OrderCancelled :: Nil)
-            .orThrow/*???*/)
+    isOrderCancelable(order, mode) ?
+      atController:
+        val workflow = state.idToWorkflow(order.workflowId)
+        leaveBlocks(workflow, order, OrderCancelled :: Nil)
+          .orThrow
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
     weHave(order) &&
@@ -571,10 +571,20 @@ object OrderEventSource:
     events: Option[BranchId] => List[OrderActorEvent],
     until: BranchId => Boolean)
   : Checked[List[OrderActorEvent]] =
-    leaveBlocksThen(workflow, order, catchable = false, until = until):
-      case (maybeBranchId, _) => events(maybeBranchId)
+    leaveBlocksThen(workflow, order, catchable = false, until = until): (maybeBranchId, _) =>
+      events(maybeBranchId)
 
   private def leaveBlocksThen(
+    workflow: Workflow,
+    order: Order[Order.State],
+    catchable: Boolean,
+    until: BranchId => Boolean = _ => false)
+    (toEvent: PartialFunction[(Option[BranchId], Position), List[OrderActorEvent]])
+  : Checked[List[OrderActorEvent]] =
+    leaveBlocksThen2(workflow, order, catchable, until)(toEvent).map: events =>
+      order.resetState ::: events
+
+  private def leaveBlocksThen2(
     workflow: Workflow, order: Order[Order.State],
     catchable: Boolean,
     until: BranchId => Boolean = _ => false)
@@ -638,14 +648,8 @@ object OrderEventSource:
               loop(prefix, failPosition)
       end loop
 
-      order
-        .ifState[Order.WaitingForLock]
-        .traverse: order =>
-          workflow.instruction_[LockInstruction](order.position).map: lock =>
-            OrderLocksDequeued(lock.lockPaths)
-        .flatMap: maybeEvent =>
-          loop(order.position.branchPath.reverse, order.position)
-            .map(maybeEvent.toList ::: _)
+      loop(order.position.branchPath.reverse, order.position)
+  end leaveBlocksThen2
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry

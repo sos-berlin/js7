@@ -34,7 +34,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderInstructionReset, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.{Cycle, Fork, LockInstruction, Schedule, TryInstruction}
@@ -125,6 +125,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
         next = Timestamp(s"${today}T23:59:59Z"))),
       OrderDetached,
       OrderOutcomeAdded(OrderOutcome.Disrupted(AgentResetProblem(agentPath))),
+      OrderInstructionReset,
       OrderFailed(Position(0) / "try+0" % 1)))
 
     // The Director has terminated the BareSubagent, too

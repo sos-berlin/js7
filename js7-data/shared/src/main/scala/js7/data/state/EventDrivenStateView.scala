@@ -6,11 +6,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
-import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderInstructionReset, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.ConsumeNotices
+import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
 import js7.data.workflow.position.WorkflowPosition
 import scala.reflect.ClassTag
 
@@ -84,10 +84,6 @@ extends EventDrivenState[Self, E], StateView:
                 foreachLockDemand(demands)(_
                   .acquire(orderId, _))
 
-              case OrderLocksDequeued(lockPaths) =>
-                foreachLock(lockPaths)(lockState => Right(lockState
-                  .dequeue(orderId)))
-
               case OrderLocksReleased(lockPaths) =>
                 foreachLock(lockPaths)(_
                   .release(orderId))
@@ -97,11 +93,32 @@ extends EventDrivenState[Self, E], StateView:
                 addItemStates = lockStates))
 
         case event: OrderNoticeEvent =>
-          applyOrderNoticeEvent(previousOrder, orderId, event)
+          applyOrderNoticeEvent(previousOrder, event)
             .flatMap(_.update(addOrders = updatedOrder :: Nil))
+
+        case OrderInstructionReset =>
+          previousOrder.ifState[WaitingForLock].map: order =>
+            val instr = instruction_[LockInstruction](order.workflowPosition).orThrow
+            foreachLock(instr.lockPaths): lockState =>
+              Right:
+                lockState.dequeue(orderId)
+            .flatMap: lockStates =>
+              update(
+                addOrders = updatedOrder :: Nil,
+                addItemStates = lockStates)
+          .orElse:
+            previousOrder.ifState[ExpectingNotices].map: order =>
+              removeNoticeExpectation(order).flatMap: updatedBoardStates =>
+                update(
+                  addOrders = updatedOrder :: Nil,
+                  addItemStates = updatedBoardStates)
+          .getOrElse:
+            Checked(this)
 
         case _: OrderCancelled =>
           previousOrder
+            // COMPATIBLE Since v2.7.2 an OrderInstructionReset is emitted and the
+            // following code is superfluous (but still needed for old journals)
             .ifState[ExpectingNotices]
             .fold(update(addOrders = updatedOrder :: Nil)): order =>
               removeNoticeExpectation(order).flatMap: updatedBoardStates =>
@@ -137,9 +154,9 @@ extends EventDrivenState[Self, E], StateView:
 
   private def applyOrderNoticeEvent(
     previousOrder: Order[Order.State],
-    orderId: OrderId,
     event: OrderNoticeEvent)
   : Checked[Self] =
+    val orderId = previousOrder.id
     event
       .match
         case OrderNoticePostedV2_3(notice) =>
@@ -200,11 +217,8 @@ extends EventDrivenState[Self, E], StateView:
     yield
       instr
 
-  private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
-    order.ifState[Order.ExpectingNotices] match
-      case None => Right(Nil)
-      case Some(order) =>
-        order.state.expected
-          .traverse(expected => keyTo(BoardState)
-            .checked(expected.boardPath)
-            .flatMap(_.removeExpectation(expected.noticeId, order.id)))
+  private def removeNoticeExpectation(order: Order[ExpectingNotices]): Checked[Seq[BoardState]] =
+    order.state.expected
+      .traverse(expected => keyTo(BoardState)
+        .checked(expected.boardPath)
+        .flatMap(_.removeExpectation(expected.noticeId, order.id)))

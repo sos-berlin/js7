@@ -1,5 +1,7 @@
 package js7.tests
 
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -20,8 +22,8 @@ import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, Resume
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
-import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
@@ -30,8 +32,6 @@ import js7.tests.BoardTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import fs2.Stream
 import scala.collection.View
 import scala.concurrent.duration.*
 
@@ -340,14 +340,82 @@ final class BoardTest
       eventWatch.await[OrderFinished](_.key == expectingOrderId)
 
     "Order.ExpectingNotice is cancelable" in:
+      val eventId = eventWatch.lastAddedEventId
       val qualifier = "2222-12-12"
-      val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
-      controller.api.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
-        .await(99.s).orThrow
-      eventWatch.await[OrderNoticesExpected](_.key == expectingOrderId)
+      val noticeId = NoticeId(qualifier)
+      val orderId = OrderId(s"#$qualifier#CANCEL-EXPECT")
 
-      controller.api.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
-      eventWatch.await[OrderCancelled](_.key == expectingOrderId)
+      val board = Board.joc(BoardPath("CANCEL-EXPECT"), 1.h)
+      val workflow = Workflow(WorkflowPath("CANCEL-EXPECT"), Seq(
+        ExpectNotices(ExpectNotice(board.path))))
+      val Some(versionId) = updateItems(board, workflow): @unchecked
+
+      val expectedBoardState = BoardState(
+        board.copy(itemRevision = Some(ItemRevision(0))),
+        idToNotice = Map.empty,
+        orderToConsumptionStack = Map.empty)
+
+      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
+
+      controller.api
+        .addOrder:
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        .await(99.s).orThrow
+      eventWatch.await[OrderNoticesExpected](_.key == orderId, after = eventId)
+
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
+        OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
+        OrderInstructionReset,
+        OrderCancelled,
+        OrderDeleted))
+
+      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
+
+      deleteItems(board.path, workflow.path)
+
+    "Order.ExpectingNotice is transferrable" in:
+      val eventId = eventWatch.lastAddedEventId
+      val qualifier = "2224-08-23"
+      val noticeId = NoticeId(qualifier)
+      val orderId = OrderId(s"#$qualifier#TRANSFER-EXPECT")
+
+      val board = Board.joc(BoardPath("TRANSFER-EXPECT"), 1.h)
+      val workflow = Workflow(WorkflowPath("TRANSFER-EXPECT"), Seq(
+        ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
+      val Some(versionId) = updateItems(board, workflow)
+
+      val expectedBoardState = BoardState(
+        board.copy(itemRevision = Some(ItemRevision(0))),
+        idToNotice = Map.empty,
+        orderToConsumptionStack = Map.empty)
+
+      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
+
+      controller.api
+        .addOrder:
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        .await(99.s).orThrow
+      eventWatch.await[OrderNoticesExpected](_.key == orderId, after = eventId)
+
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
+        OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
+        OrderInstructionReset,
+        OrderCancelled,
+        OrderDeleted))
+
+      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
+
+      deleteItems(board.path, workflow.path)
   }
 
   "Update Board" in:

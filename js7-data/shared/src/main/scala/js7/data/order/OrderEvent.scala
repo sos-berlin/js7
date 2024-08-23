@@ -477,8 +477,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   /** No other use than notifying an external user. */
   case object OrderCancellationMarkedOnAgent extends OrderActorEvent
 
-  type OrderOperationCancelled = OrderOperationCancelled.type
-  case object OrderOperationCancelled extends OrderActorEvent
+  type OrderInstructionReset = OrderInstructionReset.type
+  case object OrderInstructionReset extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent, OrderTerminated
@@ -584,11 +584,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def checked: Checked[OrderLocksAcquired] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
-  final case class OrderLocksDequeued(lockPaths: Seq[LockPath])
-  extends OrderLockEvent:
-    def checked: Checked[OrderLocksDequeued] =
-      lockPaths.checkUniqueness.rightAs(this)
-
   final case class OrderLocksReleased(lockPaths: Seq[LockPath])
   extends OrderLockEvent:
     def checked: Checked[OrderLocksReleased] = lockPaths.checkUniqueness.rightAs(this)
@@ -659,7 +654,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveConfiguredCodec[OrderCancellationMarked]),
-    Subtype(OrderOperationCancelled),
+    Subtype.singleton(OrderInstructionReset, aliases = Seq(
+      "OrderOperationCancelled", "OrderLocksDequeued", "OrderLockDequeued")),
     Subtype(OrderCancellationMarkedOnAgent),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
@@ -670,14 +666,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderBroken]),
     Subtype(deriveCodec[OrderLocksQueued].checked(_.checked)),
     Subtype(deriveCodec[OrderLocksAcquired].checked(_.checked)),
-    Subtype(deriveCodec[OrderLocksDequeued].checked(_.checked)),
     Subtype(deriveCodec[OrderLocksReleased].checked(_.checked)),
     Subtype.decodeCompatible(deriveDecoder[OrderLockQueued])(e =>
       OrderLocksQueued(LockDemand(e.lockPath, e.count) :: Nil).checked),
     Subtype.decodeCompatible(deriveDecoder[OrderLockAcquired])(e =>
       OrderLocksAcquired(LockDemand(e.lockPath, e.count) :: Nil).checked),
-    Subtype.decodeCompatible(deriveDecoder[OrderLockDequeued])(e =>
-      OrderLocksDequeued(e.lockPath :: Nil).checked),
     Subtype.decodeCompatible(deriveDecoder[OrderLockReleased])(e =>
       OrderLocksReleased(e.lockPath :: Nil).checked),
     Subtype.named1[OrderNoticePosted_](typeName = "OrderNoticePosted", subclasses = Seq(

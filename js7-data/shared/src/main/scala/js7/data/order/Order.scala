@@ -277,10 +277,10 @@ final case class Order[+S <: Order.State](
       case OrderCancellationMarkedOnAgent =>
         Right(this)
 
-      case OrderOperationCancelled =>
-        // Event is followed by OrderCancelled in the same transaction,
-        // maybe after some block-leaving events which rely on state == Ready.
-        check(state.isOperationCancelable && isDetached,
+      case OrderInstructionReset =>
+        // Event precedes OrderCancelled in the same transaction,
+        // maybe before some block-leaving events which rely on state == Ready.
+        check(state.isInstanceOf[Resettable] && isStarted,
           copy(
             state = Ready,
             mark = None))
@@ -441,11 +441,6 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
-
-      case _: OrderLocksDequeued =>
-        check(isDetached && isState[WaitingForLock],
-          copy(
-            state = Ready))
 
       case e: LegacyOrderLockEvent =>
         Left(EventNotApplicableProblem(id <-: e, this))
@@ -835,8 +830,17 @@ final case class Order[+S <: Order.State](
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
 
+  /** Reset the Order's State if possible. */
+  def resetState: List[OrderActorEvent] =
+    state match
+      case state: Resettable =>
+        state.reset
+      case _ =>
+        Nil
+
 
 object Order:
+
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
@@ -875,12 +879,15 @@ object Order:
       Subtype(deriveCodec[Detaching]))
 
     sealed trait AttachingOrAttached extends HasAgentPath
+
   /** Order is going to be attached to an Agent. */
   final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attaching to $agentPath"
+
   /** Order is attached to an Agent. */
   final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attached to $agentPath"
+
   /** Order is going to be detached from Agent. */
   final case class Detaching(agentPath: AgentPath) extends AttachedState.HasAgentPath:
     override def toString = s"Detaching from $agentPath"
@@ -888,8 +895,11 @@ object Order:
   sealed trait State:
     private[Order] def maybeDelayedUntil: Option[Timestamp] = None
 
-    /** Only if OrderOperationCancellable applies. */
-    def isOperationCancelable = false
+
+  sealed trait Resettable extends State:
+    private[Order] final def reset: List[OrderActorEvent] =
+      OrderInstructionReset :: Nil
+
 
   object State:
     implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
@@ -965,23 +975,26 @@ object Order:
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
-  extends IsStarted
+  extends IsStarted, Resettable
+
 
   // COMPATIBLE with v2.3, only used for JSON deserialization
   final case class ExpectingNotice(noticeId: NoticeId)
   extends IsStarted
 
   final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
-  extends IsStarted
+  extends IsStarted, Resettable
+
 
   final case class Prompting(question: Value)
-  extends IsStarted:
-    override def isOperationCancelable = true
+  extends IsStarted, Resettable
+
 
   final case class BetweenCycles(cycleState: Option[CycleState])
-  extends IsStarted:
+  extends IsStarted, Resettable:
     override private[Order] def maybeDelayedUntil =
       cycleState.map(_.next)
+
 
   type Failed = Failed.type
   case object Failed extends IsStarted with IsFailed

@@ -733,23 +733,24 @@ final class OrderEventTest extends OurTestSuite:
       }""".checkedAs[OrderEvent] == Left(Problem(
         "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
 
+  "OrderInstructionReset" in :
+    testJson[OrderEvent](OrderInstructionReset,
+      json"""
+      {
+        "TYPE": "OrderInstructionReset"
+      }""")
+
+  // COMPATIBLE with v2.7.1
   "OrderLocksDequeued" in:
-    testJson[OrderEvent](OrderLocksDequeued(List(LockPath("LOCK"))), json"""
+    testJsonDecoder[OrderEvent](OrderInstructionReset, json"""
       {
         "TYPE": "OrderLocksDequeued",
         "lockPaths": [ "LOCK" ]
       }""")
 
-    assert(
-      json"""{
-        "TYPE": "OrderLocksDequeued",
-        "lockPaths": [ "LOCK", "LOCK" ]
-      }""".checkedAs[OrderEvent] == Left(Problem(
-        "JSON DecodingFailure at : Unexpected duplicates: 2×Lock:LOCK")))
-
   // COMPATIBLE with v2.4
   "OrderLockDequeued" in:
-    testJsonDecoder[OrderEvent](OrderLocksDequeued(List(LockPath("LOCK"))),
+    testJsonDecoder[OrderEvent](OrderInstructionReset,
       json"""
       {
         "TYPE": "OrderLockDequeued",
