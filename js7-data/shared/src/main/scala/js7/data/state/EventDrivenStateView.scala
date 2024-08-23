@@ -103,12 +103,11 @@ extends EventDrivenState[Self, E], StateView:
         case _: OrderCancelled =>
           previousOrder
             .ifState[ExpectingNotices]
-            .fold(update(addOrders = updatedOrder :: Nil))(order =>
-              removeNoticeExpectation(order)
-                .flatMap(updatedBoardStates =>
-                  update(
-                    addOrders = updatedOrder :: Nil,
-                    addItemStates = updatedBoardStates)))
+            .fold(update(addOrders = updatedOrder :: Nil)): order =>
+              removeNoticeExpectation(order).flatMap: updatedBoardStates =>
+                update(
+                  addOrders = updatedOrder :: Nil,
+                  addItemStates = updatedBoardStates)
 
         case orderAdded: OrderOrderAdded =>
           addOrder(Order.fromOrderAdded(orderAdded.orderId, orderAdded))
