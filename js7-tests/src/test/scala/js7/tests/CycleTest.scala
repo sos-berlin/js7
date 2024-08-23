@@ -965,6 +965,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       val cyclePosition = Position(0)
 
       for _ <- 1 to 3 do
+        eventId = eventWatch.lastAddedEventId
         controller.api.executeCommand(GoOrder(orderId, position = cyclePosition))
           .await(99.s).orThrow
         eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
