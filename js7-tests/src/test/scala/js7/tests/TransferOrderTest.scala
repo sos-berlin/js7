@@ -7,16 +7,19 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.{Board, BoardPath, BoardPathExpression, NoticeId}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
+import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, Fork, Prompt}
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.{InstructionNr, Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.TransferOrderTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
@@ -38,84 +41,95 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     js7.order.stdout-stderr.delay = 1ms"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(noticeBoad)
+  protected val items = Seq(noticeBoard)
 
   "TransferOrder" in:
-    withTemporaryItem(workflow) { v1Workflow =>
-      // aOrderId sticks in Order.Prompting, is transferable
+    val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
+      "A" @: Prompt(expr("'?'")),
+      "B" @: BSemaphoreJob.execute(agentPath),
+      "C" @: Fork.of("BRANCH" -> Workflow.of(
+        CSemaphoreJob.execute(agentPath))),
+      "D" @: ConsumeNotices(ExpectNotice(noticeBoard.path)):
+          EmptyJob.execute(agentPath))
+
+    withItem(workflow): workflow1 =>
+      /// aOrderId sticks in Order.Prompting, is transferable ///
       val aOrderId = OrderId("A-ORDER")
       controller.api
-        .addOrder(FreshOrder(aOrderId, v1Workflow.path, stopPositions = Set(Position(1))))
+        .addOrder(FreshOrder(aOrderId, workflow1.path, stopPositions = Set(Position(1))))
         .await(99.s).orThrow
       eventWatch.await[OrderPrompted](_.key == aOrderId)
 
-      // bOrderId sticks in Order.Processing, is not transferable because Attached
+      /// bOrderId sticks in Order.Processing, is not transferable because Attached ///
       val bOrderId = OrderId("B-ORDER")
       controller.api
-        .addOrder(FreshOrder(bOrderId, v1Workflow.path,
-          startPosition = Some(Position(1)),
-          stopPositions = Set(Position(2))))
+        .addOrder(FreshOrder(bOrderId, workflow1.path,
+          startPosition = Some(Label("B")),
+          stopPositions = Set(Label("C"))))
         .await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](_.key == bOrderId)
 
-      // cOrderId is forked and attached to agentPath, too
+      /// cOrderId is forked and attached to agentPath, too ///
       val cOrderId = OrderId("C-ORDER")
       controller.api
-        .addOrder(FreshOrder(cOrderId, v1Workflow.path,
-          startPosition = Some(Position(2)), stopPositions = Set(Position(3))))
+        .addOrder(FreshOrder(cOrderId, workflow1.path,
+          startPosition = Some(Label("C")),
+          stopPositions = Set(Label("D"))))
         .await(99.s).orThrow
       val cChildOrderId = cOrderId / "BRANCH"
       eventWatch.await[OrderStdoutWritten](_.key == cChildOrderId)
 
-      // dOrderId is Order.ConsumeNotices
+      /// dOrderId is Order.ConsumeNotices ///
       val dOrderId = OrderId("D-ORDER")
       controller.api
-        .addOrder(FreshOrder(dOrderId, v1Workflow.path, startPosition = Some(Position(3))))
+        .addOrder(FreshOrder(dOrderId, workflow1.path,
+          startPosition = Some(Label("D"))))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == dOrderId)
 
-      // TransferOrders will fail
-      val v2Workflow = updateItem(workflow)
-      val checked = controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s)
+      /// TransferOrders will fail ///
+      val workflow2 = updateItem(workflow)
+      val checked = controller.api.executeCommand(TransferOrders(workflow1.id)).await(99.s)
       assert(checked == Left(Problem(
         "Order:B-ORDER to be transferred is Attached to Agent:AGENT;\n" +
         "Order:C-ORDER|BRANCH to be transferred is Attached to Agent:AGENT")))
 
-      // Detach bOrderId
-      controller.api.executeCommand(SuspendOrders(Set(bOrderId))).await(99.s).orThrow
+      /// Detach bOrderId ///
+      execCmd(SuspendOrders(Set(bOrderId)))
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == bOrderId)
-      ASemaphoreJob.continue()
+      BSemaphoreJob.continue()
       eventWatch.await[OrderSuspended](_.key == bOrderId)
       assert(controllerState.idToOrder(bOrderId).isDetached)
 
-      // Detach cChildOrderId
-      controller.api.executeCommand(SuspendOrders(Set(cChildOrderId))).await(99.s).orThrow
+      /// Detach cChildOrderId ///
+      execCmd(SuspendOrders(Set(cChildOrderId)))
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == cChildOrderId)
       CSemaphoreJob.continue()
       eventWatch.await[OrderSuspended](_.key == cChildOrderId)
       assert(controllerState.idToOrder(cChildOrderId).isDetached)
 
-      // TransferOrders will succeed, all orders are transferable
-      controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s).orThrow
+      /// TransferOrders succeeds ///
+      execCmd(TransferOrders(workflow1.id))
 
+      /// All orders have been transferred ///
       for orderId <- Seq(aOrderId, bOrderId, cOrderId, cChildOrderId, dOrderId) do
         withClue(s"$orderId: "):
-          assert(controllerState.idToOrder(orderId).workflowId == v2Workflow.id)
+          assert(controllerState.idToOrder(orderId).workflowId == workflow2.id)
 
       assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
-        OrderAdded(v1Workflow.id, stopPositions = Set(Position(1))),
+        OrderAdded(workflow1.id, stopPositions = Set(Position(1))),
         OrderStarted,
         OrderPrompted(StringValue("?")),
-        OrderTransferred(v2Workflow.id /: Position(0))))
+        OrderTransferred(workflow2.id /: Position(0))))
 
       assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
-        OrderAdded(v1Workflow.id,
-          startPosition = Some(Position(1)), stopPositions = Set(Position(2))),
+        OrderAdded(workflow1.id,
+          startPosition = Some(Position(1)), stopPositions = Set(Label("C"))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderStdoutWritten("ASemaphoreJob\n"),
+        OrderStdoutWritten("BSemaphoreJob\n"),
         OrderSuspensionMarked(SuspensionMode(None)),
         OrderSuspensionMarkedOnAgent,
         OrderProcessed(OrderOutcome.succeeded),
@@ -123,46 +137,91 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDetachable,
         OrderDetached,
         OrderSuspended,
-        OrderTransferred(v2Workflow.id /: Position(2))))
+        OrderTransferred(workflow2.id /: Position(2))))
 
-      eventWatch.await[ItemDeleted](_.event.key == v1Workflow.id)
+      eventWatch.await[ItemDeleted](_.event.key == workflow1.id)
 
-      controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+      execCmd(AnswerOrderPrompt(aOrderId))
       eventWatch.await[OrderFinished](_.key == aOrderId)
 
-      controller.api.executeCommand(ResumeOrder(bOrderId)).await(99.s).orThrow
+      execCmd(ResumeOrder(bOrderId))
       eventWatch.await[OrderFinished](_.key == bOrderId)
 
       // Forked cOrderId finished, too
-      controller.api.executeCommand(ResumeOrder(cChildOrderId)).await(99.s).orThrow
+      execCmd(ResumeOrder(cChildOrderId))
       eventWatch.await[OrderFinished](_.key == cOrderId)
 
       // Notice-consuming dOrderId finished, too
-      controller.api.executeCommand(PostNotice(noticeBoad.path, NoticeId("NOTICE")))
-        .await(99.s).orThrow
+      execCmd(PostNotice(noticeBoard.path, NoticeId("NOTICE")))
       eventWatch.await[OrderFinished](_.key == dOrderId)
-    }
+
+  "TransferOrder with changed ConsumeNotices instruction in surrounding block is rejected" in:
+    BSemaphoreJob.reset()
+
+    val aBoard = Board.joc(BoardPath("BOARD-A"))
+    val bBoard = Board.joc(BoardPath("BOARD-B"))
+    val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
+      ConsumeNotices(ExpectNotice(aBoard.path)):
+        Prompt(expr("'PROMPT-1'")))
+    withItems((aBoard, bBoard, workflow)): (aBoard, bBoard, workflow1) =>
+      val eventId = eventWatch.lastAddedEventId
+      val qualifier = "2024-08-23"
+      val noticeId = NoticeId(qualifier)
+      val orderId = OrderId(s"#$qualifier#")
+
+      controller.api
+        .addOrder(FreshOrder(orderId, workflow1.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      execCmd(PostNotice(aBoard.path, noticeId))
+      eventWatch.await[OrderPrompted](_.key == orderId, after = eventId)
+
+      /// TransferOrders with changed ConsumeNotices instructions will fail ///
+      updateItem:
+        Workflow.of(workflow1.path,
+          ConsumeNotices(ExpectNotice(bBoard.path)):
+            Prompt(expr("'PROMPT-2a'")))
+
+      val checked = controller.api.executeCommand(TransferOrders(workflow1.id)).await(99.s)
+      assert(checked == Left(Problem:
+        "Order:#2024-08-23# is not transferable because the surrounding ConsumeNotices instruction at position 0 has changed"))
+
+      /// TransferOrders with unchanged ConsumeNotices instructions will succeed ///
+      val workflow3 = updateItem:
+        Workflow.of(workflow1.path,
+          ConsumeNotices(ExpectNotice(aBoard.path)):
+            Prompt(expr("'PROMPT-2b'"))) // But block of ConsumeNotices changed!
+
+      execCmd(TransferOrders(workflow1.id))
+
+      execCmd(AnswerOrderPrompt(orderId))
+      eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+
+      eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow1.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticesExpected(Vector(Expected(aBoard.path, noticeId))),
+        OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
+        OrderPrompted(StringValue("PROMPT-1")),
+        OrderInstructionReset,
+        OrderTransferred(workflow3.id /: (Position(0) / "consumeNotices" % 0)),
+        OrderPromptAnswered(),
+        OrderMoved(Position(0) / "consumeNotices" % 1),
+        OrderNoticesConsumed(),
+        OrderFinished(),
+        OrderDeleted)
 
 
 object TransferOrderTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
-  final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
-  object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
+  final class BSemaphoreJob extends SemaphoreJob(BSemaphoreJob)
+  object BSemaphoreJob extends SemaphoreJob.Companion[BSemaphoreJob]
 
   final class CSemaphoreJob extends SemaphoreJob(CSemaphoreJob)
   object CSemaphoreJob extends SemaphoreJob.Companion[CSemaphoreJob]
 
-  private val noticeBoad = Board.singleNotice(BoardPath("BOARD"))
+  final class DSemaphoreJob extends SemaphoreJob(DSemaphoreJob)
+  object DSemaphoreJob extends SemaphoreJob.Companion[DSemaphoreJob]
 
-  private val workflow = Workflow(WorkflowPath("WORKFLOW"),
-    Seq(
-      Prompt(expr("'?'")),
-      ASemaphoreJob.execute(agentPath),
-      Fork.of("BRANCH" -> Workflow.of(
-        CSemaphoreJob.execute(agentPath))),
-      ConsumeNotices(
-        BoardPathExpression.ExpectNotice(noticeBoad.path),
-        Workflow.of(
-          EmptyJob.execute(agentPath)))))
+  private val noticeBoard = Board.singleNotice(BoardPath("BOARD"))
