@@ -50,7 +50,7 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def get[B: Decoder](uriTail: String): IO[B] =
     httpClient.get[B](baseUri /? uriTail)
 
-  final def executeCommand(command: ControllerCommand): IO[command.Response] =
+  final def executeCommand[C <: ControllerCommand](command: C): IO[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
       .map(_.asInstanceOf[command.Response])
 

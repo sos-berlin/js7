@@ -1,13 +1,14 @@
 package js7.tests.testenv
 
-import cats.effect.{IO, Resource, ResourceIO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.instances.option.*
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2.Stream
+import izumi.reflect.Tag
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
@@ -21,7 +22,7 @@ import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
 import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
-import js7.data.controller.ControllerState
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
@@ -217,6 +218,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
               eventWatch.await[SubagentCoupled](after = e)
           })
       })
+
+  def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response]): command.Response =
+    controller.api.executeCommand(command).await(99.s).orThrow
 
 
 object ControllerAgentForScalaTest:

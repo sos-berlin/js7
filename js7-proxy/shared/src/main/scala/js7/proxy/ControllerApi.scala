@@ -155,7 +155,7 @@ extends ControllerApiWithHttp:
     executeCommand(ReleaseEvents(eventId))
       .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
-  def executeCommand(command: ControllerCommand): IO[Checked[command.Response]] =
+  def executeCommand[C <: ControllerCommand](command: C): IO[Checked[command.Response]] =
     logger.debugIO(s"executeCommand ${command.toShortString}")(
       untilReachable(_.executeCommand(command)))
 
