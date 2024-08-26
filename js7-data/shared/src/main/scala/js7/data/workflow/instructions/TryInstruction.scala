@@ -1,6 +1,5 @@
 package js7.data.workflow.instructions
 
-import cats.implicits.catsKernelStdCommutativeMonoidForOption
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.*

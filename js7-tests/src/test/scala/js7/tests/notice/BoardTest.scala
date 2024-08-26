@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.notice
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import fs2.Stream
@@ -15,28 +15,29 @@ import js7.controller.RunningController
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, PostNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.BoardTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
+import js7.tests.notice.BoardTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
 import scala.concurrent.duration.*
 
 final class BoardTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater, TransferOrdersWaitingForNoticeTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -378,44 +379,30 @@ final class BoardTest
 
       deleteItems(board.path, workflow.path)
 
-    "Order.ExpectingNotice is transferrable" in:
+    "TransferOrders of Order.ExpectingNotice" in:
       val eventId = eventWatch.lastAddedEventId
-      val qualifier = "2224-08-23"
-      val noticeId = NoticeId(qualifier)
-      val orderId = OrderId(s"#$qualifier#TRANSFER-EXPECT")
+      testTransferOrders(
+        boardPath => ExpectNotices(ExpectNotice(boardPath)),
+        (board1, board2, workflowId1, workflowId2, orderId, noticeId) =>
+          assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
+            OrderAdded(workflowId1, deleteWhenTerminated = true),
+            OrderStarted,
+            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board1.path, noticeId))),
+            OrderInstructionReset,
+            OrderTransferred(workflowId2 /: Position(0)),
+            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board2.path, noticeId))),
+            OrderNoticesRead,
+            OrderMoved(Position(1)),
+            OrderFinished(),
+            OrderDeleted))
 
-      val board = Board.joc(BoardPath("TRANSFER-EXPECT"), 1.h)
-      val workflow = Workflow(WorkflowPath("TRANSFER-EXPECT"), Seq(
-        ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
-      val Some(versionId) = updateItems(board, workflow)
-
-      val expectedBoardState = BoardState(
-        board.copy(itemRevision = Some(ItemRevision(0))),
-        idToNotice = Map.empty,
-        orderToConsumptionStack = Map.empty)
-
-      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
-
-      controller.api
-        .addOrder:
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
-        .await(99.s).orThrow
-      eventWatch.await[OrderNoticesExpected](_.key == orderId, after = eventId)
-
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-      eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
-
-      assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
-        OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
-        OrderStarted,
-        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
-        OrderInstructionReset,
-        OrderCancelled,
-        OrderDeleted))
-
-      assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
-
-      deleteItems(board.path, workflow.path)
+          val endOfLife = controllerState.keyTo(BoardState)(board2.path)
+            .idToNotice(noticeId).notice.get.endOfLife
+          assert(controllerState.keyTo(BoardState)(board2.path) ==
+            BoardState(
+              board2,
+              idToNotice = Map(
+                noticeId -> NoticePlace(noticeId, Some(Notice(noticeId, board2.path, endOfLife)))))))
   }
 
   "Update Board" in:
@@ -487,9 +474,9 @@ final class BoardTest
       PostNotices(Seq(board.path))))
 
     val expectingWorkflow = Workflow(WorkflowPath("JOC-1446-EXPECT"), Seq(
-      ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
+      ExpectNotices(ExpectNotice(board.path))))
 
-    withItems(board, postingWorkflow, expectingWorkflow):
+    withItems((board, postingWorkflow, expectingWorkflow)): _ =>
       val day = Timestamp.now.toIsoString.take(10) // yyyy-MM-dd
       val postOrderId = OrderId(s"#$day#JOC-1446-POST")
       val expectOrderId = OrderId(s"#$day#JOC-1446-EXPECT")

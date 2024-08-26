@@ -58,7 +58,12 @@ trait Instruction:
   def workflow(branchId: BranchId): Checked[Workflow] =
     Problem(s"Instruction '$instructionName' does not have a nested workflow for branch '$branchId'")
 
-  def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
+  def toCatchBranchId(branchId: BranchId): Option[BranchId] =
+    None
+
+  /** Compares the instructions without sourcePos or instruction blocks. */
+  final def isSameCore(other: Instruction): Boolean =
+    withoutSourcePos.withoutBlocks == other.withoutSourcePos.withoutBlocks
 
   final def @:(maybeLabel: Option[Label]): Labeled =
     Labeled(maybeLabel, this)

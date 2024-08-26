@@ -19,6 +19,8 @@ final case class LockInstruction private(
   sourcePos: Option[SourcePos])
 extends Instruction:
 
+  override def instructionName = "Lock"
+
   private def checked: Checked[this.type] =
     LockDemand.checked(demands).rightAs(this)
 

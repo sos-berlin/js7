@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -25,7 +26,6 @@ import js7.tests.TransferOrderTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
 
 final class TransferOrderTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
@@ -91,8 +91,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       val workflow2 = updateItem(workflow)
       val checked = controller.api.executeCommand(TransferOrders(workflow1.id)).await(99.s)
       assert(checked == Left(Problem(
-        "Order:B-ORDER to be transferred is Attached to Agent:AGENT;\n" +
-        "Order:C-ORDER|BRANCH to be transferred is Attached to Agent:AGENT")))
+        "Order:B-ORDER is required to be detached, but it is Attached to Agent:AGENT;\n" +
+        "Order:C-ORDER|BRANCH is required to be detached, but it is Attached to Agent:AGENT")))
 
       /// Detach bOrderId ///
       execCmd(SuspendOrders(Set(bOrderId)))

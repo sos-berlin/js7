@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.notice
 
 import cats.effect.unsafe.IORuntime
 import java.time.LocalDate
@@ -9,11 +9,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
+import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
@@ -22,17 +23,17 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, If, Options, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.ConsumeNoticesTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob}
+import js7.tests.notice.ConsumeNoticesTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
 import scala.concurrent.duration.*
 
 final class ConsumeNoticesTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater, TransferOrdersWaitingForNoticeTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -531,6 +532,26 @@ final class ConsumeNoticesTest
       OrderNoticesConsumed(true),
       OrderCancelled,
       OrderDeleted))
+
+  "TransferOrders of Order.ExpectingNotice" in:
+    val eventId = eventWatch.lastAddedEventId
+    testTransferOrders(
+      boardPath => ConsumeNotices(ExpectNotice(boardPath), Workflow.empty),
+      (board1, board2, workflowId1, workflowId2, orderId, noticeId) =>
+        assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
+          OrderAdded(workflowId1, deleteWhenTerminated = true),
+          OrderStarted,
+          OrderNoticesExpected(Vector(Expected(board1.path, noticeId))),
+          OrderInstructionReset,
+          OrderTransferred(workflowId2 /: Position(0)),
+          OrderNoticesExpected(Vector(Expected(board2.path, noticeId))),
+          OrderNoticesConsumptionStarted(Vector(Expected(board2.path, noticeId))),
+          OrderNoticesConsumed(),
+          OrderFinished(),
+          OrderDeleted))
+
+        assert(controllerState.keyTo(BoardState)(board2.path) ==
+          BoardState(board2, idToNotice = Map.empty)))
 
   "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in:
     val noticeId = NoticeId("2022-10-25")

@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.notice
 
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
@@ -14,7 +14,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderNoticesExpected}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotices}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.NoticeEndOfLifeTest.*
+import js7.tests.notice.NoticeEndOfLifeTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
 final class NoticeEndOfLifeTest

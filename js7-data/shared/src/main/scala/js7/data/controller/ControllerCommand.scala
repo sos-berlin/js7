@@ -189,10 +189,10 @@ object ControllerCommand extends CommonCommand.Companion:
   extends ControllerCommand, Big:
     type Response = Response.Accepted
 
-  final case class TransferOrders(
-    workflowId: WorkflowId
-    /*orderIds: Option[immutable.Iterable[OrderId]],
-    position: Option[Position] = None*/)
+  /** Transfer all Orders from the given Workflow to the newest version.
+   * @param workflowId denotes the Workflow from which all Orders are transferred
+   */
+  final case class TransferOrders(workflowId: WorkflowId)
   extends ControllerCommand:
     type Response = Response.Accepted
 

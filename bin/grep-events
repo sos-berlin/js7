@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec grep --line-buffered -- "-Controller-.* - :" | sed -l 's/ trace .*Journal - ://' 

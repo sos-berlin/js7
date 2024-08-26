@@ -13,7 +13,7 @@ extends Instruction.NoInstructionBlock:
   def withoutSourcePos: EmptyInstruction =
     copy(sourcePos = None)
 
-  override def toString = "gap"
+  override def toString = "empty"
 
 
 object EmptyInstruction:
