@@ -7,8 +7,8 @@ import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
-import js7.data.workflow.Workflow
 import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.{Instruction, Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -37,10 +37,13 @@ extends ExpectOrConsumeNoticesInstruction:
   : List[OrderEvent.OrderActorEvent] =
     OrderNoticesConsumptionStarted(expected) :: Nil
 
+  def withoutBlocks: ConsumeNotices =
+    copy(subworkflow = Workflow.empty)
+
   override def workflows: Seq[Workflow] =
     subworkflow :: Nil
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.ConsumeNotices -> subworkflow) :: Nil
 
   override def workflow(branchId: BranchId): Checked[Workflow] =
@@ -53,3 +56,6 @@ extends ExpectOrConsumeNoticesInstruction:
 object ConsumeNotices:
   implicit val jsonCodec: Codec.AsObject[ConsumeNotices] =
     ConfiguredCodec.derive(useDefaults = true)
+
+  def apply(boardPaths: BoardPathExpression)(instructions: Instruction.Labeled*): ConsumeNotices =
+    ConsumeNotices(boardPaths, Workflow.of(instructions*))

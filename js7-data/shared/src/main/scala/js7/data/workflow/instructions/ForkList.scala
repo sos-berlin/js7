@@ -52,6 +52,9 @@ extends ForkInstruction:
     // Any Agent or the controller can fork. The current Agent is okay.
     workflow.isStartableOnAgent(agentPath)
 
+  def withoutBlocks: ForkList =
+    copy(workflow = Workflow.empty)
+
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.ForkList => Right(workflow)

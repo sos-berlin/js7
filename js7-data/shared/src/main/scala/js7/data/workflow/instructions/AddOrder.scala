@@ -1,12 +1,12 @@
 package js7.data.workflow.instructions
 
-import io.circe.{Codec, Decoder, Encoder}
 import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, ConfiguredEncoder}
+import io.circe.{Codec, Decoder, Encoder}
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Instruction, WorkflowPath}
-import js7.data.workflow.position.BranchPath.syntax.*
 
 final case class AddOrder(
   orderId: Expression,
@@ -18,7 +18,8 @@ final case class AddOrder(
   deleteWhenTerminated: Boolean = false,
   forceJobAdmission: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.NoInstructionBlock:
+  
   def withoutSourcePos: AddOrder =
     copy(sourcePos = None)
 

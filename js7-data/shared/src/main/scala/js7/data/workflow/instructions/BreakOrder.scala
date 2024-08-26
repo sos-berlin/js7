@@ -7,7 +7,7 @@ import js7.data.workflow.Instruction
 
 /** For internal JS7 testing only. */
 final case class BreakOrder(sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.NoInstructionBlock:
 
   def withoutSourcePos: BreakOrder =
     copy(sourcePos = None)

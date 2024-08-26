@@ -17,6 +17,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 trait Instruction:
+
   def instructionName: String =
     getClass.simpleScalaName
 
@@ -38,11 +39,13 @@ trait Instruction:
   def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
     workflows.exists(_ isVisibleForAgent agentPath)
 
+  def withoutBlocks: Instruction
+
+  def branchWorkflows: Seq[(BranchId, Workflow)]
+
+  // The instruction blocks of the instruction
   def workflows: Seq[Workflow] =
     branchWorkflows.map(_._2)
-
-  def branchWorkflows: Seq[(BranchId, Workflow)] =
-    Nil
 
   final def flattenedWorkflows(parent: Position): View[(BranchPath, Workflow)] =
     branchWorkflows.view
@@ -118,3 +121,11 @@ object Instruction:
       yield Labeled(labels, instruction)
 
   trait IsOrderBoundary extends Instruction
+
+  /** Instruction has no own instruction block (is not nesting). */
+  trait NoInstructionBlock extends Instruction:
+    final def withoutBlocks: NoInstructionBlock =
+      this
+
+    final def branchWorkflows: Seq[(BranchId, Workflow)] =
+      Nil

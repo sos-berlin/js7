@@ -8,9 +8,10 @@ import js7.data.workflow.Instruction
 /**
   * @author Joacim Zschimmer
   */
-sealed trait End extends Instruction
+sealed trait End extends Instruction.NoInstructionBlock
 
 final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End:
+
   def withoutSourcePos: ExplicitEnd =
     copy(sourcePos = None)
 
@@ -20,6 +21,7 @@ final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End:
 
 object ExplicitEnd:
   implicit val jsonCodec: Codec.AsObject[ExplicitEnd] = deriveCodec
+
 
 final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End:
   def withoutSourcePos: ImplicitEnd =

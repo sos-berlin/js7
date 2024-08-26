@@ -12,7 +12,7 @@ import js7.data.workflow.Instruction
 final case class Finish(
   outcome: Option[OrderOutcome.Completed] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.NoInstructionBlock:
 
   def withoutSourcePos: Finish = copy(sourcePos = None)
 

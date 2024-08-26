@@ -6,7 +6,10 @@ import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 
 final case class EmptyInstruction(sourcePos: Option[SourcePos])
-extends Instruction:
+extends Instruction.NoInstructionBlock:
+
+  override def instructionName = "Empty"
+
   def withoutSourcePos: EmptyInstruction =
     copy(sourcePos = None)
 

@@ -13,7 +13,7 @@ import js7.data.workflow.Instruction
 final case class PostNotices private(
   boardPaths: Vector[BoardPath],
   sourcePos: Option[SourcePos])
-extends BoardInstruction:
+extends BoardInstruction, Instruction.NoInstructionBlock:
 
   val referencedBoardPaths: Set[BoardPath] = boardPaths.toSet
 

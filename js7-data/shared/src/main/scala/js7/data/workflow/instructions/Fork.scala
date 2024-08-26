@@ -60,6 +60,11 @@ extends ForkInstruction:
   //def startAgents: Set[AgentPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
+  def withoutBlocks: Fork =
+    copy(
+      branches = branches.map(_.copy(
+        workflow = Workflow.empty)))
+
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>

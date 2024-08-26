@@ -30,6 +30,9 @@ extends Instruction:
     copy(
       block = block.reduceForAgent(agentPath))
 
+  def withoutBlocks: Options =
+    copy(block = Workflow.empty)
+
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Options => Right(block)

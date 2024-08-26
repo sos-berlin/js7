@@ -9,7 +9,8 @@ import js7.data.workflow.Instruction
   * @author Joacim Zschimmer
   */
 final case class Gap(sourcePos: Option[SourcePos])
-extends Instruction:
+extends Instruction.NoInstructionBlock:
+  
   def withoutSourcePos: Gap =
     copy(sourcePos = None)
 

@@ -41,7 +41,10 @@ extends Instruction:
   override def workflows: Seq[Workflow] =
     cycleWorkflow :: Nil
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def withoutBlocks: Cycle =
+    copy(cycleWorkflow = Workflow.empty)
+
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Cycle -> cycleWorkflow) :: Nil
 
   override def workflow(branchId: BranchId): Checked[Workflow] =

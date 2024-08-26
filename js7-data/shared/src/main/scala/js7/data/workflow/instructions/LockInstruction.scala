@@ -41,6 +41,9 @@ extends Instruction:
     else
       Gap(sourcePos)  // The agent will never touch this lock or it subworkflow
 
+  def withoutBlocks: LockInstruction =
+    copy(lockedWorkflow = Workflow.empty)
+
   override def workflows: Seq[Workflow] = lockedWorkflow :: Nil
 
   override def branchWorkflows: Seq[(BranchId, Workflow)] =

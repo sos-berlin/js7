@@ -31,6 +31,9 @@ extends Instruction:
     copy(
       subworkflow = subworkflow.reduceForAgent(agentPath))
 
+  def withoutBlocks: StickySubagent =
+    copy(subworkflow = Workflow.empty)
+
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.StickySubagent => Right(subworkflow)

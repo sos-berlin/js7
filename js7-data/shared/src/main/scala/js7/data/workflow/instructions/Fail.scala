@@ -17,7 +17,7 @@ final case class Fail(
   namedValues: NamedValues = NamedValues.empty,
   uncatchable: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.NoInstructionBlock:
 
   def withoutSourcePos: Fail =
     copy(sourcePos = None)

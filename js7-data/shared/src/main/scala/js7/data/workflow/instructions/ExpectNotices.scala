@@ -6,12 +6,13 @@ import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
+import js7.data.workflow.Instruction
 import scala.annotation.unused
 
 final case class ExpectNotices(
   boardPaths: BoardPathExpression,
   sourcePos: Option[SourcePos] = None)
-extends ExpectOrConsumeNoticesInstruction:
+extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
 
   def withoutSourcePos: ExpectNotices =
     copy(sourcePos = None)

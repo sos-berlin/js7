@@ -38,6 +38,11 @@ extends Instruction:
       thenWorkflow = thenWorkflow.reduceForAgent(agentPath),
       elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentPath)))
 
+  def withoutBlocks: If =
+    copy(
+      thenWorkflow = Workflow.empty,
+      elseWorkflow = elseWorkflow.map(_ => Workflow.empty))
+
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Then => Right(thenWorkflow)

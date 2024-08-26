@@ -7,13 +7,12 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.ZeroDuration
-import js7.data.workflow.position.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction.*
-import js7.data.workflow.position.{BranchId, CatchBranchId, Position, TryBranchId, TryCatchBranchId}
-import js7.data.workflow.{Instruction, Workflow}
+import js7.data.workflow.position.*
+import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -26,6 +25,9 @@ final case class TryInstruction(
   maxTries: Option[Int] = None,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
+  override def instructionName = "Try"
+
   def checked: Checked[TryInstruction] =
     if maxTries exists (_ < 1) then
       Left(InvalidMaxTriesProblem)
@@ -52,6 +54,11 @@ extends Instruction:
     copy(
       tryWorkflow = tryWorkflow.reduceForAgent(agentPath),
       catchWorkflow = catchWorkflow.reduceForAgent(agentPath))
+
+  def withoutBlocks: TryInstruction =
+    copy(
+      tryWorkflow = Workflow.empty,
+      catchWorkflow = Workflow.empty)
 
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match

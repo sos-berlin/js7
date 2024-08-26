@@ -9,7 +9,8 @@ import js7.data.workflow.Instruction
   * @author Joacim Zschimmer
   */
 final case class Retry(sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.NoInstructionBlock:
+  
   def withoutSourcePos: Retry =
   copy(sourcePos = None)
 
