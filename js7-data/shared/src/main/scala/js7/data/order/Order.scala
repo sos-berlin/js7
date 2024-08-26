@@ -971,7 +971,9 @@ object Order:
         Right(Nil)
 
 
-  transparent sealed trait IsTransferableButResetChangedInstruction extends Resettable:
+  transparent sealed trait IsTransferableButResetChangedInstruction:
+    this: Resettable =>
+
     private[Order] final def prepareTransfer(order: Order[Order.State], from: Workflow, to: Workflow) =
       Right:
         if !from.instruction(order.position).isSameCore(to.instruction(order.position)) then

@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated, TransferOrders}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
@@ -1183,6 +1183,66 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderCancelled,
             OrderDeleted))
   }
+
+  "TransferOrders while waiting for Lock" in:
+    val eventId = eventWatch.lastAddedEventId
+
+    val lock1 = Lock(LockPath("TRANSFER-ORDERS-1"))
+    val lock2 = Lock(LockPath("TRANSFER-ORDERS-2"))
+
+    val aWorkflow = Workflow.of(
+      WorkflowPath("A-TRANSFER-ORDERS"),
+      LockInstruction(
+        Seq(LockDemand(lock1.path), LockDemand(lock2.path)),
+        lockedWorkflow = Workflow.of(Prompt(expr("'PROMPT'")))))
+
+    val bWorkflow1 = Workflow(
+      WorkflowPath("B-TRANSFER-ORDERS"),
+      Seq:
+        LockInstruction(
+          Seq(LockDemand(lock1.path)),
+          lockedWorkflow = Workflow.empty))
+
+    withItems((lock1, lock2, aWorkflow, bWorkflow1)): (lock1, lock2, workflow, bWorkflow1) =>
+      val aOrderId = OrderId("TRANSFER-ORDERS-A")
+      controller.api.addOrder(FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.awaitNext[OrderPrompted](_.key == aOrderId)
+
+      val bOrderId = OrderId("TRANSFER-ORDERS-B")
+      controller.api.addOrder(FreshOrder(bOrderId, bWorkflow1.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
+
+      val bWorkflow2 = updateItem(Workflow(
+        bWorkflow1.path,
+        Seq:
+          LockInstruction(
+            Seq(LockDemand(lock2.path)),
+            lockedWorkflow = Workflow.empty)))
+
+      execCmd(TransferOrders(bWorkflow1.id))
+
+      execCmd(AnswerOrderPrompt(aOrderId))
+      eventWatch.await[OrderTerminated](_.key == aOrderId, after = eventId)
+      eventWatch.await[OrderTerminated](_.key == bOrderId, after = eventId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
+        OrderAdded(bWorkflow1.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderLocksQueued(List(LockDemand(lock1.path))),
+
+        OrderInstructionReset,
+        OrderTransferred(bWorkflow2.id /: Position(0)),
+        OrderLocksQueued(List(LockDemand(lock2.path))),
+
+        OrderLocksAcquired(List(LockDemand(lock2.path))),
+        OrderLocksReleased(Seq(lock2.path)),
+        OrderFinished(),
+        OrderDeleted))
+
+      assert(controllerState.keyTo(LockState)(lock1.path) == LockState(lock1, acquired = Available, queue = Queue.empty))
+      assert(controllerState.keyTo(LockState)(lock2.path) == LockState(lock2, acquired = Available, queue = Queue.empty))
 
   "Lock is not deletable while in use by a Workflow" in:
     val workflow = defineWorkflow(workflowNotation = """
