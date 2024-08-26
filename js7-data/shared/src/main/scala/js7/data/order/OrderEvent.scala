@@ -477,8 +477,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   /** No other use than notifying an external user. */
   case object OrderCancellationMarkedOnAgent extends OrderActorEvent
 
-  type OrderInstructionReset = OrderInstructionReset.type
-  case object OrderInstructionReset extends OrderActorEvent
+  type OrderStateReset = OrderStateReset.type
+  case object OrderStateReset extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent, OrderTerminated
@@ -654,7 +654,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveConfiguredCodec[OrderCancellationMarked]),
-    Subtype.singleton(OrderInstructionReset, aliases = Seq(
+    Subtype.singleton(OrderStateReset, aliases = Seq(
       "OrderOperationCancelled", "OrderLocksDequeued", "OrderLockDequeued")),
     Subtype(OrderCancellationMarkedOnAgent),
     Subtype(OrderCancelled),

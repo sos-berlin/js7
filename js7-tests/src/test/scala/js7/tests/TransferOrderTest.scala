@@ -14,7 +14,7 @@ import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -202,7 +202,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderNoticesExpected(Vector(Expected(aBoard.path, noticeId))),
         OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
         OrderPrompted(StringValue("PROMPT-1")),
-        OrderInstructionReset,
+        OrderStateReset,
         OrderTransferred(workflow3.id /: (Position(0) / "consumeNotices" % 0)),
         OrderPromptAnswered(),
         OrderMoved(Position(0) / "consumeNotices" % 1),

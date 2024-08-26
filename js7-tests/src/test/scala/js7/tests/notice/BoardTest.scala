@@ -23,7 +23,7 @@ import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, PostNo
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderInstructionReset, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
@@ -371,7 +371,7 @@ final class BoardTest
         OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
-        OrderInstructionReset,
+        OrderStateReset,
         OrderCancelled,
         OrderDeleted))
 
@@ -388,7 +388,7 @@ final class BoardTest
             OrderAdded(workflowId1, deleteWhenTerminated = true),
             OrderStarted,
             OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board1.path, noticeId))),
-            OrderInstructionReset,
+            OrderStateReset,
             OrderTransferred(workflowId2 /: Position(0)),
             OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board2.path, noticeId))),
             OrderNoticesRead,

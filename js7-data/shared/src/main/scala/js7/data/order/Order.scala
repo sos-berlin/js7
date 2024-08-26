@@ -278,7 +278,7 @@ final case class Order[+S <: Order.State](
       case OrderCancellationMarkedOnAgent =>
         Right(this)
 
-      case OrderInstructionReset =>
+      case OrderStateReset =>
         // Event precedes OrderCancelled in the same transaction,
         // maybe before some block-leaving events which rely on state == Ready.
         check(state.isInstanceOf[Resettable] && isStarted,
@@ -951,7 +951,7 @@ object Order:
 
   sealed trait Resettable extends State:
     private[Order] final def reset: List[OrderActorEvent] =
-      OrderInstructionReset :: Nil
+      OrderStateReset :: Nil
 
 
   transparent sealed trait NotTransferable extends State:

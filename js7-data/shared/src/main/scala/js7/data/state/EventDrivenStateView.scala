@@ -7,7 +7,7 @@ import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderInstructionReset, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
@@ -96,7 +96,7 @@ extends EventDrivenState[Self, E], StateView:
           applyOrderNoticeEvent(previousOrder, event)
             .flatMap(_.update(addOrders = updatedOrder :: Nil))
 
-        case OrderInstructionReset =>
+        case OrderStateReset =>
           previousOrder.ifState[WaitingForLock].map: order =>
             val instr = instruction_[LockInstruction](order.workflowPosition).orThrow
             foreachLock(instr.lockPaths): lockState =>
@@ -117,7 +117,7 @@ extends EventDrivenState[Self, E], StateView:
 
         case _: OrderCancelled =>
           previousOrder
-            // COMPATIBLE Since v2.7.2 an OrderInstructionReset is emitted and the
+            // COMPATIBLE Since v2.7.2 an OrderStateReset is emitted and the
             // following code is superfluous (but still needed for old journals)
             .ifState[ExpectingNotices]
             .fold(update(addOrders = updatedOrder :: Nil)): order =>

@@ -773,7 +773,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderAdded(queueingWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLocksQueued(List(LockDemand(lockPath))),
-      OrderInstructionReset,
+      OrderStateReset,
       OrderCancelled,
       OrderDeleted))
 
@@ -814,7 +814,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       OrderStarted,
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderPrompted(StringValue("PROMPT")),
-      OrderInstructionReset,
+      OrderStateReset,
       OrderLocksReleased(List(lockPath)),
       OrderCancelled,
       OrderDeleted))
@@ -1095,7 +1095,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderStarted,
             OrderLocksAcquired(List(LockDemand(lockPath))),
             OrderPrompted(StringValue("PROMPT")),
-            OrderInstructionReset,
+            OrderStateReset,
             OrderLocksReleased(List(lockPath)),
             OrderCancelled,
             OrderDeleted))
@@ -1114,7 +1114,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             OrderLocksQueued(List(LockDemand(lockPath))),
             OrderLocksAcquired(List(LockDemand(lockPath))),
             OrderPrompted(StringValue("PROMPT")),
-            OrderInstructionReset,
+            OrderStateReset,
             OrderLocksReleased(List(lockPath)),
             OrderCancelled,
             OrderDeleted))
@@ -1232,7 +1232,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderStarted,
         OrderLocksQueued(List(LockDemand(lock1.path))),
 
-        OrderInstructionReset,
+        OrderStateReset,
         OrderTransferred(bWorkflow2.id /: Position(0)),
         OrderLocksQueued(List(LockDemand(lock2.path))),
 
