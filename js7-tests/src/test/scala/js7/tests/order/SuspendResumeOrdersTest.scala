@@ -24,9 +24,10 @@ import js7.data.controller.ControllerCommand.{AddOrder, AnswerOrderPrompt, Batch
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
+import js7.data.order.Order.DelayedAfterError
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
-import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
@@ -38,7 +39,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -868,6 +869,54 @@ final class SuspendResumeOrdersTest
           OrderFailedInFork(Position(0) / BranchId.fork("BRANCH") % 0),
           OrderResumed(Some(Position(0) / BranchId.fork("BRANCH") % 1), asSucceeded = true),
           OrderMoved(Position(0) / BranchId.fork("BRANCH") % 2)))
+
+  "Suspend while in Order.DelayAfterError" in:
+    val workflow = Workflow.of(
+      WorkflowPath("SUSPEND-IN-RETRY"),
+      TryInstruction(
+        tryWorkflow = Workflow.of(FailingJob.execute(agentPath)),
+        catchWorkflow = Workflow.of(Retry()),
+        retryDelays = Some(Vector(60.s))))
+
+    withItem(workflow): workflow =>
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId("SUSPEND-IN-RETRY")
+
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      val orderRetrying = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId)
+        .head.value.event
+      val until = orderRetrying.delayedUntil.get
+      assert(until >= Timestamp.now + 50.s && until <= Timestamp.now + 70.s)
+
+      execCmd(SuspendOrders(Seq(orderId)))
+      eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
+
+      assert(controllerState.idToOrder(orderId) == Order(
+        orderId,
+        workflow.id /: (Position(0) / "try+1" % 0),
+        DelayedAfterError(until),
+        mark = Some(OrderMark.Suspending()),
+        deleteWhenTerminated = true,
+        historicOutcomes = Vector(
+          HistoricOutcome(Position(0) / "try+0" % 0, FailingJob.outcome),
+          HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.succeeded))))
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / "try+0" % 0),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderRetrying(Position(0) / "try+1" % 0, Some(until)),
+        OrderSuspensionMarked(),
+        OrderDetachable,
+        OrderDetached))
+
+      execCmd(CancelOrders(Seq(orderId)))
 
 
 object SuspendResumeOrdersTest:
