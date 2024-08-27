@@ -39,7 +39,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
   "Reject items if no signature keys are installed" in:
     val eventId = eventWatch.lastAddedEventId
 
-    runSubagent(bareSubagentItem, suppressSignatureKeys = true) { _ =>
+    runSubagent(bareSubagentItem, suppressSignatureKeys = true): _ =>
       val orderId = OrderId("ITEM-SIGNATURE")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
@@ -50,13 +50,12 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event
       assert(processed == OrderProcessed(OrderOutcome.Disrupted(MessageSignedByUnknownProblem)))
-    }
 
   "Restart Director" in:
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("RESTART-DIRECTOR")
 
-    runSubagent(bareSubagentItem) { _ =>
+    runSubagent(bareSubagentItem): _ =>
       locally:
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
         val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
@@ -78,7 +77,6 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
         assert(events.head.value.event.isInstanceOf[OrderFinished])
-    }
 
   "Restart remote Subagent while a job is running" in:
     var eventId = eventWatch.lastAddedEventId
@@ -86,7 +84,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
     TestSemaphoreJob.reset()
 
-    runSubagent(bareSubagentItem) { subagent =>
+    runSubagent(bareSubagentItem): subagent =>
       controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
@@ -100,14 +98,13 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
       subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
-    }
 
     // Subagent is unreachable now
     eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
     controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
-    runSubagent(bareSubagentItem) { _ =>
+    runSubagent(bareSubagentItem): _ =>
       locally:
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
@@ -129,7 +126,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
     TestSemaphoreJob.reset()
 
-    runSubagent(bareSubagentItem) { subagent =>
+    runSubagent(bareSubagentItem): subagent =>
       controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
@@ -146,7 +143,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
       // STOP DIRECTOR
       myAgent.terminate().await(99.s)
-    }
+
     // Subagent is unreachable now
 
     // START DIRECTOR
@@ -158,7 +155,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     val bOrderId = OrderId("B-RESTART-BOTH")
     controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
-    runSubagent(bareSubagentItem) { _ =>
+    runSubagent(bareSubagentItem): _ =>
       locally:
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
@@ -171,7 +168,6 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         for orderId <- View(aOrderId, bOrderId) do
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
-    }
 
 
 object SubagentRestartTest:
