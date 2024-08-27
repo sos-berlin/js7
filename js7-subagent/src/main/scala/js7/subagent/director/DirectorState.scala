@@ -58,7 +58,7 @@ private final case class DirectorState(
 
   def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
     logger.trace("setDisabled", s"$id, disabled=$disabled")
-    Right(
+    Right:
       subagentToEntry
         .get(id)
         .filter(_.disabled != disabled)
@@ -66,7 +66,7 @@ private final case class DirectorState(
           update(
             subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
             entry.driver,
-            disabled))
+            disabled)
 
   private def update(
     subagentToEntry: Map[SubagentId, Entry],
@@ -119,22 +119,24 @@ private final case class DirectorState(
           .map(o => Some(o.driver))
 
       case _ =>
-        Right(selectionToPrioritized
-          .get(maybeSelectionId) // May be non-existent when stopping
-          .flatMap(_
-            .selectNext(subagentId =>
-              subagentToEntry.get(subagentId).fold(false)(_.isAvailable)))
-          .flatMap(subagentId =>
-            subagentToEntry.get(subagentId).map(_.driver)))
+        Right:
+          selectionToPrioritized
+            .get(maybeSelectionId) // May be non-existent when stopping
+            .flatMap:
+              _.selectNext: subagentId =>
+                subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
+            .flatMap: subagentId =>
+              subagentToEntry.get(subagentId).map(_.driver)
 
 
 private object DirectorState:
   private val logger = Logger[this.type]
   private val DefaultPriority = 0
 
-  final case class Entry(
+  final case class Entry private[DirectorState](
     allocatedDriver: Allocated[IO, SubagentDriver],
     disabled: Boolean = false):
+
     val driver: SubagentDriver =
       allocatedDriver.allocatedThing
 

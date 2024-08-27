@@ -13,6 +13,7 @@ import js7.subagent.{DirectorRouteVariable, Subagent, SubagentSession}
 import org.apache.pekko.actor.ActorSystem
 
 object SubagentWebServer:
+
   def resource(
     subagent: IO[Subagent],
     toDirectorRoute: DirectorRouteVariable.ToRoute,
@@ -23,7 +24,7 @@ object SubagentWebServer:
     PekkoWebServer.resource(
       conf.webServerBindings,
       conf.config,
-      routeBinding => new PekkoWebServer.BoundRoute {
+      routeBinding => new PekkoWebServer.BoundRoute:
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply, Seq(
             AgentDirectorPermission))
@@ -42,5 +43,4 @@ object SubagentWebServer:
                 subagent, conf.config
               ).webServerRoute
 
-        override def toString = "Subagent web services"
-      })
+        override def toString = "Subagent web services")

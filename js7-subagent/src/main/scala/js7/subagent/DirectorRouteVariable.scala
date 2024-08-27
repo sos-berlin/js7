@@ -19,29 +19,26 @@ private final class DirectorRouteVariable:
 
   def registeringRouteResource(toRoute: ToRoute): ResourceIO[Unit] =
     Resource.make(
-      acquire = lock.lock(IO {
-        if _toRoute ne noDirector then throw new IllegalStateException(
-          "registeringRouteResource called twice")
+      acquire = lock.lock(IO:
+        if _toRoute ne noDirector then
+          throw new IllegalStateException("registeringRouteResource called twice")
         _toRoute = toRoute
-        cache.clear()
-      }))(
-      release = _ => lock.lock(IO {
+        cache.clear()))(
+      release = _ => lock.lock(IO:
         _toRoute = noDirector
-        cache.clear()
-      }))
+        cache.clear()))
 
   def route(routeBinding: RouteBinding): IO[Route] =
-    lock.lock/*readlock!*/(IO.defer(
-      cache.get(routeBinding.webServerBinding) match {
-        case Some((route, routeBinding.revision)) =>
-          IO.pure(route)
+    lock.lock: /*readlock!*/
+      IO.defer:
+        cache.get(routeBinding.webServerBinding) match
+          case Some((route, routeBinding.revision)) =>
+            IO.pure(route)
 
-        case _ =>
-          _toRoute(routeBinding)
-            .flatTap(route => IO {
-              cache(routeBinding.webServerBinding) = route -> routeBinding.revision
-            })
-      }))
+          case _ =>
+            _toRoute(routeBinding)
+              .flatTap(route => IO:
+                cache(routeBinding.webServerBinding) = route -> routeBinding.revision)
 
 
 object DirectorRouteVariable:

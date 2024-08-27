@@ -12,10 +12,10 @@ object SystemInformations:
       case _ => None
 
   private def filteredMap(keyValues: Iterable[(String, Any)]): Map[String, Any] =
-    (keyValues flatMap {
+    keyValues.flatMap:
       case (_, v: Int) if v < 0 => Nil
       case o => o :: Nil
-    }).toMap
+    .toMap
 
 
   private def operatingSystemMXBean(): Map[String, Any] =
@@ -35,10 +35,12 @@ object SystemInformations:
       "totalPhysicalMemorySize" ::
       "committedVirtualMemorySize" ::
       "freePhysicalMemorySize" :: Nil
-    filteredMap(for
-      key <- keys
-      value <- Try { bean.getAttribute(OperatingSystemObjectName, key.capitalize) }.toOption
-    yield key -> value)
+    filteredMap:
+      for
+        key <- keys
+        value <- Try { bean.getAttribute(OperatingSystemObjectName, key.capitalize) }.toOption
+      yield
+        key -> value
 
   def systemInformation(): SystemInformation =
     SystemInformation(

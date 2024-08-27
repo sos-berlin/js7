@@ -248,9 +248,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   : IO[Checked[SubagentDriver]] =
     logger.traceIO:
       Stream
-        .repeatEval(IO { stateVar.get.selectNext(maybeSelectionId) }
+        .repeatEval:
+          IO:
+            stateVar.get.selectNext(maybeSelectionId)
           .flatTap(o => IO:
-              logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}")))
+              logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))
         .evalTap:
           // TODO Do not poll (for each Order)
           case Right(None) => IO.sleep(reconnectDelayer.next())
@@ -258,7 +260,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .map(_.sequence)
         .map(Chunk.fromOption)
         .unchunks
-          .headL
+        .headL
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:
@@ -270,7 +272,6 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           .get(orderId) match
             case None => IO(logger.error:
               s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
-
             case Some(driver) => driver.killProcess(orderId, signal))
 
   def resetAllSubagents(except: Set[SubagentId]): IO[Unit] =
@@ -328,14 +329,16 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): IO[Checked[Unit]] =
     subagentItemStates
-      .traverse(s => addOrChange(s)
-        .map(_.map(_.map(_ => s))))
+      .traverse: state =>
+        addOrChange(state)
+          .map(_.map(_.map(_ => state)))
       .map(_.combineProblems)
       .map(_.map(_.flatten))
 
   private def startObserving: IO[Unit] =
     stateVar.value
-      .flatMap(_.subagentToEntry.values.toVector.map(_.driver).traverse(_.startObserving))
+      .flatMap:
+        _.subagentToEntry.values.toVector.map(_.driver).traverse(_.startObserving)
       .map(_.combineAll)
 
   private def continueDetaching: IO[Unit] =
@@ -428,10 +431,13 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def emitLocalSubagentCoupled: IO[Unit] =
     journal
-      .persist(agentState => Right(agentState
-        .idToSubagentItemState.get(localSubagentId)
-        .exists(_.couplingState != Coupled)
-        .thenList(localSubagentId <-: SubagentCoupled)))
+      .persist: agentState =>
+        Right:
+          agentState
+            .idToSubagentItemState.get(localSubagentId)
+            .exists(_.couplingState != Coupled)
+            .thenList:
+              localSubagentId <-: SubagentCoupled
       .orThrow
       .void
 
@@ -451,8 +457,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         journal,
         controllerId,
         directorConf.subagentConf)
-      .evalTap(driver => IO.whenA(processingStarted):
-        driver.startObserving)
+      .evalTap: driver =>
+        IO.whenA(processingStarted):
+          driver.startObserving
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
   : ResourceIO[RemoteSubagentDriver] =
@@ -477,16 +484,18 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       Admission(
         subagentItem.uri,
         directorConf.config
-          .optionAs[SecretString](
-            "js7.auth.subagents." + ConfigUtil.joinPath(subagentItem.id.string))
-          .map(UserAndPassword(localSubagentId.toUserId.orThrow, _))),
+          .optionAs[SecretString]:
+            "js7.auth.subagents." + ConfigUtil.joinPath(subagentItem.id.string)
+          .map:
+            UserAndPassword(localSubagentId.toUserId.orThrow, _)),
       directorConf.httpsConfig,
       name = subagentItem.id.toString,
       actorSystem)
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): IO[Checked[Unit]] =
     stateVar
-      .updateChecked(state => IO(state.insertOrReplaceSelection(selection)))
+      .updateChecked(state => IO:
+        state.insertOrReplaceSelection(selection))
       .rightAs(())
 
   def removeSubagentSelection(subagentSelectionId: SubagentSelectionId): IO[Unit] =
@@ -496,8 +505,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def testFailover(): Unit =
     stateVar.get.idToDriver.values
-      .collect { case o: LocalSubagentDriver => o }
-      .foreach(_.testFailover())
+      .collect:
+        case o: LocalSubagentDriver => o
+      .foreach:
+        _.testFailover()
 
   override def toString = s"SubagentKeeper(${orderToSubagent.size} processing orders)"
 
