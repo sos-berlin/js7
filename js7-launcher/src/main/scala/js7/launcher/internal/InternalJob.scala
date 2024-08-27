@@ -108,13 +108,15 @@ object InternalJob:
       subagentSelectionId: Option[Expression] = None,
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
-      jobResourcePaths: Seq[JobResourcePath] = Nil)
+      jobResourcePaths: Seq[JobResourcePath] = Nil,
+      isNotRestartable: Boolean = false)
     : Execute.Anonymous =
       Execute(workflowJob(
         agentPath, arguments, subagentSelectionId,
         processLimit = processLimit,
         timeout = timeout,
-        jobResourcePaths = jobResourcePaths))
+        jobResourcePaths = jobResourcePaths,
+        isNotRestartable = isNotRestartable))
 
     final def workflowJob(
       agentPath: AgentPath,
@@ -122,7 +124,8 @@ object InternalJob:
       subagentSelectionId: Option[Expression] = None,
       processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
-      jobResourcePaths: Seq[JobResourcePath] = Nil)
+      jobResourcePaths: Seq[JobResourcePath] = Nil,
+      isNotRestartable: Boolean = false)
     : WorkflowJob =
       WorkflowJob(
         agentPath,
@@ -130,4 +133,5 @@ object InternalJob:
         subagentSelectionId = subagentSelectionId,
         processLimit = processLimit,
         timeout = timeout,
-        jobResourcePaths = jobResourcePaths)
+        jobResourcePaths = jobResourcePaths,
+        isNotRestartable = isNotRestartable)

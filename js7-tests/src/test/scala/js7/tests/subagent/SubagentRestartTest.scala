@@ -118,7 +118,6 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
         for orderId <- View(aOrderId, bOrderId) do
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
-    }
 
   "Restart both Director and remote Subagent while a job is running" in:
     var eventId = eventWatch.lastAddedEventId

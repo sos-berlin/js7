@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec grep --line-buffered -- "-Controller-.* - :" | sed -l 's/ trace .*Journal - ://' 
+exec egrep --line-buffered -- "-Controller-.* - :" | egrep -vw --line-buffered "AgentEventsObserved" | sed -l 's/ trace .*Journal - ://'
