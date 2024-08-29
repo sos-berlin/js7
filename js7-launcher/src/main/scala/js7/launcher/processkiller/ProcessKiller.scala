@@ -8,6 +8,7 @@ import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ReturnCode}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -130,8 +131,9 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
           (isAlive(process) ? process.toPid.number) ++: descendants.map(_.pid)
 
         // Try to stop all processes, then kill them
-        trySendStopSignal(stopPids) *>
-          sigkillAll(processToDescendants)
+        IO.whenA(isUnix):
+          trySendStopSignal(stopPids)
+        *> sigkillAll(processToDescendants)
 
   /** Return a Seq of distinct ProcessHandles */
   private def descendantsOf(processHandles: Seq[ProcessHandle]): Seq[ProcessHandle] =
