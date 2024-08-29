@@ -40,6 +40,7 @@ import js7.journal.state.Journal
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
+import js7.subagent.director.priority.Prioritized
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 

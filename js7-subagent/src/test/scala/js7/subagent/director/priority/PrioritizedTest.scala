@@ -1,8 +1,8 @@
-package js7.subagent.director
+package js7.subagent.director.priority
 
 import js7.base.test.OurTestSuite
-import js7.subagent.director.Prioritized.prioritySort
-import js7.subagent.director.PrioritizedTest.*
+import js7.subagent.director.priority.Prioritized.prioritySort
+import js7.subagent.director.priority.PrioritizedTest.*
 
 final class PrioritizedTest extends OurTestSuite:
 

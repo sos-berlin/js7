@@ -1,8 +1,8 @@
-package js7.subagent.director
+package js7.subagent.director.priority
 
-import js7.subagent.director.Prioritized.prioritySort
+import js7.subagent.director.priority.Prioritized.prioritySort
 
-private final class Prioritized[A] private(
+private[director] final class Prioritized[A] private(
   private val orderedKeys: Vector[A],
   private val toPriority: A => Int):
 
@@ -52,7 +52,8 @@ private final class Prioritized[A] private(
   override def toString = s"Prioritized(${orderedKeys.mkString(" ")})"
 
 
-private object Prioritized:
+private[director] object Prioritized:
+
   def empty[A](toPriority: A => Int) =
     new Prioritized[A](Vector.empty, toPriority)
 

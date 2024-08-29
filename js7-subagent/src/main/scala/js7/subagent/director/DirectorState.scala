@@ -8,6 +8,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.subagent.director.DirectorState.*
+import js7.subagent.director.priority.Prioritized
 import scala.collection.MapView
 
 private final case class DirectorState(

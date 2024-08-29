@@ -1,4 +1,4 @@
-package js7.subagent.director
+package js7.subagent.director.priority
 
 import js7.base.utils.Atomic
 import org.jetbrains.annotations.TestOnly
