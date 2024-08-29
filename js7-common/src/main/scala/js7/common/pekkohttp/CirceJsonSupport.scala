@@ -1,9 +1,8 @@
 package js7.common.pekkohttp
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, Printer, jawn}
+import io.circe.{Decoder, Encoder, Json, jawn}
 import js7.base.circeutils.CirceUtils.*
-import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -17,39 +16,30 @@ import scala.util.control.NonFatal
 object CirceJsonSupport:
   private val logger = Logger[this.type]
 
-  implicit def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
-    unmarshaller[A]
-
-  implicit def jsonMarshaller[A](implicit encoder: Encoder[A], printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
-    Marshaller.withFixedContentType(`application/json`) { value =>
-      val string = logException(s"jsonMarhaller(${encoder.getClass.getName})"):
-        printer.print(value.asJson)
-      HttpEntity.Strict(`application/json`, ByteString(string))
-    }
+  implicit def jsonMarshaller[A](using encoder: Encoder[A]): ToEntityMarshaller[A] =
+    Marshaller.withFixedContentType(`application/json`): value =>
+      val jsonString = logException(s"jsonMarhaller(${encoder.getClass.getName})"):
+        value.asJson.compactPrint
+      HttpEntity(`application/json`, jsonString)
 
   private def logException[A](what: => String)(body: => A): A =
     try body
-    catch { case NonFatal(t) =>
+    catch case NonFatal(t) =>
       logger.warn(s"jsonMarhaller($what: ${t.toStringWithCauses}", t)
       throw t
-    }
 
-  //implicit final def jsonMarshaller[A: Encoder](implicit printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
-  //  jsonJsonMarshaller(printer) compose implicitly[Encoder[A]].apply
+  given jsonToEntityMarshaller: ToEntityMarshaller[Json] =
+    Marshaller.withFixedContentType(`application/json`): json =>
+      HttpEntity(`application/json`, json.compactPrint)
 
-  implicit final def jsonJsonMarshaller(implicit printer: Printer = CompactPrinter): ToEntityMarshaller[Json] =
-    Marshaller.withFixedContentType(`application/json`) { json =>
-      HttpEntity(`application/json`, printer.print(json))
-    }
-
-  implicit final def unmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
-    jsonJsonUnmarshaller.map(json =>
-      implicitly[Decoder[A]]
+  implicit final def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
+    entityToJsonUnmarshaller.map: json =>
+      summon[Decoder[A]]
         .decodeJson(json)
         .toChecked/*renders message*/
-        .orThrowWithoutStacktrace)
+        .orThrowWithoutStacktrace
 
-  implicit final val jsonJsonUnmarshaller: FromEntityUnmarshaller[Json] =
+  given entityToJsonUnmarshaller: FromEntityUnmarshaller[Json] =
     Unmarshaller.byteStringUnmarshaller
       .forContentTypes(`application/json`)
       .map:

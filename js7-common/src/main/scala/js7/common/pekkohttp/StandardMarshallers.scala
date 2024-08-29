@@ -45,7 +45,7 @@ object StandardMarshallers:
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
       stringMarshaller[Problem](`text/plain`, _.toString),
-      jsonMarshaller[Problem](Problem.typedJsonEncoder))  // Add "TYPE": "Problem"
+      jsonMarshaller[Problem](using Problem.typedJsonEncoder))  // Add "TYPE": "Problem"
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
     Marshaller(implicit ec => problem =>

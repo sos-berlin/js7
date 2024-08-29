@@ -93,7 +93,7 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
   "POST multiple orders" in:
     val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW")) :: Nil
     implicit val toEntityMarshaller: ToEntityMarshaller[Seq[FreshOrder]] =
-      jsonMarshaller(implicitly[Encoder[Seq[FreshOrder]]])
+      jsonMarshaller
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == OK)
       assert(response.header[Location].isEmpty)
