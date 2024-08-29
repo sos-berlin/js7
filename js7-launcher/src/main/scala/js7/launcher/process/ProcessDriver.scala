@@ -11,8 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
-import js7.data.job.TaskId.newGenerator
-import js7.data.job.{CommandLine, JobKey, ProcessExecutable, TaskId}
+import js7.data.job.{CommandLine, JobKey, ProcessExecutable}
 import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.launcher.StdObservers
@@ -20,7 +19,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
 import js7.launcher.process.PipedProcess.start
 import js7.launcher.process.ProcessDriver.*
-import scala.collection.AbstractIterator
 
 final class ProcessDriver(
   orderId: OrderId,
@@ -28,7 +26,6 @@ final class ProcessDriver(
   jobLauncherConf: JobLauncherConf):
 
   import jobLauncherConf.crashPidFile
-  private val taskId = taskIdGenerator.next()
   private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     jobLauncherConf.tmpDirectory,
@@ -95,7 +92,6 @@ final class ProcessDriver(
                   additionalEnvironment = env.updated(
                     returnValuesProvider.varName,
                     Some(returnValuesProvider.file.toString)),
-                  maybeTaskId = Some(taskId),
                   maybeWindowsLogon)
           .flatMapT: processConfiguration =>
             startProcessLock.lock("startProcess"):
@@ -142,7 +138,7 @@ final class ProcessDriver(
   private def sendProcessSignal(pipedProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
     pipedProcess.sendProcessSignal(signal)
 
-  override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
+  override def toString = s"ProcessDriver(${conf.jobKey})"
 
 
 object ProcessDriver:
@@ -150,11 +146,6 @@ object ProcessDriver:
 
   /** Linux may return a "busy" error when starting many processes at once. */
   private val GlobalStartProcessLock = AsyncLock("Process start")
-
-  private object taskIdGenerator extends AbstractIterator[TaskId]:
-    private val generator = newGenerator()
-    def hasNext = generator.hasNext
-    def next() = generator.next()
 
   private[process] final case class Conf(
     jobKey: JobKey,

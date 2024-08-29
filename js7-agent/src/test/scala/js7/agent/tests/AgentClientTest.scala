@@ -35,29 +35,3 @@ final class AgentClientTest extends OurTestSuite, ScalaFutures, AgentTester:
   "get /" in:
     val overview = client.overview await 99.s
     assert(overview.version == BuildInfo.prettyVersion)
-
-  //"get /task" in {
-  //  val view = awaitResult(client.task.overview, 2.s)
-  //  assert(view == TaskRegisterOverview(
-  //    currentTaskCount = 0,
-  //    totalTaskCount = 0))
-  //}
-  //
-  //"get /task/ (incomplete)" in {
-  //  val tasks = awaitResult(client.task.tasks, 2.s)
-  //  assert(tasks == Nil)
-  //  pending
-  //}
-  //
-  //"get /task/1-123 (incomplete)" in {
-  //  val e = intercept[UnsuccessfulResponseException] {
-  //    awaitResult(client.task(TestTaskId), 2.s): TaskOverview
-  //  }
-  //  assert(e.response.status == InternalServerError)
-  //  assert(e.response.entity.asString contains "UnknownTaskException")
-  //  pending
-  //}
-
-//object AgentClientTest {
-//  private val TestTaskId = TaskId("1-123")
-//}

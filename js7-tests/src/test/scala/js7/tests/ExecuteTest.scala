@@ -3,7 +3,6 @@ package js7.tests
 import cats.effect.IO
 import fs2.Stream
 import java.nio.file.Files.{createTempFile, delete}
-import java.util.regex.Pattern
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ReturnCode
@@ -485,10 +484,6 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         OrderOutcome.Succeeded(NamedValues.rc(2))))
 
   "Command line arguments" in:
-    // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
-    def removeTaskId(string: String): String =
-      Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
-
     val events = runWithWorkflow(
       Workflow.of(
         Execute(WorkflowJob(
@@ -497,8 +492,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
             CommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
         orderArguments = Map("ARG" -> StringValue("ARG-VALUE")))
     val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.mkString
-    assert(removeTaskId(stdout)
-      .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
+    assert(stdout.contains("ARGUMENTS=/1 two three ARG-VALUE/"))
 
   "processLimit" - {
     "WorkflowJob processLimit" in:
