@@ -8,7 +8,7 @@ final case class SystemInformation(
   hostname: String,
   distribution: Option[String] = None,
   cpuModel: Option[String] = None,
-  mxBeans: Map[String, Any] = Map())
+  mxBeans: Map[String, Map[String, Any]] = Map())
 
 
 object SystemInformation:
