@@ -7,8 +7,8 @@ import js7.subagent.director.priority.PrioritizedTest.*
 final class PrioritizedTest extends OurTestSuite:
 
   "prioritySort" in:
-    assert(prioritySort(Vector.empty[String])(_ => 0).isEmpty)
-    assert(prioritySort(Vector("1-1", "10-2", "B-1", "B-2", "A-0"))(_.last.toInt) ==
+    assert(prioritySort(Vector.empty[String], _ => 0).isEmpty)
+    assert(prioritySort(Vector("1-1", "10-2", "B-1", "B-2", "A-0"), _.last.toInt) ==
       Vector("10-2", "B-2", "1-1", "B-1", "A-0"))
 
   "empty" in:

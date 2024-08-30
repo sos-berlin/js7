@@ -22,7 +22,7 @@ private[director] final class Prioritized[A] private(
     replaceAll(orderedKeys.filter(_ != a) :+ a)
 
   private def replaceAll(keys: Seq[A]): Prioritized[A] =
-    copy(prioritySort(keys)(toPriority = k => toPriority(k)))
+    copy(prioritySort(keys, toPriority))
 
   def remove(a: A): Prioritized[A] =
     copy(orderedKeys.filter(_ != a))
@@ -44,9 +44,10 @@ private[director] final class Prioritized[A] private(
 
   private def copy(orderedKeys: Vector[A]) =
     if orderedKeys == this.orderedKeys then
-      // Keep mutableSamePriorityRoundRobin.index
+      // Keep mutableSamePriorityRoundRobin
       this
     else
+      // Renew mutableSamePriorityRoundRobin
       new Prioritized[A](orderedKeys, toPriority)
 
   override def toString = s"Prioritized(${orderedKeys.mkString(" ")})"
@@ -54,17 +55,19 @@ private[director] final class Prioritized[A] private(
 
 private[director] object Prioritized:
 
-  def empty[A](toPriority: A => Int) =
+  def empty[A](toPriority: A => Int): Prioritized[A] =
     new Prioritized[A](Vector.empty, toPriority)
 
-  def apply[A](as: Iterable[A], toPriority: A => Int) =
+  def apply[A](as: Iterable[A], toPriority: A => Int): Prioritized[A] =
     new Prioritized[A](
-      prioritySort(as)(toPriority),
+      prioritySort(as, toPriority),
       toPriority)
 
-  private[subagent] def prioritySort[A](as: Iterable[A])(toPriority: A => Int): Vector[A] =
+  private[subagent] def prioritySort[A](as: Iterable[A], toPriority: A => Int): Vector[A] =
     as.view
-      .map(a => a -> toPriority(a))
+      .map: a =>
+        a -> toPriority(a)
       .toVector
-      .sortWith((a, b) => a._2 > b._2)
+      .sortWith: (a, b) =>
+        a._2 > b._2
       .map(_._1)

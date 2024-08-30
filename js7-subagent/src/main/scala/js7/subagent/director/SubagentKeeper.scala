@@ -63,7 +63,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   /** defaultPrioritized is used when no SubagentSelectionId is given. */
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
-  private val stateVar = AsyncVariable[DirectorState](DirectorState(Map.empty, Map(
+  private val stateVar = AsyncVariable(DirectorState(Map.empty, Map(
     /*local Subagent*/None -> defaultPrioritized)))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
