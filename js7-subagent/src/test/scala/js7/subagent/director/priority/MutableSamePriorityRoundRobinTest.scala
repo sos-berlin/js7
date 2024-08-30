@@ -2,9 +2,9 @@ package js7.subagent.director.priority
 
 import js7.base.test.OurTestSuite
 
-final class FixedPriorityTest extends OurTestSuite:
+final class MutableSamePriorityRoundRobinTest extends OurTestSuite:
 
-  "next, same priority" in:
+  "next, same priority, always round-robin" in:
     var n = 4
 
     // Throws if not (i < n and j < n)
@@ -12,7 +12,7 @@ final class FixedPriorityTest extends OurTestSuite:
       require(i >= 0 && i < n && j >= 0 && j < n)
       true
 
-    val fixedPriority = new FixedPriority
+    val fixedPriority = new MutableSamePriorityRoundRobin
 
     n = 4
     assert(fixedPriority.next(n, isEquivalent) == 0)
@@ -42,15 +42,17 @@ final class FixedPriorityTest extends OurTestSuite:
     assert(fixedPriority.next(n, isEquivalent) == 0)
 
   "next, different priorities" in:
-    val priorities = Vector(1, 1, 1, 0)
+    val priorities = Vector(8, 8, 8, 7)
     def isEquivalent(i: Int, j: Int) = priorities(i) == priorities(j)
 
-    val fixedPriority = new FixedPriority
+    val fixedPriority = new MutableSamePriorityRoundRobin
     val n = priorities.size
-    assert(fixedPriority.next(n, isEquivalent) == 0)
-    assert(fixedPriority.next(n, isEquivalent) == 1)
-    assert(fixedPriority.next(n, isEquivalent) == 2)
-    assert(fixedPriority.next(n, isEquivalent) == 0)
-    assert(fixedPriority.next(n, isEquivalent) == 1)
-    assert(fixedPriority.next(n, isEquivalent) == 2)
-    assert(fixedPriority.next(n, isEquivalent) == 0)
+    assert(fixedPriority.next(n, isEquivalent) == 0) // initial
+    assert(fixedPriority.next(n, isEquivalent) == 1) // round-robin
+    assert(fixedPriority.next(n, isEquivalent) == 2) // round-robin
+
+    assert(fixedPriority.next(n, isEquivalent) == 0) // priority changed
+    assert(fixedPriority.next(n, isEquivalent) == 1) // round-robin
+    assert(fixedPriority.next(n, isEquivalent) == 2) // round-robin
+
+    assert(fixedPriority.next(n, isEquivalent) == 0) // priority changed

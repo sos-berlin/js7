@@ -6,11 +6,11 @@ private[director] final class Prioritized[A] private(
   private val orderedKeys: Vector[A],
   private val toPriority: A => Int):
 
-  private val fixedPriority = new FixedPriority
+  private val mutableSamePriorityRoundRobin = new MutableSamePriorityRoundRobin
 
   override def equals(other: Any) =
     other match
-      case o: Prioritized[A] @unchecked =>
+      case o: Prioritized[A @unchecked] =>
         toPriority.eq(o.toPriority) &&
           orderedKeys == o.orderedKeys
       case _ => false
@@ -37,14 +37,14 @@ private[director] final class Prioritized[A] private(
     else
       val highestPrio = toPriority(orderedValues.head)
       val highest = orderedValues.takeWhile(v => toPriority(v) == highestPrio)
-      val next = fixedPriority.next(
+      val next = mutableSamePriorityRoundRobin.next(
         n = highest.size,
-        isEquivalent = (i, j) => toPriority(orderedValues(i)) == toPriority(orderedValues(j)))
+        samePriority = (i, j) => toPriority(orderedValues(i)) == toPriority(orderedValues(j)))
       highest.drop(next).headOption orElse highest.headOption
 
   private def copy(orderedKeys: Vector[A]) =
     if orderedKeys == this.orderedKeys then
-      // Keep fixedPriority.index
+      // Keep mutableSamePriorityRoundRobin.index
       this
     else
       new Prioritized[A](orderedKeys, toPriority)
