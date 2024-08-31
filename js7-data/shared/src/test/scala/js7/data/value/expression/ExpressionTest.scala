@@ -836,6 +836,26 @@ final class ExpressionTest extends OurTestSuite:
       MkString(ListExpr(List("»", MissingConstant, ErrorExpr("ERROR"), 7))))
   }
 
+  "min" - {
+    testEval(""" min("a", true) """,
+      result = Left(UnexpectedValueTypeProblem(NumberValue, StringValue("a"))),
+      Min(StringConstant("a"), BooleanConstant(true)))
+
+    testEval(""" min(3, 2*2) """,
+      result = Right(NumberValue(3)),
+      Min(NumericConstant(3), Multiply(NumericConstant(2), NumericConstant(2))))
+  }
+
+  "max" - {
+    testEval(""" max("a", true) """,
+      result = Left(UnexpectedValueTypeProblem(NumberValue, StringValue("a"))),
+      Max(StringConstant("a"), BooleanConstant(true)))
+
+    testEval(""" max(3, 2*2) """,
+      result = Right(NumberValue(4)),
+      Max(NumericConstant(3), Multiply(NumericConstant(2), NumericConstant(2))))
+  }
+
   "error(\"ERROR\")" - {
     implicit val scope = Scope.empty
 

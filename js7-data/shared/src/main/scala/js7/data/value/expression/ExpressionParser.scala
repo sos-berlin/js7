@@ -189,6 +189,14 @@ object ExpressionParser:
           case Seq((None, string), (None, pattern), (None, replacement)) =>
             pure(ReplaceAll(string, pattern, replacement))
           case _ => failWith("replaceAll function expects exacly three arguments")
+      case ("min", arguments) =>
+        arguments match
+          case Seq((None, a), (None, b)) => pure(Min(a, b))
+          case _ => failWith("min function expects exacly two arguments")
+      case ("max", arguments) =>
+        arguments match
+          case Seq((None, a), (None, b)) => pure(Max(a, b))
+          case _ => failWith("min function expects exacly two arguments")
       case (name, arguments) =>
         pure(FunctionCall(
           name,

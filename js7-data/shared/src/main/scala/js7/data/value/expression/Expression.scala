@@ -667,6 +667,37 @@ object Expression:
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"
 
+
+  final case class Min(a: Expression, b: Expression)
+  extends StringExpr, PurityDependsOnSubexpressions:
+    def precedence: Int = Precedence.Factor
+    def subexpressions: Iterable[Expression] = View(a, b)
+
+    def evalRaw(implicit scope: Scope): Checked[Value] =
+      for
+        a <- a.eval.flatMap(_.asNumber)
+        b <- b.eval.flatMap(_.asNumber)
+      yield
+        NumberValue(a min b)
+
+    override def toString = s"min($a, $b)"
+
+
+  final case class Max(a: Expression, b: Expression)
+  extends StringExpr, PurityDependsOnSubexpressions:
+    def precedence: Int = Precedence.Factor
+    def subexpressions: Iterable[Expression] = View(a, b)
+
+    def evalRaw(implicit scope: Scope): Checked[Value] =
+      for
+        a <- a.eval.flatMap(_.asNumber)
+        b <- b.eval.flatMap(_.asNumber)
+      yield
+        NumberValue(a max b)
+
+    override def toString = s"max($a, $b)"
+
+
   final case class ErrorExpr(errorMessage: Expression)
   extends PurityDependsOnSubexpressions/*not Constant, because it is an error?*/ :
     def precedence: Int = Precedence.Factor
