@@ -42,7 +42,8 @@ trait Scope:
     None
 
   final def namedValue(name: String): Option[Checked[Value]] =
-    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
+    findValue:
+      ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name))
 
   def parseAndEval(expression: String): Checked[Value] =
     parseExpression(expression)
@@ -51,21 +52,25 @@ trait Scope:
   final def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =
     evalLazilyExpressions(nameToExpr.view)(this)
       .toVector
-      .map { case (k, checked) => checked.map(k -> _) }
+      .map: (k, checked) =>
+        checked.map(k -> _)
       .combineProblems
       .map(_.toMap)
 
 
 object Scope extends Monoid[Scope]:
-  implicit val monoid: Monoid[Scope] = this
+  given Monoid[Scope] = this
 
   val empty: Scope = Empty
+
+  private object Empty extends Scope:
+    override def toString = "EmptyScope"
 
   def combine(a: Scope, b: Scope): Scope =
     (a, b) match
       case (a, Empty) => a
       case (Empty, b) => b
-      case _ => new CombinedScope(a, b)
+      case _ => CombinedScope(a, b)
 
   /** Optimized for empty nameToExpr. */
   def evalExpressionMap(nameToExpr: Map[String, Expression], scope: => Scope)
@@ -81,10 +86,10 @@ object Scope extends Monoid[Scope]:
     */
   def evalLazilyExpressions(nameToExpr: MapView[String, Expression])(scope: => Scope)
   : MapView[String, Checked[Value]] =
+    lazy val myScope = scope
     nameToExpr
-      .map { case (name, expr) =>
-        name -> Lazy(expr.eval(scope))
-      }
+      .map: (name, expr) =>
+        name -> Lazy(expr.eval(myScope))
       .toMap // memoize Lazy
       .view
       // Evaluate lazily (Lazy evaluates only once)
@@ -92,6 +97,3 @@ object Scope extends Monoid[Scope]:
         .recursionCheckedValue
         .toChecked(RecursiveEvaluationProblem)
         .flatten)
-
-  private object Empty extends Scope:
-    override def toString = "EmptyScope"
