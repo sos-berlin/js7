@@ -343,9 +343,47 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
 
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+    "JS-2132 Skip a statement when an Order has been failed" in:
+      val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
+        label @: FailingJob.execute(agentPath)))
+
+      withTemporaryItem(workflow): workflow =>
+        val orderId = OrderId("JS-2132")
+        val events = controller
+          .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .map(_.value)
+        assert(events == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+
+          OrderStarted,
+          OrderProcessingStarted(subagentId),
+          OrderProcessed(FailingJob.outcome),
+          OrderDetachable,
+          OrderDetached,
+          OrderFailed(Position(0))))
+
+        val eventId = eventWatch.lastAddedEventId
+        // The Order must not be moved due to skip, because it has failed
+        skipInstruction(workflow.path, true, ItemRevision(1))
+
+        controller.api
+          .executeCommand(
+            ResumeOrder(orderId, asSucceeded = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](after = eventId)
+        assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
+          OrderResumed(asSucceeded = true),
+          OrderMoved(Position(1), Some(SkippedDueToWorkflowPathControl)),
+          OrderFinished(),
+          OrderDeleted))
   }
 
+
 object ControlWorkflowPathSkipTest:
+
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
