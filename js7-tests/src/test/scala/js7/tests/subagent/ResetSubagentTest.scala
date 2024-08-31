@@ -40,8 +40,6 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
     runSubagent(bareSubagentItem) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
-
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
