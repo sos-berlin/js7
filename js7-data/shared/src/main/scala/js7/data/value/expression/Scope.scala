@@ -61,15 +61,15 @@ trait Scope:
 object Scope extends Monoid[Scope]:
   given Monoid[Scope] = this
 
-  val empty: Scope = Empty
+  val empty: Scope = EmptyScope
 
-  private object Empty extends Scope:
+  private object EmptyScope extends Scope:
     override def toString = "EmptyScope"
 
   def combine(a: Scope, b: Scope): Scope =
     (a, b) match
-      case (a, Empty) => a
-      case (Empty, b) => b
+      case (a, EmptyScope) => a
+      case (EmptyScope, b) => b
       case _ => CombinedScope(a, b)
 
   /** Optimized for empty nameToExpr. */

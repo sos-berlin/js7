@@ -43,11 +43,12 @@ final case class WorkflowJob(
     this.agentPath == agentPath
 
   def checked: Checked[Unit] =
-    subagentSelectionId.fold(Checked.unit)(expr =>
-      if expr.isConstant then
+    subagentSelectionId.fold(Checked.unit): expr =>
+      if expr.isPure then
+        // A pure expression can be checked beforehand
         expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
       else
-        Checked.unit)
+        Checked.unit
 
   def isRestartable: Boolean =
     !isNotRestartable

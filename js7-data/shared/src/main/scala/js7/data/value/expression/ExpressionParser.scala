@@ -184,6 +184,10 @@ object ExpressionParser:
         arguments match
           case Seq((None, arg)) => pure(MkString(arg))
           case _ => failWith("mkString function expects exacly one argument")
+      case ("impure", arguments) =>
+        arguments match
+          case Seq((None, arg)) => pure(Impure(arg))
+          case _ => failWith("'impure' function expects exacly one argument")
       case ("replaceAll", arguments) =>
         arguments match
           case Seq((None, string), (None, pattern), (None, replacement)) =>

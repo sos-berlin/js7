@@ -7,7 +7,7 @@ import js7.data.value.Value.convenience.*
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.Expression.{Divide, NamedValue, *}
-import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
+import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -20,7 +20,6 @@ final class ExpressionTest extends OurTestSuite:
 
   implicit val scope: Scope =
     new Scope:
-
       import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
       import ValueSearch.{LastExecuted, Name}
 
@@ -665,6 +664,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Left(Problem("ArithmeticException: Division by zero")),
         Divide(1, 0))
 
+      testEval("""1.0 / 0.0""",
+        result = Left(Problem("ArithmeticException: Division by zero")),
+        Divide(1, 0))
+
+      testEval("""0 / 0""",
+        result = Left(Problem("ArithmeticException: Division undefined")),
+        Divide(0, 0))
+
       testEval("""(1 / 0)?""",
         result = Right(MissingValue),
         OrMissing(Divide(1, 0)))
@@ -823,6 +830,16 @@ final class ExpressionTest extends OurTestSuite:
     testEval(""" replaceAll("abcdef", "([ae])", missing) """,
       result = Right(MissingValue),
       ReplaceAll("abcdef", "([ae])", MissingConstant))
+  }
+
+  "impure" - {
+    testEval(""" impure(1) """,
+      result = Right(NumberValue(1)),
+      Impure(NumericConstant(1)))
+
+    "isPure" in:
+      assert(expr("1").isPure)
+      assert(!expr("impure(1)").isPure)
   }
 
   "mkString" - {
@@ -1148,6 +1165,18 @@ final class ExpressionTest extends OurTestSuite:
     "Variables cannot be used" in:
       assert(NamedValue("VARIABLE").eval == Left(Problem("No such named value: VARIABLE")))
   }
+
+  "isPure" in:
+    assert(!expr("$var").isPure) // But could be constant if $var is somehow marked as constant
+    assert(expr("1").isPure)
+
+    assert(!expr("1 * $var").isPure)
+    assert(expr("1 * 1").isPure)
+
+    assert(!expr("""replaceAll($a, "b", "c")""").isPure)
+    assert(!expr("""replaceAll("a", $b, "c")""").isPure)
+    assert(!expr("""replaceAll("a", "b", $c)""").isPure)
+    assert(expr("""replaceAll("a", "b", "c")""").isPure)
 
   private def testSyntaxError(exprString: String, problem: Problem)(implicit pos: source.Position): Unit =
     s"$exprString - should fail" in:

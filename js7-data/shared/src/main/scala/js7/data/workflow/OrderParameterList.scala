@@ -98,7 +98,8 @@ final case class OrderParameterList(
               Left(MissingOrderArgumentProblem(required): Problem)
 
             case (None, p: OrderParameter.HasExpression) =>
-              (!p.expression.isConstant ? p.expression.eval(recursiveScope).map(p.name -> _))
+              // A pure expression can be checked beforehand
+              (!p.expression.isPure ? p.expression.eval(recursiveScope).map(p.name -> _))
                 .sequence
                 .left.map(EvaluationFailedProblem(p.name, p.expression, _))
 

@@ -1,12 +1,16 @@
 package js7.tests.filewatch
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
+import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.toListL
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
@@ -28,15 +32,11 @@ import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, Orde
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.{MkString, StringConstant}
+import js7.data.value.expression.Expression.{Impure, StringConstant}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatch2Test.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import java.io.File.separator
-import js7.base.monixlike.MonixLikeExtensions.toListL
 
 final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
 
@@ -400,7 +400,7 @@ object FileWatch2Test:
       OrderParameterList(
         Seq(
           OrderParameter.Final("var",
-            MkString/*force non-constant early evaluation*/(StringConstant("VAR")))),
+            Impure/*force impure (non-constant) early evaluation*/(StringConstant("VAR")))),
         allowUndeclared = true)))
 
 
