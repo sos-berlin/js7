@@ -8,7 +8,6 @@ import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray

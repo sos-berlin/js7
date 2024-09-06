@@ -7,7 +7,7 @@ args=()
 argToRequest() {
   arg="$1"
   if [ "${arg:0:1}" = "{" ]; then
-    argToPost "$arg"
+    argToPostCommand "$arg"
   else
     argToGet "$arg"
   fi
@@ -25,7 +25,7 @@ Accept-Charset: UTF-8\r
 \r"
 }
 
-argToPost() {
+argToPostCommand() {
   arg="$1"
   echo -en "POST $uriPath/api/command HTTP/1.1\r
 Host: $uriIP\r

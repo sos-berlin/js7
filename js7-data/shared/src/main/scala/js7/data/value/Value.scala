@@ -39,7 +39,7 @@ sealed trait Value:
   def toStringValue: Checked[StringValue] =
     as[StringValue]
 
-  def missingToEmpty: Value = this
+  def missingToEmptyString: Value = this
 
   final def asInt: Checked[Int] =
     asNumber.flatMap(o => catchExpected[ArithmeticException](
@@ -379,7 +379,7 @@ case object MissingValue extends Value, ValueType.Simple:
 
   val name = "Missing"
 
-  override def missingToEmpty: Value =
+  override def missingToEmptyString: Value =
     StringValue.empty
 
   @javaApi @Nullable def toJava: Null =

@@ -1,7 +1,7 @@
 package js7.common.http
 
 import cats.effect.{Deferred, IO}
-import cats.implicits.catsSyntaxApplicativeError
+import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag

@@ -214,7 +214,8 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
               val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
               eventWatch.await[SubagentCoupled](after = e)))
 
-  def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response]): command.Response =
+  final def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response])
+  : command.Response =
     controller.api.executeCommand(command).await(99.s).orThrow
 
 

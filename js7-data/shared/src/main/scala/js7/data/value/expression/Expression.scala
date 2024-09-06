@@ -52,7 +52,7 @@ sealed trait Expression extends Precedence:
 
       case Right(o: Value) => Right(o)
 
-  protected def evalRaw(implicit scope: Scope): Checked[Value]
+  protected def evalRaw(using scope: Scope): Checked[Value]
 
   final def evalAsBoolean(implicit scope: Scope): Checked[Boolean] =
     eval.flatMap(_.as[BooleanValue]).map(_.booleanValue)
@@ -61,8 +61,8 @@ sealed trait Expression extends Precedence:
     eval.flatMap(_.as[NumberValue]).map(_.number)
 
   final def evalAsInt(implicit scope: Scope): Checked[Int] =
-    evalAsNumber
-      .flatMap(o => catchExpected[ArithmeticException](o.toIntExact))
+    evalAsNumber.flatMap: o =>
+      catchExpected[ArithmeticException](o.toIntExact)
 
   final def evalToString(implicit scope: Scope): Checked[String] =
     eval.flatMap(_.toStringValueString)
@@ -95,7 +95,7 @@ object Expression:
     final def subexpressions: Iterable[Expression] = Nil
     def toValue: Value
 
-    final def evalRaw(implicit scope: Scope): Checked[Value] =
+    final def evalRaw(using scope: Scope): Checked[Value] =
       Right(toValue)
 
   sealed trait SimpleValueExpr extends Expression
@@ -111,7 +111,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = a.subexpressions
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.evalAsBoolean yield
         BooleanValue(!a.booleanValue)
 
@@ -122,7 +122,7 @@ object Expression:
     def precedence: Int = Precedence.And
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       a.evalAsBoolean.flatMap:
         case false => Right(BooleanValue.False)
         case true => b.eval.flatMap(_.as[BooleanValue])
@@ -134,7 +134,7 @@ object Expression:
     def precedence: Int = Precedence.Or
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       a.evalAsBoolean.flatMap:
         case false => b.eval.flatMap(_.as[BooleanValue])
         case true => Right(BooleanValue.True)
@@ -146,7 +146,7 @@ object Expression:
     def precedence: Int = Precedence.Equal
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.eval; b <- b.eval yield BooleanValue(a == b)
 
     override def toString: String = makeString(a, "==", b)
@@ -156,7 +156,7 @@ object Expression:
     def precedence: Int = Precedence.Equal
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.eval; b <- b.eval yield BooleanValue(a != b)
 
     override def toString: String = makeString(a, "!=", b)
@@ -166,7 +166,7 @@ object Expression:
     def precedence: Int = Precedence.Comparison
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.evalAsNumber; b <- b.evalAsNumber yield
         BooleanValue(a <= b)
 
@@ -177,7 +177,7 @@ object Expression:
     def precedence: Int = Precedence.Comparison
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a >= b)
 
     override def toString = makeString(a, ">=", b)
@@ -187,7 +187,7 @@ object Expression:
     def precedence: Int = Precedence.Comparison
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a < b)
 
     override def toString: String = makeString(a, "<", b)
@@ -197,7 +197,7 @@ object Expression:
     def precedence: Int = Precedence.Comparison
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a > b)
 
     override def toString: String = makeString(a, ">", b)
@@ -207,7 +207,7 @@ object Expression:
     def precedence: Int = Precedence.Addition
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for
         a <- a.eval
         b <- b.eval
@@ -225,7 +225,7 @@ object Expression:
   extends NumericExpr, PurityDependsOnSubexpressions:
     final def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected final def evalRaw(implicit scope: Scope) =
+    protected final def evalRaw(using scope: Scope) =
       (a.eval, b.eval) match
         case (Left(problem), _) => Left(problem)
         case (_, Left(problem)) => Left(problem)
@@ -275,19 +275,20 @@ object Expression:
     def precedence: Int = Precedence.WordOperator
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for a <- a.eval; b <- b.evalAsVector yield BooleanValue(b contains a)
 
     override def toString: String = makeString(a, "in", b)
+
 
   final case class Matches(a: Expression, b: Expression)
   extends BooleanExpr, PurityDependsOnSubexpressions:
     def precedence: Int = Precedence.WordOperator
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for
-        a <- a.eval.map(_.missingToEmpty).flatMap(_.toStringValueString)
+        a <- a.eval.map(_.missingToEmptyString).flatMap(_.toStringValueString)
         b <- b.evalToString
         result <- catchExpected[PatternSyntaxException](
           BooleanValue(a matches b))
@@ -300,7 +301,7 @@ object Expression:
     def precedence: Int = Precedence.OrElse
     def subexpressions: Iterable[Expression] = a :: default :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       evalOrDefault(a, default)
 
     override def toString: String = makeString(a, "?", default)
@@ -310,15 +311,14 @@ object Expression:
     def precedence: Int = Precedence.OrElse
     def subexpressions: Iterable[Expression] = a :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       evalOrDefault(a, MissingConstant)
 
     override def toString: String =
-      Precedence.inParentheses(a, precedence) +
-        (a.isInstanceOf[OrMissing] ?? " ") +
-        "?"
+      Precedence.inParentheses(a, precedence) + "?"
 
-  protected def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope)
+
+  private def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope)
   : Checked[Value] =
     expr.eval match
       case Left(problem) =>
@@ -332,7 +332,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = obj :: arg :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for
         list <- obj.evalAsVector
         index <- arg.evalAsInt
@@ -347,7 +347,7 @@ object Expression:
     def subexpressions: Iterable[Expression] = a :: Nil
     def precedence: Int = Precedence.Dot
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       for
         a <- a.evalAs[ObjectValue]
         a <- a.nameToValue.get(name) !! UnknownNameInExpressionProblem(s"$toString.$name")
@@ -359,7 +359,7 @@ object Expression:
   final case class ListExpr(subexpressions: List[Expression]) extends PurityDependsOnSubexpressions:
     def precedence: Int = Precedence.Factor
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       subexpressions.traverse(_.eval).map(_.toVector).map(ListValue(_))
 
     override def toString: String = subexpressions.mkString("[", ", ", "]")
@@ -371,7 +371,7 @@ object Expression:
     def nonEmpty: Boolean = nameToExpr.nonEmpty
     def precedence: Int = Precedence.Factor
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       nameToExpr.toVector
         .traverse { case (k, v) => v.eval.map(k -> _) }
         .map(pairs => ObjectValue(pairs.toMap))
@@ -379,6 +379,7 @@ object Expression:
     override def toString: String = nameToExpr
       .map { case (k, v) => identifierToString(k) + ":" + v }
       .mkString("{", ", ", "}")
+
   object ObjectExpr:
     val empty: ObjectExpr = ObjectExpr(Map.empty)
 
@@ -395,7 +396,7 @@ object Expression:
   extends Expression.PurityDependsOnSubexpressions:
     def subexpressions: Iterable[Expression] = function.expression :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       Right(FunctionValue(function))
 
     protected def precedence = Precedence.Function
@@ -407,7 +408,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = expression :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       expression.eval.flatMap(_.toNumberValue)
 
     override def toString = s"toNumber($expression)"
@@ -417,10 +418,11 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = expression :: Nil
 
-    protected def evalRaw(implicit scope: Scope) =
+    protected def evalRaw(using scope: Scope) =
       expression.eval.flatMap(_.toBooleanValue)
 
     override def toString = s"toBoolean($expression)"
+
 
   final case class BooleanConstant(booleanValue: Boolean)
   extends BooleanExpr, Constant:
@@ -428,22 +430,26 @@ object Expression:
 
     override def toString: String = booleanValue.toString
 
+
   final case class NumericConstant(number: BigDecimal)
   extends NumericExpr, Constant:
     val toValue: Value = NumberValue(number)
 
     override def toString: String = number.toString
 
+
   final case class StringConstant(string: String)
   extends StringExpr, Constant:
     val toValue: Value = StringValue(string)
 
     override def toString: String = StringConstant.quote(string)
+
   object StringConstant:
     val empty = new StringConstant("")
 
     def quote(string: String): String =
       ValuePrinter.quoteString(string)
+
 
   final case class NamedValue(
     where: NamedValue.Where, nameExpr: Expression, default: Option[Expression] = None)
@@ -478,8 +484,8 @@ object Expression:
                     Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
                 })
               .flatten)
-      yield value
-
+      yield
+        value
 
     override def toString: String = (where, nameExpr, default) match
       case (LastOccurred, StringConstant(key), None) if !key.contains('`') =>
@@ -520,6 +526,7 @@ object Expression:
 
           case _ =>
             s"variable(${args mkString ", "})"
+
   object NamedValue:
     def apply(name: String): NamedValue =
       NamedValue(NamedValue.LastOccurred, StringConstant(name))
@@ -530,9 +537,14 @@ object Expression:
     def argument(name: String): NamedValue =
       NamedValue(NamedValue.Argument, StringConstant(name))
 
-    private[Expression] def isSimpleName(name: String) = name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
-    private[expression] def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
-    private[expression] def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
+    private[Expression] def isSimpleName(name: String) =
+      name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
+
+    private[expression] def isSimpleNameStart(c: Char) =
+      isUnicodeIdentifierStart(c)
+
+    private[expression] def isSimpleNamePart(c: Char) =
+      isUnicodeIdentifierPart(c)
 
     sealed trait Where
     case object LastOccurred extends Where
@@ -540,20 +552,23 @@ object Expression:
     final case class ByLabel(label: Label) extends Where
     case object Argument extends Where
 
+
   final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)
   extends Expression:
     protected def precedence = Precedence.Factor
     def subexpressions: Iterable[Expression] = Nil
     protected def isPure = false
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       scope.evalFunctionCall(this)
         .getOrElse(Left(Problem(s"Unknown function: $name")))
 
     override def toString = s"$name(${arguments.mkString(", ")})"
 
+
   final case class Argument(expression: Expression, maybeName: Option[String] = None):
     override def toString = maybeName.fold("")(_ + "=") + expression
+
 
   final case class JobResourceVariable(jobResourcePath: JobResourcePath, name: Option[String])
   extends Expression:
@@ -565,7 +580,7 @@ object Expression:
 
     override def referencedJobResourcePaths: Iterable[JobResourcePath] = jobResourcePath :: Nil
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       scope.evalJobResourceVariable(this)
         .getOrElse(Left(Problem(s"JobResources are not accessible here: $toString")))
 
@@ -585,7 +600,7 @@ object Expression:
     def subexpressions: Iterable[Expression] = Nil
     override def isPure = false
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       scope.symbolToValue("catchCount")
         .getOrElse(Left(Problem(s"Unknown symbol: $OrderCatchCount")))
         .flatMap(_.toNumberValue)
@@ -597,7 +612,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = a :: Nil
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       for a <- a.evalAsString yield
         StringValue(a.stripMargin)
 
@@ -608,7 +623,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = expression :: Nil
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       expression.eval.map :
         case ListValue(list) => StringValue(list.map(_.convertToString).mkString)
         case value => StringValue(value.convertToString)
@@ -620,7 +635,7 @@ object Expression:
   extends StringExpr, PurityDependsOnSubexpressions:
     def precedence: Int = Precedence.Factor
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       subexpressions
         .traverse(_.eval.map(_.convertToString))
         .map(seq => StringValue(seq.mkString))
@@ -654,7 +669,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = View(string, pattern, replacement)
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       for
         string <- string.eval.flatMap(_.asString)
         pattern <- pattern.eval.flatMap(_.asString)
@@ -673,7 +688,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       for
         a <- a.eval.flatMap(_.asNumber)
         b <- b.eval.flatMap(_.asNumber)
@@ -688,7 +703,7 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = View(a, b)
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       for
         a <- a.eval.flatMap(_.asNumber)
         b <- b.eval.flatMap(_.asNumber)
@@ -703,11 +718,12 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = Nil
 
-    def evalRaw(implicit scope: Scope): Checked[Value] =
+    def evalRaw(using scope: Scope): Checked[Value] =
       errorMessage.eval
         .flatMap(expr => Left(ErrorInExpressionProblem(expr.convertToString)))
 
     override def toString = s"error($errorMessage)"
+
 
   type MissingConstant = MissingConstant.type
   case object MissingConstant extends Constant:
@@ -719,7 +735,7 @@ object Expression:
     protected def isPure = false
     def precedence: Int = Precedence.Highest
     def subexpressions: Iterable[Expression] = Nil
-    protected def evalRaw(implicit scope: Scope) = eval()
+    protected def evalRaw(using scope: Scope) = eval()
 
   private def unexpectedType(t: ValueType, v: Value): Checked[Value] =
     v match
