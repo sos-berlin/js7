@@ -22,7 +22,7 @@ final class SimpleControllerClusterTest extends ControllerClusterTester:
     (if sys.props.contains("test.speed") then 10000 else 1)
 
   "Cluster replicates journal files properly" in:
-    runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>
+    runControllerAndBackup(): (primary, primaryController, _, backup, backupController, _, _) =>
       assert(primaryController.api.executeCommand(ControllerCommand.NoOperation()).await(99.s) ==
         Right(ControllerCommand.Response.Accepted))
 
@@ -31,10 +31,10 @@ final class SimpleControllerClusterTest extends ControllerClusterTester:
         Left(ClusterNodeIsNotActiveProblem))
 
       assert(
-        intercept[ProblemException] {
+        intercept[ProblemException]:
           primaryController.eventWatch.underlying.streamEventIds(timeout = Some(0.s))
             .await(99.s).orThrow.completedL await 99.s
-        }.problem == AckFromActiveClusterNodeProblem)
+        .problem == AckFromActiveClusterNodeProblem)
 
       backupController.eventWatch.underlying.streamEventIds(timeout = Some(0.s))
         .await(99.s).orThrow.completedL await 99.s
@@ -56,4 +56,3 @@ final class SimpleControllerClusterTest extends ControllerClusterTester:
       whenFinished await 99.s
 
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
-    }
