@@ -55,8 +55,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingI
 
   override def afterAll() =
     try
-      IO
-        .both(
+      IO.both(
           aSubagent.whenDefined(_.release),
           bSubagent.whenDefined(_.release))
         .await(99.s)

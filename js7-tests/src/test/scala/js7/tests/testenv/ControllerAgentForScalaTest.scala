@@ -161,13 +161,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit =
     val eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Stream
-        .iterable(subagentIdToEnable)
-        .map {
-          case (subagentId, enable) =>
+      .updateItems:
+        Stream.iterable(subagentIdToEnable)
+          .map: (subagentId, enable) =>
             val subagentItem = controllerState.keyToItem(SubagentItem)(subagentId)
             AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
-        })
       .await(99.s).orThrow
     for subagentId <- subagentIdToEnable.map(_._1) do
       eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
@@ -187,14 +185,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
       suffix = suffix,
       awaitDedicated = awaitDedicated,
       suppressSignatureKeys = suppressSignatureKeys
-    ).blockingUse(99.s) { subagent =>
+    ).blockingUse(99.s): subagent =>
       // body runs in the callers test thread
       try body(subagent)
       catch
         case NonFatal(t) =>
           logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           throw t
-    }
 
   protected final def subagentResource(
     subagentItem: SubagentItem,
@@ -205,19 +202,17 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     suppressSignatureKeys: Boolean = false)
   : ResourceIO[Subagent] =
     logger.traceResource(s"subagentResource(${subagentItem.id})"):
-      Resource.suspend(IO {
+      Resource.suspend(IO:
         val eventId = eventWatch.lastAddedEventId
         directoryProvider
           .bareSubagentResource(subagentItem, director = director,
             config,
             suffix = suffix,
             suppressSignatureKeys = suppressSignatureKeys)
-          .evalTap(_ => IO {
+          .evalTap(_ => IO:
             if awaitDedicated then
               val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
-              eventWatch.await[SubagentCoupled](after = e)
-          })
-      })
+              eventWatch.await[SubagentCoupled](after = e)))
 
   def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response]): command.Response =
     controller.api.executeCommand(command).await(99.s).orThrow

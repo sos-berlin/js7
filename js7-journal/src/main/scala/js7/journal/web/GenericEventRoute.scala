@@ -105,7 +105,7 @@ trait GenericEventRoute extends RouteProvider:
 
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
     : Route =
-      parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
+      parameter("timeout" ? defaultJsonSeqChunkTimeout): timeout =>
         completeWithCheckedStream(`application/x-ndjson`):
           eventWatch
             .streamEventIds(Some(timeout))
@@ -117,7 +117,6 @@ trait GenericEventRoute extends RouteProvider:
               .pipe: stream =>
                 maybeHeartbeat.fold(stream): h =>
                   stream.keepAlive(h, IO.pure(HttpHeartbeatByteString))))
-      }
 
     private def eventRoute(
       request: EventRequest[Event],

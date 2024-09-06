@@ -48,17 +48,18 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =
-    liftProblem(retryIfSessionLost()(
-      httpClient
-        .post[Numbered[SubagentCommand], SubagentCommand.Response](
-          commandUri,
-          numbered.asInstanceOf[Numbered[SubagentCommand]])
-        .map(_.asInstanceOf[numbered.value.Response])))
+    liftProblem:
+      retryIfSessionLost():
+        httpClient
+          .post[Numbered[SubagentCommand], SubagentCommand.Response](
+            commandUri,
+            numbered.asInstanceOf[Numbered[SubagentCommand]])
+          .map(_.asInstanceOf[numbered.value.Response])
 
   def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId)
-    (implicit kd: Decoder[KeyedEvent[E]])
+    (using Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     eventStream(request, subagentRunId, heartbeat = None)
 
@@ -68,16 +69,16 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
     heartbeat: Option[FiniteDuration])
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    retryIfSessionLost()(
+    retryIfSessionLost():
       httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
-        Uri(
+        Uri:
           eventUri.string +
-            encodeQuery(
+            encodeQuery:
               Some("subagentRunId" -> subagentRunId.string) ++
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
-                request.toQueryParameters))),
+                request.toQueryParameters),
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
-        responsive = true))
+        responsive = true)
 
 
 object HttpSubagentApi:
@@ -87,5 +88,6 @@ object HttpSubagentApi:
     name: String,
     actorSystem: ActorSystem)
   : ResourceIO[HttpSubagentApi] =
-    SessionApi.resource(IO(
-      new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))
+    SessionApi.resource:
+      IO:
+        HttpSubagentApi(admission, httpsConfig, name, actorSystem)
