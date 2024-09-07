@@ -6,6 +6,7 @@ import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
@@ -146,34 +147,40 @@ extends MainService, Service.StoppableByRequest:
         IO:
           dedicatedAllocated.trySet(allocatedDedicatedSubagent)
         .flatMap: isFirst =>
-          val ok = IO:
-            Log4j.set("js7.serverId", cmd.subagentId.toString)
-            logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
-            Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
           if isFirst then
-            ok
+            IO.right(())
           else
-            // Maybe it's a duplicate, idempotent command?
-            val errors = mutable.Buffer.empty[String]
-            val existing = dedicatedAllocated.orThrow.allocatedThing
-            if existing.subagentId != cmd.subagentId then
-              errors += s"Renaming dedication as ${cmd.subagentId} rejected"
-            if existing.agentPath != cmd.agentPath then
-              errors += s"Subagent is dedicated to an other ${existing.agentPath}"
-            if existing.controllerId != cmd.controllerId then
-              errors += s"Subagent is dedicated to ${existing.agentPath} of alien ${existing.controllerId}"
-            else if existing.agentPath == cmd.agentPath && existing.agentRunId != cmd.agentRunId then
-              errors += s"Subagent is dedicated to a past or alien ${existing.agentPath}"
-            if errors.isEmpty && existing.isUsed then
-              errors += s"Subagent is already in use"
-            if errors.nonEmpty then
-              val problem = SubagentAlreadyDedicatedProblem(reasons = errors.mkString(", "))
-              logger.warn(s"$cmd => $problem")
-              IO.unlessA(isFirst):
-                allocatedDedicatedSubagent.release
-              .as(Left(problem))
-            else
-              ok
+            handleDuplicateDedication(cmd, dedicatedAllocated.orThrow.allocatedThing) match
+              case Left(problem) =>
+                IO.defer:
+                  logger.warn(s"$cmd => $problem")
+                  allocatedDedicatedSubagent.release.as(Left(problem))
+              case Right(()) =>
+                IO.right(())
+        .flatMapT: _ =>
+          IO:
+            Log4j.set("js7.serverId", cmd.subagentId.toString)
+            logger.info:
+              s"Subagent dedicated as ${cmd.subagentId} to ${cmd.agentPath}, is ready"
+            Right:
+              DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version))
+
+  /** Maybe the duplicate command is idempotent? */
+  private def handleDuplicateDedication(cmd: DedicateSubagent, existing: DedicatedSubagent)
+  : Checked[Unit] =
+    val errors = mutable.Buffer.empty[String]
+    if existing.subagentId != cmd.subagentId then
+      errors += s"Renaming dedication as ${cmd.subagentId} rejected"
+    if existing.agentPath != cmd.agentPath then
+      errors += s"Subagent is dedicated to an other ${existing.agentPath}"
+    if existing.controllerId != cmd.controllerId then
+      errors += s"Subagent is dedicated to ${existing.agentPath} of alien ${existing.controllerId}"
+    else if existing.agentPath == cmd.agentPath && existing.agentRunId != cmd.agentRunId then
+      errors += s"Subagent is dedicated to a past or alien ${existing.agentPath}"
+    if errors.isEmpty && existing.isUsed then
+      errors += s"Subagent is already in use"
+    errors.isEmpty !!
+      SubagentAlreadyDedicatedProblem(reasons = errors.mkString(", "))
 
   def startOrderProcess(
     order: Order[Order.Processing],
