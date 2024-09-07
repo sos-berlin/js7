@@ -56,41 +56,43 @@ final class SwitchOverAgentClusterTest
 
   protected def items = Nil
 
-  "SwitchOver to backup" in:
+  "SwitchOver to backup node" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
     def toTestAgent(envResource: ResourceIO[DirectorEnv]): (DirectorEnv, TestAgent) =
       val resource: ResourceIO[(DirectorEnv, RunningAgent)] =
         for
           env <- envResource
           program <- env.programResource
-        yield env -> program
+        yield
+          env -> program
       val allocated = resource.toAllocated.await(99.s)
       allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2) /*, Some(SIGTERM) ???*/)
 
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
     def allocate(envResource: ResourceIO[DirectorEnv])
     : Allocated[IO, (DirectorEnv, IO[RunningAgent])] =
-      locally {
+      locally:
         for
           env <- envResource
           restartable <- env.restartableDirectorResource
-        yield env -> restartable.currentDirector
-      }.toAllocated.await(99.s)
+        yield
+          env -> restartable.currentDirector
+      .toAllocated.await(99.s)
 
-    val primaryAllocated = allocate(
+    val primaryAllocated = allocate:
       directoryProvider.directorEnvResource(
         primarySubagentItem,
-        otherSubagentIds = Seq(backupSubagentId)))
+        otherSubagentIds = Seq(backupSubagentId))
 
-    val (backupEnv, backupDirector) = toTestAgent(
+    val (backupEnv, backupDirector) = toTestAgent:
       directoryProvider.directorEnvResource(
         backupSubagentItem,
         otherSubagentIds = Seq(primarySubagentId),
-        isClusterBackup = true))
+        isClusterBackup = true)
 
-    backupDirector.useSync(99.s) { _ =>
+    backupDirector.useSync(99.s): _ =>
       val aOrderId = OrderId("🔶")
-      primaryAllocated.useSync(99.s) { case (primaryEnv, currentPrimaryDirector) =>
+      primaryAllocated.useSync(99.s): (primaryEnv, currentPrimaryDirector) =>
         try
           updateItems(primarySubagentItem, backupSubagentItem, agentRef, workflow)
           val primaryDirector = currentPrimaryDirector.await(1.s)
@@ -138,8 +140,6 @@ final class SwitchOverAgentClusterTest
           case NonFatal(t) =>
             logger.error(t.toStringWithCauses, t)
             throw t.appendCurrentStackTrace
-      }
-    }
 
 
 object SwitchOverAgentClusterTest:
