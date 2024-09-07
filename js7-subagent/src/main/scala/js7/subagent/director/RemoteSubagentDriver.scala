@@ -389,7 +389,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       .race(untilStopRequested, io)
       .flatMap:
         case Left(()) =>
-          logger.debug("⚫ cancelAndFailWhenStopping!")
+          logger.debug("◼️ cancelAndFailWhenStopping!")
           IO.raiseError(Problem(s"$toString is being stopped").throwable)
 
         case Right(a) =>

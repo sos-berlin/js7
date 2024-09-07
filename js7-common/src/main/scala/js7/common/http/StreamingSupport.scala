@@ -60,7 +60,7 @@ object StreamingSupport:
     def toPekkoSourceResource: ResourceIO[Source[A, NotUsed]] =
       stream
         .onFinalizeCase:
-          case ExitCase.Canceled => IO(logger.debug(s"⚫️ toPekkoSourceResource stream canceled"))
+          case ExitCase.Canceled => IO(logger.debug(s"◼️ toPekkoSourceResource stream canceled"))
           case _ => IO.unit
         .toUnicastPublisher
         .map(Source.fromPublisher)

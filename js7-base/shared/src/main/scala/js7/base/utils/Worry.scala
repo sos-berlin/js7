@@ -52,7 +52,7 @@ final case class Worry(
           since.elapsed.flatMap: elapsed =>
             val sym = outcome match
               case Outcome.Succeeded(_) => "🔵"
-              case Outcome.Canceled() => "⚫"
+              case Outcome.Canceled() => "◼️"
               case Outcome.Errored(t) => "💥"
             onDelayedOrCompleted(Some(outcome), elapsed, level, sym)
               .flatMap: line =>

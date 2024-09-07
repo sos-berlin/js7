@@ -93,7 +93,7 @@ final class UpdateItemsTest
 
     controller.api.updateItems(Stream(AddVersion(V3), RemoveVersioned(workflowPath))).await(99.s).orThrow
     controller.api.updateItems(Stream(AddVersion(V3), RemoveVersioned(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
-    assert(controller.api.addOrder(FreshOrder(OrderId("⬛️"), workflowPath)).await(99.s) ==
+    assert(controller.api.addOrder(FreshOrder(OrderId("🟧"), workflowPath)).await(99.s) ==
       Left(VersionedItemRemovedProblem(workflowPath)))
 
     controller.api.executeCommand(DeleteOrdersWhenTerminated(orderIds)).await(99.s).orThrow

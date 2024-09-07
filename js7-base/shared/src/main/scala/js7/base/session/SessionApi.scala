@@ -117,7 +117,7 @@ object SessionApi:
               case Outcome.Succeeded(_) => IO(
                 logger.log(sym.relievedLogLevel, s"🟢 $self logged-in"))
               case Outcome.Canceled() => IO(
-                logger.log(sym.relievedLogLevel, s"⚫️ $self Canceled"))
+                logger.log(sym.relievedLogLevel, s"◼️ $self Canceled"))
               case _ => IO.unit
             }
         })
@@ -197,7 +197,7 @@ object SessionApi:
             case Outcome.Succeeded(_) => IO(
               if sym.used then logger.info(s"🟢 $self reached"))
             case Outcome.Canceled() => IO(
-              if sym.used then logger.info(s"⚫️ $self Canceled"))
+              if sym.used then logger.info(s"◼️ $self Canceled"))
             case _ => IO.unit
 
     final def login(onlyIfNotLoggedIn: Boolean = false): IO[Completed] =

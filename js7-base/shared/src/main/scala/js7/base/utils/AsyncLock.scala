@@ -100,12 +100,12 @@ object AsyncLock:
               else
                 sym.onInfo()
                 logger.info:
-                  s"⟲ $sym$nrString $name: $acquirer_ is still waiting for ${since.elapsed.pretty
+                  s"$sym$nrString $name: $acquirer_ is still waiting for ${since.elapsed.pretty
                   } ($queueLength queued)...")
             .onCancel(IO:
               if !acquired && sym.used then
                 logger.log(sym.logLevel,
-                  s"⚫️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
+                  s"◼️️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
 
         def logAfterAcquire: IO[Unit] =
           IO:
@@ -129,7 +129,7 @@ object AsyncLock:
 
                 case ExitCase.Canceled =>
                   logger.log(logLevel,
-                    s"↙ ⚫$nrString $name released by $acquirer_ · Canceled · $queueLength queued · ${since.elapsed.pretty} ↙")
+                    s"↙ ◼️$nrString $name released by $acquirer_ · Canceled · $queueLength queued · ${since.elapsed.pretty} ↙")
 
                 case ExitCase.Errored(t) =>
                   logger.log(sym.logLevel,

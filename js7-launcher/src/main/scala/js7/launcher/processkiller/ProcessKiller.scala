@@ -213,11 +213,11 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   private def killWithJava(process: Js7Process, force: Boolean): IO[Unit] =
     IO:
       if force then
-        logger.info("⚫️ destroyForcibly (SIGKILL)")
+        logger.info("◼️ destroyForcibly (SIGKILL)")
         if !dontExecute then
           process.destroyForcibly()
       else
-        logger.info("⚫️ destroy (SIGTERM)")
+        logger.info("◼️ destroy (SIGTERM)")
         if !dontExecute then
           process.destroy()
 

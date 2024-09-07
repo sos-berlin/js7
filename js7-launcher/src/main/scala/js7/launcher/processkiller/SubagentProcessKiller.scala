@@ -25,7 +25,7 @@ extends ProcessKiller[Js7Process]:
     isDescendant: Boolean,
     isLast: Boolean)
   : String =
-    (if isDescendant then "❌ " else "⚫️ ") +
+    (if isDescendant then "❌ " else "◼️ ") +
       (if force then """destroyForcibly (SIGKILL) """ else """destroy (SIGTERM) """) +
       (isDescendant ?? (
         "child process " + Pid(processHandle.pid) +

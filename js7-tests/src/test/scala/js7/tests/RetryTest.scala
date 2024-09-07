@@ -569,7 +569,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         maxTries = Some(2)))
 
     withTemporaryItem(workflow) { workflow =>
-      val orderId = OrderId("◾️")
+      val orderId = OrderId("🐞")
       var eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
@@ -629,7 +629,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         maxTries = Some(2)))
 
     withTemporaryItem(workflow) { workflow =>
-      val orderId = OrderId("⬛️")
+      val orderId = OrderId("🐌")
       var eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId

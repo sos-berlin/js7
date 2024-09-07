@@ -82,7 +82,7 @@ import scala.util.{Success, Try}
  * <p>Cancellation
  * <br><code>🗑 &nbsp; ↘</code> start of response cancellation
  * <br><code>🗑 &nbsp; ↙</code> end of response cancellation
- * <br><code>&lt;~~ ⚫️</code> canceled
+ * <br><code>&lt;~~ ◼️</code> canceled
  */
 trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrace:
 
@@ -358,7 +358,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
-              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
+              logger.debug(s"<~~ ◼️️$responseLogPrefix => canceled")
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match

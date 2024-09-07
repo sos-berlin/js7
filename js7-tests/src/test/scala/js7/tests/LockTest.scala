@@ -512,7 +512,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       define workflow {
         lock (lock = "LOCK", count = 2) {}
       }""")
-    val orderId = OrderId("⬛️")
+    val orderId = OrderId("🟧")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
