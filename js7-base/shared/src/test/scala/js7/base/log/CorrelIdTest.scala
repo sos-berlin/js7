@@ -65,7 +65,7 @@ final class CorrelIdTest extends OurTestSuite:
 
   "generate" in:
     if !CorrelId.isEnabled then
-      println("❗CorrelId is disabled❗️")
+      //println("❗CorrelId is disabled❗️")
       pending
     else
       val correlId = CorrelId.generate()
