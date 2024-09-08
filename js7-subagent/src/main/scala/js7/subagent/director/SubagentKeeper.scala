@@ -68,7 +68,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
-  @volatile private var processingStarted = false // Delays SubagentDriver#startObserving
+  @volatile private var started = false // Delays SubagentDriver#startObserving
 
   def stop: IO[Unit] =
     logger.traceIO:
@@ -82,10 +82,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             .map(_.combineAll)
 
   // Call this, but not before recovering !!!
-  def startProcessing: IO[Unit] =
+  def start: IO[Unit] =
     logger.traceIO:
       IO.defer:
-        processingStarted = true
+        started = true
         startObserving *> continueDetaching
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): IO[Unit] =
@@ -339,7 +339,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private def startObserving: IO[Unit] =
     stateVar.value
       .flatMap:
-        _.subagentToEntry.values.toVector.map(_.driver).traverse(_.startObserving)
+        _.subagentToEntry.values.toVector.map(_.driver).traverse:
+          _.startObserving
       .map(_.combineAll)
 
   private def continueDetaching: IO[Unit] =
@@ -459,7 +460,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         controllerId,
         directorConf.subagentConf)
       .evalTap: driver =>
-        IO.whenA(processingStarted):
+        IO.whenA(started):
           driver.startObserving
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
@@ -474,7 +475,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           controllerId,
           directorConf.subagentDriverConf,
           directorConf.recouplingStreamReaderConf)
-        .evalTap(driver => IO.whenA(processingStarted):
+        .evalTap(driver => IO.whenA(started):
           driver.startObserving)
     yield
       driver

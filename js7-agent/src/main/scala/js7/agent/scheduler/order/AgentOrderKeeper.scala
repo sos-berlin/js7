@@ -251,8 +251,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
     def continue() =
       if remainingOrders == 0 then
-        subagentKeeper.startProcessing
-          .logWhenItTakesLonger("subagentKeeper.startProcessing")
+        subagentKeeper.start
+          .logWhenItTakesLonger("subagentKeeper.start")
           .awaitInfinite
 
         if !journalState.userIdToReleasedEventId.contains(controllerId.toUserId) then
