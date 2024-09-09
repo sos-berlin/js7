@@ -181,17 +181,19 @@ object RunningAgent:
 
   private def subagentResource(conf: AgentConfiguration)(using ioRuntime: IORuntime)
   : ResourceIO[Subagent] =
-    Resource.suspend(IO {
-      val testEventBus = new StandardEventBus[Any]
-      for
-        _ <- Resource.eval(IO {
-          if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
-          conf.createDirectories()
-          conf.journalLocation.deleteJournalIfMarked().orThrow
-        })
-        subagent <- Subagent.resource(conf.subagentConf, testEventBus)
-      yield subagent
-    }).evalOn(ioRuntime.compute)
+    Resource.suspend:
+      IO:
+        val testEventBus = new StandardEventBus[Any]
+        for
+          _ <- Resource.eval(IO {
+            if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
+            conf.createDirectories()
+            conf.journalLocation.deleteJournalIfMarked().orThrow
+          })
+          subagent <- Subagent.resource(conf.subagentConf, testEventBus)
+        yield
+          subagent
+    .evalOn(ioRuntime.compute)
 
   def director(
     subagent: Subagent,
@@ -199,7 +201,7 @@ object RunningAgent:
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : ResourceIO[RunningAgent] =
-    Resource.suspend(IO {
+    Resource.suspend(IO:
       import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
@@ -223,8 +225,7 @@ object RunningAgent:
         director <-
           resource2(forDirector, clusterNode, testWiring, conf, subagent.testEventBus, clock)
       yield
-        director
-  })
+        director)
 
   private def resource2(
     forDirector: Subagent.ForDirector,

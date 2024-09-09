@@ -400,19 +400,18 @@ extends HasCloser:
     extraConfig: Config = ConfigFactory.empty)
     (using IORuntime)
   : ResourceIO[BareSubagentEnv] =
-    Resource
-      .fromAutoCloseable(IO(
-        new BareSubagentEnv(
-          subagentItem = subagentItem,
-          directorSubagentId = director,
-          name = subagentName(subagentItem.id, suffix = suffix),
-          rootDirectory = directory,
-          verifier = verifier,
-          mutualHttps = agentHttpsMutual,
-          provideHttpsCertificate = provideAgentHttpsCertificate,
-          provideClientCertificate = provideAgentClientCertificate,
-          suppressSignatureKeys = suppressSignatureKeys,
-          extraConfig = extraConfig.withFallback(agentConfig).withFallback(TestConfig))))
+    Resource.fromAutoCloseable(IO:
+      new BareSubagentEnv(
+        subagentItem = subagentItem,
+        directorSubagentId = director,
+        name = subagentName(subagentItem.id, suffix = suffix),
+        rootDirectory = directory,
+        verifier = verifier,
+        mutualHttps = agentHttpsMutual,
+        provideHttpsCertificate = provideAgentHttpsCertificate,
+        provideClientCertificate = provideAgentClientCertificate,
+        suppressSignatureKeys = suppressSignatureKeys,
+        extraConfig = extraConfig.withFallback(agentConfig).withFallback(TestConfig)))
 
   def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
     directory / "subagents" / subagentName(subagentId, suffix)
