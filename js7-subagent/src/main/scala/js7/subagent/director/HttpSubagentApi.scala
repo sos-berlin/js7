@@ -1,23 +1,22 @@
 package js7.subagent.director
 
-import cats.effect.ResourceIO
+import cats.effect.{IO, ResourceIO}
+import fs2.Stream
 import io.circe.Decoder
 import js7.base.auth.Admission
+import js7.base.data.ByteArray
 import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
-import js7.base.web.Uri
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
 import js7.common.http.PekkoHttpClient
 import js7.data.event.{Event, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
-import cats.effect.IO
-import fs2.Stream
-import js7.base.data.ByteArray
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -66,7 +65,8 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration])
+    heartbeat: Option[FiniteDuration],
+    includePrioritized: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     retryIfSessionLost():
@@ -76,6 +76,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
             encodeQuery:
               Some("subagentRunId" -> subagentRunId.string) ++
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
+                (includePrioritized.map("includePrioritized" -> _.toDecimalString)) ++
                 request.toQueryParameters),
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
         responsive = true)

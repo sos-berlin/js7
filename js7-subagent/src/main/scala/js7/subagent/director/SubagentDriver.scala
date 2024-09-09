@@ -14,7 +14,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
-import js7.data.value.expression.Expression
+import js7.data.value.expression.{Expression, Scope}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -41,6 +41,8 @@ trait SubagentDriver:
   def recoverOrderProcessing(order: Order[Order.Processing]): IO[Checked[FiberIO[OrderProcessed]]]
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit]
+
+  def currentPriorityScope(): Option[Scope]
 
   def tryShutdown: IO[Unit]
 

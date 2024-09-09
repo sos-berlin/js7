@@ -11,6 +11,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.subagent.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
+import js7.data.system.SubagentPriorityDataEvent
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.{MapView, View}
@@ -77,4 +78,5 @@ extends JournaledState.Companion[SubagentState], ItemContainer.Companion[Subagen
       KeyedSubtype.singleEvent[OrderStdoutWritten],
       KeyedSubtype.singleEvent[OrderStderrWritten],
       KeyedSubtype.singleEvent[OrderProcessed],
+      KeyedSubtype.singleEvent[SubagentPriorityDataEvent],
       KeyedSubtype.singleton(using NoKeyEvent)(Heartbeat))

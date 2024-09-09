@@ -3,15 +3,16 @@ package js7.subagent.director
 import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Allocated
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Allocated, Atomic}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.NumberValue
 import js7.data.value.expression.{Expression, Scope}
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.DirectorState.*
 import js7.subagent.director.priority.Prioritized
+import scala.annotation.tailrec
 import scala.collection.MapView
 
 private final case class DirectorState private(
@@ -107,47 +108,15 @@ private final case class DirectorState private(
             case None =>
               Some(selectionlessRoundRobin)
             case Some(selectionId) =>
-              selectionToEntry
-                .get(selectionId) // May be non-existent when stopping
-                .map(cachedPrioritized)
+              selectionToEntry.get(selectionId).map: entry => // May be non-existent when stopping
+                if entry.subagentSelection.allPrioritiesArePure then
+                  entry.cachedStaticPrioritized()
+                else
+                  entry.cachedDynamicPrioritized(
+                    toScope = idToDriver.get(_).fold(None)(_.currentPriorityScope()))
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
-
-  private def cachedPrioritized(entry: SelectionEntry): Prioritized[SubagentId] =
-    if entry.subagentSelection.allPrioritiesArePure then
-      // Evaluate Prioritized only once
-      if entry.cachedPrioritized == null then
-        val prioritized = toPrioritized(entry)
-        entry.cachedPrioritized = prioritized
-        prioritized
-      else
-        entry.cachedPrioritized
-    else
-      val prioritized = toPrioritized(entry)
-      entry.cachedPrioritized match
-        case cached: Prioritized[SubagentId] if cached.isEquivalentTo(prioritized) =>
-          // Keep MutableRoundRobin index in Prioritized
-          cached
-        case _ =>
-          entry.cachedPrioritized = prioritized
-          prioritized
-
-  private def toPrioritized(entry: SelectionEntry): Prioritized[SubagentId] =
-    Prioritized:
-      entry.subagentIds.flatMap: subagentId =>
-        subagentToEntry.get(subagentId)
-          .map(_.driver)
-          .flatMap: driver =>
-            val subagentId = driver.subagentId
-            entry.subagentToExpr.get(subagentId).flatMap: expr =>
-              expr.eval(Scope.empty).flatMap(_.toNumberValue) match
-                case Left(problem) =>
-                  val id = entry.subagentSelection.id
-                  logger.error(s"$id: $subagentId priority expression failed with $problem")
-                  None // Subagent is not selected
-                case Right(prio) =>
-                  Some(subagentId -> prio)
 
   private def isAvailable(subagentId: SubagentId) =
     subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
@@ -180,8 +149,56 @@ private object DirectorState:
   private final case class SelectionEntry(
     subagentSelection: SubagentSelection,
     subagentToExpr: Map[SubagentId, Expression]):
+    entry =>
 
-    var cachedPrioritized: Prioritized[SubagentId] | Null = null
+    private val _cachedPrioritized = Atomic[Prioritized[SubagentId] | Null](null)
 
-    def subagentIds =
-      subagentSelection.subagentIds.toVector
+    // Cache may be updated in parallel
+    def cachedStaticPrioritized(): Prioritized[SubagentId] =
+      // Because priorities does not depend on a Scope, we evaluate Prioritized only once
+      _cachedPrioritized.get() match
+        case null =>
+          val prioritized = mkPrioritized(_ => Some(Scope.empty))
+          _cachedPrioritized.compareAndExchange(null, prioritized) match
+            case null =>
+              logger.trace(s"cachedPrioritized: $selectionId new $prioritized")
+              prioritized
+            case cached: Prioritized[SubagentId] =>
+              logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+              cached
+        case cached: Prioritized[SubagentId] =>
+          logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+          cached
+
+    // Cache may be updated in parallel
+    def cachedDynamicPrioritized(toScope: SubagentId => Option[Scope])
+    : Prioritized[SubagentId] =
+      val prioritized = mkPrioritized(toScope)
+      @tailrec def cache(): Prioritized[SubagentId] =
+        _cachedPrioritized.get() match
+          // subagentSelection.allPrioritiesArePure implies isEquivalentTo
+          case cached: Prioritized[SubagentId] if cached.isEquivalentTo(prioritized) =>
+            // Keep MutableRoundRobin index in Prioritized
+            logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+            cached
+          case cached =>
+            if _cachedPrioritized.compareAndSet(cached, prioritized) then
+              logger.trace(s"cachedPrioritized: $selectionId new $prioritized")
+              prioritized
+            else
+              cache()
+      cache()
+
+    private def mkPrioritized(toScope: SubagentId => Option[Scope]): Prioritized[SubagentId] =
+      Prioritized:
+        subagentToExpr.toVector.flatMap: (subagentId, expr) =>
+          toScope(subagentId).flatMap: scope =>
+            expr.eval(scope).flatMap(_.toNumberValue) match
+              case Left(problem) =>
+                logger.error(s"$selectionId: $subagentId priority expression failed with $problem")
+                None // Subagent is not selected
+              case Right(o) =>
+                Some(subagentId -> o)
+
+    private def selectionId =
+      subagentSelection.id

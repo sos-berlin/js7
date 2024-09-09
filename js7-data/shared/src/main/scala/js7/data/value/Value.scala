@@ -9,7 +9,7 @@ import java.util.Objects.requireNonNull
 import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.*
-import js7.base.problem.Checked.catchExpected
+import js7.base.problem.Checked.{catchExpected, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
@@ -41,6 +41,29 @@ sealed trait Value:
 
   def missingToEmptyString: Value = this
 
+  final def maybe: Option[Value] =
+    (this != MissingValue) ? this
+
+  def as[V <: Value](using V: Value.Companion[V]): Checked[V] =
+    if valueType is V then
+      Right(this.asInstanceOf[V])
+    else
+      Left(UnexpectedValueTypeProblem(V, this))
+
+  def asMissingOr[V <: Value](using V: Value.Companion[V]): Checked[V | MissingValue] =
+    this match
+      case MissingValue => Right(MissingValue)
+      case _ => as[V]
+
+  /** Similar to as[V], returns MissingValue as None. */
+  def asMaybe[V <: Value](using V: Value.Companion[V]): Checked[Option[V]] =
+    this match
+      case MissingValue => Right(None)
+      case _ => as[V].map(Some(_))
+
+  final def asMaybeNumber: Checked[Option[BigDecimal]] =
+    asNumber.map(Some(_))
+
   final def asInt: Checked[Int] =
     asNumber.flatMap(o => catchExpected[ArithmeticException](
       o.toIntExact))
@@ -55,9 +78,6 @@ sealed trait Value:
         catchExpected[Exception](o
           .setScale(0, RoundingMode.DOWN)
           .toLongExact))
-
-  final def asMaybeNumber: Checked[Option[BigDecimal]] =
-    asNumber.map(Some(_))
 
   final def asNumber: Checked[BigDecimal] =
     as[NumberValue].map(_.number)
@@ -87,12 +107,6 @@ sealed trait Value:
 
   def convertToString: String
 
-  def as[V <: Value](implicit V: Value.Companion[V]): Checked[V] =
-    if valueType is V then
-      Right(this.asInstanceOf[V])
-    else
-      Left(UnexpectedValueTypeProblem(V, this))
-
 object Value:
   @javaApi
   def of(value: String): StringValue =
@@ -113,6 +127,27 @@ object Value:
   @javaApi
   def of(value: Boolean): BooleanValue =
     BooleanValue(value)
+
+  def ofAny(value: Any): Checked[Value] =
+    catchNonFatalFlatten:
+      value match
+        case v: Int => Right(NumberValue(v))
+        case v: Long => Right(NumberValue(v))
+        case v: Double =>
+          if v.isNaN then
+            Right(MissingValue)
+          else v match
+            case Double.PositiveInfinity => Left(Problem("Double.PositiveInfinity is an invalid value"))
+            case Double.NegativeInfinity => Left(Problem("Double.NegativeInfinity is an invalid value"))
+            case v: Double => Right(NumberValue(BigDecimal(v)))
+        case v: Boolean => Right(BooleanValue(v))
+        case v: java.lang.Integer => Right(NumberValue(BigDecimal(v)))
+        case v: java.lang.Long => Right(NumberValue(BigDecimal(v)))
+        case v: java.lang.Double => Right(NumberValue(BigDecimal(v)))
+        case v: java.lang.Boolean => Right(BooleanValue(v))
+        case v: String => Right(StringValue(v))
+        case t: Throwable => Left(Problem(t.toStringWithCauses)) // BeanMapView may return Throwable
+        case _ => Left(Problem(s"Unknown type for a Value: ${value.getClass.getName}"))
 
   implicit val jsonEncoder: Encoder[Value] =
     case StringValue(o) => Json.fromString(o)
@@ -279,6 +314,9 @@ object NumberValue extends GoodValue.Companion[NumberValue], ValueType.Simple:
     NumberValue(BigDecimal(value))
 
   given Ordering[NumberValue] = Ordering.by(_.number)
+  given Encoder[NumberValue] = summon[Encoder[BigDecimal]].contramap(_.number)
+  given Decoder[NumberValue] = summon[Decoder[BigDecimal]].map(NumberValue(_))
+
 
 final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   def valueType: ValueType = BooleanValue
@@ -371,6 +409,8 @@ final case class FunctionValue(function: ExprFunction) extends GoodValue:
 object FunctionValue extends GoodValue.Companion[FunctionValue], ValueType:
   val name = "Function"
 
+
+type MissingValue = MissingValue.type
 
 /** The inapplicable value.
  *

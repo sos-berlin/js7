@@ -10,10 +10,12 @@ import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
@@ -26,6 +28,7 @@ import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.system.SubagentPriorityDataEvent
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.GenericEventRoute.*
@@ -123,21 +126,31 @@ trait GenericEventRoute extends RouteProvider:
       maybeHeartbeat: Option[FiniteDuration],
       eventWatch: EventWatch)
     : Route =
-      completeWithCheckedStream(`application/x-ndjson`):
-        maybeHeartbeat match
-          case None =>
-            // Await the first event to check for Torn and convert it to a proper error message,
-            // otherwise continue with stream
-            awaitFirstEventStream(request, eventWatch)
+      parameter("includePrioritized".as[FiniteDuration].?): includePrioritized =>
+        completeWithCheckedStream(`application/x-ndjson`):
+          maybeHeartbeat match
+            case None =>
+              // Await the first event to check for Torn and convert it to a proper error message,
+              // otherwise continue with stream
+              awaitFirstEventStream(request, eventWatch)
 
-          case Some(heartbeat) =>
-            IO:
-              eventWatch.checkEventId(request.after) >> Right:
-                eventStream(request, isRelevantEvent, eventWatch)
-                  .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
-                  .keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
-                  .prependOne(HttpHeartbeatByteString)
-                  .interruptWhenF(shutdownSignaled)
+            case Some(heartbeat) =>
+              IO:
+                eventWatch.checkEventId(request.after) >> Right:
+                  eventStream(request, isRelevantEvent, eventWatch)
+                    .pipeMaybe(includePrioritized): (stream, includePrioritized) =>
+                      stream.mergeHaltL:
+                        Stream.fixedDelay[IO](includePrioritized).map: _ =>
+                          meterSubagentPriorityData:
+                            val event = SubagentPriorityDataEvent.fromCurrentMxBean()
+                            Stamped(EventId(0), Timestamp.now, KeyedEvent(event))
+                    .through:
+                      encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                    // SubagentPriorityDataEvent may fulfill the heartbeat function
+                    .pipeIf(includePrioritized.forall(heartbeat < _)):
+                      _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
+                    .prependOne(HttpHeartbeatByteString)
+                    .interruptWhenF(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
     : IO[Checked[Stream[IO, ByteString]]] =
@@ -197,3 +210,4 @@ object GenericEventRoute:
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
+  private val meterSubagentPriorityData = CallMeter()

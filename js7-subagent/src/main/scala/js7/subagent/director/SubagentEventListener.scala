@@ -30,10 +30,15 @@ import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostP
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
+import js7.data.system.SubagentPriorityDataEvent
+import js7.data.value.expression.Scope
 import js7.journal.CommitOptions
 import js7.journal.state.Journal
 import js7.subagent.director.SubagentEventListener.*
+import js7.subagent.priority.SubagentPriorityDataEventScope
+import scala.concurrent.duration.Deadline
 import scala.util.chaining.scalaUtilChainingOps
+import scala.util.control.NonFatal
 
 private trait SubagentEventListener:
 
@@ -60,6 +65,9 @@ private trait SubagentEventListener:
   private val _isHeartbeating = Atomic(false)
   private val isListening = Atomic(false)
   private val lock = AsyncLock()
+
+  private var _lastSubagentPriorityDataEvent = SubagentPriorityDataEvent(None, 0, 0, 0)
+  private var _lastSubagentPriorityDataEventSince = Deadline.now - 24.h
 
   protected final val coupled = Switch(false)
 
@@ -95,16 +103,11 @@ private trait SubagentEventListener:
         .stream(
           api,
           after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
-        .onFinalizeCase: exitCase =>
-          IO(logger.trace(s"### onFinalize A $exitCase"))
         .interruptWhenF:
-          // FIXME interruptWhen does not work if Stream is busy?
+          // interruptWhen does not work if Stream is busy ???
           // Maybe due to FS2/Pekko coupling
           // Tests have to delay before stopping the Director
           stopObserving.flatMap(_.read)
-            *> IO(logger.trace("### observeEvents stops"))
-        .onFinalizeCase: exitCase =>
-          IO(logger.trace(s"### onFinalize B $exitCase"))
         .pipe: stream =>
           if !bufferDelay.isPositive then
             stream.chunks
@@ -159,6 +162,12 @@ private trait SubagentEventListener:
             logger.error(s"Unexpected event: $keyedEvent")
             IO.pure(None -> IO.unit)
 
+      case KeyedEvent(_: NoKey, e: SubagentPriorityDataEvent) =>
+        IO:
+          _lastSubagentPriorityDataEvent = e
+          _lastSubagentPriorityDataEventSince = Deadline.now
+          None -> IO.unit
+
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
@@ -199,7 +208,8 @@ private trait SubagentEventListener:
             .eventStream(
               EventRequest.singleClass[Event](after = after, timeout = None),
               subagentRunId,
-              heartbeat = Some(conf.heartbeatTiming.heartbeat))
+              heartbeat = Some(conf.heartbeatTiming.heartbeat),
+              includePrioritized = Some(1.s))
             .map(_
               .detectPauses(conf.heartbeatTiming.longHeartbeatTimeout, PauseDetected)
               .evalTap:
@@ -274,6 +284,14 @@ private trait SubagentEventListener:
       DelegateCouplingState.Coupled
 
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()
+
+  final def currentPriorityScope(): Option[Scope] =
+    try
+      !(_lastSubagentPriorityDataEventSince + 3.s).hasElapsed thenSome:
+        SubagentPriorityDataEventScope(_lastSubagentPriorityDataEvent)
+    catch case NonFatal(t) =>
+      logger.error(s"currentPriorityScope => ${t.toStringWithCauses}")
+      None
 
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
     IO.defer:
