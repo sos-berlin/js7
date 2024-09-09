@@ -77,6 +77,10 @@ object Checked:
         for t <- t.ifStackTrace do catchLogger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
 
+  def catchNonFatalDontLog[A](f: => A): Checked[A] =
+    try Right(f)
+    catch case NonFatal(t) => Left(Problem.fromThrowable(t))
+
   /** Does not log. */
   def catchExpected[T <: Throwable]: Catcher[T] =
     new Catcher[T]

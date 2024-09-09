@@ -8,7 +8,7 @@ import java.util.regex.{Pattern, PatternSyntaxException}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.log.Logger
 import js7.base.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
-import js7.base.problem.Checked.{CheckedOption, catchExpected, catchNonFatal}
+import js7.base.problem.Checked.{CheckedOption, catchExpected, catchNonFatalDontLog}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichOption}
 import js7.base.utils.ScalaUtils.withStringBuilder
@@ -245,7 +245,9 @@ object Expression:
       (a.eval, b.eval) match
         case (Left(problem), _) => Left(problem)
         case (_, Left(problem)) => Left(problem)
-        case (Right(NumberValue(a)), Right(NumberValue(b))) => catchNonFatal(NumberValue(op(a, b)))
+        case (Right(NumberValue(a)), Right(NumberValue(b))) =>
+          catchNonFatalDontLog:
+            NumberValue(op(a, b))
         case (Right(_: NumberValue), Right(b)) => unexpectedType(NumberValue, b)
         case (Right(a), Right(_)) => unexpectedType(NumberValue, a)
 
