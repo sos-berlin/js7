@@ -1,5 +1,6 @@
 package js7.data.value
 
+import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import io.circe.syntax.*
@@ -16,7 +17,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.ExprFunction
-import cats.effect.IO
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -277,6 +277,8 @@ object NumberValue extends GoodValue.Companion[NumberValue], ValueType.Simple:
   @javaApi
   def of(value: Integer): NumberValue =
     NumberValue(BigDecimal(value))
+
+  given Ordering[NumberValue] = Ordering.by(_.number)
 
 final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   def valueType: ValueType = BooleanValue

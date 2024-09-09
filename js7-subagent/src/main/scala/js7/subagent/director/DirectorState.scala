@@ -138,7 +138,7 @@ private final case class DirectorState private(
       entry.subagentIds.flatMap: subagentId =>
         subagentToEntry.get(subagentId)
           .map(_.driver)
-          .map: driver =>
+          .flatMap: driver =>
             val subagentId = driver.subagentId
             entry.subagentToExpr.get(subagentId).flatMap: expr =>
               expr.eval(Scope.empty).flatMap(_.toNumberValue) match
@@ -146,9 +146,8 @@ private final case class DirectorState private(
                   val id = entry.subagentSelection.id
                   logger.error(s"$id: $subagentId priority expression failed with $problem")
                   None // Subagent is not selected
-                case Right(o) =>
-                  Some(o)
-          .map(subagentId -> _)
+                case Right(prio) =>
+                  Some(subagentId -> prio)
 
   private def isAvailable(subagentId: SubagentId) =
     subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
