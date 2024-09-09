@@ -7,6 +7,7 @@ import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.catsutils.Environment
 import js7.base.catsutils.Environment.environment
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
@@ -295,3 +296,11 @@ object Subagent:
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
+
+  final case class TestWiring(
+    testEventBus: StandardEventBus[Any] = StandardEventBus(),
+    envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)
+
+  object TestWiring:
+    val empty: TestWiring = TestWiring()
+

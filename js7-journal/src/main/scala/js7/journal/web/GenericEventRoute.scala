@@ -7,6 +7,7 @@ import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
+import js7.base.catsutils.Environment
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
@@ -135,22 +136,25 @@ trait GenericEventRoute extends RouteProvider:
               awaitFirstEventStream(request, eventWatch)
 
             case Some(heartbeat) =>
-              IO:
-                eventWatch.checkEventId(request.after) >> Right:
-                  eventStream(request, isRelevantEvent, eventWatch)
-                    .pipeMaybe(includePrioritized): (stream, includePrioritized) =>
-                      stream.mergeHaltL:
-                        Stream.fixedDelay[IO](includePrioritized).map: _ =>
-                          meterSubagentPriorityData:
-                            val event = SubagentPriorityDataEvent.fromCurrentMxBean()
-                            Stamped(EventId(0), Timestamp.now, KeyedEvent(event))
-                    .through:
-                      encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
-                    // SubagentPriorityDataEvent may fulfill the heartbeat function
-                    .pipeIf(includePrioritized.forall(heartbeat < _)):
-                      _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
-                    .prependOne(HttpHeartbeatByteString)
-                    .interruptWhenF(shutdownSignaled)
+              Environment.maybe[TestWiring].flatMap: maybeTestWiring =>
+                IO:
+                  eventWatch.checkEventId(request.after) >> Right:
+                    eventStream(request, isRelevantEvent, eventWatch)
+                      .pipeMaybe(includePrioritized): (stream, includePrioritized) =>
+                        stream.mergeHaltL:
+                          Stream.fixedDelay[IO](includePrioritized).map: _ =>
+                            meterSubagentPriorityData:
+                              var event = SubagentPriorityDataEvent.fromCurrentMxBean()
+                              for w <- maybeTestWiring do
+                                event = event.copy(testPriority = w.testPriority)
+                              Stamped(EventId(0), Timestamp.now, KeyedEvent(event))
+                      .through:
+                        encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                      // SubagentPriorityDataEvent may fulfill the heartbeat function
+                      .pipeIf(includePrioritized.forall(heartbeat < _)):
+                        _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
+                      .prependOne(HttpHeartbeatByteString)
+                      .interruptWhenF(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
     : IO[Checked[Stream[IO, ByteString]]] =
@@ -211,3 +215,5 @@ object GenericEventRoute:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
   private val meterSubagentPriorityData = CallMeter()
+
+  final case class TestWiring(testPriority: Option[Double])

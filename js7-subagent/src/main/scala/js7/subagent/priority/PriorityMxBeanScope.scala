@@ -26,9 +26,15 @@ private[subagent] object PriorityMxBeanScope extends Scope:
 
 
 object SubagentPriorityDataEventScope:
+
   def apply(event: SubagentPriorityDataEvent): Scope =
-    NamedValueScope(
+    var map = Map(
       "cpuLoad" -> event.cpuLoad.fold_(MissingValue, NumberValue(_)),
       "committedVirtualMemorySize" -> NumberValue(event.committedVirtualMemorySize),
       "freeMemorySize" -> NumberValue(event.freeMemorySize),
       "totalMemorySize" -> NumberValue(event.totalMemorySize))
+
+    for o <- event.testPriority do
+      map = map.updated("testPriority", NumberValue(o))
+
+    new NamedValueScope(map.view.mapValues(Right(_)))

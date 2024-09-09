@@ -11,7 +11,8 @@ final case class SubagentPriorityDataEvent(
   cpuLoad: Option[Double],
   committedVirtualMemorySize: Long,
   freeMemorySize: Long,
-  totalMemorySize: Long)
+  totalMemorySize: Long,
+  testPriority: Option[Double] = None)
 extends NoKeyEvent, NonPersistentEvent
 
 object SubagentPriorityDataEvent:

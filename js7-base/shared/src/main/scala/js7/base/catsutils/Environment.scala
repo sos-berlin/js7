@@ -193,6 +193,10 @@ object Environment:
     : TaggedResource[F, A] =
       TaggedResource(tag, resource)
 
+    def eval[F[_], A](Fa: F[A])(using F: Sync[F], tag: Tag[A])
+    : TaggedResource[F, A] =
+      TaggedResource(tag, Resource.eval(Fa))
+
 
   private sealed trait Entry[A]
   private object Entry:

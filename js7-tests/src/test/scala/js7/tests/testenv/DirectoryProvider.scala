@@ -380,7 +380,8 @@ extends HasCloser:
     director: SubagentId = toLocalSubagentId(agentPaths.head),
     config: Config = ConfigFactory.empty,
     suffix: String = "",
-    suppressSignatureKeys: Boolean = false)
+    suppressSignatureKeys: Boolean = false,
+    testWiring: Subagent.TestWiring = Subagent.TestWiring.empty)
     (using IORuntime)
   : ResourceIO[Subagent] =
     for
@@ -389,8 +390,9 @@ extends HasCloser:
         suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys,
         extraConfig = config)
-      subagent <- env.subagentResource
-    yield subagent
+      subagent <- env.subagentResource(testWiring.envResources)
+    yield
+      subagent
 
   private def bareSubagentEnvResource(
     subagentItem: SubagentItem,
