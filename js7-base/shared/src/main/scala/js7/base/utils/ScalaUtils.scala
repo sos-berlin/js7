@@ -276,8 +276,32 @@ object ScalaUtils:
       def +:[B >: A](b: B): View[B] =
         new View.Single(b) ++ view
 
-    implicit final class RichIteratorsView[A](private val iterables: IterableOnce[IterableOnce[A]])
+
+    extension [CC[a] <: Iterable[a], A](iterable: CC[A])(using C: Factory[A, CC[A]])
+      def takeThrough(predicate: A => Boolean): CC[A] =
+        val builder = C.newBuilder
+        val iterator = iterable.iterator
+        var continue = true
+        while continue && iterator.hasNext do
+          val a = iterator.next()
+          builder += a
+          continue = predicate(a)
+        builder.result()
+
+    extension [A](iterator: Iterator[A])
+      def takeThrough(predicate: A => Boolean): Iterator[A] =
+        var firstNonMatching: Iterator[A] = Iterator.empty
+        iterator.takeWhile: a =>
+          val p = predicate(a)
+          if !p then firstNonMatching = Iterator.single(a)
+          p
+        .concat:
+          firstNonMatching
+
+
+    implicit final class RichIterables[A](private val iterables: IterableOnce[IterableOnce[A]])
     extends AnyVal:
+
       def mergeOrdered(implicit A: Ordering[A]): Iterator[A] =
         mergeOrderedBy(identity)
 

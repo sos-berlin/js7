@@ -156,15 +156,6 @@ object Collections:
           b += ((k, vectorBuilder.result()))
         b.result()
 
-    implicit final class RichIterator[A](private val underlying: Iterator[A]) extends AnyVal:
-      def takeWhileInclusive(predicate: A => Boolean): Iterator[A] =
-        var firstNonMatching: Iterator[A] = Iterator.empty
-        underlying.takeWhile { a =>
-          val p = predicate(a)
-          if !p then firstNonMatching = Iterator.single(a)
-          p
-        } ++ firstNonMatching
-
     implicit final class RichSet[A](private val delegate: Set[A]) extends AnyVal:
       def isDisjointWith(o: Set[A]): Boolean =
         delegate forall (k => !o.contains(k))
@@ -239,7 +230,7 @@ object Collections:
       underlying map { case (k, v) => k -> f(v) }
 
   implicit final class RichBufferedIterator[A](private val delegate: BufferedIterator[A]) extends AnyVal:
-    def headOption: Option[A] = 
+    def headOption: Option[A] =
       delegate.hasNext thenSome delegate.head
 
   def emptyToNone(@Nullable o: String): Option[String] =

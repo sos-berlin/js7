@@ -340,6 +340,24 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert(view.toSeq == Seq(1, 2, 3, 4))
   }
 
+  "Iterable" - {
+    "takeTrough" in:
+      assert((Vector.empty.takeThrough(_ < 3): Vector[Int]) == Vector.empty)
+      assert((Vector(1, 2, 3, 4, 5).takeThrough(_ < 3): Vector[Int]) == Vector(1, 2, 3))
+
+      assert((List.empty.takeThrough(_ < 3): List[Int]) == List.empty)
+      assert((List(1, 2, 3, 4, 5).takeThrough(_ < 3): List[Int]) == List(1, 2, 3))
+  }
+
+  "Iterator" - {
+    "takeTrough" in:
+      assert((Iterator.empty.takeThrough(_ < 3): Iterator[Int]).toList == List.empty)
+
+      val iterator = Iterator(1, 2, 3, 4, 5)
+      assert((iterator.takeThrough(_ < 3): Iterator[Int]).toList == List(1, 2, 3))
+      assert(iterator.next() == 4)
+  }
+
   "mergeOrdered" - {
     "mergeOrderedSlow" - {
       "empty" in:

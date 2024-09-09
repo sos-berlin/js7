@@ -18,7 +18,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Labeled
-import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable, takeThrough}
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
@@ -58,12 +58,13 @@ extends SignatureVerifier:
         Checked.catchNonFatal {
           // We have to try each of the installed trusted certificates !!!
           trustedRootCertificates.iterator
-            .map(rootCert =>
+            .map: rootCert =>
               for
                 signerId <- verifySignature(document, signature, signerCertificate)
                 _ <- verifySignersCertificate(signerCertificate, rootCert.x509Certificate.getPublicKey)
-              yield signerId)
-            .takeWhileInclusive(_.isLeft)
+              yield
+                signerId
+            .takeThrough(_.isLeft)
             .toVector
             .lastOption match
               case None =>

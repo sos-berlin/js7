@@ -15,7 +15,6 @@ import js7.base.log.Logger
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.Collections.implicits.RichIterator
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, CloseableIterator}
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
@@ -184,7 +183,7 @@ extends AutoCloseable:
               eof = maybeLine.isEmpty
               lastPosition = jsonSeqReader.position
               maybeLine.map(PositionAnd(lastPosition, _))
-            }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
+            }.takeThrough(_ => isFlushedAfterPosition(lastPosition))
 
             if onlyAcks then
               // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.

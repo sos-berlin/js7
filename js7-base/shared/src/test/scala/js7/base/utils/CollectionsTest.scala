@@ -117,15 +117,6 @@ final class CollectionsTest extends OurTestSuite:
       5 -> Vector(A("fünf", 5)))
     intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett").toKeyedMap(_._1) }
 
-  "takeWhileInclusive" in:
-    var next = 0
-    val it = Iterator.continually { next += 1; next }
-    assert(it.takeWhileInclusive(_ <= 3).toList == 1 :: 2 :: 3 :: 4 :: Nil)
-    assert(next == 4)
-
-    assert(Iterator.empty[Int].takeWhileInclusive(_ <= 3).isEmpty)
-    assert(Iterator(1, 1, 1).takeWhileInclusive(_ < 1).toList == 1 :: Nil)
-
   "duplicate" in:
     assert(Seq.empty[A].duplicates.isEmpty)
     assert(Seq("a").duplicates.isEmpty)
