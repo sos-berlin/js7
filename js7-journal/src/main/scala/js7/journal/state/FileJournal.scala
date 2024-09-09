@@ -1,14 +1,7 @@
 package js7.journal.state
 
-import cats.effect.{Resource, ResourceIO}
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import org.apache.pekko
-import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import scala.concurrent.ExecutionContext
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource, ResourceIO}
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -18,6 +11,7 @@ import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.pekkoutils.Pekkos.encodeAsActorName
 import js7.data.cluster.ClusterState
 import js7.data.event.{AnyKeyedEvent, Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
@@ -26,7 +20,11 @@ import js7.journal.recover.Recovered
 import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
 import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
-import scala.concurrent.Promise
+import org.apache.pekko
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
+import scala.concurrent.{ExecutionContext, Promise}
 import sourcecode.Enclosing
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
@@ -90,40 +88,35 @@ extends Journal[S], FileJournal.PossibleFailover:
     stateToEvent: S => Checked[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistIO
-      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), options, CorrelId.current))
-      .map(_ map {
-        case (stampedKeyedEvents, state) =>
-          assertThat(stampedKeyedEvents.lengthIs == 1)
-          stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
-      })
+    persistUnlocked(state => stateToEvent(state).map(_ :: Nil), options)
+      .map(_ map: (stampedKeyedEvents, state) =>
+        assertThat(stampedKeyedEvents.lengthIs == 1)
+        stampedKeyedEvents.head -> state)
 
   def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    IO.defer:
-      persistUnlocked(stateToEvents, options)
+    persistUnlocked(stateToEvents, options)
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
   : (S => Checked[Seq[E]]) => IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    stateToEvents => IO.defer:
-      lock(key)(
+    stateToEvents =>
+      lock(key):
         persistUnlocked(
           state => stateToEvents(state)
             .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
-          CommitOptions(transaction = true)))
+          CommitOptions(transaction = true))
 
   private def persistUnlocked[E <: Event](
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions)
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    IO.defer:
-      persistIO.flatMap(
-        _(stateToEvents, options, CorrelId.current)
-          .map(_.map { case (stampedKeyedEvents, state) =>
-            stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
+    persistIO.flatMap:
+      _(stateToEvents, options, CorrelId.current)
+    .map(_.map: (stampedKeyedEvents, state) =>
+      stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state)
 
   def clusterState: IO[ClusterState] =
     state.map(_.clusterState)

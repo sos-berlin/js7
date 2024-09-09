@@ -12,6 +12,7 @@ import js7.base.fs2utils.StreamUtils
 import js7.base.fs2utils.StreamUtils.closeableIteratorToStream
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.metering.CallMeter
 import js7.base.problem.Checked
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.CatsBlocking.syntax.*
@@ -247,26 +248,27 @@ trait RealEventWatch extends EventWatch:
     collect: PartialFunction[AnyKeyedEvent, A],
     limit: Int)
   : TearableEventSeq[CloseableIterator, A] =
-    val last = lastAddedEventId
-    if after > last then
-      logger.debug(s"The future event requested is not yet available, " +
-        s"lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
-      EventSeq.Empty(last)  // Future event requested is not yet available
-    else
-      eventsAfter(after) match
-        case Some(stampeds) =>
-          var lastEventId = after
-          val eventIterator = stampeds
-            .tapEach { o => lastEventId = o.eventId }
-            .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
-            .take(limit)
-          if eventIterator.isEmpty then
-            eventIterator.close()
-            EventSeq.Empty(lastEventId)
-          else
-            EventSeq.NonEmpty(eventIterator)
-        case None =>
-          TearableEventSeq.Torn(after = tornEventId)
+    meterCollectEventsSince:
+      val last = lastAddedEventId
+      if after > last then
+        logger.debug(s"The future event requested is not yet available, " +
+          s"lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
+        EventSeq.Empty(last)  // Future event requested is not yet available
+      else
+        eventsAfter(after) match
+          case Some(stampeds) =>
+            var lastEventId = after
+            val eventIterator = stampeds
+              .tapEach { o => lastEventId = o.eventId }
+              .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
+              .take(limit)
+            if eventIterator.isEmpty then
+              eventIterator.close()
+              EventSeq.Empty(lastEventId)
+            else
+              EventSeq.NonEmpty(eventIterator)
+          case None =>
+            TearableEventSeq.Torn(after = tornEventId)
 
   final def lastAddedEventId: EventId =
     committedEventIdSync.last
@@ -326,6 +328,7 @@ trait RealEventWatch extends EventWatch:
 
 object RealEventWatch:
   private val logger = Logger[this.type]
+  private val meterCollectEventsSince = CallMeter()
 
   private def toDeadline(timeout: Option[FiniteDuration]): IO[Option[SyncDeadline]] =
     timeout match

@@ -1,8 +1,11 @@
 package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO, ResourceIO}
+import cats.syntax.apply.*
+import com.typesafe.config.Config
 import izumi.reflect.Tag
 import js7.base.catsutils.OurApp
+import js7.base.metering.CallMeter
 import js7.base.service.{MainService, SimpleMainService}
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -29,15 +32,24 @@ trait ServiceApp extends OurApp:
     (program: Cnf => ResourceIO[Svc],
       use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
+
     ServiceMain.runAsMain(
         args, productName,
         argsToConf,
         useLockFile = useLockFile,
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
-      program, use)
+      cnf =>
+        meteringService(cnf.config) *>
+          program(cnf),
+      use)
 
-  protected final def programAsService(program: IO[ExitCode | Unit]): ResourceIO[SimpleMainService] =
+  private def meteringService(config: Config): ResourceIO[Unit] =
+    CallMeter.loggingService(CallMeter.Conf.fromConfig(config))
+      .map(_ => ())
+
+  protected final def programAsService(program: IO[ExitCode | Unit])
+  : ResourceIO[SimpleMainService] =
     SimpleMainService.resource(program, label = self.toString)
 
   override def toString = getClass.shortClassName

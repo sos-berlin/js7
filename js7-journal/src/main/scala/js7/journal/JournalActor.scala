@@ -11,6 +11,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.metering.CallMeter
 import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
@@ -149,83 +150,85 @@ extends Actor, Stash, JournalLogging:
 
   private def ready: Receive = receiveGet orElse:
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
-      if isHalted then
-        for o <- timestamped do logger.debug:
-          s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
-        // We ignore the event and do not notify the caller,
-        // because it would crash and disturb the process of switching-over.
-        // (so AgentDriver with AgentReady event)
-        reply(sender(), replyTo,
-          Output.Stored(Left(ClusterNodeHasBeenSwitchedOverProblem), uncommittedState, callersItem))
-      else
-        val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
-        uncommittedState.applyStampedEvents(stampedEvents) match
-          case Left(problem) =>
-            reply(sender(), replyTo, Output.Stored(Left(problem),  uncommittedState, callersItem))
+      meterPersist:
+        if isHalted then
+          for o <- timestamped do logger.debug:
+            s"Event rejected because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}"
+          // We ignore the event and do not notify the caller,
+          // because it would crash and disturb the process of switching-over.
+          // (so AgentDriver with AgentReady event)
+          reply(sender(), replyTo,
+            Output.Stored(Left(ClusterNodeHasBeenSwitchedOverProblem), uncommittedState, callersItem))
+        else
+          val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
+          uncommittedState.applyStampedEvents(stampedEvents) match
+            case Left(problem) =>
+              reply(sender(), replyTo, Output.Stored(Left(problem),  uncommittedState, callersItem))
 
-          case Right(updatedState) =>
-            uncommittedState = updatedState
-            checkUncommittedState(stampedEvents)
-            eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
-            val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
-            for o <- lastFileLengthAndEventId do
-              lastWrittenEventId = o.value
-            // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-            if commitLater then
-              // TODO Set a timer for a later commit here?
-              reply(sender(), replyTo, Output.Accepted(callersItem))
-              persistBuffer.add(
-                AcceptEarlyPersist(correlId, totalEventCount + 1, stampedEvents.size, since,
-                  lastFileLengthAndEventId, sender()))
-              // acceptEarly-events must not modify the SnapshotableState !!!
-              // The EventId will be updated.
-              // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
-            else
-              persistBuffer.add(
-                StandardPersist(correlId, totalEventCount + 1, stampedEvents, options.transaction, since,
-                  lastFileLengthAndEventId, replyTo, sender(), callersItem))
-            totalEventCount += stampedEvents.size
-            fileEventCount += stampedEvents.size
+            case Right(updatedState) =>
+              uncommittedState = updatedState
+              checkUncommittedState(stampedEvents)
+              eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
+              val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
+              for o <- lastFileLengthAndEventId do
+                lastWrittenEventId = o.value
+              // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
+              if commitLater then
+                // TODO Set a timer for a later commit here?
+                reply(sender(), replyTo, Output.Accepted(callersItem))
+                persistBuffer.add(
+                  AcceptEarlyPersist(correlId, totalEventCount + 1, stampedEvents.size, since,
+                    lastFileLengthAndEventId, sender()))
+                // acceptEarly-events must not modify the SnapshotableState !!!
+                // The EventId will be updated.
+                // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
+              else
+                persistBuffer.add(
+                  StandardPersist(correlId, totalEventCount + 1, stampedEvents, options.transaction, since,
+                    lastFileLengthAndEventId, replyTo, sender(), callersItem))
+              totalEventCount += stampedEvents.size
+              fileEventCount += stampedEvents.size
 
-            stampedEvents.lastOption match
-              case Some(Stamped(eventId, _, KeyedEvent(_, _: ClusterCoupled))) =>
-                // Commit now to let Coupled event take effect on following events (avoids deadlock)
-                commit()
-                logger.info("Cluster is coupled: Start requiring acknowledgements from passive cluster node")
-                requireClusterAcknowledgement = true
-                releaseEventIdsAfterClusterCoupledAck = Some(eventId)
-
-              case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
-                commit()
-                logger.debug("SwitchedOver: no more events are accepted")
-                isHalted = true  // No more events are accepted
-
-              case Some(Stamped(_, _, KeyedEvent(_, event: ClusterFailedOver))) =>
-                commitWithoutAcknowledgement(event)
-
-              case Some(Stamped(_, _, KeyedEvent(_, event: ClusterPassiveLost))) =>
-                commitWithoutAcknowledgement(event)
-
-              case Some(Stamped(_, _, KeyedEvent(_, event: ClusterActiveNodeShutDown))) =>
-                commit()
-                commitWithoutAcknowledgement(event)  // No events, only switch off acks
-
-              case Some(Stamped(_, _, KeyedEvent(_, ClusterResetStarted))) =>
-                commit()
-                requireClusterAcknowledgement = false
-
-              case _ =>
-                if persistBuffer.eventCount >= conf.coalesceEventLimit then
-                  // Shrink persistBuffer
-                  // TODO coalesce-event-limit has no effect in cluster mode, persistBuffer does not shrink
+              stampedEvents.lastOption match
+                case Some(Stamped(eventId, _, KeyedEvent(_, _: ClusterCoupled))) =>
+                  // Commit now to let Coupled event take effect on following events (avoids deadlock)
                   commit()
-                else
-                  forwardCommit((options.delay max conf.delay) - options.alreadyDelayed)
+                  logger.info("Cluster is coupled: Start requiring acknowledgements from passive cluster node")
+                  requireClusterAcknowledgement = true
+                  releaseEventIdsAfterClusterCoupledAck = Some(eventId)
+
+                case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
+                  commit()
+                  logger.debug("SwitchedOver: no more events are accepted")
+                  isHalted = true  // No more events are accepted
+
+                case Some(Stamped(_, _, KeyedEvent(_, event: ClusterFailedOver))) =>
+                  commitWithoutAcknowledgement(event)
+
+                case Some(Stamped(_, _, KeyedEvent(_, event: ClusterPassiveLost))) =>
+                  commitWithoutAcknowledgement(event)
+
+                case Some(Stamped(_, _, KeyedEvent(_, event: ClusterActiveNodeShutDown))) =>
+                  commit()
+                  commitWithoutAcknowledgement(event)  // No events, only switch off acks
+
+                case Some(Stamped(_, _, KeyedEvent(_, ClusterResetStarted))) =>
+                  commit()
+                  requireClusterAcknowledgement = false
+
+                case _ =>
+                  if persistBuffer.eventCount >= conf.coalesceEventLimit then
+                    // Shrink persistBuffer
+                    // TODO coalesce-event-limit has no effect in cluster mode, persistBuffer does not shrink
+                    commit()
+                  else
+                    forwardCommit((options.delay max conf.delay) - options.alreadyDelayed)
 
     case Internal.Commit =>
-      if persistBuffer.isEmpty then
-        logger.trace("Commit but persistBuffer.isEmpty")
-      commit()
+      meterPersist:
+        if persistBuffer.isEmpty then
+          logger.trace("Commit but persistBuffer.isEmpty")
+        commit()
 
     case Input.TakeSnapshot if !isHalted =>
       logger.debug(s"TakeSnapshot ${sender()}")
@@ -233,24 +236,25 @@ extends Actor, Stash, JournalLogging:
       tryTakeSnapshotIfRequested()
 
     case Input.PassiveNodeAcknowledged(eventId_) =>
-      var ack = eventId_
-      if ack > lastWrittenEventId && isHalted then
-        // The other cluster node may already have become active (uncoupled),
-        // generating new EventIds whose last one we may receive here.
-        // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
-        // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
-        lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}" +
-          s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
-        if lastAcknowledgedEventId < lastWrittenEventId then logger.warn(msg) else logger.debug(msg)
-        ack = lastWrittenEventId
-      sender() ! Completed
-      // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
-      // We take only complete Persist bundles as acknowledged.
-      onCommitAcknowledged(
-        n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
-        ack = Some(ack))
-      if releaseEventIdsAfterClusterCoupledAck.isDefined then
-        releaseObsoleteEvents()
+      meterPersist:
+        var ack = eventId_
+        if ack > lastWrittenEventId && isHalted then
+          // The other cluster node may already have become active (uncoupled),
+          // generating new EventIds whose last one we may receive here.
+          // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
+          // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
+          lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}" +
+            s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
+          if lastAcknowledgedEventId < lastWrittenEventId then logger.warn(msg) else logger.debug(msg)
+          ack = lastWrittenEventId
+        sender() ! Completed
+        // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
+        // We take only complete Persist bundles as acknowledged.
+        onCommitAcknowledged(
+          n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
+          ack = Some(ack))
+        if releaseEventIdsAfterClusterCoupledAck.isDefined then
+          releaseObsoleteEvents()
 
     case Input.PassiveLost(passiveLost) =>
       // Side channel for Cluster to circumvent the ClusterEvent synchronization lock
@@ -644,6 +648,7 @@ extends Actor, Stash, JournalLogging:
 object JournalActor:
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
+  private val meterPersist = CallMeter()
 
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion](
     journalLocation: JournalLocation,
