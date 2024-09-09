@@ -163,7 +163,8 @@ trait GenericEventRoute extends RouteProvider:
             eventWatch.checkEventId(request.after) >> Right:
               Stream.emit(head)
                 .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
-                .through(encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch))
+                .through:
+                  encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
                 .interruptWhenF(shutdownSignaled)
 
     private def eventStream(

@@ -12,6 +12,7 @@ import js7.base.crypt.x509.X509SignatureVerifier.logger
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.log.Logger
+import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -55,7 +56,7 @@ extends SignatureVerifier:
               .map(_ :: Nil))
 
       case Right(signerCertificate) =>
-        Checked.catchNonFatal {
+        catchNonFatalFlatten:
           // We have to try each of the installed trusted certificates !!!
           trustedRootCertificates.iterator
             .map: rootCert =>
@@ -71,17 +72,17 @@ extends SignatureVerifier:
                 Left(MessageSignedByUnknownProblem)
               case Some(checkedSignerId) =>
                 checkedSignerId.map(_ :: Nil)
-        }.flatten
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] =
-    Checked.catchNonFatal {
+    catchNonFatalFlatten:
       val sig = Signature.getInstance(signature.algorithm.string)
       sig.initVerify(cert.x509Certificate.getPublicKey)
       sig.update(document.unsafeArray)
       val verified = sig.verify(signature.byteArray.unsafeArray)
-      if !verified then Left(TamperedWithSignedMessageProblem)
-      else Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
-    }.flatten
+      if !verified then
+        Left(TamperedWithSignedMessageProblem)
+      else
+        Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
 
   private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey): Checked[Unit] =
     try

@@ -9,7 +9,6 @@ import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServiceTest.*
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
-import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
