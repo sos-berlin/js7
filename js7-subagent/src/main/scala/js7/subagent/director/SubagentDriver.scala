@@ -22,6 +22,8 @@ import js7.journal.state.Journal
 
 trait SubagentDriver:
 
+  // Change of disabled does not change this subagentItem.
+  // Then, it differs from the original SubagentItem
   def subagentItem: SubagentItem
 
   protected def isHeartbeating: Boolean

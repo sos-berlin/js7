@@ -27,6 +27,7 @@ import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.data_for_java.subagent.JSubagentItem;
 import js7.data_for_java.subagent.JSubagentSelection;
+import js7.data_for_java.value.JExpression;
 import js7.proxy.data.event.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
@@ -56,8 +57,8 @@ final class JSubagentTester
 
     private static final JSubagentSelection subagentSelection = JSubagentSelection.of(
         SubagentSelectionId.of("SUBAGENT"),
-        new HashMap<SubagentId, Integer>() {{
-            put(subagentItem.id(), 1/*priority*/);
+        new HashMap() {{
+            put(subagentItem.id(), /*priority=*/JExpression.apply("1"));
         }});
 
     private static final Set<InventoryItemKey> keys = new HashSet<>(asList(

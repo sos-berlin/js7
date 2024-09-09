@@ -19,7 +19,7 @@ import js7.data.item.ItemRevision
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.SimpleAgentClusterTest.*
 import js7.tests.cluster.controller.ControllerClusterTester
@@ -138,8 +138,8 @@ object SimpleAgentClusterTest:
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SUBAGENT-SELECTION"),
     Map(
-      subagentIds(0) -> 2,
-      subagentIds(1) -> 1)
+      subagentIds(0) -> NumericConstant(2),
+      subagentIds(1) -> NumericConstant(1))
   )
 
   private val workflow = Workflow(

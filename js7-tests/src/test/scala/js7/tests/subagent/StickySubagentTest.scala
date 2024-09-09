@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -15,7 +16,7 @@ import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDe
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, Prompt, StickySubagent}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -25,7 +26,6 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.StickySubagentTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.unsafe.IORuntime
 
 final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
   // See also SubagentKeeperTest, determineSubagentSelection
@@ -287,13 +287,13 @@ object StickySubagentTest:
   private val aSubagentSelection = SubagentSelection(
     SubagentSelectionId("A-SUBAGENT-SELECTION"),
     Map(
-      aSubagentId -> 2,
-      a1SubagentId -> 1))
+      aSubagentId -> NumericConstant(2),
+      a1SubagentId -> NumericConstant(1)))
 
   private val a2SubagentSelection = SubagentSelection(
     SubagentSelectionId("A2-SUBAGENT-SELECTION"),
     Map(
-      a2SubagentId -> 1))
+      a2SubagentId -> NumericConstant(1)))
 
   private val bAgentPath = AgentPath("B-AGENT")
   private val bSubagentId = toLocalSubagentId(bAgentPath)

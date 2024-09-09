@@ -16,6 +16,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
@@ -99,7 +100,10 @@ final class SwitchOverAgentClusterTest
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == primarySubagentId)
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == backupSubagentId)
 
-          primaryDirector.eventWatch.await[ClusterCoupled]()
+          locally:
+            val clusterCoupled = primaryDirector.eventWatch.await[ClusterCoupled]().head.value.event
+            assert(clusterCoupled == ClusterCoupled(activeId = NodeId.primary))
+
           assert(primaryEnv.journalLocation.listJournalFiles.nonEmpty)
           assert(backupEnv.journalLocation.listJournalFiles.nonEmpty)
 
@@ -111,6 +115,7 @@ final class SwitchOverAgentClusterTest
 
           controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
+          /// SwitchOver ///
 
           val directorEventId = primaryDirector.eventWatch.lastAddedEventId
           controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s).orThrow
@@ -118,28 +123,37 @@ final class SwitchOverAgentClusterTest
           val termination = primaryDirector.untilTerminated.await(99.s)
           assert(termination == DirectorTermination(restartDirector = true))
 
-          // Primary director restarts and couples as the passive node
-          backupDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
+          /// Primary director restarts and couples as the passive node ///
+          // Subagent at primary director continues undisturbed
 
           locally:
-            ASemaphoreJob.continue()
-            controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
+            val clusterCoupled = backupDirector.eventWatch
+              .await[ClusterCoupled](after = directorEventId).head.value.event
+            assert(clusterCoupled == ClusterCoupled(activeId = NodeId.backup))
 
-            val bOrderId = OrderId("🔹")
-            controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+          /// Order continues at primary's local Subagent ///
+          ASemaphoreJob.continue()
+          controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
 
-            val processingStarted = controller.eventWatch
-              .await[OrderProcessingStarted](_.key == bOrderId).last.value.event
-            assert(processingStarted.subagentId contains backupSubagentId)
+          runAnOrder(OrderId("🔹"), primarySubagentId)
+          runAnOrder(OrderId("🔔"), backupSubagentId)
 
-            controller.eventWatch.await[OrderStdoutWritten](_.key == bOrderId)
-
-            ASemaphoreJob.continue()
-            controller.eventWatch.await[OrderFinished](_.key == bOrderId)
         catch
           case NonFatal(t) =>
             logger.error(t.toStringWithCauses, t)
             throw t.appendCurrentStackTrace
+
+
+  private def runAnOrder(orderId: OrderId, expectedSubagentId: SubagentId) =
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    val processingStarted = controller.eventWatch
+      .await[OrderProcessingStarted](_.key == orderId).last.value.event
+    assert(processingStarted.subagentId contains expectedSubagentId)
+
+    controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
+    ASemaphoreJob.continue()
+
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
 
 
 object SwitchOverAgentClusterTest:

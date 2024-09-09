@@ -19,7 +19,7 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, Cluster
 import js7.data.cluster.ClusterTiming
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.node.NodeId
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.cluster.agent.AgentClusterNodeLossRestartTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{DirectorEnv, DirectoryProviderForScalaTest}
@@ -133,11 +133,6 @@ object AgentClusterNodeLossRestartTest:
 
   private val agentPath = AgentPath("AGENT")
   private val agentRef = AgentRef(agentPath, subagentIds)
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SUBAGENT-SELECTION"),
-    Map(
-      subagentIds(0) -> 2,
-      subagentIds(1) -> 1))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

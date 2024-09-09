@@ -7,13 +7,20 @@ import js7.base.utils.Allocated
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.value.NumberValue
+import js7.data.value.expression.{Expression, Scope}
+import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.DirectorState.*
 import js7.subagent.director.priority.Prioritized
 import scala.collection.MapView
 
-private final case class DirectorState(
-  subagentToEntry: Map[SubagentId, Entry],
-  selectionToPrioritized: Map[Option[SubagentSelectionId], Prioritized[SubagentId]]):
+private final case class DirectorState private(
+  subagentToEntry: Map[SubagentId, SubagentEntry],
+  private val selectionToEntry: Map[SubagentSelectionId, SelectionEntry],
+  conf: DirectorConf):
+
+  /** Without a SubagentSelection, we go round-robin through all Subagents. */
+  private lazy val selectionlessRoundRobin = Prioritized.roundRobin(subagentToEntry.keys.toVector)
 
   val idToDriver: MapView[SubagentId, SubagentDriver] =
     subagentToEntry.view.mapValues(_.driver)
@@ -29,9 +36,10 @@ private final case class DirectorState(
     val driver = allocatedDriver.allocatedThing
     val subagentId = driver.subagentId
     subagentToEntry
-      .insert(subagentId -> Entry(allocatedDriver, disabled))
+      .insert(subagentId -> SubagentEntry(allocatedDriver, disabled))
       .map: idToE =>
-        update(idToE, driver, disabled)
+        copy(
+          subagentToEntry = idToE)
 
   def replaceSubagentDriver(
     allocatedDriver: Allocated[IO, SubagentDriver],
@@ -43,77 +51,51 @@ private final case class DirectorState(
     if !subagentToEntry.contains(subagentId) then
       Left(Problem(s"Replacing unknown $subagentId SubagentDriver"))
     else
-      Right(update(
+      Right(copy(
         subagentToEntry = subagentToEntry.updated(
           subagentId,
-          Entry(allocatedDriver, subagentItem.disabled)),
-        driver,
-        subagentItem.disabled))
+          SubagentEntry(allocatedDriver, subagentItem.disabled))))
 
   def removeSubagent(subagentId: SubagentId): DirectorState =
     logger.trace("removeSubagent", subagentId)
     copy(
-      subagentToEntry = subagentToEntry.removed(subagentId),
-      selectionToPrioritized = selectionToPrioritized
-        .updated(None, selectionToPrioritized(None).remove(subagentId)))
+      subagentToEntry = subagentToEntry.removed(subagentId))
 
   def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
-    logger.trace("setDisabled", s"$id, disabled=$disabled")
+    logger.trace(s"setDisabled $id, disabled=$disabled")
     Right:
       subagentToEntry
         .get(id)
         .filter(_.disabled != disabled)
         .fold(this): entry =>
-          update(
-            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
-            entry.driver,
-            disabled)
-
-  private def update(
-    subagentToEntry: Map[SubagentId, Entry],
-    driver: SubagentDriver,
-    disabled: Boolean)
-  : DirectorState =
-    copy(
-      subagentToEntry = subagentToEntry,
-      selectionToPrioritized = updatePriorization(driver, disabled))
-
-  private def updatePriorization(driver: SubagentDriver, disabled: Boolean)
-  : Map[Option[SubagentSelectionId], Prioritized[SubagentId]] =
-    val subagentId = driver.subagentId
-    selectionToPrioritized.updated(None,
-      if disabled then
-        selectionToPrioritized(None).remove(subagentId)
-      else if driver.isInstanceOf[LocalSubagentDriver] then
-        selectionToPrioritized(None).insertFirst(subagentId)
-      else
-        selectionToPrioritized(None).add(subagentId))
+          copy(
+            subagentToEntry = subagentToEntry.updated(id, entry.copy(
+              disabled = disabled)))
 
   def insertOrReplaceSelection(selection: SubagentSelection): Checked[DirectorState] =
     logger.trace("insertOrReplaceSelection", selection)
     Right(copy(
-      selectionToPrioritized = selectionToPrioritized.updated(
-        Some(selection.id),
-        Prioritized[SubagentId](
-          selection.subagentToPriority.keys,
-          id => selection.subagentToPriority.getOrElse(id, {
-            logger.error(s"${selection.id} uses unknown $id. Assuming priority=$DefaultPriority")
-            DefaultPriority
-          })))))
+      selectionToEntry = selectionToEntry.updated(
+        selection.id,
+        SelectionEntry(
+          selection,
+          selection.subagentToPriority.map: (subagentId, expr) =>
+            subagentId -> expr))))
 
   def removeSelection(selectionId: SubagentSelectionId): DirectorState =
     logger.trace("removeSelection", selectionId)
-    copy(selectionToPrioritized = selectionToPrioritized - Some(selectionId))
+    copy(
+      selectionToEntry = selectionToEntry - selectionId)
 
   def clear: DirectorState =
     logger.trace("clear")
     copy(
       subagentToEntry = Map.empty,
-      selectionToPrioritized = Map.empty)
+      selectionToEntry = Map.empty)
 
   def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
     maybeSelectionId match
-      case Some(selectionId) if !selectionToPrioritized.contains(maybeSelectionId) =>
+      case Some(selectionId) if !selectionToEntry.contains(selectionId) =>
         // A SubagentSelectionId, if not defined, may denote a Subagent
         subagentToEntry
           .checked(selectionId.toSubagentId) // May be non-existent when stopping ???
@@ -121,20 +103,68 @@ private final case class DirectorState(
 
       case _ =>
         Right:
-          selectionToPrioritized
-            .get(maybeSelectionId) // May be non-existent when stopping
-            .flatMap:
-              _.selectNext: subagentId =>
-                subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
-            .flatMap: subagentId =>
+          maybeSelectionId.match
+            case None =>
+              Some(selectionlessRoundRobin)
+            case Some(selectionId) =>
+              selectionToEntry
+                .get(selectionId) // May be non-existent when stopping
+                .map(cachedPrioritized)
+          .flatMap: prioritized =>
+            prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
+
+  private def cachedPrioritized(entry: SelectionEntry): Prioritized[SubagentId] =
+    if entry.subagentSelection.allPrioritiesArePure then
+      // Evaluate Prioritized only once
+      if entry.cachedPrioritized == null then
+        val prioritized = toPrioritized(entry)
+        entry.cachedPrioritized = prioritized
+        prioritized
+      else
+        entry.cachedPrioritized
+    else
+      val prioritized = toPrioritized(entry)
+      entry.cachedPrioritized match
+        case cached: Prioritized[SubagentId] if cached.isEquivalentTo(prioritized) =>
+          // Keep MutableRoundRobin index in Prioritized
+          cached
+        case _ =>
+          entry.cachedPrioritized = prioritized
+          prioritized
+
+  private def toPrioritized(entry: SelectionEntry): Prioritized[SubagentId] =
+    Prioritized:
+      entry.subagentIds.flatMap: subagentId =>
+        subagentToEntry.get(subagentId)
+          .map(_.driver)
+          .map: driver =>
+            val subagentId = driver.subagentId
+            entry.subagentToExpr.get(subagentId).flatMap: expr =>
+              expr.eval(Scope.empty).flatMap(_.toNumberValue) match
+                case Left(problem) =>
+                  val id = entry.subagentSelection.id
+                  logger.error(s"$id: $subagentId priority expression failed with $problem")
+                  None // Subagent is not selected
+                case Right(o) =>
+                  Some(o)
+          .map(subagentId -> _)
+
+  private def isAvailable(subagentId: SubagentId) =
+    subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
+
+  override def toString =
+    s"DirectorState(${subagentToEntry.values.toSeq}, $selectionToEntry)"
 
 
 private object DirectorState:
   private val logger = Logger[this.type]
-  private val DefaultPriority = 0
 
-  final case class Entry private[DirectorState](
+  def initial(conf: DirectorConf): DirectorState =
+    DirectorState(Map.empty, Map.empty, conf)
+
+
+  final case class SubagentEntry private[DirectorState](
     allocatedDriver: Allocated[IO, SubagentDriver],
     disabled: Boolean = false):
 
@@ -143,3 +173,16 @@ private object DirectorState:
 
     def isAvailable: Boolean =
       !disabled && driver.isCoupled
+
+    override def toString = s"DirectorEntry${allocatedDriver.allocatedThing.subagentId
+      }${disabled ?? s" disabled"} isAvailable=$isAvailable)"
+
+
+  private final case class SelectionEntry(
+    subagentSelection: SubagentSelection,
+    subagentToExpr: Map[SubagentId, Expression]):
+
+    var cachedPrioritized: Prioritized[SubagentId] | Null = null
+
+    def subagentIds =
+      subagentSelection.subagentIds.toVector

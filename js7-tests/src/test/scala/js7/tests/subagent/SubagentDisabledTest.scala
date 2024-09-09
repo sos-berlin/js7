@@ -96,7 +96,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingI
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(aSubagentId)
 
-  "Disable all Subagents including Director, then re-enableSubagents one" in:
+  "Disable all Subagents including Director, then re-enable aSubagent" in:
     enableSubagents(aSubagentItem.id -> false)
 
     val orderId = nextOrderId()
@@ -107,7 +107,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingI
     intercept[TimeoutException]:
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
 
-    // Re-enableSubagents
+    // Re-enable aSubagent
     eventId = eventWatch.lastAddedEventId
     controller.api
       .updateItems(Stream(

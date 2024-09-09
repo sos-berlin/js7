@@ -33,7 +33,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
@@ -452,7 +452,7 @@ object ControllerStateTest:
   private val subagentItemState = SubagentItemState.initial(subagentItem)
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
-    Map(subagentItem.id -> 1),
+    Map(subagentItem.id -> NumericConstant(1)),
     itemRevision = Some(ItemRevision(7)))
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))

@@ -19,7 +19,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest.*
@@ -141,7 +141,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
   "Change SubagentSelection" in:
     val eventId = eventWatch.lastAddedEventId
     val changed = subagentSelection.copy(subagentToPriority = Map(
-      aSubagentId -> 1))
+      aSubagentId -> NumericConstant(1)))
     controller.api
       .updateItems(Stream(AddOrChangeSimple(changed)))
       .await(99.s)
@@ -223,10 +223,10 @@ object SubagentSelectionTest:
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
     Map(
-      aSubagentId -> 1,
-      bSubagentId -> 2,
-      cSubagentId -> 3,
-      dSubagentId -> 3))
+      aSubagentId -> NumericConstant(1),
+      bSubagentId -> NumericConstant(2),
+      cSubagentId -> NumericConstant(3),
+      dSubagentId -> NumericConstant(3)))
 
   private val versionId = VersionId("VERSION")
   private val workflow = Workflow(

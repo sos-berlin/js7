@@ -139,7 +139,7 @@ object ScalaUtils:
           case Some(a) => F.pure(a.some)
 
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
-      def flatMapT(f: A => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
+      def flatMapT[A1](f: A => F[Option[A1]])(implicit F: Monad[F]): F[Option[A1]] =
         F.flatMap(underlying):
           case None => F.pure(None)
           case Some(a) => f(a)

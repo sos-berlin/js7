@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import fs2.Stream
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
@@ -10,6 +11,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
+import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -18,7 +20,6 @@ import js7.tests.subagent.SubagentSelectionExprTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import fs2.Stream
 
 final class SubagentSelectionExprTest
 extends OurTestSuite, SubagentTester, BlockingItemUpdater:
@@ -34,8 +35,8 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
           processLimit = 100))),
     bareSubagentItem,
     SubagentSelection(subagentSelectionId, Map(
-      localSubagentId -> 1,
-      bareSubagentId -> 2)))
+      localSubagentId -> NumericConstant(1),
+      bareSubagentId -> NumericConstant(2))))
 
   lazy val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem)
     .allocated.await(99.s)

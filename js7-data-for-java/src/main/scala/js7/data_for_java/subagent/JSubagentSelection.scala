@@ -8,6 +8,7 @@ import js7.data.item.ItemRevision
 import js7.data.subagent.{SubagentId, SubagentSelection, SubagentSelectionId}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
+import js7.data_for_java.value.JExpression
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOptional
 
@@ -26,8 +27,10 @@ extends JJsonable[JSubagentSelection], JUnsignedSimpleItem:
     asScala.id
 
   @Nonnull
-  def subagentToPriority: java.util.Map[SubagentId, Int] =
-    asScala.subagentToPriority.asJava
+  def subagentToPriority: java.util.Map[SubagentId, JExpression] =
+    asScala.subagentToPriority
+      .view.mapValues(JExpression(_)).toMap
+      .asJava
 
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]): JSubagentSelection =
@@ -39,12 +42,12 @@ object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]:
 
   def of(
     id: SubagentSelectionId,
-    subagentToPriority: java.util.Map[SubagentId, java.lang.Integer])
+    subagentToPriority: java.util.Map[SubagentId, JExpression])
   : JSubagentSelection =
     JSubagentSelection(
       SubagentSelection(
         id,
-        subagentToPriority.asScala.view.mapValues(_.toInt).toMap))
+        subagentToPriority.asScala.view.mapValues(_.asScala).toMap))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JSubagentSelection] =

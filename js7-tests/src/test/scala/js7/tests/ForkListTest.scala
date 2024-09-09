@@ -1,17 +1,21 @@
 package js7.tests
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.lang.System.lineSeparator as nl
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.{completedL, headL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
@@ -37,10 +41,6 @@ import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.{completedL, headL}
 import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
@@ -261,7 +261,7 @@ final class ForkListTest
     // This should not be a special problem
     val subagentSelection = SubagentSelection(
       SubagentSelectionId("active-active-all-agents"),
-      Map(subagentId -> 1))
+      Map(subagentId -> NumericConstant(1)))
     updateItem(subagentSelection)
     val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
     val listExpr = ListExpr(list.map(NumericConstant(_)))

@@ -47,6 +47,8 @@ import scala.util.{Failure, Success}
 // - Which operations may overlap with, wait for or cancel the older?
 
 private final class RemoteSubagentDriver private(
+  // Change of disabled does not change this subagentItem.
+  // Then, it differs from the original SubagentItem
   val subagentItem: SubagentItem,
   protected val api: HttpSubagentApi,
   protected val journal: Journal[? <: SubagentDirectorState[?]],
@@ -511,6 +513,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
               IO.left(problem))
 
           case Right(()) => IO.right(())
+  end postQueuedCommand
 
   private final class RetryAfterError(whenStopped: IO[Unit]):
     private val startedAt = now

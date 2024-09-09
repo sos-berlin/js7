@@ -12,6 +12,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
+import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.ForkList
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -35,8 +36,8 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
     bareSubagentItem,
     bSubagentItem,
     SubagentSelection(subagentSelectionId, Map(
-      localSubagentId -> 1,
-      bareSubagentId -> 2)))
+      localSubagentId -> NumericConstant(1),
+      bareSubagentId -> NumericConstant(2))))
 
   private val bSubagentId = SubagentId("B-SUBAGENT")
   private lazy val bSubagentItem = SubagentItem(

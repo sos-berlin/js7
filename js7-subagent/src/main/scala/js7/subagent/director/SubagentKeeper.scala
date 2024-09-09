@@ -40,7 +40,6 @@ import js7.journal.state.Journal
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
-import js7.subagent.director.priority.Prioritized
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 
@@ -60,11 +59,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       using ioRuntime.scheduler)
     .orThrow
   private lazy val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
-  /** defaultPrioritized is used when no SubagentSelectionId is given. */
-  private val defaultPrioritized = Prioritized.empty[SubagentId](
-    toPriority = _ => 0/*same priority for each entry, round-robin*/)
-  private val stateVar = AsyncVariable(DirectorState(Map.empty, Map(
-    /*local Subagent*/None -> defaultPrioritized)))
+  private val stateVar = AsyncVariable(DirectorState.initial(directorConf))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
@@ -151,10 +146,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    logger.traceIO("recoverOrderProcessing", order.id)(IO.defer:
+    logger.traceIO("recoverOrderProcessing", order.id):
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
-      stateVar.get.idToDriver.get(subagentId)
-        .match
+      stateVar.value
+        .map:
+          _.idToDriver.get(subagentId)
+        .flatMap:
           case None =>
             val orderProcessed = OrderProcessed(OrderOutcome.Disrupted(Problem.pure:
               s"$subagentId is missed"))
@@ -172,7 +169,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             .flatTap:
               case Left(problem) => IO(logger.error:
                 s"recoverOrderProcessing ${order.id} => $problem")
-              case Right(_) => IO.unit)
+              case Right(_) => IO.unit
 
   private def persist(
     orderId: OrderId,
@@ -250,9 +247,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     logger.traceIO:
       Stream
         .repeatEval:
-          IO:
-            stateVar.get.selectNext(maybeSelectionId)
-          .flatTap(o => IO:
+          stateVar.value
+            .flatMap(directorState => IO:
+              directorState.selectNext(maybeSelectionId))
+            .flatTap(o => IO:
               logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))
         .evalTap:
           // TODO Do not poll (for each Order)

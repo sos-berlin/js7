@@ -31,6 +31,8 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.{LocalSubagentApi, Subagent}
 
 private final class LocalSubagentDriver private(
+  // Change of disabled does not change this subagentItem.
+  // Then, it differs from the original SubagentItem
   val subagentItem: SubagentItem,
   subagent: Subagent,
   protected val journal: Journal[? <: SubagentDirectorState[?]],
