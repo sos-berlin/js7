@@ -9,6 +9,7 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
@@ -81,7 +82,7 @@ extends AutoCloseable:
       .foreach: byteArray =>
         IO(jsonWriter.write(byteArray))
       .compile.drain
-      .unsafeRunSync() /*Blocking !!!*/
+      .unsafeRunSyncX() /*Blocking !!!*/
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try a.asJson.toByteArray

@@ -6,6 +6,7 @@ import cats.effect.{IO, Outcome}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderOutcome
@@ -82,11 +83,11 @@ object SemaphoreJob:
           else if count < 0 then sema.releaseN(-count)
           else IO.pure(sema)
       yield ())
-        .unsafeRunSync()
+        .unsafeRunSyncX()
 
     def continue(n: Int = 1)(using IORuntime): Unit =
-      val count = semaphore.flatMap(_.count).unsafeRunSync()
+      val count = semaphore.flatMap(_.count).unsafeRunSyncX()
       logger.debug(s"$name.continue($n) count=$count")
       semaphore
         .flatMap(_.releaseN(n))
-        .unsafeRunSync()
+        .unsafeRunSyncX()

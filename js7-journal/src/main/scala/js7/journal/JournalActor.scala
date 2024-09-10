@@ -16,6 +16,7 @@ import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnc
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
@@ -518,7 +519,7 @@ extends Actor, Stash, JournalLogging:
           snapshotWriter.writeSnapshot(byteArray))
         .compile
         .drain
-        .unsafeRunSync() // TODO Do not block the thread
+        .unsafeRunSyncX() // TODO Do not block the thread
 
       if conf.slowCheckState then
         // Simulate recovery
@@ -624,7 +625,7 @@ extends Actor, Stash, JournalLogging:
         stampedEvents)
 
       // Check recoverability
-      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSync(),
+      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSyncX(),
         stampedEvents)
 
       val builder = S.newBuilder()
