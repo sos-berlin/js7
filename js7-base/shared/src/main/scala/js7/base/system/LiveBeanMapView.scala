@@ -5,7 +5,7 @@ import java.lang.reflect.{InvocationTargetException, Method}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import scala.collection.MapView
+import js7.base.utils.StandardMapView
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -14,15 +14,12 @@ import scala.util.control.NonFatal
  * <p>
  *   Invocation exception is returns as Problem.
  */
-final class BeanMapView[A] private(bean: A, nameToMethod: Map[String, Method])
-extends MapView[String, Any]:
+final class LiveBeanMapView[A] private(bean: A, nameToMethod: Map[String, Method])
+extends StandardMapView[String, Any]:
 
+  /** Returns a standard Java object as returned by invoke, or a Problem. */
   def get(name: String): Option[Any] =
     nameToMethod.get(name).map(invoke)
-
-  def iterator: Iterator[(String, Any)] =
-    nameToMethod.iterator.map: (name, method) =>
-      name -> invoke(method)
 
   private def invoke(method: Method): Any =
     try
@@ -34,22 +31,19 @@ extends MapView[String, Any]:
           case t => t
         .toStringWithCauses
 
-  override def keysIterator: Iterator[String] =
-    nameToMethod.keysIterator
-
   override def keySet: Set[String] =
     nameToMethod.keySet
 
 
-object BeanMapView:
+object LiveBeanMapView:
 
-  def apply[A: ClassTag](bean: A): BeanMapView[A] =
+  def apply[A: ClassTag](bean: A): LiveBeanMapView[A] =
     apply(bean, AllButClass)
 
-  def apply[A: ClassTag](bean: A, filter: PropertyFilter): BeanMapView[A] =
+  def apply[A: ClassTag](bean: A, filter: PropertyFilter): LiveBeanMapView[A] =
     Factory[A](filter).toMapView(bean)
 
-  def apply[A](clas: Class[A], bean: A, filter: PropertyFilter = AllButClass): BeanMapView[A] =
+  def apply[A](clas: Class[A], bean: A, filter: PropertyFilter = AllButClass): LiveBeanMapView[A] =
     Factory[A](clas, filter).toMapView(bean)
 
 
@@ -69,8 +63,8 @@ object BeanMapView:
               d.getName -> m
         .toMap
 
-    def toMapView(bean: A): BeanMapView[A] =
-      new BeanMapView[A](bean, nameToMethod)
+    def toMapView(bean: A): LiveBeanMapView[A] =
+      new LiveBeanMapView[A](bean, nameToMethod)
 
   object Factory:
     def apply[A: ClassTag]: Factory[A] =

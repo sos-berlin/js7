@@ -66,7 +66,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
     heartbeat: Option[FiniteDuration],
-    includePrioritized: Option[FiniteDuration] = None)
+    serverMetering: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     retryIfSessionLost():
@@ -76,7 +76,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
             encodeQuery:
               Some("subagentRunId" -> subagentRunId.string) ++
                 heartbeat.map("heartbeat" -> _.toDecimalString) ++
-                includePrioritized.map("includePrioritized" -> _.toDecimalString) ++
+                serverMetering.map("serverMetering" -> _.toDecimalString) ++
                 request.toQueryParameters,
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
         responsive = true)

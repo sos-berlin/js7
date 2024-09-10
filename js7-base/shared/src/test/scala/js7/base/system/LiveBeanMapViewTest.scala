@@ -3,9 +3,9 @@ package js7.base.system
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 
-final class BeanMapViewTest extends OurTestSuite:
+final class LiveBeanMapViewTest extends OurTestSuite:
 
-  "BeanMapView" in:
+  "LiveBeanMapView" in:
     val exception = IllegalStateException()
 
     class Bean:
@@ -13,7 +13,7 @@ final class BeanMapViewTest extends OurTestSuite:
       def getString = "STRING"
       def getError = throw exception
 
-    val m = BeanMapView(Bean())
+    val m = LiveBeanMapView(Bean())
     assert(m("int") == 7 && m("string") == "STRING")
     assert(m.toMap.apply("error") == Problem("IllegalStateException"))
     assert(m.toMap ==

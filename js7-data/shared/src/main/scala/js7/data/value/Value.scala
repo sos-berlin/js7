@@ -146,7 +146,7 @@ object Value:
         case v: java.lang.Double => Right(NumberValue(BigDecimal(v)))
         case v: java.lang.Boolean => Right(BooleanValue(v))
         case v: String => Right(StringValue(v))
-        case t: Throwable => Left(Problem(t.toStringWithCauses)) // BeanMapView may return Throwable
+        case t: Throwable => Left(Problem(t.toStringWithCauses)) // LiveBeanMapView may return Throwable
         case _ => Left(Problem(s"Unknown type for a Value: ${value.getClass.getName}"))
 
   implicit val jsonEncoder: Encoder[Value] =

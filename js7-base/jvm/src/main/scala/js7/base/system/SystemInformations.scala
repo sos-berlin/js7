@@ -17,4 +17,4 @@ object SystemInformations:
       distribution = operatingSystem.distributionNameAndVersionOption,
       cpuModel = operatingSystem.cpuModel,
       mxBeans = Map(
-        "operatingSystem" -> BeanMapView(operatingSystemMXBean).toMap))
+        "operatingSystem" -> LiveBeanMapView(operatingSystemMXBean).toMap))

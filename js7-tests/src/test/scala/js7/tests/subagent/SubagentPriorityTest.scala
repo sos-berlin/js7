@@ -49,7 +49,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
           testWiring = Subagent.TestWiring(
             envResources = Seq:
               TaggedResource.eval(IO:
-                GenericEventRoute.TestWiring(testPriority = Some(i)))))
+                GenericEventRoute.TestWiring(testMeteringValue = Some(i)))))
         .allocated
         .map(subagentItem.id -> _._2.unsafeMemoize)
     .await(99.s)
@@ -75,7 +75,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     val events = controller.runOrder(FreshOrder(orderId, workflow.path))
       .map(_.value)
 
-    // bSubagentId has the highest testPriority
+    // bSubagentId has the highest testMeteringValue
     assert:
       events.collectFirst:
         case OrderProcessingStarted(Some(subagentId), _) => subagentId
@@ -94,8 +94,8 @@ object SubagentPriorityTest:
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
     Map(
-      aSubagentId -> expr("$testPriority"),
-      bSubagentId -> expr("$testPriority")))
+      aSubagentId -> expr("$testMeteringValue"),
+      bSubagentId -> expr("$testMeteringValue")))
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW"),

@@ -112,8 +112,8 @@ private final case class DirectorState private(
                 if entry.subagentSelection.allPrioritiesArePure then
                   entry.cachedStaticPrioritized()
                 else
-                  entry.cachedDynamicPrioritized(
-                    toScope = idToDriver.get(_).fold(None)(_.currentPriorityScope()))
+                  entry.cachedDynamicPrioritized:
+                    idToDriver.get(_).fold(None)(_.currentPriorityScope())
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
@@ -171,8 +171,7 @@ private object DirectorState:
           cached
 
     // Cache may be updated in parallel
-    def cachedDynamicPrioritized(toScope: SubagentId => Option[Scope])
-    : Prioritized[SubagentId] =
+    def cachedDynamicPrioritized(toScope: SubagentId => Option[Scope]): Prioritized[SubagentId] =
       val prioritized = mkPrioritized(toScope)
       @tailrec def cache(): Prioritized[SubagentId] =
         _cachedPrioritized.get() match

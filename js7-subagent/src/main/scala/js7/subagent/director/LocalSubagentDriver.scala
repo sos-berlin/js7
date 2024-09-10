@@ -25,11 +25,10 @@ import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDo
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
-import js7.data.value.expression.Scope
 import js7.journal.CommitOptions
 import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.priority.PriorityMxBeanScope
+import js7.subagent.priority.ServerMeteringLiveScope
 import js7.subagent.{LocalSubagentApi, Subagent}
 
 private final class LocalSubagentDriver private(
@@ -215,8 +214,8 @@ extends SubagentDriver, Service.StoppableByRequest:
       case Some(processing) =>
         Some(processing.complete(orderProcessed).void)
 
-  def currentPriorityScope(): Option[Scope] =
-    Some(PriorityMxBeanScope)
+  def currentPriorityScope(): Option[ServerMeteringLiveScope.type] =
+    Some(ServerMeteringLiveScope)
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
     IO(subagent.checkedDedicatedSubagent.toOption)
