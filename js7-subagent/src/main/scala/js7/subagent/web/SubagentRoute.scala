@@ -57,8 +57,8 @@ extends WebLogDirectives,
   logger.debug(s"new SubagentRoute($webServerBinding #${routeBinding.revision})")
 
   def webServerRoute: Route =
-    (decodeRequest & encodeResponse)( // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog(seal(forbidCSRF(route))))
+    (decodeRequest & encodeResponse): // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
+      webLog(seal(forbidCSRF(route)))
 
   private lazy val route =
     pathPrefix(Segment):
@@ -66,15 +66,14 @@ extends WebLogDirectives,
       case "agent" => ioRoute(directorRoute)
       case _ => complete(NotFound)
 
-  lazy val subagentRoute: Route =
-    pathSegment("api")(
+  private lazy val subagentRoute: Route =
+    pathSegment("api"):
       pathEndOrSingleSlash(overviewRoute) ~
-        pathPrefix(Segment) {
+        pathPrefix(Segment):
           case "command" => commandRoute
           case "event" => eventRoute
           case "session" => sessionRoute
           case _ => complete(NotFound)
-        })
 
   private def overviewRoute: Route =
     complete(SubagentOverview(

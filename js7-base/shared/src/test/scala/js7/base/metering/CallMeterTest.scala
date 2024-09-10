@@ -10,7 +10,7 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 
 final class CallMeterTest extends OurAsyncTestSuite:
 
-  "CallMeter" in:
+  "Call" in:
     val n = 1_000_000
 
     locally:
@@ -31,7 +31,7 @@ final class CallMeterTest extends OurAsyncTestSuite:
     CallMeter.logAndResetAll()
     succeed
 
-  "IOMeter" in:
+  "IO" in:
     val n = 10_000
 
     (1 to n).toVector.traverse: _ =>
@@ -45,7 +45,7 @@ final class CallMeterTest extends OurAsyncTestSuite:
         CallMeter.logAndResetAll()
         succeed
 
-  "nanoTime" in:
+  "nanoTime duration only" in:
     val n = 1_000_000
     var i = n
     while i > 0 do

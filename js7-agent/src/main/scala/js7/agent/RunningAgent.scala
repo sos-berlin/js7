@@ -143,8 +143,8 @@ extends MainService, Service.StoppableByRequest:
   : IO[Checked[AgentCommand.Response]] =
     for
       checkedSession <- forDirector.sessionRegister.systemSession
-      checkedChecked <- checkedSession.traverse(session =>
-        executeCommand(command, CommandMeta(session.currentUser)))
+      checkedChecked <- checkedSession.traverse: session =>
+        executeCommand(command, CommandMeta(session.currentUser))
     yield
       checkedChecked.flatten
 
@@ -185,11 +185,10 @@ object RunningAgent:
       IO:
         val testEventBus = new StandardEventBus[Any]
         for
-          _ <- Resource.eval(IO {
+          _ <- Resource.eval(IO:
             if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
             conf.createDirectories()
-            conf.journalLocation.deleteJournalIfMarked().orThrow
-          })
+            conf.journalLocation.deleteJournalIfMarked().orThrow)
           subagent <- Subagent.resource(conf.subagentConf, testEventBus)
         yield
           subagent
@@ -206,14 +205,15 @@ object RunningAgent:
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
       val forDirector = subagent.forDirector
-      val clock = testWiring.alarmClock getOrElse AlarmClock(
-        Some(config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration))(
-        using ioRuntime.scheduler)
+      val clock = testWiring.alarmClock getOrElse:
+        AlarmClock(
+          Some(config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration)
+        )(using ioRuntime.scheduler)
       val eventIdGenerator = testWiring.eventIdGenerator getOrElse EventIdGenerator(clock)
       implicit val nodeNameToPassword: NodeNameToPassword[AgentState] =
         nodeName =>
-          Right(config.optionAs[SecretString](
-            "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string)))
+          Right(config.optionAs[SecretString]:
+            "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string))
 
       for
         clusterNode <- ClusterNode.recoveringResource[AgentState](
@@ -261,8 +261,8 @@ object RunningAgent:
             clusterNode,
             journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
-            clock)(
-            using ioRuntime)
+            clock)
+            (using ioRuntime)
           for o <- mainActor.commandActor do actors += o
           mainActor
         },
@@ -284,13 +284,13 @@ object RunningAgent:
         logger.traceIOWithResult:
           clusterNode.untilActivated
             .map(_.left.map(DirectorTermination.fromProgramTermination))
-            .flatMapT(workingClusterNode =>
+            .flatMapT: workingClusterNode =>
               journalDeferred.complete(workingClusterNode.journalAllocated.allocatedThing)
-                .*>(IO(
+                .*>(IO:
                   startMainActor(
                     workingClusterNode.failedNodeId,
-                    workingClusterNode.journalAllocated)))
-                .map(Right(_)))
+                    workingClusterNode.journalAllocated))
+                .map(Right(_))
             //.onErrorRecover { case t: RestartAfterJournalTruncationException =>
             //  logger.info(t.getMessage)
             //  Left(t.termination)
@@ -300,15 +300,15 @@ object RunningAgent:
 
     val untilReady: IO[MainActor.Ready] =
       mainActorStarted.flatMap:
-        case Left(_: DirectorTermination) => IO.raiseError(new IllegalStateException(
-          "Agent has been terminated"))
+        case Left(_: DirectorTermination) => IO.raiseError(IllegalStateException:
+          "Agent has been terminated")
         case Right(mainActorStarted) => mainActorStarted.whenReady
 
     // The AgentOrderKeeper if started
     val currentMainActor: IO[Checked[MainActorStarted]] =
       clusterNode.currentState
         .map(_.map(_.clusterState))
-        .flatMapT { clusterState =>
+        .flatMapT: clusterState =>
           import clusterNode.clusterConf.{isBackup, ownId}
           if !clusterState.isActive(ownId, isBackup = isBackup) then
             IO.left(ClusterNodeIsNotActiveProblem)
@@ -316,26 +316,23 @@ object RunningAgent:
             mainActorStarted.map:
               case Left(_) => Left(ShuttingDownProblem)
               case Right(o) => Right(o)
-        }
-        .tapError(t => IO {
+        .tapError(t => IO:
           logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
-          whenReady.tryFailure(t)
-        })
+          whenReady.tryFailure(t))
 
     val untilMainActorTerminated =
       memoize:
         logger
-          .traceIO(
+          .traceIO:
             mainActorStarted
-              .flatMap {
+              .flatMap:
                 case Left(termination) => IO.pure(termination)
                 case Right(o) =>
                   IO
                     .fromFuture(IO(o.termination))
-                    .tapError(t => IO(
-                      logger.error(s"MainActor failed with ${t.toStringWithCauses}", t)))
-              }
-              .tapError(t => IO(whenReady.tryFailure(t))))
+                    .tapError(t => IO:
+                      logger.error(s"MainActor failed with ${t.toStringWithCauses}", t))
+              .tapError(t => IO(whenReady.tryFailure(t)))
           .uncancelable /*a test may use this in `race`, unintentionally canceling this*/
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
@@ -351,7 +348,7 @@ object RunningAgent:
     def executeCommand(cmd: AgentCommand, meta: CommandMeta)
     : IO[Checked[AgentCommand.Response]] =
       logger.debugIO(s"executeCommand ${cmd.getClass.shortClassName}")(cmd
-        .match {
+        .match
           case cmd: ShutDown =>
             if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
               IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
@@ -367,7 +364,7 @@ object RunningAgent:
                 ) >>
                 currentMainActor
                   .flatMap(_.traverse(_.whenReady.map(_.api)))
-                  .flatMap {
+                  .flatMap:
                     case Left(problem @ (ClusterNodeIsNotActiveProblem | ShuttingDownProblem
                               | BackupClusterNodeNotAppointed)) =>
                       logger.debug(s"❓$problem")
@@ -382,19 +379,17 @@ object RunningAgent:
 
                     case Right(api) =>
                       api(meta).commandExecute(cmd)
-                  }
 
           case _ =>
             currentMainActor
               .flatMap(_.traverse(_.whenReady.map(_.api)))
               .flatMapT(api => api(meta).commandExecute(cmd))
-        }
         .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response]))
         .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command"))
 
     for
-      _ <- Resource.make(IO.unit)(release = _ =>
-        IO(for actor <- actors do actorSystem.stop(actor)))
+      _ <- Resource.onFinalize(IO:
+        for actor <- actors do actorSystem.stop(actor))
       agent <- Service.resource(IO:
         new RunningAgent(
           clusterNode,
@@ -416,7 +411,10 @@ object RunningAgent:
             gateKeeperConf,
             forDirector.sessionRegister
           ).agentRoute
-    yield agent
+    yield
+      agent
+  end resource2
+
 
   final case class TestWiring(
     alarmClock: Option[AlarmClock] = None,
@@ -424,8 +422,10 @@ object RunningAgent:
     commandHandler: Option[CommandHandler] = None,
     authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None,
     envResources: Seq[Environment.TaggedResource[IO, ?]] = Nil)
+
   object TestWiring:
     val empty: TestWiring = TestWiring()
+
 
   private case class MainActorStarted(
     actor: ActorRef @@ MainActor,
