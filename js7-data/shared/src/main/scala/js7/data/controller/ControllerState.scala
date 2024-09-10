@@ -44,6 +44,7 @@ import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import fs2.Stream
 import js7.base.auth.UserId
+import js7.data.system.ServerMeteringEvent
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -750,7 +751,8 @@ extends ClusterableState.Companion[ControllerState],
       KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[BoardEvent])
+      KeyedSubtype[BoardEvent],
+      KeyedSubtype.singleEvent[ServerMeteringEvent])
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")
 

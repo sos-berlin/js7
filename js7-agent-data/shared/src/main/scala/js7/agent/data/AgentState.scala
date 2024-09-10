@@ -32,6 +32,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.system.ServerMeteringEvent
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
 
@@ -418,4 +419,5 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
-      KeyedSubtype[OrderWatchEvent])
+      KeyedSubtype[OrderWatchEvent],
+      KeyedSubtype.singleEvent[ServerMeteringEvent])
