@@ -62,7 +62,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                   httpEntity
                     .dataBytes
                     .asFs2Stream(bufferSize = prefetch)
-                    .chunks.evalTap(chunk => IO(logger.trace(s"### chunk.size=${chunk.size}"))).unchunks
+                    //.chunks.evalTap(chunk => IO(logger.trace(s"### chunk.size=${chunk.size}"))).unchunks
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .through(LineSplitterPipe())
                     .mapParallelBatch(prefetch = prefetch)(_
