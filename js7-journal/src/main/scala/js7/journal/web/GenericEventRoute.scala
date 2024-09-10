@@ -6,7 +6,7 @@ import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
-import js7.base.auth.{UserId, ValidUserPermission}
+import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.Environment
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
@@ -56,6 +56,11 @@ trait GenericEventRoute extends RouteProvider:
   private lazy val minimumStreamingDelay =
     config.getDuration("js7.web.server.services.event.streaming.delay").toFiniteDuration
 
+  final def genericEventRoute(jsonCodec: KeyedEventTypedJsonCodec[Event]): Route =
+    new GenericEventRouteProvider:
+      protected def keyedEventTypedJsonCodec = jsonCodec
+    .route
+
   protected trait GenericEventRouteProvider:
     implicit protected def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event]
 
@@ -84,28 +89,23 @@ trait GenericEventRoute extends RouteProvider:
         pathEnd:
           accept(`application/x-ndjson`):
             Route.seal:
-              authorizedUser(ValidUserPermission) { user =>
-                given UserId = user.id
+              authorizedUser(ValidUserPermission): user =>
                 val waitingSince = !eventWatch.whenStarted.isCompleted ? now
                 if waitingSince.isDefined then logger.debug("Waiting for journal to become ready ...")
-                onSuccess(eventWatch.whenStarted) { eventWatch =>
+                onSuccess(eventWatch.whenStarted): eventWatch =>
                   for o <- waitingSince do logger.debug("Journal has become ready after " +
                     o.elapsed.pretty + ", continuing event web service")
-                  Route.seal(
-                    jsonSeqEvents(eventWatch))
-                }
-              }
+                  Route.seal:
+                    jsonSeqEvents(eventWatch)
 
     private def jsonSeqEvents(eventWatch: EventWatch): Route =
-      parameter("onlyAcks" ? false) { onlyAcks =>
-        parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
+      parameter("onlyAcks" ? false): onlyAcks =>
+        parameter("heartbeat".as[FiniteDuration].?): maybeHeartbeat =>  // Echo last EventId as a heartbeat
           if onlyAcks then
             eventIdRoute(maybeHeartbeat, eventWatch)
           else
             eventDirective(eventWatch.lastAddedEventId): request =>
               eventRoute(request, maybeHeartbeat, eventWatch)
-        }
-      }
 
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
     : Route =
@@ -133,30 +133,22 @@ trait GenericEventRoute extends RouteProvider:
             case None =>
               // Await the first event to check for Torn and convert it to a proper error message,
               // otherwise continue with stream
-              awaitFirstEventStream(request, eventWatch)
+              awaitFirstEventStream(request, eventWatch, includePrioritized)
 
             case Some(heartbeat) =>
-              Environment.maybe[TestWiring].flatMap: maybeTestWiring =>
-                IO:
-                  eventWatch.checkEventId(request.after) >> Right:
-                    eventStream(request, isRelevantEvent, eventWatch)
-                      .pipeMaybe(includePrioritized): (stream, includePrioritized) =>
-                        stream.mergeHaltL:
-                          Stream.fixedDelay[IO](includePrioritized).map: _ =>
-                            meterSubagentPriorityData:
-                              var event = SubagentPriorityDataEvent.fromCurrentMxBean()
-                              for w <- maybeTestWiring do
-                                event = event.copy(testPriority = w.testPriority)
-                              Stamped(EventId(0), Timestamp.now, KeyedEvent(event))
-                      .through:
-                        encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
-                      // SubagentPriorityDataEvent may fulfill the heartbeat function
-                      .pipeIf(includePrioritized.forall(heartbeat < _)):
-                        _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
-                      .prependOne(HttpHeartbeatByteString)
-                      .interruptWhenF(shutdownSignaled)
+              IO:
+                eventWatch.checkEventId(request.after) >> Right:
+                  eventStream(request, isRelevantEvent, eventWatch, includePrioritized)
+                    .through:
+                      encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                    // SubagentPriorityDataEvent may fulfill the heartbeat function
+                    .pipeIf(includePrioritized.forall(heartbeat < _)):
+                      _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
+                    .prependOne(HttpHeartbeatByteString)
+                    .interruptWhenF(shutdownSignaled)
 
-    private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
+    private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch,
+      includePrioritized: Option[FiniteDuration])
     : IO[Checked[Stream[IO, ByteString]]] =
       IO.defer:
         val runningSince = now
@@ -179,7 +171,8 @@ trait GenericEventRoute extends RouteProvider:
 
             eventWatch.checkEventId(request.after) >> Right:
               Stream.emit(head)
-                .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
+                .append:
+                  eventStream(tailRequest, isRelevantEvent, eventWatch, includePrioritized)
                 .through:
                   encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
                 .interruptWhenF(shutdownSignaled)
@@ -187,14 +180,33 @@ trait GenericEventRoute extends RouteProvider:
     private def eventStream(
       request: EventRequest[Event],
       predicate: AnyKeyedEvent => Boolean,
-      eventWatch: EventWatch)
+      eventWatch: EventWatch,
+      includePrioritized: Option[FiniteDuration] = None)
     : Stream[IO, Stamped[AnyKeyedEvent]] =
       filterStream:
         eventWatch.stream(request, predicate)
+          .pipeMaybe(includePrioritized): (stream, includePrioritized) =>
+            stream.mergeHaltL:
+              priorityDataStream(every = includePrioritized)
           .handleErrorWith: t =>
             logger.warn(t.toStringWithCauses)
             if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
-            Stream.empty // The streaming event web service doesn't have an error channel, so we simply end the tail
+            // The streaming event web service doesn't have an error channel,
+            // so we simply end the tail
+            Stream.empty
+
+    private def priorityDataStream(every: FiniteDuration)
+    : Stream[IO, Stamped[KeyedEvent[SubagentPriorityDataEvent]]] =
+      Stream.eval:
+        Environment.maybe[TestWiring]
+      .flatMap: maybeTestWiring =>
+        Stream.fixedDelay[IO](every).map: _ =>
+          meterSubagentPriorityDataEvent:
+            var event = SubagentPriorityDataEvent.fromCurrentMxBean()
+            for w <- maybeTestWiring do
+              event = event.copy(testPriority = w.testPriority)
+            // EventId(0), because SubagentPriorityDataEvent is a NonPersistentEvent
+            Stamped(EventId(0), Timestamp.now, KeyedEvent(event))
 
     private def eventDirective(defaultAfter: EventId)
     : Directive1[EventRequest[Event]] =
@@ -208,12 +220,13 @@ trait GenericEventRoute extends RouteProvider:
 
 
 object GenericEventRoute:
+
   type StampedEventFilter =
     Stream[IO, Stamped[KeyedEvent[Event]]] =>
       Stream[IO, Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
-  private val meterSubagentPriorityData = CallMeter()
+  private val meterSubagentPriorityDataEvent = CallMeter()
 
   final case class TestWiring(testPriority: Option[Double])

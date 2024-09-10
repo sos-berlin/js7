@@ -75,9 +75,9 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
           eventUri.string +
             encodeQuery:
               Some("subagentRunId" -> subagentRunId.string) ++
-                (heartbeat.map("heartbeat" -> _.toDecimalString) ++
-                (includePrioritized.map("includePrioritized" -> _.toDecimalString)) ++
-                request.toQueryParameters),
+                heartbeat.map("heartbeat" -> _.toDecimalString) ++
+                includePrioritized.map("includePrioritized" -> _.toDecimalString) ++
+                request.toQueryParameters,
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
         responsive = true)
 

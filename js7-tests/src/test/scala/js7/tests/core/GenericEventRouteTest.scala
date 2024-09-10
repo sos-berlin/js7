@@ -119,9 +119,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
       config,
       _ => PekkoWebServer.BoundRoute.simple(
         pathSegments("event")(
-          new GenericEventRouteProvider {
-            def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec /*Example for test*/
-          }.route)))
+          genericEventRoute(ControllerState.keyedEventJsonCodec /*Example for test*/))))
     .toAllocated
     .await(99.s)
 

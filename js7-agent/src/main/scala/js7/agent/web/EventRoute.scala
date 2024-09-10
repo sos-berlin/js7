@@ -12,7 +12,4 @@ trait EventRoute extends AgentRouteProvider, GenericEventRoute:
 
   implicit protected def pekkoAskTimeout: Timeout
 
-  protected final lazy val eventRoute = new RouteProvider().route
-
-  private class RouteProvider extends GenericEventRouteProvider:
-    def keyedEventTypedJsonCodec = AgentState.keyedEventJsonCodec
+  protected final lazy val eventRoute = genericEventRoute(AgentState.keyedEventJsonCodec)
