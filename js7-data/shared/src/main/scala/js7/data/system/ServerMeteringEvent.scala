@@ -34,6 +34,8 @@ extends NoKeyEvent, NonPersistentEvent:
                 Some(Right(NumberValue(totalMemorySize)))
               case "testMeteringValue" =>
                 testMeteringValue.map(o => Right(NumberValue(o)))
+              case _ =>
+                None
 
           override val keySet =
             Set("cpuLoad", "committedVirtualMemorySize", "freeMemorySize", "totalMemorySize") ++

@@ -183,8 +183,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     subagentBundleId: Option[SubagentBundleId] = None,
     stick: Boolean = false)
   extends OrderCoreEvent:
-    override def toString = s"OrderProcessingStarted(${
-      Array(subagentId, subagentBundleId, stick ? "stick").flatten.mkString(" ")})"
+    override def toString =
+      s"OrderProcessingStarted(${Array(subagentId, subagentBundleId, stick ? "stick").flatten.mkString(" ")})"
   object OrderProcessingStarted:
     val noSubagent: OrderProcessingStarted = new OrderProcessingStarted(None, None, false)
     // Since v2.3

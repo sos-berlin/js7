@@ -24,7 +24,7 @@ import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, LockKeeper}
+import js7.base.utils.{Allocated, LockKeeper, StandardMapView}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -36,6 +36,8 @@ import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
+import js7.data.value.expression.Scope
+import js7.data.value.{NumberValue, Value}
 import js7.journal.state.Journal
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
@@ -248,11 +250,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
     logger.traceIO:
+      val scope = maybeBundleId.fold(Scope.empty)(bundleSubagentProcessCountScope)
       Stream
         .repeatEval:
           stateVar.value
             .flatMap(directorState => IO:
-              directorState.selectNext(maybeBundleId))
+              directorState.selectNext(maybeBundleId, scope))
             .flatTap(o => IO:
               logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
         .evalTap:
@@ -263,6 +266,28 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .map(Chunk.fromOption)
         .unchunks
         .headL
+
+  private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId) =
+    val Key = "bundleSubagentProcessCount"
+    new Scope:
+      override def nameToCheckedValue =
+        new StandardMapView[String, Checked[Value]]:
+          override val keySet = Set(Key)
+
+          override def get(key: String) =
+            key match
+              case Key => Some(Right(NumberValue(bundleSubagentProcessCount(bundleId))))
+              case _ => None
+
+  private def bundleSubagentProcessCount(bundleId: SubagentBundleId): Int =
+    val state = journal.unsafeCurrentState()
+    orderToSubagent.toMap.keys.view
+      .flatMap:
+        state.idToOrder.get
+      .flatMap:
+        _.ifState[Order.Processing]
+      .count:
+        _.state.subagentBundleId contains bundleId
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:

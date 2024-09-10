@@ -8,9 +8,10 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.order.OrderEvent.OrderProcessingStarted
+import js7.data.order.OrderEvent.{OrderProcessingStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
@@ -19,7 +20,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.web.GenericEventRoute
 import js7.subagent.Subagent
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.subagent.SubagentPriorityTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
@@ -60,18 +61,34 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     finally
       super.afterAll()
 
-  "Start and attach Subagents and SubagentBundle" in :
-    // Start Subagents
+  private lazy val startSubagets: Unit =
     idToRelease
 
-    updateItems(workflow :: subagentBundle :: subagentItems*): @unchecked
+  "Use $testMeteringValue from Subagent" in :
+    startSubagets
 
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("BUNDLE-1"),
+      Map(
+        aSubagentId -> expr("$testMeteringValue"),
+        bSubagentId -> expr("$testMeteringValue")))
+
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW-1"),
+      Seq(
+        EmptyJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
+          processLimit = 100)))
+
+    updateItems(workflow :: subagentBundle :: subagentItems*)
     for id <- subagentItems.map(_.id) do
       eventWatch.await[ItemAttached](_.event.key == id)
       eventWatch.await[SubagentCoupled](_.key == id)
 
     val orderId = nextOrderId()
-    val events = controller.runOrder(FreshOrder(orderId, workflow.path))
+    val events = controller
+      .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .map(_.value)
 
     // bSubagentId has the highest testMeteringValue
@@ -79,6 +96,51 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
       events.collectFirst:
         case OrderProcessingStarted(Some(subagentId), Some(_), false) => subagentId
       == Some(bSubagentId)
+
+    eventWatch.await[OrderTerminated](_.key == orderId)
+    deleteItems(workflow.path, subagentBundle.path)
+
+  "Use $bundleSubagentProcessCount" in :
+    startSubagets
+
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("BUNDLE-2"),
+      Map(
+        aSubagentId -> expr("1"),
+        bSubagentId -> expr("2 - 2 * $bundleSubagentProcessCount")))
+
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW-2"),
+      Seq(
+        ASemaphoreJob.execute(
+          agentPath,
+          subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
+          processLimit = 100)))
+
+      updateItems(workflow :: subagentBundle :: subagentItems*)
+      for id <- subagentItems.map(_.id) do
+        eventWatch.await[ItemAttached](_.event.key == id)
+        eventWatch.await[SubagentCoupled](_.key == id)
+
+      val aOrderId, bOrderId = nextOrderId()
+
+      controller.api.addOrder(FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      val aStarted = eventWatch.awaitNext[OrderProcessingStarted](_.key == aOrderId)
+        .head.value.event
+
+      controller.api.addOrder(FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      val bStarted = eventWatch.awaitNext[OrderProcessingStarted](_.key == bOrderId)
+        .head.value.event
+
+      assert(aStarted.subagentId == Some(bSubagentId) && bStarted.subagentId == Some(aSubagentId))
+
+      ASemaphoreJob.continue(2)
+      eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
+      eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
+
+      deleteItems(workflow.path, subagentBundle.path)
 
 
 object SubagentPriorityTest:
@@ -90,19 +152,5 @@ object SubagentPriorityTest:
   private def newSubagentItem(id: SubagentId) =
     SubagentItem(id, agentPath, findFreeLocalUri())
 
-  private val subagentBundle = SubagentBundle(
-    SubagentBundleId("BUNDLE"),
-    Map(
-      aSubagentId -> expr("$testMeteringValue"),
-      bSubagentId -> expr("$testMeteringValue")))
-
-  private val workflow = Workflow(
-    WorkflowPath("WORKFLOW"),
-    Seq(
-      EmptyJob.execute(
-        agentPath,
-        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
-        processLimit = 100)))
-
-  private def toOrder(orderId: OrderId) =
-    FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+  final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
+  object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
