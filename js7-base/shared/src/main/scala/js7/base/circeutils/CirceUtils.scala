@@ -16,8 +16,8 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators
-import scala.collection.immutable.SeqMap
 import scala.collection.immutable.Map.Map1
+import scala.collection.immutable.SeqMap
 import scala.collection.mutable
 import scala.deriving.Mirror
 import scala.util.control.NonFatal
@@ -77,7 +77,10 @@ object CirceUtils:
 
   inline def deriveRenamingDecoder[A](rename: Map[String, String])(using inline A: Mirror.Of[A])
   : Decoder[A] =
-    val decode = Decoder.derived[A]
+    deriveRenamingDecoder2(Decoder.derived[A], rename)
+
+  private def deriveRenamingDecoder2[A](decode: Decoder[A], rename: Map[String, String])
+  : Decoder[A] =
     // Precalculate keySet
     val keySet: Set[String] = rename.keySet
     c => c
