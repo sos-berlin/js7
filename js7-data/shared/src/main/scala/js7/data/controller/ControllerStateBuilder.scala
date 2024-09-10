@@ -27,7 +27,7 @@ import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWa
 import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
+import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPath, WorkflowPathControl}
 import scala.collection.{MapView, mutable}
 
@@ -233,8 +233,8 @@ extends SnapshotableStateBuilder[ControllerState],
 
                         case _ => sys.error("No SubagentItemState")
 
-                  case selection: SubagentSelection =>
-                    _keyToUnsignedItemState(selection.id) = SubagentSelectionState(selection)
+                  case bundle: SubagentBundle =>
+                    _keyToUnsignedItemState(bundle.id) = SubagentBundleState(bundle)
 
                   case subagentItem: SubagentItem =>
                     _keyToUnsignedItemState(subagentItem.id) =

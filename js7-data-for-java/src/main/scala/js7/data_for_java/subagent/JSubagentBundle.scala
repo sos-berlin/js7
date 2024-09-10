@@ -5,25 +5,25 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.item.ItemRevision
-import js7.data.subagent.{SubagentId, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.value.JExpression
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOptional
 
-final case class JSubagentSelection(asScala: SubagentSelection)
-extends JJsonable[JSubagentSelection], JUnsignedSimpleItem:
+final case class JSubagentBundle(asScala: SubagentBundle)
+extends JJsonable[JSubagentBundle], JUnsignedSimpleItem:
 
-  type AsScala = SubagentSelection
-  protected def companion = JSubagentSelection
+  type AsScala = SubagentBundle
+  protected def companion = JSubagentBundle
 
   @Nonnull
-  def path: SubagentSelectionId =
+  def path: SubagentBundleId =
     id
 
   @Nonnull
-  def id: SubagentSelectionId =
+  def id: SubagentBundleId =
     asScala.id
 
   @Nonnull
@@ -33,25 +33,25 @@ extends JJsonable[JSubagentSelection], JUnsignedSimpleItem:
       .asJava
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]): JSubagentSelection =
+  def withRevision(revision: Optional[ItemRevision]): JSubagentBundle =
     copy(asScala.withRevision(revision.toScala))
 
 
-object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]:
-  type AsScala = SubagentSelection
+object JSubagentBundle extends JJsonable.Companion[JSubagentBundle]:
+  type AsScala = SubagentBundle
 
   def of(
-    id: SubagentSelectionId,
+    id: SubagentBundleId,
     subagentToPriority: java.util.Map[SubagentId, JExpression])
-  : JSubagentSelection =
-    JSubagentSelection(
-      SubagentSelection(
+  : JSubagentBundle =
+    JSubagentBundle(
+      SubagentBundle(
         id,
         subagentToPriority.asScala.view.mapValues(_.asScala).toMap))
 
   @Nonnull
-  override def fromJson(jsonString: String): VEither[Problem, JSubagentSelection] =
+  override def fromJson(jsonString: String): VEither[Problem, JSubagentBundle] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = SubagentSelection.jsonCodec
-  protected def jsonDecoder = SubagentSelection.jsonCodec
+  protected def jsonEncoder = SubagentBundle.jsonCodec
+  protected def jsonDecoder = SubagentBundle.jsonCodec

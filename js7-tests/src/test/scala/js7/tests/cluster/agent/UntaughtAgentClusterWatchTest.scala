@@ -22,7 +22,7 @@ import js7.data.cluster.ClusterTiming
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.node.NodeId
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.UntaughtAgentClusterWatchTest.*
@@ -52,7 +52,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
     for subagentId <- subagentIds yield SubagentItem(subagentId, agentPath, findFreeLocalUri())
 
   override protected def items =
-    Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems
+    Seq(TestWorkflow, workflow, agentRef, subagentBundle) ++ subagentItems
 
   "test" in:
     def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId, backup: Boolean = false)
@@ -138,8 +138,8 @@ object UntaughtAgentClusterWatchTest:
 
   private val agentPath = AgentPath("AGENT")
   private val agentRef = AgentRef(agentPath, subagentIds)
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SUBAGENT-SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("SUBAGENT-BUNDLE"),
     Map(
       subagentIds(0) -> NumericConstant(2),
       subagentIds(1) -> NumericConstant(1)))
@@ -148,7 +148,7 @@ object UntaughtAgentClusterWatchTest:
     WorkflowPath("MY-WORKFLOW"),
     Seq(ASemaphoreJob.execute(
       AgentPath("AGENT"),
-      subagentSelectionId = Some(StringConstant(subagentSelection.id.string)))))
+      subagentBundleId = Some(StringConstant(subagentBundle.id.string)))))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

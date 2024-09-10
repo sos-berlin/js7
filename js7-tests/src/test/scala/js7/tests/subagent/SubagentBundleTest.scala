@@ -18,16 +18,16 @@ import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
-import js7.tests.subagent.SubagentSelectionTest.*
+import js7.tests.subagent.SubagentBundleTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class SubagentSelectionTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+final class SubagentBundleTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
 
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -68,7 +68,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     finally
       super.afterAll()
 
-  "Start and attach Subagents and SubagentSelection" in:
+  "Start and attach Subagents and SubagentBundle" in:
     // Start Subagents
     idToRelease
 
@@ -76,7 +76,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
       .updateItems(
         Stream(
           Stream(
-            AddOrChangeSimple(subagentSelection),
+            AddOrChangeSimple(subagentBundle),
             AddVersion(versionId),
             AddOrChangeSigned(toSignedString(workflow))),
           Stream
@@ -97,7 +97,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
       cSubagentId -> 2,
       dSubagentId -> 1))
 
-  "Recover SubagentSelection when Agent has restarted" in:
+  "Recover SubagentBundle when Agent has restarted" in:
     val eventId = eventWatch.lastAddedEventId
     myAgent.terminate().await(99.s)
     eventWatch.await[AgentCouplingFailed](_.key == agentPath, after = eventId)
@@ -138,30 +138,30 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     assert(started.flatMap(_.subagentId).groupMapReduce(identity)(_ => 1)(_ + _) == expected)
     for orderId <- orderIds do eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
 
-  "Change SubagentSelection" in:
+  "Change SubagentBundle" in:
     val eventId = eventWatch.lastAddedEventId
-    val changed = subagentSelection.copy(subagentToPriority = Map(
+    val changed = subagentBundle.copy(subagentToPriority = Map(
       aSubagentId -> NumericConstant(1)))
     controller.api
       .updateItems(Stream(AddOrChangeSimple(changed)))
       .await(99.s)
       .orThrow
 
-    val orderId = OrderId("CHANGED-SUBAGENTSELECTION")
+    val orderId = OrderId("CHANGED-SUBAGENTBUNDLE")
     controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       .head.value.event
     assert(started.subagentId.contains(aSubagentId))
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
 
-  "Use SubagentId as SubagentSelectionId" in:
+  "Use SubagentId as SubagentBundleId" in:
     val workflow = updateItem(Workflow(
-      WorkflowPath("SUBAGENT-ID-AS-SELECTION"),
+      WorkflowPath("SUBAGENT-ID-AS-BUNDLE"),
       Seq(
         EmptyJob.execute(
           agentPath,
-          subagentSelectionId = Some(StringConstant(bSubagentId.string))))))
-    val events = controller.runOrder(FreshOrder(OrderId("SUBAGENT-ID-AS-SELECTION"), workflow.path))
+          subagentBundleId = Some(StringConstant(bSubagentId.string))))))
+    val events = controller.runOrder(FreshOrder(OrderId("SUBAGENT-ID-AS-BUNDLE"), workflow.path))
     assert(events.map(_.value) contains OrderProcessingStarted(bSubagentId))
 
   "Stop A-SUBAGENT" in:
@@ -169,12 +169,12 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     idToRelease(aSubagentId).await(99.s)
     eventWatch.await[SubagentCouplingFailed](_.key == aSubagentId, after = eventId)
 
-  "SubagentSelection can only be deleted after Workflow" in:
+  "SubagentBundle can only be deleted after Workflow" in:
     val eventId = eventWatch.lastAddedEventId
     val checked = controller.api
-      .updateItems(Stream(DeleteSimple(subagentSelection.id)))
+      .updateItems(Stream(DeleteSimple(subagentBundle.id)))
       .await(99.s)
-    assert(checked == Left(ItemIsStillReferencedProblem(subagentSelection.id, workflow.id)))
+    assert(checked == Left(ItemIsStillReferencedProblem(subagentBundle.id, workflow.id)))
 
     controller.api
       .updateItems(Stream(
@@ -184,18 +184,18 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
       .orThrow
     eventWatch.await[ItemDeleted](_.event.key == workflow.id, after = eventId)
 
-  "Subagent can only be deleted after SubagentSelection" in:
+  "Subagent can only be deleted after SubagentBundle" in:
     val checked = controller.api
       .updateItems(Stream(DeleteSimple(aSubagentId)))
       .await(99.s)
-    assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentSelection.id)))
+    assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentBundle.id)))
 
-  "Delete SubagentSelection" in:
+  "Delete SubagentBundle" in:
     val eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Stream(DeleteSimple(subagentSelection.id)))
+      .updateItems(Stream(DeleteSimple(subagentBundle.id)))
       .await(99.s)
-    eventWatch.await[ItemDeleted](_.event.key == subagentSelection.id, after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == subagentBundle.id, after = eventId)
 
   "Delete Subagents" in:
     val eventId = eventWatch.lastAddedEventId
@@ -210,7 +210,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     eventWatch.await[ItemDeleted](_.event.key == dSubagentId, after = eventId)
 
 
-object SubagentSelectionTest:
+object SubagentBundleTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
@@ -220,8 +220,8 @@ object SubagentSelectionTest:
   private def newSubagentItem(id: SubagentId) =
     SubagentItem(id, agentPath, findFreeLocalUri())
 
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("BUNDLE"),
     Map(
       aSubagentId -> NumericConstant(1),
       bSubagentId -> NumericConstant(2),
@@ -234,7 +234,7 @@ object SubagentSelectionTest:
     Seq(
       EmptyJob.execute(
         agentPath,
-        subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
+        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
         processLimit = 100)))
 
   private def toOrder(orderId: OrderId) =

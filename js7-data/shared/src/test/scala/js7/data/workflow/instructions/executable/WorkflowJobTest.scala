@@ -61,7 +61,7 @@ final class WorkflowJobTest extends OurTestSuite:
           Map(
             "NAME" -> StringConstant("VALUE"),
             "NUMBER" -> NumericConstant(7)),
-          Some(expr("'SELECTION'")),
+          Some(expr("'BUNDLE'")),
           Seq(JobResourcePath("JOB-RESOURCE")),
           processLimit = 3,
           Some(10.s),
@@ -84,7 +84,7 @@ final class WorkflowJobTest extends OurTestSuite:
             "NAME": "'VALUE'",
             "NUMBER": "7"
           },
-          "subagentSelectionIdExpr": "'SELECTION'",
+          "subagentBundleIdExpr": "'BUNDLE'",
           "jobResourcePaths": [
             "JOB-RESOURCE"
           ],
@@ -113,7 +113,7 @@ final class WorkflowJobTest extends OurTestSuite:
         WorkflowJob(
           AgentPath("AGENT"),
           RelativePathExecutable("EXECUTABLE"),
-          subagentSelectionId = Some(expr("'SELECTION'")),
+          subagentBundleId = Some(expr("'BUNDLE'")),
           skipIfNoAdmissionStartForOrderDay = true),
         json"""{
           "agentPath": "AGENT",
@@ -121,7 +121,24 @@ final class WorkflowJobTest extends OurTestSuite:
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
-          "subagentSelectionId": "SELECTION",
+          "subagentBundleId": "BUNDLE",
+          "skipIfNoAdmissionForOrderDay": true
+        }""")
+
+    "Compatible with v2.7.1" in:
+      testJsonDecoder(
+        WorkflowJob(
+          AgentPath("AGENT"),
+          RelativePathExecutable("EXECUTABLE"),
+          subagentBundleId = Some(expr("'BUNDLE'")),
+          skipIfNoAdmissionStartForOrderDay = true),
+        json"""{
+          "agentPath": "AGENT",
+          "executable": {
+            "TYPE": "PathExecutable",
+            "path": "EXECUTABLE"
+          },
+          "subagentSelectionId": "BUNDLE",
           "skipIfNoAdmissionForOrderDay": true
         }""")
   }

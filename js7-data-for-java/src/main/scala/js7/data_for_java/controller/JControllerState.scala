@@ -22,7 +22,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
@@ -39,7 +39,7 @@ import js7.data_for_java.order.JOrderEvent.JExpectedNotice
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
-import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
+import js7.data_for_java.subagent.{JSubagentBundle, JSubagentItem, JSubagentItemState}
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import scala.annotation.nowarn
@@ -108,10 +108,16 @@ extends JJournaledState[JControllerState, ControllerState]:
       .mapValues(JSubagentItemState(_))
       .asJava
 
+  @deprecated("Use idToSubagentBundle!", "v2.7.2")
+  @Deprecated
   @Nonnull
-  def idToSubagentSelection: JMap[SubagentSelectionId, JSubagentSelection] =
-    asScala.pathToUnsignedSimple(SubagentSelection)
-      .mapValues(JSubagentSelection(_))
+  def idToSubagentSelection: JMap[SubagentBundleId, JSubagentBundle] =
+    idToSubagentBundle
+
+  @Nonnull
+  def idToSubagentBundle: JMap[SubagentBundleId, JSubagentBundle] =
+    asScala.pathToUnsignedSimple(SubagentBundle)
+      .mapValues(JSubagentBundle(_))
       .asJava
 
   /** Looks up a Lock item in the current version. */

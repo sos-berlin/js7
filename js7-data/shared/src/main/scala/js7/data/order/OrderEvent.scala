@@ -2,10 +2,11 @@ package js7.data.order
 
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
+import io.circe
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
@@ -25,7 +26,7 @@ import js7.data.order.OrderEvent.OrderMoved.Reason
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
@@ -332,10 +333,15 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderProcessingKilled
   extends OrderActorEvent
 
+
   final case class OrderStickySubagentEntered(
     agentPath: AgentPath,
-    subagentSelectionId: Option[SubagentSelectionId] = None)
+    subagentBundleId: Option[SubagentBundleId] = None)
   extends OrderActorEvent
+
+  object OrderStickySubagentEntered:
+    given Codec.AsObject[OrderStickySubagentEntered] = deriveRenamingCodec(Map(
+      "subagentSelectionId" -> "subagentBundleId"))
 
   case object OrderStickySubagentLeaved
   extends OrderActorEvent
@@ -681,7 +687,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype.singleton(OrderNoticesRead, aliases = Seq("OrderNoticeRead")),
     Subtype[OrderNoticesConsumptionStarted],
     Subtype(deriveConfiguredCodec[OrderNoticesConsumed]),
-    Subtype(deriveCodec[OrderStickySubagentEntered]),
+    Subtype[OrderStickySubagentEntered],
     Subtype(OrderStickySubagentLeaved),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]),

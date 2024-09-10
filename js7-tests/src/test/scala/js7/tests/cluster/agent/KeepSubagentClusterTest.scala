@@ -136,7 +136,7 @@ object KeepSubagentClusterTest:
     Seq(
       ASemaphoreJob.execute(
         agentPath,
-        subagentSelectionId = Some(StringConstant(backupSubagentId.string)))))
+        subagentBundleId = Some(StringConstant(backupSubagentId.string)))))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

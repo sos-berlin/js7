@@ -9,7 +9,7 @@
             "TYPE": "Execute.Anonymous",
             "job": {
               "agentPath": "agent-1",
-              "subagentSelectionIdExpr": "'subagent-1-a'",
+              "subagentBundleIdExpr": "'subagent-1-a'",
               "executable": {
                 "TYPE": "ScriptExecutable",
                 "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# On SIGTERM, terminate watchedChildren properly:\nwatchedChildren=()\nkillWatchedChildren() {\n  if [[ ${#watchedChildren[*]} -gt 0 ]]; then\n    echo kill ${watchedChildren[*]}\n    kill ${watchedChildren[*]}\n    # On Linux (AlmaLinux 9), we wait for the termination let the kill take effect (?)\n    wait ${watchedChildren[*]} || true\n  fi\n}\ntrap \"echo '\uD83D\uDD37Trapped SIGTERM\uD83D\uDD37'; killWatchedChildren; exit 7\" SIGTERM\n\nsleep 111 & pid=$!; echo TO BE KILLED BY TRAP pid=$pid; watchedChildren+=($pid)\nsleep 111 & pid=$!; echo TO BE KILLED BY TRAP pid=$pid; watchedChildren+=($pid)\necho watchedChildren=\"${watchedChildren[*]}\"\n\nsh <<'END' &\n  set -euo pipefail\n  # Ignore SIGTERM, sleep will not be killed because started by the trap\n  trap \"sleep 111\" SIGTERM\n  echo SLEEP-2 pid=$$\n  for i in {1..10}; do\n    sh <<<\"\n      echo SLEEP-2-$i pid=\\$\\$\n      /bin/sleep 204\n    \" &\n  done\n  /bin/sleep 203\nEND\n\necho pid=$$\nsleep 200\n"

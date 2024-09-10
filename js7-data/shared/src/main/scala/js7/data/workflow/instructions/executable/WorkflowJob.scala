@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{Executable, JobResourcePath}
-import js7.data.subagent.SubagentSelectionId
+import js7.data.subagent.SubagentBundleId
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, Scope}
 import scala.collection.View
@@ -26,7 +26,7 @@ final case class WorkflowJob(
   agentPath: AgentPath,
   executable: Executable,
   defaultArguments: Map[String, Expression],
-  subagentSelectionId: Option[Expression],
+  subagentBundleId: Option[Expression],
   jobResourcePaths: Seq[JobResourcePath],
   processLimit: Int,
   sigkillDelay: Option[FiniteDuration],
@@ -43,10 +43,10 @@ final case class WorkflowJob(
     this.agentPath == agentPath
 
   def checked: Checked[Unit] =
-    subagentSelectionId.fold(Checked.unit): expr =>
+    subagentBundleId.fold(Checked.unit): expr =>
       if expr.isPure then
         // A pure expression can be checked beforehand
-        expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
+        expr.evalAsString(Scope.empty).flatMap(SubagentBundleId.checked).rightAs(())
       else
         Checked.unit
 
@@ -62,7 +62,7 @@ object WorkflowJob:
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
-    subagentSelectionId: Option[Expression] = None,
+    subagentBundleId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -72,7 +72,7 @@ object WorkflowJob:
     skipIfNoAdmissionStartForOrderDay: Boolean = false,
     isNotRestartable: Boolean = false)
   : WorkflowJob =
-    checked(agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
+    checked(agentPath, executable, defaultArguments, subagentBundleId, jobResourcePaths,
       processLimit, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
       admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable
     ).orThrow
@@ -81,7 +81,7 @@ object WorkflowJob:
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
-    subagentSelectionId: Option[Expression] = None,
+    subagentBundleId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -93,7 +93,7 @@ object WorkflowJob:
   : Checked[WorkflowJob] =
     for _ <- jobResourcePaths.checkUniqueness yield
       new WorkflowJob(
-        agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
+        agentPath, executable, defaultArguments, subagentBundleId, jobResourcePaths,
         processLimit, sigkillDelay, timeout, failOnErrWritten,
         admissionTimeScheme, skipIfNoAdmissionStartForOrderDay, isNotRestartable)
 
@@ -108,7 +108,7 @@ object WorkflowJob:
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
     JsonObject(
       "agentPath" -> workflowJob.agentPath.asJson,
-      "subagentSelectionIdExpr" -> workflowJob.subagentSelectionId.asJson,
+      "subagentBundleIdExpr" -> workflowJob.subagentBundleId.asJson,
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
@@ -123,11 +123,19 @@ object WorkflowJob:
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for
       executable <- c.get[Executable]("executable")
-      subagentSelectionId <-
-        c.get[Option[SubagentSelectionId]]("subagentSelectionId")
+      subagentBundleId <-
+
+        c.get[Option[SubagentBundleId]]("subagentBundleId")
+          .flatMap:
+            case Some(id) => Right(Some(id))
+            case None => c.get[Option[SubagentBundleId]]("subagentSelectionId") // COMPATIBLE with v2.7.1
           .flatMap:
             case Some(id) => Right(Some(StringConstant(id.string)))
-            case None => c.get[Option[Expression]]("subagentSelectionIdExpr")
+            case None =>
+              c.get[Option[Expression]]("subagentBundleIdExpr").flatMap:
+                case Some(expr) => Right(Some(expr))
+                case None => c.get[Option[Expression]]("subagentBundleIdExpr") // COMPATIBLE with v2.7.1
+
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
@@ -145,7 +153,7 @@ object WorkflowJob:
           case None => // COMPATIBLE with v2.4
             c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
       isNotRestartable <- c.getOrElse[Boolean]("isNotRestartable")(false)
-      job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
+      job <- checked(agentPath, executable, arguments, subagentBundleId, jobResourcePaths,
         maybeProcessLimit, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
         skipIfNoAdmissionStartForOrderDay, isNotRestartable
       ).toDecoderResult(c.history)

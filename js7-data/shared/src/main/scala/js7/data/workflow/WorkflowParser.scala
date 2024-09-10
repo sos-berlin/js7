@@ -127,7 +127,7 @@ object WorkflowParser:
       sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
     yield
       WorkflowJob(agentPath, executable, defaultArguments.nameToExpr,
-        subagentSelectionId = None/*TODO*/,
+        subagentBundleId = None/*TODO*/,
         jobResourcePaths,
         processLimit = processLimit,
         sigkillDelay = sigkillDelay)

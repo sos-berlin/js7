@@ -59,7 +59,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
@@ -236,8 +236,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
         .flatMap(state =>
           subagentKeeper.recoverSubagents(state.idToSubagentItemState.values.toVector))
         .flatMapT(_ =>
-          subagentKeeper.recoverSubagentSelections(
-            recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
+          subagentKeeper.recoverSubagentBundles(
+            recoveredAgentState.pathToUnsignedSimple(SubagentBundle).values.toVector))
         .map(_.orThrow)
         .materialize
         .foreach { tried =>
@@ -425,11 +425,11 @@ extends MainJournalingActor[AgentState, Event], Stash:
               .as(Right(AgentCommand.Response.Accepted))
               .unsafeToFuture()
 
-          case selectionId: SubagentSelectionId =>
+          case bundleId: SubagentBundleId =>
             journal
-              .persistKeyedEvent(NoKey <-: ItemDetached(selectionId, ownAgentPath))
+              .persistKeyedEvent(NoKey <-: ItemDetached(bundleId, ownAgentPath))
               .flatMapT(_ => subagentKeeper
-                .removeSubagentSelection(selectionId)
+                .removeSubagentBundle(bundleId)
                 .as(Right(AgentCommand.Response.Accepted)))
               .unsafeToFuture()
 
@@ -488,7 +488,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           .rightAs(AgentCommand.Response.Accepted)
           .unsafeToFuture()
 
-      case item @ (_: AgentRef | _: Calendar | _: SubagentSelection |
+      case item @ (_: AgentRef | _: Calendar | _: SubagentBundle |
                    _: WorkflowPathControl | _: WorkflowControl) =>
         //val previousItem = journal.unsafeCurrentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
@@ -599,8 +599,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
             .proceedWithSubagent(subagentItemState)
             .materializeIntoChecked))
 
-      case subagentSelection: SubagentSelection =>
-        subagentKeeper.addOrReplaceSubagentSelection(subagentSelection)
+      case subagentBundle: SubagentBundle =>
+        subagentKeeper.addOrReplaceSubagentBundle(subagentBundle)
 
       case workflowPathControl: WorkflowPathControl =>
         if !workflowPathControl.suspended then

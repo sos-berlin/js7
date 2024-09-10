@@ -15,7 +15,7 @@ import js7.data.lock.LockPath
 import js7.data.order.OrderEvent.*
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -27,7 +27,6 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-//@nowarn("msg=method apply in object Order.* is deprecated")
 final class OrderEventTest extends OurTestSuite:
 
   "OrderAdded" in:
@@ -144,7 +143,7 @@ final class OrderEventTest extends OurTestSuite:
         forceJobAdmission = true,
         List(Order.StickySubagent(
           AgentPath("AGENT"),
-          Some(SubagentSelectionId("SUBAGENT-SELECTION")))),
+          Some(SubagentBundleId("SUBAGENT-BUNDLE")))),
         innerBlock = Position(1) / "then",
         Set(Position(1) / "then" % 9, Label("LABEL"))),
       json"""{
@@ -187,7 +186,7 @@ final class OrderEventTest extends OurTestSuite:
         "forceJobAdmission": true,
         "stickySubagents": [{
           "agentPath": "AGENT",
-          "subagentSelectionId": "SUBAGENT-SELECTION"
+          "subagentBundleId": "SUBAGENT-BUNDLE"
         }],
         "innerBlock": [ 1, "then" ],
         "stopPositions": [ [  1, "then", 9 ], "LABEL" ]
@@ -197,7 +196,10 @@ final class OrderEventTest extends OurTestSuite:
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
-        agentPath = AgentPath("AGENT")),
+        agentPath = AgentPath("AGENT"),
+        stickySubagents = List(Order.StickySubagent(
+          AgentPath("AGENT"),
+          Some(SubagentBundleId("SUBAGENT-BUNDLE"))))),
       json"""
       {
         "TYPE": "OrderAttachedToAgent",
@@ -212,7 +214,11 @@ final class OrderEventTest extends OurTestSuite:
           "TYPE": "Ready"
         },
         "historicOutcomes": [],
-        "agentPath":"AGENT"
+        "agentPath":"AGENT",
+        "stickySubagents": [{
+          "agentPath": "AGENT",
+          "subagentSelectionId": "SUBAGENT-BUNDLE"
+        }]
       }""")
 
   "OrderAttached" in:
@@ -877,12 +883,24 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderStickySubagentEntered(
         AgentPath("AGENT"),
-        Some(SubagentSelectionId("SUBAGENT-SELECTION"))),
+        Some(SubagentBundleId("SUBAGENT-BUNDLE"))),
       json"""
       {
         "TYPE": "OrderStickySubagentEntered",
         "agentPath": "AGENT",
-        "subagentSelectionId": "SUBAGENT-SELECTION"
+        "subagentBundleId": "SUBAGENT-BUNDLE"
+      }""")
+
+  "OrderStickySubagentEntered until v2.7.1" in:
+    testJsonDecoder[OrderEvent](
+      OrderStickySubagentEntered(
+        AgentPath("AGENT"),
+        Some(SubagentBundleId("SUBAGENT-BUNDLE"))),
+      json"""
+      {
+        "TYPE": "OrderStickySubagentEntered",
+        "agentPath": "AGENT",
+        "subagentSelectionId": "SUBAGENT-BUNDLE"
       }""")
 
   "OrderStickySubagentLeaved" in:

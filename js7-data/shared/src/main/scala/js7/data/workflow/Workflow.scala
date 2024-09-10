@@ -20,16 +20,15 @@ import js7.data.calendar.CalendarPath
 import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId, VersionedItemPath}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.order.Order
-import js7.data.subagent.SubagentSelectionId
+import js7.data.subagent.SubagentBundleId
 import js7.data.value.expression.{Expression, PositionSearch, Scope}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
-import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.{BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
+import js7.data.workflow.position.*
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
@@ -201,14 +200,14 @@ extends VersionedItem, TrivialItemState[Workflow]:
       referencedJobResourcePaths,
       calendarPath,
       referencedAgentPaths,
-      knownSubagentSelectionIds)
+      knownSubagentBundleIds)
 
-  private[workflow] def knownSubagentSelectionIds: Set[SubagentSelectionId] =
+  private[workflow] def knownSubagentBundleIds: Set[SubagentBundleId] =
     workflowJobs.view.flatMap(_
-      .subagentSelectionId
+      .subagentBundleId
       .flatMap(_
         .evalAsString(Scope.empty)
-        .flatMap(SubagentSelectionId.checked)
+        .flatMap(SubagentBundleId.checked)
         .toOption))
       .toSet
 

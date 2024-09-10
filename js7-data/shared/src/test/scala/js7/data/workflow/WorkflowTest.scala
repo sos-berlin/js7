@@ -12,7 +12,7 @@ import js7.data.calendar.CalendarPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.subagent.SubagentSelectionId
+import js7.data.subagent.SubagentBundleId
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -175,7 +175,7 @@ final class WorkflowTest extends OurTestSuite:
                   "path": "B.cmd"
                 },
                 "processLimit": 1,
-                "subagentSelectionIdExpr": "'SUBAGENT-SELECTION'"
+                "subagentBundleIdExpr": "'SUBAGENT-BUNDLE'"
               }
             }
           ],
@@ -361,7 +361,7 @@ final class WorkflowTest extends OurTestSuite:
                   "path": "B.cmd"
                 },
                 "processLimit": 1,
-                "subagentSelectionIdExpr" : "'SUBAGENT-SELECTION'"
+                "subagentBundleIdExpr" : "'SUBAGENT-BUNDLE'"
               }
             }, {
               "position": [ 4 ],
@@ -1074,15 +1074,15 @@ final class WorkflowTest extends OurTestSuite:
     //}
   }
 
-  "knownSubagentSelectionIds" in:
-    assert(TestWorkflow.knownSubagentSelectionIds == Set(SubagentSelectionId("SUBAGENT-SELECTION")))
+  "knownSubagentBundleIds" in:
+    assert(TestWorkflow.knownSubagentBundleIds == Set(SubagentBundleId("SUBAGENT-BUNDLE")))
 
   "referencedItemPaths" in:
     assert(TestWorkflow.referencedItemPaths.toSet == Set(
       TestAgentPath,
       JobResourcePath("JOB-RESOURCE"),
       CalendarPath("CALENDAR"),
-      SubagentSelectionId("SUBAGENT-SELECTION")))
+      SubagentBundleId("SUBAGENT-BUNDLE")))
 
     assert(ForkTestSetting.TestWorkflow.referencedItemPaths.toSet == Set(
       ForkTestSetting.AAgentPath,
@@ -1090,8 +1090,8 @@ final class WorkflowTest extends OurTestSuite:
 
 private object WorkflowTest:
 
-  private val lastExecute = Execute(WorkflowJob(TestAgentPath, BPathExecutable, subagentSelectionId =
-    Some(expr("'SUBAGENT-SELECTION'"))))
+  private val lastExecute = Execute(WorkflowJob(TestAgentPath, BPathExecutable, subagentBundleId =
+    Some(expr("'SUBAGENT-BUNDLE'"))))
 
   private val TestWorkflow = Workflow(
     WorkflowPath("TEST") ~ "VERSION",

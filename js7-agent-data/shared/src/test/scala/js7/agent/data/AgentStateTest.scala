@@ -30,7 +30,7 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -95,8 +95,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
       "controllerId": "CONTROLLER"
     }""")
 
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("BUNDLE"),
     Map(subagentItem.id -> NumericConstant(1)),
     itemRevision = Some(ItemRevision(7)))
 
@@ -153,7 +153,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
         meta.controllerId,
         meta.controllerRunId),
       ItemAttachedToMe(subagentItem),
-      ItemAttachedToMe(subagentSelection),
+      ItemAttachedToMe(subagentBundle),
       ItemAttachedToMe(fileWatch),
       fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/1.csv"), OrderId("1")),
       fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/2.csv"), OrderId("2")),
@@ -235,8 +235,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
              "eventId": 0
           }""",
           json"""{
-            "TYPE": "SubagentSelection",
-            "id": "SELECTION",
+            "TYPE": "SubagentBundle",
+            "id": "BUNDLE",
             "subagentToPriority": {
               "SUBAGENT": 1
             },
@@ -420,6 +420,6 @@ final class AgentStateTest extends OurAsyncTestSuite:
       Vector(
         unsignedWorkflow.id, workflow.id,
         unsignedJobResource.path, signedJobResource.value.path,
-        calendar.path, fileWatch.path, subagentItem.id, subagentSelection.id,
+        calendar.path, fileWatch.path, subagentItem.id, subagentBundle.id,
         WorkflowPathControlPath(workflow.path),
       ).sortBy(_.toString))

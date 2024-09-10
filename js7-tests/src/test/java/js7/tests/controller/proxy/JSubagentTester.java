@@ -21,12 +21,12 @@ import js7.data.item.InventoryItemEvent;
 import js7.data.item.InventoryItemKey;
 import js7.data.item.ItemRevision;
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded;
+import js7.data.subagent.SubagentBundleId;
 import js7.data.subagent.SubagentId;
-import js7.data.subagent.SubagentSelectionId;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
+import js7.data_for_java.subagent.JSubagentBundle;
 import js7.data_for_java.subagent.JSubagentItem;
-import js7.data_for_java.subagent.JSubagentSelection;
 import js7.data_for_java.value.JExpression;
 import js7.proxy.data.event.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
@@ -55,14 +55,14 @@ final class JSubagentTester
         Uri.of("http://localhost:0"),
         /*disabled=*/false);
 
-    private static final JSubagentSelection subagentSelection = JSubagentSelection.of(
-        SubagentSelectionId.of("SUBAGENT"),
+    private static final JSubagentBundle subagentBundle = JSubagentBundle.of(
+        SubagentBundleId.of("SUBAGENT"),
         new HashMap() {{
             put(subagentItem.id(), /*priority=*/JExpression.apply("1"));
         }});
 
     private static final Set<InventoryItemKey> keys = new HashSet<>(asList(
-        subagentItem.id(), subagentSelection.id()));
+        subagentItem.id(), subagentBundle.id()));
 
     private final JControllerProxy proxy;
     private final JControllerApi api;
@@ -93,11 +93,11 @@ final class JSubagentTester
 
         await(api.updateItems(Flux.just(
             addOrChangeSimple(subagentItem),
-            addOrChangeSimple(subagentSelection))));
+            addOrChangeSimple(subagentBundle))));
 
         try {
             await(api.updateItems(Flux.just(
-                deleteSimple(subagentSelection.id()))));
+                deleteSimple(subagentBundle.id()))));
             await(api.updateItems(Flux.just(
                 deleteSimple(subagentItem.id()))));
             completed.get(99, SECONDS);
@@ -107,7 +107,7 @@ final class JSubagentTester
         assertThat(keyedEvents, equalTo(new HashSet<KeyedEvent<Event>>(asList(
             KeyedEvent.any(new UnsignedSimpleItemAdded(subagentItem
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
-            KeyedEvent.any(new UnsignedSimpleItemAdded(subagentSelection
+            KeyedEvent.any(new UnsignedSimpleItemAdded(subagentBundle
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
             KeyedEvent.any(new ItemAttachable(subagentItem.id(), agentPath)),
             KeyedEvent.any(new ItemAttached(subagentItem.id(), new Some<>(new ItemRevision(0)), agentPath)),
@@ -115,7 +115,7 @@ final class JSubagentTester
             KeyedEvent.any(new ItemDetached(subagentItem.id(), agentPath)),
             KeyedEvent.any(new ItemDeletionMarked(subagentItem.id())),
             KeyedEvent.any(new ItemDeleted(subagentItem.id())),
-            KeyedEvent.any(new ItemDeleted(subagentSelection.id()))
+            KeyedEvent.any(new ItemDeleted(subagentBundle.id()))
         ))));
     }
 

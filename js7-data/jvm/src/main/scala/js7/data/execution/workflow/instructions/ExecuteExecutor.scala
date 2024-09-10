@@ -17,7 +17,7 @@ import js7.data.order.OrderObstacle.{WaitingForAdmission, jobProcessLimitReached
 import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, OrderOutcome}
 import js7.data.state.StateView
-import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.util.Try
@@ -44,7 +44,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
                 attach(order, job.agentPath)
               .getOrElse:
                 Right:
-                  checkSubagentSelection(order, state) match
+                  checkSubagentBundle(order, state) match
                     case Right(()) => Nil
                     case Left(problem) =>
                       (order.id <-: OrderFailedIntermediate_(Some(OrderOutcome.Disrupted(problem))))
@@ -74,16 +74,16 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       .getOrElse:
         Right(Nil)
 
-  private def checkSubagentSelection(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
+  private def checkSubagentBundle(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
     for
       scope <- state.toPureOrderScope(order)
       job <- state.workflowJob(order.workflowPosition)
-      maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
+      maybeSubagentBundleId <- job.subagentBundleId.traverse(_
         .evalAsString(scope)
-        .flatMap(SubagentSelectionId.checked))
-      maybeSubagentSelection <- maybeSubagentSelectionId
+        .flatMap(SubagentBundleId.checked))
+      maybeSubagentBundle <- maybeSubagentBundleId
         .traverse(o => state
-          .keyToItem(SubagentSelection)
+          .keyToItem(SubagentBundle)
           .checked(o)
           .orElse(state
             .keyToItem(SubagentItem)

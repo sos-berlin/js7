@@ -18,7 +18,7 @@ import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.SimpleAgentClusterTest.*
@@ -38,7 +38,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
     SubagentItem(SubagentId("SUBAGENT-1"), agentPath, findFreeLocalUri()))
 
   override protected def items =
-    Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems
+    Seq(TestWorkflow, workflow, agentRef, subagentBundle) ++ subagentItems
 
   "Cluster replicates journal files properly" in:
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
@@ -135,8 +135,8 @@ object SimpleAgentClusterTest:
 
   private val agentPath = AgentPath("AGENT")
   private val agentRef = AgentRef(agentPath, subagentIds)
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SUBAGENT-SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("SUBAGENT-BUNDLE"),
     Map(
       subagentIds(0) -> NumericConstant(2),
       subagentIds(1) -> NumericConstant(1))
@@ -146,7 +146,7 @@ object SimpleAgentClusterTest:
     WorkflowPath("MY-WORKFLOW"),
     Seq(ASemaphoreJob.execute(
       AgentPath("AGENT"),
-      subagentSelectionId = Some(StringConstant(subagentSelection.id.string)))))
+      subagentBundleId = Some(StringConstant(subagentBundle.id.string)))))
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

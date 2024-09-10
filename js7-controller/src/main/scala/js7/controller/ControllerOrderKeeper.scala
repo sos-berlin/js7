@@ -75,7 +75,7 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection}
+import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
@@ -1476,10 +1476,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
       .map(o => o.key -> o)
 
-    // Workflow does not return those SubagentSelections which are referenced via
+    // Workflow does not return those SubagentBundles which are referenced via
     // a variable expression.
-    // So we attach all SubagentSelections which contain a SubagentId of the Agent
-    result ++= _controllerState.keyToItem(SubagentSelection)
+    // So we attach all SubagentBundles which contain a SubagentId of the Agent
+    result ++= _controllerState.keyToItem(SubagentBundle)
       .filter(_
         ._2.subagentIds
         .flatMap(_controllerState.keyToItem(SubagentItem).get)

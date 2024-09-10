@@ -9,19 +9,19 @@ import js7.base.time.ScalaTime.*
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderOutcomeAdded, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
-import js7.tests.subagent.SubagentSelectionExprTest.*
+import js7.tests.subagent.SubagentBundleExprTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class SubagentSelectionExprTest
+final class SubagentBundleExprTest
 extends OurTestSuite, SubagentTester, BlockingItemUpdater:
 
   protected val agentPaths = Seq(agentPath)
@@ -31,10 +31,10 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
       Seq(
         EmptyJob.execute(
           agentPath,
-          subagentSelectionId = Some(expr("$subagentSelectionId")),
+          subagentBundleId = Some(expr("$subagentBundleId")),
           processLimit = 100))),
     bareSubagentItem,
-    SubagentSelection(subagentSelectionId, Map(
+    SubagentBundle(subagentBundleId, Map(
       localSubagentId -> NumericConstant(1),
       bareSubagentId -> NumericConstant(2))))
 
@@ -58,22 +58,22 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
       OrderAdded(workflowPath ~ "INITIAL"),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: subagentSelectionId"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(Problem("No such named value: subagentBundleId"))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))
 
-  "Variable expression denotes an unknown SubagentSelection" in:
+  "Variable expression denotes an unknown SubagentBundle" in:
     val orderId = OrderId("UNKNOWN")
     val events = controller.runOrder(FreshOrder(orderId, workflowPath, Map(
-      "subagentSelectionId" -> StringValue("UNKNOWN-SUBAGENT-SELECTION"))))
+      "subagentBundleId" -> StringValue("UNKNOWN-SUBAGENT-BUNDLE"))))
     eventWatch.await[OrderFailed](_.key == orderId)
     assert(events.map(_.value) == Seq(
       OrderAdded(workflowPath ~ "INITIAL", Map(
-        "subagentSelectionId" -> StringValue("UNKNOWN-SUBAGENT-SELECTION"))),
+        "subagentBundleId" -> StringValue("UNKNOWN-SUBAGENT-BUNDLE"))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentId", "Subagent:UNKNOWN-SUBAGENT-SELECTION"))),
+      OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentId", "Subagent:UNKNOWN-SUBAGENT-BUNDLE"))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))
@@ -84,7 +84,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
       Seq(
         EmptyJob.execute(
           agentPath,
-          subagentSelectionId = Some(expr("'*INVALID*'")))))
+          subagentBundleId = Some(expr("'*INVALID*'")))))
     val checked = controller.api
       .updateItems(Stream(
         AddVersion(workflow.id.versionId),
@@ -92,22 +92,22 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
       .await(99.s)
     assert(checked == Left(Problem(
       "JSON DecodingFailure at : InvalidName: Invalid character or character combination in " +
-        "name of SubagentSelectionId type: *INVALID*")))
+        "name of SubagentBundleId type: *INVALID*")))
 
-  "subagentSelection=SUBAGENT-SELECTION" in:
-    val orderId = OrderId("SELECTION")
+  "subagentBundle=SUBAGENT-BUNDLE" in:
+    val orderId = OrderId("BUNDLE")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
-      "subagentSelectionId" -> StringValue(subagentSelectionId.string)))
+      "subagentBundleId" -> StringValue(subagentBundleId.string)))
     controller.addOrderBlocking(freshOrder)
     assert(
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
         Some(bareSubagentId))
     eventWatch.await[OrderFinished](_.key == orderId)
 
-  "subagentSelection=SUBAGENT" in:
-    val orderId = OrderId("SUBAGENT-ID-AS-SELECTION")
+  "subagentBundle=SUBAGENT" in:
+    val orderId = OrderId("SUBAGENT-ID-AS-BUNDLE")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
-      "subagentSelectionId" -> StringValue(bareSubagentId.string)))
+      "subagentBundleId" -> StringValue(bareSubagentId.string)))
     controller.addOrderBlocking(freshOrder)
     assert(
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
@@ -115,7 +115,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
     eventWatch.await[OrderFinished](_.key == orderId)
 
 
-object SubagentSelectionExprTest:
+object SubagentBundleExprTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val workflowPath = WorkflowPath("WORKFLOW")
-  private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")
+  private val subagentBundleId = SubagentBundleId("SUBAGENT-BUNDLE")

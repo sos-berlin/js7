@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.NumberValue
 import js7.data.value.expression.{Expression, Scope}
 import js7.subagent.configuration.DirectorConf
@@ -17,11 +17,11 @@ import scala.collection.MapView
 
 private final case class DirectorState private(
   subagentToEntry: Map[SubagentId, SubagentEntry],
-  private val selectionToEntry: Map[SubagentSelectionId, SelectionEntry],
+  private val bundleToEntry: Map[SubagentBundleId, BundleEntry],
   conf: DirectorConf):
 
-  /** Without a SubagentSelection, we go round-robin through all Subagents. */
-  private lazy val selectionlessRoundRobin = Prioritized.roundRobin(subagentToEntry.keys.toVector)
+  /** Without a SubagentBundle, we go round-robin through all Subagents. */
+  private lazy val bundlelessRoundRobin = Prioritized.roundRobin(subagentToEntry.keys.toVector)
 
   val idToDriver: MapView[SubagentId, SubagentDriver] =
     subagentToEntry.view.mapValues(_.driver)
@@ -73,43 +73,43 @@ private final case class DirectorState private(
             subagentToEntry = subagentToEntry.updated(id, entry.copy(
               disabled = disabled)))
 
-  def insertOrReplaceSelection(selection: SubagentSelection): Checked[DirectorState] =
-    logger.trace("insertOrReplaceSelection", selection)
+  def insertOrReplaceBundle(bundle: SubagentBundle): Checked[DirectorState] =
+    logger.trace("insertOrReplaceBundle", bundle)
     Right(copy(
-      selectionToEntry = selectionToEntry.updated(
-        selection.id,
-        SelectionEntry(
-          selection,
-          selection.subagentToPriority.map: (subagentId, expr) =>
+      bundleToEntry = bundleToEntry.updated(
+        bundle.id,
+        BundleEntry(
+          bundle,
+          bundle.subagentToPriority.map: (subagentId, expr) =>
             subagentId -> expr))))
 
-  def removeSelection(selectionId: SubagentSelectionId): DirectorState =
-    logger.trace("removeSelection", selectionId)
+  def removeBundle(bundleId: SubagentBundleId): DirectorState =
+    logger.trace("removeBundle", bundleId)
     copy(
-      selectionToEntry = selectionToEntry - selectionId)
+      bundleToEntry = bundleToEntry - bundleId)
 
   def clear: DirectorState =
     logger.trace("clear")
     copy(
       subagentToEntry = Map.empty,
-      selectionToEntry = Map.empty)
+      bundleToEntry = Map.empty)
 
-  def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
-    maybeSelectionId match
-      case Some(selectionId) if !selectionToEntry.contains(selectionId) =>
-        // A SubagentSelectionId, if not defined, may denote a Subagent
+  def selectNext(maybeBundleId: Option[SubagentBundleId]): Checked[Option[SubagentDriver]] =
+    maybeBundleId match
+      case Some(bundleId) if !bundleToEntry.contains(bundleId) =>
+        // A SubagentBundleId, if not defined, may denote a Subagent
         subagentToEntry
-          .checked(selectionId.toSubagentId) // May be non-existent when stopping ???
+          .checked(bundleId.toSubagentId) // May be non-existent when stopping ???
           .map(o => Some(o.driver))
 
       case _ =>
         Right:
-          maybeSelectionId.match
+          maybeBundleId.match
             case None =>
-              Some(selectionlessRoundRobin)
-            case Some(selectionId) =>
-              selectionToEntry.get(selectionId).map: entry => // May be non-existent when stopping
-                if entry.subagentSelection.allPrioritiesArePure then
+              Some(bundlelessRoundRobin)
+            case Some(bundleId) =>
+              bundleToEntry.get(bundleId).map: entry => // May be non-existent when stopping
+                if entry.subagentBundle.allPrioritiesArePure then
                   entry.cachedStaticPrioritized()
                 else
                   entry.cachedDynamicPrioritized:
@@ -122,7 +122,7 @@ private final case class DirectorState private(
     subagentToEntry.get(subagentId).fold(false)(_.isAvailable)
 
   override def toString =
-    s"DirectorState(${subagentToEntry.values.toSeq}, $selectionToEntry)"
+    s"DirectorState(${subagentToEntry.values.toSeq}, $bundleToEntry)"
 
 
 private object DirectorState:
@@ -146,8 +146,8 @@ private object DirectorState:
       }${disabled ?? s" disabled"} isAvailable=$isAvailable)"
 
 
-  private final case class SelectionEntry(
-    subagentSelection: SubagentSelection,
+  private final case class BundleEntry(
+    subagentBundle: SubagentBundle,
     subagentToExpr: Map[SubagentId, Expression]):
     entry =>
 
@@ -161,13 +161,13 @@ private object DirectorState:
           val prioritized = mkPrioritized(_ => Some(Scope.empty))
           _cachedPrioritized.compareAndExchange(null, prioritized) match
             case null =>
-              logger.trace(s"cachedPrioritized: $selectionId new $prioritized")
+              logger.trace(s"cachedPrioritized: $bundleId new $prioritized")
               prioritized
             case cached: Prioritized[SubagentId] =>
-              logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+              logger.trace(s"cachedPrioritized: $bundleId reuse $cached")
               cached
         case cached: Prioritized[SubagentId] =>
-          logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+          logger.trace(s"cachedPrioritized: $bundleId reuse $cached")
           cached
 
     // Cache may be updated in parallel
@@ -175,14 +175,14 @@ private object DirectorState:
       val prioritized = mkPrioritized(toScope)
       @tailrec def cache(): Prioritized[SubagentId] =
         _cachedPrioritized.get() match
-          // subagentSelection.allPrioritiesArePure implies isEquivalentTo
+          // subagentBundle.allPrioritiesArePure implies isEquivalentTo
           case cached: Prioritized[SubagentId] if cached.isEquivalentTo(prioritized) =>
             // Keep MutableRoundRobin index in Prioritized
-            logger.trace(s"cachedPrioritized: $selectionId reuse $cached")
+            logger.trace(s"cachedPrioritized: $bundleId reuse $cached")
             cached
           case cached =>
             if _cachedPrioritized.compareAndSet(cached, prioritized) then
-              logger.trace(s"cachedPrioritized: $selectionId new $prioritized")
+              logger.trace(s"cachedPrioritized: $bundleId new $prioritized")
               prioritized
             else
               cache()
@@ -194,10 +194,10 @@ private object DirectorState:
           toScope(subagentId).flatMap: scope =>
             expr.eval(scope).flatMap(_.toNumberValue) match
               case Left(problem) =>
-                logger.error(s"$selectionId: $subagentId priority expression failed with $problem")
+                logger.error(s"$bundleId: $subagentId priority expression failed with $problem")
                 None // Subagent is not selected
               case Right(o) =>
                 Some(subagentId -> o)
 
-    private def selectionId =
-      subagentSelection.id
+    private def bundleId =
+      subagentBundle.id

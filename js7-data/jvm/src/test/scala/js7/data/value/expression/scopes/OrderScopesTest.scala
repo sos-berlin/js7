@@ -69,7 +69,7 @@ final class OrderScopesTest extends OurTestSuite:
           agentPath,
           ShellScriptExecutable("SCRIPT"),
           defaultArguments = Map.empty,
-          subagentSelectionId = None,
+          subagentBundleId = None,
           jobResourcePaths = Nil,
           processLimit = 1,
           sigkillDelay = sigkillDelay,

@@ -3,21 +3,21 @@ package js7.subagent.director
 import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import js7.subagent.director.SubagentKeeper.{DeterminedSubagentSelection, determineSubagentSelection}
+import js7.subagent.director.SubagentKeeper.{DeterminedSubagentBundle, determineSubagentBundle}
 
 final class SubagentKeeperTest extends OurTestSuite:
 
   private val agentPath = AgentPath("AGENT")
   private val otherAgentPath = AgentPath("OTHER")
   private val rawOrder = Order(OrderId("A"), WorkflowPath("W") ~ "1" /: Position(1), Order.Ready)
-  private val aSubagentSelectionId = SubagentSelectionId("A")
-  private val bSubagentSelectionId = SubagentSelectionId("B")
+  private val aSubagentBundleId = SubagentBundleId("A")
+  private val bSubagentBundleId = SubagentBundleId("B")
   private val subagentId = SubagentId("SUBAGENT")
 
-  "determineSubagentSelection" - {
+  "determineSubagentBundle" - {
     "Order.agentToStickyOrder" in:
       assert(rawOrder.agentToStickySubagent(agentPath) == None)
 
@@ -45,95 +45,95 @@ final class SubagentKeeperTest extends OurTestSuite:
         .eq(ourStickySubagent))
 
     "No StickyOrder" - {
-      "Job without subagentSelectionId" in:
-        assert(determineSubagentSelection(rawOrder, agentPath, None) ==
-          DeterminedSubagentSelection(None))
+      "Job without subagentBundleId" in:
+        assert(determineSubagentBundle(rawOrder, agentPath, None) ==
+          DeterminedSubagentBundle(None))
 
-      "Job subagentSelectionId" in:
-        assert(determineSubagentSelection(rawOrder, agentPath, Some(bSubagentSelectionId)) ==
-          DeterminedSubagentSelection(Some(bSubagentSelectionId)))
+      "Job subagentBundleId" in:
+        assert(determineSubagentBundle(rawOrder, agentPath, Some(bSubagentBundleId)) ==
+          DeterminedSubagentBundle(Some(bSubagentBundleId)))
     }
 
     "StickyOrder for other Agent is ignored" - {
       val order = rawOrder.copy(
-        stickySubagents = List(Order.StickySubagent(otherAgentPath, Some(aSubagentSelectionId))))
+        stickySubagents = List(Order.StickySubagent(otherAgentPath, Some(aSubagentBundleId))))
 
-      "Job without subagentSelectionId" in:
-        assert(determineSubagentSelection(order, agentPath, None) ==
-          DeterminedSubagentSelection(None))
+      "Job without subagentBundleId" in:
+        assert(determineSubagentBundle(order, agentPath, None) ==
+          DeterminedSubagentBundle(None))
 
-      "Job subagentSelectionId" in:
-        assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
-          DeterminedSubagentSelection(Some(bSubagentSelectionId)))
+      "Job subagentBundleId" in:
+        assert(determineSubagentBundle(order, agentPath, Some(bSubagentBundleId)) ==
+          DeterminedSubagentBundle(Some(bSubagentBundleId)))
     }
 
     "StickyOrder is valid for our Agent" - {
       "Yet no stuck Subagent" - {
-        "StickyOrder without subagentSelectionId" - {
+        "StickyOrder without subagentBundleId" - {
           val order = rawOrder.copy(
             stickySubagents = List(Order.StickySubagent(agentPath, None)))
 
-          "Job without subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, None) ==
-              DeterminedSubagentSelection(None, stick = true))
+          "Job without subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, None) ==
+              DeterminedSubagentBundle(None, stick = true))
 
-          "Job with subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
-              DeterminedSubagentSelection(Some(bSubagentSelectionId), stick = true))
+          "Job with subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(bSubagentBundleId)) ==
+              DeterminedSubagentBundle(Some(bSubagentBundleId), stick = true))
         }
 
-        "StickyOrder with subagentSelectionId" - {
+        "StickyOrder with subagentBundleId" - {
           val order = rawOrder.copy(
-            stickySubagents = List(Order.StickySubagent(agentPath, Some(aSubagentSelectionId))))
+            stickySubagents = List(Order.StickySubagent(agentPath, Some(aSubagentBundleId))))
 
-          "Job without subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, None) ==
-              DeterminedSubagentSelection(Some(aSubagentSelectionId), stick = true))
+          "Job without subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, None) ==
+              DeterminedSubagentBundle(Some(aSubagentBundleId), stick = true))
 
-          "Job with same subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(aSubagentSelectionId)) ==
-              DeterminedSubagentSelection(Some(aSubagentSelectionId), stick = true))
+          "Job with same subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(aSubagentBundleId)) ==
+              DeterminedSubagentBundle(Some(aSubagentBundleId), stick = true))
 
-          "Job with different subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
-              DeterminedSubagentSelection(Some(bSubagentSelectionId)))
+          "Job with different subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(bSubagentBundleId)) ==
+              DeterminedSubagentBundle(Some(bSubagentBundleId)))
         }
       }
 
       "Already a stuck Subagent" - {
-        "StickyOrder without subagentSelectionId" - {
+        "StickyOrder without subagentBundleId" - {
           val order = rawOrder.copy(
             stickySubagents = List(
               Order.StickySubagent(agentPath, None, stuckSubagentId = Some(subagentId))))
 
-          "Job without subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, None) ==
-              DeterminedSubagentSelection.stuck(subagentId))
+          "Job without subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, None) ==
+              DeterminedSubagentBundle.stuck(subagentId))
 
-          "Job with subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
-              DeterminedSubagentSelection.stuck(subagentId))
+          "Job with subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(bSubagentBundleId)) ==
+              DeterminedSubagentBundle.stuck(subagentId))
         }
 
-        "StickyOrder with subagentSelectionId" - {
+        "StickyOrder with subagentBundleId" - {
           val order = rawOrder.copy(
             stickySubagents = List(
               Order.StickySubagent(
                 agentPath,
-                Some(aSubagentSelectionId),
+                Some(aSubagentBundleId),
                 stuckSubagentId = Some(subagentId))))
 
-          "Job without subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, None) ==
-              DeterminedSubagentSelection.stuck(subagentId))
+          "Job without subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, None) ==
+              DeterminedSubagentBundle.stuck(subagentId))
 
-          "Job with same subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(aSubagentSelectionId)) ==
-              DeterminedSubagentSelection.stuck(subagentId))
+          "Job with same subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(aSubagentBundleId)) ==
+              DeterminedSubagentBundle.stuck(subagentId))
 
-          "Job with different subagentSelectionId" in:
-            assert(determineSubagentSelection(order, agentPath, Some(bSubagentSelectionId)) ==
-              DeterminedSubagentSelection(Some(bSubagentSelectionId)))
+          "Job with different subagentBundleId" in:
+            assert(determineSubagentBundle(order, agentPath, Some(bSubagentBundleId)) ==
+              DeterminedSubagentBundle(Some(bSubagentBundleId)))
         }
       }
     }

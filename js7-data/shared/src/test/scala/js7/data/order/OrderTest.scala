@@ -16,7 +16,7 @@ import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Deleted, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, Stopped, StoppedWhileFresh, WaitingForLock}
 import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -24,7 +24,7 @@ import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalactic.source
 import scala.annotation.nowarn
 import scala.collection.View
@@ -80,7 +80,7 @@ final class OrderTest extends OurTestSuite:
             stickySubagents = List(
               Order.StickySubagent(
                 AgentPath("AGENT"),
-                Some(SubagentSelectionId("SUBAGENT-SELECTION"))))
+                Some(SubagentBundleId("SUBAGENT-BUNDLE"))))
           ),
           json"""{
             "id": "ID",
@@ -118,7 +118,35 @@ final class OrderTest extends OurTestSuite:
             "parent": "PARENT",
             "stickySubagents": [{
               "agentPath": "AGENT",
-              "subagentSelectionId": "SUBAGENT-SELECTION"
+              "subagentBundleId": "SUBAGENT-BUNDLE"
+            }]
+          }""")
+
+      "until v2.7.1" in:
+        testJsonDecoder[Order[State]](
+          Order(
+            OrderId("ID"),
+            WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
+            Ready,
+            stickySubagents = List(
+              Order.StickySubagent(
+                AgentPath("AGENT"),
+                Some(SubagentBundleId("SUBAGENT-BUNDLE"))))),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Ready"
+            },
+            "stickySubagents": [{
+              "agentPath": "AGENT",
+              "subagentSelectionId": "SUBAGENT-BUNDLE"
             }]
           }""")
 

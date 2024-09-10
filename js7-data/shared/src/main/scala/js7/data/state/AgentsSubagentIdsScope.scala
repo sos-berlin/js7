@@ -3,7 +3,7 @@ package js7.data.state
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListValue, StringValue, Value}
@@ -39,9 +39,9 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope:
             case None =>
               Right(subagentIds(thisAgentPath))
             case Some(arg) =>
-              SubagentSelectionId.checked(arg)
-                .flatMap(subagentSelectionId =>
-                  state.keyToItem(SubagentSelection).checked(subagentSelectionId))
+              SubagentBundleId.checked(arg)
+                .flatMap(subagentBundleId =>
+                  state.keyToItem(SubagentBundle).checked(subagentBundleId))
                 .map(_.subagentIds.map(_.string))
           .map(strings =>
             ListValue(strings.toVector.sorted.map(StringValue(_))))

@@ -25,7 +25,7 @@ import js7.data.execution.workflow.instructions.ForkInstructionExecutor
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
-import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId}
 import js7.data.value.expression.Expression.{ListExpr, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
@@ -259,10 +259,10 @@ final class ForkListTest
 
   "ForkList with nested Fork" in:
     // This should not be a special problem
-    val subagentSelection = SubagentSelection(
-      SubagentSelectionId("active-active-all-agents"),
+    val subagentBundle = SubagentBundle(
+      SubagentBundleId("active-active-all-agents"),
       Map(subagentId -> NumericConstant(1)))
-    updateItem(subagentSelection)
+    updateItem(subagentBundle)
     val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
     val listExpr = ListExpr(list.map(NumericConstant(_)))
 
@@ -316,7 +316,7 @@ final class ForkListTest
             OrderJoined(OrderOutcome.succeeded),
             OrderMoved(Position(1) / "fork" % 1)))
     finally
-      deleteItems(workflow.path, subagentSelection.path)
+      deleteItems(workflow.path, subagentBundle.path)
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =

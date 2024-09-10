@@ -31,7 +31,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
@@ -93,7 +93,7 @@ extends SignedItemContainer,
     Stream.iterable(meta != AgentMetaState.empty thenList meta),
     Stream.iterable(keyToItem(AgentRef).values),
     Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
-    Stream.iterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotStream),
+    Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
     Stream.iterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotStream),
     Stream.iterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Stream.iterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
@@ -183,7 +183,7 @@ extends SignedItemContainer,
                    _: WorkflowPathControl |
                    _: WorkflowControl |
                    _: Calendar |
-                   _: SubagentSelection |
+                   _: SubagentBundle |
                    _: AgentRef |
                    _: SubagentItem =>
                 // May replace an existing Item
@@ -224,7 +224,7 @@ extends SignedItemContainer,
                     itemKey match
                       case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
                            _: CalendarPath |
-                           _: SubagentId | _: SubagentSelectionId =>
+                           _: SubagentId | _: SubagentBundleId =>
                     for _ <- keyToUnsignedItemState_.checked(itemKey) yield
                           copy(
                             keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
@@ -359,7 +359,7 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    AgentRef, SubagentItem, SubagentSelection,
+    AgentRef, SubagentItem, SubagentBundle,
     FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl)
 
   final case class AgentMetaState(

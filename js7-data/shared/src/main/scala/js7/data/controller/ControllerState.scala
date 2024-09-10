@@ -3,6 +3,8 @@ package js7.data.controller
 import cats.effect.IO
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
+import fs2.Stream
+import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.log.Logger
@@ -39,12 +41,10 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
+import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import fs2.Stream
-import js7.base.auth.UserId
-import js7.data.system.ServerMeteringEvent
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -104,7 +104,7 @@ extends SignedItemContainer,
       Stream.iterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(AgentRefState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
-      Stream.iterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotStream),
+      Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
@@ -267,7 +267,7 @@ extends SignedItemContainer,
 
                 case key: UnsignedItemKey =>
                   key match
-                    case _: AgentPath | _: SubagentId | _: SubagentSelectionId |
+                    case _: AgentPath | _: SubagentId | _: SubagentBundleId |
                          _: LockPath | _: BoardPath | _: CalendarPath |
                          _: WorkflowPathControlPath | WorkflowControlId.as(_) =>
                       Right(updated.copy(
@@ -489,8 +489,8 @@ extends SignedItemContainer,
   private def referencedItemExists(path: InventoryItemPath) =
     pathToItem.contains(path) ||
       (path match {
-        case id: SubagentSelectionId =>
-          // A SubagentId may be given instead of a SubagentSelectionId.
+        case id: SubagentBundleId =>
+          // A SubagentId may be given instead of a SubagentBundleId.
           // SubagentKeeper handles this.
           pathToItem.contains(id.toSubagentId)
         case _ => false
@@ -714,7 +714,7 @@ extends ClusterableState.Companion[ControllerState],
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
-    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource,
+    AgentRef, SubagentItem, SubagentBundle, Lock, Board, Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
@@ -726,7 +726,7 @@ extends ClusterableState.Companion[ControllerState],
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
       Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),
-      Subtype[SubagentSelection],
+      Subtype[SubagentBundle],
       Subtype[LockState],
       Subtype[Board],
       Subtype[Calendar],

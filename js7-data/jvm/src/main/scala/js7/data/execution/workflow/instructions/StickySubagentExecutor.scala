@@ -6,7 +6,7 @@ import js7.data.order.Order
 import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.{OrderStickySubagentEntered, OrderStickySubagentLeaved}
 import js7.data.state.StateView
-import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentItem}
 import js7.data.workflow.instructions.StickySubagent
 
 private[instructions] final class StickySubagentExecutor(
@@ -22,20 +22,20 @@ extends EventInstructionExecutor:
     else if order.stickySubagents.nonEmpty then
       Left(Problem.pure("StickySubagent instruction must not be nested"))
     else
-      instr.subagentSelectionIdExpr
+      instr.subagentBundleIdExpr
         .fold_(
           Checked(None),
           expr => state
             .toPureOrderScope(order)
             .flatMap(expr.evalAsString(_))
-            .flatMap(SubagentSelectionId.checked(_))
-            .flatMap(subagentSelectionId => state
+            .flatMap(SubagentBundleId.checked(_))
+            .flatMap(subagentBundleId => state
               // Check existence
-              .keyToItem(SubagentItem).checked(subagentSelectionId.toSubagentId)
-              .orElse(state.keyToItem(SubagentSelection).checked(subagentSelectionId))
-              .rightAs(Some(subagentSelectionId))))
-        .map: subagentSelectionId =>
-          (order.id <-: OrderStickySubagentEntered(instr.agentPath, subagentSelectionId))
+              .keyToItem(SubagentItem).checked(subagentBundleId.toSubagentId)
+              .orElse(state.keyToItem(SubagentBundle).checked(subagentBundleId))
+              .rightAs(Some(subagentBundleId))))
+        .map: subagentBundleId =>
+          (order.id <-: OrderStickySubagentEntered(instr.agentPath, subagentBundleId))
             :: Nil
 
   override def onReturnFromSubworkflow(

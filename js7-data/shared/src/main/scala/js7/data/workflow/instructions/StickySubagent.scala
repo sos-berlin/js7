@@ -2,6 +2,8 @@ package js7.data.workflow.instructions
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.CirceUtils
+import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.problem.Checked
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
@@ -11,7 +13,7 @@ import js7.data.workflow.{Instruction, Workflow}
 
 final case class StickySubagent(
   agentPath: AgentPath,
-  subagentSelectionIdExpr: Option[Expression] = None,
+  subagentBundleIdExpr: Option[Expression] = None,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
@@ -45,5 +47,7 @@ extends Instruction:
 
 
 object StickySubagent:
-  implicit val jsonCodec: Codec.AsObject[StickySubagent] =
-    deriveCodec[StickySubagent]
+
+  given Codec.AsObject[StickySubagent] =
+    deriveRenamingCodec[StickySubagent](Map(
+      "subagentSelectionIdExpr" -> "subagentBundleIdExpr"))

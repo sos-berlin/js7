@@ -32,7 +32,7 @@ import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -82,7 +82,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         ) ++
           controllerState.keyTo(AgentRefState).values ++
           controllerState.keyTo(SubagentItemState).values ++
-          controllerState.pathToUnsignedSimple(SubagentSelection).values ++
+          controllerState.pathToUnsignedSimple(SubagentBundle).values ++
           controllerState.keyTo(LockState).values ++
           Seq(board) ++
           boardState.notices ++
@@ -125,8 +125,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       lock.path -> Set(workflow.id),
       board.path -> Set(workflow.id),
       agentRef.path -> Set(subagentItem.id, fileWatch.path, workflow.id),
-      subagentItem.id -> Set(agentRef.path, subagentSelection.id),
-      subagentSelection.id -> Set(workflow.id),
+      subagentItem.id -> Set(agentRef.path, subagentBundle.id),
+      subagentBundle.id -> Set(workflow.id),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
 
@@ -145,8 +145,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         lock.path -> Set(workflow.id, changedWorkflowId),
         board.path -> Set(workflow.id, changedWorkflowId),
         agentRef.path -> Set(subagentItem.id, fileWatch.path, workflow.id, changedWorkflowId),
-        subagentItem.id -> Set(agentRef.path, subagentSelection.id),
-        subagentSelection.id -> Set(workflow.id, changedWorkflowId),
+        subagentItem.id -> Set(agentRef.path, subagentBundle.id),
+        subagentBundle.id -> Set(workflow.id, changedWorkflowId),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
 
@@ -225,8 +225,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         },
         "eventId": 0
       }, {
-        "TYPE": "SubagentSelection",
-        "id": "SELECTION",
+        "TYPE": "SubagentBundle",
+        "id": "BUNDLE",
         "subagentToPriority": {
           "SUBAGENT": 1
         },
@@ -302,7 +302,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"demands\":[{\"lockPath\":\"LOCK\"}],\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionIdExpr\":\"'SELECTION'\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"processLimit\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"demands\":[{\"lockPath\":\"LOCK\"}],\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentBundleIdExpr\":\"'BUNDLE'\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"processLimit\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -377,7 +377,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
     assert(controllerState.keyToItem.keySet == Set(
       jobResource.path, calendar.path,
-      agentRef.path, subagentItem.id, subagentSelection.id,
+      agentRef.path, subagentItem.id, subagentBundle.id,
       lock.path, board.path, fileWatch.path,
       workflow.id, WorkflowPathControlPath(workflow.path)))
 
@@ -450,8 +450,8 @@ object ControllerStateTest:
     disabled = false,
     itemRevision = Some(ItemRevision(7)))
   private val subagentItemState = SubagentItemState.initial(subagentItem)
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("BUNDLE"),
     Map(subagentItem.id -> NumericConstant(1)),
     itemRevision = Some(ItemRevision(7)))
 
@@ -484,7 +484,7 @@ object ControllerStateTest:
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction.single(lock.path, None, Workflow.of(
       Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
-        subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
+        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
         jobResourcePaths = Seq(jobResource.path))))),
     ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
   private val signedWorkflow = itemSigner.sign(workflow)
@@ -518,7 +518,7 @@ object ControllerStateTest:
       boardState.path -> boardState,
       subagentItem.id -> subagentItemState,
       calendar.path -> CalendarState(calendar),
-      subagentSelection.id -> SubagentSelectionState(subagentSelection),
+      subagentBundle.id -> SubagentBundleState(subagentBundle),
       fileWatch.path -> OrderWatchState(
         fileWatch,
         Map(

@@ -14,7 +14,7 @@ import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderProcessingStarted
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -61,11 +61,11 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     finally
       super.afterAll()
 
-  "Start and attach Subagents and SubagentSelection" in :
+  "Start and attach Subagents and SubagentBundle" in :
     // Start Subagents
     idToRelease
 
-    updateItems(workflow :: subagentSelection :: subagentItems*): @unchecked
+    updateItems(workflow :: subagentBundle :: subagentItems*): @unchecked
 
     for id <- subagentItems.map(_.id) do
       eventWatch.await[ItemAttached](_.event.key == id)
@@ -91,8 +91,8 @@ object SubagentPriorityTest:
   private def newSubagentItem(id: SubagentId) =
     SubagentItem(id, agentPath, findFreeLocalUri())
 
-  private val subagentSelection = SubagentSelection(
-    SubagentSelectionId("SELECTION"),
+  private val subagentBundle = SubagentBundle(
+    SubagentBundleId("BUNDLE"),
     Map(
       aSubagentId -> expr("$testMeteringValue"),
       bSubagentId -> expr("$testMeteringValue")))
@@ -102,7 +102,7 @@ object SubagentPriorityTest:
     Seq(
       EmptyJob.execute(
         agentPath,
-        subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
+        subagentBundleId = Some(StringConstant(subagentBundle.id.string)),
         processLimit = 100)))
 
   private def toOrder(orderId: OrderId) =

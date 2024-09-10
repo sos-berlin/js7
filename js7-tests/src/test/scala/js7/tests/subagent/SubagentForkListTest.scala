@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NumericConstant
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -35,7 +35,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
   protected lazy val items = Seq(
     bareSubagentItem,
     bSubagentItem,
-    SubagentSelection(subagentSelectionId, Map(
+    SubagentBundle(subagentBundleId, Map(
       localSubagentId -> NumericConstant(1),
       bareSubagentId -> NumericConstant(2))))
 
@@ -86,9 +86,9 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
       ))
     }
 
-  "ForkList fails due to unknown SubagentSelectionId" in:
+  "ForkList fails due to unknown SubagentBundleId" in:
     val workflow = Workflow(
-      WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
+      WorkflowPath("UNKNOWN-SUBAGENT-BUNDLE-ID"),
       Seq(
         ForkList(
           expr("subagentIds($arg)"),
@@ -97,7 +97,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
           Workflow.of(
             EmptyJob.execute(
               agentPath,
-              subagentSelectionId = Some(expr("$subagentId")),
+              subagentBundleId = Some(expr("$subagentId")),
               processLimit = 100)),
           agentPath = Some(agentPath))))
     withTemporaryItem(workflow) { workflow =>
@@ -109,16 +109,16 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
         OrderAdded(workflow.id, Map("arg" -> StringValue("UNKNOWN"))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
+        OrderOutcomeAdded(OrderOutcome.Disrupted(UnknownKeyProblem("SubagentBundleId", "SubagentBundle:UNKNOWN"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))
       ))
     }
 
-  "ForkList over the SubagentIds of SubagentSelectionIds" in:
+  "ForkList over the SubagentIds of SubagentBundleIds" in:
     val workflow = Workflow(
-      WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
+      WorkflowPath("UNKNOWN-SUBAGENT-BUNDLE-ID"),
       Seq(
         ForkList(
           expr("subagentIds($arg)"),
@@ -127,19 +127,19 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
           Workflow.of(
             EmptyJob.execute(
               agentPath,
-              subagentSelectionId = Some(expr("$subagentId")),
+              subagentBundleId = Some(expr("$subagentId")),
               processLimit = 100)),
           agentPath = Some(agentPath))))
 
     withTemporaryItem(workflow) { workflow =>
-      val orderId = OrderId("SUBAGENT-SELECTION")
+      val orderId = OrderId("SUBAGENT-BUNDLE")
       val localSubagentOrderId = orderId / localSubagentId.string
       val bareSubagentOrderId = orderId / bareSubagentId.string
       val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
-        "arg" -> StringValue(subagentSelectionId.string))))
+        "arg" -> StringValue(subagentBundleId.string))))
       assert(events.map(_.value) == Seq(
         OrderAdded(workflow.id, Map(
-          "arg" -> StringValue(subagentSelectionId.string))),
+          "arg" -> StringValue(subagentBundleId.string))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
@@ -171,7 +171,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
 
   "ForkList over the SubagentIds of the Agent" in:
     val workflow = Workflow(
-      WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
+      WorkflowPath("UNKNOWN-SUBAGENT-BUNDLE-ID"),
       Seq(
         ForkList(
           expr("subagentIds()"),
@@ -180,7 +180,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
           Workflow.of(
             EmptyJob.execute(
               agentPath,
-              subagentSelectionId = Some(expr("$subagentId")),
+              subagentBundleId = Some(expr("$subagentId")),
               processLimit = 100)),
           agentPath = Some(agentPath))))
 
@@ -232,4 +232,4 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
 
 object SubagentForkListTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
-  private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")
+  private val subagentBundleId = SubagentBundleId("SUBAGENT-BUNDLE")

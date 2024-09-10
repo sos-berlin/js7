@@ -3,6 +3,8 @@ package js7.data.order
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
+import js7.base.circeutils.CirceUtils
+import js7.base.circeutils.CirceUtils.{deriveRenamingCodec, deriveRenamingDecoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -19,7 +21,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
@@ -482,14 +484,14 @@ final case class Order[+S <: Order.State](
                 state = Ready)
         ).flatten
 
-      case OrderStickySubagentEntered(agentPath, subagentSelectionId) =>
+      case OrderStickySubagentEntered(agentPath, subagentBundleId) =>
         check(isState[IsFreshOrReady]
           && (isAttached || isDetached)
           && !isSuspendedOrStopped
           && !stickySubagents.exists(_.agentPath == agentPath),
           withPosition(position / BranchId.StickySubagent % 0)
             .copy(
-              stickySubagents = StickySubagent(agentPath, subagentSelectionId) :: stickySubagents))
+              stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
 
       case OrderStickySubagentLeaved =>
         if (isAttached || isDetached) && stickySubagents.nonEmpty then
@@ -1169,10 +1171,11 @@ object Order:
 
   final case class StickySubagent(
     agentPath: AgentPath,
-    subagentSelectionId: Option[SubagentSelectionId],
+    subagentBundleId: Option[SubagentBundleId],
     stuckSubagentId: Option[SubagentId] = None)
   object StickySubagent:
-    implicit val jsonCodec: Codec[StickySubagent] = deriveCodec
+    given Codec[StickySubagent] = deriveRenamingCodec(Map(
+      "subagentSelectionId" -> "subagentBundleId"))
 
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
   extends Problem.Coded:

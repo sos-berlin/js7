@@ -35,7 +35,7 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessin
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
-import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState}
 import js7.journal.state.Journal
 import js7.subagent.Subagent
 import js7.subagent.configuration.DirectorConf
@@ -207,30 +207,30 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
-    orderToSubagentSelectionId(order)
+    orderToSubagentBundleId(order)
       .flatMapT:
-        case DeterminedSubagentSelection(subagentSelectionId, stick) =>
+        case DeterminedSubagentBundle(subagentBundleId, stick) =>
           cancelableWhileWaitingForSubagent(order.id)
             .use: canceledPromise =>
               IO.race(
                 canceledPromise.get,
-                selectSubagentDriver(subagentSelectionId))
+                selectSubagentDriver(subagentBundleId))
             .map(_
               .toOption
               .sequence
               .map(_.map(SelectedDriver(_, stick))))
 
-  private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
-  : IO[Checked[DeterminedSubagentSelection]] =
+  private def orderToSubagentBundleId(order: Order[Order.IsFreshOrReady])
+  : IO[Checked[DeterminedSubagentBundle]] =
     for agentState <- journal.state yield
       for
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toPureOrderScope(order)
-        maybeJobsSelectionId <- job.subagentSelectionId
+        maybeJobsBundleId <- job.subagentBundleId
           .traverse(_.evalAsString(scope)
-          .flatMap(SubagentSelectionId.checked))
+          .flatMap(SubagentBundleId.checked))
       yield
-        determineSubagentSelection(order, agentPath, maybeJobsSelectionId)
+        determineSubagentBundle(order, agentPath, maybeJobsBundleId)
 
   /** While waiting for a Subagent, the Order is cancelable. */
   private def cancelableWhileWaitingForSubagent(orderId: OrderId)
@@ -242,16 +242,16 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           acquire = orderToWaitForSubagent.put(orderId, canceledDeferred))(
           release = _ => orderToWaitForSubagent.remove(orderId).void)
 
-  private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
+  private def selectSubagentDriver(maybeBundleId: Option[SubagentBundleId])
   : IO[Checked[SubagentDriver]] =
     logger.traceIO:
       Stream
         .repeatEval:
           stateVar.value
             .flatMap(directorState => IO:
-              directorState.selectNext(maybeSelectionId))
+              directorState.selectNext(maybeBundleId))
             .flatTap(o => IO:
-              logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))
+              logger.trace(s"selectSubagentDriver($maybeBundleId) => $o ${stateVar.get}"))
         .evalTap:
           // TODO Do not poll (for each Order)
           case Right(None) => IO.sleep(reconnectDelayer.next())
@@ -351,10 +351,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .traverse(startRemoveSubagent)
       .map(_.combineAll))
 
-  def recoverSubagentSelections(subagentSelections: Seq[SubagentSelection]): IO[Checked[Unit]] =
+  def recoverSubagentBundles(subagentBundles: Seq[SubagentBundle]): IO[Checked[Unit]] =
     logger.debugIO:
-      subagentSelections
-        .traverse(addOrReplaceSubagentSelection)
+      subagentBundles
+        .traverse(addOrReplaceSubagentBundle)
         .map(_.combineAll)
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
@@ -492,15 +492,15 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       name = subagentItem.id.toString,
       actorSystem)
 
-  def addOrReplaceSubagentSelection(selection: SubagentSelection): IO[Checked[Unit]] =
+  def addOrReplaceSubagentBundle(bundle: SubagentBundle): IO[Checked[Unit]] =
     stateVar
       .updateChecked(state => IO:
-        state.insertOrReplaceSelection(selection))
+        state.insertOrReplaceBundle(bundle))
       .rightAs(())
 
-  def removeSubagentSelection(subagentSelectionId: SubagentSelectionId): IO[Unit] =
+  def removeSubagentBundle(subagentBundleId: SubagentBundleId): IO[Unit] =
     stateVar
-      .update(state => IO(state.removeSelection(subagentSelectionId)))
+      .update(state => IO(state.removeBundle(subagentBundleId)))
       .void
 
   def testFailover(): Unit =
@@ -516,31 +516,31 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 object SubagentKeeper:
   private val logger = Logger[this.type]
 
-  private[director] def determineSubagentSelection(
+  private[director] def determineSubagentBundle(
     order: Order[Order.IsFreshOrReady],
     agentPath: AgentPath,
-    maybeJobsSelectionId: Option[SubagentSelectionId])
-  : DeterminedSubagentSelection =
+    maybeJobsBundleId: Option[SubagentBundleId])
+  : DeterminedSubagentBundle =
     order.agentToStickySubagent(agentPath) match
       case Some(sticky)
-        if maybeJobsSelectionId.forall(o => sticky.subagentSelectionId.forall(_ == o)) =>
+        if maybeJobsBundleId.forall(o => sticky.subagentBundleId.forall(_ == o)) =>
         // StickySubagent instruction applies
-        DeterminedSubagentSelection(
+        DeterminedSubagentBundle(
           sticky.stuckSubagentId
-            .map(SubagentSelectionId.fromSubagentId)
-            .orElse(sticky.subagentSelectionId)
-            .orElse(maybeJobsSelectionId),
+            .map(SubagentBundleId.fromSubagentId)
+            .orElse(sticky.subagentBundleId)
+            .orElse(maybeJobsBundleId),
           stick = sticky.stuckSubagentId.isEmpty)
 
       case _ =>
-        DeterminedSubagentSelection(maybeJobsSelectionId)
+        DeterminedSubagentBundle(maybeJobsBundleId)
 
   private final case class SelectedDriver(subagentDriver: SubagentDriver, stick: Boolean)
 
-  private[director] final case class DeterminedSubagentSelection(
-    maybeSubagentSelectionId: Option[SubagentSelectionId],
+  private[director] final case class DeterminedSubagentBundle(
+    maybeSubagentBundleId: Option[SubagentBundleId],
     stick: Boolean = false)
-  private[director] object DeterminedSubagentSelection:
+  private[director] object DeterminedSubagentBundle:
     @TestOnly
-    def stuck(stuckSubagentId: SubagentId): DeterminedSubagentSelection =
-      DeterminedSubagentSelection(Some(SubagentSelectionId.fromSubagentId(stuckSubagentId)))
+    def stuck(stuckSubagentId: SubagentId): DeterminedSubagentBundle =
+      DeterminedSubagentBundle(Some(SubagentBundleId.fromSubagentId(stuckSubagentId)))

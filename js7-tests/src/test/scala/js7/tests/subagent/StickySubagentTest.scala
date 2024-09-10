@@ -14,7 +14,7 @@ import js7.data.order.OrderOutcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -28,7 +28,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
-  // See also SubagentKeeperTest, determineSubagentSelection
+  // See also SubagentKeeperTest, determineSubagentBundle
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -45,22 +45,22 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     SubagentItem(a2SubagentId, aAgentPath, findFreeLocalUri()))
 
   protected lazy val items = Seq(
-    withSubagentSelectionWorkflow, withoutSubagentSelectionWorkflow,
-    simpleWithSubagentSelectionWorkflow,
+    withSubagentBundleWorkflow, withoutSubagentBundleWorkflow,
+    simpleWithSubagentBundleWorkflow,
     failAtControllerWorkflow, failAtAgentWorkflow,
-    aSubagentSelection, a2SubagentSelection)
+    aSubagentBundle, a2SubagentBundle)
 
-  "StickySubagent with SubagentSelection" in:
+  "StickySubagent with SubagentBundle" in:
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)
 
     val orderId = OrderId("♣️")
-    controller.addOrderBlocking(FreshOrder(orderId, withSubagentSelectionWorkflow.path))
+    controller.addOrderBlocking(FreshOrder(orderId, withSubagentBundleWorkflow.path))
 
     eventWatch.await[OrderPrompted](_.key == orderId)
     assert(controllerState.idToOrder(orderId).stickySubagents == List(
       Order.StickySubagent(
         aAgentPath,
-        Some(aSubagentSelection.id),
+        Some(aSubagentBundle.id),
         stuckSubagentId = Some(aSubagentId))))
     controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
 
@@ -68,8 +68,8 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-      OrderAdded(withSubagentSelectionWorkflow.id),
-      OrderStickySubagentEntered(aAgentPath, Some(aSubagentSelection.id)),
+      OrderAdded(withSubagentBundleWorkflow.id),
+      OrderStickySubagentEntered(aAgentPath, Some(aSubagentBundle.id)),
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderStarted,
@@ -124,11 +124,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderDetached,
       OrderFinished()))
 
-  "StickySubagent without SubagentSelection, but with a forking order" in:
+  "StickySubagent without SubagentBundle, but with a forking order" in:
     enableSubagents(aSubagentId -> false, a1SubagentId -> true, a2SubagentId -> false)
 
     val orderId = OrderId("🔷")
-    controller.addOrderBlocking(FreshOrder(orderId, withoutSubagentSelectionWorkflow.path))
+    controller.addOrderBlocking(FreshOrder(orderId, withoutSubagentBundleWorkflow.path))
 
     val childOrderId = orderId / "BRANCH"
     eventWatch.await[OrderPrompted](_.key == childOrderId)
@@ -164,7 +164,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
           OrderProcessed(OrderOutcome.processLost(SubagentNotDedicatedProblem))
         case o => o
       } == Seq(
-      OrderAdded(withoutSubagentSelectionWorkflow.id),
+      OrderAdded(withoutSubagentBundleWorkflow.id),
       OrderStickySubagentEntered(aAgentPath),
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
@@ -192,17 +192,17 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderPromptAnswered(),
       OrderMoved(Position(0) / "stickySubagent" % 2 / "fork+BRANCH" % 1)))
 
-  "Extra test: StickySubagent with job SubagentSelection" in:
+  "Extra test: StickySubagent with job SubagentBundle" in:
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)
 
     val orderId = OrderId("🟦")
-    controller.addOrderBlocking(FreshOrder(orderId, simpleWithSubagentSelectionWorkflow.path))
+    controller.addOrderBlocking(FreshOrder(orderId, simpleWithSubagentBundleWorkflow.path))
 
     eventWatch.await[OrderPrompted](_.key == orderId)
     assert(controllerState.idToOrder(orderId).stickySubagents == List(
       Order.StickySubagent(
         aAgentPath,
-        Some(aSubagentSelection.id),
+        Some(aSubagentBundle.id),
         stuckSubagentId = Some(aSubagentId))))
     controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
 
@@ -210,9 +210,9 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-      OrderAdded(simpleWithSubagentSelectionWorkflow.id),
+      OrderAdded(simpleWithSubagentBundleWorkflow.id),
 
-      OrderStickySubagentEntered(aAgentPath, Some(aSubagentSelection.id)),
+      OrderStickySubagentEntered(aAgentPath, Some(aSubagentBundle.id)),
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
       OrderStarted,
@@ -284,48 +284,48 @@ object StickySubagentTest:
   private val a1SubagentId = SubagentId("A-1-SUBAGENT")
   private val a2SubagentId = SubagentId("A-2-SUBAGENT")
 
-  private val aSubagentSelection = SubagentSelection(
-    SubagentSelectionId("A-SUBAGENT-SELECTION"),
+  private val aSubagentBundle = SubagentBundle(
+    SubagentBundleId("A-SUBAGENT-BUNDLE"),
     Map(
       aSubagentId -> NumericConstant(2),
       a1SubagentId -> NumericConstant(1)))
 
-  private val a2SubagentSelection = SubagentSelection(
-    SubagentSelectionId("A2-SUBAGENT-SELECTION"),
+  private val a2SubagentBundle = SubagentBundle(
+    SubagentBundleId("A2-SUBAGENT-BUNDLE"),
     Map(
       a2SubagentId -> NumericConstant(1)))
 
   private val bAgentPath = AgentPath("B-AGENT")
   private val bSubagentId = toLocalSubagentId(bAgentPath)
 
-  private val withSubagentSelectionWorkflow = Workflow(
-    WorkflowPath("STICKY-WITH-SUBAGENT-SELECTION") ~ "INITIAL",
+  private val withSubagentBundleWorkflow = Workflow(
+    WorkflowPath("STICKY-WITH-SUBAGENT-BUNDLE") ~ "INITIAL",
     Seq(
       StickySubagent(
         aAgentPath,
-        Some(StringConstant(aSubagentSelection.id.string)),
+        Some(StringConstant(aSubagentBundle.id.string)),
         subworkflow = Workflow.of(
           EmptyJob.execute(aAgentPath,
-            subagentSelectionId = Some(StringConstant(a2SubagentId.string))),
+            subagentBundleId = Some(StringConstant(a2SubagentId.string))),
           EmptyJob.execute(aAgentPath),
           Prompt(expr("'PROMPT'")),
           EmptyJob.execute(aAgentPath),
           EmptyJob.execute(aAgentPath,
-            subagentSelectionId = Some(StringConstant(a2SubagentSelection.id.string))),
+            subagentBundleId = Some(StringConstant(a2SubagentBundle.id.string))),
           EmptyJob.execute(bAgentPath),
           EmptyJob.execute(aAgentPath,
-            subagentSelectionId = Some(StringConstant(a2SubagentSelection.id.string))),
+            subagentBundleId = Some(StringConstant(a2SubagentBundle.id.string))),
           EmptyJob.execute(aAgentPath)))))
 
-  private val simpleWithSubagentSelectionWorkflow = Workflow(
-    WorkflowPath("SIMPLE-STICKY-WITH-SUBAGENT-SELECTION") ~ "INITIAL",
+  private val simpleWithSubagentBundleWorkflow = Workflow(
+    WorkflowPath("SIMPLE-STICKY-WITH-SUBAGENT-BUNDLE") ~ "INITIAL",
     Seq(
       StickySubagent(
         aAgentPath,
-        Some(StringConstant(aSubagentSelection.id.string)),
+        Some(StringConstant(aSubagentBundle.id.string)),
         subworkflow = {
           val execute = EmptyJob.execute(aAgentPath,
-            subagentSelectionId = Some(StringConstant(aSubagentSelection.id.string)))
+            subagentBundleId = Some(StringConstant(aSubagentBundle.id.string)))
           Workflow.of(
             execute,
             Prompt(expr("'PROMPT'")),
@@ -333,8 +333,8 @@ object StickySubagentTest:
             execute)
         })))
 
-  private val withoutSubagentSelectionWorkflow = Workflow(
-    WorkflowPath("STICKY-WITHOUT-SUBAGENT-SELECTION") ~ "INITIAL",
+  private val withoutSubagentBundleWorkflow = Workflow(
+    WorkflowPath("STICKY-WITHOUT-SUBAGENT-BUNDLE") ~ "INITIAL",
     Seq(
       StickySubagent(
         aAgentPath,
