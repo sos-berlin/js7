@@ -100,14 +100,15 @@ trait GenericEventRoute extends RouteProvider:
 
     private def jsonSeqEvents(eventWatch: EventWatch): Route =
       parameter("onlyAcks" ? false): onlyAcks =>
-        parameter("heartbeat".as[FiniteDuration].?): maybeHeartbeat =>  // Echo last EventId as a heartbeat
+        parameter("heartbeat".as[FiniteDuration].?): heartbeat =>
           if onlyAcks then
-            eventIdRoute(maybeHeartbeat, eventWatch)
+            eventIdRoute(eventWatch, heartbeat)
           else
-            eventDirective(eventWatch.lastAddedEventId): request =>
-              eventRoute(request, maybeHeartbeat, eventWatch)
+            parameter("serverMetering".as[FiniteDuration].?): serverMetering =>
+              eventDirective(eventWatch.lastAddedEventId): request =>
+                eventRoute(eventWatch, request, heartbeat, serverMetering)
 
-    private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
+    private def eventIdRoute(eventWatch: EventWatch, maybeHeartbeat: Option[FiniteDuration])
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout): timeout =>
         completeWithCheckedStream(`application/x-ndjson`):
@@ -123,37 +124,37 @@ trait GenericEventRoute extends RouteProvider:
                   stream.keepAlive(h, IO.pure(HttpHeartbeatByteString))))
 
     private def eventRoute(
+      eventWatch: EventWatch,
       request: EventRequest[Event],
       maybeHeartbeat: Option[FiniteDuration],
-      eventWatch: EventWatch)
+      maybeServerMetering: Option[FiniteDuration])
     : Route =
-      parameter("serverMetering".as[FiniteDuration].?): serverMetering =>
-        completeWithCheckedStream(`application/x-ndjson`):
-          maybeHeartbeat match
-            case None =>
-              // Await the first event to check for Torn and convert it to a proper error message,
-              // otherwise continue with stream
-              awaitFirstEventStream(request, eventWatch, serverMetering)
+      completeWithCheckedStream(`application/x-ndjson`):
+        if maybeHeartbeat.isEmpty && maybeServerMetering.isEmpty then
+          // Await the first event to check for Torn and convert it to a proper error message,
+          // otherwise continue with stream
+          awaitFirstEventStream(request, eventWatch)
+        else
+          IO:
+            eventWatch.checkEventId(request.after) >> Right:
+              eventStream(request, isRelevantEvent, eventWatch, maybeServerMetering)
+                .through:
+                  encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
+                // Heartbeat only if it's faster then serverMetering
+                .pipeMaybe(maybeHeartbeat.filter(h => maybeServerMetering.forall(h < _))):
+                  (stream, h) =>
+                    stream.keepAlive(h, IO.pure(HttpHeartbeatByteString))
+                .prependOne(HttpHeartbeatByteString)
+                .interruptWhenF(shutdownSignaled)
 
-            case Some(heartbeat) =>
-              IO:
-                eventWatch.checkEventId(request.after) >> Right:
-                  eventStream(request, isRelevantEvent, eventWatch, serverMetering)
-                    .through:
-                      encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
-                    // ServerMeteringEvent may fulfill the heartbeat function
-                    .pipeIf(serverMetering.forall(heartbeat < _)):
-                      _.keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
-                    .prependOne(HttpHeartbeatByteString)
-                    .interruptWhenF(shutdownSignaled)
-
-    private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch,
-      serverMetering: Option[FiniteDuration])
+    private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
     : IO[Checked[Stream[IO, ByteString]]] =
       IO.defer:
         val runningSince = now
         val initialRequest = request.copy[Event](
           limit = 1 min request.limit)
+        // While waiting for the first event, no ServerMeteringEvent is emitted !!!
+        // Not an issue, because client combines serverMetering with heartbeat.
         eventWatch.when(initialRequest, isRelevantEvent).map:
           case TearableEventSeq.Torn(eventId) =>
             Left(EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
@@ -172,7 +173,7 @@ trait GenericEventRoute extends RouteProvider:
             eventWatch.checkEventId(request.after) >> Right:
               Stream.emit(head)
                 .append:
-                  eventStream(tailRequest, isRelevantEvent, eventWatch, serverMetering)
+                  eventStream(tailRequest, isRelevantEvent, eventWatch)
                 .through:
                   encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
                 .interruptWhenF(shutdownSignaled)

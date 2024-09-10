@@ -146,8 +146,10 @@ object ScalaTime:
       duration match
         case ZeroDuration => "0s"
         case o: FiniteDuration =>
-          if abs(o.toSeconds) < 3*60 then smallPretty
-          else bigPretty
+          if abs(o.toSeconds) < 3*60 then
+            smallPretty
+          else
+            bigPretty
         case Duration.Inf => "infinite"
         case Duration.Undefined => "undefined"
         case o => o.toString

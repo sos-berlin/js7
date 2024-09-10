@@ -42,7 +42,7 @@ trait SubagentDriver:
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit]
 
-  def currentPriorityScope(): Option[Scope]
+  def serverMeteringScope(): Option[Scope]
 
   def tryShutdown: IO[Unit]
 

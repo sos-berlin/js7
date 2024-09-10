@@ -65,8 +65,8 @@ private trait SubagentEventListener:
   private val isListening = Atomic(false)
   private val lock = AsyncLock()
 
-  private var _lastSubagentPriorityDataEvent = ServerMeteringEvent(None, 0, 0, 0)
-  private var _lastSubagentPriorityDataEventSince = Deadline.now - 24.h
+  private var _lastServerMeteringEvent = ServerMeteringEvent(None, 0, 0, 0)
+  private var _lastServerMeteringEventSince = Deadline.now - 24.h
 
   protected final val coupled = Switch(false)
 
@@ -163,8 +163,8 @@ private trait SubagentEventListener:
 
       case KeyedEvent(_: NoKey, e: ServerMeteringEvent) =>
         IO:
-          _lastSubagentPriorityDataEvent = e
-          _lastSubagentPriorityDataEventSince = Deadline.now
+          _lastServerMeteringEvent = e
+          _lastServerMeteringEventSince = Deadline.now
           None -> IO.unit
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
@@ -207,8 +207,7 @@ private trait SubagentEventListener:
             .eventStream(
               EventRequest.singleClass[Event](after = after, timeout = None),
               subagentRunId,
-              heartbeat = Some(conf.heartbeatTiming.heartbeat),
-              serverMetering = Some(1.s))
+              serverMetering = Some(conf.heartbeatTiming.heartbeat))
             .map(_
               .detectPauses(conf.heartbeatTiming.longHeartbeatTimeout, PauseDetected)
               .evalTap:
@@ -284,12 +283,13 @@ private trait SubagentEventListener:
 
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()
 
-  final def currentPriorityScope(): Option[Scope] =
+  final def serverMeteringScope(): Option[Scope] =
     try
-      !(_lastSubagentPriorityDataEventSince + 3.s).hasElapsed thenSome:
-        _lastSubagentPriorityDataEvent.toScope
+      val latest = _lastServerMeteringEventSince + conf.heartbeatTiming.heartbeatValidDuration
+      !latest.hasElapsed thenSome:
+        _lastServerMeteringEvent.toScope
     catch case NonFatal(t) =>
-      logger.error(s"currentPriorityScope => ${t.toStringWithCauses}")
+      logger.error(s"serverMeteringScope => ${t.toStringWithCauses}")
       None
 
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =

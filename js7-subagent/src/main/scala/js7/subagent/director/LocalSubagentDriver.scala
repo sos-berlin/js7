@@ -214,7 +214,7 @@ extends SubagentDriver, Service.StoppableByRequest:
       case Some(processing) =>
         Some(processing.complete(orderProcessed).void)
 
-  def currentPriorityScope(): Option[ServerMeteringLiveScope.type] =
+  def serverMeteringScope(): Option[ServerMeteringLiveScope.type] =
     Some(ServerMeteringLiveScope)
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =

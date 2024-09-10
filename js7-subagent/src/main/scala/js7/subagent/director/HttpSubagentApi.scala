@@ -65,7 +65,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration],
+    heartbeat: Option[FiniteDuration] = None,
     serverMetering: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =

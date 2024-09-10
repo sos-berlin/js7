@@ -113,7 +113,7 @@ private final case class DirectorState private(
                   entry.cachedStaticPrioritized()
                 else
                   entry.cachedDynamicPrioritized:
-                    idToDriver.get(_).fold(None)(_.currentPriorityScope())
+                    idToDriver.get(_).fold(None)(_.serverMeteringScope())
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)
