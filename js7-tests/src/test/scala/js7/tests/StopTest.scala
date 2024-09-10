@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
@@ -17,7 +18,6 @@ import js7.tests.StopTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
 
 final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
@@ -82,7 +82,7 @@ final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,

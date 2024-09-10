@@ -175,7 +175,7 @@ final class OrderTest extends OurTestSuite:
           Order(
             OrderId("ID"),
             WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
-            Processing(None)),
+            Processing.legacy),
           json"""{
             "id": "ID",
             "workflowPosition": {

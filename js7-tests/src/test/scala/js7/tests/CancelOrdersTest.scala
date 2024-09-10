@@ -736,7 +736,7 @@ final class CancelOrdersTest
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
-          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessingStarted(subagentId),
           OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(1)),
           OrderBroken(None),

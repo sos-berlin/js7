@@ -104,7 +104,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted(Some(subagentId), false),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(2)),
         OrderDetachable,

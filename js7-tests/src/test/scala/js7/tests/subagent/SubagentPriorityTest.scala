@@ -10,7 +10,6 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderProcessingStarted
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
@@ -78,7 +77,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     // bSubagentId has the highest testMeteringValue
     assert:
       events.collectFirst:
-        case OrderProcessingStarted(Some(subagentId), _) => subagentId
+        case OrderProcessingStarted(Some(subagentId), Some(_), false) => subagentId
       == Some(bSubagentId)
 
 

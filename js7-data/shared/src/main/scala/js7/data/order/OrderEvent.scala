@@ -178,19 +178,24 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderStarted extends OrderActorEvent
 
   // subagentId = None is COMPATIBLE with v2.2
-  final case class OrderProcessingStarted(subagentId: Option[SubagentId], stick: Boolean = false)
+  final case class OrderProcessingStarted(
+    subagentId: Option[SubagentId],
+    subagentBundleId: Option[SubagentBundleId] = None,
+    stick: Boolean = false)
   extends OrderCoreEvent:
-    override def toString =
-      s"OrderProcessingStarted(${subagentId getOrElse "legacy local Subagent"}${stick ?? " stick"})"
+    override def toString = s"OrderProcessingStarted(${
+      Array(subagentId, subagentBundleId, stick ? "stick").flatten.mkString(" ")})"
   object OrderProcessingStarted:
+    val noSubagent: OrderProcessingStarted = new OrderProcessingStarted(None, None, false)
     // Since v2.3
     @TestOnly
     def apply(subagentId: SubagentId): OrderProcessingStarted =
-      OrderProcessingStarted(Some(subagentId))
+      new OrderProcessingStarted(Some(subagentId), None, false)
 
     // Since v2.3
+    @TestOnly
     def apply(subagentId: SubagentId, stick: Boolean): OrderProcessingStarted =
-      OrderProcessingStarted(Some(subagentId), stick)
+      new OrderProcessingStarted(Some(subagentId), None, stick)
 
   sealed trait OrderStdWritten extends OrderEvent:
     def stdoutStderr: StdoutOrStderr

@@ -10,7 +10,7 @@ import js7.base.time.JavaTimestamp.specific.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.Value
 import js7.data_for_java.common.{JJsonable, JavaWrapper}
 import js7.data_for_java.vavr.VavrConverters.*
@@ -109,6 +109,9 @@ object JOrder extends JJsonable.Companion[JOrder]:
     /** @return empty iff written by v2.2 */
     def maybeSubagentId: Optional[SubagentId] =
       asScala.subagentId.toJava
+
+    def maybeSubagentBundleId: Optional[SubagentBundleId] =
+      asScala.subagentBundleId.toJava
 
   case object Finished extends State:
     type AsScala = Order.Finished

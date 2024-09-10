@@ -44,7 +44,7 @@ final class StopOnFailureTest
     val workflow = Workflow.of(WorkflowPath("CONTROLLER-WORKFLOW"),
       Options(stopOnFailure = true):
         Fail(Some(expr("'TEST-FAILURE'"))))
-    
+
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -123,7 +123,7 @@ final class StopOnFailureTest
 
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(0) / "options" % 0 / "lock" % 1),
         OrderDetachable,
@@ -132,7 +132,7 @@ final class StopOnFailureTest
         OrderLocksAcquired(List(LockDemand(bLockPath))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
@@ -175,7 +175,7 @@ final class StopOnFailureTest
 
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
@@ -189,7 +189,7 @@ final class StopOnFailureTest
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
       Options(stopOnFailure = true):
         FailingJob.execute(agentPath))
-    
+
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -210,7 +210,7 @@ final class StopOnFailureTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
@@ -224,7 +224,7 @@ final class StopOnFailureTest
     val workflow = Workflow.of(WorkflowPath("FRESH-WORKFLOW"),
       Options(stopOnFailure = true):
         If(expr("$param"), Workflow.empty))
-   
+
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("FAIL-WHILE-FRESH-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow

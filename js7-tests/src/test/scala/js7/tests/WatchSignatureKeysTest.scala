@@ -243,7 +243,10 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
       .map(_.value)
     assert(events.last.isInstanceOf[OrderFinished])
     assert(events.head.asInstanceOf[OrderAdded].workflowId == workflow.path ~ versionId)
-    assert(events.collectFirst { case OrderProcessingStarted(Some(`bareSubagentId`), _) => }.isDefined)
+    assert:
+      events.collectFirst:
+        case OrderProcessingStarted(Some(`bareSubagentId`), _, _) =>
+      .isDefined
 
 
 object WatchSignatureKeysTest:

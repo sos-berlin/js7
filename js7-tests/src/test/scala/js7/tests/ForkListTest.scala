@@ -289,7 +289,7 @@ final class ForkListTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(1)),
 

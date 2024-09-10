@@ -235,10 +235,16 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderProcessingStarted" in:
-    testJson[OrderEvent](OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
+    testJson[OrderEvent](
+      OrderProcessingStarted(
+        Some(SubagentId("SUBAGENT")),
+        Some(SubagentBundleId("BUNDLE")),
+        stick = false),
+      json"""
       {
         "TYPE": "OrderProcessingStarted",
         "subagentId": "SUBAGENT",
+        "subagentBundleId": "BUNDLE",
         "stick": false
       }""")
 
@@ -248,7 +254,7 @@ final class OrderEventTest extends OurTestSuite:
         "subagentId": "SUBAGENT"
       }""")
 
-    testJson[OrderEvent](OrderProcessingStarted(None), json"""
+    testJson[OrderEvent](OrderProcessingStarted.noSubagent, json"""
       {
         "TYPE": "OrderProcessingStarted",
         "stick": false

@@ -1509,7 +1509,7 @@ object OrderEventSourceTest:
 
     private def processEvent(keyedEvent: KeyedEvent[OrderEvent]): Unit =
       keyedEvent match
-        case orderId <-: OrderProcessingStarted(subagentId, false) =>
+        case orderId <-: OrderProcessingStarted(_, _, _) =>
           inProcess += orderId
 
         case orderId <-: (_: OrderProcessed) =>

@@ -104,7 +104,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             // ExecuteExecutor should have prechecked this:
             val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
               // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-              OrderProcessingStarted(None) ::
+              OrderProcessingStarted.noSubagent ::
               OrderProcessed(OrderOutcome.Disrupted(problem)) :: Nil
             persist(order.id, events, onEvents)
               .rightAs(())
@@ -125,7 +125,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     import selectedDriver.{stick, subagentDriver}
 
     val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
-      OrderProcessingStarted(subagentDriver.subagentId, stick = stick) :: Nil
+      OrderProcessingStarted(
+        Some(subagentDriver.subagentId),
+        selectedDriver.subagentBundleId.filter(_.toSubagentId != subagentDriver.subagentId),
+        stick = stick) ::
+      Nil
     persist(order.id, events, onEvents)
       .map(_.map: (_, s) =>
         s.idToOrder
@@ -207,18 +211,17 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
-    orderToSubagentBundleId(order)
-      .flatMapT:
-        case DeterminedSubagentBundle(subagentBundleId, stick) =>
-          cancelableWhileWaitingForSubagent(order.id)
-            .use: canceledPromise =>
-              IO.race(
-                canceledPromise.get,
-                selectSubagentDriver(subagentBundleId))
-            .map(_
-              .toOption
-              .sequence
-              .map(_.map(SelectedDriver(_, stick))))
+    orderToSubagentBundleId(order).flatMapT:
+      case DeterminedSubagentBundle(subagentBundleId, stick) =>
+        cancelableWhileWaitingForSubagent(order.id)
+          .use: canceledPromise =>
+            IO.race(
+              canceledPromise.get,
+              selectSubagentDriver(subagentBundleId))
+          .map(_
+            .toOption
+            .sequence
+            .map(_.map(SelectedDriver(subagentBundleId, _, stick))))
 
   private def orderToSubagentBundleId(order: Order[Order.IsFreshOrReady])
   : IO[Checked[DeterminedSubagentBundle]] =
@@ -226,11 +229,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       for
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toPureOrderScope(order)
-        maybeJobsBundleId <- job.subagentBundleId
+        jobsBundleId <- job.subagentBundleId
           .traverse(_.evalAsString(scope)
           .flatMap(SubagentBundleId.checked))
       yield
-        determineSubagentBundle(order, agentPath, maybeJobsBundleId)
+        determineSubagentBundle(order, agentPath, jobsBundleId)
 
   /** While waiting for a Subagent, the Order is cancelable. */
   private def cancelableWhileWaitingForSubagent(orderId: OrderId)
@@ -535,7 +538,10 @@ object SubagentKeeper:
       case _ =>
         DeterminedSubagentBundle(maybeJobsBundleId)
 
-  private final case class SelectedDriver(subagentDriver: SubagentDriver, stick: Boolean)
+  private final case class SelectedDriver(
+    subagentBundleId: Option[SubagentBundleId],
+    subagentDriver: SubagentDriver,
+    stick: Boolean)
 
   private[director] final case class DeterminedSubagentBundle(
     maybeSubagentBundleId: Option[SubagentBundleId],

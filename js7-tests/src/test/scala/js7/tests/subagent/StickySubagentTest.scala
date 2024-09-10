@@ -3,6 +3,7 @@ package js7.tests.subagent
 import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
+import js7.base.test.TestExtensions.autoSome
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -26,6 +27,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.StickySubagentTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import scala.language.implicitConversions
 
 final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
   // See also SubagentKeeperTest, determineSubagentBundle
@@ -74,11 +76,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttached(aAgentPath),
       OrderStarted,
 
-      OrderProcessingStarted(Some(a2SubagentId)),
+      OrderProcessingStarted(a2SubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
-      OrderProcessingStarted(Some(aSubagentId), stick = true),
+      OrderProcessingStarted(aSubagentId, aSubagentBundle.id, stick = true),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 2),
       OrderDetachable,
@@ -90,11 +92,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
-      OrderProcessingStarted(Some(aSubagentId)),
+      OrderProcessingStarted(aSubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 4),
 
-      OrderProcessingStarted(Some(a2SubagentId)),
+      OrderProcessingStarted(a2SubagentId, a2SubagentBundle.id),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 5),
       OrderDetachable,
@@ -102,7 +104,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
       OrderAttachable(bAgentPath),
       OrderAttached(bAgentPath),
-      OrderProcessingStarted(Some(bSubagentId)),
+      OrderProcessingStarted(bSubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 6),
       OrderDetachable,
@@ -110,11 +112,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
-      OrderProcessingStarted(Some(a2SubagentId)),
+      OrderProcessingStarted(a2SubagentId, a2SubagentBundle.id),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 7),
 
-      OrderProcessingStarted(Some(aSubagentId)),
+      OrderProcessingStarted(aSubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 8),
 
@@ -170,11 +172,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttached(aAgentPath),
       OrderStarted,
 
-      OrderProcessingStarted(Some(a1SubagentId), stick = true),
+      OrderProcessingStarted(a1SubagentId, stick = true),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
-      OrderProcessingStarted(Some(a1SubagentId)),
+      OrderProcessingStarted(a1SubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 2),
 
@@ -217,7 +219,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttached(aAgentPath),
       OrderStarted,
 
-      OrderProcessingStarted(Some(aSubagentId), stick = true),
+      OrderProcessingStarted(aSubagentId, aSubagentBundle.id, stick = true),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
       OrderDetachable,
@@ -229,11 +231,11 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
 
       OrderAttachable(aAgentPath),
       OrderAttached(aAgentPath),
-      OrderProcessingStarted(Some(aSubagentId)),
+      OrderProcessingStarted(aSubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 3),
 
-      OrderProcessingStarted(Some(aSubagentId)),
+      OrderProcessingStarted(aSubagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 4),
 
@@ -267,7 +269,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
       OrderAttached(aAgentPath),
       OrderStarted,
 
-      OrderProcessingStarted(Some(aSubagentId), stick = true),
+      OrderProcessingStarted(aSubagentId, stick = true),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 1),
 
