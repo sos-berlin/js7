@@ -61,10 +61,10 @@ trait OrderWatchStateHandler[Self]:
 
     def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.{name, orderWatchPath}
-      pathToOrderWatchState.checked(orderWatchPath)
-        .flatMap(_.onOrderDeleted(name, orderId))
-        .flatMap(o => updateOrderWatchState(
-          o))
+      pathToOrderWatchState.get(orderWatchPath)
+        .fold(Checked(self)):
+          _.onOrderDeleted(name, orderId)
+            .flatMap(o => updateOrderWatchState(o))
 
     def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
     : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =

@@ -1,5 +1,6 @@
 package js7.tests.filewatch
 
+import fs2.Stream
 import java.io.File
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import java.nio.file.Paths
@@ -12,8 +13,8 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
@@ -38,7 +39,6 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.filewatch.FileWatchTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import fs2.Stream
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline
 
@@ -72,6 +72,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
+  private def waitingFileToOrderId(filename: String): OrderId =
+    FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
+
   private lazy val waitingWatchDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files-waiting"
   private lazy val waitingFileWatch = FileWatch(
     OrderWatchPath("WAITING-WATCH"),
@@ -89,9 +92,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
       eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
-
-  private def watchedFileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
 
   "referencedItemPaths" in:
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
@@ -152,7 +152,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   "DeleteOrdersWhenTerminated is rejected" in:
     val file = waitingWatchDirectory / "REMOVE"
-    val orderId = watchedFileToOrderId("REMOVE")
+    val orderId = waitingFileToOrderId("REMOVE")
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
@@ -171,7 +171,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   "CancelOrder does not delete the order until the file has vanished" in:
     val file = waitingWatchDirectory / "CANCEL"
-    val orderId = watchedFileToOrderId("CANCEL")
+    val orderId = waitingFileToOrderId("CANCEL")
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
@@ -196,7 +196,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "Change FileWatch while an order is running" in:
     TestJob.reset()
     val longFile = waitingWatchDirectory / "AGAIN-LONG"
-    val longOrderId = watchedFileToOrderId("AGAIN-LONG")
+    val longOrderId = waitingFileToOrderId("AGAIN-LONG")
     longFile := ""
     TestJob.continue()
 
@@ -213,7 +213,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           NoKey <-: ItemAttached(changedFileWatch.path, Some(itemRevision), aAgentPath)))
 
       val iFile = waitingWatchDirectory / s"AGAIN-$i"
-      val iOrderId = watchedFileToOrderId(s"AGAIN-$i")
+      val iOrderId = waitingFileToOrderId(s"AGAIN-$i")
       iFile := ""
       TestJob.continue()
       eventWatch.await[OrderFinished](_.key == iOrderId)
@@ -237,32 +237,36 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
     // A file only in the old directory
     val singletonFile = waitingWatchDirectory / "CHANGE-DIRECTORY-SINGLETON"
-    val singletonOrderId = watchedFileToOrderId("CHANGE-DIRECTORY-SINGLETON")
+    val singletonOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-SINGLETON")
     singletonFile := ""
 
     // Same filename in old and new directory
     val originalBothFile = waitingWatchDirectory / "CHANGE-DIRECTORY-BOTH"
-    val bothOrderId = watchedFileToOrderId("CHANGE-DIRECTORY-BOTH")
+    val bothOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-BOTH")
     originalBothFile := ""
 
-    eventWatch.await[OrderProcessingStarted](_.key == singletonOrderId)
-    eventWatch.await[OrderProcessingStarted](_.key == bothOrderId)
+    eventWatch.await[OrderFinished](_.key == singletonOrderId)
+    eventWatch.await[OrderFinished](_.key == bothOrderId)
+    assert(exists(singletonFile) && exists(originalBothFile))
 
     withTemporaryDirectory() { newDirectory =>
+      val eventId = eventWatch.lastAddedEventId
+
       val bothFile = newDirectory / "CHANGE-DIRECTORY-BOTH"
       bothFile := ""
 
       // A file only in the newDirectory
       val newFile = newDirectory / "CHANGE-DIRECTORY-NEW"
-      val newOrderId = watchedFileToOrderId("CHANGE-DIRECTORY-NEW")
+      val newOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-NEW")
       newFile := ""
 
-      val eventId = eventWatch.lastAddedEventId
-
+      /// Change directory ///
       val changedFileWatch = waitingFileWatch.copy(
         directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
       controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
       eventWatch.await[ItemAttached](after = eventId)
+
+      /// Files are considered deleted (due to directory change — they still exists) ///
       eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
       eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
 
@@ -275,10 +279,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       assert(vanished.timestamp <= removed.timestamp)
 
       // bothOrderId has been started again because its filename duplicates in newDirectory
-      eventWatch.await[OrderProcessingStarted](_.key == bothOrderId, after = eventId)
-      eventWatch.await[OrderProcessingStarted](_.key == newOrderId, after = eventId)
-      eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
+      eventWatch.await[OrderFinished](_.key == bothOrderId, after = eventId)
       eventWatch.await[OrderFinished](_.key == newOrderId, after = eventId)
+      eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
       delete(newFile)
       eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
 
@@ -324,6 +327,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         NoKey <-: ItemDetached(fileWatch.path, aAgentPath),
         NoKey <-: ItemAttachable(fileWatch.path, bAgentPath),
         NoKey <-: ItemAttached(fileWatch.path, Some(ItemRevision(1)), bAgentPath)))
+
+  "JS-2159 Delete a FileWatch while an Order is still running" in:
+    watchDirectory / "BEFORE-DELETION" := ""
+    eventWatch.await[OrderFinished](_.key == OrderId("file:TEST-WATCH:BEFORE-DELETION"))
+
+    watchDirectory / "BEFORE-DELETION" := ""
+    eventWatch.await[OrderFinished](_.key == OrderId("file:TEST-WATCH:BEFORE-DELETION"))
 
   "Deleting the Workflow referenced by the FileWatch is rejected" in:
     assert(controller.api.updateItems(Stream(
