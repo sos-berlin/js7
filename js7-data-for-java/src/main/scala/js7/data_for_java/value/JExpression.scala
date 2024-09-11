@@ -39,23 +39,30 @@ object JExpression extends JJsonable.Companion[JExpression]:
   def fromString(@Nonnull string: String): JExpression =
     JExpression(StringConstant(string))
 
-  /** Returns the string as a NumericConstant Expression. */
+  @deprecated("Use fromNumber(java.math.BigDecimal)", "v2.7.2")
+  @Deprecated
   @Nonnull
+  /** Returns the number as a NumericConstant Expression. */
   def fromNumber(@Nonnull number: BigDecimal): JExpression =
     JExpression(NumericConstant(number))
 
-  /** Returns the string as a BooleanConstant Expression. */
   @Nonnull
+  /** Returns the number as a NumericConstant Expression. */
+  def fromNumber(@Nonnull number: java.math.BigDecimal): JExpression =
+    JExpression(NumericConstant(BigDecimal(number)))
+
+  @Nonnull
+  /** Returns the boolean as a BooleanConstant Expression. */
   def fromBoolean(@Nonnull boolean: Boolean): JExpression =
     JExpression(BooleanConstant(boolean))
 
-  /** Returns the string as a ListExpr. */
   @Nonnull
+  /** Returns the values as a ListExpr. */
   def fromIterable(@Nonnull values: java.lang.Iterable[JExpression]): JExpression =
     JExpression(ListExpr(values.asScala.view.map(_.asScala).toList))
 
-  /** Returns the string as an ObjectExpr. */
   @Nonnull
+  /** Returns the map as an ObjectExpr. */
   def fromMap(@Nonnull keyToExpr: java.util.Map[String, JExpression]): JExpression =
     JExpression(ObjectExpr(keyToExpr.asScala.view.mapValues(_.asScala).toMap))
 
