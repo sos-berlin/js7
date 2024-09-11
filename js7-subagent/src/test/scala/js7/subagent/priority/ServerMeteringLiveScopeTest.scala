@@ -13,7 +13,6 @@ import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.{NumberValue, Value}
-import js7.subagent.priority.ServerMeteringLiveScope.nameToCheckedValue
 import scala.collection.MapView
 import scala.math.Ordering.Implicits.infixOrderingOps
 
@@ -21,13 +20,18 @@ final class ServerMeteringLiveScopeTest extends OurTestSuite:
 
   "Fields" in:
     def getNumber(name: String): NumberValue =
-      nameToCheckedValue.checked(name).flatten.flatMap(_.toNumberValue).orThrow
+      ServerMeteringLiveScope.nameToCheckedValue.checked(name).flatten.flatMap(_.toNumberValue)
+        .orThrow
 
-    assert(nameToCheckedValue("cpuLoad").isRight) // May be MissingValue
-    assert(getNumber("committedVirtualMemorySize") > NumberValue(0))
-    assert(getNumber("freeMemorySize") > NumberValue(0))
-    assert(getNumber("totalMemorySize") > NumberValue(0))
+    assert(ServerMeteringLiveScope.nameToCheckedValue("js7CpuLoad").isRight) // May be MissingValue
+    assert(getNumber("js7CommittedVirtualMemorySize") > NumberValue(0))
+    assert(getNumber("js7FreeMemorySize") > NumberValue(0))
+    assert(getNumber("js7TotalMemorySize") > NumberValue(0))
 
+  "ServerMeteringLiveScope.fromEvent has same keys" in :
+    assert:
+      ServerMeteringEvent(None, 0, 0, 0)
+        .toScope.nameToCheckedValue.keySet == ServerMeteringLiveScope.nameToCheckedValue.keySet
 
   "Speed test" in:
     val n = if isIntelliJIdea then 100_000 else 100
@@ -42,13 +46,13 @@ final class ServerMeteringLiveScopeTest extends OurTestSuite:
 
     Logger.info:
       measureTime(n, "PriorityMxBeans", warmUp = n / 10):
-        nameToCheckedValue.toMap
+        ServerMeteringLiveScope.nameToCheckedValue.toMap
 
     Logger.info:
-      assert(nameToCheckedValue.size == 4)
+      assert(ServerMeteringLiveScope.nameToCheckedValue.size == 4)
       measureTime(n, "Jsons", warmUp = n / 10):
-        toJson(nameToCheckedValue)
-      + " · " + toJson(nameToCheckedValue)
+        toJson(ServerMeteringLiveScope.nameToCheckedValue)
+      + " · " + toJson(ServerMeteringLiveScope.nameToCheckedValue)
 
     speedTestSingleFieldBean("committedVirtualMemorySize")
     speedTestSingleFieldBean("freeMemorySize")
@@ -70,8 +74,3 @@ final class ServerMeteringLiveScopeTest extends OurTestSuite:
       bean.collect:
         case (k, Right(v)) => k -> v
       .toMap.asJson.compactPrint
-
-  "ServerMeteringLiveScope.fromEvent has same keys" in:
-    assert:
-      ServerMeteringEvent(None, 0, 0, 0)
-        .toScope.nameToCheckedValue.keySet == ServerMeteringLiveScope.nameToCheckedValue.keySet

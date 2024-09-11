@@ -64,14 +64,14 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
   private lazy val startSubagets: Unit =
     idToRelease
 
-  "Use $testMeteringValue from Subagent" in :
+  "Use $js7TestMeteringValue from Subagent" in :
     startSubagets
 
     val subagentBundle = SubagentBundle(
       SubagentBundleId("BUNDLE-1"),
       Map(
-        aSubagentId -> expr("$testMeteringValue"),
-        bSubagentId -> expr("$testMeteringValue")))
+        aSubagentId -> expr("$js7TestMeteringValue"),
+        bSubagentId -> expr("$js7TestMeteringValue")))
 
     val workflow = Workflow(
       WorkflowPath("WORKFLOW-1"),
@@ -100,14 +100,14 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     eventWatch.await[OrderTerminated](_.key == orderId)
     deleteItems(workflow.path, subagentBundle.path)
 
-  "Use $bundleSubagentProcessCount" in :
+  "Use $js7BundleSubagentProcessCount" in :
     startSubagets
 
     val subagentBundle = SubagentBundle(
       SubagentBundleId("BUNDLE-2"),
       Map(
         aSubagentId -> expr("1"),
-        bSubagentId -> expr("2 - 2 * $bundleSubagentProcessCount")))
+        bSubagentId -> expr("2 - 2 * $js7BundleSubagentProcessCount")))
 
     val workflow = Workflow(
       WorkflowPath("WORKFLOW-2"),
@@ -137,8 +137,8 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
       assert(aStarted.subagentId == Some(bSubagentId) && bStarted.subagentId == Some(aSubagentId))
 
       ASemaphoreJob.continue(2)
-      eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
-      eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
+      eventWatch.await[OrderTerminated](_.key == aOrderId)
+      eventWatch.await[OrderTerminated](_.key == bOrderId)
 
       deleteItems(workflow.path, subagentBundle.path)
 
