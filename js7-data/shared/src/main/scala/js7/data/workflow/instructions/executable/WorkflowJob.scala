@@ -124,7 +124,6 @@ object WorkflowJob:
     for
       executable <- c.get[Executable]("executable")
       subagentBundleId <-
-
         c.get[Option[SubagentBundleId]]("subagentBundleId")
           .flatMap:
             case Some(id) => Right(Some(id))
@@ -135,7 +134,6 @@ object WorkflowJob:
               c.get[Option[Expression]]("subagentBundleIdExpr").flatMap:
                 case Some(expr) => Right(Some(expr))
                 case None => c.get[Option[Expression]]("subagentBundleIdExpr") // COMPATIBLE with v2.7.1
-
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
