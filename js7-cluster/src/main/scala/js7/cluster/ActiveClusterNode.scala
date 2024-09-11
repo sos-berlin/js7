@@ -694,8 +694,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                   clusterWatchSynchronizer
                     .applyEvent(
                       event, clusterState,
-                      clusterWatchIdChangeAllowed =
-                        events == Seq(ClusterPassiveLost(clusterState.passiveId)),
+                      clusterWatchIdChangeAllowed = true/*
+                        events == Seq(ClusterCouplingPrepared(ownId) ||
+                        events == Seq(ClusterPassiveLost(clusterState.passiveId))*/,
                       forceWhenUntaught = dontAskClusterWatchWhenUntaught)
                     .flatMapT:
                       case Some(confirmation)
