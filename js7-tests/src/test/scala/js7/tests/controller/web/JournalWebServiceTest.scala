@@ -164,10 +164,8 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     assert(lines.exists(_ contains "OrderFinished"))
 
     awaitAndAssert(observedLines.exists(_ contains "OrderFinished"))
-    assert(observedLines.exists(_ contains "OrderFinished"))
-
-    assert(observedLines.count(_ == JournalEvent.StampedHeartbeatString) > 1)
-    assert(observedLines.filterNot(_ == JournalEvent.StampedHeartbeatString) == lines)
+    awaitAndAssert(observedLines.count(_ == JournalEvent.StampedHeartbeatString) > 1)
+    awaitAndAssert(observedLines.filterNot(_ == JournalEvent.StampedHeartbeatString) == lines)
 
 
 object JournalWebServiceTest:
