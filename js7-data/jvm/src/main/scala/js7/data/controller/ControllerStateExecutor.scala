@@ -145,7 +145,8 @@ final case class ControllerStateExecutor private(
     for
       tuple <- applyEvents(keyedEvents)
       result <- (subsequentEvents _).tupled(tuple)
-    yield result
+    yield
+      result
 
   private def applyEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[(
@@ -155,7 +156,8 @@ final case class ControllerStateExecutor private(
     collection.Set[InventoryItemKey],
     collection.Seq[(WorkflowId, AgentPath)],
     collection.Seq[WorkflowId],
-    ControllerState)] =
+    ControllerState)
+  ] =
     val touchedItemKeys = mutable.Set.empty[InventoryItemKey]
     val touchedOrderIds = mutable.Set.empty[OrderId]
     val detachWorkflowCandidates = mutable.Set.empty[WorkflowId]
@@ -360,7 +362,8 @@ final case class ControllerStateExecutor private(
         if subsequentKeyedEvents.nonEmpty then
           controllerStateBeforeSubsequentEvents
             .applyEventsAndReturnSubsequentEvents(subsequentKeyedEvents)
-            .map(o => ControllerStateExecutor(subsequentKeyedEvents ++ o.keyedEvents, o.controllerState))
+            .map: o =>
+              ControllerStateExecutor(subsequentKeyedEvents ++ o.keyedEvents, o.controllerState)
         else
           Right(new ControllerStateExecutor(subsequentKeyedEvents, controllerState))
     }
@@ -394,8 +397,8 @@ final case class ControllerStateExecutor private(
                 if controllerState.deletionMarkedItems contains itemKey then
                   detachEvent :: Nil
                 else
-                  (item.itemRevision != revision).thenList(
-                    (item.dedicatedAgentPath match {
+                  item.itemRevision != revision thenList:
+                    item.dedicatedAgentPath match
                       case Some(`agentPath`) | None =>
                         // Item is dedicated to this Agent or is required by an Order.
                         // Attach again without detaching, and let Agent change the item while in flight
@@ -403,7 +406,6 @@ final case class ControllerStateExecutor private(
                       case Some(_) =>
                         // Item's Agent dedication has changed, so we detach it
                         detachEvent
-                    }))
 
           case (_, Attachable | Detachable) =>
             Nil
@@ -434,9 +436,8 @@ final case class ControllerStateExecutor private(
           .get(controlPath)
           .flatMap(_
             .get(agentPath)
-            .collect {
-              case Attachable | Attached(_) => detach(controlPath, agentPath)
-            })
+            .collect:
+              case Attachable | Attached(_) => detach(controlPath, agentPath))
 
   private def derivedWorkflowControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
   : Option[ItemAttachedStateEvent] =
@@ -449,9 +450,8 @@ final case class ControllerStateExecutor private(
         .get(controlId)
         .flatMap(_
           .get(agentPath)
-          .collect {
-            case Attachable | Attached(_) => detach(controlId, agentPath)
-          })
+          .collect:
+            case Attachable | Attached(_) => detach(controlId, agentPath))
 
   private def detach(itemKey: InventoryItemKey, agentPath: AgentPath): ItemAttachedStateEvent =
     if controllerState.keyToUnsignedItemState_.contains(agentPath) then
@@ -465,12 +465,11 @@ final case class ControllerStateExecutor private(
       .repo.pathToItems(Workflow)
       .getOrElse(workflowPathControl.workflowPath, View.empty)
       .view
-      .flatMap(workflow =>
+      .flatMap: workflow =>
         controllerState.itemToAgentToAttachedState
           .getOrElse(workflow.id, Map.empty)
-          .collect {
+          .collect:
             case (agentPath, Attachable | Attached(_)) => agentPath
-          })
       .toSet
       .map(ItemAttachable(workflowPathControl.path, _))
 
@@ -479,14 +478,14 @@ final case class ControllerStateExecutor private(
     controllerState
       .repo.idTo(Workflow)(workflowControl.workflowId)
       .toOption.view
-      .flatMap(workflow =>
+      .flatMap: workflow =>
         controllerState.itemToAgentToAttachedState
           .getOrElse(workflow.id, Map.empty)
-          .collect {
+          .collect:
             case (agentPath, Attachable | Attached(_)) => agentPath
-          })
       .toSet
-      .map(ItemAttachable(workflowControl.id, _))
+      .map:
+        ItemAttachable(workflowControl.id, _)
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.ow.nextEvents(addOrder(_, _), isDeletionMarkable)

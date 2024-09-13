@@ -66,38 +66,34 @@ final class FileWatchManager(
         .map(_.combineAll))
 
   def update(fileWatch: FileWatch): IO[Checked[Unit]] =
-    lockKeeper.lock(fileWatch.path) {
-      journal
-        .persist(agentState =>
-          Right(
-            agentState.keyTo(FileWatchState).get(fileWatch.path) match {
-              case Some(watchState) =>
-                if watchState.fileWatch == fileWatch then
-                  Nil
-                else {
-                  // If the directory changes, all arisen files vanish now.
-                  // Beware that directory is an (EnvScope-only) Expression.
-                  val vanished =
-                    if watchState.fileWatch.directoryExpr == fileWatch.directoryExpr then
-                      Nil
-                    else
-                      watchState.allFilesVanished
-                  vanished.toVector :+ (NoKey <-: ItemAttachedToMe(fileWatch))
-                }
+    lockKeeper.lock(fileWatch.path):
+      journal.persist: agentState =>
+        Right:
+          agentState.keyTo(FileWatchState).get(fileWatch.path) match
+            case Some(watchState) =>
+              if watchState.fileWatch == fileWatch then
+                Nil
+              else
+                // If the directory changes, all arisen files vanish now.
+                // Beware that directory is an (EnvScope-only) Expression.
+                val vanished =
+                  if watchState.fileWatch.directoryExpr == fileWatch.directoryExpr then
+                    Nil
+                  else
+                    watchState.allFilesVanished
+                vanished.toVector :+ (NoKey <-: ItemAttachedToMe(fileWatch))
 
-              case None =>
-                (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
-            }))
-    }.flatMapT { case (_, agentState) =>
+            case None =>
+              (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
+    .flatMapT: (_, agentState) =>
       startWatching(agentState.keyTo(FileWatchState)(fileWatch.path))
-    }
 
   def remove(fileWatchPath: OrderWatchPath): IO[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath):
       journal
-        .persist(agentState =>
-          Right(
-            agentState.keyTo(FileWatchState).get(fileWatchPath) match {
+        .persist: agentState =>
+          Right:
+            agentState.keyTo(FileWatchState).get(fileWatchPath) match
               case None => Nil
               case Some(fileWatchState) =>
                 // When a FileWatch is detached, all arisen files vanish now,
@@ -106,18 +102,16 @@ final class FileWatchManager(
                 // because the other Agent will start with an empty FileWatchState.
                 fileWatchState.allFilesVanished.toVector :+
                   (NoKey <-: ItemDetached(fileWatchPath, ownAgentPath))
-            }))
-        .flatMapT { case (_, agentState) =>
+        .flatMapT: (_, agentState) =>
           stopWatching(fileWatchPath)
             .as(Checked.unit)
-        }
 
   private def startWatching(fileWatchState: FileWatchState): IO[Checked[Unit]] =
     val id = fileWatchState.fileWatch.path
     logger.debugIO("startWatching", id):
       SignallingRef[IO, Boolean](false).flatMap: stop =>
         watch(fileWatchState, stop)
-          .traverse(stream =>
+          .traverse: stream =>
             // Execute previously registered stopper (which awaits completion),
             // and start our stream as a fiber.
             // At the same time, register a stopper in idToStopper.
@@ -131,14 +125,13 @@ final class FileWatchManager(
                     .handleError: throwable =>
                       logger.error(throwable.toStringWithCauses)  // Ignore ???
                     .start
-                    .map(fiber =>
+                    .map: fiber =>
                       // Register the stopper, a joining task for the next update:
                       logger.debugIO("stop watching", id):
                         stop.set(true) *>
                           fiber.joinStd
-                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
-                    ))
-              .void)
+                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher"))
+              .void
           .logWhenItTakesLonger(s"startWatching $id")
 
   private def stopWatching(id: OrderWatchPath): IO[Unit] =
@@ -153,7 +146,7 @@ final class FileWatchManager(
       .evalAsString(EnvScope)
       .flatMap(string =>
         catchNonFatal(Paths.get(string)))
-      .map { directory =>
+      .map: directory =>
         val delayIterator = settings.retryDelays.iterator ++
           Iterator.continually(settings.retryDelays.last)
         var directoryState = fileWatchState.directoryState
@@ -171,72 +164,66 @@ final class FileWatchManager(
           .through:
             DirectoryEventDelayer(directory, fileWatch.delay, settings.logDelays)
           .chunks
-          .evalMap(chunk =>
-            lockKeeper.lock(fileWatch.path)(
-              emitOrderWatchEvents(fileWatch, directory, chunk)))
+          .evalMap: chunk =>
+            lockKeeper.lock(fileWatch.path):
+              emitOrderWatchEvents(fileWatch, directory, chunk)
           .foreach:
             case Left(problem) => IO(logger.error(problem.toString))
             case Right((_, agentState)) => IO:
               directoryState = agentState.keyTo(FileWatchState)(fileWatch.path).directoryState
           .compile.drain
-          .onErrorRestartLoop(now) { (throwable, since, restart) =>
+          .onErrorRestartLoop(now): (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
             logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
             for t <- throwable.ifStackTrace do logger.debug(t.toString, t)
             IO.sleep(delay) *> restart(now)
-          }
-          .guaranteeCase(exitCase => IO {
-            logger.debug(s"${fileWatch.path} watching $exitCase - $directory")
-          })
-      }
+          .guaranteeCase(exitCase => IO:
+            logger.debug(s"${fileWatch.path} watching $exitCase - $directory"))
 
   private def emitOrderWatchEvents(
     fileWatch: FileWatch,
     directory: Path,
     dirEventSeqs: Chunk[DirectoryEvent])
   : IO[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
-    journal.state
-      .flatMap(agentState =>
-        if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
-          IO.right(Nil -> agentState)
-        else
-          journal.persist { agentState =>
-            Right(
-              dirEventSeqs
-                // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
-                // We check this here.
-                .asSeq
-                .flatMap(dirEvent =>
-                  agentState.keyTo(FileWatchState)
-                    .get(fileWatch.path)
-                    // Ignore late events after FileWatch has been removed
-                    .flatMap(fileWatchState =>
-                      dirEvent match {
-                        case fileAdded @ FileAdded(path) if !fileWatchState.containsPath(path) =>
-                          val maybeOrderId = pathToOrderId(fileWatch, path)
-                          if maybeOrderId.isEmpty then logger.debug(s"Ignore $fileAdded (no OrderId)")
-                          for orderId <- maybeOrderId yield
-                            ExternalOrderArised(
-                              ExternalOrderName(path.toString),
-                              orderId,
-                              toOrderArguments(directory, path))
+    journal.state.flatMap: agentState =>
+      if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
+        IO.right(Nil -> agentState)
+      else
+        journal.persist: agentState =>
+          Right:
+            agentState.keyTo(FileWatchState)
+              .get(fileWatch.path)
+              // Ignore late events after FileWatch has been removed
+              .toVector
+              .flatMap: fileWatchState =>
+                dirEventSeqs
+                  // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
+                  // We check this here.
+                  .asSeq
+                  .flatMap: dirEvent =>
+                    dirEvent match
+                      case fileAdded @ FileAdded(path) if !fileWatchState.containsPath(path) =>
+                        val maybeOrderId = pathToOrderId(fileWatch, path)
+                        if maybeOrderId.isEmpty then logger.debug(s"Ignore $fileAdded (no OrderId)")
+                        for orderId <- maybeOrderId yield
+                          ExternalOrderArised(
+                            ExternalOrderName(path.toString),
+                            orderId,
+                            toOrderArguments(directory, path))
 
-                        case FileDeleted(path) if fileWatchState.containsPath(path) =>
-                          Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
+                      case FileDeleted(path) if fileWatchState.containsPath(path) =>
+                        Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
 
-                        case event =>
-                          logger.debug(s"Ignore $event")
-                          None
-                      }))
-                .map(fileWatch.path <-: _))
-          })
+                      case event =>
+                        logger.debug(s"Ignore $event")
+                        None
+              .map(fileWatch.path <-: _)
 
   private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
     relativePathToOrderId(fileWatch, relativePath.toString)
-      .flatMap { checkedOrderId =>
+      .flatMap: checkedOrderId =>
         for problem <- checkedOrderId.left do logger.error(s"${fileWatch.path} $relativePath: $problem")
         checkedOrderId.toOption
-      }
 
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
@@ -249,14 +236,13 @@ object FileWatchManager:
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
     val matcher = fileWatch.resolvedPattern.matcher(relativePath)
-    matcher.matches() ? {
-      fileWatch.orderIdExpression match
+    matcher.matches() ?
+      fileWatch.orderIdExpression.match
         case None => default
         case Some(expr) =>
           evalAsString(fileWatch.path, expr, matcher)
             .flatMap(OrderId.checked)
-    }
 
   private def evalAsString(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
-    expression.evalAsString(
-      FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope)
+    expression.evalAsString:
+      FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope
