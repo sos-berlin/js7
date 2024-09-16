@@ -66,10 +66,32 @@ object Worry:
   val AfterTenSecondsWorryDurations: Seq[FiniteDuration] =
     Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
 
-  private val DefaultWorryDurations: Seq[FiniteDuration] =
+  val DefaultWorryDurations: Seq[FiniteDuration] =
     Seq(3.s, 7.s) ++ AfterTenSecondsWorryDurations
 
   private val InfoWorryDuration: FiniteDuration =
     30.s
 
   val Default: Worry = Worry()
+
+  def adaptDurationsToMinimum(
+    minimum: FiniteDuration,
+    worryDurations: Seq[FiniteDuration] = DefaultWorryDurations)
+  : Seq[FiniteDuration] =
+    val dropped = fs2.Stream.iterable(worryDurations)
+      .scan(ZeroDuration)(_ + _)
+      .drop(1)
+      .takeThrough(_ <= minimum)
+      .toVector
+    if worryDurations.sizeIs == dropped.size then
+      worryDurations.last :: Nil
+    else
+      val second = dropped.last - minimum
+      if minimum <= second then
+        minimum +:
+          second +:
+          worryDurations.drop(dropped.size)
+      else
+        minimum +:
+          (worryDurations(dropped.size) + second) +:
+          worryDurations.drop(dropped.size + 1)
