@@ -1,6 +1,5 @@
 package js7.data.orderwatch
 
-import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.test.OurAsyncTestSuite
@@ -19,23 +18,29 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class OrderWatchStateTest extends OurAsyncTestSuite:
 
-  private val orderWatchState = OrderWatchState(
-    FileWatch(
-      OrderWatchPath("FILE-WATCH"),
-      WorkflowPath("WORKFLOW"),
-      AgentPath("AGENT"),
-      expr("'DIRECTORY'"),
-      Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
-      Some(NamedValue("1")),
-      delay = 2.s,
-      Some(ItemRevision(7))),
-    Map( // Not in snapshot, because its duplicate to Order.externalOrderKey
-      ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
-      ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
+  private val orderWatchState =
+    OrderWatchState(
+      FileWatch(
+        OrderWatchPath("FILE-WATCH"),
+        WorkflowPath("WORKFLOW"),
+        AgentPath("AGENT"),
+        expr("'DIRECTORY'"),
+        Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
+        Some(NamedValue("1")),
+        delay = 2.s,
+        Some(ItemRevision(7))),
+      Map( // Not in snapshot, because its duplicate to Order.externalOrder
+        ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
+        ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), None),
+        ExternalOrderName("C-NAME") -> HasOrder(OrderId("C-ORDER"), Some(Vanished)),
+        ExternalOrderName("C2-NAME") -> HasOrder(OrderId("C2-ORDER"), Some(Vanished)),
+        ExternalOrderName("D-NAME") -> HasOrder(OrderId("D-ORDER"), Some(Arised(OrderId("D-ORDER"), NamedValues("K" -> StringValue("V2")))))),
+      orderAddedQueue = Set(ExternalOrderName("B-NAME")),
+      orderExternalVanishedQueue = Set(ExternalOrderName("C2-NAME")))
 
   "recoverQueues" in:
-    assert(orderWatchState.arisedQueue == Set(ExternalOrderName("A-NAME")))
-    assert(orderWatchState.vanishedQueue == Set(ExternalOrderName("B-NAME")))
+    assert(orderWatchState.orderAddedQueue == Set(ExternalOrderName("B-NAME")))
+    assert(orderWatchState.orderExternalVanishedQueue == Set(ExternalOrderName("C2-NAME")))
 
   "JSON" - {
     "ArisedOrHasOrder" in:
@@ -182,7 +187,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           Subtype[OrderWatchState.Snapshot])
 
       for snapshot <- orderWatchState.toSnapshotStream.compile.toVector yield
-        assert(snapshot.asJson ==json"""[
+        testJsonDecoder(snapshot, json"""[
           {
             "TYPE": "UnsignedSimpleItemAdded",
             "item": {
@@ -199,6 +204,25 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           }, {
             "TYPE": "ExternalOrder",
             "orderWatchPath": "FILE-WATCH",
+            "externalOrderName": "C-NAME",
+            "state": {
+              "TYPE": "HasOrder",
+              "orderId": "C-ORDER",
+              "queued": {
+                "TYPE": "Vanished"
+              }
+            }
+          }, {
+            "TYPE": "ExternalOrder",
+            "orderWatchPath": "FILE-WATCH",
+            "externalOrderName": "B-NAME",
+            "state": {
+              "TYPE": "HasOrder",
+              "orderId": "B-ORDER"
+            }
+          }, {
+            "TYPE": "ExternalOrder",
+            "orderWatchPath": "FILE-WATCH",
             "externalOrderName": "A-NAME",
             "state": {
               "TYPE": "Arised",
@@ -210,12 +234,27 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           }, {
             "TYPE": "ExternalOrder",
             "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "B-NAME",
+            "externalOrderName": "C2-NAME",
             "state": {
               "TYPE": "HasOrder",
-              "orderId": "B-ORDER",
+              "orderId": "C2-ORDER",
               "queued": {
                 "TYPE": "Vanished"
+              }
+            }
+          }, {
+            "TYPE": "ExternalOrder",
+            "orderWatchPath": "FILE-WATCH",
+            "externalOrderName": "D-NAME",
+            "state": {
+              "TYPE": "HasOrder",
+              "orderId": "D-ORDER",
+              "queued": {
+                "TYPE": "Arised",
+                "orderId": "D-ORDER",
+                "arguments": {
+                  "K": "V2"
+                }
               }
             }
           }

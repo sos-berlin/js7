@@ -77,9 +77,9 @@ object CirceUtils:
 
   inline def deriveRenamingDecoder[A](rename: Map[String, String])(using inline A: Mirror.Of[A])
   : Decoder[A] =
-    deriveRenamingDecoder2(Decoder.derived[A], rename)
+    deriveRenamingDecoder2(ConfiguredDecoder.derived[A], rename)
 
-  private def deriveRenamingDecoder2[A](decode: Decoder[A], rename: Map[String, String])
+  private def deriveRenamingDecoder2[A](decode: ConfiguredDecoder[A], rename: Map[String, String])
   : Decoder[A] =
     // Precalculate keySet
     val keySet: Set[String] = rename.keySet

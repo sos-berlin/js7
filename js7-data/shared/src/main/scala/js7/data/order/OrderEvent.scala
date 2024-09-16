@@ -6,6 +6,7 @@ import io.circe
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
@@ -154,7 +155,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     state: IsFreshOrReady,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
-    externalOrderKey: Option[ExternalOrderKey] = None,
+    externalOrder: Option[ExternalOrderLink] = None,
     historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
     agentPath: AgentPath,
     parent: Option[OrderId] = None,
@@ -460,6 +461,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderActorEvent, OrderTerminated:
     override def toString = "OrderFinished" + parameterListToString(outcome)
 
+
+  type OrderExternalVanished = OrderExternalVanished.type
+  case object OrderExternalVanished extends OrderActorEvent
+
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
 
@@ -637,6 +642,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],
     Subtype[OrderOrderAdded],
+    Subtype(OrderExternalVanished),
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
@@ -671,7 +677,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),
-    Subtype(deriveConfiguredCodec[OrderAttachedToAgent]),
+    Subtype(deriveRenamingCodec[OrderAttachedToAgent](Map(
+      "externalOrderKey" -> "externalOrder"))),
     Subtype(OrderDetachable),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]),

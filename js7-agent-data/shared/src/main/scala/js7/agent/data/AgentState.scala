@@ -281,6 +281,7 @@ extends SignedItemContainer,
   protected def update(
     orders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
+    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[AgentState] =

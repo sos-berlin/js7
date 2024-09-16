@@ -4,7 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils
-import js7.base.circeutils.CirceUtils.{deriveRenamingCodec, deriveRenamingDecoder}
+import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -20,7 +20,7 @@ import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.*
-import js7.data.orderwatch.ExternalOrderKey
+import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -39,7 +39,7 @@ final case class Order[+S <: Order.State](
   state: S,
   arguments: NamedValues = Map.empty,
   scheduledFor: Option[Timestamp] = None,
-  externalOrderKey: Option[ExternalOrderKey] = None,
+  externalOrder: Option[ExternalOrderLink] = None,
   historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
@@ -85,6 +85,9 @@ final case class Order[+S <: Order.State](
       Left(Problem.pure(s"$id is in state FailedInFork but not below a Fork instruction"))
     else
       Right(reversed.tail.reverse % reversed.head.nr)
+
+  def hasNonVanishedExternalOrder: Boolean =
+    externalOrder.exists(o => !o.vanished)
 
   def applyEvents(events: Iterable[OrderEvent.OrderCoreEvent]): Checked[Order[State]] =
     // TODO Generalize this in ScalaUtils!
@@ -238,6 +241,12 @@ final case class Order[+S <: Order.State](
       case OrderDeletionMarked =>
         check(parent.isEmpty,
           copy(deleteWhenTerminated = true))
+
+      case OrderExternalVanished =>
+        check(parent.isEmpty,
+          copy(
+            externalOrder = externalOrder.map(_.copy(
+              vanished = true))))
 
       case OrderDeleted =>
         check(isState[IsTerminated] && isDetached && parent.isEmpty,
@@ -806,6 +815,12 @@ final case class Order[+S <: Order.State](
   def isInOutermostBlock: Boolean =
     position.branchPath == innerBlock
 
+  def tryDelete: Option[OrderDeleted] =
+    ((deleteWhenTerminated || externalOrder.exists(_.vanished))
+      && isState[IsTerminated]
+      && parent.isEmpty
+    ) ? OrderDeleted
+
   /** Number of executions for this job (starting with 1). */
   def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int =
     val x = Right(jobKey)
@@ -826,7 +841,7 @@ final case class Order[+S <: Order.State](
             order.state,
             arguments,
             scheduledFor,
-            externalOrderKey,
+            externalOrder,
             historicOutcomes, agentPath, parent, mark,
             isSuspended = isSuspended,
             isResumed = isResumed,
@@ -873,7 +888,8 @@ object Order:
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
       Fresh,
       event.arguments,
-      event.scheduledFor, event.externalOrderKey,
+      event.scheduledFor,
+      event.externalOrderKey.map(ExternalOrderLink.added),
       deleteWhenTerminated = event.deleteWhenTerminated,
       forceJobAdmission = event.forceJobAdmission,
       innerBlock = event.innerBlock,
@@ -882,7 +898,7 @@ object Order:
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments,
       event.scheduledFor,
-      event.externalOrderKey,
+      event.externalOrder,
       historicOutcomes = event.historicOutcomes,
       Some(Attached(event.agentPath)),
       event.parent, event.mark,
@@ -1110,7 +1126,7 @@ object Order:
       "state" -> order.state.asJson,
       "arguments" -> order.arguments.??.asJson,
       "scheduledFor" -> order.scheduledFor.asJson,
-      "externalOrderKey" -> order.externalOrderKey.asJson,
+      "externalOrder" -> order.externalOrder.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
       "mark" -> order.mark.asJson,
@@ -1130,7 +1146,10 @@ object Order:
       state <- cursor.get[State]("state")
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       scheduledFor <- cursor.get[Option[Timestamp]]("scheduledFor")
-      externalOrderKey <- cursor.get[Option[ExternalOrderKey]]("externalOrderKey")
+      externalOrder <- cursor.get[Option[ExternalOrderLink]]("externalOrder")
+        .flatMap:
+          case Some(id) => Right(Some(id))
+          case None => cursor.get[Option[ExternalOrderLink]]("externalOrderKey") // COMPATIBLE with v2.7.1
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
       mark <- cursor.get[Option[OrderMark]]("mark")
@@ -1143,7 +1162,7 @@ object Order:
       stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     yield
-      Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
+      Order(id, workflowPosition, state, arguments, scheduledFor, externalOrder, historicOutcomes,
         attachedState, parent, mark,
         isSuspended = isSuspended,
         isResumed = isResumed,
@@ -1172,6 +1191,30 @@ object Order:
           s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}",
           c.history))
         case Some(x) => Right(x)
+
+
+  final case class ExternalOrderLink(
+    orderWatchPath: OrderWatchPath,
+    name: ExternalOrderName,
+    vanished: Boolean = false):
+
+    def externalOrderKey: ExternalOrderKey =
+      ExternalOrderKey(orderWatchPath, name)
+
+    override def toString =
+      if vanished then
+        s"ExternalOrderLink($externalOrderKey vanished)"
+      else
+        externalOrderKey.toString
+
+  object ExternalOrderLink:
+    def added(externalOrderKey: ExternalOrderKey): ExternalOrderLink =
+      ExternalOrderLink(
+        externalOrderKey.orderWatchPath,
+        externalOrderKey.name)
+
+    given Codec[ExternalOrderLink] = deriveConfiguredCodec
+
 
   final case class StickySubagent(
     agentPath: AgentPath,

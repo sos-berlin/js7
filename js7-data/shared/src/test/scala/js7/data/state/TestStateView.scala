@@ -52,6 +52,7 @@ extends EventDrivenStateView[TestStateView, Event]:
   override protected def update(
     orders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
+    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[TestStateView] =
@@ -59,6 +60,7 @@ extends EventDrivenStateView[TestStateView, Event]:
     var x = this
     if removeOrders.nonEmpty then x = x.copy(idToOrder = idToOrder -- removeOrders)
     if orders.nonEmpty then x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
+    // externalVanishedOrders ???
     if removeItemStates.nonEmpty then x = x.copy(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
     if addItemStates.nonEmpty then x = x.copy(
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))

@@ -295,7 +295,7 @@ extends SignedItemContainer,
           for updated <- applyOrderEvent(orderId, event) yield
             updated
               .copy(workflowToOrders = workflowToOrders
-                .moveOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
+                .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
 
         case _ =>
           applyOrderEvent(orderId, event)
@@ -422,25 +422,38 @@ extends SignedItemContainer,
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState],
     remove: Iterable[OrderWatchPath]
-  ) = update(addItemStates = orderWatchStates, removeItemStates = remove)
+  ): Checked[ControllerState] =
+    update(
+      addItemStates = orderWatchStates,
+      removeItemStates = remove)
 
   protected def update(
     orders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
+    externalVanishedOrders: Iterable[Order[Order.State]],
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[ControllerState] =
-    var result: Checked[ControllerState] = Right(this)
-    for order <- orders; controllerState <- result do
-      result = controllerState.addOrUpdateOrder(order)
-    for orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result do
-      result = controllerState.deleteOrder(order)
-    for controllerState <- result do
-      result = Right(controllerState.copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_
+    for
+      s <- (orders ++ externalVanishedOrders).foldEithers(this):
+        _.addOrUpdateOrder(_)
+      s <- externalVanishedOrders.foldEithers(s):
+        _.ow.onOrderExternalVanished(_)
+      s <-
+        removeOrders.foldEithers(s): (s, orderId) =>
+          s.idToOrder.get(orderId).fold(Checked(s)): order =>
+            order.externalOrder.fold(Checked(s)): ext =>
+              s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
+            .map: s =>
+              s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
+        .map: s =>
+          s.copy(idToOrder = s.idToOrder -- removeOrders)
+      s <- Right(s.copy(
+        keyToUnsignedItemState_ = s.keyToUnsignedItemState_
           -- removeItemStates
           ++ addItemStates.view.map(o => o.path -> o)))
-    result
+    yield
+      s
 
   private def addOrUpdateOrder(order: Order[Order.State]): Checked[ControllerState] =
     if idToOrder contains order.id then
@@ -456,16 +469,10 @@ extends SignedItemContainer,
     yield updated
 
   private def continueAddOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for updated <- ow.onOrderAdded(order) yield
+    ow.onOrderAdded(order).map: updated =>
       updated.copy(
-        idToOrder = idToOrder.updated(order.id, order),
-        workflowToOrders = workflowToOrders.addOrder(order))
-
-  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for updated <- order.externalOrderKey.fold_(Right(this), ow.onOrderDeleted(_, order.id)) yield
-      updated.copy(
-        idToOrder = idToOrder - order.id,
-        workflowToOrders = workflowToOrders.removeOrder(order))
+        idToOrder = updated.idToOrder.updated(order.id, order),
+        workflowToOrders = updated.workflowToOrders.addOrder(order))
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -707,7 +714,8 @@ extends ClusterableState.Companion[ControllerState],
     Map.empty,
     ClientAttachments.empty,
     Set.empty,
-    Map.empty)
+    Map.empty,
+    WorkflowToOrders(Map.empty))
 
   val empty: ControllerState = Undefined
 
@@ -760,8 +768,9 @@ extends ClusterableState.Companion[ControllerState],
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
 
+
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
-    def moveOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =
+    def transferOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =
       removeOrder(order).addOrder(order.id, to)
 
     def addOrder(order: Order[Order.State]): WorkflowToOrders =

@@ -2,9 +2,13 @@ package js7.data.orderwatch
 
 import cats.instances.vector.*
 import cats.syntax.traverse.*
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
+import js7.base.utils.{Assertions, Tests}
 import js7.data.event.KeyedEvent
+import js7.data.order.OrderEvent.{OrderAdded, OrderExternalVanished}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}
@@ -13,6 +17,9 @@ trait OrderWatchStateHandler[Self]:
   self: Self =>
 
   protected def pathToOrderWatchState: MapView[OrderWatchPath, OrderWatchState]
+  protected def idToOrder: PartialFunction[OrderId, Order[Order.State]]
+
+  protected def isOrderExternalNotVanished(orderId: OrderId): Boolean
 
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState] = Nil,
@@ -43,15 +50,14 @@ trait OrderWatchStateHandler[Self]:
       pathToOrderWatchState
         .checked(keyedEvent.key)
         .flatMap(_.applyOrderWatchEvent(keyedEvent.event))
-        .flatMap(updated => updateOrderWatchState(
-          updated))
+        .flatMap(updateOrderWatchState)
 
     def onOrderAdded(order: Order[Order.State]): Checked[Self] =
-      order.externalOrderKey match
+      order.externalOrder match
         case None => Right(self)
-        case Some(externalOrderKey) => onOrderAdded(externalOrderKey, order.id)
+        case Some(ext) => onOrderAdded(ext.externalOrderKey, order.id)
 
-    private def onOrderAdded(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
+    def onOrderAdded(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.orderWatchPath
       pathToOrderWatchState
         .checked(orderWatchPath)
@@ -59,17 +65,28 @@ trait OrderWatchStateHandler[Self]:
         .flatMap(watchState => updateOrderWatchState(
           watchState))
 
+    def onOrderExternalVanished(order: Order[Order.State]): Checked[Self] =
+      if isTest then assertThat(order.externalOrder.exists(_.vanished))
+      order.externalOrder.toRight:
+        Problem(s"OrderExternalVanished but ${order.id} is not linked to an external order")
+      .flatMap: ext =>
+        onOrderExternalVanished(ext.externalOrderKey)
+
+    def onOrderExternalVanished(external: ExternalOrderKey): Checked[Self] =
+      pathToOrderWatchState.get(external.orderWatchPath)
+        .fold(Checked(self)):
+          _.onOrderExternalVanished(external.name).flatMap:
+            updateOrderWatchState
+
     def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.{name, orderWatchPath}
-      pathToOrderWatchState.get(orderWatchPath)
-        .fold(Checked(self)):
-          _.onOrderDeleted(name, orderId)
-            .flatMap(o => updateOrderWatchState(o))
+      pathToOrderWatchState.get(orderWatchPath).fold(Checked(self)): orderWatchState =>
+        orderWatchState.onOrderDeleted(name, orderId)
+          .flatMap(updateOrderWatchState)
 
-    def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
-    : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
-      pathToOrderWatchState.values.view
-        .flatMap(_.nextEvents(toOrderAdded, isDeletionMarkable))
+    def nextEvents(toOrderAdded: ToOrderAdded): View[KeyedEvent[OrderAdded | OrderExternalVanished]] =
+      pathToOrderWatchState.values.view.flatMap:
+        _.nextEvents(toOrderAdded)
 
     def applySnapshot(snapshot: OrderWatchState.ExternalOrderSnapshot): Checked[Self] =
       pathToOrderWatchState.checked(snapshot.orderWatchPath)
@@ -81,5 +98,6 @@ trait OrderWatchStateHandler[Self]:
     def finishRecovery: Checked[Self] =
       pathToOrderWatchState.values
         .toVector
-        .traverse(_.finishRecovery)
+        .traverse:
+          _.finishRecovery(isNotVanished = isOrderExternalNotVanished)
         .flatMap(updateOrderWatchStates(_))

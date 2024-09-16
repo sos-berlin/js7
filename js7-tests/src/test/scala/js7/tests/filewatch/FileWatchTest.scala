@@ -26,9 +26,10 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeleted, 
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
-import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, OrderFinished, OrderProcessingStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancellationMarkedOnAgent, OrderDeleted, OrderExternalVanished, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchState.HasOrder
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
@@ -231,89 +232,160 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     val removed = eventWatch.await[OrderDeleted](_.key == longOrderId).head
     assert(vanished.timestamp <= removed.timestamp)
 
-  "Change directory" in:
-    TestJob.reset()
-    TestJob.continue(5)
+  "Change directory" - {
+    "Different files in old and new directory" in:
+      TestJob.reset()
+      TestJob.continue(5)
 
-    // A file only in the old directory
-    val singletonFile = waitingWatchDirectory / "CHANGE-DIRECTORY-SINGLETON"
-    val singletonOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-SINGLETON")
-    singletonFile := ""
+      // A file only in the old directory
+      val singletonName = "CHANGE-DIRECTORY-SINGLETON"
+      val singletonFile = waitingWatchDirectory / singletonName
+      val singletonOrderId = waitingFileToOrderId(singletonName)
+      singletonFile := ""
 
-    // Same filename in old and new directory
-    val originalBothFile = waitingWatchDirectory / "CHANGE-DIRECTORY-BOTH"
-    val bothOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-BOTH")
-    originalBothFile := ""
 
-    eventWatch.await[OrderFinished](_.key == singletonOrderId)
-    eventWatch.await[OrderFinished](_.key == bothOrderId)
-    assert(exists(singletonFile) && exists(originalBothFile))
+      eventWatch.await[OrderFinished](_.key == singletonOrderId)
+      assert(exists(singletonFile))
 
-    withTemporaryDirectory() { newDirectory =>
+      withTemporaryDirectory() { newDirectory =>
+        val eventId = eventWatch.lastAddedEventId
+
+        // A file only in the newDirectory
+        val newFile = newDirectory / "CHANGE-DIRECTORY-NEW"
+        val newOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-NEW")
+        newFile := ""
+
+        /// Change directory ///
+        val changedFileWatch = waitingFileWatch.copy(
+          directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
+        controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+        eventWatch.await[ItemAttached](after = eventId)
+
+        /// Files are considered deleted (due to directory change — they still exists) ///
+        eventWatch.await[OrderExternalVanished](_.key == singletonOrderId, after = eventId)
+        eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
+        //eventId = eventWatch.lastAddedEventId
+
+        // File in old directory is ignored
+        val oldFile = waitingWatchDirectory / "CHANGE-DIRECTORY-OLD"
+        oldFile := ""
+
+        val vanished = eventWatch.await[ExternalOrderVanished](
+          _ == waitingFileWatch.path <-: ExternalOrderVanished(ExternalOrderName(singletonName)),
+          after = eventId).head
+        val deleted = eventWatch
+          .await[OrderExternalVanished](_.key == singletonOrderId, after = eventId).head
+        assert(vanished.timestamp <= deleted.timestamp)
+
+        // bothOrderId has been started again because its filename duplicates in newDirectory
+
+        eventWatch.await[OrderFinished](_.key == newOrderId, after = eventId)
+        delete(newFile)
+        eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
+
+        assert(eventWatch
+          .keyedEvents[ExternalOrderArised](after = eventId)
+          .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
+          .toSet ==
+          Set(newFile.toString))
+
+        // Java for macOS needs 2s to detect a file (maybe oldFile)
+        if isMac then sleep(2500.ms)
+
+        assert(eventWatch
+          .keyedEvents[ExternalOrderVanished](after = eventId)
+          .map(_.event.externalOrderName)
+          .toSet ==
+          Set(
+            ExternalOrderName(singletonFile.getFileName.toString),
+            ExternalOrderName(newFile.getFileName.toString)))
+
+        delete(oldFile)
+      }
+
+      delete(singletonFile)
+
+      // Restore waitingFileWatch
       val eventId = eventWatch.lastAddedEventId
+      controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
+      eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
 
-      val bothFile = newDirectory / "CHANGE-DIRECTORY-BOTH"
-      bothFile := ""
+    "Same filename both in old and new directory" in:
+      TestJob.reset()
+      TestJob.continue(1)
 
-      // A file only in the newDirectory
-      val newFile = newDirectory / "CHANGE-DIRECTORY-NEW"
-      val newOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-NEW")
-      newFile := ""
-
-      /// Change directory ///
-      val changedFileWatch = waitingFileWatch.copy(
-        directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
-      controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-      eventWatch.await[ItemAttached](after = eventId)
-
-      /// Files are considered deleted (due to directory change — they still exists) ///
-      eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
-      eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
-
-      // File in old directory is ignored
-      val oldFile = waitingWatchDirectory / "CHANGE-DIRECTORY-OLD"
+      // Same filename in old and new directory
+      val name = "BOTH"
+      val oldFile = waitingWatchDirectory / name
+      val externalOrderName = ExternalOrderName(name)
+      val orderId = waitingFileToOrderId(name)
       oldFile := ""
 
-      val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-      val removed = eventWatch.await[OrderDeleted](_.key == singletonOrderId).head
-      assert(vanished.timestamp <= removed.timestamp)
+      eventWatch.await[OrderFinished](_.key == orderId)
+      assert(exists(oldFile))
+      assert(eventWatch.eventsByKey[OrderFinished](orderId).last == OrderFinished())
 
-      // bothOrderId has been started again because its filename duplicates in newDirectory
-      eventWatch.await[OrderFinished](_.key == bothOrderId, after = eventId)
-      eventWatch.await[OrderFinished](_.key == newOrderId, after = eventId)
-      eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
-      delete(newFile)
-      eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
+      def orderWatchState = controllerState.keyTo(OrderWatchState)(waitingFileWatch.path)
+      assert(orderWatchState == OrderWatchState(
+        waitingFileWatch.withRevision(orderWatchState.item.itemRevision),
+        externalToState = Map(
+          externalOrderName -> HasOrder(orderId))))
+      Logger.info(s"$orderWatchState")
 
-      assert(eventWatch
-        .keyedEvents[ExternalOrderArised](after = eventId)
-        .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
-        .toSet ==
-        Set(
-          bothFile.toString,
-          newFile.toString))
+      withTemporaryDirectory() { newDirectory =>
+        val eventId = eventWatch.lastAddedEventId
 
-      // Java for macOS needs 2s to detect a file (maybe oldFile)
-      if isMac then sleep(2500.ms)
+        val newFile = newDirectory / name
+        newFile := ""
 
-      assert(eventWatch
-        .keyedEvents[ExternalOrderVanished](after = eventId)
-        .map(_.event.externalOrderName)
-        .toSet ==
-        Set(
-          ExternalOrderName(singletonFile.getFileName.toString),
-          ExternalOrderName(originalBothFile.getFileName.toString),
-          ExternalOrderName(bothFile.getFileName.toString),
-          ExternalOrderName(newFile.getFileName.toString)))
+        /// Change directory ///
+        val changedFileWatch = waitingFileWatch.copy(
+          directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
+        controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+        eventWatch.await[ItemAttached](after = eventId)
+
+        /// Files are considered deleted (due to directory change — they still exists) ///
+        eventWatch.await[OrderExternalVanished](_.key == orderId, after = eventId)
+        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+
+        // orderId has been started again because its filename duplicates in newDirectory
+
+        eventWatch.await[ExternalOrderArised](
+          ke => ke.key == waitingFileWatch.path && ke.event.orderId == orderId,
+          after = eventId)
+        eventWatch.await[OrderAdded](_.key == orderId, after = eventId)
+
+        TestJob.continue(1)
+
+        eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+
+        assert(eventWatch
+          .keyedEvents[ExternalOrderArised](after = eventId)
+          .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
+          .toSet == Set(newFile.toString))
+
+        // Java for macOS needs 2s to detect a file (maybe oldFile)
+        if isMac then sleep(2500.ms)
+
+        assert(eventWatch
+          .keyedEvents[ExternalOrderVanished](after = eventId)
+          .map(_.event.externalOrderName)
+          .toSet ==
+          Set(
+            ExternalOrderName(oldFile.getFileName.toString),
+            ExternalOrderName(newFile.getFileName.toString)))
+
+        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+      }
 
       delete(oldFile)
-      delete(originalBothFile)
-    }
 
-    // Restore waitingFileWatch
-    val eventId = eventWatch.lastAddedEventId
-    controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
-    eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
+      // Restore waitingFileWatch
+      val eventId = eventWatch.lastAddedEventId
+      controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
+      eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
+    }
 
   "Change Agent" in:
     val eventId = eventWatch.lastAddedEventId

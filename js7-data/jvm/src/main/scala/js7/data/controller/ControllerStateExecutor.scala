@@ -52,39 +52,48 @@ final case class ControllerStateExecutor private(
   : Checked[Seq[KeyedEvent[OrderAdded]]] =
     freshOrders.checkUniqueness(_.id) *>
       freshOrders
-        .traverse(addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor))
+        .traverse:
+          addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+            .map(_.toOption)
         .map(_.flatten)
 
+  /** @return Right(Left(existingOrder)). */
   def addOrder(
     order: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey] = None,
     suppressOrderIdCheckFor: Option[String] = None)
-  : Checked[Option[KeyedEvent[OrderAdded]]] =
-    ( if suppressOrderIdCheckFor.contains(order.id.string) then Checked.unit
-      else order.id.checkedNameSyntax
-    ) *>
+  : Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]] =
+    locally:
+      if suppressOrderIdCheckFor.contains(order.id.string) then
+        Checked.unit
+      else
+        order.id.checkedNameSyntax
+    .productR:
       addOrderWithPrecheckedId(order, externalOrderKey)
 
   private def addOrderWithPrecheckedId(
     freshOrder: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey])
-  : Checked[Option[KeyedEvent[OrderAdded]]] =
-    if controllerState.idToOrder.contains(freshOrder.id) then
-      Right(None) // Ignore known orders  — TODO Fail as duplicate if deleteWhenTerminated ?
-    else
-      for
-        workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
-        preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
-          freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-        _ <- workflow.nestedWorkflow(freshOrder.innerBlock)
-        startPosition <- freshOrder.startPosition
-          .traverse(
+  : Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]] =
+    controllerState.idToOrder.get(freshOrder.id) match
+      case Some(existing) =>
+        // Ignore known orders — TODO Fail as duplicate if deleteWhenTerminated ?
+        Checked(Left(existing))
+      case None =>
+        for
+          workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
+          preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
+            freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
+          _ <- workflow.nestedWorkflow(freshOrder.innerBlock)
+          startPosition <- freshOrder.startPosition
+            .traverse:
+              checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
+          _ <- freshOrder.stopPositions.toSeq.traverse(
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
-        _ <- freshOrder.stopPositions.toSeq.traverse(
-          checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
-      yield Some(
-        freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
-          startPosition))
+        yield
+          Right:
+            freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
+              startPosition)
 
   private def checkStartAndStopPositionAndInnerBlock(
     positionOrLabel: PositionOrLabel, workflow: Workflow, innerBlock: BranchPath)
@@ -488,10 +497,7 @@ final case class ControllerStateExecutor private(
         ItemAttachable(workflowControl.id, _)
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
-    controllerState.ow.nextEvents(addOrder(_, _), isDeletionMarkable)
-
-  private def isDeletionMarkable(orderId: OrderId): Boolean =
-    controllerState.idToOrder.get(orderId).exists(o => !o.deleteWhenTerminated)
+    controllerState.ow.nextEvents(addOrder(_, _))
 
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =
     var controllerState = this.controllerState

@@ -641,6 +641,9 @@ extends Actor, Stash, JournalLogging:
       var msg = s"$what does not match actual '$S'"
       logger.error(msg)
       for stamped <- stampedSeq do logger.error(stamped.toString.truncateWithEllipsis(200))
+      if conf.slowCheckState then
+        logger.error(s"couldBeRecoveredState (wrong) = $couldBeRecoveredState")
+        logger.error(s"uncommittedState (expected)   = $uncommittedState")
       // msg may get very big
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)

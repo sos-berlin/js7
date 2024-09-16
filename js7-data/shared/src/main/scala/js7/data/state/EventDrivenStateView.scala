@@ -7,7 +7,7 @@ import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
@@ -19,9 +19,13 @@ trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
 extends EventDrivenState[Self, E], StateView:
   this: Self =>
 
+  final def isOrderExternalNotVanished(orderId: OrderId): Boolean =
+    idToOrder.get(orderId).flatMap(_.externalOrder).exists(o => !o.vanished)
+
   protected def update(
     addOrders: Iterable[Order[Order.State]] = Nil,
     removeOrders: Iterable[OrderId] = Nil,
+    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
     addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
     removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
   : Checked[Self]
@@ -129,6 +133,12 @@ extends EventDrivenState[Self, E], StateView:
         case orderAdded: OrderOrderAdded =>
           addOrder(Order.fromOrderAdded(orderAdded.orderId, orderAdded))
 
+        case OrderExternalVanished =>
+          if updatedOrder.externalOrder.isEmpty then
+            Left(Problem(s"OrderExternalVanished but $orderId is not linked to an external order"))
+          else
+            update(externalVanishedOrders = updatedOrder :: Nil)
+
         case OrderDeletionMarked =>
           update(addOrders = updatedOrder :: Nil)
 
@@ -136,8 +146,7 @@ extends EventDrivenState[Self, E], StateView:
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
-            deleteOrder(previousOrder)
-              .flatMap(_.update(removeOrders = orderId :: Nil))
+            update(removeOrders = orderId :: Nil)
 
         case _ =>
           update(addOrders = updatedOrder :: Nil)
@@ -148,9 +157,6 @@ extends EventDrivenState[Self, E], StateView:
       _ <- idToOrder.checkNoDuplicate(order.id)
       self <- update(addOrders = order :: Nil)
     yield self
-
-  protected def deleteOrder(order: Order[Order.State]): Checked[Self] =
-    update(removeOrders = order.id :: Nil)
 
   private def applyOrderNoticeEvent(
     previousOrder: Order[Order.State],

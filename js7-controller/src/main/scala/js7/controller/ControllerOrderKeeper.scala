@@ -776,7 +776,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             orders.traverse(order =>
               if order.parent.isDefined then
                 Left(CannotDeleteChildOrderProblem(order.id): Problem)
-              else if order.externalOrderKey.isDefined then
+              else if order.hasNonVanishedExternalOrder then
                 Left(CannotDeleteWatchingOrderProblem(order.id): Problem)
               else
                 Right(order)))
@@ -949,7 +949,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private def orderDeletedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
     order.id <-: (
-      if order.isState[Order.IsTerminated] then
+      if order.isState[Order.IsTerminated] && order.externalOrder.forall(_.vanished) then
         OrderDeleted
       else
         OrderDeletionMarked)
@@ -1107,11 +1107,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     _controllerState.addOrder(freshOrder, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
     match
       case Left(problem) => Future.successful(Left(problem))
-      case Right(None) =>
+      case Right(Left(existing)) =>
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
         Future.successful(Right(false))
 
-      case Right(Some(orderAdded)) =>
+      case Right(Right(orderAdded)) =>
         persistTransactionAndSubsequentEvents(orderAdded :: Nil) { (stamped, updatedState) =>
           handleEvents(stamped, updatedState)
           Right(true)

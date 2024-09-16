@@ -47,20 +47,23 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     if !weHave(order) then
       Nil
     else
-      orderMarkKeyedEvent(order).getOrElse:
-        if order.isState[Order.Broken] then
-          Nil // Avoid issuing a second OrderBroken (would be a loop)
-        else if order.isSuspendedOrStopped then
-          Nil
-        else if state.isOrderAtBreakpoint(order) then
-          atController(OrderSuspended :: Nil)
-            .map(order.id <-: _)
-        else if state.isWorkflowSuspended(order.workflowPath) then
-          Nil
-        else
-          checkedNextEvents(order) match
-            case Left(problem) => invalidToEvent(order, problem)
-            case Right(keyedEvents) => keyedEvents
+      tryDelete(order)
+        .orElse:
+          orderMarkKeyedEvent(order)
+        .getOrElse:
+          if order.isState[Order.Broken] then
+            Nil // Avoid issuing a second OrderBroken (would be a loop)
+          else if order.isSuspendedOrStopped then
+            Nil
+          else if state.isOrderAtBreakpoint(order) then
+            atController(OrderSuspended :: Nil)
+              .map(order.id <-: _)
+          else if state.isWorkflowSuspended(order.workflowPath) then
+            Nil
+          else
+            checkedNextEvents(order) match
+              case Left(problem) => invalidToEvent(order, problem)
+              case Right(keyedEvents) => keyedEvents
 
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =
@@ -225,31 +228,32 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         (order.state.until <= clock.now()).thenList:
           OrderAwoke
 
+  private def tryDelete(order: Order[Order.State]): Option[List[KeyedEvent[OrderDeleted]]] =
+    order.tryDelete.map: e =>
+      (order.id <-: e) :: Nil
+
   private def orderMarkKeyedEvent(order: Order[Order.State])
   : Option[List[KeyedEvent[OrderActorEvent]]] =
     orderMarkEvent(order)
       .map(_.map(order.id <-: _))
 
   private def orderMarkEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
-    if order.deleteWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty then
-      Some(OrderDeleted :: Nil)
-    else
-      order.mark.flatMap:
-        case OrderMark.Cancelling(mode) =>
-          tryCancel(order, mode)
+    order.mark.flatMap:
+      case OrderMark.Cancelling(mode) =>
+        tryCancel(order, mode)
 
-        case OrderMark.Suspending(_) =>
-          trySuspendNow(order)
+      case OrderMark.Suspending(_) =>
+        trySuspendNow(order)
 
-        case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
-          tryResume(order, position, historyOperations, asSucceeded)
-            .map(_ :: Nil)
+      case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
+        tryResume(order, position, historyOperations, asSucceeded)
+          .map(_ :: Nil)
 
-        case OrderMark.Go(_) =>
-          // OrderMark.go is used only at the Controller to remember sending a MarkOrder command
-          // to the Agent.
-          // The Agent executes the MarkOrder command immediately
-          None
+      case OrderMark.Go(_) =>
+        // OrderMark.go is used only at the Controller to remember sending a MarkOrder command
+        // to the Agent.
+        // The Agent executes the MarkOrder command immediately
+        None
 
   def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[List[OrderActorEvent]]] =
     catchNonFatalFlatten:

@@ -12,6 +12,7 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
+import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.OrderEvent.*
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
@@ -132,7 +133,10 @@ final class OrderEventTest extends OurTestSuite:
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
-        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
+        Some(ExternalOrderLink(
+          OrderWatchPath("ORDER-WATCH"),
+          ExternalOrderName("ORDER-NAME"),
+          vanished = true)),
         Vector(HistoricOutcome(Position(123), OrderOutcome.succeeded)),
         AgentPath("AGENT"),
         Some(OrderId("PARENT")),
@@ -162,9 +166,10 @@ final class OrderEventTest extends OurTestSuite:
           "KEY": "VALUE"
         },
         "scheduledFor": 1510749224789,
-        "externalOrderKey": {
+        "externalOrder": {
           "orderWatchPath": "ORDER-WATCH",
-          "name": "ORDER-NAME"
+          "name": "ORDER-NAME",
+          "vanished": true
         },
         "historicOutcomes": [
           {
@@ -196,6 +201,9 @@ final class OrderEventTest extends OurTestSuite:
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
+        externalOrder = Some(ExternalOrderLink(
+          OrderWatchPath("ORDER-WATCH"),
+          ExternalOrderName("ORDER-NAME"))),
         agentPath = AgentPath("AGENT"),
         stickySubagents = List(Order.StickySubagent(
           AgentPath("AGENT"),
@@ -212,6 +220,10 @@ final class OrderEventTest extends OurTestSuite:
         },
         "state": {
           "TYPE": "Ready"
+        },
+        "externalOrderKey": {
+          "orderWatchPath": "ORDER-WATCH",
+          "name": "ORDER-NAME"
         },
         "historicOutcomes": [],
         "agentPath":"AGENT",
@@ -528,6 +540,12 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderCancelled, json"""
       {
         "TYPE": "OrderCancelled"
+      }""")
+
+  "OrderExternalVanished" in:
+    testJson[OrderEvent](OrderExternalVanished, json"""
+      {
+        "TYPE": "OrderExternalVanished"
       }""")
 
   "OrderDeletionMarked" in:

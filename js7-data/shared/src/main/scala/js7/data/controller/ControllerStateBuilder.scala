@@ -299,7 +299,7 @@ extends SnapshotableStateBuilder[ControllerState],
                     pathToSignedSimpleItem -= jobResourcePath
 
                   case path: OrderWatchPath =>
-                    ow.removeOrderWatch(path)
+                    ow.removeOrderWatch(path).orThrow
 
                   case itemKey: UnsignedItemKey =>
                     _keyToUnsignedItemState -= itemKey
@@ -348,12 +348,6 @@ extends SnapshotableStateBuilder[ControllerState],
     ow.onOrderAdded(order).orThrow
     Right(this)
 
-  override protected def deleteOrder(order: Order[Order.State]) =
-    for order <- _idToOrder.remove(order.id) do
-      for externalOrderKey <- order.externalOrderKey do
-        ow.onOrderDeleted(externalOrderKey, order.id).orThrow
-    Right(this)
-
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match
       case jobResource: JobResource =>
@@ -370,11 +364,22 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def update(
     addOrders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
+    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[ControllerStateBuilder] =
+    removeOrders.foreach: orderId =>
+      _idToOrder.get(orderId).foreach: order =>
+        order.externalOrder.foreach: ext =>
+          ow.onOrderDeleted(ext.externalOrderKey, orderId).orThrow
+
+    externalVanishedOrders.foreach: order =>
+      ow.onOrderExternalVanished(order).orThrow
+
+    _idToOrder ++= externalVanishedOrders.map(o => o.id -> o)
     _idToOrder --= removeOrders
     _idToOrder ++= addOrders.map(o => o.id -> o)
+
     _keyToUnsignedItemState --= removeItemStates
     _keyToUnsignedItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)

@@ -28,10 +28,11 @@ import js7.data.item.{ClientAttachments, InventoryItemKey, InventoryItemPath, It
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
+import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
-import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -317,9 +318,10 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         "state": {
           "TYPE": "Fresh"
         },
-        "externalOrderKey": {
+        "externalOrder": {
           "orderWatchPath": "WATCH",
-          "name": "ORDER-NAME"
+          "name": "ORDER-NAME",
+          "vanished": true
         },
         "workflowPosition": {
           "position": [ 0 ],
@@ -537,7 +539,10 @@ object ControllerStateTest:
     deletionMarkedItems = Set(fileWatch.path),
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,
-        externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
+        externalOrder = Some(ExternalOrderLink(
+          fileWatch.path,
+          ExternalOrderName("ORDER-NAME"),
+          vanished = true))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeId))))
     ).toKeyedMap(_.id)
