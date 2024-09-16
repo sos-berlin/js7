@@ -134,7 +134,7 @@ extends Service.StoppableByRequest:
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(IO(
-          testEventPublisher.publish(WaitingForConfirmation(request))))
+          testEventPublisher.publish(TestWaitingForConfirmation(request))))
         .*>(requested
           .untilConfirmed
           .timeoutTo(
@@ -322,4 +322,4 @@ object ClusterWatchCounterpart:
 
   private class RequestTimeoutException extends Exception
 
-  final case class WaitingForConfirmation(request: ClusterWatchRequest)
+  final case class TestWaitingForConfirmation(request: ClusterWatchRequest)

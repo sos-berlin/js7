@@ -3,7 +3,7 @@ package js7.tests.cluster.controller
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
+import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
@@ -33,10 +33,10 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
       }
 
       primaryController.testEventBus
-        .whenFilterMap[WaitingForConfirmation, ClusterPassiveLost](_.request match {
-          case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _, _) => Some(event)
-          case _ => None
-        })
+        .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterPassiveLost]:
+          _.request match
+            case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _, _) => Some(event)
+            case _ => None
         .await(99.s)
 
       withClusterWatchService() { (clusterWatch, _) =>

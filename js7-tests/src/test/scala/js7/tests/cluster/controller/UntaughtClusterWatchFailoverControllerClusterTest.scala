@@ -6,7 +6,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
+import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
@@ -62,10 +62,10 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
           "— The Controller should have terminated while the shell script runs")
 
         backupController.testEventBus
-          .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.request match {
-            case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
-            case _ => None
-          })
+          .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterFailedOver]:
+            _.request match 
+              case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
+              case _ => None
           .await(99.s)
 
         withClusterWatchService(ClusterWatchId("CLUSTER-WATCH-2")) { (clusterWatchService, _) =>

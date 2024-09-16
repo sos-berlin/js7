@@ -6,7 +6,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
-import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
+import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
@@ -63,9 +63,9 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       sys.props(testHeartbeatLossPropertyKey) = "true"
 
       backupController.testEventBus
-        .whenPF[WaitingForConfirmation, Unit](_.request match {
-          case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
-        })
+        .whenPF[ClusterWatchCounterpart.TestWaitingForConfirmation, Unit]:
+          _.request match
+            case ClusterWatchCheckEvent(_, _, `backupId`, _: ClusterFailedOver, _, _) =>
         .await(99.s)
 
       if stopPrimary then
