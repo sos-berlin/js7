@@ -3,6 +3,7 @@ package js7.tests.cluster.controller
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart
@@ -48,9 +49,15 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
       var backupController = backup.newController()
       import primaryController.eventWatch
 
+      val clusterCoupledConfirmed = primaryController.testEventBus
+        .whenPFFuture[ClusterWatchCounterpart.TestConfirmed, Unit]:
+          _.request match
+            case ClusterWatchCheckEvent(_, _, `primaryId`, _: ClusterCoupled, _, _) =>
+              
       withClusterWatchService(primaryClusterWatchId): (cwService, _) =>
         eventWatch.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
+        clusterCoupledConfirmed.await(99.s)
 
       logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testAckLossPropertyKey) = "true"

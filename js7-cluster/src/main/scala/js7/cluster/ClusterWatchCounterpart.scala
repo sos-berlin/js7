@@ -25,7 +25,6 @@ import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
 import scala.annotation.tailrec
-import scala.concurrent.duration.Deadline
 import scala.util.Random
 
 final class ClusterWatchCounterpart private(
@@ -63,7 +62,6 @@ extends Service.StoppableByRequest:
     then
       IO.right(None)
     else
-      val since = Deadline.now
       initializeCurrentClusterWatchId(clusterState)
         .flatMap: _ =>
           CorrelId.use: correlId =>
@@ -157,6 +155,7 @@ extends Service.StoppableByRequest:
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
+            testEventPublisher.publish(TestConfirmed(request, confirmation))
             SyncDeadline.usingNow:
               logger.log(sym.relievedLogLevel,
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
@@ -323,3 +322,7 @@ object ClusterWatchCounterpart:
   private class RequestTimeoutException extends Exception
 
   final case class TestWaitingForConfirmation(request: ClusterWatchRequest)
+
+  final case class TestConfirmed(
+    request: ClusterWatchRequest,
+    confirmation: ClusterWatchConfirmation)
