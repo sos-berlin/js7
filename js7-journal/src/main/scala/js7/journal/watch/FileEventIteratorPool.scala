@@ -53,7 +53,7 @@ private[watch] final class FileEventIteratorPool(
       freeIterators.nonEmpty ? {
         val iterator = freeIterators.remove(freeIterators.size - 1) // LIFO
         lentIterators += iterator
-        logger.trace(s"borrowIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
+        //logger.trace(s"borrowIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
         iterator
       }
 
@@ -83,7 +83,7 @@ private[watch] final class FileEventIteratorPool(
 
   def returnIterator(iterator: FileEventIterator): Unit =
     lazy val PositionAnd(position, eventId) = iterator.positionAndEventId
-    logger.trace(s"returnIterator $iterator eventId=$eventId position=$position")
+    //logger.trace(s"returnIterator $iterator eventId=$eventId position=$position")
     synchronized:
       if !iterator.isClosed then
         freeIterators += iterator

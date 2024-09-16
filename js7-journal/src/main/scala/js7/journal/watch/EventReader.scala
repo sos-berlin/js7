@@ -77,8 +77,8 @@ extends AutoCloseable:
       val pos = iterator.position
       if pos != position &&
         (pos < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/) then
-        logger.trace(s"seek $position (eventId=${indexPositionAndEventId.value}, for $after) ≠ " +
-          s"iterator $pos (eventId=${iterator.eventId})")
+        //logger.trace(s"seek $position (eventId=${indexPositionAndEventId.value}, for $after) ≠ " +
+        //  s"iterator $pos (eventId=${iterator.eventId})")
         iterator.seek(indexPositionAndEventId)
       val exists = iterator.skipToEventAfter(journalIndex, after) // May run very long (minutes for gigabyte journals) !!!
       if !exists then
@@ -97,7 +97,7 @@ extends AutoCloseable:
       synchronized:
         // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
         for it <- Option(iteratorAtomic.getAndSet(null)) do
-          logger.trace(s"EventIterator(after=$after) closed")
+          //logger.trace(s"EventIterator(after=$after) closed")
           iteratorPool.returnIterator(it)
           if _closeAfterUse && !isInUse || iteratorPool.isClosed then
             logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
