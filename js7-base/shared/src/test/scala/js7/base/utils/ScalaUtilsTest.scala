@@ -349,6 +349,17 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert((List(1, 2, 3, 4, 5).takeThrough(_ < 3): List[Int]) == List(1, 2, 3))
   }
 
+  "IterableOnce" - {
+    "foldEithers" in:
+      assert:
+        List(1, 2).foldEithers("init")((s, a) => Right(s"$s-$a")) == Right("init-1-2")
+      assert:
+        List(1, 2, 3, 4).foldEithers("0"):
+          case (_, a @ (2 | 4)) => Left(s"LEFT-$a")
+          case (s, a) => Right(s"$s-$a")
+        == Left("LEFT-2")
+  }
+
   "Iterator" - {
     "takeTrough" in:
       assert((Iterator.empty.takeThrough(_ < 3): Iterator[Int]).toList == List.empty)

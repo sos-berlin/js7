@@ -298,6 +298,22 @@ object ScalaUtils:
         .concat:
           firstNonMatching
 
+    extension [A](iterableOnce: IterableOnce[A])
+      //inline def foldChecked[S](init: S)(f: (S, A) => Checked[S]): Checked[S] =
+      //  foldEithers[S, Problem](init)(f)
+
+      def foldEithers[S, L](init: S)(f: (S, A) => Either[L, S]): Either[L, S] =
+        var left: L = null.asInstanceOf[L]
+        var s = init
+        val it = iterableOnce.iterator
+
+        while it.hasNext && left == null do
+          val a = it.next()
+          f(s, a) match
+            case Left(lft) => left = lft
+            case Right(o) => s = o
+
+        if left != null then Left(left) else Right(s)
 
     implicit final class RichIterables[A](private val iterables: IterableOnce[IterableOnce[A]])
     extends AnyVal:
