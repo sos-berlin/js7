@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, defer, end, failWith, not, pure, string, stringIn}
+import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, defer, end, failWith, not, pure, string}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
@@ -45,9 +45,8 @@ object ExpressionParser:
 
   private val functionDefinition: Parser[ExprFunction] =
     (parameterList.backtrack ~ ((w ~ symbol("=>") ~ w) *> expression))
-      .map { case (names, expression) =>
+      .map: (names, expression) =>
         ExprFunction(names.map(VariableDeclaration(_)), expression)
-      }
 
   private val functionExpr: Parser[FunctionExpr] =
     functionDefinition.map(FunctionExpr(_))
@@ -83,11 +82,10 @@ object ExpressionParser:
   private val curlyName: Parser[Expression] =
     (identifier ~ (char('.') *> identifier).rep0)
       .between(char('{'), char('}'))
-      .map { case (name, fields) =>
+      .map: (name, fields) =>
         fields
           .scanLeft[Expression](NamedValue(name))(DotExpr(_, _))
           .last
-      }
 
   private val interpolatedStringContent: Parser0[StringExpr] =
     val namedValue = (identifier | digits/*regex group*/).map(NamedValue(_))
@@ -102,9 +100,9 @@ object ExpressionParser:
         case (None, Nil) => StringConstant.empty
         case (Some(o: StringConstant), Nil) => o
         case (maybeFirst, pairs) =>
-          optimizeExpression(InterpolatedString(
+          optimizeExpression(InterpolatedString:
             maybeFirst.toList :::
-              pairs.flatMap { case (expr, constant) => expr :: constant.toList })
+              pairs.flatMap((expr, constant) => expr :: constant.toList)
           ).asInstanceOf[StringExpr]
 
   private val interpolatedString: Parser[StringExpr] =
@@ -112,9 +110,9 @@ object ExpressionParser:
 
   private val objectExpr: Parser[ObjectExpr] =
     curly(commaSequence(identifier ~ ((w ~ char(':') ~ w) *> expression)))
-      .flatMap(pairs =>
+      .flatMap: pairs =>
         checkedToParser(pairs.checkUniqueness(_._1))
-          .as(ObjectExpr(pairs.toMap)))
+          .as(ObjectExpr(pairs.toMap))
 
   def dollarNamedValue: Parser[Expression] =
     //def arg: Parser[NamedValue] = (("arg::" ~ identifier)
@@ -205,7 +203,7 @@ object ExpressionParser:
       case (name, arguments) =>
         pure(FunctionCall(
           name,
-          arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
+          arguments.map((maybeName, expr) => Argument(expr, maybeName))))
 
   /** Then special function `error` .*/
   private val errorFunctionCall: Parser[ErrorExpr] =
@@ -266,28 +264,28 @@ object ExpressionParser:
     leftRecurse(notExpr, char('*').as('*') | slash, notExpr):
       case (a, ('*', b)) => Multiply(a, b)
       case (a, ('/', b)) => Divide(a, b)
-      case (_, (x, _)) => throw new MatchError(x)
+      case (_, (x, _)) => throw MatchError(x)
 
   private val addition: Parser[Expression] =
-    leftRecurse(multiplication, stringIn(List("++", "+", "-")).string, multiplication):
+    leftRecurse(multiplication, symbol("++" :: "+" :: "-" :: Nil), multiplication):
       case (a, ("++", b)) => Concat(a, b)
       case (a, ("+", b)) => Add(a, b)
       case (a, ("-", b)) => Substract(a, b)
-      case (_, (x, _)) => throw new MatchError(x)
+      case (_, (x, _)) => throw MatchError(x)
 
   private val comparison: Parser[Expression] =
-    leftRecurse(addition, stringIn(List("<=", ">=", "<", ">")).string, addition):
+    leftRecurse(addition, symbol("<=" :: ">=" :: "<" :: ">" :: Nil), addition):
       case (a, ("<=", b)) => LessOrEqual(a, b)
       case (a, (">=", b)) => GreaterOrEqual(a, b)
       case (a, ("<" , b)) => LessThan(a, b)
       case (a, (">" , b)) => GreaterThan(a, b)
-      case (_, (x, _)) => throw new MatchError(x)
+      case (_, (x, _)) => throw MatchError(x)
 
   private val equal: Parser[Expression] =
-    leftRecurse(comparison, stringIn(List("==", "!=")).string, comparison):
+    leftRecurse(comparison, symbol("==" :: "!=" :: Nil), comparison):
       case (a, ("==", b)) => Equal(a, b)
       case (a, ("!=", b)) => NotEqual(a, b)
-      case (_, (x, _)) => throw new MatchError(x)
+      case (_, (x, _)) => throw MatchError(x)
 
   private val and: Parser[Expression] =
     leftRecurseParsers(equal, symbol("&&"), equal):
@@ -298,7 +296,7 @@ object ExpressionParser:
       case (a, ((), b)) => pure(Or(a, b))
 
   private val wordOperation: Parser[Expression] =
-    leftRecurseParsers(or, keyword(List("in", "matches")), or):
+    leftRecurseParsers(or, keyword("in" :: "matches" :: Nil), or):
       case (a, ("in", list: ListExpr)) => pure(In(a, list))
       case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
       case (a, ("matches", b)) => pure(Matches(a, b))

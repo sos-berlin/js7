@@ -91,6 +91,11 @@ object BasicParsers:
   def symbol(symbol: String): Parser[Unit] =
     string(symbol) *> peek(not(charWhere(isSymbolOperatorChar)) | commentStart)
 
+  def symbol(possibleNames: List[String]): Parser[String] =
+    oneOf:
+      possibleNames.map:
+        name => symbol(name).as(name)
+
   private val singleQuotedContent: Parser[String] =
     charsWhile(_ != '\'')
 
