@@ -1,6 +1,7 @@
 package js7.base.test
 
 import js7.base.test.LoggingFreeSpecStringWrapper.*
+import org.scalactic.source.Position
 import org.scalatest.{PendingStatement, Tag}
 import scala.annotation.targetName
 import scala.language.implicitConversions
@@ -17,12 +18,12 @@ final class LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
       testAdder.addTests(name, addTests)
     }
 
-  infix def in(testBody: => OwnResult): Unit =
+  infix def in(testBody: => OwnResult)(using Position): Unit =
     val ctx = testAdder.freezeContext(name)
     underlying.in:
       executeTest(ctx, testBody)
 
-  infix def ignore(testBody: => OwnResult): Unit =
+  infix def ignore(testBody: => OwnResult)(using Position): Unit =
     val ctx = testAdder.freezeContext(name)
     underlying.ignore:
       executeTest(ctx, testBody)
@@ -55,10 +56,11 @@ object LoggingFreeSpecStringWrapper:
   private[test] trait UnifiedStringWrapper[R, T]:
     def -(addTests: => Unit): Unit
 
-    def in(testBody: => R): Unit
+    def in(testBody: => R)(using Position): Unit
 
     //def is(pending: => PendingStatement): Unit
-    def ignore(testBody: => R): Unit
+    def ignore(testBody: => R)(using Position): Unit
+
     def taggedAs(tag: Tag, more: Tag*): TaggedAs[R]
 
 

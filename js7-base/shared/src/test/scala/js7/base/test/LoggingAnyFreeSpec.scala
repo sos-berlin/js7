@@ -2,7 +2,7 @@ package js7.base.test
 
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
-import org.scalactic.source
+import org.scalactic.source.Position
 import org.scalatest.Assertions.fail
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{Args, PendingStatement, Status, Tag}
@@ -21,8 +21,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec, TestLogging:
   protected def suppressTestCorrelId = false
 
   // inline for proper source.Position (why?)
-  inline protected implicit final def implicitToFreeSpecStringWrapper(name: String)
-    (using source.Position)
+  inline protected implicit final def implicitToFreeSpecStringWrapper(name: String)(using Position)
   : LoggingFreeSpecStringWrapper[Any, Any, ResultOfTaggedAsInvocationOnString] =
     toFreeSpecStringWrapper(name, convertToFreeSpecStringWrapper(name))
 
@@ -50,10 +49,10 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec, TestLogging:
       def -(addTests: => Unit) =
         stringWrapper - addTests
 
-      def in(testBody: => Any) =
+      def in(testBody: => Any)(using Position) =
         stringWrapper in testBody
 
-      def ignore(testBody: => Any) =
+      def ignore(testBody: => Any)(using Position) =
         stringWrapper ignore testBody
 
       def taggedAs(tag: Tag, more: Tag*) =

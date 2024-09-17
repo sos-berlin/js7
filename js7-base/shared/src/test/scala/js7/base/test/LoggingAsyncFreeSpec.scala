@@ -7,7 +7,7 @@ import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichThrowable}
-import org.scalactic.source
+import org.scalactic.source.Position
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.{Assertion, PendingStatement, Tag}
 import scala.concurrent.duration.FiniteDuration
@@ -32,8 +32,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
   protected def suppressTestCorrelId = false
 
   // inline for proper source.Position
-  protected implicit inline def implicitToFreeSpecStringWrapper(name: String)
-    (using pos: source.Position)
+  protected implicit inline def implicitToFreeSpecStringWrapper(name: String)(using Position)
   : LoggingFreeSpecStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString] =
     testAdder.toStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString](
       name,
@@ -70,10 +69,10 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
       def -(addTests: => Unit) =
         stringWrapper - addTests
 
-      def in(testBody: => Future[Assertion]) =
+      def in(testBody: => Future[Assertion])(using Position) =
         stringWrapper in testBody
 
-      def ignore(testBody: => Future[Assertion]) =
+      def ignore(testBody: => Future[Assertion])(using Position) =
         stringWrapper ignore testBody
 
       def taggedAs(tag: Tag, more: Tag*): LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]] =
