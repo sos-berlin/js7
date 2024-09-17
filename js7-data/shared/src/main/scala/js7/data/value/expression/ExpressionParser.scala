@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, not, pure, string, stringIn}
+import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, defer, end, failWith, not, pure, string, stringIn}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
@@ -257,9 +257,9 @@ object ExpressionParser:
     notOperator | questionMarkExpr
 
   private lazy val notOperator: Parser[Expression] =
-    Parser.defer(
+    defer:
       ((char('!') ~ w) *> notExpr)
-        .map(Not(_)))
+        .map(Not(_))
 
   private val multiplication: Parser[Expression] =
     val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
@@ -305,8 +305,18 @@ object ExpressionParser:
       case (a, (op, b)) => failWith(s"Unknown operator '$op': " +
         Precedence.toString(a, op, Precedence.Or, b))
 
+  private val ifThenElseOperation: Parser[Expression] =
+    locally:
+      val if_ = keyword("if") *> w *> wordOperation
+      val then_ = keyword("then") *> w *> wordOperation
+      val else_ = keyword("else") *> w *> defer(ifThenElseOperation)
+      (if_ ~ (w *> then_ <* w) ~ else_).map:
+        case ((condition, then_), else_) => IfThenElse(condition, then_, else_)
+    | wordOperation
+
   val constantExpression: Parser[Expression] =
     expression
 
   lazy val expression: Parser[Expression] =
-    Parser.defer(wordOperation)
+    defer:
+      ifThenElseOperation

@@ -46,11 +46,8 @@ sealed trait Expression extends HasPrecedence:
 
   final def eval(implicit scope: Scope): Checked[Value] =
     evalRaw match
-      case Left(UnexpectedValueTypeProblem(_, MissingValue)) =>
-        Right(MissingValue)
-
+      case Left(UnexpectedValueTypeProblem(_, MissingValue)) => Right(MissingValue)
       case Left(problem) => Left(problem)
-
       case Right(o: Value) => Right(o)
 
   protected def evalRaw(using scope: Scope): Checked[Value]
@@ -110,6 +107,25 @@ object Expression:
   sealed trait NumericExpr extends SimpleValueExpr
 
   sealed trait StringExpr extends SimpleValueExpr
+
+
+  final case class IfThenElse(condition: Expression, thenExpr: Expression, elseExpr: Expression)
+  extends BooleanExpr, IsPureIfSubexpressionsArePure:
+    def precedence: Int = Precedence.IfThenElse
+    def subexpressions: Iterable[Expression] =
+      condition :: thenExpr :: elseExpr :: Nil
+
+    protected def evalRaw(using scope: Scope) =
+      for
+        bool <- condition.evalAsBoolean
+        result <- (if bool then thenExpr else elseExpr).eval
+      yield
+        result
+
+    override def toString: String =
+      "if " + inParentheses(condition) +
+        " then " + inParentheses(thenExpr) +
+        " else " + inParentheses(elseExpr)
 
 
   final case class Not(a: Expression)
