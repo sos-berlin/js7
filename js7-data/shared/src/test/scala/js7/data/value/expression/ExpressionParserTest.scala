@@ -219,7 +219,7 @@ final class ExpressionParserTest extends OurTestSuite:
           NamedValue("result"),
           StringConstant("1"))))
 
-    testBooleanExpression("""$returnCode==$expected.toNumber||!($result=="1")||true&&$returnCode>0""",
+    testBooleanExpression("""$returnCode==$expected.toNumber|| !($result=="1")||true&&$returnCode>0""",
       Or(
         Or(
           Equal(

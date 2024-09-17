@@ -2,9 +2,8 @@ package js7.base.parser
 
 import cats.data.NonEmptyList
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{anyChar, char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, peek, pure, string}
+import cats.parse.Parser.{anyChar, char, charIn, charWhere, charsWhile, charsWhile0, failWith, not, oneOf, peek, pure, string}
 import cats.parse.{Parser, Parser0}
-import java.lang.Character.isUnicodeIdentifierPart
 import js7.base.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import js7.base.parser.Parsers.syntax.*
 import js7.base.problem.Checked
@@ -23,6 +22,9 @@ object BasicParsers:
       char('/')
     ).void
 
+  private val commentStart: Parser[Unit] =
+    string("/*") | string("//")
+
   private val lineEndComment: Parser[Unit] =
     string("//") <* charsWhile0(_ != '\n')
 
@@ -30,6 +32,10 @@ object BasicParsers:
     inlineComment | lineEndComment
 
   val isWhiteChar: Set[Char] = " \t\r\n".toSet[Char]
+
+  /** Symbolic operator may consist of these chars. */
+  private val isSymbolOperatorChar: Set[Char] =
+    """!#%&*+-/:<=>?@^|~""".toSet
 
   /** Optional whitespace including line ends */
   val w: Parser0[Unit] =
@@ -71,15 +77,19 @@ object BasicParsers:
   val identifier: Parser[String] =
     backtickIdentifier | simpleIdentifier
 
-  val identifierEnd: Parser0[Unit] =
-    end | peek(charWhere(c => !isUnicodeIdentifierPart(c)))
-
   val keyword: Parser[String] =
-    (charWhere(isIdentifierStart) ~ charsWhile0(isUnicodeIdentifierPart))
-      .string.orElse(failWith("Expected a keyword"))
+    (charWhere(isIdentifierStart) ~ charsWhile0(isIdentifierPart)).string
 
   def keyword(name: String): Parser[Unit] =
-    string(name) *> identifierEnd
+    string(name) *> peek(not(charWhere(isIdentifierPart)))
+
+  def keyword(possibleNames: List[String]): Parser[String] =
+    oneOf:
+      possibleNames.map:
+        name => keyword(name).as(name)
+
+  def symbol(symbol: String): Parser[Unit] =
+    string(symbol) *> peek(not(charWhere(isSymbolOperatorChar)) | commentStart)
 
   private val singleQuotedContent: Parser[String] =
     charsWhile(_ != '\'')

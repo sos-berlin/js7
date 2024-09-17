@@ -43,7 +43,7 @@ object ExpressionParser:
     inParentheses(commaSequence(identifier))
 
   private val functionDefinition: Parser[ExprFunction] =
-    (parameterList.backtrack ~ ((w ~ string("=>") ~ w) *> expression))
+    (parameterList.backtrack ~ ((w ~ symbol("=>") ~ w) *> expression))
       .map { case (names, expression) =>
         ExprFunction(names.map(VariableDeclaration(_)), expression)
       }
@@ -125,7 +125,7 @@ object ExpressionParser:
     //def byPrefix: Parser[NamedValue] = ((identifier ~ "." ~ identifier)
     //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), StringConstant(key)) })
     //def curlyName: Parser[NamedValue] = ("{" ~ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~ "}"./)
-    string("$") *>
+    char('$') *>
       ((identifier | digits/*regex group*/).map(NamedValue(_)) | curlyName)
 
   private val jobResourcePath: Parser[JobResourcePath] = (charWhere(JobResourcePath.isNameStart) ~ charsWhile0(JobResourcePath.isNamePartMaybe)).string
@@ -212,7 +212,7 @@ object ExpressionParser:
       .map(expr => ErrorExpr(expr))
 
   private val missingConstant: Parser[MissingConstant] =
-    string("missing").as(MissingConstant)
+    keyword("missing").as(MissingConstant)
 
   private val factor =
     parenthesizedExpression | booleanConstant | numericConstant |
@@ -289,19 +289,19 @@ object ExpressionParser:
       case (_, (x, _)) => throw new MatchError(x)
 
   private val and: Parser[Expression] =
-    leftRecurseParsers(equal, string("&&"), equal):
+    leftRecurseParsers(equal, symbol("&&"), equal):
       case (a, ((), b)) => pure(And(a, b))
 
   private val or: Parser[Expression] =
-    leftRecurseParsers(and, string("||"), and):
+    leftRecurseParsers(and, symbol("||"), and):
       case (a, ((), b)) => pure(Or(a, b))
 
   private val wordOperation: Parser[Expression] =
-    leftRecurseParsers(or, keyword, or):
+    leftRecurseParsers(or, keyword(List("in", "matches")), or):
       case (a, ("in", list: ListExpr)) => pure(In(a, list))
       case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
       case (a, ("matches", b)) => pure(Matches(a, b))
-      case (a, (op, b)) => failWith(s"Operator '$op' with unexpected operand type: " +
+      case (a, (op, b)) => failWith(s"Unknown operator '$op': " +
         Precedence.toString(a, op, Precedence.Or, b))
 
   val constantExpression: Parser[Expression] =

@@ -2,10 +2,10 @@ package js7.data.parser
 
 import cats.data.NonEmptyList
 import cats.parse.Parser.Expectation.InRange
-import cats.parse.Parser.{end, string}
+import cats.parse.Parser.{char, end, string}
 import cats.parse.{Parser, Parser0}
-import js7.base.parser.BasicPrinter.appendIdentifier
 import js7.base.parser.BasicParsers.*
+import js7.base.parser.BasicPrinter.appendIdentifier
 import js7.base.parser.Parsers.{ParsingProblem, checkedParse}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
@@ -25,6 +25,19 @@ final class BasicParsersTest extends OurTestSuite:
 
   "int" in:
     assert(checkedParse("123", int) == Right(123))
+
+  "keyword" in:
+    assert(checkedParse("key1", keyword("key") ~ int) == Left:
+      Problem("""Parsing failed at position 4 “key❓1” · Unexpected “1”"""))
+    assert(checkedParse("key+", keyword("key") ~ char('+')) == Right(((), ())))
+    assert(checkedParse("key", keyword("key")) == Right(()))
+
+  "symbol" in:
+    assert(checkedParse("+-", symbol("+") ~ char('-')) == Left:
+      Problem("Parsing failed at position 2 “+❓-” · Expected one of \"“/*”, “//”\" · Unexpected “-”"))
+    assert(checkedParse("+a", symbol("+") ~ char('a')) == Right((), ()))
+    assert(checkedParse("+//", symbol("+") ~ w) == Right((), ()))
+    assert(checkedParse("+", symbol("+")) == Right(()))
 
   "identifier" in:
     assertIdentifier("name", Right("name"))
