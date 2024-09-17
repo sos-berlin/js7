@@ -16,6 +16,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import org.jetbrains.annotations.TestOnly
 
 object ExpressionParser:
+
   @TestOnly
   def expr(expressionString: String): Expression =
     parseExpression(expressionString).orThrow
@@ -250,7 +251,7 @@ object ExpressionParser:
       .map: (a, more) =>
         more.foldLeft(a):
           case (a, None) => OrMissing(a)
-          case (a, Some(b)) => OrElse(a, b)
+          case (a, Some(b)) => Catch(a, b)
 
   private val notExpr =
     notOperator | questionMarkExpr

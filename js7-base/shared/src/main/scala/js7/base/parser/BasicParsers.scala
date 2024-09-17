@@ -175,6 +175,7 @@ object BasicParsers:
       .flatMap(o => checkedToParser(toValue(o)))
       .map(name -> _)
 
+
   final case class KeyToValue[A](nameToValue: Map[String, A]):
     def getOrElse[A1 <: A](key: String, default: => A1): Parser0[A1] =
       pure(nameToValue.get(key).fold(default)(_.asInstanceOf[A1]))
@@ -223,8 +224,10 @@ object BasicParsers:
         case 0 => pure(default)
         case 1 => pure(nameToValue(intersection.head).asInstanceOf[A1])
         case _ => failWith(s"Expected non-contradicting keywords: ${intersection.mkString("; ")}")
+
   object KeyToValue:
     val empty: KeyToValue[Any] = KeyToValue[Any](Map.empty)
+
 
   def specificKeyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
     val keywordPart: Parser0[Unit] =
@@ -258,27 +261,24 @@ object BasicParsers:
   def leftRecurse[A, O](initial: Parser[A], operator: Parser[O], operand: Parser[A])
     (operation: (A, (O, A)) => A)
   : Parser[A] =
-    (initial ~ w ~ (operator ~ w ~ operand ~ w).map { case (((o, _), a), _) => (o, a) }.rep0)
-      .map { case ((initial, _), more) =>
+    (initial ~ w ~ (operator ~ w ~ operand ~ w).map { case (((o, _), a), _) => (o, a) }.rep0).map:
+      case ((initial, _), more) =>
         more.view.scanLeft(initial)(operation).last
-      }
 
   def leftRecurseParsers[A, O](initial: Parser[A], operator: Parser[O], operand: Parser[A])
     (operation: (A, (O, A)) => Parser0[A])
   : Parser[A] =
-    initial.flatMap(initial =>
+    initial.flatMap: initial =>
       (operator ~~ operand)
         .rep0
-        .flatMap { tail =>
+        .flatMap: tail =>
           def loop(left: A, tail: List[(O, A)]): Parser0[A] =
-            tail match {
+            tail match
               case Nil =>
                 pure(left)
               case (op, right) :: tl =>
                 operation(left, (op, right)).flatMap(loop(_, tl))
-            }
           loop(initial, tail)
-        })
 
   def catchingParser[A](f: => A): Parser0[A] =
     checkedToParser(Checked.catchNonFatal(f))

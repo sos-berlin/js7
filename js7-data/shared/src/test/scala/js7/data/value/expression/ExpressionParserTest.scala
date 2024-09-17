@@ -279,22 +279,22 @@ final class ExpressionParserTest extends OurTestSuite:
     assert(parseExpression(""""true".toBoolean""") ==
       Right(ToBoolean(StringConstant("true"))))
 
-  private def testBooleanExpression(exprString: String, expr: BooleanExpr)(implicit pos: source.Position) =
+  private def testBooleanExpression(exprString: String, expr: BooleanExpr)(using x: source.Position) =
     exprString in:
       assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")
 
-  private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
+  private def testExpression(exprString: String, expr: Expression)(using source.Position) =
     exprString in:
       testExpressionRaw(exprString, expr)
 
-  private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) =
+  private def testExpressionRaw(exprString: String, expr: Expression)(using source.Position) =
     assert(parseExpression(exprString) == Right(expr))
     assert(parseExpression(expr.toString) == Right(expr), " - toString")
 
-  private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
+  private def testError(exprString: String, errorMessage: String)(using source.Position) =
     exprString + " - should fail" in:
       testErrorRaw(exprString, errorMessage)
 
-  private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) =
+  private def testErrorRaw(exprString: String, errorMessage: String)(using source.Position) =
     assert(parseExpression(exprString) == Left(Problem(errorMessage)))

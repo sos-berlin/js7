@@ -26,7 +26,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Expression extends Precedence:
+sealed trait Expression extends HasPrecedence:
   def subexpressions: Iterable[Expression]
 
   /** Expression is pure (yields always the same result) and
@@ -121,7 +121,7 @@ object Expression:
       for a <- a.evalAsBoolean yield
         BooleanValue(!a.booleanValue)
 
-    override def toString: String = "!" + Precedence.inParentheses(a, precedence)
+    override def toString: String = "!" + inParentheses(a)
 
 
   final case class And(a: Expression, b: Expression)
@@ -320,7 +320,7 @@ object Expression:
     override def toString: String = makeString(a, "matches", b)
 
 
-  final case class OrElse(a: Expression, default: Expression)
+  final case class Catch(a: Expression, default: Expression)
   extends BooleanExpr, IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.OrElse
     def subexpressions: Iterable[Expression] = a :: default :: Nil
@@ -340,7 +340,7 @@ object Expression:
       evalOrDefault(a, MissingConstant)
 
     override def toString: String =
-      Precedence.inParentheses(a, precedence) + "?"
+      inParentheses(a) + "?"
 
 
   private def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope)
@@ -367,7 +367,7 @@ object Expression:
       yield list(index)
 
     override def toString: String =
-      Precedence.inParentheses(obj, precedence) + "(" + arg + ")"
+      inParentheses(obj) + "(" + arg + ")"
 
 
   final case class DotExpr(a: Expression, name: String) extends IsPureIfSubexpressionsArePure:
@@ -381,7 +381,7 @@ object Expression:
       yield a
 
     override def toString: String =
-      Precedence.inParentheses(a, precedence) + "." + identifierToString(name)
+      inParentheses(a) + "." + identifierToString(name)
 
 
   final case class ListExpr(subexpressions: List[Expression]) extends IsPureIfSubexpressionsArePure:

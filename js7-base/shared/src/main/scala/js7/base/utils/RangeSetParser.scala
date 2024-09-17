@@ -26,7 +26,7 @@ private final class RangeSetParser[A: Ordering: Ordinal](parseValue: Parser[A]):
         case (a, Some(b)) => Interval(a, b)
 
   private val ranges: Parser[List[RangeSet.Range[A]]] =
-    (range ~ ((delimiter.with1 *> range)).rep0)
+    (range ~ (delimiter.with1 *> range).rep0)
       .map { case (head, tail) => head :: tail }
 
   private val rangeSet: Parser[RangeSet[A]] =

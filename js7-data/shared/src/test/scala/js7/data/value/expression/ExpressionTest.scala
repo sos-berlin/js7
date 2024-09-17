@@ -402,13 +402,13 @@ final class ExpressionTest extends OurTestSuite:
       testEval("error('ERROR') ? 7 + 3",
         result = Right(7 + 3),
         Add(
-          OrElse(ErrorExpr("ERROR"), 7),
+          Catch(ErrorExpr("ERROR"), 7),
           3))
 
       testEval("$unknown ? 7 + 3",
         result = Right(7 + 3),
         Add(
-          OrElse(NamedValue("unknown"), 7),
+          Catch(NamedValue("unknown"), 7),
           3))
 
       testEval("1 + 2 ? 7 + 3",
@@ -416,13 +416,13 @@ final class ExpressionTest extends OurTestSuite:
         Add(
           Add(
             1,
-            OrElse(2, 7)),
+            Catch(2, 7)),
           3))
 
       testEval("1 + (2 ? 7) + 3",
         result = Right(1 + 2 + 3),
         Add(
-          Add(1, OrElse(2, 7)),
+          Add(1, Catch(2, 7)),
           3))
 
       testEval("""error('ERROR')? ?""",
@@ -435,11 +435,11 @@ final class ExpressionTest extends OurTestSuite:
 
       testEval("""error('ERROR')? ? 7""",
         result = Right(7),
-        OrElse(OrMissing(ErrorExpr("ERROR")), 7))
+        Catch(OrMissing(ErrorExpr("ERROR")), 7))
 
       testEval("""error('ERROR')? ? ? 7""",
         result = Right(7),
-        OrElse(OrMissing(OrMissing(ErrorExpr("ERROR"))), 7))
+        Catch(OrMissing(OrMissing(ErrorExpr("ERROR"))), 7))
 
       // Reserve »??« for future use
       testSyntaxError("""(1/0) ??""", Problem(
@@ -455,7 +455,7 @@ final class ExpressionTest extends OurTestSuite:
       testEval("missing ? 7 + 3",
         result = Right(7 + 3),
         Add(
-          OrElse(MissingConstant, 7),
+          Catch(MissingConstant, 7),
           3))
 
       testEval("""6 / 3?""",
@@ -468,12 +468,12 @@ final class ExpressionTest extends OurTestSuite:
 
       testEval("""(1 / 0) ? -1""",
         result = Right(-1),
-        OrElse(Divide(1, 0), -1))
+        Catch(Divide(1, 0), -1))
 
       testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
         result = Right(-1),
-        OrElse(
-          OrElse(
+        Catch(
+          Catch(
             In(
               7,
               ListExpr(List(Divide(1, 0)))),
@@ -483,7 +483,7 @@ final class ExpressionTest extends OurTestSuite:
       testEval("""$aUnknown ? $bUnknown ? """,
         result = Right(MissingValue),
         OrMissing(
-          OrElse(
+          Catch(
             NamedValue("aUnknown"),
             NamedValue("bUnknown"))))
     }
@@ -811,7 +811,7 @@ final class ExpressionTest extends OurTestSuite:
   "Operator precedence" - {
     testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
       result = Right(BooleanValue(true)),
-      Or(true, And(false, Equal(3, LessThan(4, Add(5, Multiply(6, OrElse(7, 8))))))))
+      Or(true, And(false, Equal(3, LessThan(4, Add(5, Multiply(6, Catch(7, 8))))))))
   }
 
   "replaceAll" - {
@@ -1178,12 +1178,13 @@ final class ExpressionTest extends OurTestSuite:
     assert(!expr("""replaceAll("a", "b", $c)""").isPure)
     assert(expr("""replaceAll("a", "b", "c")""").isPure)
 
-  private def testSyntaxError(exprString: String, problem: Problem)(implicit pos: source.Position): Unit =
+  private def testSyntaxError(exprString: String, problem: Problem)(using pos: source.Position)
+  : Unit =
     s"$exprString - should fail" in:
       assert(parseExpression(exprString) == Left(problem))
 
   private def testEval(exprString: String, result: Checked[Value], expression: Expression)
-    (implicit scope: Scope, pos: source.Position)
+    (using scope: Scope, pos: source.Position)
   : Unit =
     exprString in:
       val checked = parseExpressionOrFunction(exprString.trim)

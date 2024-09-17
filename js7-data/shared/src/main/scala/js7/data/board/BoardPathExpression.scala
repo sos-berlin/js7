@@ -3,9 +3,9 @@ package js7.data.board
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.Precedence
+import js7.data.value.expression.{HasPrecedence, Precedence}
 
-sealed trait BoardPathExpression extends Precedence:
+sealed trait BoardPathExpression extends HasPrecedence:
   def eval(isNoticeAvailable: BoardPath => Boolean): Boolean
 
   def boardPaths: Set[BoardPath]
