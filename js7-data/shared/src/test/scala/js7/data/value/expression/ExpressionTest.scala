@@ -1121,25 +1121,38 @@ final class ExpressionTest extends OurTestSuite:
     testSyntaxError(""" 1 + if true then 1 else 2 """,
       Problem("Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …” · Expected character '('"))
 
+    testEval(""" 1 + (if true then 2 else 3) """,
+      result = Right(3),
+      Add(
+        NumericConstant(1),
+        IfThenElse(BooleanConstant(true), NumericConstant(2), NumericConstant(3))))
+
     testEval(""" if true then 1 else 2 """,
       result = Right(1),
       IfThenElse(BooleanConstant(true), NumericConstant(1), NumericConstant(2)))
 
-    testEval(""" 1 + (if true then 2 else 4) """,
-      result = Right(3),
-      Add(
-        NumericConstant(1),
-        IfThenElse(BooleanConstant(true), NumericConstant(2), NumericConstant(4))))
-
-    testEval(""" if false then 1 else if false then 2 else if false then 3 else 4 + 5 """,
-      result = Right(9),
+    testEval(
+       """if false then
+         |  if false then
+         |    1
+         |  else
+         |    2
+         |else if false then
+         |  3
+         |else if false then
+         |  4
+         |else
+         |  5 + 6 """.stripMargin,
+      result = Right(11),
       IfThenElse(BooleanConstant(false),
-        NumericConstant(1),
         IfThenElse(BooleanConstant(false),
-          NumericConstant(2),
+          NumericConstant(1),
+          NumericConstant(2)),
+        IfThenElse(BooleanConstant(false),
+          NumericConstant(3),
           IfThenElse(BooleanConstant(false),
-            NumericConstant(3),
-            Add(NumericConstant(4), NumericConstant(5))))))
+            NumericConstant(4),
+            Add(NumericConstant(5), NumericConstant(6))))))
   }
 
   "Complex expressions" - {

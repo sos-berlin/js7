@@ -308,7 +308,7 @@ object ExpressionParser:
   private val ifThenElseOperation: Parser[Expression] =
     locally:
       val if_ = keyword("if") *> w *> wordOperation
-      val then_ = keyword("then") *> w *> wordOperation
+      val then_ = keyword("then") *> w *> defer(ifThenElseOperation)
       val else_ = keyword("else") *> w *> defer(ifThenElseOperation)
       (if_ ~ (w *> then_ <* w) ~ else_).map:
         case ((condition, then_), else_) => IfThenElse(condition, then_, else_)
