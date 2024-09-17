@@ -116,8 +116,9 @@ private final case class DirectorState private(
                 else
                   entry.cachedDynamicPrioritized: subagentId =>
                     idToDriver.get(subagentId)
-                      .flatMap(_.serverMeteringScope())
-                      .map(_ |+| scope)
+                      .flatMap: driver =>
+                        driver.serverMeteringScope()
+                          .map(_ |+| driver.subagentProcessCountScope |+| scope)
           .flatMap: prioritized =>
             prioritized.selectNext(isAvailable).flatMap: subagentId =>
               subagentToEntry.get(subagentId).map(_.driver)

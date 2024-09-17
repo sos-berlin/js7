@@ -7,6 +7,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StandardMapView
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobKey, JobResource}
@@ -15,6 +16,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
 import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -55,8 +57,23 @@ trait SubagentDriver:
   protected final val orderToDeferred =
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
+  val subagentProcessCountScope: Scope =
+    val Key = "js7SubagentProcessCount"
+    new Scope:
+      override val nameToCheckedValue =
+        new StandardMapView[String, Checked[Value]]:
+          override val keySet = Set(Key)
+
+          override def get(key: String) =
+            key match
+              case Key => Some(Right(NumberValue(processCount)))
+              case _ => None
+
   final def subagentId: SubagentId =
     subagentItem.id
+
+  private def processCount: Int =
+    orderToDeferred.size
 
   final def isCoupled: Boolean =
     !isStopping &&
