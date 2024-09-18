@@ -107,7 +107,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
       SubagentBundleId("BUNDLE-2"),
       Map(
         aSubagentId -> expr("1"),
-        bSubagentId -> expr("2 - 2 * $js7SubagentProcessCount + $js7BundleSubagentProcessCount")))
+        bSubagentId -> expr("2 - ($js7SubagentProcessCount + $js7BundleSubagentProcessCount)")))
 
     val workflow = Workflow(
       WorkflowPath("WORKFLOW-2"),
