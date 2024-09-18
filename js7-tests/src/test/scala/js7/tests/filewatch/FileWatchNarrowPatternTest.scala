@@ -71,7 +71,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
     controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path, after = eventId)
 
-    // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.
+    // Now, the A file is not matched and out of scope, and a ExternalOrderVanished is emitted.
 
     eventWatch.await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("A"))
     // This must be the only ExternalOrderVanished event

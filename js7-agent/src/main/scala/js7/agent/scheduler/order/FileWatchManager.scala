@@ -40,6 +40,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.Journal
+import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
 /** Persists, recovers and runs FileWatches. */
@@ -75,13 +76,19 @@ final class FileWatchManager(
                 Nil
               else
                 // If the directory changes, all arisen files vanish now.
-                // Beware that directory is an (EnvScope-only) Expression.
+                // Note that directory is an (EnvScope-only) Expression.
                 val vanished =
-                  if watchState.fileWatch.directoryExpr == fileWatch.directoryExpr then
-                    Nil
+                  def reduce(fw: FileWatch) = fw.copy(
+                    agentPath = AgentPath.empty,
+                    pattern = None,
+                    delay = 0.s,
+                    itemRevision = None)
+                  if reduce(fileWatch) == reduce(watchState.fileWatch) then
+                    View.empty
                   else
                     watchState.allFilesVanished
-                vanished.toVector :+ (NoKey <-: ItemAttachedToMe(fileWatch))
+                (vanished :+ (NoKey <-: ItemAttachedToMe(fileWatch)))
+                  .toVector
 
             case None =>
               (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
