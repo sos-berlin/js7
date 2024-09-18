@@ -11,6 +11,7 @@ import fs2.Stream
 import izumi.reflect.Tag
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
@@ -112,7 +113,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
             .map(_.combineAll),
           agents
             .parTraverse:
-              _.terminate().void.logWhenItTakesLonger("agent.terminate")
+              _.terminate(Some(SIGKILL)).void.logWhenItTakesLonger("agent.terminate")
             .map(_.combineAll),
           idToAllocatedSubagent.values.toVector.parTraverse:
             _.release.logWhenItTakesLonger("Subagent release")
