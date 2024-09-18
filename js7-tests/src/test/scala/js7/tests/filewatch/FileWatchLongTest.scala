@@ -1,5 +1,6 @@
 package js7.tests.filewatch
 
+import fs2.Stream
 import java.nio.file.Files.{createDirectory, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
@@ -20,7 +21,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import fs2.Stream
 
 final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
 

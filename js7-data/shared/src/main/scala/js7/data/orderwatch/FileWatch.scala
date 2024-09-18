@@ -2,7 +2,7 @@ package js7.data.orderwatch
 
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
-import java.util.regex.Pattern
+import java.util.regex.{Matcher, Pattern}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -29,9 +29,6 @@ extends OrderWatch:
   protected type Self = FileWatch
   val companion: FileWatch.type = FileWatch
 
-  def resolvedPattern: Pattern =
-    pattern.fold(defaultPattern)(_.pattern)
-
   def rename(path: OrderWatchPath): FileWatch =
     copy(path = path)
 
@@ -40,6 +37,10 @@ extends OrderWatch:
 
   override val referencedItemPaths: View[InventoryItemPath] =
     View(agentPath, workflowPath)
+
+  def matchFilename(filename: String): Matcher =
+    pattern.fold(defaultPattern)(_.pattern)
+      .matcher(filename)
 
 
 object FileWatch extends OrderWatch.Companion[FileWatch]:

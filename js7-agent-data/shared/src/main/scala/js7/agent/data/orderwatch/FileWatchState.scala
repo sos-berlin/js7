@@ -35,20 +35,20 @@ extends UnsignedSimpleItemState:
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
     event match
-      case ExternalOrderArised(ExternalOrderName(relativePath_), _, _) =>
-        val relativePath = Paths.get(relativePath_)
+      case ExternalOrderArised(ExternalOrderName(filename_), _, _) =>
+        val filename = Paths.get(filename_)
         copy(
           directoryState =
             directoryState.copy(
               fileToEntry = directoryState.fileToEntry +
-                (relativePath -> DirectoryState.Entry(relativePath))))
+                (filename -> DirectoryState.Entry(filename))))
 
-      case ExternalOrderVanished(ExternalOrderName(relativePath_)) =>
-        val relativePath = Paths.get(relativePath_)
+      case ExternalOrderVanished(ExternalOrderName(filename_)) =>
+        val filename = Paths.get(filename_)
         copy(
           directoryState =
             directoryState.copy(
-              fileToEntry = directoryState.fileToEntry - relativePath))
+              fileToEntry = directoryState.fileToEntry - filename))
 
   def containsPath(path: Path): Boolean =
     directoryState.fileToEntry.contains(path)

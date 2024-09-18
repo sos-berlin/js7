@@ -163,7 +163,7 @@ final class FileWatchManager(
             directory, directoryState,
             settings,
             isRelevantFile = relativePath =>
-              fileWatch.resolvedPattern.matcher(relativePath.toString).matches)
+              fileWatch.matchFilename(relativePath.toString).matches())
           .onStart(IO:
             logger.debug(s"${fileWatch.path} watching started - $directory"))
           .interruptWhen(stop)
@@ -242,7 +242,7 @@ object FileWatchManager:
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
-    val matcher = fileWatch.resolvedPattern.matcher(relativePath)
+    val matcher = fileWatch.matchFilename(relativePath)
     matcher.matches() ?
       fileWatch.orderIdExpression.match
         case None => default

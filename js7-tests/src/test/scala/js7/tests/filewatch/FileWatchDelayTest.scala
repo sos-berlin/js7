@@ -1,5 +1,6 @@
 package js7.tests.filewatch
 
+import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, exists}
@@ -10,8 +11,8 @@ import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -24,7 +25,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDelayTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.IO
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
