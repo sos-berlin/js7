@@ -47,9 +47,11 @@ sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent]:
 object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   implicit def implicitSelf: OrderEvent.type = this
 
+  sealed trait IsControllerOnly extends OrderEvent
+
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
-  sealed trait OrderTerminated extends OrderEvent
+  sealed trait OrderTerminated extends IsControllerOnly
 
 
   sealed trait OrderAddedX extends OrderCoreEvent:
@@ -381,11 +383,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     given Codec.AsObject[OrderStickySubagentEntered] = deriveRenamingCodec(Map(
       "subagentSelectionId" -> "subagentBundleId"))
 
-  
+
   case object OrderStickySubagentLeaved
   extends OrderActorEvent
 
-  
+
   final case class OrderMoved(to: Position, reason: Option[Reason] = None)
   extends OrderActorEvent
   object OrderMoved:
@@ -397,7 +399,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       Subtype(SkippedDueToWorkflowPathControl),
       Subtype(NoAdmissionPeriodStart))
 
-  
+
   sealed trait OrderFailedEvent extends OrderActorEvent:
     def moveTo(movedTo: Position): OrderFailedEvent
 
@@ -429,7 +431,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     movedTo: Position,
     // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
     outcome: Option[OrderOutcome.NotSucceeded] = None)
-  extends OrderFailedEvent:
+  extends OrderFailedEvent, IsControllerOnly:
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
   object OrderFailedInFork:
@@ -447,14 +449,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderFailedEvent:
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
 
-  
+
   final case class OrderCaught(
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderFailedEvent:
     def moveTo(movedTo: Position): OrderFailedEvent = copy(movedTo = movedTo)
-  
+
   object OrderCaught:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[OrderOutcome.NotSucceeded]) =
@@ -462,7 +464,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     def apply(movedTo: Position) = new OrderCaught(movedTo, None)
 
-  
+
   /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
    * `OrderStopped`,  */
   final case class OrderFailedIntermediate_(outcome: Option[OrderOutcome.NotSucceeded] = None)
@@ -471,11 +473,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
   extends OrderActorEvent
 
-  
+
   type OrderAwoke = OrderAwoke.type
   case object OrderAwoke extends OrderActorEvent
 
-  
+
   final case class OrderBroken(problem: Option[Problem]) extends OrderActorEvent:
     override def toString = s"💥 OrderBroken($problem)"
   object OrderBroken:
@@ -487,20 +489,20 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def apply(): OrderBroken =
       OrderBroken(None)
 
-  
+
   /**
     * Controller may have started to attach Order to Agent..
     */
   final case class OrderAttachable(agentPath: AgentPath) extends OrderActorEvent
 
-  
+
   type OrderDetachable = OrderDetachable.type
   /**
     * Agent has processed all steps and the Order should be fetched by the Controller.
     */
   case object OrderDetachable extends OrderActorEvent
 
-  
+
   type OrderDetached = OrderDetached.type
   /**
     * Order has been removed from the Agent and is held by the Controller.
@@ -508,7 +510,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     */
   case object OrderDetached extends OrderCoreEvent
 
-  
+
   final case class OrderFinished(outcome: Option[OrderOutcome.Completed] = None)
   extends OrderActorEvent, OrderTerminated:
     override def toString = "OrderFinished" + parameterListToString(outcome)
@@ -517,18 +519,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   type OrderExternalVanished = OrderExternalVanished.type
   case object OrderExternalVanished extends OrderActorEvent
 
-  
+
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
 
-  
+
   type OrderDeleted = OrderDeleted.type
   case object OrderDeleted extends OrderActorEvent
 
-  
+
   sealed trait OrderKillingMarked extends OrderActorEvent:
     def kill: Option[CancellationMode.Kill]
-  
+
   object OrderKillingMarked:
     def unapply(event: OrderKillingMarked): Some[Option[CancellationMode.Kill]] = Some(event.kill)
 
@@ -545,54 +547,54 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     override def toString = "OrderCancellationMarked" +
       parameterListToString((mode != CancellationMode.Default) ? mode)
 
-  
+
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderCancellationMarkedOnAgent extends OrderActorEvent
 
-  
+
   type OrderStateReset = OrderStateReset.type
   case object OrderStateReset extends OrderActorEvent
 
-  
+
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent, OrderTerminated
 
-  
+
   final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderKillingMarked:
     def kill: Option[CancellationMode.Kill] = mode.kill
 
-  
+
   final case class OrderGoMarked(position: Position)
   extends OrderActorEvent
 
-  
+
   type OrderGoes = OrderGoes.type
   case object OrderGoes
   extends OrderActorEvent
 
-  
+
   type OrderSuspensionMarkedOnAgent = OrderSuspensionMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderSuspensionMarkedOnAgent extends OrderActorEvent
 
-  
+
   type OrderSuspended = OrderSuspended.type
-  case object OrderSuspended extends OrderActorEvent
+  case object OrderSuspended extends OrderActorEvent, IsControllerOnly
 
-  
+
   type OrderStopped = OrderStopped.type
-  case object OrderStopped extends OrderActorEvent
+  case object OrderStopped extends OrderActorEvent, IsControllerOnly
 
-  
+
   final case class OrderResumptionMarked(
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
   extends OrderActorEvent, Big
 
-  
+
   final case class OrderResumed(
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
@@ -600,7 +602,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderActorEvent, Big:
     override def toString = "OrderResumed" +
       parameterListToString(position.view, historyOperations, asSucceeded ? "asSucceeded")
-  
+
   object OrderResumed:
     sealed trait HistoryOperation:
       def positions: Iterable[Position]
@@ -637,58 +639,58 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         Subtype.named(deriveCodec[DeleteHistoricOutcome], "Delete"),
         Subtype.named(deriveCodec[AppendHistoricOutcome], "Append"))
 
-  
+
   sealed trait LegacyOrderLockEvent extends OrderActorEvent
 
-  
+
   // COMPATIBLE with v2.4
   private final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent
 
-  
+
   // COMPATIBLE with v2.4
   private final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
   extends LegacyOrderLockEvent
 
-  
+
   // COMPATIBLE with v2.4
   private final case class OrderLockDequeued(lockPath: LockPath)
   extends LegacyOrderLockEvent
 
-  
+
   // COMPATIBLE with v2.4
   private final case class OrderLockReleased(lockPath: LockPath)
   extends LegacyOrderLockEvent
 
-  
+
   sealed trait OrderLockEvent extends OrderActorEvent:
     def lockPaths: Seq[LockPath]
 
-  
+
   final case class OrderLocksQueued(demands: List[LockDemand])
   extends OrderLockEvent :
     def checked: Checked[OrderLocksQueued] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
-  
+
   final case class OrderLocksAcquired(demands: List[LockDemand])
   extends OrderLockEvent:
     def checked: Checked[OrderLocksAcquired] = LockDemand.checked(demands).rightAs(this)
     def lockPaths: Seq[LockPath] = demands.map(_.lockPath)
 
-  
+
   final case class OrderLocksReleased(lockPaths: Seq[LockPath])
   extends OrderLockEvent:
     def checked: Checked[OrderLocksReleased] = lockPaths.checkUniqueness.rightAs(this)
 
-  
+
   final case class LockDemand(lockPath: LockPath, count: Option[Int] = None):
     def checked: Checked[this.type] =
       if count.exists(_ < 1) then
         Left(Problem(s"LockDemand.count must not be below 1 for $lockPath"))
       else
         Right(this)
-  
+
   object LockDemand:
     def checked(demands: Seq[LockDemand]): Checked[Unit] =
       demands
@@ -698,32 +700,32 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
     implicit val jsonCodec: Codec.AsObject[LockDemand] = deriveCodec
 
-  
+
   final case class OrderPrompted(question: Value)
   extends OrderActorEvent
 
-  
+
   final case class OrderPromptAnswered(/*outcome: OrderOutcome.Completed*/)
   extends OrderCoreEvent
 
-  
+
   final case class OrderCyclingPrepared(cycleState: CycleState)
   extends OrderActorEvent
 
-  
+
   type OrderCycleStarted = OrderCycleStarted.type
   case object OrderCycleStarted
   extends OrderActorEvent
 
-  
+
   final case class OrderCycleFinished(cycleState: Option[CycleState])
   extends OrderActorEvent
 
-  
+
   final case class OrderTransferred(workflowPosition: WorkflowPosition)
   extends OrderActorEvent
 
-  
+
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],

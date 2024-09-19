@@ -273,13 +273,13 @@ final case class Order[+S <: Order.State](
 
       case OrderDetachable =>
         attachedState match
-          case Some(Attached(agentPath)) if isInDetachableState =>
+          case Some(Attached(agentPath)) if state.isDetachable =>
             Right(copy(attachedState = Some(Detaching(agentPath))))
           case _ =>
             inapplicable
 
       case OrderDetached =>
-        check(!isDetached && isInDetachableState,
+        check(!isDetached && state.isDetachable,
           copy(attachedState = None))
 
       case OrderCancellationMarked(mode) =>
@@ -709,20 +709,7 @@ final case class Order[+S <: Order.State](
       case _ => false
 
   def canBecomeDetachable: Boolean =
-    isAttached && isInDetachableState
-
-  def isInDetachableState: Boolean =
-    isState[Fresh] ||
-      isState[Ready] ||
-      isState[Forked] ||
-      isState[Processed] ||
-      isState[ProcessingKilled] ||
-      isState[BetweenCycles] ||
-      isState[DelayedAfterError] ||
-      isState[FailedWhileFresh] ||
-      isState[Failed] ||
-      isState[FailedInFork] ||
-      isState[Broken]
+    isAttached && state.isDetachable
 
   /** OrderGoMarked and OrderGoes are applicable only if Order is in specific waiting states. */
   def isGoCommandable(position: Position): Boolean =
@@ -942,6 +929,8 @@ object Order:
 
 
   sealed trait State:
+    private[Order] def isDetachable: Boolean
+
     private[Order] def maybeDelayedUntil: Option[Timestamp] = None
 
     private[Order] def prepareTransfer(order: Order[State], from: Workflow, to: Workflow)
@@ -971,13 +960,20 @@ object Order:
       Subtype(deriveCodec[Prompting]),
       Subtype(deriveCodec[Broken]))
 
+  sealed trait IsDetachable extends State:
+    private[Order] final def isDetachable = true
+
+  sealed trait IsNotDetachable extends State:
+    private[Order] final def isDetachable = false
+
+  sealed trait IsControllerOnly extends IsNotDetachable
 
   sealed trait Resettable extends State:
     private[Order] final def reset: List[OrderActorEvent] =
       OrderStateReset :: Nil
 
 
-  transparent sealed trait NotTransferable extends State:
+  sealed trait NotTransferable extends State:
     private[Order] final def prepareTransfer(order: Order[State], from: Workflow, to: Workflow) =
       Left(Problem:
         s"${order.id} in ${getClass.simpleScalaName} state (${
@@ -985,7 +981,7 @@ object Order:
         } instruction) cannot be transferred")
 
 
-  transparent sealed trait IsTransferableOnlyIfInstructionUnchanged extends State:
+  sealed trait IsTransferableOnlyIfInstructionUnchanged extends State:
     private[Order] final def prepareTransfer(order: Order[State], from: Workflow, to: Workflow) =
       if !from.instruction(order.position).isSameCore(to.instruction(order.position)) then
         Left(Problem:
@@ -994,7 +990,7 @@ object Order:
         Right(Nil)
 
 
-  transparent sealed trait IsTransferableButResetChangedInstruction:
+  sealed trait IsTransferableButResetChangedInstruction:
     this: Resettable =>
 
     private[Order] final def prepareTransfer(order: Order[Order.State], from: Workflow, to: Workflow) =
@@ -1005,7 +1001,7 @@ object Order:
           Nil
 
 
-  transparent sealed trait IsTransferable extends State:
+  sealed trait IsTransferable extends State:
     private[Order] final def prepareTransfer(order: Order[State], from: Workflow, to: Workflow) =
       Right(Nil)
 
@@ -1016,24 +1012,26 @@ object Order:
   sealed trait IsFreshOrReady extends State
 
   /** Terminal state — the order can only be removed. */
-  sealed trait IsTerminated extends State
+  sealed trait IsTerminated extends IsControllerOnly
 
-  sealed trait IsFailed extends State
+  sealed trait IsFailed extends IsControllerOnly
 
 
   type Fresh = Fresh.type
-  case object Fresh extends IsFreshOrReady, IsTransferable
+  case object Fresh extends IsFreshOrReady, IsDetachable, IsTransferable
 
 
   type Ready = Ready.type
-  case object Ready extends IsStarted, IsFreshOrReady, IsTransferable
+  case object Ready extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable
 
 
-  final case class DelayedAfterError(until: Timestamp) extends IsTransferable, IsStarted:
+  final case class DelayedAfterError(until: Timestamp)
+  extends IsStarted, IsDetachable, IsTransferable:
     override private[Order] def maybeDelayedUntil = Some(until)
 
 
-  final case class Broken(problem: Option[Problem]) extends IsStarted/*!!!*/, IsTransferable
+  final case class Broken(problem: Option[Problem])
+  extends IsStarted/*!!!*/, IsDetachable, IsTransferable
 
   object Broken:
     // COMPATIBLE with v2.4
@@ -1048,7 +1046,7 @@ object Order:
   final case class Processing(
     subagentId: Option[SubagentId],
     subagentBundleId: Option[SubagentBundleId])
-  extends IsStarted, IsTransferableOnlyIfInstructionUnchanged:
+  extends IsStarted, IsNotDetachable, IsTransferableOnlyIfInstructionUnchanged:
     override def toString = s"Processing(${subagentId getOrElse
         "legacy local Subagent"}${subagentBundleId.fold("")(o => s" $o")})"
 
@@ -1061,14 +1059,15 @@ object Order:
 
 
   type Processed = Processed.type
-  case object Processed extends IsStarted, IsTransferable
+  case object Processed extends IsStarted, IsDetachable, IsTransferable
+
 
   type ProcessingKilled = ProcessingKilled.type
-  case object ProcessingKilled extends IsStarted, IsTransferable
+  case object ProcessingKilled extends IsStarted, IsDetachable, IsTransferable
 
 
   final case class Forked(children: Vector[Forked.Child])
-  extends IsStarted, IsTransferableOnlyIfInstructionUnchanged:
+  extends IsStarted, IsDetachable, IsTransferableOnlyIfInstructionUnchanged:
     def childOrderIds: IndexedSeqView[OrderId] = children.view.map(_.orderId)
 
   object Forked:
@@ -1078,23 +1077,23 @@ object Order:
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
-  extends IsStarted, Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly, Resettable, IsTransferableButResetChangedInstruction
 
 
   // COMPATIBLE with v2.3, only used for JSON deserialization
   final case class ExpectingNotice(noticeId: NoticeId)
-  extends IsStarted, NotTransferable
+  extends IsStarted, IsControllerOnly, NotTransferable
 
   final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
-  extends IsStarted, Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly,Resettable, IsTransferableButResetChangedInstruction
 
 
   final case class Prompting(question: Value)
-  extends IsStarted, Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly, Resettable, IsTransferableButResetChangedInstruction
 
 
   final case class BetweenCycles(cycleState: Option[CycleState])
-  extends IsStarted, Resettable, IsTransferableButResetChangedInstruction:
+  extends IsStarted, IsDetachable, Resettable, IsTransferableButResetChangedInstruction:
     override private[Order] def maybeDelayedUntil =
       cycleState.map(_.next)
 
@@ -1108,15 +1107,16 @@ object Order:
 
 
   type FailedInFork = FailedInFork.type
-  case object FailedInFork extends IsStarted, IsFailed, IsTransferable //, IsTerminated
+  case object FailedInFork
+  extends IsStarted, IsFailed, IsTransferable //, IsTerminated
 
 
   type Stopped = Stopped.type
-  case object Stopped extends IsStarted, IsTransferable
+  case object Stopped extends IsStarted, IsControllerOnly, IsTransferable
 
 
   type StoppedWhileFresh = StoppedWhileFresh.type
-  case object StoppedWhileFresh extends IsStarted, IsTransferable
+  case object StoppedWhileFresh extends IsStarted, IsControllerOnly, IsTransferable
 
 
   type Finished = Finished.type
@@ -1131,7 +1131,7 @@ object Order:
 
 
   type Deleted = Deleted.type
-  case object Deleted extends State, IsTransferable
+  case object Deleted extends IsControllerOnly, IsTransferable
 
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
