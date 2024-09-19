@@ -129,7 +129,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
               toJoined(parentOrder, fork, state)
             })
 
-  protected[instructions] final def toJoined(
+  private final def toJoined(
     order: Order[Order.Forked],
     fork: Instr,
     state: StateView)

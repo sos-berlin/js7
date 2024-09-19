@@ -304,9 +304,9 @@ final case class Order[+S <: Order.State](
             isSuspended = false,
             mark = None))
 
-      case OrderSuspensionMarked(kill) =>
+      case OrderSuspensionMarked(mode) =>
         check(isMarkable,
-          copy(mark = Some(OrderMark.Suspending(kill))))
+          copy(mark = Some(OrderMark.Suspending(mode))))
 
       case OrderSuspensionMarkedOnAgent =>
         Right(this)
@@ -910,7 +910,9 @@ object Order:
       innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
 
+
   sealed trait AttachedState
+
   object AttachedState:
     sealed trait HasAgentPath extends AttachedState:
       def agentPath: AgentPath
@@ -923,13 +925,16 @@ object Order:
 
     sealed trait AttachingOrAttached extends HasAgentPath
 
+
   /** Order is going to be attached to an Agent. */
   final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attaching to $agentPath"
 
+
   /** Order is attached to an Agent. */
   final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attached to $agentPath"
+
 
   /** Order is going to be detached from Agent. */
   final case class Detaching(agentPath: AgentPath) extends AttachedState.HasAgentPath:
@@ -1029,6 +1034,7 @@ object Order:
 
 
   final case class Broken(problem: Option[Problem]) extends IsStarted/*!!!*/, IsTransferable
+
   object Broken:
     // COMPATIBLE with v2.4
     @deprecated("outcome is deprecated", "v2.5")
@@ -1045,6 +1051,7 @@ object Order:
   extends IsStarted, IsTransferableOnlyIfInstructionUnchanged:
     override def toString = s"Processing(${subagentId getOrElse
         "legacy local Subagent"}${subagentBundleId.fold("")(o => s" $o")})"
+
   object Processing:
     def legacy: Processing = new Processing(None, None)
 
@@ -1052,18 +1059,22 @@ object Order:
     def apply(subagentId: SubagentId, bundleId: Option[SubagentBundleId] = None): Processing =
       Processing(Some(subagentId), bundleId)
 
+
   type Processed = Processed.type
   case object Processed extends IsStarted, IsTransferable
 
   type ProcessingKilled = ProcessingKilled.type
   case object ProcessingKilled extends IsStarted, IsTransferable
 
+
   final case class Forked(children: Vector[Forked.Child])
   extends IsStarted, IsTransferableOnlyIfInstructionUnchanged:
     def childOrderIds: IndexedSeqView[OrderId] = children.view.map(_.orderId)
+
   object Forked:
     type Child = OrderForked.Child
     val Child: OrderForked.Child.type = OrderForked.Child
+
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
@@ -1091,20 +1102,26 @@ object Order:
   type Failed = Failed.type
   case object Failed extends IsStarted, IsFailed, IsTransferable
 
+
   type FailedWhileFresh = FailedWhileFresh.type
   case object FailedWhileFresh extends IsFailed, IsTransferable
+
 
   type FailedInFork = FailedInFork.type
   case object FailedInFork extends IsStarted, IsFailed, IsTransferable //, IsTerminated
 
+
   type Stopped = Stopped.type
   case object Stopped extends IsStarted, IsTransferable
+
 
   type StoppedWhileFresh = StoppedWhileFresh.type
   case object StoppedWhileFresh extends IsStarted, IsTransferable
 
+
   type Finished = Finished.type
   case object Finished extends IsStarted, IsTerminated, IsTransferable
+
 
   type Cancelled = Cancelled.type
   // Position may be in a lock, but the lock has been released.
@@ -1112,8 +1129,10 @@ object Order:
   // or add position to Cancelled like in Failed!
   case object Cancelled extends IsTerminated, IsTransferable
 
+
   type Deleted = Deleted.type
   case object Deleted extends State, IsTransferable
+
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
     Subtype(Fresh),
