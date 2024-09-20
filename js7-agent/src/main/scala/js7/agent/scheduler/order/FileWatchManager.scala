@@ -124,7 +124,7 @@ final class FileWatchManager(
             // At the same time, register a stopper in idToStopper.
             // The stopper is a task that stops the stream and awaits its completion.
             idToStopper
-              .update(fileWatchState.id, previous =>
+              .update(fileWatchState.id): previous =>
                 // Wait for previous Stream to complete (stop and fiber.join)
                 previous.getOrElse(IO.unit) *>
                   stream
@@ -137,7 +137,7 @@ final class FileWatchManager(
                       logger.debugIO("stop watching", id):
                         stop.set(true) *>
                           fiber.joinStd
-                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher"))
+                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
               .void
           .logWhenItTakesLonger(s"startWatching $id")
 

@@ -3,6 +3,7 @@ package js7.base.monixutils
 import cats.effect.{Deferred, IO}
 import cats.syntax.apply.*
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -43,18 +44,18 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   final def checked(key: K): Checked[V] =
     _map.checked(key)
 
-  final def insert(key: K, value: V)(implicit src: sourcecode.Enclosing): IO[Checked[V]] =
-    updateChecked(key, {
-      case None => IO.pure(Right(value))
-      case Some(_) => IO.pure(Left(DuplicateKey(implicitly[Tag[K]].tag.shortName, key.toString)))
-    }).rightAs(value)
+  final def insert(key: K, value: V)(using sourcecode.Enclosing): IO[Checked[V]] =
+    updateChecked(key):
+      case None => IO.right(value)
+      case Some(_) => IO.left(DuplicateKey(implicitly[Tag[K]].tag.shortName, key.toString))
+    .rightAs(value)
 
   /** Not synchronized with other updates! */
-  final def removeAll(implicit src: sourcecode.Enclosing): IO[Map[K, V]] =
+  final def removeAll(using sourcecode.Enclosing): IO[Map[K, V]] =
     removeConditional(_ => true)
 
   /** Not synchronized with other updates! */
-  final def removeConditional(predicate: ((K, V)) => Boolean)(implicit src: sourcecode.Enclosing)
+  final def removeConditional(predicate: ((K, V)) => Boolean)(using sourcecode.Enclosing)
   : IO[Map[K, V]] =
     shortLock.lock(IO.defer {
       val (removed, remaining) = _map.partition(predicate)
@@ -63,80 +64,73 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
         .as(removed)
     })
 
-  final def remove(key: K)(implicit src: sourcecode.Enclosing): IO[Option[V]] =
-    lockKeeper.lock(key)(
-      shortLock.lock(IO.defer {
-        val removed = _map.get(key)
-        _map = _map.removed(key)
-        IO.whenA(removed.isDefined)(onEntryRemoved())
-          .as(removed)
-      }))
+  final def remove(key: K)(using sourcecode.Enclosing): IO[Option[V]] =
+    lockKeeper.lock(key):
+      shortLock.lock:
+        IO.defer:
+          val removed = _map.get(key)
+          _map = _map.removed(key)
+          IO.whenA(removed.isDefined)(onEntryRemoved())
+            .as(removed)
 
   final def updateExisting(key: K, update: V => IO[Checked[V]])
-    (implicit src: sourcecode.Enclosing)
+    (using sourcecode.Enclosing)
   : IO[Checked[V]] =
-    updateChecked(key, {
-      case None => IO.pure(Left(UnknownKeyProblem(implicitly[Tag[K]].tag.shortName, key)))
+    updateChecked(key):
+      case None => IO.left(UnknownKeyProblem(implicitly[Tag[K]].tag.shortName, key))
       case Some(existing) => update(existing)
-    })
 
   final def getOrElseUpdate(key: K, value: IO[V])
-    (implicit src: sourcecode.Enclosing)
+    (using sourcecode.Enclosing)
   : IO[V] =
-    update(key, {
+    update(key):
       case Some(existing) => IO.pure(existing)
       case None => value
-    })
 
   final def put(key: K, value: V)
-    (implicit src: sourcecode.Enclosing)
+    (using sourcecode.Enclosing)
   : IO[V] =
-    lockKeeper.lock(key)(
-      shortLock.lock(IO {
-        updateMap(key, value).orThrow
-        value
-      }))
+    lockKeeper.lock(key):
+      shortLock.lock:
+        IO:
+          updateMap(key, value).orThrow
+          value
 
-  final def update(key: K, update: Option[V] => IO[V])
-    (implicit src: sourcecode.Enclosing)
+  final def update(key: K)(update: Option[V] => IO[V])
+    (using sourcecode.Enclosing)
   : IO[V] =
     getAndUpdate(key, update)
       .map(_._2)
 
   final def getAndUpdate(key: K, update: Option[V] => IO[V])
-    (implicit src: sourcecode.Enclosing)
+    (using sourcecode.Enclosing)
   : IO[(Option[V], V)] =
-    lockKeeper.lock(key)(
-      IO.defer {
+    lockKeeper.lock(key):
+      IO.defer:
         val previous = _map.get(key)
         update(previous)
-          .flatMap(updated =>
-            shortLock.lock(IO {
+          .flatMap: updated =>
+            shortLock.lock(IO:
               updateMap(key, updated).orThrow
-              updated
-          }))
+              updated)
           .map(previous -> _)
-      })
 
-  final def updateChecked(key: K, update: Option[V] => IO[Checked[V]])
-    (implicit src: sourcecode.Enclosing)
+  final def updateChecked(key: K)(update: Option[V] => IO[Checked[V]])
+    (using sourcecode.Enclosing)
   : IO[Checked[V]] =
-    lockKeeper.lock(key)(
+    lockKeeper.lock(key):
       IO.defer/*catch inside io*/(update(_map.get(key)))
-        .flatMap { updated =>
+        .flatMap: updated =>
           updated
-            .match {
-              case Left(p) => IO.pure(Left(p))
+            .match
+              case Left(p) => IO.left(p)
               case Right(v) =>
-                shortLock.lock(IO {
-                  updateMap(key, v)
-                })
-            }
+                shortLock.lock(IO:
+                  updateMap(key, v))
             .map(_.*>(updated))
-        })
 
   final def updateCheckedWithResult[R](key: K, update: Option[V] => IO[Checked[(V, R)]])
-    (implicit src: sourcecode.Enclosing)
+    (using sourcecode.Enclosing)
   : IO[Checked[R]] = IO.defer:
     lockKeeper.lock(key):
       IO.defer:
@@ -204,18 +198,18 @@ object AsyncMap:
               stoppingProblem = problem
               true
             })
-          .flatTap(IO.whenA(_)(
-            whenEmpty.complete(()).void))
+          .flatTap(IO.whenA(_):
+            whenEmpty.complete(()).void)
 
     final def initiateStopWithProblem(problem: Problem): IO[Unit] =
       IO.defer:
-        logger.trace(s"$name initiateStopWithProblem $problem")
+        logger.trace(s"$name(initiateStopWithProblem $problem)")
         shortLock
           .lock(IO:
             stoppingProblem = problem
             isEmpty)
-          .flatMap(IO.whenA(_)(
-            whenEmpty.complete(()).attempt.void))
+          .flatMap(IO.whenA(_):
+            whenEmpty.complete(()).attempt.void)
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())

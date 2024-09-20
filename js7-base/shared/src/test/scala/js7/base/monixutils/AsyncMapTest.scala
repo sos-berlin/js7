@@ -39,10 +39,9 @@ final class AsyncMapTest extends OurAsyncTestSuite:
 
   "remove" in:
     asyncMap
-      .update(2, {
+      .update(2):
         case None => IO("ZWEI")
         case o => fail(s"UNEXPECTED: $o")
-      })
       .*>(asyncMap.remove(2))
       .flatMap(maybe => IO(assert(maybe == Some("ZWEI"))))
       .*>(asyncMap.remove(2))
@@ -71,7 +70,7 @@ final class AsyncMapTest extends OurAsyncTestSuite:
   }
 
   "update" in:
-    asyncMap.update(2, update)
+    asyncMap.update(2)(update)
       .map(o => assert(o == "FIRST"))
 
   "insert" in:
@@ -89,11 +88,11 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         case Some(_) => IO(Left(Problem("EXISTING")))
 
     "standard" in:
-      asyncMap.updateChecked(4, updateChecked)
+      asyncMap.updateChecked(4)(updateChecked)
         .map(o => assert(o == Right("FIRST")))
 
     "update again" in:
-      asyncMap.updateChecked(4, updateChecked)
+      asyncMap.updateChecked(4)(updateChecked)
         .map(o => assert(o == Left(Problem("EXISTING"))))
 
     "updateChecked, crashing" - {
@@ -107,7 +106,7 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         properlyCrashingUpdateChecked _ -> "properly",
         earlyCrashingUpdateChecked _ -> "early"))
         name in:
-          asyncMap.updateChecked(0, upd)
+          asyncMap.updateChecked(0)(upd)
             .materialize
             .map:
               case Success(_) => fail()

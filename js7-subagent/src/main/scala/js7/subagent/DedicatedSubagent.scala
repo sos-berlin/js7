@@ -198,7 +198,7 @@ extends Service.StoppableByRequest:
     IO.defer:
       _isUsed = true
       orderToProcessing
-        .updateChecked(order.id, {
+        .updateChecked(order.id):
           case Some(processing) =>
             IO.pure(
               if processing.workflowPosition != order.workflowPosition then
@@ -224,7 +224,6 @@ extends Service.StoppableByRequest:
                 case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
               }
               .map(fiber => Right(new Processing(order.workflowPosition, fiber)))
-        })
         .map(_.map(_.fiber))
 
   private def startOrderProcess2(
