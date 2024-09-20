@@ -2,8 +2,10 @@ package js7.tests
 
 import cats.effect.{IO, Resource}
 import fs2.Stream
+import java.util.concurrent.locks.ReentrantLock
 import js7.agent.RunningAgent
 import js7.base.catsutils.Environment.TaggedResource
+import js7.base.catsutils.UnsafeMemoizable
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -27,7 +29,7 @@ import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Res
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
-import js7.data.job.ShellScriptExecutable
+import js7.data.job.{InternalExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
@@ -40,6 +42,9 @@ import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry,
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data_for_java.order.JOutcome
+import js7.launcher.forjava.internal.BlockingInternalJob
+import js7.launcher.forjava.internal.BlockingInternalJob.{OrderProcess, Step}
 import js7.launcher.processkiller.ProcessKiller.TestChildProcessTerminated
 import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
@@ -188,6 +193,7 @@ final class CancelOrdersTest
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
           OrderCancelled))
+  end if
 
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
     immediately: Boolean)
@@ -322,6 +328,27 @@ final class CancelOrdersTest
       OrderPrompted(StringValue("PROMPT")),
       OrderStateReset,
       OrderCancelled))
+
+  "Cancellation of a BlockingInternalJob is ignored" in:
+    // (Cancellation may be implemented via cancel method) */
+    val workflow = Workflow.of(WorkflowPath("BLOCKING-JOB"),
+      Execute(WorkflowJob(
+        agentPath,
+        InternalExecutable(classOf[TestBlockingJob].getName))))
+    withTemporaryItem(workflow): workflow =>
+      TestBlockingJob.lock.lock()
+      val orderId = OrderId("BLOCKING-JOB")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
+      waitForCondition(10.s, 10.ms)(TestBlockingJob.lock.isLocked)
+
+      execCmd(CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true)))
+      sleep(1.s)
+
+      assert(controllerState.idToOrder(orderId).isState[Order.Processing])
+      TestBlockingJob.lock.unlock()
+      eventWatch.awaitNext[OrderTerminated](_.key == orderId).head.value.event
 
   private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
     awaitTrapping: Boolean = false,
@@ -1067,6 +1094,17 @@ object CancelOrdersTest:
     WorkflowPath("WORKFLOW") ~ versionId,
     Prompt(expr("'PROMPT'")),
     EmptyJob.execute(agentPath))
+
+
+  final class TestBlockingJob extends BlockingInternalJob:
+    def toOrderProcess(step: Step) = () =>
+      step.out.println("TestBlockingJob")
+      TestBlockingJob.lock.lockInterruptibly()
+      JOutcome.succeeded
+
+  object TestBlockingJob:
+    val lock = ReentrantLock()
+
 
   private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =
     events.filter:
