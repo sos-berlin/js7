@@ -27,7 +27,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
   import jobDriverParams.{checkedJobLauncher, fileValueState, jobConf, pathToJobResource}
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
 
-  private val logger = Logger.withPrefix[this.type](s"$orderId Job:${jobConf.jobKey.simpleName}")
+  private val logger = Logger.withPrefix[this.type](s"$orderId in Job:${jobConf.jobKey.simpleName}")
   private val _orderProcess = Atomic:
     none[Either[ProcessSignal /*killed before started*/ , OrderProcess]]
   private val sigkillFiber = FiberVar[Unit]()

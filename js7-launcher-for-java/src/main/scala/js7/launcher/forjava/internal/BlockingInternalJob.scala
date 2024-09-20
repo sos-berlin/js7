@@ -125,3 +125,28 @@ object BlockingInternalJob:
     @throws[Exception] @Nonnull
     def cancel(immediately: Boolean): Unit =
       logger.warn(s"Cancellation of $toString is not implemented")
+
+
+  trait InterruptibleOrderProcess extends OrderProcess:
+    @volatile private var thread: Thread | Null = null
+    @volatile private var interrupted = false
+
+    @throws[Exception] @Nonnull
+    def runInteruptible(): JOutcome.Completed
+
+    @throws[Exception] @Nonnull
+    final def run(): JOutcome.Completed =
+      thread = Thread.currentThread()
+      try
+        runInteruptible()
+      finally
+        thread = null
+
+    @throws[Exception] @Nonnull
+    override final def cancel(immediately: Boolean): Unit =
+      thread match
+        case null =>
+        case t =>
+          logger.debug(s"interrupt $toString, thread $t")
+          interrupted = true
+          t.interrupt()

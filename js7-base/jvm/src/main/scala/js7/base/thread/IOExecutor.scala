@@ -10,6 +10,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.system.Java17Polyfill.*
 import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newBlockingExecutorService
+import js7.base.utils.NonFatalInterruptedException
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import scala.util.control.NonFatal
@@ -82,7 +83,7 @@ object IOExecutor:
               Right(a)
             catch
               case NonFatal(t) => Left(t)
-              case t: InterruptedException => Left(t) // What happens with t ???
+              case t: InterruptedException => Left(NonFatalInterruptedException(t)) // What happens with t ???
             finally
               Thread.interrupted() // Clear the interrupted flag and ignore the late interruption (?)
 

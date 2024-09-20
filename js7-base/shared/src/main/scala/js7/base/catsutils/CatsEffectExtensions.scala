@@ -8,6 +8,7 @@ import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.utils.NonFatalInterruptedException
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{CancellationException, ExecutionContext, Future}
 
@@ -98,7 +99,15 @@ object CatsEffectExtensions:
 
   extension(x: IO.type)
     def blockingOn[A](executionContext: ExecutionContext)(body: => A): IO[A] =
-      IO(body).evalOn(executionContext)
+      IO:
+        try
+          val a = body
+          IO.pure(a)
+        catch case t: InterruptedException =>
+          // Catch InterruptedException, because NonFatal considers it as fatal
+          IO.raiseError(NonFatalInterruptedException(t))
+      .evalOn(executionContext)
+      .flatten
 
     def left[L](value: L): IO[Either[L, Nothing]] =
       IO.pure(Left(value))

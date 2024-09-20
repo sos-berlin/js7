@@ -4,7 +4,7 @@ import cats.effect.{FiberIO, IO}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.base.utils.SetOnce
+import js7.base.utils.{NonFatalInterruptedException, SetOnce}
 import js7.data.job.JobKey
 import js7.data.order.{OrderId, OrderOutcome}
 import js7.data.value.NamedValues
@@ -27,8 +27,11 @@ trait OrderProcess:
       fiber
         .joinWith(onCancel = IO.pure(CanceledOutcome))
         .handleError: t =>
-          logger.warn(s"$orderId in $jobKey: ${t.toStringWithCauses}", t)
-          OrderOutcome.Failed.fromThrowable(t)
+          val u = t match
+            case t: NonFatalInterruptedException => t.getCause
+            case _ => t
+          logger.warn(s"$orderId in $jobKey: ${u.toStringWithCauses}", u)
+          OrderOutcome.Failed.fromThrowable(u)
         .start
 
 
