@@ -106,7 +106,7 @@ object Logger extends AdHocLogger:
 
   /** Removes '$' from Scala's companion object class. */
   private def normalizeClassName(c: Class[?]): String =
-    c.getName stripSuffix "$"
+    c.getName.stripSuffix("$").replace('$', '.')
 
   object ops:
     implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal:

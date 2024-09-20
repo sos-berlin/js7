@@ -39,6 +39,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
+import js7.subagent.job.JobDriver
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -348,11 +349,11 @@ extends Service.StoppableByRequest:
                   sigkillDelay = workflowJob.sigkillDelay
                     .getOrElse(subagentConf.defaultJobSigkillDelay),
                   jobLauncherConf.systemEncoding)
-                new JobDriver(
+                new JobDriver(JobDriver.Params(
                   jobConf,
                   id => journal.unsafeCurrentState()/*live!*/.pathToJobResource.checked(id),
                   JobLauncher.checked(jobConf, jobLauncherConf),
-                  fileValueState))
+                  fileValueState)))
             .map(workflowJob -> _))
       .flatMap(_.sequence)
 
@@ -360,8 +361,8 @@ extends Service.StoppableByRequest:
     for
       maybeJobDriver <- IO(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver
-        .fold(IO(logger.debug(s"⚠️ killOrder $orderId => no JobDriver for Order")))(_
-          .killOrder(orderId, signal))
+        .fold(IO(logger.debug(s"⚠️ killProcess $orderId => no JobDriver for Order")))(_
+          .killProcess(orderId, signal))
     yield ()
 
   override def toString =

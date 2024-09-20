@@ -12,7 +12,10 @@ import js7.data.workflow.{WorkflowId, WorkflowPath}
   * @author Joacim Zschimmer
   */
 sealed trait JobKey:
+
   def name: String
+
+  def simpleName: String
 
   def workflowId: WorkflowId
 
@@ -34,7 +37,10 @@ object JobKey:
 
   final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey:
     def name: String =
-      workflowPosition.toString
+      workflowPosition.normalized.toString
+
+    def simpleName: String =
+      workflowPosition.workflowId.path.string + ":" + workflowPosition.position
 
     def workflowId: WorkflowId =
       workflowPosition.workflowId
@@ -43,6 +49,9 @@ object JobKey:
   extends JobKey:
     def name: String =
       s"$workflowBranchPath:${jobName.string}"
+
+    def simpleName: String =
+      s"${workflowBranchPath.workflowId.path}:${jobName.string}"
 
     def workflowId: WorkflowId =
       workflowBranchPath.workflowId
