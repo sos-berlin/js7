@@ -10,7 +10,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.concurrent.duration.*
 import scala.concurrent.{TimeoutException, blocking}
@@ -28,18 +28,14 @@ object CatsBlocking:
           src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : A =
         inline def name = makeBlockingWaitingString[A]("IO", duration)
-
         try
-          io
-            .pipeIf(duration != Duration.Inf):
-              _.timeoutTo(
-                duration,
-                IO.defer(IO.raiseError(throw new TimeoutException(name + " timed out"))))
-            .syncStep(Int.MaxValue)
-            .unsafeRunSync()
-            .match
-              case Left(io) => io.logWhenItTakesLonger(name).unsafeRunSyncX()
-              case Right(a) => a
+          io.pipeIf(duration != Duration.Inf):
+            _.timeoutTo(duration, IO.defer(IO.raiseError:
+              new TimeoutException(name + " timed out")))
+          .syncStep(Int.MaxValue)
+          .unsafeRunSync() match
+            case Left(io) => io.logWhenItTakesLonger(name).unsafeRunSyncX()
+            case Right(a) => a
         catch case NonFatal(t) =>
           if t.getStackTrace.forall(_.getClassName != getClass.getName) then
             t.appendCurrentStackTrace
@@ -73,12 +69,6 @@ object CatsBlocking:
     /** Like Cats Effect's unsafeRunSync, but does not catch InterruptedException. */
     @throws[InterruptedException]
     def unsafeRunSyncX()(using IORuntime): A =
-      val queue = new ArrayBlockingQueue[Either[Throwable, A]](1)
-
-      io.unsafeRunAsync: either =>
-        queue.offer(either)
-        ()
-
-      blocking(queue.take()) match
-        case Left(t) => throw t
-        case Right(a) => a
+      val queue = ArrayBlockingQueue[Either[Throwable, A]](1)
+      io.unsafeRunAsync(queue.offer)
+      blocking(queue.take()).orThrow

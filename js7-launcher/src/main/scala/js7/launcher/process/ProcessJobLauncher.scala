@@ -33,20 +33,18 @@ trait ProcessJobLauncher extends JobLauncher:
 
     new OrderProcess:
       def run: IO[OrderOutcome.Completed] =
-        val checkedEnv = for
-          jobResourcesEnv <- processOrder.checkedJobResourcesEnv
-          v1 <- v1Env(processOrder)
-        yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
-        checkedEnv match
-          case Left(problem) =>
-            IO.pure(OrderOutcome.Failed.fromProblem(problem))
-          case Right(env) =>
-            processDriver.runProcess(env, processOrder.stdObservers)
+        processOrder.checkedJobResourcesEnv.flatMap: jobResourcesEnv =>
+          v1Env(processOrder).map: v1 =>
+            (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
+        match
+          case Left(problem) => IO.pure(OrderOutcome.Failed.fromProblem(problem))
+          case Right(env) => processDriver.runProcess(env, processOrder.stdObservers)
 
       def cancel(immediately: Boolean) =
         processDriver.kill(if immediately then SIGKILL else SIGTERM)
 
-      override def toString = "ProcessJobLauncher.OrderProcess"
+      override def toString =
+        "ProcessJobLauncher.OrderProcess"
 
   private def v1Env(processOrder: ProcessOrder): Checked[Map[String, Some[String]]] =
     if !v1Compatible then
@@ -69,4 +67,5 @@ object ProcessJobLauncher:
     commandLine: CommandLine,
     name: String,
     env: Map[String, Option[String]]):
+
     override def toString = name

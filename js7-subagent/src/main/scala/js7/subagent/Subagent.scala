@@ -232,7 +232,7 @@ object Subagent:
 
     val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
       .orThrow
-    val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking")
+    val useVirtualForBlocking = config.getBoolean("js7.job.execution.use-virtual-for-blocking-job")
 
     for
       pidFile <- CrashPidFileService.file(CrashPidFile.dataDirToFile(conf.dataDirectory))
@@ -303,4 +303,3 @@ object Subagent:
 
   object TestWiring:
     val empty: TestWiring = TestWiring()
-

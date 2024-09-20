@@ -526,7 +526,7 @@ final class OrderTest extends OurTestSuite:
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse
         cancelMarkedAllowed[Fresh] orElse
-        suspendMarkedAllowed[Fresh] orElse {
+        suspendMarkedAllowed[Fresh] orElse:
           case (_: OrderMoved       , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
           case (_: OrderFailed      , IsSuspended(false), _, IsDetached             ) => _.isInstanceOf[FailedWhileFresh]  // Expression error
           case (_: OrderStopped     , IsSuspended(false), _, IsDetached             ) => _.isInstanceOf[StoppedWhileFresh]  // Expression error
@@ -539,8 +539,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderResumed     , IsSuspended(true) , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
           case (_: OrderOutcomeAdded, _                 , _, _                      ) => _.isInstanceOf[Fresh]
           case (_: OrderTransferred , _                 , _, IsDetached             ) => _.isInstanceOf[Fresh]
-          case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken])
 
     "Ready" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Ready),
@@ -548,7 +547,7 @@ final class OrderTest extends OurTestSuite:
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
         cancelMarkedAllowed[Ready] orElse
-        suspendMarkedAllowed[Ready] orElse {
+        suspendMarkedAllowed[Ready] orElse:
           case (_: OrderMoved            , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingStarted, IsSuspended(false), _            , IsAttached             ) => _.isInstanceOf[Processing]
           case (_: OrderForked           , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Forked]
@@ -577,21 +576,19 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderStickySubagentEntered, IsSuspended(false), _        , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded     , _                 , _            , _                      ) => _.isInstanceOf[Ready]
           case (_: OrderTransferred      , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken])
 
     "WaitingForLock" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), WaitingForLock),
         markable[WaitingForLock] orElse
         cancelMarkedAllowed[WaitingForLock] orElse
-        suspendMarkedAllowed[WaitingForLock] orElse {
+        suspendMarkedAllowed[WaitingForLock] orElse:
           case (_: OrderLocksAcquired, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderStateReset, _, _, _      ) => _.isInstanceOf[Ready]
           case (_: OrderCancelled    , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded , _, _, _         ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderTransferred  , _, _, IsDetached) => _.isInstanceOf[WaitingForLock]
-          case (_: OrderBroken       , _, _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken       , _, _, _         ) => _.isInstanceOf[Broken])
 
     "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
@@ -599,26 +596,24 @@ final class OrderTest extends OurTestSuite:
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse
-        suspendMarkedAllowed[ExpectingNotices] orElse {
+        suspendMarkedAllowed[ExpectingNotices] orElse:
           case (_: OrderNoticesRead, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderNoticesConsumptionStarted, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderCancelled   , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[ExpectingNotices]
           case (_: OrderStateReset  , _, _, _   ) => _.isInstanceOf[Ready]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[ExpectingNotices]
-          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken])
 
     "Processing" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Processing(subagentId)),
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse
-        suspendMarkedAllowed[Processing] orElse {
+        suspendMarkedAllowed[Processing] orElse:
           case (_: OrderProcessed, IsSuspended(false), _, IsAttached) => _.isInstanceOf[Processed]
           case (_: OrderOutcomeAdded, _              , _, _         ) => _.isInstanceOf[Processing]
           case (_: OrderTransferred , _              , _, IsDetached) => _.isInstanceOf[Processing] // Impossible combination
-          case (_: OrderBroken   , _                 , _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken   , _                 , _, _         ) => _.isInstanceOf[Broken])
 
     "Processed" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Processed,
@@ -626,7 +621,7 @@ final class OrderTest extends OurTestSuite:
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
         suspendMarkedAllowed[Processed] orElse
-        detachingAllowed[Processed] orElse {
+        detachingAllowed[Processed] orElse:
           case (_: OrderMoved           , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingKilled, IsSuspended(false), _            ,              IsAttached) => _.isInstanceOf[ProcessingKilled]
           case (_: OrderOutcomeAdded    , _                 , _            , _                      ) => _.isInstanceOf[Processed]
@@ -636,14 +631,13 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderCatched         , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderCaught          , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderStopped         , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]
-          case (_: OrderBroken          , _                 , _            , _                      ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken          , _                 , _            , _                      ) => _.isInstanceOf[Broken])
 
     "ProcessingKilled" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), ProcessingKilled,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         markable[ProcessingKilled] orElse
-        detachingAllowed[ProcessingKilled] orElse {
+        detachingAllowed[ProcessingKilled] orElse:
           case (OrderCancelled, _                         , _, IsDetached) => _.isInstanceOf[Cancelled]
           case (OrderSuspended, IsSuspendingWithKill(true), _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderSuspended, order                     , _, IsAttached)
@@ -655,22 +649,20 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderCaught      , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderFailed      , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderStopped     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]
-          case (_: OrderBroken      , _                 , _, _                                  ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken      , _                 , _, _                                  ) => _.isInstanceOf[Broken])
 
     "Prompting" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Prompting(StringValue("QUESTION")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))))),
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
-        suspendMarkedAllowed[Prompting] orElse {
+        suspendMarkedAllowed[Prompting] orElse:
           case (_: OrderPromptAnswered, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]  // COMPATIBLE with v2.4
           case (OrderStateReset , _, _,          _) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded  , _, _, _         ) => _.isInstanceOf[Prompting]
           case (_: OrderTransferred   , _, _, IsDetached) => _.isInstanceOf[Prompting]
-          case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken])
 
     "BetweenCycles" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), BetweenCycles(Some(cycleState)),
@@ -678,7 +670,7 @@ final class OrderTest extends OurTestSuite:
         markable[BetweenCycles] orElse
         cancelMarkedAllowed[BetweenCycles] orElse
         suspendMarkedAllowed[BetweenCycles] orElse
-        detachingAllowed[BetweenCycles] orElse {
+        detachingAllowed[BetweenCycles] orElse:
           case (_: OrderCyclingPrepared, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (OrderCycleStarted      , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderMoved          , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
@@ -689,68 +681,60 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderGoMarked       , _                 , _, IsAttached             ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderGoes           , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderFailed         , _                 , _, IsDetached             ) => _.isInstanceOf[Failed]
-          case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken])
 
 
     "FailedWhileFresh" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedWhileFresh,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
         markable[FailedWhileFresh] orElse
-        detachingAllowed[FailedWhileFresh] orElse
         cancelMarkedAllowed[FailedWhileFresh] orElse
-        suspendMarkedAllowed[FailedWhileFresh] orElse {
+        suspendMarkedAllowed[FailedWhileFresh] orElse:
           case (OrderCancelled      , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[FailedWhileFresh]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[FailedWhileFresh]
-          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken])
 
     "Failed" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Failed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.failed))),
         markable[Failed] orElse
-        detachingAllowed[Failed] orElse
-        cancelMarkedAllowed[Failed] orElse {
+        cancelMarkedAllowed[Failed] orElse:
           case (_: OrderResumed     , IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled      , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[Failed]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[Failed]
-          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken])
 
     "FailedInFork" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), FailedInFork, parent = Some(OrderId("PARENT")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Failed(NamedValues.rc(1))))),
-        detachingAllowed[FailedInFork] orElse
-        cancelMarkedAllowed[FailedInFork] orElse {
+        cancelMarkedAllowed[FailedInFork] orElse:
           case (_: OrderSuspensionMarked, IsSuspended(_), _, _         ) => _.isInstanceOf[FailedInFork]
           case (_: OrderResumptionMarked, IsSuspended(_), _, _         ) => _.isInstanceOf[FailedInFork]
           case (_: OrderOutcomeAdded    , _             , _, _         ) => _.isInstanceOf[FailedInFork]
           case (_: OrderTransferred     , _             , _, IsDetached) => _.isInstanceOf[FailedInFork]
-          case (_: OrderBroken          , _             , _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken          , _             , _, _         ) => _.isInstanceOf[Broken])
 
     "DelayedAfterError" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         detachingAllowed[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
-        suspendMarkedAllowed[DelayedAfterError] orElse {
+        suspendMarkedAllowed[DelayedAfterError] orElse:
           case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
           case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _           , _, _                      ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderTransferred , _           , _, IsDetached             ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderGoMarked, _               , _, IsAttached             ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderGoes, _                   , _, _                      ) => _.isInstanceOf[DelayedAfterError]
-          case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken])
 
     "Broken" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Broken()),
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
-        cancelMarkedAllowed[Broken] orElse {
+        cancelMarkedAllowed[Broken] orElse:
           case (OrderCancelled          , _, _, IsDetached                           ) => _.isInstanceOf[Cancelled]
           case (_: OrderResumptionMarked, _, _, IsDetached | IsAttached | IsDetaching) => _.isInstanceOf[Broken]
           case (_: OrderResumed         , _, _, IsDetached | IsAttached              ) => _.isInstanceOf[Ready]
@@ -759,8 +743,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderBroken          , _, _, _                                    ) => _.isInstanceOf[Broken]
           case (_: OrderFailed          , _, IsSuspended(false), IsDetached ) => _.isInstanceOf[Failed]
           case (_: OrderFailedInFork    , IsChild(true), IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
-          case (_: OrderStopped         , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped] // ???
-        })
+          case (_: OrderStopped         , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Stopped]) // ???
 
     "Forked" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Forked(Vector(Forked.Child("BRANCH", orderId / "CHILD")))),
@@ -768,12 +751,11 @@ final class OrderTest extends OurTestSuite:
         attachingAllowed[Forked] orElse
         detachingAllowed[Forked] orElse
         cancelMarkedAllowed[Forked] orElse
-        suspendMarkedAllowed[Forked] orElse {
+        suspendMarkedAllowed[Forked] orElse:
           case (_: OrderJoined, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Processed]
           case (_: OrderOutcomeAdded, _           , _, _         ) => _.isInstanceOf[Forked]
           case (_: OrderTransferred , _           , _, IsDetached) => _.isInstanceOf[Forked]
-          case (_: OrderBroken, _                 , _, _         ) => _.isInstanceOf[Broken]
-        })
+          case (_: OrderBroken, _                 , _, _         ) => _.isInstanceOf[Broken])
 
     "Cancelled" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), Cancelled),
