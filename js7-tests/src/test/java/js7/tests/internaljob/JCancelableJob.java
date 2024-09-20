@@ -21,6 +21,11 @@ public final class JCancelableJob implements BlockingInternalJob
             public void cancel(boolean immediately) {
                 canceled = true;
             }
+
+            @Override
+            public String toString() {
+                return "JCancelableJob.OrderProcess";
+            }
         };
     }
 }

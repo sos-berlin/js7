@@ -6,6 +6,7 @@ import java.io.{PrintWriter, Writer}
 import java.util.{Optional, Map as JMap}
 import javax.annotation.Nonnull
 import js7.base.io.process.{Stderr, Stdout}
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
 import js7.data.job.JobResourcePath
@@ -57,8 +58,11 @@ trait BlockingInternalJob:
 
 
 object BlockingInternalJob:
+  private val logger = Logger[this.type]
+
   final case class JobContext(asScala: InternalJob.JobContext)
   extends JavaJobContext
+
 
   final case class Step(asScala: InternalJob.Step, outWriter: Writer, errWriter: Writer)
   extends JavaJobStep:
@@ -108,6 +112,7 @@ object BlockingInternalJob:
         outWriter = BlockingStdWriter(asScala.writer(Stdout)),
         errWriter = BlockingStdWriter(asScala.writer(Stderr)))
 
+
   trait OrderProcess:
     /** Process the order.
       * <p>
@@ -118,4 +123,5 @@ object BlockingInternalJob:
     def run(): JOutcome.Completed
 
     @throws[Exception] @Nonnull
-    def cancel(immediately: Boolean): Unit = {}
+    def cancel(immediately: Boolean): Unit =
+      logger.warn(s"Cancellation of $toString is not implemented")
