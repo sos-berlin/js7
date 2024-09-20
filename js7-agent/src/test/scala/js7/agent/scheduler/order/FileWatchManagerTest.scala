@@ -1,6 +1,5 @@
 package js7.agent.scheduler.order
 
-import java.nio.file.Paths
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import js7.agent.scheduler.order.FileWatchManager.relativePathToOrderId
