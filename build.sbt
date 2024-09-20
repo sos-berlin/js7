@@ -21,7 +21,7 @@
  *    sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
  *    (publishRepository.name defaults to publishRepository.uri)
  *
- *    Under Windows, if system properties are not accepted, set a environment variable:
+ *    Under Windows, if system properties are not accepted, set an environment variable:
  *    set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
  *    sbt clean-publish
  *
@@ -854,7 +854,7 @@ releaseProcess := {
   Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,
-    //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themself!
+    //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themselves!
     runTest,
     setReleaseVersion,
     commitReleaseVersion,       // performs the initial git checks
