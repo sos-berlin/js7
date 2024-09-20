@@ -66,13 +66,13 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
 
   private def killAll(signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      val entries = orderToProcess.toMap.values
-      if entries.nonEmpty then
+      val drivers = orderToProcess.toMap.values
+      if drivers.nonEmpty then
         logger.warn(s"Terminating, sending $signal to $orderProcessCount processes")
-      entries
+      drivers
         .toVector
-        .traverse:
-          _.kill(signal)
+        .traverse: driver =>
+          driver.kill(signal)
         .map(_.combineAll)
         .handleError: t =>
           logger.error(s"killAll: ${t.toStringWithCauses}", t)
@@ -87,7 +87,7 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
       .flatTapT: _ =>
         orderToProcess.insert(order.id, forOrder)
       .flatMap:
-        case Left(problem) =>
+        case Left(problem) => // insertion failed
           IO.pure(OrderOutcome.Disrupted(problem))
 
         case Right(jobLauncher: JobLauncher) =>
@@ -96,7 +96,6 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
               removeOrderEntry(forOrder)
 
   private def removeOrderEntry(forOrder: JobDriverForOrder): IO[Unit] =
-    forOrder.stop *>
       orderToProcess.remove(forOrder.orderId) *>
         IO.defer:
           IO.whenA(orderToProcess.isEmpty && lastProcessTerminated != null):

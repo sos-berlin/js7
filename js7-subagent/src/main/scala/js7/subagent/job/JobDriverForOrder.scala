@@ -1,6 +1,6 @@
 package js7.subagent.job
 
-import cats.effect.{IO, ResourceIO}
+import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
@@ -30,15 +30,11 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
   private val logger = Logger.withPrefix[this.type](s"$orderId Job:${jobConf.jobKey.simpleName}")
   private val _orderProcess = Atomic:
     none[Either[ProcessSignal /*killed before started*/ , OrderProcess]]
-  private val timeoutFiber = FiberVar[Unit]()
   private val sigkillFiber = FiberVar[Unit]()
   private var runningSince: SyncDeadline | Null = null
   private var isKilled = false
   private var sigkilled = false
   private var timedOut = false
-
-  def stop: IO[Unit] =
-    timeoutFiber.cancel *> sigkillFiber.cancel
 
   def processOrder(
     order: Order[Order.Processing],
@@ -84,9 +80,11 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
               .as(Left(ProcessCancelledBeforeStartProblem))
           case Some(Right(_)) => IO(sys.error("Duplicate orderProcess?")) // Does not happen
       .flatMap:
-        case Left(ProcessCancelledBeforeStartProblem) => IO.right:
-          OrderOutcome.Killed(OrderOutcome.Failed.fromProblem(ProcessCancelledBeforeStartProblem))
-        case Left(problem) => IO.left(problem)
+        case Left(ProcessCancelledBeforeStartProblem) =>
+          IO.right:
+            OrderOutcome.Killed(OrderOutcome.Failed.fromProblem(ProcessCancelledBeforeStartProblem))
+        case Left(problem) =>
+          IO.left(problem)
         case Right(orderProcess) =>
           IO.defer:
             orderProcess.start(processOrder.order.id, jobKey)
@@ -94,13 +92,11 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
             SyncDeadline.usingNow: now ?=>
               runningSince = now
             .*>(scheduleTimeoutCancellation)
-            .*>(IO.defer:
-              fiber.joinStd
-                .map(modifyOutcome)
-                .mapOrKeep:
-                  case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome))
-          .flatTap: _ =>
-            timeoutFiber.cancel *> sigkillFiber.cancel
+            .flatMap: timeoutFiber =>
+              fiber.joinStd.map(modifyOutcome).mapOrKeep:
+                case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome)
+              .guarantee(timeoutFiber.cancel)
+              .guarantee(sigkillFiber.cancel)
           .handleError: t =>
             logger.error(s"${t.toStringWithCauses}", t.nullIfNoStackTrace)
             OrderOutcome.Failed.fromThrowable(t)
@@ -123,7 +119,7 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
         assert(workflowJob.failOnErrWritten) // see OrderActor
         OrderOutcome.Failed(Some(s"The job's error channel: $errorLine"))
 
-  private def scheduleTimeoutCancellation: IO[Unit] =
+  private def scheduleTimeoutCancellation: IO[FiberIO[Unit]] =
     IO.defer:
       requireNonNull(runningSince)
       workflowJob.timeout.fold(IO.unit): timeout =>
@@ -132,27 +128,25 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
             SyncDeadline.usingNow:
               timedOut = true
               logger.warn(s"OrderProcess has timed out after ${
-                runningSince.elapsed.pretty
-              } and will be killed now")
+                runningSince.elapsed.pretty} and will be killed now")
           .flatMap: _ =>
             killWithSigkillDelay(SIGTERM)
               .handleError: t =>
                 logger.error(s"killOrderAndForget => ${t.toStringWithCauses}", t)
               .startAndForget
-          .start
-          .flatMap(timeoutFiber.set)
+      .start
 
   def killWithSigkillDelay(signal_ : ProcessSignal): IO[Unit] =
     IO.defer:
       val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
       kill(signal) *>
         IO.whenA(signal != SIGKILL && _orderProcess.get.exists(_.isRight) /*OrderProcess?*/):
-          (IO.sleep(sigkillDelay) *>
+          IO.sleep(sigkillDelay).productR:
             IO.defer:
               logger.warn(s"SIGKILL now, because sigkillDelay elapsed")
-              kill(SIGKILL))
-            .start
-            .flatMap(sigkillFiber.set)
+              kill(SIGKILL)
+          .start
+          .flatMap(sigkillFiber.set)
 
   def kill(signal: ProcessSignal): IO[Unit] =
     IO.defer:
