@@ -353,10 +353,11 @@ object ResetAgentTest:
 
   private final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(
+      OrderProcess.cancelable:
         barrier
           .flatTap(_ => IO(logger.debug("TestJob start")))
           .flatMap(_.take)
           .guaranteeCase(exitCase => IO(logger.debug(s"TestJob $exitCase")))
-          .as(OrderOutcome.succeeded))
+          .as(OrderOutcome.succeeded)
+
   private object TestJob extends InternalJob.Companion[TestJob]

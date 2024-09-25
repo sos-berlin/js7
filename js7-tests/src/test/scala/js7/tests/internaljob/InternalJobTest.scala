@@ -320,7 +320,7 @@ object InternalJobTest:
 
   private class CancelableJob extends InternalJob:
     def toOrderProcess(step: Step) =
-       new OrderProcess.FiberCancelling:
+       new OrderProcess.FiberCancelable:
          def run =
            CancelableJob.semaphore
              .flatMap(_.acquire)

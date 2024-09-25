@@ -55,7 +55,8 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
-    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(OrderOutcome.succeeded))
+    val orderProcess = OrderProcess.cancelable:
+      semaphore.flatMap(_.acquire).as(OrderOutcome.succeeded)
 
     val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
       .flatMap(_.joinStd)

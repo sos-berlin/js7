@@ -972,7 +972,7 @@ object SuspendResumeOrdersTest:
 
   final class FailingSemaJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess:
+      OrderProcess.cancelable:
         step.writeOut("FailingJob\n")
           .*>(FailingSemaJob.semaphore)
           .flatMap(_.acquire)

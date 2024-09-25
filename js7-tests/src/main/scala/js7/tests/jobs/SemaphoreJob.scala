@@ -23,7 +23,7 @@ extends InternalJob:
   final def toOrderProcess(step: Step): OrderProcess =
     val orderId = step.order.id
     val semaName = s"${getClass.shortClassName}($orderId) semaphore"
-    OrderProcess(
+    OrderProcess.cancelable:
       for
         _ <- step.writeOut(companion.stdoutLine)
         sema <- companion.semaphore
@@ -34,7 +34,8 @@ extends InternalJob:
             onAcquired(step, semaName)
           else
             untilAcquired(sema, semaName, count).as(OrderOutcome.succeeded)
-      yield outcome)
+      yield
+        outcome
 
   protected def onAcquired(step: Step, semaphoreName: String): IO[OrderOutcome.Completed] =
     IO:
@@ -46,22 +47,20 @@ extends InternalJob:
       val since = now
       logger.info(s"🟡 $semaName is locked (count=$count)")
       val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
-      IO
-        .defer(sema
-          .acquire
-          .timeoutTo(durations.next(), IO.raiseError(new TimeoutException)))
-        .onErrorRestartLoop(()):
-          case (_: TimeoutException, _, retry) =>
-            sema.count.flatMap { count =>
-              logger.info(
-                s"🟠 $semaName is still locked (count=$count) since ${since.elapsed.pretty}")
-              retry(())
-            }
-          case (t, _, _) => IO.raiseError(t)
-        .guaranteeCase(outcome => IO(outcome match
-          case Outcome.Errored(t) => logger.error(s"💥 $semaName $outcome => ${t.toStringWithCauses}")
-          case Outcome.Canceled() => logger.info(s"◼️ $semaName $outcome")
-          case Outcome.Succeeded(_) => logger.info(s"🟢 $semaName acquired")))
+      IO.defer:
+        sema.acquire
+          .timeoutTo(durations.next(), IO.raiseError(new TimeoutException))
+      .onErrorRestartLoop(()):
+        case (_: TimeoutException, _, retry) =>
+          sema.count.flatMap: count =>
+            logger.info:
+              s"🟠 $semaName is still locked (count=$count) since ${since.elapsed.pretty}"
+            retry(())
+        case (t, _, _) => IO.raiseError(t)
+      .guaranteeCase(outcome => IO(outcome match
+        case Outcome.Errored(t) => logger.error(s"💥 $semaName $outcome => ${t.toStringWithCauses}")
+        case Outcome.Canceled() => logger.info(s"◼️ $semaName $outcome")
+        case Outcome.Succeeded(_) => logger.info(s"🟢 $semaName acquired")))
 
 
 object SemaphoreJob:

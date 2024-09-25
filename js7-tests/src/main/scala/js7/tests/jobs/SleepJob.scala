@@ -16,17 +16,17 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
   import jobContext.clock
 
   def toOrderProcess(step: Step): OrderProcess =
-    OrderProcess(
-      step.arguments
-        .get("sleep")
+    OrderProcess.cancelable:
+      step.arguments.get("sleep")
         .fold_(Right(0.s), _.asDuration)
-        .traverse(duration =>
+        .traverse: duration =>
           clock.sleep(duration, "SleepJob").when(duration.isPositive)
-            .as(OrderOutcome.succeeded))
-        .map(OrderOutcome.Completed.fromChecked))
+            .as(OrderOutcome.succeeded)
+        .map(OrderOutcome.Completed.fromChecked)
 
 
 object SleepJob extends InternalJob.Companion[SleepJob]:
+  
   def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute =
     execute(
       agentPath,

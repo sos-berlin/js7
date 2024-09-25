@@ -144,9 +144,9 @@ object ForkTest:
 
   private class SlowJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(
-        IO.sleep(60.s)
-          .as(OrderOutcome.succeeded))
+      OrderProcess.cancelable:
+        IO.sleep(60.s).as(OrderOutcome.succeeded)
+
   private object SlowJob extends InternalJob.Companion[SlowJob]
 
 
