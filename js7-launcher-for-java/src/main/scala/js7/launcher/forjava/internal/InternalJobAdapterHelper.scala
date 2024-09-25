@@ -43,7 +43,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag](
   def callProcessOrder(call: J => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match
       case Left(problem) =>
-        OrderProcess(IO.pure(OrderOutcome.Failed.fromProblem(problem)))
+        OrderProcess.problem(problem)
 
       case Right(jInternalJob) =>
         call(jInternalJob)

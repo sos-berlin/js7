@@ -20,11 +20,12 @@ final class OrderProcessTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   "Run an OrderProcess" in:
-    val orderProcess = OrderProcess(IO(OrderOutcome.succeeded))
+    val orderProcess = OrderProcess.succeeded()
     for
       running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
       outcome <- running.joinStd
-    yield assert(outcome == OrderOutcome.succeeded)
+    yield
+      assert(outcome == OrderOutcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
     val semaphore = Semaphore[IO](0).unsafeMemoize

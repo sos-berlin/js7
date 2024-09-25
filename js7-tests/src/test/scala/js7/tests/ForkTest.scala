@@ -152,7 +152,7 @@ object ForkTest:
 
   final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess.fromCheckedOutcome(
+      OrderProcess.checkedOutcome:
         for arg <- step.arguments("ARG").asNumber yield
           OrderOutcome.Succeeded(Map(
             "jobResult" -> NumberValue(arg + 1)))
