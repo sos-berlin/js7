@@ -149,13 +149,16 @@ object ForkTest:
           .as(OrderOutcome.succeeded))
   private object SlowJob extends InternalJob.Companion[SlowJob]
 
+
   final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for arg <- step.arguments("ARG").asNumber yield
           OrderOutcome.Succeeded(Map(
-            "jobResult" -> NumberValue(arg + 1))))
+            "jobResult" -> NumberValue(arg + 1)))
+
   object TestJob extends InternalJob.Companion[TestJob]
+
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL" ,

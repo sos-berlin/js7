@@ -675,15 +675,14 @@ object ExecuteTest:
     variables = Map(
       "VARIABLE" -> StringConstant("JOB-RESOURCE-VARIABLE-VALUE")))
 
-  private final class TestInternalJob extends InternalJob
-  :
+  private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(
-        IO {
-          OrderOutcome.Completed.fromChecked(
-            for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
-              OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
-        })
+      OrderProcess:
+        IO:
+          OrderOutcome.Completed.fromChecked:
+            step.arguments.checked("ARG").flatMap(_.asNumber).map: number =>
+              OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1)))
+
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
 
   private final class ReturnArgumentsInternalJob extends InternalJob

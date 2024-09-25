@@ -515,12 +515,11 @@ object ForkListTest:
 
   private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(IO {
+      OrderProcess(IO:
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
         step.order.arguments("myList").as[ListValue].orThrow
-        OrderOutcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
-      })
+        OrderOutcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string))))
   private object TestJob extends InternalJob.Companion[TestJob]
 
   private val mixedAgentsWorkflow = Workflow(

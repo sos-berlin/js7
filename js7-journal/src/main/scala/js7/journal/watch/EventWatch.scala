@@ -54,18 +54,17 @@ trait EventWatch:
   def journalInfo: JournalInfo
 
   @TestOnly
-  def untilAllKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])(
-    keys: IterableOnce[E.Key],
+  def untilAllKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])
+    (keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId,
     timeout: Option[FiniteDuration])
   : IO[Seq[Stamped[KeyedEvent[E]]]] =
     stream(EventRequest.singleClass[E](after = after, timeout = timeout))
       .filter(stamped => predicate(stamped.value))
-      .mapAccumulate(Set.from(keys)) { (keys, stamped) =>
+      .mapAccumulate(Set.from(keys)): (keys, stamped) =>
         val minishedKeys = keys - stamped.value.key.asInstanceOf[E.Key]
         (minishedKeys, (stamped, minishedKeys.nonEmpty))
-      }
       .map(_._2)
       .takeWhile(_._2)
       .map(_._1)

@@ -87,12 +87,12 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     underlying.awaitAsync(predicate, after, timeout)
 
   @TestOnly
-  def awaitKeys[E <: Event : ClassTag : Tag](using E: Event.KeyCompanion[? >: E])(
-    keys: IterableOnce[E.Key],
+  def awaitKeys[E <: Event : ClassTag : Tag](using E: Event.KeyCompanion[? >: E])
+    (keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (using ioRuntime: IORuntime)
+    (using IORuntime)
   : Seq[Stamped[KeyedEvent[E]]] =
     underlying
       .untilAllKeys(keys, predicate, after = after, timeout = Some(timeout))
@@ -118,12 +118,12 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def eventsByKey[E <: Event: ClassTag: Tag](using E: Event.KeyCompanion[? >: E], ioRuntime: IORuntime)(
-    key: E.Key, after: EventId = tornEventId)
+  def eventsByKey[E <: Event: ClassTag: Tag](
+    using E: Event.KeyCompanion[? >: E], ioRuntime: IORuntime)
+    (key: E.Key, after: EventId = tornEventId)
   : Seq[E] =
-    keyedEvents[E](after = after)
-      .collect:
-        case o if o.key == key => o.event
+    keyedEvents[E](after = after).collect:
+      case o if o.key == key => o.event
 
   /** TEST ONLY - Blocking. */
   @TestOnly

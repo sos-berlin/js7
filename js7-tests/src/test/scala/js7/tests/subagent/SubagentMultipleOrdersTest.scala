@@ -118,8 +118,8 @@ object SubagentMultipleOrdersTest:
 
   final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(
+      OrderProcess:
         step.writeOut("STDOUT 1\n") *>
         step.writeOut("STDOUT 2\n") *>
-        IO.pure(OrderOutcome.succeeded))
+        IO.pure(OrderOutcome.succeeded)
   object TestJob extends InternalJob.Companion[TestJob]

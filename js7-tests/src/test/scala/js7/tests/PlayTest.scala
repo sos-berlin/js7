@@ -79,6 +79,8 @@ object PlayTest:
 
   private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess.fromCheckedOutcome(
-        for number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number) yield
-          OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
+      OrderProcess.checkedOutcome:
+        step.arguments.checked("ARG")
+          .flatMap(_.toNumberValue)
+          .map: value =>
+            OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(value.number + 1)))

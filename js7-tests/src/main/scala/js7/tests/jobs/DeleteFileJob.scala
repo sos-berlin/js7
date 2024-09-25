@@ -10,10 +10,9 @@ import js7.data.order.OrderOutcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.jobs.DeleteFileJob.logger
 
-final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
+final class DeleteFileJob extends InternalJob:
 
   def toOrderProcess(step: Step): OrderProcess =
     OrderProcess(

@@ -110,9 +110,9 @@ object WorkflowDefinedOrderVariablesTest:
 
   private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(IO {
+      OrderProcess(IO:
         assert(step.arguments("myONE") == NumberValue(1))
         assert(step.arguments("myPLANT") == step.arguments("myExpected"))
-        OrderOutcome.succeeded
-      })
+        OrderOutcome.succeeded)
+
   private object TestJob extends InternalJob.Companion[TestJob]

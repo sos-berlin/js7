@@ -14,10 +14,9 @@ extends InternalJob:
   def this() = this(OrderOutcome.succeeded)
 
   final def toOrderProcess(step: Step): OrderProcess =
-    OrderProcess(IO {
+    OrderProcess(IO:
       logger.debug(s"${getClass.simpleScalaName} ${step.order.id}")
-      outcome
-    })
+      outcome)
 
 
 object EmptyJob extends InternalJob.Companion[EmptyJob]:

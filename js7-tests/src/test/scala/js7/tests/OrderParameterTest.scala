@@ -95,14 +95,19 @@ object OrderParameterTest:
         OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
         OrderParameter.Final("myFinal2", expr("$myRequired"))))))
 
+
   private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess.fromCheckedOutcome(
-        for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
-          OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
+      OrderProcess.checkedOutcome:
+        step.arguments.checked("ARG")
+          .flatMap(_.asNumber)
+          .map: number =>
+            OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1)))
+
 
   private final class ReturnArgumentsInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.succeeded(step.arguments)
+
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]

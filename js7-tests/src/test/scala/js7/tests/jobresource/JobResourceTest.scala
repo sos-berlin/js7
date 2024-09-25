@@ -504,10 +504,9 @@ object JobResourceTest:
 
   private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(IO {
+      OrderProcess(IO:
         assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
         assert(step.jobResourceVariable(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("JobResource variable", "UNKNOWN")))
         assert(step.jobResourceVariable(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
-        OrderOutcome.succeeded
-      })
+        OrderOutcome.succeeded)
   private object TestJob extends InternalJob.Companion[TestJob]

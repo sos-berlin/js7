@@ -153,7 +153,7 @@ object StdoutTest:
   private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
       import IO.sleep
-      OrderProcess(
+      OrderProcess:
         step.write(Stdout, "A\n") *>
           sleep(longDelay) *>
           step.write(Stdout, "B-1\n") *>
@@ -176,5 +176,6 @@ object StdoutTest:
           step.write(Stdout, ".........7........8\n") *>
           step.write(Stdout, ".........9.......10\n") *>
           step.write(Stdout, "........11........12........13........14........15.......16\n") *>
-          IO.pure(OrderOutcome.succeeded))
+          IO.pure(OrderOutcome.succeeded)
+
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
