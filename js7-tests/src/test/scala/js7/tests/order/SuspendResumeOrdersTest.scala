@@ -3,6 +3,7 @@ package js7.tests.order
 import cats.effect.IO
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
+import cats.syntax.functor.*
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -14,10 +15,11 @@ import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.{AddOrder, AnswerOrderPrompt, Batch, CancelOrders, GoOrder, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.event.KeyedEvent
@@ -25,13 +27,13 @@ import js7.data.item.VersionId
 import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
 import js7.data.order.Order.DelayedAfterError
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderCycleFinished, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, Schedule, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -74,8 +76,8 @@ final class SuspendResumeOrdersTest
     finally
       super.afterAll()
 
-  "Suspend and resume an Order while in State" - {
-    "Fresh" in:
+  "Order is detached immediately in some states" - {
+    "Order.Fresh" in:
       val eventId = eventWatch.lastAddedEventId
       val workflow = Workflow.of(WorkflowPath("FRESH"), EmptyJob.execute(agentPath))
       withItem(workflow): workflow =>
@@ -123,7 +125,120 @@ final class SuspendResumeOrdersTest
           OrderFinished(),
           OrderDeleted))
 
-    "Processing, last instruction of workflow" in :
+    "Order.Ready, waiting for admission time (nothing special)" in:
+      eventWatch.resetLastWatchedEventId()
+      val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
+      val workflow = Workflow.of(
+        WorkflowPath("JOB-ADMISSION"),
+        EmptyJob.execute(agentPath),
+        Execute(WorkflowJob(
+          agentPath,
+          EmptyJob.executable(),
+          admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
+            DailyPeriod(24 * 3600 - 1, 1.s))))))/*,
+        calendarPath = Some(calendar.path)*/)
+      withItems((calendar, workflow)): (_, workflow) =>
+        val orderId = OrderId(s"#2024-09-25#JOB-ADMISSION")
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderProcessed](_.key == orderId)
+        eventWatch.awaitNext[OrderMoved](_.key == orderId)
+        sleep(100.ms) // nothing should happen
+
+        execCmd(SuspendOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderDetached](_.key == orderId)
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+        assert(controllerState.idToOrder(orderId).isState[Order.Ready])
+
+        execCmd(CancelOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+    "Order.DelayedAfterError" in:
+      eventWatch.resetLastWatchedEventId()
+      val workflow = Workflow.of(WorkflowPath("DELAYED-AFTER-ERROR"),
+        TryInstruction(
+          Workflow.of:
+            FailingJob.execute(agentPath),
+          Workflow.of:
+            Retry(),
+          retryDelays = Some(Vector(100.s)),
+          maxTries = Some(2)))
+      withItem(workflow): workflow =>
+        val orderId = OrderId(workflow.path.string)
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderRetrying](_.key == orderId)
+
+        execCmd(SuspendOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderDetached](_.key == orderId)
+
+        assert(controllerState.idToOrder(orderId).isState[Order.DelayedAfterError])
+        execCmd(GoOrder(orderId, controllerState.idToOrder(orderId).position))
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
+        execCmd(ResumeOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+        assert:
+          eventWatch.eventsByKey[OrderEvent](orderId).mapOrKeep:
+            case e: OrderRetrying => e.copy(delayedUntil = Some(Timestamp.Epoch))
+          == Seq(
+            OrderAdded(workflow.id, deleteWhenTerminated = true),
+            OrderMoved(Position(0) / "try+0" % 0),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderStarted,
+            OrderProcessingStarted(subagentId),
+            OrderProcessed(FailingJob.outcome),
+            OrderCaught(Position(0) / "catch+0" % 0),
+            OrderRetrying(Position(0) / "try+1" % 0, Some(Timestamp.Epoch)),
+
+            OrderSuspensionMarked(),
+            OrderDetachable,
+            OrderDetached,
+
+            OrderGoes,
+            OrderAwoke,
+
+            OrderSuspended,
+            OrderResumed(),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderProcessingStarted(subagentId),
+            OrderProcessed(FailingJob.outcome),
+            OrderDetachable,
+            OrderDetached,
+            OrderFailed(Position(0) / "try+1" % 0))
+
+    "Order.BetweenCycles" in:
+      eventWatch.resetLastWatchedEventId()
+      val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
+      val workflow = Workflow(
+        WorkflowPath("CYCLE-PREPARED"),
+        Seq:
+          Cycle(Schedule.continuous(100.s, limit = Some(2))):
+            Workflow.of:
+              EmptyJob.execute(agentPath),
+        calendarPath = Some(calendar.path))
+      withItems((calendar, workflow)): (_, workflow) =>
+        val orderId = OrderId(s"#2024-09-25#CYCLE")
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderCycleFinished](_.key == orderId)
+
+        execCmd(SuspendOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderDetached](_.key == orderId)
+        assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
+
+        execCmd(GoOrder(orderId, controllerState.idToOrder(orderId).position))
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
+        execCmd(ResumeOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+  }
+
+  "Order.Processing" - {
+    "Order.Processing, last instruction of workflow" in:
       eventWatch.resetLastWatchedEventId()
       val workflow = Workflow.of(WorkflowPath("PROCESSING"),
         OurSemaphoreJob.execute(agentPath))
@@ -159,7 +274,7 @@ final class SuspendResumeOrdersTest
           OrderResumed(),
           OrderFinished()))
 
-    "Processing, kill the process" in:
+    "Order.Processing, kill the process" in:
       eventWatch.resetLastWatchedEventId()
       val workflow = Workflow.of(WorkflowPath("PROCESSING-KILL"),
         OurSemaphoreJob.execute(agentPath))
