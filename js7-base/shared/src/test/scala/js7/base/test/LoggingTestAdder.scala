@@ -130,7 +130,8 @@ private object LoggingTestAdder:
           clipStackTrace(t)
           adder.failedCount += 1
           if isSbt then System.err.println(logLine)
-          logger.error(logLine, t.nullIfNoStackTrace)
+          logger.error(logLine)
+          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)
 
