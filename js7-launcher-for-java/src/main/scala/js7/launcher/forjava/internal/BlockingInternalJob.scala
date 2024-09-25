@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import io.vavr.control.Either as VEither
 import java.io.{PrintWriter, Writer}
 import java.util.{Optional, Map as JMap}
-import javax.annotation.Nonnull
+import javax.annotation.{Nonnull, Nullable}
 import js7.base.io.process.{Stderr, Stdout}
 import js7.base.log.Logger
 import js7.base.problem.Problem
@@ -128,25 +128,32 @@ object BlockingInternalJob:
 
 
   trait InterruptibleOrderProcess extends OrderProcess:
-    @volatile private var thread: Thread | Null = null
-    @volatile private var interrupted = false
+    @volatile private var _thread: Thread | Null = null
 
     @throws[Exception] @Nonnull
     def runInteruptible(): JOutcome.Completed
 
+    /** The `Thread` of the BlockingInternalJob Step.
+     *
+     * Returns null only before or after `run()` is executed.
+     */
+    @Nullable
+    def thread: Thread =
+      _thread.asInstanceOf[Thread] // Java compatible
+
     @throws[Exception] @Nonnull
     final def run(): JOutcome.Completed =
-      thread = Thread.currentThread()
+      _thread = Thread.currentThread()
       try
         runInteruptible()
       finally
-        thread = null
+        _thread = null
 
+    /** if immediately, then interrupt the Job's thread, otherwise do nothing. */
     @throws[Exception] @Nonnull
-    override final def cancel(immediately: Boolean): Unit =
+    override def cancel(immediately: Boolean): Unit =
       thread match
         case null =>
         case t =>
           logger.debug(s"interrupt $toString, thread $t")
-          interrupted = true
           t.interrupt()
