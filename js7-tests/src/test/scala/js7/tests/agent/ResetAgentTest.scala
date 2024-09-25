@@ -324,16 +324,15 @@ object ResetAgentTest:
       TryInstruction(
         Workflow.of(
           EmptyJob.execute(agentPath), // Move Order to Agent
-          Cycle(
-            Schedule(Seq(
-              Schedule.Scheme(
-                AdmissionTimeScheme(Seq(
-                  DailyPeriod(
-                    LocalTime.parse("23:59:59")/*TODO test will fail at this UTC time!!!*/,
-                    1.s))),
-                Schedule.Ticking(1.s)))),
-            Workflow.of(
-              EmptyJob.execute(agentPath)))),
+          Cycle(Schedule(Seq(Schedule.Scheme(
+              AdmissionTimeScheme(Seq(
+                DailyPeriod(
+                  LocalTime.parse("23:59:59")/*TODO test will fail at this UTC time!!!*/,
+                  1.s))),
+              Schedule.Ticking(1.s)
+          )))):
+            Workflow.of:
+              EmptyJob.execute(agentPath)),
         Workflow.empty)),
     calendarPath = Some(calendar.path))
 

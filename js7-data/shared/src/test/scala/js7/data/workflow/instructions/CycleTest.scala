@@ -11,7 +11,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 final class CycleTest extends OurTestSuite:
   "JSON" in:
     testJsonDecoder[Instruction](
-      Cycle(Schedule(Nil), Workflow.empty),
+      Cycle(Schedule(Nil))(Workflow.empty),
       json"""
       {
         "TYPE": "Cycle",
@@ -106,4 +106,4 @@ final class CycleTest extends OurTestSuite:
 
 
 object CycleTest:
-  val exampleCycle = Cycle(ScheduleTester.schedule, Workflow.empty)
+  val exampleCycle = Cycle(ScheduleTester.schedule)(Workflow.empty)

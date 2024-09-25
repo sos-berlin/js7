@@ -33,9 +33,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       Workflow(
         workflowId,
         Seq(
-          Cycle(
-            Schedule(Nil),
-            cycleWorkflow = Workflow.empty)),
+          Cycle(Schedule(Nil)):
+            Workflow.empty),
         timeZone = Timezone(zone.toString),
         calendarPath = Some(calendar.path)),
       WallClock)
@@ -53,11 +52,11 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       Workflow(
         workflowId,
         Seq(
-          Cycle(Schedule(
-            schemes = Seq(Schedule.Scheme(
-              AdmissionTimeScheme(Seq(DailyPeriod.always)),
-              Schedule.Continuous(pause = 0.s, limit = Some(Int.MaxValue))))),
-            cycleWorkflow = Workflow.empty)),
+          Cycle(Schedule(Seq(Schedule.Scheme(
+            AdmissionTimeScheme(Seq(DailyPeriod.always)),
+            Schedule.Continuous(pause = 0.s, limit = Some(Int.MaxValue)))
+          ))):
+            Workflow.empty),
         timeZone = Timezone(zone.getId),
         calendarPath = Some(calendar.path)),
       clock)
@@ -98,12 +97,11 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       Workflow(
         workflowId,
         Seq(
-          Cycle(
-            Schedule(Seq(
-              Schedule.Scheme(
-                AdmissionTimeScheme(Seq(DailyPeriod.always)),
-                Schedule.Continuous(pause = 60.s)))),
-            Workflow.empty)),
+          Cycle(Schedule(Seq(Schedule.Scheme(
+              AdmissionTimeScheme(Seq(DailyPeriod.always)),
+              Schedule.Continuous(pause = 60.s)
+          )))):
+            Workflow.empty),
         timeZone = Timezone(zone.getId),
         calendarPath = Some(calendar.path)),
       clock)
@@ -156,8 +154,9 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
             Schedule(Seq(
               Schedule.Scheme(
                 AdmissionTimeScheme(Seq(DailyPeriod(9*3600, 3.h))),
-                Schedule.Continuous(pause = 1.h)))),
-            cycleWorkflow = Workflow.empty)),
+                Schedule.Continuous(pause = 1.h))))
+          ):
+            Workflow.empty),
         timeZone = Timezone(zone.getId),
         calendarPath = Some(calendar.path)),
       clock)
@@ -231,8 +230,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
             Schedule(Seq(Scheme(
               AdmissionTimeScheme(Seq(
                 AlwaysPeriod)),
-              Periodic(1.h, Seq(0.minute, 30.minute))))),
-            Workflow.empty)),
+              Periodic(1.h, Seq(0.minute, 30.minute)))))):
+            Workflow.empty),
         timeZone = Timezone(zone.getId),
         calendarPath = Some(calendar.path)),
       clock)
@@ -279,7 +278,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         Workflow(
           workflowId,
           Seq(
-            Cycle(ScheduleTester.schedule, Workflow.empty, onlyOnePeriod = onlyOnePeriod)),
+            Cycle(ScheduleTester.schedule, onlyOnePeriod = onlyOnePeriod):
+              Workflow.empty),
           timeZone = Timezone(zone.getId),
           calendarPath = Some(calendar.path)),
         clock)
@@ -310,15 +310,15 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     lazy val workflow = Workflow(
       workflowId,
       Seq(
-        Cycle(
-          Schedule(Seq(
-            Scheme(
-              AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("07:00"), 1.h))),
-              Ticking(15.minutes)),
-            Scheme(
-              AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("12:00"), 1.h))),
-              Periodic(1.h, Seq(20.minute))))),
-          cycleWorkflow = Workflow.empty)),
+        Cycle(Schedule(Seq(
+          Scheme(
+            AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("07:00"), 1.h))),
+            Ticking(15.minutes)),
+          Scheme(
+            AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("12:00"), 1.h))),
+            Periodic(1.h, Seq(20.minute)))
+        ))):
+            Workflow.empty),
       timeZone = Timezone(zone.getId),
       calendarPath = Some(calendar.path))
 
@@ -386,9 +386,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     val workflow = Workflow(
       WorkflowPath("NO-DOUBLE-EXECUTION") ~ "1",
       Seq(
-        Cycle(
-          Schedule.ticking(1.h),
-          Workflow.empty)),
+        Cycle(Schedule.ticking(1.h)):
+          Workflow.empty),
       timeZone = Timezone(zone.toString),
       calendarPath = Some(calendar.path))
     val clock = TestWallClock(local("2022-08-13T08:10"))

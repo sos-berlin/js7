@@ -13,8 +13,8 @@ import js7.data.workflow.{Instruction, Workflow}
 final case class Cycle(
   schedule: Schedule,
   cycleWorkflow: Workflow,
-  onlyOnePeriod: Boolean = false,
-  sourcePos: Option[SourcePos] = None)
+  onlyOnePeriod: Boolean,
+  sourcePos: Option[SourcePos])
 extends Instruction:
 
   def withoutSourcePos: Cycle =
@@ -57,5 +57,13 @@ extends Instruction:
 object Cycle:
   implicit val jsonCodec: Codec.AsObject[Cycle] =
     ConfiguredCodec.derive(useDefaults = true)
+
+  def apply(
+    schedule: Schedule,
+    onlyOnePeriod: Boolean = false,
+    sourcePos: Option[SourcePos] = None)
+    (cycleWorkflow: Workflow)
+  : Cycle =
+    new Cycle(schedule, cycleWorkflow, onlyOnePeriod, sourcePos)
 
   intelliJuseImport(FiniteDurationJsonDecoder)

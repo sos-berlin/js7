@@ -73,9 +73,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     val workflow = updateItem(Workflow(
       WorkflowPath("EMPTY"),
       Seq(
-        Cycle(
-          Schedule(Nil),
-          Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
+        Cycle(Schedule(Nil)):
+          Workflow.of(Fail(Some(expr("'TEST FAILURE'"))))),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -92,10 +91,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       WorkflowPath("SIMPLE-LOOP"),
       Seq(
         EmptyJob.execute(agentPath),  // Let start Cycle at Agent
-        Cycle(
-          Schedule.continuous(0.s, limit = Some(3)),
-          cycleWorkflow = Workflow.of(
-            EmptyJob.execute(agentPath)))),
+        Cycle(Schedule.continuous(0.s, limit = Some(3))):
+          Workflow.of:
+            EmptyJob.execute(agentPath)),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -146,9 +144,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     val workflow = updateItem(Workflow(
       WorkflowPath("ENDLESS"),
       Seq(
-        Cycle(
-          Schedule.continuous(0.s, limit = Some(Int.MaxValue)),
-          Workflow.empty)),
+        Cycle(Schedule.continuous(0.s, limit = Some(Int.MaxValue))):
+          Workflow.empty),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
     val events = controller.runOrder(FreshOrder(OrderId("ENDLESS"), workflow.path))
@@ -158,9 +155,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     val workflow = updateItem(Workflow(
       WorkflowPath("FAILING"),
       Seq(
-        Cycle(
-          Schedule.continuous(0.s, limit = Some(1)),
-          Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
+        Cycle(Schedule.continuous(0.s, limit = Some(1))):
+          Workflow.of(Fail(Some(expr("'TEST FAILURE'"))))),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -185,9 +181,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       Seq(
         TryInstruction(
           Workflow.of(
-            Cycle(
-              Schedule.continuous(0.s, limit = Some(1)),
-              Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
+            Cycle(Schedule.continuous(0.s, limit = Some(1))):
+              Workflow.of:
+                Fail(Some(expr("'TEST FAILURE'")))),
           Workflow.empty)),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
@@ -216,12 +212,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     val workflow = updateItem(Workflow(
       WorkflowPath("CANCEL"),
       Seq(
-        Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(
-              DailyPeriod(LocalTime.parse("18:00"), 1.s))),
-            Periodic(1.h, Seq(0.s))))),
-          Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
+        Cycle(Schedule(Seq(Scheme(
+          AdmissionTimeScheme(Seq(
+            DailyPeriod(LocalTime.parse("18:00"), 1.s))),
+            Periodic(1.h, Seq(0.s))
+        )))):
+          Workflow.of:
+            Fail(Some(expr("'TEST FAILURE'")))),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -273,12 +270,12 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     lazy val workflow = updateItem(Workflow(
       WorkflowPath("DST"),
       Seq(
-        Cycle(
-          Schedule(Seq(Scheme(
-            AdmissionTimeScheme(Seq(
-              AlwaysPeriod)),
-            Periodic(1.h, Seq(0.minute, 30.minute))))),
-          Workflow.empty)),
+        Cycle(Schedule(Seq(Scheme(
+          AdmissionTimeScheme(Seq(
+            AlwaysPeriod)),
+          Periodic(1.h, Seq(0.minute, 30.minute))
+        )))):
+          Workflow.empty),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -411,9 +408,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
     val workflow = updateItem(Workflow(
       WorkflowPath("ONCE-AN-HOUR"),
       Seq(
-        Cycle(
-          Schedule.ticking(1.h),
-          Workflow.empty)),
+        Cycle(Schedule.ticking(1.h)):
+          Workflow.empty),
       timeZone = timezone,
       calendarPath = Some(calendar.path)))
 
@@ -449,25 +445,24 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         timeZone = timezone,
         calendarPath = Some(calendar.path),
         instructions = Seq(
-          Cycle(
-            Schedule.continuous(0.s, limit = Some(1)),
-            Workflow.of(
+          Cycle(Schedule.continuous(0.s, limit = Some(1))):
+            Workflow.of:
               If(
                 expr("true"),
-                Workflow.of(
+                Workflow.of:
                   LockInstruction(
                     List(LockDemand(lock.path)),
-                    Workflow.of(
+                    Workflow.of:
                       TryInstruction(
                         Workflow.of(
                           EmptyJob.execute(agentPath),
                           If(expr("true"), Workflow.of(
                             Break())),
                           Fail()),
-                        Workflow.of(
-                          Fail()))))))))))
+                        Workflow.of:
+                          Fail())))))
 
-      withTemporaryItem(workflow) { workflow =>
+      withTemporaryItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#BREAK")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
@@ -500,7 +495,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           OrderMoved(Position(1)),
           OrderFinished(None),
           OrderDeleted))
-      }
 
     "Break in Options" in:
       clock.resetTo(local("2023-03-21T00:00"))
@@ -511,15 +505,14 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         calendarPath = Some(calendar.path),
         instructions = Seq(
           Options(stopOnFailure = true):
-            Cycle(
-              Schedule.continuous(0.s, limit = Some(1)),
+            Cycle(Schedule.continuous(0.s, limit = Some(1))):
               Workflow.of(
                 EmptyJob.execute(agentPath),
                 If(expr("true"), Workflow.of(
                   Break())),
-                Fail()))))
+                Fail())))
 
-      withTemporaryItem(workflow) { workflow =>
+      withTemporaryItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#OPTIONS-BREAK")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
@@ -549,7 +542,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           OrderDetached,
           OrderFinished(None),
           OrderDeleted))
-      }
 
     "Break without Cycle is rejected" in:
       val versionId = VersionId("WILL-BE-REJECTED")
@@ -574,12 +566,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
             timeZone = timezone,
             calendarPath = Some(calendar.path),
-            instructions = Seq(Cycle(Schedule(Nil),
-              Workflow.of(
-                Fork.of(
-                  "A" -> Workflow.of(
-                    If(expr("true"), Workflow.of(
-                      Break()))))))))))))
+            instructions = Seq(
+              Cycle(Schedule(Nil)):
+                Workflow.of:
+                  Fork.of:
+                    "A" -> Workflow.of:
+                      If(expr("true"), Workflow.of(
+                        Break()))))))))
         .await(99.s)
 
       assert(checked == Left(Problem(
@@ -593,10 +586,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           timeZone = timezone,
           calendarPath = Some(calendar.path),
           instructions = Seq(
-            Cycle(
-            Schedule.continuous(pause = 1.s),
-              Workflow.of(
-                EmptyJob.execute(agentPath)))))
+            Cycle(Schedule.continuous(pause = 1.s)):
+              Workflow.of:
+                EmptyJob.execute(agentPath)))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-03-25#PLACED-ORDER")
 
@@ -632,10 +624,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           WorkflowPath("PLACED-ORDER-INNER-BLOCK"),
           calendarPath = Some(calendar.path),
           instructions = Seq(
-            Cycle(
-              Schedule.continuous(1.s),
-              Workflow.of(
-                Break())),
+            Cycle(Schedule.continuous(1.s)):
+              Workflow.of:
+                Break(),
             EmptyInstruction()))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK")
@@ -660,12 +651,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           WorkflowPath("PLACED-ORDER-INNER-BLOCK-IF"),
           calendarPath = Some(calendar.path),
           instructions = Seq(
-            Cycle(
-              Schedule.continuous(1.s),
-              Workflow.of(
+            Cycle(Schedule.continuous(1.s)):
+              Workflow.of:
                 If(expr("true"),
                   Workflow.of(
-                    Break()))))))
+                    Break()))))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-IF")
 
@@ -690,13 +680,12 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           WorkflowPath("PLACED-ORDER-INNER-BLOCK-IF-EXECUTE"),
           calendarPath = Some(calendar.path),
           instructions = Seq(
-            Cycle(
-            Schedule.continuous(pause = 1.s),
-              Workflow.of(
+            Cycle(Schedule.continuous(pause = 1.s)):
+              Workflow.of:
                 If(expr("true"),
                   Workflow.of(
                     EmptyJob.execute(agentPath),
-                    Break()))))))
+                    Break()))))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-03-25#PLACED-ORDER-INNER-BLOCK-IF-EXECUTE")
 
@@ -728,14 +717,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           WorkflowPath("PLACED-ORDER-INNER-BLOCK-RETRY-EXECUTE"),
           calendarPath = Some(calendar.path),
           instructions = Seq(
-            Cycle(
-              Schedule.continuous(1.s),
-              Workflow.of(
+            Cycle(Schedule.continuous(1.s)):
+              Workflow.of:
                 TryInstruction(
                   Workflow.of(
                     EmptyJob.execute(agentPath),
                     Break()),
-                  Workflow.of(Retry()))))))
+                  Workflow.of(Retry()))))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-RETRY-EXECUTE")
 
@@ -771,11 +759,10 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
-        Cycle(
-          Schedule.continuous(1.s),
+        Cycle(Schedule.continuous(1.s)):
           Workflow.of(
             EmptyJob.execute(agentPath),
-            Stop()))))
+            Stop())))
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("#2023-03-21#BROKEN")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -833,14 +820,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       instructions = Seq(
         If(expr("true"),
           Workflow.of(
-            Cycle(
-              Schedule.continuous(1.s),
-              Workflow.of(
+            Cycle(Schedule.continuous(1.s)):
+              Workflow.of:
                 If(expr("true"),
                   Workflow.of(
                     TryInstruction(
                       Workflow.of(Stop()),
-                      Workflow.empty)))))))))
+                      Workflow.empty)))))))
 
     withTemporaryItem(workflow) { workflow =>
       locally:
@@ -897,9 +883,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
-        Cycle(
-          Schedule.continuous(1.h),
-          Workflow.empty)))
+        Cycle(Schedule.continuous(1.h)):
+          Workflow.empty))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-01#GO-CYCLE-AT-CONTROLLER")
@@ -953,10 +938,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
-        Cycle(
-          Schedule.continuous(1.h),
-          Workflow.of(
-            EmptyJob.execute(agentPath)))))
+        Cycle(Schedule.continuous(1.h)):
+          Workflow.of:
+            EmptyJob.execute(agentPath)))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-17#GO-CYCLE-AT-AGENT")
@@ -1044,20 +1028,18 @@ object CycleTest:
   private val cycleTestExampleWorkflow =
     Workflow(WorkflowPath("CycleTest-example"),
       Seq(
-        Cycle(
-          ScheduleTester.schedule,
-          Workflow.of(
-            TestJob.execute(agentPath)))),
+        Cycle(ScheduleTester.schedule):
+          Workflow.of:
+            TestJob.execute(agentPath)),
       timeZone = timezone,
       calendarPath = Some(cycleTestExampleCalendar.path))
 
   private val onlyOnePeriodCycleTestExampleWorkflow =
     Workflow(WorkflowPath("CycleTest-example-onlyOnePeriod"),
       Seq(
-        Cycle(ScheduleTester.schedule,
-          onlyOnePeriod = true,
-          cycleWorkflow = Workflow.of(
-            TestJob.execute(agentPath)))),
+        Cycle(ScheduleTester.schedule, onlyOnePeriod = true):
+          Workflow.of(
+            TestJob.execute(agentPath))),
       timeZone = timezone,
       calendarPath = Some(cycleTestExampleCalendar.path))
 

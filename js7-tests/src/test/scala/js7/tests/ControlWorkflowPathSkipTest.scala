@@ -297,9 +297,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       val workflow = Workflow(WorkflowPath("SKIP-CYCLE"),
         Seq(
           label @:
-            Cycle(
-              Schedule.continuous(0.s, limit = 2.some),
-              Workflow.of(Prompt(expr("'PROMPT'"))))),
+            Cycle(Schedule.continuous(0.s, limit = 2.some)):
+              Workflow.of:
+                Prompt(expr("'PROMPT'"))),
         calendarPath = calendar.path.some)
 
       withTemporaryItem(workflow): workflow =>

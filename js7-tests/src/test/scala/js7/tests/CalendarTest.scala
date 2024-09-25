@@ -121,9 +121,9 @@ object CalendarTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      Cycle(
-        Schedule.continuous(pause = 1.s, limit = Some(1)),
-        Workflow.of(EmptyJob.execute(agentPath)))),
+      Cycle(Schedule.continuous(pause = 1.s, limit = Some(1))):
+        Workflow.of:
+          EmptyJob.execute(agentPath)),
     timeZone = Timezone(zone.toString),
     calendarPath = Some(calendar.path))
 

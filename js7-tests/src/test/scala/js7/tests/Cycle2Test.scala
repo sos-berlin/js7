@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import java.time.{LocalDate, LocalTime}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
@@ -17,7 +18,6 @@ import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.Cycle2Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
@@ -58,10 +58,10 @@ object Cycle2Test:
   private val js2012Workflow = Workflow(
     WorkflowPath("ONCE-AN-HOUR") ~ "INITIAL",
     Seq(
-      Cycle(
-        Schedule(Seq(Scheme(
-          AdmissionTimeScheme(Seq(
-            DailyPeriod(0, 24 * 3600.s))),
-          Ticking(1.h)))),
-        Workflow.empty)),
+      Cycle(Schedule(Seq(Scheme(
+        AdmissionTimeScheme(Seq(
+          DailyPeriod(0, 24 * 3600.s))),
+        Ticking(1.h)
+      )))):
+        Workflow.empty),
     calendarPath = Some(calendar.path))
