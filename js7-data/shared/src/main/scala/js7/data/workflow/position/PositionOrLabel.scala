@@ -67,8 +67,8 @@ extends PositionOrLabel:
         nextTryBranchId(branchId) match
           case Right(None) => parent.nextRetryBranchPath
           case Right(Some(tryBranchId)) => Right(parent / tryBranchId)
-          case Left(l) => Left(l)
-      case Some((parent, BranchId.Then | BranchId.Else, _)) =>
+          case Left(problem) => Left(problem)
+      case Some((parent, BranchId.Then | BranchId.Else | BranchId.Options, _)) =>
         parent.nextRetryBranchPath
       case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be emitted inside a Fork for a Try outside the Fork
 
