@@ -215,6 +215,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
         case _: Order.Processing        => become("processing")(wrap(processing))
         case _: Order.Processed         => become("processed")(wrap(processed))
         case _: Order.ProcessingKilled  => become("processingKilled")(wrap(processingKilled))
+        case _: Order.DelayingRetry     => become("delayingRetry")(wrap(delayedAfterError))
         case _: Order.DelayedAfterError => become("delayedAfterError")(wrap(delayedAfterError))
         case _: Order.Forked            => become("forked")(wrap(standard))
         case _: Order.BetweenCycles     => become("forked")(wrap(standard))

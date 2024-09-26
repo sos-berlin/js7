@@ -134,20 +134,24 @@ final case class ControllerStateExecutor private(
   private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
   : Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
-    val stateEvents = (order.state: State) match
-      case _: Order.Processing =>
-        Vector(order.id <-: OrderProcessed(outcome))
-
-      case _: Order.DelayedAfterError =>
-        Vector(order.id <-: OrderAwoke)
-
-      case _ => Vector.empty
-    val detached = stateEvents :+ (order.id <-: OrderDetached)
+    val stateEvents: Vector[OrderProcessed | OrderAwoke | OrderMoved] =
+      order.ifState[Order.Processing].map: _ =>
+        Vector(OrderProcessed(outcome))
+      .orElse:
+        order.ifState[Order.DelayingRetry].map: order =>
+          order.awokeEvents.toOption/*ignore problem*/.toVector.flatten
+      .orElse:
+        order.ifState[Order.DelayedAfterError].map: _ =>
+          Vector(OrderAwoke)
+      .getOrElse:
+        Vector.empty
+    val detached = (stateEvents :+ OrderDetached).map(order.id <-: _)
     for
       detachedState <- controllerState.applyEvents(detached)
-      fail <- new OrderEventSource(detachedState)
+      fail <- OrderEventSource(detachedState)
         .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
-    yield detached ++ fail.view.map(order.id <-: _)
+    yield
+      detached ++ fail.view.map(order.id <-: _)
 
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[ControllerStateExecutor] =

@@ -919,7 +919,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderLocksReleased(List(lockPath)),
 
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderRetrying(Position(0) / "try+1" % 0),
+        OrderRetrying(),
+        OrderMoved(Position(0) / "try+1" % 0),
 
         OrderLocksAcquired(List(LockDemand(lockPath))),
         OrderAttachable(agentPath),
@@ -957,7 +958,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       assert(events.map(_.value)
         .map {
-          case o @ OrderRetrying(_, Some(_)) => o.copy(delayedUntil = Some(Timestamp.Epoch))
+          case o @ OrderRetrying(Some(_), None) => o.copy(delayedUntil = Some(Timestamp.Epoch))
           case o => o
         } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -974,8 +975,9 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         OrderLocksReleased(List(lockPath)),
 
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderRetrying(Position(0) / "try+1" % 0, Some(Timestamp.Epoch)),
+        OrderRetrying(Some(Timestamp.Epoch)),
         OrderAwoke,
+        OrderMoved(Position(0) / "try+1" % 0),
 
         OrderLocksAcquired(List(LockDemand(lockPath))),
         OrderAttachable(agentPath),

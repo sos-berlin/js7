@@ -10,13 +10,14 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
+import js7.data.order.Order.{Broken, Cancelled, DelayedAfterError, DelayingRetry, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -76,7 +77,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           (orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
           o.fold(orElse)(events => Right(events.map(order.id <-: _)))
 
-        ifDefinedElse(awokeEvent(order)):
+        ifDefinedElse(awokeEvent(order).emptyToNone):
           joinedEvents(order).flatMap: events =>
             if events.nonEmpty then
               Right(events)
@@ -222,11 +223,23 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     else
       Right(Nil)
 
-  private def awokeEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
-    order.ifState[Order.DelayedAfterError].flatMap: order =>
-      (order.isDetached || order.isAttached) ?
-        (order.state.until <= clock.now()).thenList:
-          OrderAwoke
+  private def awokeEvent(order: Order[Order.State]): List[OrderAwoke | OrderMoved] =
+    order.ifState[DelayingRetry].flatMap: order =>
+      order.awokeEventsIfRipe(clock.now()) match
+        case Left(problem) =>
+          logger.error(s"awokeEvent: ${order.id}: $problem")
+          None
+        case Right(events) =>
+          Some(events)
+    .orElse:
+      order.ifState[DelayedAfterError].flatMap: order =>
+        awakeFromDelayedAfterError(order).emptyToNone
+    .getOrElse:
+      Nil
+
+  private def awakeFromDelayedAfterError(order: Order[DelayedAfterError]): List[OrderAwoke] =
+    (order.isDetached || order.isAttached) && (order.state.until <= clock.now()) thenList:
+      OrderAwoke
 
   private def tryDelete(order: Order[Order.State]): Option[List[KeyedEvent[OrderDeleted]]] =
     order.tryDelete.map: e =>
@@ -339,13 +352,19 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       if !order.isGoCommandable(position) then
         Left(GoOrderInapplicableProblem(order.id))
       else if weHave(order) then
-        if order.isState[Order.BetweenCycles] then
+        order.ifState[Order.BetweenCycles].map: _ =>
           Right(Some(OrderGoes :: OrderCycleStarted :: Nil))
-        else if order.isState[Order.DelayedAfterError] then
-          Right(Some(OrderGoes :: OrderAwoke :: Nil))
-        else if order.isState[Order.Fresh] && order.maybeDelayedUntil.isDefined then
-          Right(Some(OrderGoes :: OrderStarted :: Nil))
-        else
+        .orElse:
+          order.ifState[Order.DelayingRetry].map: order =>
+            order.awokeEvents
+              .map(_.emptyToNone.map(OrderGoes :: _))
+        .orElse:
+          order.ifState[Order.DelayedAfterError].map: _ =>
+            Right(Some(OrderGoes :: OrderAwoke :: Nil))
+        .orElse:
+          order.ifState[Order.Fresh].filter(_.maybeDelayedUntil.isDefined).map: _ =>
+            Right(Some(OrderGoes :: OrderStarted :: Nil))
+        .getOrElse:
           Left(GoOrderInapplicableProblem(order.id)) // Just in case
       else if order.isAttached then
         // Emit OrderGoMarked event even if already marked. The user wishes so.

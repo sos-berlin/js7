@@ -425,14 +425,13 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderRetrying" in:
-    testJson[OrderEvent](OrderRetrying(Position(1)), json"""
+    testJson[OrderEvent](OrderRetrying(), json"""
       {
-        "TYPE": "OrderRetrying",
-        "movedTo": [ 1 ]
+        "TYPE": "OrderRetrying"
       }""")
 
   "OrderRetrying(delayedUntil)" in:
-    testJson[OrderEvent](OrderRetrying(Position(1), Some(Timestamp("2019-03-04T12:00:00Z"))), json"""
+    testJson[OrderEvent](OrderRetrying(Some(Timestamp("2019-03-04T12:00:00Z")), Some(Position(1))), json"""
       {
         "TYPE": "OrderRetrying",
         "movedTo": [ 1 ],

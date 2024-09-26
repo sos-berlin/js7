@@ -121,6 +121,8 @@ final class PositionOrLabelTest extends OurTestSuite:
       assert((Position(1) / catch_(0) % 0).nextRetryBranchPath == Right(Position(1) / try_(1)))
       assert((Position(1) / catch_(1) % 0).nextRetryBranchPath == Right(Position(1) / try_(2)))
       assert((Position(1) / catch_(2) % 0).nextRetryBranchPath == Right(Position(1) / try_(3)))
+      assert((Position(1) / catch_(2) % 0 / "then" % 1 / "else" % 2 / "options" % 3)
+        .nextRetryBranchPath == Right(Position(1) / try_(3)))
   }
 
   "PositionOrLabel" - {

@@ -97,23 +97,27 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           start -> OrderStarted,
           start -> OrderOutcomeAdded(OrderOutcome.failed),
           start -> OrderCaught(Position(0) / "catch+0" % 0),
-          start -> OrderRetrying(Position(0) / "try+1" % 0),
+          start -> OrderRetrying(),
+          start -> OrderMoved(Position(0) / "try+1" % 0),
 
           start -> OrderOutcomeAdded(OrderOutcome.failed),
           start -> OrderCaught(Position(0) / "catch+1" % 0),
-          start -> OrderRetrying(Position(0) / "try+2" % 0, Some(start + 1.s)),
+          start -> OrderRetrying(Some(start + 1.s)),
 
           start + 1.s -> OrderAwoke,
+          start + 1.s -> OrderMoved(Position(0) / "try+2" % 0),
           start + 1.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 1.s -> OrderCaught(Position(0) / "catch+2" % 0),
-          start + 1.s -> OrderRetrying(Position(0) / "try+3" % 0, Some(start + 3.s)),
+          start + 1.s -> OrderRetrying(Some(start + 3.s)),
 
           start + 3.s -> OrderAwoke,
+          start + 3.s -> OrderMoved(Position(0) / "try+3" % 0),
           start + 3.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 3.s -> OrderCaught(Position(0) / "catch+3" % 0),
-          start + 3.s -> OrderRetrying(Position(0) / "try+4" % 0, Some(start + 5.s)),
+          start + 3.s -> OrderRetrying(Some(start + 5.s)),
 
           start + 5.s -> OrderAwoke,
+          start + 5.s -> OrderMoved(Position(0) / "try+4" % 0),
           start + 5.s -> OrderOutcomeAdded(OrderOutcome.failed),
           start + 5.s -> OrderFailed(Position(0) / "try+4" % 0)))
     }

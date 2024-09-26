@@ -14,7 +14,7 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, Stopped, StoppedWhileFresh, WaitingForLock}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, Stopped, StoppedWhileFresh, WaitingForLock}
 import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
 import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -270,6 +270,13 @@ final class OrderTest extends OurTestSuite:
             "TYPE": "FailedWhileFresh"
           }""")
 
+      "DelayingRetry" in:
+        testJson[State](DelayingRetry(Timestamp("2019-03-07T12:00:00Z")),
+          json"""{
+            "TYPE": "DelayingRetry",
+            "until": 1551960000000
+          }""")
+
       "DelayedAfterError" in:
         testJson[State](DelayedAfterError(Timestamp("2019-03-07T12:00:00Z")),
           json"""{
@@ -441,7 +448,7 @@ final class OrderTest extends OurTestSuite:
       OrderFailed(Position(1)),
       OrderCatched(Position(1)),
       OrderCaught(Position(1)),
-      OrderRetrying(Position(1)),
+      OrderRetrying(),
       OrderAwoke,
       OrderMoved(Position(1)),
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
@@ -715,6 +722,21 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderOutcomeAdded    , _             , _, _         ) => _.isInstanceOf[FailedInFork]
           case (_: OrderTransferred     , _             , _, IsDetached) => _.isInstanceOf[FailedInFork]
           case (_: OrderBroken          , _             , _, _         ) => _.isInstanceOf[Broken])
+
+    "DelayingRetry" in:
+      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayingRetry(Timestamp("2024-09-26T12:00:00Z"))),
+        detachingAllowed[DelayingRetry] orElse
+        markable[DelayingRetry] orElse
+        cancelMarkedAllowed[DelayingRetry] orElse
+        suspendMarkedAllowed[DelayingRetry] orElse:
+          case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
+          case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded, _           , _, _                      ) => _.isInstanceOf[DelayingRetry]
+          case (_: OrderTransferred , _           , _, IsDetached             ) => _.isInstanceOf[DelayingRetry]
+          case (_: OrderGoMarked, _               , _, IsAttached             ) => _.isInstanceOf[DelayingRetry]
+          case (_: OrderGoes, _                   , _, _                      ) => _.isInstanceOf[DelayingRetry]
+          case (_: OrderStateReset, _             , _, _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken])
 
     "DelayedAfterError" in:
       checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),

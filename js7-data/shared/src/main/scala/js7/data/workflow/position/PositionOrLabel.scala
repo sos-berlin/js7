@@ -59,8 +59,11 @@ extends PositionOrLabel:
   def catchCount: Int =
     branchPath.catchCount
 
+  def nextRetryPosition: Checked[Position] =
+    nextRetryBranchPath.map(_ % 0)
+
   @tailrec
-  def nextRetryBranchPath: Checked[BranchPath] =
+  private[position] def nextRetryBranchPath: Checked[BranchPath] =
     splitBranchAndNr match
       case None => Left(NoTryBlockProblem)
       case Some((parent, branchId @ TryCatchBranchId(_), _)) =>

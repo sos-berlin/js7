@@ -771,7 +771,7 @@ final class CancelOrdersTest
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)
         .map {
-          case OrderRetrying(movedTo, Some(_)) => OrderRetrying(movedTo)
+          case OrderRetrying(Some(_), None) => OrderRetrying()
           case o => o
         } == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -782,10 +782,11 @@ final class CancelOrdersTest
           OrderProcessingStarted(subagentId),
           OrderProcessed(FailingJob.outcome),
           OrderCaught(Position(0) / "catch+0" % 0),
-          OrderRetrying(Position(0) / "try+1" % 0),
+          OrderRetrying(),
           OrderCancellationMarked(),
           OrderDetachable,
           OrderDetached,
+          OrderStateReset,
           OrderCancelled,
           OrderDeleted))
     }

@@ -199,15 +199,19 @@ final case class Order[+S <: Order.State](
               isResumed = false,
               historicOutcomes = h))
 
-      case OrderRetrying(to, maybeDelayUntil) =>
+      case OrderRetrying(maybeDelayUntil, movedTo) =>
         check(isState[Ready] && !isSuspendedOrStopped && (isDetached || isAttached),
           maybeDelayUntil
             .fold[Order[State]](this/*Ready*/)(o => copy(
-              state = DelayedAfterError(o)))
-            .withPosition(to))
+              state = DelayingRetry(o)))
+            .pipeMaybe(movedTo):
+              _.withPosition(_))
 
       case OrderAwoke =>
-        check(isState[DelayedAfterError] && !isSuspendedOrStopped && (isDetached || isAttached),
+        check(
+          (isState[DelayingRetry] || isState[DelayedAfterError])
+            && !isSuspendedOrStopped
+            && (isDetached || isAttached),
           copy(state = Ready))
 
       case OrderForked(children) =>
@@ -223,7 +227,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderMoved(to, _) =>
-        check((isState[IsFreshOrReady]/*before Try*/ || isState[Processed] || isState[BetweenCycles])
+        check((isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles])
           && (isDetached || isAttached),
           withPosition(to).copy(
             isResumed = false,
@@ -597,7 +601,7 @@ final case class Order[+S <: Order.State](
     state.match
       case Fresh => !isDelayed(now)
       case Ready => true
-      case _: DelayedAfterError => !isDelayed(now)
+      case _: DelayingRetry | _: DelayedAfterError => !isDelayed(now)
       case _ => false
     && !isSuspended
 
@@ -719,6 +723,7 @@ final case class Order[+S <: Order.State](
   def isGoCommandable: Boolean =
     (isDetached || isAttached) &&
       isState[BetweenCycles]
+      || isState[DelayingRetry]
       || isState[DelayedAfterError]
       || (isState[Fresh] && maybeDelayedUntil.isDefined)
 
@@ -740,6 +745,7 @@ final case class Order[+S <: Order.State](
       || isState[ExpectingNotices]
       || isState[BetweenCycles]
       || isState[FailedWhileFresh]
+      || isState[DelayingRetry]
       || isState[DelayedAfterError]
       || isState[Stopped]
       || isState[Failed]
@@ -904,6 +910,21 @@ object Order:
       stopPositions = event.stopPositions)
 
 
+  extension (order: Order[DelayingRetry])
+    def awokeEventsIfRipe(ts: Timestamp): Checked[List[OrderAwoke | OrderMoved]] =
+      if order.state.until <= ts then
+        awokeEvents
+      else
+        Right(Nil)
+
+    def awokeEvents: Checked[List[OrderAwoke | OrderMoved]] =
+      if order.isDetached || order.isAttached then
+        order.position.nextRetryPosition.map: pos =>
+          OrderAwoke :: OrderMoved(pos) :: Nil
+      else
+        Right(Nil)
+
+
   sealed trait AttachedState
 
   object AttachedState:
@@ -949,6 +970,7 @@ object Order:
       Subtype(deriveCodec[Processing]),
       Subtype(Processed),
       Subtype(ProcessingKilled),
+      Subtype(deriveCodec[DelayingRetry]),
       Subtype(deriveCodec[DelayedAfterError]),
       Subtype(deriveCodec[Forked]),
       Subtype(WaitingForLock),
@@ -1033,8 +1055,14 @@ object Order:
   case object Ready extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable
 
 
+  // COMPATIBLE with v2.7.1
   final case class DelayedAfterError(until: Timestamp)
   extends IsStarted, IsDetachable, IsTransferable:
+    override private[Order] def maybeDelayedUntil = Some(until)
+
+
+  final case class DelayingRetry(until: Timestamp)
+  extends IsStarted, IsDetachable, IsResettable, IsTransferable:
     override private[Order] def maybeDelayedUntil = Some(until)
 
 

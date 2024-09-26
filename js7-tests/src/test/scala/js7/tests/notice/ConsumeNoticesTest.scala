@@ -594,7 +594,8 @@ final class ConsumeNoticesTest
         OrderNoticesConsumed(failed = true),
 
         OrderCaught(Position(1) / "catch+0" % 0),
-        OrderRetrying(Position(1) / "try+1" % 0),
+        OrderRetrying(),
+        OrderMoved(Position(1) / "try+1" % 0),
 
         OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
         OrderAttachable(agentPath),

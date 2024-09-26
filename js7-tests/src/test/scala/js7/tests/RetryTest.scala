@@ -16,7 +16,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
@@ -79,7 +79,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
 
-      OrderRetrying(Position(0) / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
@@ -128,14 +129,16 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
 
-      OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
 
-      OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
@@ -146,7 +149,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
 
-      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Succeeded(NamedValues.rc(0))),
@@ -156,13 +160,15 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
-      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
-      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
@@ -207,11 +213,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
-      OrderRetrying(Position(0) / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(1) % 0),
 
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
-      OrderRetrying(Position(0) / try_(2) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(2) % 0),
 
       // No OrderCaught here! OrderFailed has OrderOutcome of last failed instruction in try block
       OrderOutcomeAdded(OrderOutcome.failed),
@@ -239,12 +247,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0),
-      OrderRetrying(Position(0) / try_(1) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(1) % 0),
 
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
       OrderMoved(Position(0) / catch_(1) % 0 / Then % 0),
-      OrderRetrying(Position(0) / try_(2) % 0),
+      OrderRetrying(),
+      OrderMoved(Position(0) / try_(2) % 0),
 
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderCaught(Position(0) / catch_(2) % 0),
@@ -277,7 +287,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           .await(99.s).orThrow
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
-          .take(20)
+          .take(24)
           .map(_.event)
           .map {
             case e: OrderRetrying => e.copy(delayedUntil = None)
@@ -289,20 +299,28 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(0) % 0),
-          OrderRetrying(Position(0) / try_(1) % 0),
+          OrderRetrying(),
+
           OrderAwoke,
+          OrderMoved(Position(0) / try_(1) % 0),
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(1) % 0),
-          OrderRetrying(Position(0) / try_(2) % 0),
+          OrderRetrying(),
+
           OrderAwoke,
+          OrderMoved(Position(0) / try_(2) % 0),
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(2) % 0),
-          OrderRetrying(Position(0) / try_(3) % 0),
+          OrderRetrying(),
+
           OrderAwoke,
+          OrderMoved(Position(0) / try_(3) % 0),
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(3) % 0),
-          OrderRetrying (Position(0) / try_(4) % 0),
+          OrderRetrying(),
+
           OrderAwoke,
+          OrderMoved(Position(0) / try_(4) % 0),
           OrderOutcomeAdded(OrderOutcome.failed)))
       }
 
@@ -329,7 +347,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
-          .take(25)
+          .take(27)
           .map(_.event)
           .map {
             case e: OrderRetrying => e.copy(delayedUntil = None)
@@ -346,23 +364,25 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderProcessingStarted(toLocalSubagentId(agentPath)),
           OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(0) % 1),
-          OrderRetrying(Position(0) / try_(1) % 0),
+          OrderRetrying(),
 
           OrderAwoke,
+          OrderMoved(Position(0) / try_(1) % 0),
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(1) % 0),
           OrderProcessingStarted(toLocalSubagentId(agentPath)),
           OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(1) % 1),
-          OrderRetrying(Position(0) / try_(2) % 0),
+          OrderRetrying(),
 
           OrderAwoke,
+          OrderMoved(Position(0) / try_(2) % 0),
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / catch_(2) % 0),
           OrderProcessingStarted(toLocalSubagentId(agentPath)),
           OrderProcessed(OrderOutcome.succeeded),
           OrderMoved(Position(0) / catch_(2) % 1),
-          OrderRetrying(Position(0) / try_(3) % 0)))
+          OrderRetrying()))
 
         controller.api
           .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
@@ -395,7 +415,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)
         .map {
-          case OrderRetrying(movedTo, Some(_)) => OrderRetrying(movedTo)
+          case OrderRetrying(Some(_), None) => OrderRetrying()
           case o => o
         } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -406,11 +426,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderProcessingStarted(subagentId),
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderRetrying(Position(0) / "try+1" % 0),
+        OrderRetrying(),
+
         OrderSuspensionMarked(),
         OrderDetachable,
         OrderDetached,
-        //OrderSuspended,
+        OrderStateReset,
         OrderCancelled,
         OrderDeleted))
 
@@ -438,7 +459,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
-          .take(9)
+          .take(10)
           .map(_.event)
           .map {
             case e: OrderRetrying => e.copy(delayedUntil = None)
@@ -452,7 +473,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderProcessingStarted(toLocalSubagentId(agentPath)),
           OrderProcessed(FailingJob.outcome),
           OrderCaught(Position(0) / "catch+0" % 0),
-          OrderRetrying(Position(0) / try_(1) % 0)))
+          OrderRetrying(),
+          OrderMoved(Position(0) / try_(1) % 0)))
       }
     }
 
@@ -522,7 +544,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderProcessingStarted(toLocalSubagentId(agentPath)),
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderRetrying(Position(0) / "try+1" % 0),
+        OrderRetrying(),
 
         OrderSuspensionMarked(),
         OrderDetachable,
@@ -530,30 +552,33 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
         OrderResumptionMarked(),
         OrderAwoke,
+        OrderMoved(Position(0) / "try+1" % 0),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(toLocalSubagentId(agentPath)),
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(0) / "catch+1" % 0),
-        OrderRetrying(Position(0) / "try+2" % 0),
+        OrderRetrying(),
+
         OrderSuspensionMarked(),
         OrderDetachable,
         OrderDetached,
-
         OrderAwoke,
+        OrderMoved(Position(0) / "try+2" % 0),
         OrderSuspended,
         OrderResumed(),
-
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(toLocalSubagentId(agentPath)),
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(0) / "catch+2" % 0),
-        OrderRetrying(Position(0) / "try+3" % 0),
+        OrderRetrying(),
+
         OrderSuspensionMarked(),
         OrderDetachable,
         OrderDetached,
 
+        OrderStateReset,
         OrderCancelled,
         OrderDeleted))
     }
@@ -580,7 +605,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           .executeCommand(GoOrder(orderId, position = Position(0)))
           .await(99.s)
         sleep(200.ms)
-        assert(controllerState.idToOrder(orderId).isState[Order.DelayedAfterError])
+        assert(controllerState.idToOrder(orderId).isState[Order.DelayingRetry])
 
       locally:
         val checked = controller.api
@@ -588,11 +613,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           .await(99.s)
         assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
-      // GoOrder
-      controller.api
-        .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
-        .await(99.s)
-        .orThrow
+      val caughtPosition = Position(0) / catch_(0) % 0
+      execCmd:
+        GoOrder(orderId, position = caughtPosition)
 
       assert(eventWatch
         .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
@@ -606,10 +629,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderStarted,
 
         OrderOutcomeAdded(OrderOutcome.failed),
-        OrderCaught(Position(0) / catch_(0) % 0),
-        OrderRetrying(Position(0) / try_(1) % 0),
+        OrderCaught(caughtPosition),
+        OrderRetrying(),
         OrderGoes,
         OrderAwoke,
+        OrderMoved(Position(0) / try_(1) % 0),
         OrderOutcomeAdded(OrderOutcome.failed),
         OrderFailed(Position(0) / try_(1) % 0)))
     }
@@ -634,9 +658,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
 
-      val retryPosition = Position(1) / "try+1" % 0
+      val retryPosition = Position(1) / catch_(0) % 0
 
-      assert(controllerState.idToOrder(orderId).isState[Order.DelayedAfterError]
+      assert(controllerState.idToOrder(orderId).isState[Order.DelayingRetry]
         && controllerState.idToOrder(orderId).position == retryPosition)
 
       // Position cannot be statically checked because OrderRetrying has moved
@@ -647,17 +671,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       //assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
       locally:
-        assert(!controllerState.idToOrder(orderId).isGoCommandable(Position(0) / "try+1" % 0))
+        assert(!controllerState.idToOrder(orderId).isGoCommandable(Position(0) / catch_(0) % 0))
         val checked = controller.api
-          .executeCommand(GoOrder(orderId, position = Position(0) / "try+1" % 0))
+          .executeCommand(GoOrder(orderId, position = Position(0) / catch_(0) % 0))
           .await(99.s)
         assert(checked == Left(GoOrderInapplicableProblem(orderId)))
 
-      // GoOrder
-      controller.api
-        .executeCommand(GoOrder(orderId, position = retryPosition))
-        .await(99.s)
-        .orThrow
+      execCmd:
+        GoOrder(orderId, position = retryPosition)
       eventWatch.await[OrderFailed](_.key == orderId)
 
       assert(eventWatch
@@ -675,10 +696,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderProcessingStarted(subagentId),
         OrderProcessed(FailingJob.outcome),
         OrderCaught(Position(1) / catch_(0) % 0),
-        OrderRetrying(Position(1) / try_(1) % 0),
-        OrderGoMarked(Position(1) / "try+1" % 0),
+        OrderRetrying(),
+        OrderGoMarked(Position(1) / catch_(0) % 0),
         OrderGoes,
         OrderAwoke,
+        OrderMoved(Position(1) / try_(1) % 0),
         OrderProcessingStarted(subagentId),
         OrderProcessed(FailingJob.outcome),
         OrderDetachable,

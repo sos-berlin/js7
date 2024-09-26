@@ -117,7 +117,8 @@ extends EventDrivenState[Self, E], StateView:
                   addOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
           .getOrElse:
-            Checked(this)
+            update(
+              addOrders = updatedOrder :: Nil)
 
         case _: OrderCancelled =>
           previousOrder

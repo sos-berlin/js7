@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.derivation.ConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -9,11 +9,12 @@ import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
+import scala.annotation.unused
 
-final case class Cycle(
+final case class Cycle private(
   schedule: Schedule,
   cycleWorkflow: Workflow,
-  onlyOnePeriod: Boolean,
+  onlyOnePeriod: Boolean = false,
   sourcePos: Option[SourcePos])
 extends Instruction:
 
@@ -55,8 +56,16 @@ extends Instruction:
 
 
 object Cycle:
-  implicit val jsonCodec: Codec.AsObject[Cycle] =
-    ConfiguredCodec.derive(useDefaults = true)
+  given jsonCodec: Codec.AsObject[Cycle] = deriveCodecWithDefaults
+
+  // Dummy, to allow default values in constructor and public apply method.
+  @unused
+  private def apply(
+    schedule: Schedule,
+    cycleWorkflow: Workflow,
+    onlyOnePeriod: Boolean,
+    sourcePos: Option[SourcePos])
+  : Cycle = throw NotImplementedError()
 
   def apply(
     schedule: Schedule,

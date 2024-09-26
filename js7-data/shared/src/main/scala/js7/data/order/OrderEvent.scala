@@ -24,7 +24,6 @@ import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
-import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -470,7 +469,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderFailedIntermediate_(outcome: Option[OrderOutcome.NotSucceeded] = None)
   extends OrderActorEvent
 
-  final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
+  final case class OrderRetrying(
+    delayedUntil: Option[Timestamp] = None,
+    movedTo: Option[Position] = None /*COMPATIBLE with v2.7.1*/)
   extends OrderActorEvent
 
 
