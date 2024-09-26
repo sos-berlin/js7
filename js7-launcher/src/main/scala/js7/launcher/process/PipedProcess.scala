@@ -199,7 +199,7 @@ object PipedProcess:
           .map(o => Right(JavaProcess(o)))
 
       case Some(logon) =>
-        IO:
+        IO.blocking:
           WindowsProcess.startWithWindowsLogon(
             StartWindowsProcess(
               args,
