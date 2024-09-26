@@ -292,7 +292,7 @@ final case class Order[+S <: Order.State](
       case OrderStateReset =>
         // Event precedes OrderCancelled in the same transaction,
         // maybe before some block-leaving events which rely on state == Ready.
-        check(state.isInstanceOf[Resettable] && isStarted,
+        check(state.isInstanceOf[IsResettable],
           copy(
             state = Ready,
             mark = None))
@@ -842,7 +842,7 @@ final case class Order[+S <: Order.State](
   /** Reset the Order's State if possible. */
   def resetState: List[OrderActorEvent] =
     state match
-      case state: Resettable =>
+      case state: IsResettable if isAttached || isDetached =>
         state.reset
       case _ =>
         Nil
@@ -974,7 +974,9 @@ object Order:
 
   sealed trait IsControllerOnly extends IsNotDetachable
 
-  sealed trait Resettable extends State:
+  sealed trait IsResettable extends State:
+    this: IsStarted => // Only for IsStarted states. Order will become Ready.
+
     private[Order] final def reset: List[OrderActorEvent] =
       OrderStateReset :: Nil
 
@@ -997,7 +999,7 @@ object Order:
 
 
   sealed trait IsTransferableButResetChangedInstruction:
-    this: Resettable =>
+    this: IsResettable =>
 
     private[Order] final def prepareTransfer(order: Order[Order.State], from: Workflow, to: Workflow) =
       Right:
@@ -1083,7 +1085,7 @@ object Order:
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
-  extends IsStarted, IsControllerOnly, Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
 
 
   // COMPATIBLE with v2.3, only used for JSON deserialization
@@ -1091,15 +1093,15 @@ object Order:
   extends IsStarted, IsControllerOnly, NotTransferable
 
   final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
-  extends IsStarted, IsControllerOnly,Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
 
 
   final case class Prompting(question: Value)
-  extends IsStarted, IsControllerOnly, Resettable, IsTransferableButResetChangedInstruction
+  extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
 
 
   final case class BetweenCycles(cycleState: Option[CycleState])
-  extends IsStarted, IsDetachable, Resettable, IsTransferableButResetChangedInstruction:
+  extends IsStarted, IsDetachable, IsResettable, IsTransferableButResetChangedInstruction:
     override private[Order] def maybeDelayedUntil =
       cycleState.map(_.next)
 
