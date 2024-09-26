@@ -511,7 +511,7 @@ object ScalaUtils:
         * <p>`(true ? a) == Some(a)`
         * <br>`(false ? a) == None`
         */
-      def ?[A](a: => A): Option[A] =
+      inline def ?[A](a: => A): Option[A] =
         thenSome(a)
 
       ///**

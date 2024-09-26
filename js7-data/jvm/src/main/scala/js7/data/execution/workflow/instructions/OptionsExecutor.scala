@@ -8,6 +8,11 @@ import js7.data.workflow.instructions.Options
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 
+/**
+ * The Options instruction is purely syntactic, like if-then-else.
+ * <p>
+ *   Because it may be leaved like if-then-else, it must not change state.
+ */
 private[instructions] final class OptionsExecutor(
   protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
@@ -16,10 +21,11 @@ extends EventInstructionExecutor:
   val instructionClass = classOf[Options]
 
   def toEvents(instr: Options, order: Order[Order.State], state: StateView) =
-    if !order.isState[IsFreshOrReady] then
-      Right(Nil)
-    else
-      Right((order.id <-: OrderMoved(order.position / BranchId.Options % 0)) :: Nil)
+    Right:
+      if !order.isState[IsFreshOrReady] then
+        Nil
+      else
+        (order.id <-: OrderMoved(order.position / BranchId.Options % 0)) :: Nil
 
   override def subworkflowEndToPosition(parentPos: Position) =
     Some(parentPos.increment)

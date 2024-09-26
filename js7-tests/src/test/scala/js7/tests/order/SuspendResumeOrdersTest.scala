@@ -793,7 +793,7 @@ final class SuspendResumeOrdersTest
             Prompt(expr("'PROMPT'")))))
 
     def testSuspendAndCancel(workflow: Workflow): Unit =
-      withTemporaryItem(workflow) { workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId(workflow.path.string)
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         eventWatch.await[OrderPrompted](_.key == orderId)
@@ -809,13 +809,12 @@ final class SuspendResumeOrdersTest
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderStarted,
           OrderPrompted(StringValue("PROMPT")),
-          OrderSuspensionMarked(SuspensionMode(None)),
+          OrderSuspensionMarked(SuspensionMode.standard),
           OrderPromptAnswered(),
           OrderMoved(Position(1)),
           OrderSuspended,
           OrderCancelled,
           OrderDeleted))
-      }
   }
 
   // Test moved to RetryTest:

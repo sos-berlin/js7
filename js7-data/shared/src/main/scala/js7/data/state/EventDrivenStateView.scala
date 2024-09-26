@@ -150,7 +150,8 @@ extends EventDrivenState[Self, E], StateView:
 
         case _ =>
           update(addOrders = updatedOrder :: Nil)
-    yield result
+    yield
+      result
 
   protected def addOrder(order: Order[Order.State]): Checked[Self] =
     for

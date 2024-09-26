@@ -18,17 +18,15 @@ final class ScheduleCalculator private(
 extends ScheduleSimulator:
 
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
-    nextCycle(now, cycleState)
-      .flatMap { case (schemeIndex, periodIndex, next) =>
-        val periodChanges = (cycleState.index != 0/*0 is the initial value*/
-          && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex))
-        !(onlyOnePeriod && periodChanges) ?
-          cycleState.copy(
-            schemeIndex = schemeIndex,
-            periodIndex = periodIndex,
-            index = if periodChanges then 1 else cycleState.index + 1,
-            next = next)
-      }
+    nextCycle(now, cycleState).flatMap: (schemeIndex, periodIndex, next) =>
+      val periodChanges = (cycleState.index != 0/*0 is the initial value*/
+        && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex))
+      !(onlyOnePeriod && periodChanges) ?
+        cycleState.copy(
+          schemeIndex = schemeIndex,
+          periodIndex = periodIndex,
+          index = if periodChanges then 1 else cycleState.index + 1,
+          next = next)
 
   /**
    * If it is to late for next in cycleState, then calculate a new CycleState.

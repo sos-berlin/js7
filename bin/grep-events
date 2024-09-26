@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec egrep --line-buffered -- "-Controller-.* - :" | egrep -vw --line-buffered "AgentEventsObserved" | sed -l 's/ trace .*Journal - ://'
+a=()
+[[ $# = 0 ]] || a+=("$1")
+
+exec egrep --line-buffered -- " TEST - |-Controller-.* - :" "${a[@]}" |
+  egrep -vw --line-buffered "AgentEventsObserved" |
+  sed -l 's/ trace .*Journal - ://'

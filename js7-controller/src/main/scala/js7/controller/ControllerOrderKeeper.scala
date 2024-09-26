@@ -710,10 +710,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             ControllerCommand.AddOrders.Response(eventId)))
 
       case ControllerCommand.CancelOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.cancel(_, mode))
+        executeOrderMarkCommands(orderIds.toVector):
+          orderEventSource.cancel(_, mode)
 
       case ControllerCommand.SuspendOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.suspend(_, mode))
+        executeOrderMarkCommands(orderIds.toVector):
+          orderEventSource.suspend(_, mode)
 
       case ControllerCommand.GoOrder(orderId, position) =>
         executeOrderMarkCommands(Vector(orderId)):
