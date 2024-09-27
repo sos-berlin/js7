@@ -52,7 +52,7 @@ final class ProcessDriver(
                 .flatMap: _ =>
                   IO.defer:
                     logger.info:
-                      s"$orderId ↘ Process $process started, ${conf.jobKey}: ${conf.commandLine}"
+                      s"$orderId ↘ Process ${process.process} started · ${conf.jobKey} · ${conf.commandLine}"
                     killedBeforeStart.traverse:
                       sendProcessSignal(process, _)
                 .flatMap: _ =>

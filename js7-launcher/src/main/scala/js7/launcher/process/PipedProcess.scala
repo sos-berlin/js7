@@ -35,7 +35,7 @@ import scala.jdk.CollectionConverters.*
 
 final class PipedProcess private(
   val conf: ProcessConfiguration,
-  process: Js7Process,
+  private[process] val process: Js7Process,
   stdObservers: StdObservers,
   orderId: OrderId,
   jobKey: JobKey,
