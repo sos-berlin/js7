@@ -1,17 +1,19 @@
 package js7.data.value.expression
 
-import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, MkString, StringConstant, StringExpr}
+import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, Minus, MkString, NumericConstant, StringConstant, StringExpr}
 import scala.util.chaining.scalaUtilChainingOps
 
 object ExpressionOptimizer:
-  def optimizeExpression(expression: Expression): Expression =
+
+  def optimize(expression: Expression): Expression =
     expression match
       case o: MkString => optimizeMkString(o)
       case o: InterpolatedString => optimizeInterpolated(o)
+      case x @ Minus(NumericConstant(v)) => NumericConstant(-v)
       case o => o
 
   private def optimizeMkString(mkString: MkString): StringExpr =
-    optimizeExpression(mkString.expression) match
+    optimize(mkString.expression) match
       case ListExpr(list) =>
         optimizeConcatList(list).pipe(mergeStringConstants) match
           case Nil => StringConstant.empty
@@ -30,7 +32,7 @@ object ExpressionOptimizer:
 
   private def optimizeConcatList(exprs: List[Expression]): List[Expression] =
     exprs
-      .map(optimizeExpression)
+      .map(optimize)
       .filter(_ != StringConstant.empty)
       .flatMap:
         case MkString(ListExpr(expressions)) => expressions
@@ -40,11 +42,10 @@ object ExpressionOptimizer:
 
   private def mergeStringConstants(expressions: List[Expression]): List[Expression] =
     expressions
-      .scanLeft(List.empty[Expression])((reverseList, expr) =>
-        (reverseList, expr) match {
+      .scanLeft(List.empty[Expression]): (reverseList, expr) =>
+        (reverseList, expr) match
           case ((a: StringConstant) :: tail, b: StringConstant) =>
             StringConstant(a.string ++ b.string) :: tail
           case _ =>
             expr :: reverseList
-        })
       .lastOption.toList.flatten.reverse

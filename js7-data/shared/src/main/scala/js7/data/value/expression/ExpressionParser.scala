@@ -11,7 +11,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
+import js7.data.value.expression.ExpressionOptimizer.optimize
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.jetbrains.annotations.TestOnly
 
@@ -100,7 +100,7 @@ object ExpressionParser:
         case (None, Nil) => StringConstant.empty
         case (Some(o: StringConstant), Nil) => o
         case (maybeFirst, pairs) =>
-          optimizeExpression(InterpolatedString:
+          optimize(InterpolatedString:
             maybeFirst.toList :::
               pairs.flatMap((expr, constant) => expr :: constant.toList)
           ).asInstanceOf[StringExpr]
