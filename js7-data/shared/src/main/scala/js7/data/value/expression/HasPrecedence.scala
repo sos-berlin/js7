@@ -36,7 +36,6 @@ object Precedence:
   val Highest: Int = next()
 
   def toString(a: HasPrecedence, op: String, opPrecedence: Int, b: HasPrecedence): String =
-    HasPrecedence.inParentheses(a, opPrecedence) + " " + 
+    HasPrecedence.inParentheses(a, opPrecedence) + " " +
       op + " " +
       HasPrecedence.inParentheses(b, opPrecedence + 1)
-

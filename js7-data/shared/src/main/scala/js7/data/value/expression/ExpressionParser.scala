@@ -74,7 +74,7 @@ object ExpressionParser:
     trueConstant | falseConstant
 
   private val numericConstant: Parser[NumericConstant] =
-    bigDecimal.map(o => NumericConstant(o))
+    nonNegativeBigDecimal.map(o => NumericConstant(o))
 
   private val singleQuotedStringConstant: Parser[StringConstant] =
     singleQuoted.map(StringConstant.apply)
@@ -213,13 +213,22 @@ object ExpressionParser:
   private val missingConstant: Parser[MissingConstant] =
     keyword("missing").as(MissingConstant)
 
-  private val factor =
+  private val unsignedFactor =
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount |
       missingConstant |
       jobResourceVariable |
       errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
+
+  private val signedFactor =
+    ((symbol("-") ~ w) *> unsignedFactor)
+      .map:
+        case NumericConstant(n) => NumericConstant(-n)
+        case o => Minus(o)
+
+  private val factor =
+    signedFactor | unsignedFactor
 
   private val dotOrArgumentExpression =
     enum Suffix:
@@ -251,13 +260,20 @@ object ExpressionParser:
           case (a, None) => OrMissing(a)
           case (a, Some(b)) => Catch(a, b)
 
-  private val notExpr =
-    notOperator | questionMarkExpr
+  //private val minusOperator: Parser[Expression] =
+  //  defer:
+  //    ((symbol("-") ~ w) *> notExpr)
+  //      .map:
+  //        case NumericConstant(n) => NumericConstant(-n)
+  //        case o => Minus(o)
 
-  private lazy val notOperator: Parser[Expression] =
+  private val notOperator: Parser[Expression] =
     defer:
       ((char('!') ~ w) *> notExpr)
         .map(Not(_))
+
+  private lazy val notExpr =
+    notOperator | questionMarkExpr
 
   private val multiplication: Parser[Expression] =
     val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack

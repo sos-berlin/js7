@@ -411,6 +411,20 @@ final class ExpressionTest extends OurTestSuite:
           Catch(NamedValue("unknown"), 7),
           3))
 
+      // '-' binds stronger than '?' ???
+      // Better use parentheses!
+      testEval("-$unknown? 7 + 3",
+        result = Right(7 + 3),
+        Add(
+          Catch(Minus(NamedValue("unknown")), 7),
+          3))
+
+      testEval("-($unknown ? 7) + 3",
+        result = Right(-7 + 3),
+        Add(
+          Minus(Catch(NamedValue("unknown"), 7)),
+          3))
+
       testEval("1 + 2 ? 7 + 3",
         result = Right(1 + 2 + 3),
         Add(
@@ -626,6 +640,10 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(BigDecimal(21)),
         Multiply(-3, -7))
 
+      testEval("""-3 + -7""",
+        result = Right(BigDecimal(-10)),
+        Add(-3, -7))
+
       testEval("""3.1 * -7.1""",
         result = Right(BigDecimal("-22.01")),
         Multiply(BigDecimal("3.1"), BigDecimal("-7.1")))
@@ -721,7 +739,7 @@ final class ExpressionTest extends OurTestSuite:
         Add(MissingConstant, Divide(1, 0)))
     }
 
-    "-" - {
+    "- (binary operator)" - {
       testEval("""$returnCode - 3""",
         result = Right(-2),
         Substract(LastReturnCode, 3))
@@ -746,6 +764,32 @@ final class ExpressionTest extends OurTestSuite:
       testEval("""missing - 1 / 0""",
         result = Left(Problem("ArithmeticException: Division by zero")),
         Substract(MissingConstant, Divide(1, 0)))
+    }
+
+    "- (unary operator)" - {
+      testEval("""-1""",
+        result = Right(-1),
+        NumericConstant(-1))
+
+      testEval("""- 1""",
+        result = Right(-1),
+        NumericConstant(-1))
+
+      testSyntaxError("""- -1""",
+        Problem:
+          "Error in expression: Parsing failed at position 3 “- ❓-1” · Expected one of \"“''”, “'''”, “JobResource:”, “argument”, “catchCount”, “error”, “false”, “missing”, “true”, “variable”\" · Expected properly terminated '…'-quoted string without non-printable characters (except \\r and \\n) · Expected identifer · Expected a character out of [\"$'(0123456789[`{]")
+
+      testEval("""-(1)""",
+        result = Right(-1),
+        NumericConstant(-1))
+
+      testEval("""-(-1)""",
+        result = Right(1),
+        NumericConstant(1))
+
+      testEval("""-$returnCode""",
+        result = Right(-1),
+        Minus(LastReturnCode))
     }
 
     "++" - {

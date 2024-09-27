@@ -59,6 +59,11 @@ object BasicParsers:
       .string
       .flatMap(o => catchingParser { BigDecimal(o) })
 
+  val nonNegativeBigDecimal: Parser[BigDecimal] =
+    (digits ~ (char('.') ~ digits).?)
+      .string
+      .flatMap(o => catchingParser { BigDecimal(o) })
+
   val simpleIdentifier: Parser[String] =
     (charWhere(isIdentifierStart) ~ charsWhile0(isIdentifierPart))
       .string

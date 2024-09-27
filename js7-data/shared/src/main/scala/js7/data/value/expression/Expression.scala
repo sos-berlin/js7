@@ -128,6 +128,22 @@ object Expression:
         " else " + inParentheses(elseExpr)
 
 
+  final case class Minus(a: Expression)
+  extends NumericExpr, IsPureIfSubexpressionsArePure:
+    def precedence: Int = Precedence.Factor
+
+    def subexpressions: Seq[Expression] =
+      a :: Nil
+
+    protected def evalRaw(using scope: Scope) =
+      a.eval.flatMap:
+        case NumberValue(a) => Right(NumberValue(-a))
+        case a => unexpectedType(NumberValue, a)
+
+    override def toString: String =
+      "-" + inParentheses(a)
+
+
   final case class Not(a: Expression)
   extends BooleanExpr, IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.Factor
