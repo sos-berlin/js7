@@ -8,7 +8,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
-import js7.data.value.NumberValue
+import js7.data.value.{MissingValue, NumberValue}
 import js7.data.value.expression.{Expression, Scope}
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.DirectorState.*
@@ -197,11 +197,14 @@ private object DirectorState:
       Prioritized:
         subagentToExpr.toVector.flatMap: (subagentId, expr) =>
           toScope(subagentId).flatMap: scope =>
-            expr.eval(scope).flatMap(_.toNumberValue) match
+            expr.eval(scope).flatMap(_.asMissingOr[NumberValue]) match
               case Left(problem) =>
                 logger.error(s"$bundleId: $subagentId priority expression failed with $problem")
                 None // Subagent is not selected
-              case Right(o) =>
+              case Right(MissingValue) =>
+                logger.trace(s"$bundleId $subagentId priority expression returns MissingValue")
+                None
+              case Right(o: NumberValue) =>
                 Some(subagentId -> o)
 
     private def bundleId =
