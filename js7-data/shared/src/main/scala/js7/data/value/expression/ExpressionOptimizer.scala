@@ -1,6 +1,6 @@
 package js7.data.value.expression
 
-import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, Minus, MkString, NumericConstant, StringConstant, StringExpr}
+import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, MkString, Negate, NumericConstant, StringConstant, StringExpr}
 import scala.util.chaining.scalaUtilChainingOps
 
 object ExpressionOptimizer:
@@ -9,7 +9,7 @@ object ExpressionOptimizer:
     expression match
       case o: MkString => optimizeMkString(o)
       case o: InterpolatedString => optimizeInterpolated(o)
-      case x @ Minus(NumericConstant(v)) => NumericConstant(-v)
+      case Negate(NumericConstant(v)) => NumericConstant(-v)
       case o => o
 
   private def optimizeMkString(mkString: MkString): StringExpr =

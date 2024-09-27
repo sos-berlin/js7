@@ -97,6 +97,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(7),
         7)
 
+      testEval("-7",
+        result = Right(-7),
+        -7)
+
+      testEval("+7",
+        result = Right(+7),
+        +7)
+
       testEval(Long.MinValue.toString,
         result = Right(Long.MinValue),
         Long.MinValue)
@@ -394,112 +402,133 @@ final class ExpressionTest extends OurTestSuite:
     pending
 
   "Operators" - {
-    "?" - {
-      testEval("error('ERROR') ?",
-        result = Right(MissingValue),
-        OrMissing(ErrorExpr("ERROR")))
+    "Unary postfix operator '?'" - {
+      "?" - {
+        testEval("error('ERROR') ?",
+          result = Right(MissingValue),
+          OrMissing(ErrorExpr("ERROR")))
 
-      testEval("error('ERROR') ? 7 + 3",
-        result = Right(7 + 3),
-        Add(
-          Catch(ErrorExpr("ERROR"), 7),
-          3))
-
-      testEval("$unknown ? 7 + 3",
-        result = Right(7 + 3),
-        Add(
-          Catch(NamedValue("unknown"), 7),
-          3))
-
-      // '-' binds stronger than '?' ???
-      // Better use parentheses!
-      testEval("-$unknown? 7 + 3",
-        result = Right(7 + 3),
-        Add(
-          Catch(Minus(NamedValue("unknown")), 7),
-          3))
-
-      testEval("-($unknown ? 7) + 3",
-        result = Right(-7 + 3),
-        Add(
-          Minus(Catch(NamedValue("unknown"), 7)),
-          3))
-
-      testEval("1 + 2 ? 7 + 3",
-        result = Right(1 + 2 + 3),
-        Add(
+        testEval("error('ERROR') ? 7 + 3",
+          result = Right(7 + 3),
           Add(
-            1,
-            Catch(2, 7)),
-          3))
+            Catch(ErrorExpr("ERROR"), 7),
+            3))
 
-      testEval("1 + (2 ? 7) + 3",
-        result = Right(1 + 2 + 3),
-        Add(
-          Add(1, Catch(2, 7)),
-          3))
+        testEqual(
+          "$unknown ? 7 + 3",
+          "($unknown ? 7) + 3",
+          result = Right(7 + 3),
+          Add(
+            Catch(NamedValue("unknown"), 7),
+            3))
 
-      testEval("""error('ERROR')? ?""",
-        result = Right(MissingValue),
-        OrMissing(OrMissing(ErrorExpr("ERROR"))))
+        testEqual(
+          "-1?",
+          "(-1)?",
+          result = Right(-1),
+          OrMissing(NumericConstant(-1)))
 
-      testEval("""(error('ERROR')?)?""",
-        result = Right(MissingValue),
-        OrMissing(OrMissing(ErrorExpr("ERROR"))))
+        testEqual(
+          "(-$unknown ? 7) + 3",
+          "(-($unknown ? 7)) + 3",
+          result = Right(-7 + 3),
+          Add(
+            Negate(Catch(NamedValue("unknown"), 7)),
+            3))
 
-      testEval("""error('ERROR')? ? 7""",
-        result = Right(7),
-        Catch(OrMissing(ErrorExpr("ERROR")), 7))
+        testEqual(
+          "1 + 2 ? 7 + 3",
+          "1 + (2 ? 7) + 3",
+          result = Right(1 + 2 + 3),
+          Add(
+            Add(
+              1,
+              Catch(2, 7)),
+            3))
 
-      testEval("""error('ERROR')? ? ? 7""",
-        result = Right(7),
-        Catch(OrMissing(OrMissing(ErrorExpr("ERROR"))), 7))
+        testEval("""error('ERROR')? ?""",
+          result = Right(MissingValue),
+          OrMissing(OrMissing(ErrorExpr("ERROR"))))
 
-      // Reserve »??« for future use
-      testSyntaxError("""(1/0) ??""", Problem(
-        "Error in expression: Parsing failed at position 8 “(1/0) ?❓?” · Unexpected “?”"))
+          testEval("""(error('ERROR')?)?""",
+            result = Right(MissingValue),
+            OrMissing(OrMissing(ErrorExpr("ERROR"))))
 
-      testSyntaxError("""(1/0) ?? -1""", Problem(
-        "Error in expression: Parsing failed at position 8 “(1/0) ?❓? -1” · Unexpected “?”"))
+        testEval("""error('ERROR')? ? 7""",
+          result = Right(7),
+          Catch(OrMissing(ErrorExpr("ERROR")), 7))
 
-      testEval("missing?",
-        result = Right(MissingValue),
-        OrMissing(MissingConstant))
+        testEval("""error('ERROR')? ? ? 7""",
+          result = Right(7),
+          Catch(OrMissing(OrMissing(ErrorExpr("ERROR"))), 7))
 
-      testEval("missing ? 7 + 3",
-        result = Right(7 + 3),
-        Add(
-          Catch(MissingConstant, 7),
-          3))
+        // Reserve »??« for future use
+        testSyntaxError("""(1/0) ??""", Problem:
+          """Error in expression: Parsing failed at position 8 “(1/0) ?❓?” · Expected one of "“/*”, “//”" · Unexpected “?”""")
 
-      testEval("""6 / 3?""",
-        result = Right(2),
-        Divide(6, OrMissing(3)))
+        testSyntaxError("""(1/0) ?? -1""", Problem:
+          """Error in expression: Parsing failed at position 8 “(1/0) ?❓? -1” · Expected one of "“/*”, “//”" · Unexpected “?”""")
 
-      testEval("""(1 / 0)?""",
-        result = Right(MissingValue),
-        OrMissing(Divide(1, 0)))
+        testEval("missing?",
+          result = Right(MissingValue),
+          OrMissing(MissingConstant))
 
-      testEval("""(1 / 0) ? -1""",
-        result = Right(-1),
-        Catch(Divide(1, 0), -1))
+        testEval("missing ? 7 + 3",
+          result = Right(7 + 3),
+          Add(
+            Catch(MissingConstant, 7),
+            3))
 
-      testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
-        result = Right(-1),
-        Catch(
+        testEval("""6 / 3?""",
+          result = Right(2),
+          Divide(6, OrMissing(3)))
+
+        testEval("""(1 / 0)?""",
+          result = Right(MissingValue),
+          OrMissing(Divide(1, 0)))
+
+        testEval("""(1 / 0) ? -1""",
+          result = Right(-1),
+          Catch(Divide(1, 0), -1))
+
+        testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
+          result = Right(-1),
           Catch(
-            In(
-              7,
-              ListExpr(List(Divide(1, 0)))),
-            NamedValue("unknown")),
-          -1))
+            Catch(
+              In(
+                7,
+                ListExpr(List(Divide(1, 0)))),
+              NamedValue("unknown")),
+            -1))
 
-      testEval("""$aUnknown ? $bUnknown ? """,
-        result = Right(MissingValue),
-        OrMissing(
-          Catch(
-            NamedValue("aUnknown"),
-            NamedValue("bUnknown"))))
+        testEval("""$aUnknown ? $bUnknown ? """,
+          result = Right(MissingValue),
+          OrMissing(
+            Catch(
+              NamedValue("aUnknown"),
+              NamedValue("bUnknown"))))
+      }
+
+      "Unary prefix '-' and unary postfix operator '?'" - {
+        // '-' as the sign of a number binds strongest, because it belongs to the number !!!
+        testEqual(
+          "-1? 7 + 3",
+          "((-1) ? 7) + 3",
+          result = Right(-1 + 3),
+          Add(
+            Catch(NumericConstant(-1), 7),
+            3))
+
+        // '-' as the negation operator binds weaker than '?' !!!
+        // Better use parentheses !
+        testEqual(
+          "-$unknown? 7 + 3",
+          "-($unknown ? 7) + 3",
+          result = Right(-7 + 3),
+          Add(
+            Negate(Catch(NamedValue("unknown"), 7)),
+            3))
+      }
     }
 
     "==" - {
@@ -766,32 +795,6 @@ final class ExpressionTest extends OurTestSuite:
         Substract(MissingConstant, Divide(1, 0)))
     }
 
-    "- (unary operator)" - {
-      testEval("""-1""",
-        result = Right(-1),
-        NumericConstant(-1))
-
-      testEval("""- 1""",
-        result = Right(-1),
-        NumericConstant(-1))
-
-      testSyntaxError("""- -1""",
-        Problem:
-          "Error in expression: Parsing failed at position 3 “- ❓-1” · Expected one of \"“''”, “'''”, “JobResource:”, “argument”, “catchCount”, “error”, “false”, “missing”, “true”, “variable”\" · Expected properly terminated '…'-quoted string without non-printable characters (except \\r and \\n) · Expected identifer · Expected a character out of [\"$'(0123456789[`{]")
-
-      testEval("""-(1)""",
-        result = Right(-1),
-        NumericConstant(-1))
-
-      testEval("""-(-1)""",
-        result = Right(1),
-        NumericConstant(1))
-
-      testEval("""-$returnCode""",
-        result = Right(-1),
-        Minus(LastReturnCode))
-    }
-
     "++" - {
       testEval("""'->' ++ $returnCode ++ '<-'""",
         result = Right("->1<-"),
@@ -809,22 +812,56 @@ final class ExpressionTest extends OurTestSuite:
     }
   }
 
-  "!" - {
-    testEval("!false",
-      result = Right(true),
-      Not(false))
+  "Unary prefix operators" - {
+    "- (unary operator)" - {
+      // -7 is a numericConstant, not a negation
+      // -$a is a negation
+      testEval("""-1""",
+        result = Right(-1),
+        NumericConstant(-1))
 
-    testEval("! true",
-      result = Right(false),
-      Not(true))
+      testSyntaxError("""- 1""", Problem:
+        "Error in expression: Parsing failed at position 2 “-❓ 1” · Expected a character out of [0123456789]")
 
-    testEval("!!true",
-      result = Right(true),
-      Not(Not(true)))
+      testSyntaxError("""- -1""", Problem:
+        """Error in expression: Parsing failed at position 2 “-❓ -1” · Expected a character out of [0123456789]""")
 
-    "Not" in:
-      forAll((bool: Boolean) => assert(
-        Not(bool).eval == Right(BooleanValue(!bool))))
+      testEval("""-(1)""",
+        result = Right(-1),
+        Negate(NumericConstant(1)))
+
+      testEval("""-(-1)""",
+        result = Right(1),
+        Negate(NumericConstant(-1)))
+
+      testEval("""-$returnCode""",
+        result = Right(-1),
+        Negate(LastReturnCode))
+    }
+
+    "!" - {
+      testEval("!false",
+        result = Right(true),
+        Not(false))
+
+      testEval("! true",
+        result = Right(false),
+        Not(true))
+
+      testSyntaxError("!!true", Problem:
+        """Error in expression: Parsing failed at position 2 “!❓!true” · Expected one of "“/*”, “//”" · Unexpected “!”""")
+
+      testSyntaxError("! !true", Problem:
+        """Error in expression: Parsing failed at position 3 “! ❓!true” · Expected one of "“''”, “'''”, “JobResource:”, “argument”, “catchCount”, “error”, “false”, “missing”, “true”, “variable”" · Expected properly terminated '…'-quoted string without non-printable characters (except \r and \n) · Expected identifer · Expected a character out of ["$'(+-0123456789[`{]""")
+
+      testEval("!(!true)",
+        result = Right(true),
+        Not(Not(true)))
+
+      "Not" in:
+        forAll((bool: Boolean) => assert(
+          Not(bool).eval == Right(BooleanValue(!bool))))
+    }
   }
 
   "function call" - {
@@ -1162,8 +1199,8 @@ final class ExpressionTest extends OurTestSuite:
   }
 
   "if then else" - {
-    testSyntaxError(""" 1 + if true then 1 else 2 """,
-      Problem("Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …” · Expected character '('"))
+    testSyntaxError(""" 1 + if true then 1 else 2 """, Problem:
+      "Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …” · Expected character '('")
 
     testEval(""" 1 + (if true then 2 else 3) """,
       result = Right(3),
@@ -1270,5 +1307,12 @@ final class ExpressionTest extends OurTestSuite:
   : Unit =
     exprString in:
       val checked = parseExpressionOrFunction(exprString.trim)
-      assert(checked == Right(expression))
-      assert(expression.eval == result)
+      assert(checked == Right(expression) && expression.eval == result)
+
+  private def testEqual(exprString1: String, exprString2: String, result: Checked[Value], expression: Expression)
+    (using scope: Scope, pos: source.Position)
+  : Unit =
+    s"$exprString1 === $exprString2" in:
+      val checked1 = parseExpressionOrFunction(exprString1.trim)
+      val checked2 = parseExpressionOrFunction(exprString2.trim)
+      assert(checked1 == checked2 && checked1 == Right(expression) && expression.eval == result)

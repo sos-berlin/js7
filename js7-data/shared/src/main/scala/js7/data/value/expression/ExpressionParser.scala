@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, defer, end, failWith, not, pure, string}
+import cats.parse.Parser.{char, charWhere, charsWhile, charsWhile0, defer, end, failWith, not, pure, string}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
@@ -74,7 +74,7 @@ object ExpressionParser:
     trueConstant | falseConstant
 
   private val numericConstant: Parser[NumericConstant] =
-    nonNegativeBigDecimal.map(o => NumericConstant(o))
+    bigDecimal.map(o => NumericConstant(o))
 
   private val singleQuotedStringConstant: Parser[StringConstant] =
     singleQuoted.map(StringConstant.apply)
@@ -109,7 +109,7 @@ object ExpressionParser:
     interpolatedStringContent.with1.surroundedBy(char('"'))
 
   private val objectExpr: Parser[ObjectExpr] =
-    curly(commaSequence(identifier ~ ((w ~ char(':') ~ w) *> expression)))
+    curly(commaSequence(identifier ~ ((w ~ symbol(":") ~ w) *> expression)))
       .flatMap: pairs =>
         checkedToParser(pairs.checkUniqueness(_._1))
           .as(ObjectExpr(pairs.toMap))
@@ -131,7 +131,7 @@ object ExpressionParser:
     .flatMap(o => checkedToParser(JobResourcePath.checked(o)))
 
   private val jobResourceVariable: Parser[JobResourceVariable] =
-    (string("JobResource:") *> jobResourcePath ~ (char(':') *> identifier).?)
+    (string("JobResource:") *> jobResourcePath ~ (symbol(":") *> identifier).?)
       .map((JobResourceVariable.apply(_, _)).tupled)
 
   private val argumentFunctionCall: Parser[NamedValue] =
@@ -165,7 +165,7 @@ object ExpressionParser:
 
   private val functionCall: Parser[Expression] =
     (identifier ~~ inParentheses(commaSequence(
-      (identifier <* (w ~ char('=') ~ w)).backtrack.? ~~ expression/*OrFunction*/))
+      (identifier <* (w ~ symbol("=") ~ w)).backtrack.? ~~ expression/*OrFunction*/))
     ).flatMap:
       case ("toBoolean", arguments) =>
         arguments match
@@ -213,22 +213,13 @@ object ExpressionParser:
   private val missingConstant: Parser[MissingConstant] =
     keyword("missing").as(MissingConstant)
 
-  private val unsignedFactor =
+  private val factor =
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount |
       missingConstant |
       jobResourceVariable |
       errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
-
-  private val signedFactor =
-    ((symbol("-") ~ w) *> unsignedFactor)
-      .map:
-        case NumericConstant(n) => NumericConstant(-n)
-        case o => Minus(o)
-
-  private val factor =
-    signedFactor | unsignedFactor
 
   private val dotOrArgumentExpression =
     enum Suffix:
@@ -254,30 +245,25 @@ object ExpressionParser:
         .last
 
   private val questionMarkExpr: Parser[Expression] =
-    ((dotOrArgumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> dotOrArgumentExpression.?).rep0)
+    ((dotOrArgumentExpression <* w) ~ (symbol("?") *> w *> dotOrArgumentExpression.?).rep0)
       .map: (a, more) =>
         more.foldLeft(a):
           case (a, None) => OrMissing(a)
           case (a, Some(b)) => Catch(a, b)
 
-  //private val minusOperator: Parser[Expression] =
-  //  defer:
-  //    ((symbol("-") ~ w) *> notExpr)
-  //      .map:
-  //        case NumericConstant(n) => NumericConstant(-n)
-  //        case o => Minus(o)
+  private val negate: Parser[Expression] =
+    ((symbol("-") *> w *> not(numericConstant)).backtrack *> defer(questionMarkExpr))
+      .map(Negate(_))
 
   private val notOperator: Parser[Expression] =
-    defer:
-      ((char('!') ~ w) *> notExpr)
-        .map(Not(_))
+    ((symbol("!") ~ w) *> defer(questionMarkExpr))
+      .map(Not(_))
 
-  private lazy val notExpr =
-    notOperator | questionMarkExpr
+  private val prefixOperatorExpr: Parser[Expression] =
+    notOperator | negate | questionMarkExpr
 
   private val multiplication: Parser[Expression] =
-    val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
-    leftRecurse(notExpr, char('*').as('*') | slash, notExpr):
+    leftRecurse(prefixOperatorExpr, symbol("*").as('*') | symbol("/").as('/'), prefixOperatorExpr):
       case (a, ('*', b)) => Multiply(a, b)
       case (a, ('/', b)) => Divide(a, b)
       case (_, (x, _)) => throw MatchError(x)
@@ -331,6 +317,7 @@ object ExpressionParser:
   val constantExpression: Parser[Expression] =
     expression
 
-  lazy val expression: Parser[Expression] =
+  // Not a val due to recursive usage
+  def expression: Parser[Expression] =
     defer:
       ifThenElseOperation

@@ -55,7 +55,7 @@ object BasicParsers:
       .flatMap(o => catchingParser { o.toInt })
 
   val bigDecimal: Parser[BigDecimal] =
-    (char('-').string.?.with1 ~ digits ~ (char('.') ~ digits).?)
+    (charIn("+-").string.?.with1 ~ digits ~ (char('.') ~ digits).?)
       .string
       .flatMap(o => catchingParser { BigDecimal(o) })
 

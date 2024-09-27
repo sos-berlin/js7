@@ -119,7 +119,8 @@ private trait SubagentEventListener:
             val updatedStampedSeq = updatedStampedSeqSeq.flatten
             val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
             val events = updatedStampedSeq.view.map(_.value)
-              .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
+              .concat(lastEventId.map:
+                subagentId <-: SubagentEventsObserved(_))
               .toVector
             // TODO Save Stamped timestamp
             journal

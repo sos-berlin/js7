@@ -128,7 +128,7 @@ object Expression:
         " else " + inParentheses(elseExpr)
 
 
-  final case class Minus(a: Expression)
+  final case class Negate(a: Expression)
   extends NumericExpr, IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.Factor
 
