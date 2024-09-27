@@ -100,14 +100,14 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingI
     eventWatch.await[OrderTerminated](_.key == orderId)
     deleteItems(workflow.path, subagentBundle.path)
 
-  "Use $js7SubagentProcessCount and $js7BundleSubagentProcessCount" in :
+  "Use $js7SubagentProcessCount and $js7ClusterSubagentProcessCount" in :
     startSubagets
 
     val subagentBundle = SubagentBundle(
       SubagentBundleId("BUNDLE-2"),
       Map(
         aSubagentId -> expr("1"),
-        bSubagentId -> expr("2 - ($js7SubagentProcessCount + $js7BundleSubagentProcessCount)")))
+        bSubagentId -> expr("2 - ($js7SubagentProcessCount + $js7ClusterSubagentProcessCount)")))
 
     val workflow = Workflow(
       WorkflowPath("WORKFLOW-2"),

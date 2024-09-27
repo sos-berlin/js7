@@ -268,7 +268,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .headL
 
   private def bundleSubagentProcessCountScope(bundleId: SubagentBundleId) =
-    val Key = "js7BundleSubagentProcessCount"
+    val Key = "js7ClusterSubagentProcessCount"
     new Scope:
       override val nameToCheckedValue =
         new StandardMapView[String, Checked[Value]]:
