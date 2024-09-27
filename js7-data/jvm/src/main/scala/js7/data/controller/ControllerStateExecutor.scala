@@ -127,8 +127,8 @@ final case class ControllerStateExecutor private(
       .map(forciblyDetachOrder(_, agentPath))
       .toVector.sequence
       .map(_.view.flatten)
-      .map(ordersDetached =>
-        agentResetStarted ++ subagentReset ++ ordersDetached ++ itemsDetached)
+      .map: ordersDetached =>
+        agentResetStarted ++ subagentReset ++ ordersDetached ++ itemsDetached
       .map(_.toVector)
 
   private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)

@@ -3,6 +3,7 @@ package js7.data.event
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.event.EventDrivenState.*
+import scala.util.boundary
 
 trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends BasicState[Self]:
   this: Self =>
@@ -14,24 +15,38 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
   def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] =
     var state = this
     var problem: Problem = null
-    for stamped <- stampedEvents.iterator if problem == null do
-      state.applyEvent(stamped.value) match
-        case Left(o) =>
-          problem = o withPrefix s"Event '$stamped' cannot be applied to '${companion.name}':"
-        case Right(s) =>
-          state = s
-    if problem != null then Left(problem) else Right(state)
+
+    boundary:
+      for stamped <- stampedEvents.iterator do
+        state.applyEvent(stamped.value) match
+          case Left(o) =>
+            problem = o withPrefix s"Event '$stamped' cannot be applied to '${companion.name}':"
+            boundary.break()
+          case Right(s) =>
+            state = s
+
+    if problem != null then
+      Left(problem)
+    else
+      Right(state)
 
   def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     var state = this
     var problem: Problem = null
-    for keyedEvent <- keyedEvents.iterator if problem == null do
-      state.applyEvent(keyedEvent) match
-        case Left(o) =>
-          problem = o withPrefix s"Event '$keyedEvent' cannot be applied to '${companion.name}':"
-        case Right(s) =>
-          state = s
-    if problem != null then Left(problem) else Right(state)
+
+    boundary:
+      for keyedEvent <- keyedEvents.iterator do
+        state.applyEvent(keyedEvent) match
+          case Left(o) =>
+            problem = o withPrefix s"Event '$keyedEvent' cannot be applied to '${companion.name}':"
+            boundary.break()
+          case Right(s) =>
+            state = s
+
+    if problem != null then
+      Left(problem)
+    else
+      Right(state)
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))

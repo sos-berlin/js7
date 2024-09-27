@@ -212,7 +212,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   // Return Nil or List(OrderJoined)
   private def joinedEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] =
     if order.parent.isDefined
-      && (order.isDetached || order.isAttached)
+      && order.isDetachedOrAttached
       && (order.isState[FailedInFork] || order.isState[Cancelled])
     then
       for
@@ -357,7 +357,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         .orElse:
           order.ifState[Order.DelayingRetry].map: order =>
             order.awokeEvents
-              .map(_.emptyToNone.map(OrderGoes :: _))
+              .map(_.ifNonEmpty.map(OrderGoes :: _))
         .orElse:
           order.ifState[Order.DelayedAfterError].map: _ =>
             Right(Some(OrderGoes :: OrderAwoke :: Nil))
