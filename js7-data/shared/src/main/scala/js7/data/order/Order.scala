@@ -867,6 +867,12 @@ final case class Order[+S <: Order.State](
     yield
       prepare :+ OrderTransferred(to.id /: position)
 
+  override def toString =
+    s"Order($id · $state${isSuspended ?? " · suspended"
+    }${attachedState.fold("")(o => s" · $o")
+    }${mark.fold("")(o => s" · $o")
+    }${if stickySubagents.isEmpty then "" else s" · sticky=${stickySubagents.mkString}"
+    } · $workflowPosition · ${historicOutcomes.size} outcomes · $lastOutcome)"
 
 object Order:
 
