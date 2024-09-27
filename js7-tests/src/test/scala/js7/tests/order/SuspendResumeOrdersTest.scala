@@ -84,11 +84,13 @@ final class SuspendResumeOrdersTest
         controller.api.addOrder:
           FreshOrder(orderId, workflow.path, scheduledFor = scheduledFor, deleteWhenTerminated = true)
         .await(99.s).orThrow
-        eventWatch.await[OrderAttached](_.key == orderId)
+        eventWatch.awaitNext[OrderAttached](_.key == orderId)
 
         execCmd(SuspendOrders(Set(orderId)))
-        eventWatch.await[OrderSuspended](_.key == orderId)
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
         execCmd(ResumeOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderResumed](_.key == orderId)
 
         // ResumeOrders command expects a suspended or suspending order
         assert:
@@ -96,7 +98,7 @@ final class SuspendResumeOrdersTest
             CannotResumeOrderProblem
 
         execCmd(GoOrder(orderId, Position(0)))
-        eventWatch.await[OrderFinished](_.key == orderId)
+        eventWatch.awaitNext[OrderFinished](_.key == orderId)
         assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
           OrderAdded(workflow.id, scheduledFor = scheduledFor, deleteWhenTerminated = true),
           OrderAttachable(agentPath),
