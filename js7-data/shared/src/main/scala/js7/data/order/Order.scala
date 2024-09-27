@@ -881,7 +881,7 @@ final case class Order[+S <: Order.State](
     }${attachedState.fold("")(o => s" · $o")
     }${mark.fold("")(o => s" · $o")
     }${if stickySubagents.isEmpty then "" else s" · sticky=${stickySubagents.mkString}"
-    } · $workflowPosition · ${historicOutcomes.size} outcomes · $lastOutcome)"
+    } · $workflowPosition · ${historicOutcomes.size} outcomes: $lastOutcome)"
 
 object Order:
 

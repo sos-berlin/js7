@@ -472,7 +472,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderRetrying(
     delayedUntil: Option[Timestamp] = None,
     movedTo: Option[Position] = None /*COMPATIBLE with v2.7.1*/)
-  extends OrderActorEvent
+  extends OrderActorEvent:
+    override def toString =
+      if delayedUntil.isEmpty && movedTo.isEmpty then
+        "OrderRetrying"
+      else
+        (delayedUntil.map(_.toString) ++ movedTo)
+          .mkString("OrderRetrying(", " ", ")")
 
 
   type OrderAwoke = OrderAwoke.type
