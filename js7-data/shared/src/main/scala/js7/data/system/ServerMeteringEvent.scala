@@ -10,6 +10,7 @@ import js7.data.event.{NoKeyEvent, NonPersistentEvent}
 import js7.data.system.ServerMeteringEvent.*
 import js7.data.value.expression.Scope
 import js7.data.value.{MissingValue, NumberValue, Value}
+import scala.collection.MapView
 
 final case class ServerMeteringEvent(
   cpuLoad: Option[Double],
@@ -22,12 +23,12 @@ extends NoKeyEvent, NonPersistentEvent:
 
   def toScope: Scope =
     new Scope:
-      override val nameToCheckedValue =
+      override val nameToCheckedValue: MapView[String, Checked[Value]] =
         new StandardMapView[String, Checked[Value]]:
           def get(key: String) =
             key match
               case "js7CpuLoad" =>
-                Some(Right(cpuLoad.fold_(MissingValue, NumberValue(_))))
+                Some(Right(cpuLoad.filter(_ >= 0.0).fold_(MissingValue, NumberValue(_))))
               case "js7CommittedVirtualMemorySize" =>
                 someValue(committedVirtualMemorySize)
               case "js7FreeMemorySize" =>
@@ -50,12 +51,13 @@ object ServerMeteringEvent:
   def fromCurrentMxBean(): ServerMeteringEvent =
     val bean = getPlatformMXBean(classOf[com.sun.management.OperatingSystemMXBean])
     ServerMeteringEvent(
-      cpuLoad =
-        val double = bean.getCpuLoad
-        !double.isNaN ? double,
+      cpuLoad = normalizePositive(bean.getCpuLoad),
       committedVirtualMemorySize = bean.getCommittedVirtualMemorySize,
       freeMemorySize = bean.getFreeMemorySize,
       totalMemorySize = bean.getTotalMemorySize)
+
+  private def normalizePositive(double: Double): Option[Double] =
+    (!double.isNaN && double >= 0) ? double
 
   given Codec.AsObject[ServerMeteringEvent] = deriveCodec[ServerMeteringEvent]
 
