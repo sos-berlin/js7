@@ -124,8 +124,8 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
         Timestamp(s"${tomorrow}T00:00:00Z"), schemeIndex = 0, index = 1,
         next = Timestamp(s"${today}T23:59:59Z"))),
       OrderDetached,
-      OrderOutcomeAdded(OrderOutcome.Disrupted(AgentResetProblem(agentPath))),
       OrderStateReset,
+      OrderOutcomeAdded(OrderOutcome.Disrupted(AgentResetProblem(agentPath))),
       OrderFailed(Position(0) / "try+0" % 1)))
 
     // The Director has terminated the BareSubagent, too

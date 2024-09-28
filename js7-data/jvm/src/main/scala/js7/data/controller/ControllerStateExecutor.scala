@@ -22,7 +22,7 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, Simpl
 import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderProcessed, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
@@ -134,24 +134,13 @@ final case class ControllerStateExecutor private(
   private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
   : Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
-    val stateEvents: Vector[OrderProcessed | OrderAwoke | OrderMoved] =
-      order.ifState[Order.Processing].map: _ =>
-        Vector(OrderProcessed(outcome))
-      .orElse:
-        order.ifState[Order.DelayingRetry].map: order =>
-          order.awokeEvents.toOption/*ignore problem*/.toVector.flatten
-      .orElse:
-        order.ifState[Order.DelayedAfterError].map: _ =>
-          Vector(OrderAwoke)
-      .getOrElse:
-        Vector.empty
-    val detached = (stateEvents :+ OrderDetached).map(order.id <-: _)
     for
-      detachedState <- controllerState.applyEvents(detached)
+      orderEvents <- order.forceDetach(outcome).map(_._1).map(_.map(order.id <-: _))
+      detachedState <- controllerState.applyEvents(orderEvents)
       fail <- OrderEventSource(detachedState)
         .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
     yield
-      detached ++ fail.view.map(order.id <-: _)
+      orderEvents ++ fail.view.map(order.id <-: _)
 
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[ControllerStateExecutor] =

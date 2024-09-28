@@ -848,6 +848,36 @@ final case class Order[+S <: Order.State](
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
 
+  def forceDetach(outcome: OrderOutcome.Disrupted)
+  : Checked[(Vector[OrderCoreEvent], Order[Order.State])] =
+    var _order = Checked(this: Order[State])
+    val _events = Vector.newBuilder[OrderCoreEvent]
+
+    for order <- _order do
+      order.ifState[Order.Processing].map: _ =>
+        val event = OrderProcessed(outcome)
+        _events += event
+        _order = order.applyEvent(event)
+
+    for order <- _order do
+      val event = OrderDetached
+      _events += event
+      _order = order.applyEvent(event)
+
+    // Reset state to allow to fail the order
+    for order <- _order do
+      val events = order.resetState
+      _events ++= events
+      _order = order.applyEvents(events)
+
+    for order <- _order do
+      order.ifState[Order.DelayedAfterError].map: _ =>
+        val event = OrderAwoke
+        _events += event
+        _order = order.applyEvent(event)
+
+    _order.map(o => (_events.result(), o))
+
   /** Reset the Order's State if possible. */
   def resetState: List[OrderActorEvent] =
     state match
