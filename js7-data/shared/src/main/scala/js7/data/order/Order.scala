@@ -113,7 +113,7 @@ final case class Order[+S <: Order.State](
         Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
 
       case OrderStarted =>
-        check(isState[Fresh] && !isSuspendedOrStopped && (isDetached || isAttached),
+        check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(state = Ready))
 
       case OrderProcessingStarted(subagentId, subagentBundleId, stick) =>
@@ -176,7 +176,7 @@ final case class Order[+S <: Order.State](
       case OrderCatched(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
-          (isAttached | isDetached),
+          isDetachedOrAttached,
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -187,7 +187,7 @@ final case class Order[+S <: Order.State](
       case OrderCaught(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
           !isSuspendedOrStopped &&
-          (isAttached | isDetached),
+          isDetachedOrAttached,
           locally:
             var h = outcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)
@@ -200,7 +200,7 @@ final case class Order[+S <: Order.State](
               historicOutcomes = h))
 
       case OrderRetrying(maybeDelayUntil, movedTo) =>
-        check(isState[Ready] && !isSuspendedOrStopped && (isDetached || isAttached),
+        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
           maybeDelayUntil
             .fold[Order[State]](this/*Ready*/)(o => copy(
               state = DelayingRetry(o)))
@@ -211,11 +211,11 @@ final case class Order[+S <: Order.State](
         check(
           (isState[DelayingRetry] || isState[DelayedAfterError])
             && !isSuspendedOrStopped
-            && (isDetached || isAttached),
+            && isDetachedOrAttached,
           copy(state = Ready))
 
       case OrderForked(children) =>
-        check(isState[Ready] && !isSuspendedOrStopped && (isDetached || isAttached),
+        check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
           copy(
             state = Forked(children),
             mark = cleanMark))
@@ -228,7 +228,7 @@ final case class Order[+S <: Order.State](
 
       case OrderMoved(to, _) =>
         check((isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles])
-          && (isDetached || isAttached),
+          && isDetachedOrAttached,
           withPosition(to).copy(
             isResumed = false,
             state = if isState[Fresh] then state else Ready))
@@ -499,7 +499,7 @@ final case class Order[+S <: Order.State](
 
       case OrderStickySubagentEntered(agentPath, subagentBundleId) =>
         check(isState[IsFreshOrReady]
-          && (isAttached || isDetached)
+          && isDetachedOrAttached
           && !isSuspendedOrStopped
           && !stickySubagents.exists(_.agentPath == agentPath),
           withPosition(position / BranchId.StickySubagent % 0)
@@ -507,7 +507,7 @@ final case class Order[+S <: Order.State](
               stickySubagents = StickySubagent(agentPath, subagentBundleId) :: stickySubagents))
 
       case OrderStickySubagentLeaved =>
-        if (isAttached || isDetached) && stickySubagents.nonEmpty then
+        if isDetachedOrAttached && stickySubagents.nonEmpty then
           position.parent
             .toChecked(inapplicableProblem)
             .map: stickySubagentPosition =>
@@ -533,7 +533,7 @@ final case class Order[+S <: Order.State](
           this)
 
       case OrderCyclingPrepared(cycleState) =>
-        check((isDetached || isAttached)
+        check((isDetachedOrAttached)
           & (isState[Ready] || isState[BetweenCycles])
           & !isSuspendedOrStopped,
           copy(
@@ -545,7 +545,7 @@ final case class Order[+S <: Order.State](
             val branchId = BranchId.cycle(
               cycleState.copy(
                 next = cycleState.next))
-            check((isDetached || isAttached) & !isSuspendedOrStopped,
+            check((isDetachedOrAttached) & !isSuspendedOrStopped,
               withPosition(position / branchId % 0)
                 .copy(
                   state = Ready))
@@ -585,7 +585,7 @@ final case class Order[+S <: Order.State](
 
   def isFailable: Boolean =
     !isSuspendedOrStopped &&
-      (isDetached || isAttached) &&
+      isDetachedOrAttached &&
       state.match
         case _: IsFreshOrReady => true
         case _: Processed => true
@@ -671,6 +671,9 @@ final case class Order[+S <: Order.State](
       case Some(Attached(agentPath)) => s"attached to $agentPath"
       case Some(Detaching(agentPath)) => s"detaching from $agentPath"
 
+  def isDetachedOrAttached: Boolean =
+    isDetached || isAttached
+
   /** `true` iff order is going to be attached to an Agent.. */
   def isAttaching: Boolean =
     attachedState.exists(_.isInstanceOf[Attaching])
@@ -721,7 +724,7 @@ final case class Order[+S <: Order.State](
 
   /** OrderGoMarked and OrderGoes are applicable only if Order is in specific waiting states. */
   def isGoCommandable: Boolean =
-    (isDetached || isAttached) &&
+    isDetachedOrAttached &&
       isState[BetweenCycles]
       || isState[DelayingRetry]
       || isState[DelayedAfterError]
@@ -750,7 +753,7 @@ final case class Order[+S <: Order.State](
       || isState[Stopped]
       || isState[Failed]
       || isState[Broken]
-    ) && (isDetached || isAttached)
+    ) && isDetachedOrAttached
 
   private def cleanMark: Option[OrderMark] =
     mark match
@@ -773,7 +776,7 @@ final case class Order[+S <: Order.State](
    */
   def isSuspendibleNow: Boolean =
     (isState[IsFreshOrReady] || isState[ProcessingKilled] && isSuspendingWithKill) &&
-      (isDetached || isAttached)
+      isDetachedOrAttached
 
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])
@@ -800,7 +803,7 @@ final case class Order[+S <: Order.State](
       || isState[StoppedWhileFresh]
       || isState[Failed] && !isSuspendedOrStopped/*strict for test*/ && isDetached
       || isState[Broken]
-    ) && (isDetached || isAttached)
+    ) && isDetachedOrAttached
 
   def isProcessable: Boolean =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
@@ -848,7 +851,7 @@ final case class Order[+S <: Order.State](
   /** Reset the Order's State if possible. */
   def resetState: List[OrderActorEvent] =
     state match
-      case state: IsResettable if isAttached || isDetached =>
+      case state: IsResettable if isDetachedOrAttached =>
         state.reset
       case _ =>
         Nil

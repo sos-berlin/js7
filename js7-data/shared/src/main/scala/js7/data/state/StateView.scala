@@ -157,7 +157,7 @@ trait StateView extends ItemContainer:
     lazy val endReached = order.state == Order.Ready &&
       order.position.parent.contains(parent.position) &&
       instruction(order.workflowPosition).isInstanceOf[End]
-    (order.isAttached || order.isDetached) &&
+    order.isDetachedOrAttached &&
       order.attachedState == parent.attachedState &&
       (order.state.eq(FailedInFork) || endReached)
 
