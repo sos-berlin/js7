@@ -7,12 +7,15 @@ trait IsEmpty[A]:
 
   def isEmpty(a: A): Boolean
 
-  final def isNonEmpty(a: A): Boolean =
-    !isEmpty(a)
-
   /** None if a isEmpty, otherwise Some(a). */
   def ifNonEmpty(a: A): Option[A] =
     if isEmpty(a) then None else Some(a)
+
+  def ifEmpty(a: A, replacementForEmpty: => A): A =
+    if isEmpty(a) then
+      replacementForEmpty
+    else
+      a
 
 
 object IsEmpty:
@@ -39,6 +42,12 @@ object IsEmpty:
     /** Wraps this in Some if nonEmpty, or returns None if empty */
     def ifNonEmpty: Option[A] =
       typeClassInstance.ifNonEmpty(self)
+
+    inline def ??(replacementForEmpty: => A): A =
+      ifEmpty(replacementForEmpty)
+
+    def ifEmpty(replacementForEmpty: => A): A =
+      typeClassInstance.ifEmpty(self, replacementForEmpty)
 
 
   object syntax:

@@ -158,7 +158,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson,
       "clusterState" -> o.clusterState.asJson,
-      "clusterNodeProblems" -> o.nodeToLossNotConfirmedProblem.values.ifNonEmpty.asJson,
+      "clusterNodeProblems" -> o.nodeToLossNotConfirmedProblem.values.??.asJson,
       "platformInfo" -> o.platformInfo.asJson)
 
   implicit val jsonDecoder: Decoder[AgentRefState] =

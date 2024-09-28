@@ -46,9 +46,9 @@ final class IsEmptyTest extends OurTestSuite:
     assert(testIsEmpty(emptySpecial))
     assert(!testIsEmpty(nonEmptySpecial))
 
-  "??" in:
+  "monadic ??, ifNonEmpty" in:
     assert(emptyMap.?? == None)
-    assert(Map(1 -> "").?? == Some(Map(1 -> "")))
+    assert(nonEmptyMap.?? == Some(nonEmptyMap))
 
     assert("".?? == None)
     assert("X".?? == Some("X"))
@@ -71,6 +71,48 @@ final class IsEmptyTest extends OurTestSuite:
 
     assert(emptySpecial.?? == None)
     assert(nonEmptySpecial.?? == Some(nonEmptySpecial))
+
+  "dyadic ??, ifEmpty" in:
+    assert(emptyMap ?? nonEmptyMap == nonEmptyMap)
+    assert(emptyMap.ifEmpty(nonEmptyMap) == nonEmptyMap)
+    assert(nonEmptyMap.??(Map(7 -> "X")) == nonEmptyMap)
+    assert(nonEmptyMap.ifEmpty(Map(7 -> "X")) == nonEmptyMap)
+
+    assert("" ?? "A" == "A")
+    assert("".ifEmpty("A") == "A")
+    assert("X" ?? "A" == "X")
+    assert("X".ifEmpty("A") == "X")
+
+    assert(emptySeq ?? Seq(7) == Seq(7))
+    assert(emptySeq.ifEmpty(Seq(7)) == Seq(7))
+    assert(nonEmptySeq ?? Seq(7) == nonEmptySeq)
+    assert(nonEmptySeq.ifEmpty(Seq(7)) == nonEmptySeq)
+
+    assert(none ?? Some(7) == Some(7))
+    assert(none.ifEmpty(Some(7)) == Some(7))
+    assert(some ?? Some(7) == some)
+    assert(some.ifEmpty(Some(7)) == some)
+
+    // Boolean ?? operator conflicts with dyadic operator (see test below)
+    //assert(false ?? true == true)
+    assert(false.ifEmpty(true) == true)
+    //assert(true ?? false == true)
+    assert(true.ifEmpty(false) == true)
+
+    assert(0 ?? 7 == 7)
+    assert(0.ifEmpty(7) == 7)
+    assert(1 ?? 7 == 1)
+    assert(1.ifEmpty(7) == 1)
+
+    assert("" ?? "-" == "-")
+    assert("".ifEmpty("-") == "-")
+    assert("x" ?? "-" == "x")
+    assert("x".ifEmpty("-") == "x")
+
+    assert(emptySpecial ?? Special(7) == Special(7))
+    assert(emptySpecial.ifEmpty(Special(7)) == Special(7))
+    assert(nonEmptySpecial ?? Special(7) == nonEmptySpecial)
+    assert(nonEmptySpecial.ifEmpty(Special(7)) == nonEmptySpecial)
 
   "Monadic boolean ?? operator and dyadic ?? operator" in:
     // Boolean ?? conflicts with dyadic operator
