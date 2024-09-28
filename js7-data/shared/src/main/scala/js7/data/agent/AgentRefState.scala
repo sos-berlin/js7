@@ -7,6 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
@@ -157,7 +158,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson,
       "clusterState" -> o.clusterState.asJson,
-      "clusterNodeProblems" -> emptyToNone(o.nodeToLossNotConfirmedProblem.values).asJson,
+      "clusterNodeProblems" -> o.nodeToLossNotConfirmedProblem.values.ifNonEmpty.asJson,
       "platformInfo" -> o.platformInfo.asJson)
 
   implicit val jsonDecoder: Decoder[AgentRefState] =

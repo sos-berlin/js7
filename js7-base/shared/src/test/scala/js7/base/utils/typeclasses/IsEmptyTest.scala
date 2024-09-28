@@ -60,8 +60,8 @@ final class IsEmptyTest extends OurTestSuite:
     assert(some.?? == Some(some))  // !!!
 
     // Boolean ?? operator conflicts with dyadic operator (see test below)
-    assert(false.emptyToNone == None)
-    assert(true.emptyToNone == Some(true))
+    assert(false.ifNonEmpty == None)
+    assert(true.ifNonEmpty == Some(true))
 
     assert(0.?? == None)
     assert(1.?? == Some(1))

@@ -77,7 +77,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           (orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
           o.fold(orElse)(events => Right(events.map(order.id <-: _)))
 
-        ifDefinedElse(awokeEvent(order).emptyToNone):
+        ifDefinedElse(awokeEvent(order).ifNonEmpty):
           joinedEvents(order).flatMap: events =>
             if events.nonEmpty then
               Right(events)
@@ -233,7 +233,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           Some(events)
     .orElse:
       order.ifState[DelayedAfterError].flatMap: order =>
-        awakeFromDelayedAfterError(order).emptyToNone
+        awakeFromDelayedAfterError(order).ifNonEmpty
     .getOrElse:
       Nil
 

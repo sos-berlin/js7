@@ -36,7 +36,7 @@ extends EventInstructionExecutor:
                     .map(OrderNoticesExpected.Expected(boardState.path, _)))
               yield
                 expectNotices.tryFulfill(order, expected, state)
-                  .emptyToNone.getOrElse:
+                  .ifNonEmpty.getOrElse:
                     OrderNoticesExpected(expected) :: Nil
         .orElse(order
           .ifState[Order.ExpectingNotices]

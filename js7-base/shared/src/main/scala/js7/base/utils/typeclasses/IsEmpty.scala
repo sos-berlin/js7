@@ -11,7 +11,7 @@ trait IsEmpty[A]:
     !isEmpty(a)
 
   /** None if a isEmpty, otherwise Some(a). */
-  def emptyToNone(a: A): Option[A] =
+  def ifNonEmpty(a: A): Option[A] =
     if isEmpty(a) then None else Some(a)
 
 
@@ -21,6 +21,7 @@ object IsEmpty:
   def fromIsEmpty[A](empty: A => Boolean): IsEmpty[A] =
     empty(_)
 
+
   trait Ops[A]:
     def typeClassInstance: IsEmpty[A]
     def self: A
@@ -28,21 +29,24 @@ object IsEmpty:
     def isEmpty: Boolean =
       typeClassInstance.isEmpty(self)
 
-    def nonEmpty: Boolean =
+    inline def nonEmpty: Boolean =
       !isEmpty
 
     /** None if `this` isEmpty. */
-    def ?? : Option[A] =
-      typeClassInstance.emptyToNone(self)
+    inline def ?? : Option[A] =
+      ifNonEmpty
 
-    def emptyToNone: Option[A] =
-      typeClassInstance.emptyToNone(self)
+    /** Wraps this in Some if nonEmpty, or returns None if empty */
+    def ifNonEmpty: Option[A] =
+      typeClassInstance.ifNonEmpty(self)
+
 
   object syntax:
     implicit def toIsEmptyAllOps[A](target: A)(implicit tc: IsEmpty[A]): Ops[A] =
       new Ops[A]:
         val self = target
         val typeClassInstance = tc
+
 
   implicit val stringIsEmpty: IsEmpty[String] = _.isEmpty
   implicit val intIsEmpty: IsEmpty[Int] = _ == 0

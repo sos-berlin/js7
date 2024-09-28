@@ -149,7 +149,7 @@ private object SinglePortPekkoWebServer:
       boundRoute.webServerRoute
         .flatTap(realRoute => IO:
           if _realRoute.compareAndSet(None, Some(Success(realRoute))) then
-            val serviceName = boundRoute.serviceName.emptyToNone.fold("")(_ + " ")
+            val serviceName = boundRoute.serviceName.ifNonEmpty.fold("")(_ + " ")
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
             logger.info(s"$name ${serviceName}web services are available$securityHint"))
         .startAndForget

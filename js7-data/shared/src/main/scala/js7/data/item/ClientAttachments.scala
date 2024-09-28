@@ -70,8 +70,7 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
                   }
                 }
                 .toMap
-                .emptyToNone
-                .map(itemKey -> _)
+                .ifNonEmpty.map(itemKey -> _)
             }
             .toMap)
 
