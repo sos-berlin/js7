@@ -11,12 +11,6 @@ trait IsEmpty[A]:
   def ifNonEmpty(a: A): Option[A] =
     if isEmpty(a) then None else Some(a)
 
-  def ifEmpty(a: A, replacementForEmpty: => A): A =
-    if isEmpty(a) then
-      replacementForEmpty
-    else
-      a
-
 
 object IsEmpty:
 
@@ -45,16 +39,20 @@ object IsEmpty:
       inline def ??(replacementForEmpty: => A): A =
         ifEmpty(replacementForEmpty)
 
-      def ifEmpty(replacementForEmpty: => A): A =
-        IsEmpty.ifEmpty(a, replacementForEmpty)
+      def ifEmpty[A1 >: A](replacementForEmpty: => A1): A1 =
+        if a.isEmpty then
+          replacementForEmpty
+        else
+          a
 
 
-    //extension [F[+_], A](fa: F[A])
-    //  def whenNonEmpty[A1 >: A](f: F[A] => F[A1])(using IsEmpty[F[A]]): F[A1] =
-    //    if fa.isEmpty then
-    //      fa
-    //    else
-    //      f(fa)
+    extension [F[+_], A](fa: F[A])
+      /** Applies f to this when this isNonEmpty, otherwise return this. */
+      def whenNonEmpty[A1 >: A](f: F[A] => F[A1])(using IsEmpty[F[A]]): F[A1] =
+        if fa.isEmpty then
+          fa
+        else
+          f(fa)
 
 
   given IsEmpty[String] = _.isEmpty

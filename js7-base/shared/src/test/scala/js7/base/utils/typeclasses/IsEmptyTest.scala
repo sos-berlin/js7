@@ -127,10 +127,10 @@ final class IsEmptyTest extends OurTestSuite:
     assert(true ?? "x" == "x")
     assert(false ?? "x" == "")
 
-  //"whenNonEmpty" in:
-  //  locally:
-  //    val result: Vector[Int] = Vector(1, 2).whenNonEmpty(_ :+ 3)
-  //    assert(result == Vector(1, 2, 3))
-  //  locally:
-  //    val result: Vector[Int] = Vector.empty.whenNonEmpty(_ :+ 3)
-  //    assert(result == Vector.empty)
+  "whenNonEmpty" in:
+    locally:
+      val result: Vector[Int] = Vector(1, 2).whenNonEmpty(_ :+ 3)
+      assert(result == Vector(1, 2, 3))
+    locally:
+      val result: Vector[Int] = Vector.empty.whenNonEmpty(_ :+ 3)
+      assert(result == Vector.empty)
