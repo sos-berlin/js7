@@ -35,6 +35,7 @@ import js7.base.utils.Collections.implicits.{InsertableMutableMap, RichIterable}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.SupervisorStrategies
@@ -719,7 +720,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
       case ControllerCommand.GoOrder(orderId, position) =>
         executeOrderMarkCommands(Vector(orderId)):
-          orderEventSource.go(_, position)
+          orderEventSource.go(_, position).map(_.ifNonEmpty)
 
       case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded) =>
         executeOrderMarkCommands(Vector(orderId))(

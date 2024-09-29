@@ -282,7 +282,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           resume(orderId, position, historicOutcomes, asSucceeded)
 
         case OrderMark.Go(position/*dynamic*/) =>
-          go(orderId, position)
+          go(orderId, position).map(_.ifNonEmpty)
 
   /** Returns `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelling. */
   def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[List[OrderActorEvent]]] =
@@ -347,30 +347,18 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     (weHave(order) && order.isSuspendibleNow) ?
       atController(OrderSuspended :: Nil)
 
-  def go(orderId: OrderId, position: Position): Checked[Option[List[OrderActorEvent]]] =
+  def go(orderId: OrderId, position: Position): Checked[List[OrderActorEvent]] =
     idToOrder.checked(orderId).flatMap: order =>
       if !order.isGoCommandable(position) then
         Left(GoOrderInapplicableProblem(order.id))
       else if weHave(order) then
-        order.ifState[Order.BetweenCycles].map: _ =>
-          Right(Some(OrderGoes :: OrderCycleStarted :: Nil))
-        .orElse:
-          order.ifState[Order.DelayingRetry].map: order =>
-            order.awokeEvents
-              .map(_.ifNonEmpty.map(OrderGoes :: _))
-        .orElse:
-          order.ifState[Order.DelayedAfterError].map: _ =>
-            Right(Some(OrderGoes :: OrderAwoke :: Nil))
-        .orElse:
-          order.ifState[Order.Fresh].filter(_.maybeDelayedUntil.isDefined).map: _ =>
-            Right(Some(OrderGoes :: OrderStarted :: Nil))
-        .getOrElse:
-          Left(GoOrderInapplicableProblem(order.id)) // Just in case
+        order.go
       else if order.isAttached then
         // Emit OrderGoMarked event even if already marked. The user wishes so.
         // In case the last OrderMark.Go was futile, the repeated OrderGoMarked event induces a
         // new AgentCommand.MarkOrder which may be effective this time.
-        Right(Some(OrderGoMarked(position) :: Nil))
+        Right:
+          OrderGoMarked(position) :: Nil
       else
         Left(GoOrderInapplicableProblem(order.id)) // Just in case
 

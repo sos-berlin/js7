@@ -13,6 +13,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
+import js7.data.Problems.GoOrderInapplicableProblem
 import js7.data.agent.AgentPath
 import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
@@ -848,13 +849,19 @@ final case class Order[+S <: Order.State](
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
 
+  def go: Checked[List[OrderActorEvent]] =
+    ifState[IsGoCommandable].map: order =>
+      order.state.go(order.asInstanceOf[Order[order.state.Self]])
+    .getOrElse:
+      Left(GoOrderInapplicableProblem(id))
+
   def forceDetach(outcome: OrderOutcome.Disrupted)
   : Checked[(Vector[OrderCoreEvent], Order[Order.State])] =
     var _order = Checked(this: Order[State])
     val _events = Vector.newBuilder[OrderCoreEvent]
 
     for order <- _order do
-      order.ifState[Order.Processing].map: _ =>
+      order.ifState[Order.Processing].foreach: _ =>
         val event = OrderProcessed(outcome)
         _events += event
         _order = order.applyEvent(event)
@@ -871,7 +878,7 @@ final case class Order[+S <: Order.State](
       _order = order.applyEvents(events)
 
     for order <- _order do
-      order.ifState[Order.DelayedAfterError].map: _ =>
+      order.ifState[Order.DelayedAfterError].foreach: _ =>
         val event = OrderAwoke
         _events += event
         _order = order.applyEvent(event)
@@ -1029,6 +1036,13 @@ object Order:
 
   sealed trait IsControllerOnly extends IsNotDetachable
 
+
+  sealed trait IsGoCommandable extends State:
+    type Self <: State
+
+    def go(order: Order[Self]): Checked[List[OrderActorEvent]]
+
+
   sealed trait IsResettable extends State:
     this: IsStarted => // Only for IsStarted states. Order will become Ready.
 
@@ -1081,7 +1095,15 @@ object Order:
 
 
   type Fresh = Fresh.type
-  case object Fresh extends IsFreshOrReady, IsDetachable, IsTransferable
+  case object Fresh extends IsFreshOrReady, IsDetachable, IsGoCommandable, IsTransferable:
+    type Self = Fresh
+
+    def go(order: Order[Fresh]) =
+      if order.maybeDelayedUntil.isDefined then
+        Right:
+          OrderGoes :: OrderStarted :: Nil
+      else
+        Left(GoOrderInapplicableProblem(order.id))
 
 
   type Ready = Ready.type
@@ -1090,13 +1112,26 @@ object Order:
 
   // COMPATIBLE with v2.7.1
   final case class DelayedAfterError(until: Timestamp)
-  extends IsStarted, IsDetachable, IsTransferable:
+  extends IsStarted, IsDetachable, IsGoCommandable, IsTransferable:
+    type Self = DelayedAfterError
+
     override private[Order] def maybeDelayedUntil = Some(until)
+
+    def go(order: Order[DelayedAfterError]) =
+      Right:
+        OrderGoes :: OrderAwoke :: Nil
 
 
   final case class DelayingRetry(until: Timestamp)
-  extends IsStarted, IsDetachable, IsResettable, IsTransferable:
+  extends IsStarted, IsDetachable, IsGoCommandable, IsResettable, IsTransferable:
+    type Self = DelayingRetry
+
     override private[Order] def maybeDelayedUntil = Some(until)
+
+    def go(order: Order[DelayingRetry]) =
+      order.awokeEvents.map:
+        _.ifNonEmpty.map(OrderGoes :: _)
+          .toList.flatten
 
 
   final case class Broken(problem: Option[Problem])
@@ -1162,9 +1197,15 @@ object Order:
 
 
   final case class BetweenCycles(cycleState: Option[CycleState])
-  extends IsStarted, IsDetachable, IsResettable, IsTransferableButResetChangedInstruction:
+  extends IsStarted, IsDetachable, IsGoCommandable, IsResettable, IsTransferableButResetChangedInstruction:
+    type Self = BetweenCycles
+
     override private[Order] def maybeDelayedUntil =
       cycleState.map(_.next)
+
+    def go(order: Order[BetweenCycles]) =
+      Right:
+        OrderGoes :: OrderCycleStarted :: Nil
 
 
   type Failed = Failed.type
