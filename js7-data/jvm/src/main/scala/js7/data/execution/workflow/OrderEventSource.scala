@@ -17,16 +17,16 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Broken, Cancelled, DelayedAfterError, DelayingRetry, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
+import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsDelayingRetry, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
 import js7.data.state.StateViewForEvents.atController
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
-import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
@@ -73,11 +73,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         .map(_.map(order.id <-: _))
     else
       catchNonFatalFlatten:
-        def ifDefinedElse(o: Option[List[OrderActorEvent]])
-          (orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
-          o.fold(orElse)(events => Right(events.map(order.id <-: _)))
-
-        ifDefinedElse(awokeEvent(order).ifNonEmpty):
+        awokeEvent(order).ifNonEmpty.map: events =>
+          Right(events.map(order.id <-: _))
+        .getOrElse:
           joinedEvents(order).flatMap: events =>
             if events.nonEmpty then
               Right(events)
@@ -224,22 +222,15 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       Right(Nil)
 
   private def awokeEvent(order: Order[Order.State]): List[OrderAwoke | OrderMoved] =
-    order.ifState[DelayingRetry].flatMap: order =>
+    order.ifState[IsDelayingRetry].flatMap: order =>
       order.awokeEventsIfRipe(clock.now()) match
         case Left(problem) =>
           logger.error(s"awokeEvent: ${order.id}: $problem")
           None
         case Right(events) =>
           Some(events)
-    .orElse:
-      order.ifState[DelayedAfterError].flatMap: order =>
-        awakeFromDelayedAfterError(order).ifNonEmpty
     .getOrElse:
       Nil
-
-  private def awakeFromDelayedAfterError(order: Order[DelayedAfterError]): List[OrderAwoke] =
-    (order.isDetached || order.isAttached) && (order.state.until <= clock.now()) thenList:
-      OrderAwoke
 
   private def tryDelete(order: Order[Order.State]): Option[List[KeyedEvent[OrderDeleted]]] =
     order.tryDelete.map: e =>

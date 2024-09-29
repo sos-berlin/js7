@@ -850,7 +850,7 @@ final case class Order[+S <: Order.State](
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
 
   def go: Checked[List[OrderActorEvent]] =
-    ifState[IsGoCommandable].map: order =>
+    ifState[IsGoCommandable].filter(_ => isDetachedOrAttached).map: order =>
       order.state.go(order.asInstanceOf[Order[order.state.Self]])
     .getOrElse:
       Left(GoOrderInapplicableProblem(id))
@@ -950,7 +950,7 @@ object Order:
       stopPositions = event.stopPositions)
 
 
-  extension (order: Order[DelayingRetry])
+  extension (order: Order[IsDelayingRetry])
     def awokeEventsIfRipe(ts: Timestamp): Checked[List[OrderAwoke | OrderMoved]] =
       if order.state.until <= ts then
         awokeEvents
@@ -958,11 +958,15 @@ object Order:
         Right(Nil)
 
     def awokeEvents: Checked[List[OrderAwoke | OrderMoved]] =
-      if order.isDetached || order.isAttached then
-        order.position.nextRetryPosition.map: pos =>
-          OrderAwoke :: OrderMoved(pos) :: Nil
+      if !order.isDetachedOrAttached then
+        Left(InapplicableOrderEventProblem(OrderAwoke, order))
       else
-        Right(Nil)
+        order.state match
+          case _: DelayingRetry =>
+            order.position.nextRetryPosition.map: pos =>
+              OrderAwoke :: OrderMoved(pos) :: Nil
+          case _: DelayedAfterError =>
+            Right(OrderAwoke :: Nil)
 
 
   sealed trait AttachedState
@@ -1111,8 +1115,12 @@ object Order:
 
 
   // COMPATIBLE with v2.7.1
-  final case class DelayedAfterError(until: Timestamp)
-  extends IsStarted, IsDetachable, IsGoCommandable, IsTransferable:
+  sealed trait IsDelayingRetry extends IsStarted, IsDetachable, IsGoCommandable, IsTransferable:
+    def until: Timestamp
+
+
+  // COMPATIBLE with v2.7.1
+  final case class DelayedAfterError(until: Timestamp) extends IsDelayingRetry:
     type Self = DelayedAfterError
 
     override private[Order] def maybeDelayedUntil = Some(until)
@@ -1122,8 +1130,7 @@ object Order:
         OrderGoes :: OrderAwoke :: Nil
 
 
-  final case class DelayingRetry(until: Timestamp)
-  extends IsStarted, IsDetachable, IsGoCommandable, IsResettable, IsTransferable:
+  final case class DelayingRetry(until: Timestamp) extends IsDelayingRetry, IsResettable:
     type Self = DelayingRetry
 
     override private[Order] def maybeDelayedUntil = Some(until)

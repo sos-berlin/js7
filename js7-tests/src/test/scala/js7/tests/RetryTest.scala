@@ -16,7 +16,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
@@ -459,7 +459,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
-          .take(10)
+          .take(9)
           .map(_.event)
           .map {
             case e: OrderRetrying => e.copy(delayedUntil = None)
@@ -473,8 +473,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderProcessingStarted(toLocalSubagentId(agentPath)),
           OrderProcessed(FailingJob.outcome),
           OrderCaught(Position(0) / "catch+0" % 0),
-          OrderRetrying(),
-          OrderMoved(Position(0) / try_(1) % 0)))
+          OrderRetrying()))
       }
     }
 
