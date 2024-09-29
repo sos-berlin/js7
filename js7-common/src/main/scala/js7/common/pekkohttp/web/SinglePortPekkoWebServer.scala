@@ -8,9 +8,10 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
 import js7.common.pekkohttp.web.PekkoWebServer.{BoundRoute, RouteBinding}
@@ -26,7 +27,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
-import js7.base.time.ScalaTime.*
 
 /**
  * @author Joacim Zschimmer

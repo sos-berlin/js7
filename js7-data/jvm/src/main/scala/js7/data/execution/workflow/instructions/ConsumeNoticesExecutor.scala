@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import cats.syntax.traverse.*
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.order.OrderEvent.{OrderDetachable, OrderNoticesConsumed, OrderNoticesExpected}
 import js7.data.order.{Order, OrderEvent}

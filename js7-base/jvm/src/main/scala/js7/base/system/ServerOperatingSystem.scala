@@ -10,7 +10,7 @@ import java.util
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import scala.concurrent.duration.*
 import scala.io.Source.fromInputStream
 import scala.sys.process.*

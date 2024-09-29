@@ -19,55 +19,55 @@ trait IsEmpty[A]:
 
 
 object IsEmpty:
+
   def apply[A](implicit o: IsEmpty[A]): IsEmpty[A] = o
 
   def fromIsEmpty[A](empty: A => Boolean): IsEmpty[A] =
     empty(_)
 
 
-  trait Ops[A]:
-    def typeClassInstance: IsEmpty[A]
-    def self: A
-
-    def isEmpty: Boolean =
-      typeClassInstance.isEmpty(self)
-
-    inline def nonEmpty: Boolean =
-      !isEmpty
-
-    /** None if `this` isEmpty. */
-    inline def ?? : Option[A] =
-      ifNonEmpty
-
-    /** Wraps this in Some if nonEmpty, or returns None if empty */
-    def ifNonEmpty: Option[A] =
-      typeClassInstance.ifNonEmpty(self)
-
-    inline def ??(replacementForEmpty: => A): A =
-      ifEmpty(replacementForEmpty)
-
-    def ifEmpty(replacementForEmpty: => A): A =
-      typeClassInstance.ifEmpty(self, replacementForEmpty)
-
-
   object syntax:
-    implicit def toIsEmptyAllOps[A](target: A)(implicit tc: IsEmpty[A]): Ops[A] =
-      new Ops[A]:
-        val self = target
-        val typeClassInstance = tc
+    extension [A](a: A)(using IsEmpty: IsEmpty[A])
+      def isEmpty: Boolean =
+        IsEmpty.isEmpty(a)
+
+      inline def nonEmpty: Boolean =
+        !isEmpty
+
+      /** None if `this` isEmpty. */
+      inline def ?? : Option[A] =
+        ifNonEmpty
+
+      /** Wraps this in Some if nonEmpty, or returns None if empty */
+      def ifNonEmpty: Option[A] =
+        IsEmpty.ifNonEmpty(a)
+
+      inline def ??(replacementForEmpty: => A): A =
+        ifEmpty(replacementForEmpty)
+
+      def ifEmpty(replacementForEmpty: => A): A =
+        IsEmpty.ifEmpty(a, replacementForEmpty)
 
 
-  implicit val stringIsEmpty: IsEmpty[String] = _.isEmpty
-  implicit val intIsEmpty: IsEmpty[Int] = _ == 0
+    //extension [F[+_], A](fa: F[A])
+    //  def whenNonEmpty[A1 >: A](f: F[A] => F[A1])(using IsEmpty[F[A]]): F[A1] =
+    //    if fa.isEmpty then
+    //      fa
+    //    else
+    //      f(fa)
+
+
+  given IsEmpty[String] = _.isEmpty
+  given IsEmpty[Int] = _ == 0
 
   // `??` operator conflicts with binary `??` operator defined in ScalaUtils
   // (but unary `?` operator is equivalent).
-  implicit val booleanIsEmpty: IsEmpty[Boolean] = _ == false
+  //implicit val booleanIsEmpty: IsEmpty[Boolean] = _ == false
 
-  implicit def monoidIsEmpty[A](implicit monoid: Monoid[A], eq: Eq[A]): IsEmpty[A] =
+  given [A](using monoid: Monoid[A], eq: Eq[A]): IsEmpty[A] =
     IsEmpty.fromIsEmpty[A](monoid.isEmpty)
 
   private val erasedIterableIsEmpty: IsEmpty[Iterable[?]] = _.isEmpty
 
-  @inline implicit def iterableIsEmpty[A <: Iterable[?]]: IsEmpty[A] =
+  inline implicit def iterableIsEmpty[A <: Iterable[?]]: IsEmpty[A] =
     erasedIterableIsEmpty.asInstanceOf[IsEmpty[A]]

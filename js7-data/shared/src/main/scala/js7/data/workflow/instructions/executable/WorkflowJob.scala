@@ -10,7 +10,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.AdmissionTimeScheme
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.job.{Executable, JobResourcePath}
 import js7.data.subagent.SubagentBundleId

@@ -60,8 +60,8 @@ final class IsEmptyTest extends OurTestSuite:
     assert(some.?? == Some(some))  // !!!
 
     // Boolean ?? operator conflicts with dyadic operator (see test below)
-    assert(false.ifNonEmpty == None)
-    assert(true.ifNonEmpty == Some(true))
+    //assert(false.ifNonEmpty == None)
+    //assert(true.ifNonEmpty == Some(true))
 
     assert(0.?? == None)
     assert(1.?? == Some(1))
@@ -94,10 +94,10 @@ final class IsEmptyTest extends OurTestSuite:
     assert(some.ifEmpty(Some(7)) == some)
 
     // Boolean ?? operator conflicts with dyadic operator (see test below)
-    //assert(false ?? true == true)
-    assert(false.ifEmpty(true) == true)
-    //assert(true ?? false == true)
-    assert(true.ifEmpty(false) == true)
+    ////assert(false ?? true == true)
+    //assert(false.ifEmpty(true) == true)
+    ////assert(true ?? false == true)
+    //assert(true.ifEmpty(false) == true)
 
     assert(0 ?? 7 == 7)
     assert(0.ifEmpty(7) == 7)
@@ -126,3 +126,11 @@ final class IsEmptyTest extends OurTestSuite:
     // The dyadic operator
     assert(true ?? "x" == "x")
     assert(false ?? "x" == "")
+
+  //"whenNonEmpty" in:
+  //  locally:
+  //    val result: Vector[Int] = Vector(1, 2).whenNonEmpty(_ :+ 3)
+  //    assert(result == Vector(1, 2, 3))
+  //  locally:
+  //    val result: Vector[Int] = Vector.empty.whenNonEmpty(_ :+ 3)
+  //    assert(result == Vector.empty)

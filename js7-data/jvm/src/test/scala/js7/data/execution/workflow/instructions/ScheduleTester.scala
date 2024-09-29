@@ -9,7 +9,7 @@ import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TimeInterval, Timestamp, WeekdayPeriod}
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.execution.workflow.instructions.ScheduleTester.*
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
