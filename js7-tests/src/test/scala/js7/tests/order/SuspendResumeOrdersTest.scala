@@ -9,7 +9,7 @@ import java.time.LocalDate
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.touchFile
-import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
@@ -154,7 +154,7 @@ final class SuspendResumeOrdersTest
         execCmd(CancelOrders(Set(orderId)))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
-    "Order.DelayingRetry()" in:
+    "Order.DelayingRetry" in:
       eventWatch.resetLastWatchedEventId()
       val workflow = Workflow.of(WorkflowPath("DELAYED-AFTER-ERROR"),
         TryInstruction(
@@ -170,16 +170,19 @@ final class SuspendResumeOrdersTest
           .await(99.s).orThrow
         eventWatch.awaitNext[OrderRetrying](_.key == orderId)
 
-        execCmd(SuspendOrders(Set(orderId)))
+        execCmd:
+          SuspendOrders(Set(orderId))
         eventWatch.awaitNext[OrderDetached](_.key == orderId)
 
         assert(controllerState.idToOrder(orderId).isState[DelayingRetry])
-        execCmd(GoOrder(orderId, controllerState.idToOrder(orderId).position))
+        execCmd:
+          GoOrder(orderId, controllerState.idToOrder(orderId).position)
         eventWatch.awaitNext[OrderGoes](_.key == orderId)
         eventWatch.awaitNext[OrderSuspended](_.key == orderId)
 
 
-        execCmd(ResumeOrders(Set(orderId)))
+        execCmd:
+          ResumeOrders(Set(orderId))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
         assert:
@@ -262,7 +265,8 @@ final class SuspendResumeOrdersTest
         eventWatch.awaitNext[OrderProcessed](_.key == order.id)
         eventWatch.awaitNext[OrderSuspended](_.key == order.id)
 
-        executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
+        execCmd:
+          ResumeOrders(Set(order.id))
         eventWatch.awaitNext[OrderFinished](_.key == order.id)
 
         assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
@@ -354,22 +358,18 @@ final class SuspendResumeOrdersTest
                 |""".stripMargin))),
           EmptyJob.execute(agentPath)))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val eventId = eventWatch.lastAddedEventId
         val orderId = OrderId(name)
         controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
-        controller.api
-          .executeCommand:
-            SuspendOrders(Seq(orderId), SuspensionMode.kill)
-          .await(99.s).orThrow
+        execCmd:
+          SuspendOrders(Seq(orderId), SuspensionMode.kill)
         eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
 
-        controller.api
-          .executeCommand:
-            ResumeOrders(Seq(orderId))
-          .await(99.s).orThrow
+        execCmd:
+          ResumeOrders(Seq(orderId))
 
         val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
           .collect { case KeyedEvent(`orderId`, event) => event }
@@ -390,7 +390,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
 
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    executeCommand(SuspendOrders(Seq(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Seq(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
 
@@ -411,7 +412,8 @@ final class SuspendResumeOrdersTest
 
     val lastEventId = eventWatch.lastAddedEventId
     touchFile(triggerFile)
-    executeCommand(ResumeOrders(Seq(order.id))).await(99.s).orThrow
+    execCmd:
+      ResumeOrders(Seq(order.id))
     eventWatch.await[OrderFinished](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -431,7 +433,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())
     assert(executeCommand(SuspendOrders(Set(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
     eventWatch.await[OrderCancellationMarkedOnAgent](_.key == order.id)
 
@@ -444,7 +447,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     touchFile(triggerFile)
     eventWatch.await[OrderProcessed](_.key == order.id / "🥕")
 
@@ -485,9 +489,8 @@ final class SuspendResumeOrdersTest
       FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.s))
     for o <- orders do addOrder(o).await(99.s).orThrow
     for o <- orders do eventWatch.await[OrderAttached](_.key == o.id)
-    val response = executeCommand(Batch(
+    val response = execCmd(Batch:
       for o <- orders yield CorrelIdWrapped(CorrelId.empty, SuspendOrders(Set(o.id))))
-    ).await(99.s).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
     for o <- orders do eventWatch.await[OrderSuspended](_.key == o.id)
 
@@ -497,10 +500,12 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
-    executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      ResumeOrders(Set(order.id))
     eventWatch.await[OrderResumptionMarked](_.key == order.id)
 
     touchFile(triggerFile)
@@ -541,7 +546,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     assert(executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s) ==
@@ -563,7 +569,8 @@ final class SuspendResumeOrdersTest
       OrderDetached,
       OrderSuspended))
 
-    executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      CancelOrders(Set(order.id))
     eventWatch.await[OrderCancelled](_.key == order.id)
 
   "Suspend and resume twice on same Agent" in:
@@ -572,22 +579,26 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     val eventId = eventWatch.lastAddedEventId
 
-    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    execCmd:
+      ResumeOrder(order.id)
     eventWatch.await[OrderProcessingStarted](_.key == order.id, after = eventId)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id, after = eventId)
 
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id, after = eventId)
-    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    execCmd:
+      ResumeOrder(order.id)
     eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -625,7 +636,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     touchFile(triggerFile)
@@ -644,7 +656,8 @@ final class SuspendResumeOrdersTest
       executeCommand(ResumeOrder(order.id, historyOperations = Seq(op))).await(99.s) ==
         Left(Problem("Unknown position 99 in Workflow:TRY~INITIAL")))
 
-    executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      CancelOrders(Set(order.id))
     eventWatch.await[OrderCancelled](_.key == order.id)
 
   "Resume with changed position and changed historic outcomes" in:
@@ -653,7 +666,8 @@ final class SuspendResumeOrdersTest
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    execCmd:
+      SuspendOrders(Set(order.id))
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
@@ -678,8 +692,8 @@ final class SuspendResumeOrdersTest
       ReplaceHistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
       AppendHistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))))
 
-    executeCommand(ResumeOrder(order.id, Some(newPosition), historicOutcomeOps))
-      .await(99.s).orThrow
+    execCmd:
+      ResumeOrder(order.id, Some(newPosition), historicOutcomeOps)
     eventWatch.await[OrderFailed](_.key == order.id)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
@@ -709,7 +723,8 @@ final class SuspendResumeOrdersTest
 
     var eventId = eventWatch.lastAddedEventId
     assert(executeCommand(SuspendOrders(Seq(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
-    executeCommand(ResumeOrder(order.id, asSucceeded = true)).await(99.s).orThrow
+    execCmd:
+      ResumeOrder(order.id, asSucceeded = true)
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
     assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
       HistoricOutcome(Position(0), OrderOutcome.succeeded),
@@ -718,7 +733,8 @@ final class SuspendResumeOrdersTest
       HistoricOutcome(Position(1), OrderOutcome.failed)))
 
     eventId = eventWatch.lastAddedEventId
-    executeCommand(ResumeOrder(order.id, Some(Position(0)), asSucceeded = true)).await(99.s).orThrow
+    execCmd:
+      ResumeOrder(order.id, Some(Position(0)), asSucceeded = true)
 
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
     assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
@@ -761,46 +777,49 @@ final class SuspendResumeOrdersTest
       WorkflowPath("SUSPEND-AT-END"),
       Seq(
         Prompt(expr("'PROMPT'"))))
-    withTemporaryItem(workflow) { workflow =>
+
+    withItem(workflow): workflow =>
       val orderId = OrderId("SUSPEND-AT-END")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-      controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+      execCmd:
+        SuspendOrders(Seq(orderId))
+      execCmd:
+        AnswerOrderPrompt(orderId)
       eventWatch.await[OrderSuspended](_.key == orderId)
 
-      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd:
+        ResumeOrders(Seq(orderId))
       eventWatch.await[OrderDeleted](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderPrompted(StringValue("PROMPT")),
-        OrderSuspensionMarked(SuspensionMode(None)),
+        OrderSuspensionMarked(),
         OrderPromptAnswered(),
         OrderMoved(Position(1)),
         OrderSuspended,
         OrderResumed(),
         OrderFinished(),
         OrderDeleted))
-    }
 
   "Suspend then cancel" - {
     "Suspend in the middle of a workflow, then cancel" in:
-      testSuspendAndCancel(
+      testSuspendAndCancel:
         Workflow(
           WorkflowPath("SUSPEND-THEN-CANCEL"),
           Seq(
             Prompt(expr("'PROMPT'")),
-            EmptyInstruction())))
+            EmptyInstruction()))
 
     "Suspend at end of workflow, then cancel" in:
-      testSuspendAndCancel(
+      testSuspendAndCancel:
         Workflow(
           WorkflowPath("SUSPEND-AT-END-THEN-CANCEL"),
           Seq(
-            Prompt(expr("'PROMPT'")))))
+            Prompt(expr("'PROMPT'"))))
 
     def testSuspendAndCancel(workflow: Workflow): Unit =
       withItem(workflow): workflow =>
@@ -808,11 +827,14 @@ final class SuspendResumeOrdersTest
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         eventWatch.await[OrderPrompted](_.key == orderId)
 
-        controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        execCmd:
+          SuspendOrders(Seq(orderId))
+        execCmd:
+          AnswerOrderPrompt(orderId)
         eventWatch.await[OrderSuspended](_.key == orderId)
 
-        controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+        execCmd:
+          CancelOrders(Seq(orderId))
         eventWatch.await[OrderDeleted](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -835,16 +857,15 @@ final class SuspendResumeOrdersTest
     val workflow = Workflow.of(WorkflowPath("FAIL"),
       FailingSemaJob.execute(agentPath),
       EmptyInstruction())
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("SUSPEND-FAILING-JOB")
       var eventId = eventWatch.lastAddedEventId
-      controller.api
-        .executeCommand(AddOrder(
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
-        .await(99.s).orThrow
+      execCmd:
+        AddOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd:
+        SuspendOrders(Seq(orderId))
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == orderId, after = eventId)
 
       FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
@@ -854,10 +875,8 @@ final class SuspendResumeOrdersTest
       assert(controllerState.idToOrder(orderId).mark == None)
 
       eventId = eventWatch.lastAddedEventId
-      controller.api
-        .executeCommand(
-          ResumeOrder(orderId, Some(Position(1)), asSucceeded = true))
-        .await(99.s).orThrow
+      execCmd:
+        ResumeOrder(orderId, Some(Position(1)), asSucceeded = true)
       eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -887,17 +906,16 @@ final class SuspendResumeOrdersTest
             EmptyInstruction())),
         joinIfFailed = false))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("SUSPEND-FORKED-FAILING-JOB")
       val childOrderId = OrderId("SUSPEND-FORKED-FAILING-JOB|BRANCH")
       var eventId = eventWatch.lastAddedEventId
-      controller.api
-        .executeCommand(AddOrder(
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
-        .await(99.s).orThrow
+      execCmd:
+        AddOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderStdoutWritten](_.key == childOrderId, after = eventId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(childOrderId))).await(99.s).orThrow
+      execCmd:
+        SuspendOrders(Seq(childOrderId))
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == childOrderId, after = eventId)
 
       FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
@@ -907,11 +925,9 @@ final class SuspendResumeOrdersTest
       assert(controllerState.idToOrder(childOrderId).mark == None)
 
       eventId = eventWatch.lastAddedEventId
-      controller.api
-        .executeCommand(
-          ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
-            asSucceeded = true))
-        .await(99.s).orThrow
+      execCmd:
+        ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
+          asSucceeded = true)
       eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -947,17 +963,16 @@ final class SuspendResumeOrdersTest
             EmptyInstruction())),
         joinIfFailed = true))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("SUSPEND-FORKED-FAILING-JOB-JOIN-IF-FAILED")
       val childOrderId = OrderId("SUSPEND-FORKED-FAILING-JOB-JOIN-IF-FAILED|BRANCH")
       var eventId = eventWatch.lastAddedEventId
-      controller.api
-        .executeCommand(AddOrder(
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)))
-        .await(99.s).orThrow
+      execCmd:
+        AddOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderStdoutWritten](_.key == childOrderId, after = eventId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(childOrderId))).await(99.s).orThrow
+      execCmd:
+        SuspendOrders(Seq(childOrderId))
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == childOrderId, after = eventId)
 
       FailingSemaJob.semaphore.flatMap(_.release).await(99.s)
@@ -971,11 +986,9 @@ final class SuspendResumeOrdersTest
         assert(controllerState.idToOrder(childOrderId).mark == None)
 
         eventId = eventWatch.lastAddedEventId
-          controller.api
-            .executeCommand(
-              ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
-                asSucceeded = true))
-            .await(99.s).orThrow
+          execCmd:
+            ResumeOrder(childOrderId, Some(Position(0) / BranchId.fork("BRANCH") % 1),
+              asSucceeded = true)
         eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -1053,7 +1066,6 @@ final class SuspendResumeOrdersTest
 
 object SuspendResumeOrdersTest:
 
-  private val logger = Logger[this.type]
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
