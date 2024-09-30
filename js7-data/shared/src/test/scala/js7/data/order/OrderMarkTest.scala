@@ -20,13 +20,26 @@ final class OrderMarkTest extends OurTestSuite:
     testJson[OrderMark](OrderMark.Suspending(), json"""
       {
         "TYPE": "Suspending",
+        "mode": {
+          "resetState": false
+        }
+      }""")
+
+    testJsonDecoder[OrderMark](OrderMark.Suspending(), json"""
+      {
+        "TYPE": "Suspending",
         "mode": {}
       }""")
 
-    testJson[OrderMark](OrderMark.Suspending(SuspensionMode(Some(CancellationMode.Kill()))), json"""
+    testJson[OrderMark](
+      OrderMark.Suspending(SuspensionMode(
+        resetState = true,
+        Some(CancellationMode.Kill()))),
+      json"""
       {
         "TYPE": "Suspending",
         "mode": {
+          "resetState": true,
           "kill": {
             "immediately": false
           }

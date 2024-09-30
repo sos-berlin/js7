@@ -354,22 +354,28 @@ final class ControllerCommandTest extends OurTestSuite:
       }""")
 
   "SuspendOrders" in:
-    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A"), OrderId("B"))), json"""
-      {
-        "TYPE": "SuspendOrders",
-        "orderIds": [ "A", "B" ],
-        "mode": {}
-      }""")
-
-    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A")), SuspensionMode(Some(CancellationMode.Kill()))), json"""
+    testJson[ControllerCommand](
+      SuspendOrders(
+        Seq(OrderId("A")),
+        SuspensionMode(resetState = true, Some(CancellationMode.Kill()))),
+      json"""
       {
         "TYPE": "SuspendOrders",
         "orderIds": [ "A" ],
         "mode": {
+          "resetState": true,
           "kill": {
             "immediately": false
           }
         }
+      }""")
+
+    testJsonDecoder[ControllerCommand](SuspendOrders(Seq(OrderId("A"), OrderId("B"))),
+      json"""
+      {
+        "TYPE": "SuspendOrders",
+        "orderIds": [ "A", "B" ],
+        "mode": {}
       }""")
 
   "TransferOrders" in:

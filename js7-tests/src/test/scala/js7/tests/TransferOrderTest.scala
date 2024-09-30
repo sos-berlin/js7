@@ -130,7 +130,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("BSemaphoreJob\n"),
-        OrderSuspensionMarked(SuspensionMode(None)),
+        OrderSuspensionMarked(SuspensionMode()),
         OrderSuspensionMarkedOnAgent,
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(Position(2)),

@@ -610,7 +610,7 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(OrderSuspended :: Nil))
 
           testController(readyOrder, detached): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
@@ -647,7 +647,7 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(OrderDetachable :: Nil))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))

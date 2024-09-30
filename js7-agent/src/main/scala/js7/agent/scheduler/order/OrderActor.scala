@@ -191,7 +191,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
         case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
           maybeKillOrder(kill)
 
-        case Some(OrderMark.Suspending(SuspensionMode(Some(mode)))) =>
+        case Some(OrderMark.Suspending(SuspensionMode(_, Some(mode)))) =>
           maybeKillOrder(mode)
 
         case _ =>

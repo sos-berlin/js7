@@ -1,29 +1,36 @@
 package js7.data.command
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 
-final case class SuspensionMode(kill: Option[CancellationMode.Kill] = None)
+final case class SuspensionMode(
+  resetState: Boolean = false,
+  kill: Option[CancellationMode.Kill] = None)
 
 
 object SuspensionMode:
-  val standard = new SuspensionMode()
-  val kill = new SuspensionMode(Some(CancellationMode.Kill()))
-  val killImmediately = new SuspensionMode(Some(CancellationMode.Kill(immediately = true)))
+  val standard = new SuspensionMode(resetState = false, kill = None)
+  val kill: SuspensionMode =
+    new SuspensionMode(resetState = false, kill = Some(CancellationMode.Kill()))
+  val killImmediately: SuspensionMode =
+    new SuspensionMode(resetState = false, kill = Some(CancellationMode.Kill(immediately = true)))
 
-  def apply(kill: Option[CancellationMode.Kill] = None): SuspensionMode =
-    kill match
-      case None =>
+  def apply(
+    resetState: Boolean = false,
+    kill: Option[CancellationMode.Kill] = None)
+  : SuspensionMode =
+    (resetState, kill) match
+      case (false, None) =>
         standard
 
-      case Some(CancellationMode.Kill(false, None)) =>
+      case (false, Some(CancellationMode.Kill(false, None))) =>
         SuspensionMode.kill
 
-      case Some(CancellationMode.Kill(true, None)) =>
+      case (false, Some(CancellationMode.Kill(true, None))) =>
         killImmediately
 
-      case Some(_) =>
-        new SuspensionMode(kill)
+      case _ =>
+        new SuspensionMode(resetState = resetState, kill = kill)
 
   implicit val jsonCodec: Codec.AsObject[SuspensionMode] =
-    deriveConfiguredCodec[SuspensionMode]
+    deriveCodecWithDefaults[SuspensionMode]

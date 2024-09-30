@@ -94,6 +94,7 @@ final class SuspendResumeOrdersTest
 
         execCmd(ResumeOrders(Set(orderId)))
         eventWatch.awaitNext[OrderResumed](_.key == orderId)
+        eventWatch.awaitNext[OrderAttached](_.key == orderId)
 
         // ResumeOrders command expects a suspended or suspending order
         assert:
@@ -126,7 +127,7 @@ final class SuspendResumeOrdersTest
           OrderFinished(),
           OrderDeleted))
 
-    "Order.Ready, waiting for admission time (nothing special)" in:
+    "Order.Ready, waiting for job admission time (nothing special)" in:
       eventWatch.resetLastWatchedEventId()
       val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
       val workflow = Workflow.of(
@@ -217,6 +218,61 @@ final class SuspendResumeOrdersTest
             OrderDetached,
             OrderFailed(Position(0) / "try+1" % 0))
 
+    "Order.Prompting, with resetState" in:
+      eventWatch.resetLastWatchedEventId()
+      val workflow = Workflow.of(WorkflowPath("DELAYED-AFTER-ERROR-PROMPTING"),
+        Prompt(expr("'PROMPT'")))
+
+      withItem(workflow): workflow =>
+        val orderId = OrderId(workflow.path.string)
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+
+        execCmd(SuspendOrders(Set(orderId), SuspensionMode(resetState = true)))
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
+        assert(controllerState.idToOrder(orderId).isState[Order.Ready])
+
+        execCmd(ResumeOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+
+        execCmd(CancelOrders(Set(orderId)))
+        eventWatch.awaitNext[OrderCancelled](_.key == orderId)
+
+    "Order.DelayingRetry, with resetState" in:
+      eventWatch.resetLastWatchedEventId()
+      val workflow = Workflow.of(WorkflowPath("DELAYED-AFTER-ERROR-RESET-STATE"),
+        TryInstruction(
+          Workflow.of:
+            FailingJob.execute(agentPath),
+          Workflow.of:
+            Retry(),
+          retryDelays = Some(Vector(100.s)),
+          maxTries = Some(2)))
+
+      withItem(workflow): workflow =>
+        val orderId = OrderId(workflow.path.string)
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderRetrying](_.key == orderId)
+
+        execCmd:
+          SuspendOrders(Set(orderId), SuspensionMode(resetState = true))
+        eventWatch.awaitNext[OrderDetached](_.key == orderId)
+        eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
+        assert(controllerState.idToOrder(orderId).isState[Order.Ready])
+
+        execCmd:
+          ResumeOrders(Set(orderId))
+        /// Retry is executed again ///
+        eventWatch.awaitNext[OrderRetrying](_.key == orderId)
+
+        execCmd:
+          GoOrder(orderId, Position(0) / "catch+0" % 0)
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
     "Order.BetweenCycles" in:
       eventWatch.resetLastWatchedEventId()
       val today = LocalDate.now().toString // Test may fail around midnight
@@ -246,6 +302,37 @@ final class SuspendResumeOrdersTest
 
         execCmd:
           ResumeOrders(Set(orderId))
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+    "Order.BetweenCycles, with resetState" in:
+      eventWatch.resetLastWatchedEventId()
+      val today = LocalDate.now().toString // Test may fail around midnight
+      val orderId = OrderId(s"#$today#CYCLE-RESET")
+      val calendar = Calendar.jocStandard(CalendarPath("CALENDAR-RESET"))
+      val workflow = Workflow(
+        WorkflowPath("CYCLE-PREPARED-RESET"),
+        Seq:
+          Cycle(Schedule.continuous(100.s, limit = Some(2))):
+            Workflow.of:
+              EmptyJob.execute(agentPath),
+        calendarPath = Some(calendar.path))
+
+      withItems((calendar, workflow)): (_, workflow) =>
+        addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.awaitNext[OrderCycleFinished](_.key == orderId)
+
+        execCmd:
+          SuspendOrders(Set(orderId), SuspensionMode(resetState = true))
+        eventWatch.awaitNext[OrderDetached](_.key == orderId)
+        assert(controllerState.idToOrder(orderId).isState[Order.Ready])
+
+        execCmd:
+          ResumeOrders(Set(orderId))
+        eventWatch.awaitNext[OrderCycleFinished](_.key == orderId)
+
+        execCmd:
+          GoOrder(orderId, controllerState.idToOrder(orderId).position)
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
   }
 

@@ -552,7 +552,7 @@ object ScalaUtils:
         * <p>`(true option a) == List(a)`
         * <br>`(false option a) == Nil`
         */
-      def thenList[A](a: => A): List[A] =
+      infix def thenList[A](a: => A): List[A] =
         if underlying then a :: Nil else Nil
 
       /**
@@ -560,7 +560,7 @@ object ScalaUtils:
         * <p>`(true option a) == Vector(a)`
         * <br>`(false option a) == Vector.empty`
         */
-      def thenVector[A](a: => A): Vector[A] =
+      infix def thenVector[A](a: => A): Vector[A] =
         if underlying then Vector(a) else Vector.empty
 
       /**
@@ -568,7 +568,7 @@ object ScalaUtils:
         * <p>`(true option a) == Set(a)`
         * <br>`(false option a) == Set.empty`
         */
-      def thenSet[A](a: => A): Set[A] =
+      infix def thenSet[A](a: => A): Set[A] =
         if underlying then Set(a) else Set.empty
 
       /**
@@ -576,7 +576,7 @@ object ScalaUtils:
         * <p>`(true option a) == Iterator(a)`
         * <br>`(false option a) == Iterator.empty`
         */
-      def thenIterator[A](a: => A): Iterator[A] =
+      infix def thenIterator[A](a: => A): Iterator[A] =
         if underlying then Iterator.single(a) else Iterator.empty
 
       /**
@@ -584,7 +584,7 @@ object ScalaUtils:
         * <p>`(true option a) == View.Single(a)`
         * <br>`(false option a) == View.empty`
         */
-      def thenView[A](a: => A): View[A] =
+      infix def thenView[A](a: => A): View[A] =
         if underlying then new View.Single(a) else View.empty
 
       /** The string on the right side if true, otherwise the empty string. */

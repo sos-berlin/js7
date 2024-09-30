@@ -716,7 +716,10 @@ final case class Order[+S <: Order.State](
       case Some(Detaching(`agentPath`)) => true
       case _ => false
 
-  def canBecomeDetachable: Boolean =
+  def isDetachedOrDetachable: Boolean =
+    isDetached || isDetachable
+
+  def isDetachable: Boolean =
     isAttached && state.isDetachable
 
   /** OrderGoMarked and OrderGoes are applicable only if Order is in specific waiting states. */
@@ -776,15 +779,16 @@ final case class Order[+S <: Order.State](
    * ❗️ Also true when isAttached and an OrderDetachable event may be required first.
    */
   def isSuspendibleNow: Boolean =
-    (isState[IsFreshOrReady] || isState[ProcessingKilled] && isSuspendingWithKill) &&
-      isDetachedOrAttached
+    isDetachedOrAttached &&
+      (isState[IsFreshOrReady] || isState[ProcessingKilled] && isSuspendingWithKill)
 
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])
 
-  private[order] def isSuspendingWithKill = mark match
-    case Some(OrderMark.Suspending(SuspensionMode(Some(_: CancellationMode.Kill)))) => true
-    case _ => false
+  private[order] def isSuspendingWithKill: Boolean =
+    mark match
+      case Some(OrderMark.Suspending(SuspensionMode(_, Some(_: CancellationMode.Kill)))) => true
+      case _ => false
 
   def isSuspendedOrStopped: Boolean =
     (isSuspended
@@ -886,7 +890,7 @@ final case class Order[+S <: Order.State](
     _order.map(o => (_events.result(), o))
 
   /** Reset the Order's State if possible. */
-  def resetState: List[OrderActorEvent] =
+  def resetState: List[OrderStateReset] =
     state match
       case state: IsResettable if isDetachedOrAttached =>
         state.reset
@@ -1051,7 +1055,7 @@ object Order:
   sealed trait IsResettable extends State:
     this: IsStarted => // Only for IsStarted states. Order will become Ready.
 
-    private[Order] final def reset: List[OrderActorEvent] =
+    private[Order] final def reset: List[OrderStateReset] =
       OrderStateReset :: Nil
 
 

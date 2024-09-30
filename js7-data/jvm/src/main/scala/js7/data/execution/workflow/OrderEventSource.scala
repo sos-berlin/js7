@@ -146,8 +146,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             logger.debug(s"WARN ${order.id}: $prblm")
             OrderOutcomeAdded(OrderOutcome.Disrupted(problem)) ::
               OrderBroken() ::
-              order.canBecomeDetachable.thenList(
-                OrderDetachable)
+              order.isDetachable.thenList:
+                OrderDetachable
           case Right(events) => events
       else
         OrderOutcomeAdded(OrderOutcome.Disrupted(problem)) :: OrderBroken() :: Nil
@@ -246,8 +246,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       case OrderMark.Cancelling(mode) =>
         tryCancel(order, mode)
 
-      case OrderMark.Suspending(_) =>
-        trySuspendNow(order)
+      case OrderMark.Suspending(mode) =>
+        trySuspendNow(order, mode)
 
       case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
         tryResume(order, position, historyOperations, asSucceeded)
@@ -313,31 +313,38 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 
   /** Returns a `Right(OrderSuspended | OrderSuspensionMarked)` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode)
-  : Checked[List[OrderSuspended | OrderSuspensionMarked | OrderDetachable]] =
+  : Checked[List[OrderSuspended | OrderStateReset| OrderSuspensionMarked | OrderDetachable]] =
     catchNonFatalFlatten:
       withOrder(orderId): order =>
         if !order.isSuspendible then
           Left(CannotSuspendOrderProblem)
         else
           Right:
-            if order.mark.contains(OrderMark.Suspending(mode)) /*Already marked*/
-              || order.isSuspended && !order.isResuming
-            then
+            if order.isSuspended && !order.isResuming then
               Nil
             else
-              trySuspendNow(order)
+              trySuspendNow(order, mode)
                 .ifEmpty:
-                  val events = OrderSuspensionMarked(mode) :: Nil
-                  if order.canBecomeDetachable then
-                    // For example, Order.DelayedAfterError (retry)
-                    atController(events)
+                  if order.mark.contains(OrderMark.Suspending(mode)) then
+                    // Already marked, duplicate suspend
+                    Nil
                   else
-                    events
+                    val marked = OrderSuspensionMarked(mode) :: Nil
+                    if order.isDetachable then
+                      // For example, Order.DelayedAfterError (retry)
+                      atController(marked)
+                    else
+                      marked
 
-  private def trySuspendNow(order: Order[Order.State]): List[OrderSuspended | OrderDetachable] =
-    if weHave(order) && order.isSuspendibleNow then
-      atController:
-        OrderSuspended :: Nil
+  private def trySuspendNow(order: Order[Order.State], mode: SuspensionMode)
+  : List[OrderSuspended | OrderStateReset | OrderDetachable] =
+    val maybeReset = if mode.resetState then order.resetState else Nil
+    if weHave(order)
+      && order.isDetachedOrDetachable
+      && order.applyEvents(maybeReset).exists(_.isSuspendibleNow)
+    then
+      atController[OrderSuspended | OrderStateReset | OrderDetachable]:
+        maybeReset ::: OrderSuspended :: Nil
     else
       Nil
 

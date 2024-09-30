@@ -515,7 +515,7 @@ final class OrderTest extends OurTestSuite:
     val NoMark     = none[OrderMark]
     val Cancelling = OrderMark.Cancelling(CancellationMode.FreshOrStarted()).some
     val Suspending = OrderMark.Suspending().some
-    val SuspendingWithKill = OrderMark.Suspending(SuspensionMode(Some(CancellationMode.Kill()))).some
+    val SuspendingWithKill = OrderMark.Suspending(SuspensionMode.kill).some
     val Resuming   = OrderMark.Resuming().some
 
     case object IsSuspended:

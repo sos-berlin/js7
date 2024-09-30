@@ -183,7 +183,9 @@ final class OrderEventTest extends OurTestSuite:
         "parent": "PARENT",
         "mark": {
           "TYPE": "Suspending",
-          "mode": {}
+          "mode": {
+            "resetState": false
+          }
         },
         "isSuspended": true,
         "isResumed": true,
@@ -563,7 +565,9 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderSuspensionMarked(), json"""
       {
         "TYPE": "OrderSuspensionMarked",
-        "mode": {}
+        "mode": {
+          "resetState": false
+        }
       }""")
 
     testJsonDecoder[OrderEvent](OrderSuspensionMarked(), json"""

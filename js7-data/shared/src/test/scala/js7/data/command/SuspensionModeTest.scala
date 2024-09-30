@@ -5,7 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 /**
   * @author Joacim Zschimmer
@@ -13,26 +13,32 @@ import js7.tester.CirceJsonTester.testJson
 final class SuspensionModeTest extends OurTestSuite:
 
   "JSON" - {
-    "SuspensionMode(Kill())" in:
+    "SuspensionMode(resetState, Kill())" in:
       testJson[SuspensionMode](
-        SuspensionMode(Some(CancellationMode.Kill())),
+        SuspensionMode(resetState = true, Some(CancellationMode.Kill())),
         json"""{
+          "resetState": true,
           "kill": {
             "immediately": false
           }
         }""")
 
-      assert(json"""{
-        "kill": {}
-      }""".as[SuspensionMode] == Right(SuspensionMode(Some(CancellationMode.Kill()))))
+      testJsonDecoder(
+        SuspensionMode(resetState = false, Some(CancellationMode.Kill())),
+        json"""{
+          "kill": {}
+        }""")
 
     "SuspensionMode(Kill(...))" in:
       testJson[SuspensionMode](
-        SuspensionMode(Some(
-          CancellationMode.Kill(
-            immediately = true,
-            Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
+        SuspensionMode(
+          resetState = true,
+          kill = Some(
+            CancellationMode.Kill(
+              immediately = true,
+              Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
         json"""{
+          "resetState": true,
           "kill": {
             "immediately": true,
             "workflowPosition": {
