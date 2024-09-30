@@ -1,10 +1,12 @@
 package js7.base.time
 
-import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZoneOffset, ZonedDateTime}
+import java.util.Locale
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchExpected
-import js7.base.time.JavaTimestamp.dateTimeFormatter
+import js7.base.time.JavaTimestamp.*
 import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
@@ -20,7 +22,12 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
     * For example "2017-12-04T11:22:33.456Z".
     */
   def toIsoString: String =
-    dateTimeFormatter.format(this.toInstant)
+    val formatter =
+      if toEpochMilli % 1000 == 0 then
+        ISO_INSTANT
+      else
+        dateTimeMsFormatter
+    formatter.format(this.toInstant)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
     catchExpected[Exception]:
@@ -71,11 +78,14 @@ object JavaTimestamp extends Timestamp.Companion:
   def ofJavaUtilDate(date: java.util.Date): Timestamp =
     JavaTimestamp.ofEpochMilli(date.getTime)
 
-  private def dateTimeFormatter =
-    DateTimeFormatter.ISO_INSTANT
+  private val dateTimeMsFormatter =
+    DateTimeFormatterBuilder()
+      .parseCaseInsensitive
+      .appendInstant(3)
+      .toFormatter(Locale.ROOT)
 
   def parse(string: String): Timestamp =
-    ofInstant(Instant.from(dateTimeFormatter parse string))
+    ofInstant(Instant.from(ISO_INSTANT.parse(string)))
 
   @TestOnly
   def local(string: String)(implicit zone: ZoneId): JavaTimestamp =
