@@ -6,7 +6,7 @@ object StateViewForEvents:
 
   extension (state: StateView)
 
-    def atController(events: => List[OrderActorEvent]): List[OrderActorEvent] =
+    def atController[E <: OrderActorEvent](events: => List[E]): List[E | OrderDetachable] =
       if state.isAgent then
         OrderDetachable :: Nil
       else

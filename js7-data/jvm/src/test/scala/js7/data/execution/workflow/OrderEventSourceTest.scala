@@ -210,13 +210,13 @@ final class OrderEventSourceTest extends OurTestSuite:
                 OrderForked.Child(Fork.Branch.Id("🍋"), order.id / "🍋")))))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancelled)))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspended))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspended)))
 
           testController(freshOrder, detached): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -229,22 +229,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent.nextEvents(order.id) == Nil)
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testController(freshOrder, attaching): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -260,22 +260,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -291,22 +291,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Nil)
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testController(freshOrder, detaching): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -326,7 +326,7 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attachedState = detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
         "Attaching" in:
           testController(readyOrder, attaching): (order, controller) =>
@@ -342,16 +342,16 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testController(readyOrder, attaching): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -373,16 +373,16 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -404,16 +404,16 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
           testController(readyOrder, detaching): (order, controller) =>
             assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -437,16 +437,16 @@ final class OrderEventSourceTest extends OurTestSuite:
           assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+          assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked()))))
+          assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked())))
 
         testController(processingOrder, attached): (order, controller) =>
           assert(controller.resume(order.id, None, Nil, false) == Left(CannotResumeOrderProblem))
@@ -474,16 +474,16 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(None))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Nil))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(FreshOrStarted(None))))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(FreshOrStarted(None)))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
             assert(controller.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
@@ -529,10 +529,10 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(FreshOrStarted(None))))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(FreshOrStarted(None)))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
@@ -569,10 +569,10 @@ final class OrderEventSourceTest extends OurTestSuite:
           assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(FreshOrStarted(None))))))
+          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(FreshOrStarted(None)))))
 
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(FreshOrStarted(None))))))
+          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(FreshOrStarted(None)))))
 
         testController(processingOrder, attached): (order, controller) =>
           assert(controller.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
@@ -607,13 +607,13 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(readyOrder, detached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
@@ -638,22 +638,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
@@ -681,19 +681,19 @@ final class OrderEventSourceTest extends OurTestSuite:
           assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+          assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+          assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+          assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+          assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
         testController(processingOrder, attached): (order, controller) =>
           assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
@@ -726,13 +726,13 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.cancel(order.id, CancellationMode.FreshOnly) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspended))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspended)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumed())/*should already be happened*/)))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumed())/*should already be happened*/))
 
           testController(readyOrder, detached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
@@ -751,22 +751,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderSuspensionMarked(SuspensionMode())))))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Seq(OrderSuspensionMarked(SuspensionMode()))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(None))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Nil))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(None))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Nil))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))
@@ -787,19 +787,19 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.nextEvents(order.id) == Nil)
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancelled)))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumed()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumed())))
 
           testController(freshOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumed(Some(Position(1))))))
 
           testController(freshOrder, detached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(99)), Nil, false) == Left(UnreachableOrderPositionProblem))
@@ -812,40 +812,40 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Nil)
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testController(freshOrder, attaching): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), historicOps, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)), historicOps)))))
+            assert(controller.resume(order.id, Some(Position(1)), historicOps, false) == Right(Seq(OrderResumptionMarked(Some(Position(1)), historicOps))))
 
           testAgent(freshOrder, attaching): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), historicOps, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)), historicOps)))))
+            assert(agent     .resume(order.id, Some(Position(1)), historicOps, false) == Right(Seq(OrderResumptionMarked(Some(Position(1)), historicOps))))
 
         "Attached" in:
           testController(freshOrder, attached): (order, controller) =>
@@ -855,34 +855,34 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Nil)
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           //testAgent(freshOrder, attached): (order, agent) =>
-          //  assert(agent     .suspend(order.id, SuspensionMode()) == Right(Some(Seq(OrderDetachable))))
+          //  assert(agent     .suspend(order.id, SuspensionMode()) == Right(Seq(OrderDetachable)))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumed()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumed())))
 
           testController(freshOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(freshOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumed(Some(Position(1))))))
 
         "Detaching" in:
           testController(freshOrder, detaching): (order, controller) =>
@@ -892,34 +892,34 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .nextEvents(order.id) == Nil)
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOnly))))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(freshOrder, detaching): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(freshOrder, detaching): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
       }
 
       "Ready" - {
@@ -933,16 +933,16 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.cancel(order.id, CancellationMode.FreshOnly     ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancelled))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancelled)))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumed()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumed())))
 
           testController(readyOrder, detached): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumed(Some(Position(1))))))
 
         "Attaching" in:
           testController(readyOrder, attaching): (order, controller) =>
@@ -958,28 +958,28 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(readyOrder, attaching): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(readyOrder, attaching): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
         "Attached" in:
           testController(readyOrder, attached): (order, controller) =>
@@ -995,22 +995,22 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderDetachable))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderDetachable)))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumed()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumed())))
 
           testController(readyOrder, attached): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumed(Some(Position(1))))))
 
         "Detaching" in:
           testController(readyOrder, detaching): (order, controller) =>
@@ -1026,28 +1026,28 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+            assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+            assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+            assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
 
           testController(readyOrder, detaching): (order, controller) =>
-            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
 
           testAgent(readyOrder, detaching): (order, agent) =>
-            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+            assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
       }
 
       "Processing Attached" in:
@@ -1061,21 +1061,21 @@ final class OrderEventSourceTest extends OurTestSuite:
         testAgent(processingOrder, attached): (order, agent) =>
           assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+          assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
+          assert(agent     .cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted()))))
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.suspend(order.id, SuspensionMode()) == Right(None))
+          assert(controller.suspend(order.id, SuspensionMode()) == Right(Nil))
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .suspend(order.id, SuspensionMode()) == Right(None))
+          assert(agent     .suspend(order.id, SuspensionMode()) == Right(Nil))
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+          assert(controller.resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .resume(order.id, None, Nil, false) == Right(Some(Seq(OrderResumptionMarked()))))
+          assert(agent     .resume(order.id, None, Nil, false) == Right(Seq(OrderResumptionMarked())))
         testController(processingOrder, attached): (order, controller) =>
-          assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+          assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
         testAgent(processingOrder, attached): (order, agent) =>
-          assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Some(Seq(OrderResumptionMarked(Some(Position(1)))))))
+          assert(agent     .resume(order.id, Some(Position(1)), Nil, false) == Right(Seq(OrderResumptionMarked(Some(Position(1))))))
     }
 
     def testController(templateOrder: Order[Order.State], attachedState: Option[Order.AttachedState])
@@ -1119,7 +1119,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         /*4*/ LockInstruction.single(lockPath, count = None, Workflow.of(execute))))
 
       "Same level" in:
-        assert(testResume(workflow, Position(0), Position(1)) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
+        assert(testResume(workflow, Position(0), Position(1)) == Right(Seq(OrderResumed(Some(Position(1))))))
 
       "Into and out of if-then" in:
         assert(isResumableBackAndForth(workflow, Position(0), Position(1) / BranchId.Then % 0))
@@ -1155,10 +1155,10 @@ final class OrderEventSourceTest extends OurTestSuite:
         isResumable(workflow, a, b) && isResumable(workflow, b, a)
 
       def isResumable(workflow: Workflow, from: Position, to: Position) =
-        testResume(workflow, from, to) == Right(Some(OrderResumed(Some(to)) :: Nil))
+        testResume(workflow, from, to) == Right(OrderResumed(Some(to)) :: Nil)
 
       def testResume(workflow: Workflow, from: Position, to: Position)
-      : Checked[Option[List[OrderEvent.OrderActorEvent]]] =
+      : Checked[List[OrderEvent.OrderActorEvent]] =
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
         def eventSource = new OrderEventSource(TestStateView.of(
           isAgent = false,
@@ -1179,9 +1179,9 @@ final class OrderEventSourceTest extends OurTestSuite:
     assert(eventSource.nextEvents(order.id) == Nil)
     assert(eventSource.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
     assert(eventSource.cancel(order.id, CancellationMode.Default) ==
-      Right(Some(OrderCancelled :: Nil)))
+      Right(OrderCancelled :: Nil))
     assert(eventSource.resume(order.id, None, Nil, false) ==
-      Right(Some(OrderResumed(None, Nil) :: Nil)))
+      Right(OrderResumed(None, Nil) :: Nil))
 
   "Try catch" - {
     val workflow = WorkflowParser.parse(

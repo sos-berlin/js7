@@ -720,11 +720,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
       case ControllerCommand.GoOrder(orderId, position) =>
         executeOrderMarkCommands(Vector(orderId)):
-          orderEventSource.go(_, position).map(_.ifNonEmpty)
+          orderEventSource.go(_, position)
 
       case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded) =>
-        executeOrderMarkCommands(Vector(orderId))(
-          orderEventSource.resume(_, position, historicOps, asSucceeded))
+        executeOrderMarkCommands(Vector(orderId)):
+          orderEventSource.resume(_, position, historicOps, asSucceeded)
 
       case cmd: ControllerCommand.TransferOrders =>
         executeTransferOrders(cmd)
@@ -736,8 +736,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         controlWorkflow(cmd)
 
       case ControllerCommand.ResumeOrders(orderIds, asSucceeded) =>
-        executeOrderMarkCommands(orderIds.toVector)(
-          orderEventSource.resume(_, None, Nil, asSucceeded))
+        executeOrderMarkCommands(orderIds.toVector):
+          orderEventSource.resume(_, None, Nil, asSucceeded)
 
       case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
         val scope = NowScope(alarmClock.now())
@@ -958,7 +958,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         OrderDeletionMarked)
 
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])
-    (toEvents: OrderId => Checked[Option[List[OrderActorEvent]]])
+    (toEvents: OrderId => Checked[List[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =
     if !orderIds.areUnique then
       Future.successful(Left(Problem.pure("OrderIds must be unique")))
@@ -969,11 +969,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
         case Right(orders) =>
           orders
-            .flatTraverse(order => toEvents(order.id)
-              .map(_.toVector.flatten.map(order.id <-: _)))
-            .traverse(keyedEvents =>
+            .flatTraverse: order =>
+              toEvents(order.id)
+                .map(_.toVector.map(order.id <-: _))
+            .traverse: keyedEvents =>
               // Event may be inserted between events coming from Agent
-              persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))
+              persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
             .map(_.map(_ => ControllerCommand.Response.Accepted))
 
   private def executeTransferOrders(cmd: TransferOrders)

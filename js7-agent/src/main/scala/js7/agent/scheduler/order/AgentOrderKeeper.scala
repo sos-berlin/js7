@@ -676,8 +676,8 @@ extends MainJournalingActor[AgentState, Event], Stash:
           else
             orderEventSource.markOrder(orderId, mark) match
               case Left(problem) => Future.failed(problem.throwable)
-              case Right(None) => Future.successful(Right(AgentCommand.Response.Accepted))
-              case Right(Some(events)) =>
+              case Right(Nil) => Future.successful(Right(AgentCommand.Response.Accepted))
+              case Right(events) =>
                 val sender = this.sender()
                 // Several MarkOrder in sequence are not properly handled
                 // one after the other because execution is asynchronous.

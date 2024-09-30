@@ -1044,7 +1044,8 @@ object Order:
   sealed trait IsGoCommandable extends State:
     type Self <: State
 
-    def go(order: Order[Self]): Checked[List[OrderActorEvent]]
+    def go(order: Order[Self])
+    : Checked[List[OrderGoes | OrderStarted |OrderCycleStarted | OrderAwoke | OrderMoved]]
 
 
   sealed trait IsResettable extends State:
@@ -1102,7 +1103,8 @@ object Order:
   case object Fresh extends IsFreshOrReady, IsDetachable, IsGoCommandable, IsTransferable:
     type Self = Fresh
 
-    def go(order: Order[Fresh]) =
+    def go(order: Order[Fresh])
+    : Either[GoOrderInapplicableProblem, List[OrderGoes | OrderStarted]] =
       if order.maybeDelayedUntil.isDefined then
         Right:
           OrderGoes :: OrderStarted :: Nil
@@ -1125,7 +1127,7 @@ object Order:
 
     override private[Order] def maybeDelayedUntil = Some(until)
 
-    def go(order: Order[DelayedAfterError]) =
+    def go(order: Order[DelayedAfterError]): Right[Nothing, List[OrderGoes | OrderAwoke]] =
       Right:
         OrderGoes :: OrderAwoke :: Nil
 
@@ -1135,11 +1137,10 @@ object Order:
 
     override private[Order] def maybeDelayedUntil = Some(until)
 
-    def go(order: Order[DelayingRetry]) =
+    def go(order: Order[DelayingRetry]): Checked[List[OrderGoes | OrderAwoke | OrderMoved]] =
       order.awokeEvents.map:
-        _.ifNonEmpty.map(OrderGoes :: _)
-          .toList.flatten
-
+        _.whenNonEmpty:
+          OrderGoes :: _
 
   final case class Broken(problem: Option[Problem])
   extends IsStarted/*!!!*/, IsDetachable, IsTransferable
