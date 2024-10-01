@@ -11,7 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 trait FileEventWatch extends EventWatch:
 
   def streamFile(journalPosition: JournalPosition,
-    timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
+    timeout: Option[FiniteDuration], markEOF: Boolean = false, onlyAcks: Boolean = false)
   : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]]
 
   def rawSnapshotAfter(after: EventId): Option[Stream[IO, ByteArray]]

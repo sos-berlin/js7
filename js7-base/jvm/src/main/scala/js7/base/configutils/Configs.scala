@@ -125,8 +125,13 @@ object Configs:
       underlying.hasPath(path) ? f(path)
 
     def finiteDuration(path: String): Checked[FiniteDuration] =
-      catchExpected[ConfigException](
-        underlying.getDuration(path).toFiniteDuration)
+      catchExpected[ConfigException]:
+        underlying.getDuration(path).toFiniteDuration
+
+    def maybeFiniteDuration(path: String): Checked[Option[FiniteDuration]] =
+      catchExpected[ConfigException]:
+        !underlying.getIsNull(path) ?
+          underlying.getDuration(path).toFiniteDuration
 
     def memorySizeAsInt(path: String): Checked[Int] =
       val bigInteger = underlying.getMemorySize(path).toBytesBigInteger

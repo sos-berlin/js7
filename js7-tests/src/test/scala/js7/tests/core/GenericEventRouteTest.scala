@@ -89,7 +89,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
         services {
           event {
             streaming {
-              chunk-timeout = 24h
+              timeout = 6h
               delay = 20ms
             }
           }

@@ -34,7 +34,7 @@ extends AutoCloseable, EventReader:
   protected def isEOF(position: Long) =
     position >= committedLength
 
-  protected def whenDataAvailableAfterPosition(position: Long, until: CatsDeadline) =
+  protected def whenDataAvailableAfterPosition(position: Long, until: Option[CatsDeadline]) =
     IO.True/*EOF counts as data*/
 
   override def toString = s"HistoricEventReader:${journalFile.getFileName}"

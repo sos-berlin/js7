@@ -39,7 +39,8 @@ extends AutoCloseable:
   protected def isFlushedAfterPosition(position: Long): Boolean
   protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
-  protected def whenDataAvailableAfterPosition(position: Long, until: CatsDeadline): IO[Boolean]
+  protected def whenDataAvailableAfterPosition(position: Long, until: Option[CatsDeadline])
+  : IO[Boolean]
   /** Must be constant if `isHistoric`. */
   protected def config: Config
   protected def ioRuntime: IORuntime
@@ -150,12 +151,12 @@ extends AutoCloseable:
     JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
-  final def streamFile(position: Long, timeout: FiniteDuration,
+  final def streamFile(position: Long, timeout: Option[FiniteDuration],
     markEOF: Boolean = false, onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
     for
       jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
-      until <- Stream.eval(SyncDeadline.usingNow(now ?=> now + timeout))
+      until <- Stream.eval(timeout.fold(IO.none)(t => SyncDeadline.usingNow(now ?=> Some(now + t))))
       o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
     yield
       o
@@ -164,7 +165,7 @@ extends AutoCloseable:
   private def streamFile2(
     jsonSeqReader: InputStreamJsonSeqReader,
     position: Long,
-    until: SyncDeadline,
+    until: Option[SyncDeadline],
     markEOF: Boolean = false,
     onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
@@ -172,7 +173,7 @@ extends AutoCloseable:
       def streamNext(position: Long): Stream[IO, PositionAnd[ByteArray]] =
         // Do not logger.streamTrace this nor use onFinished! It would break tail recursion.
         Stream.eval:
-          whenDataAvailableAfterPosition(position, until.toCatsDeadline)
+          whenDataAvailableAfterPosition(position, until.map(_.toCatsDeadline))
         .flatMap:
           case false =>  // Timeout
             Stream.empty

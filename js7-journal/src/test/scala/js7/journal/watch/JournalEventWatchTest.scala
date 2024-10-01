@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import fs2.Stream
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
@@ -64,7 +65,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.streamFile(journalPosition, timeout = 0.s)
+          eventWatch.streamFile(journalPosition, timeout = 0.s.some)
             .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJson.orThrow)
@@ -358,11 +359,12 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
 
   "streamFile" in:
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
+      assert(eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s.some).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      val observing = eventWatch.streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
+      val observing = eventWatch
+        .streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s.some)
         .await(99.s)
         .orThrow
         .handleErrorWith:

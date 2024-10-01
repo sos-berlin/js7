@@ -1,5 +1,6 @@
 package js7.journal.web
 
+import cats.syntax.option.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -29,23 +30,33 @@ final class EventDirectivesTest extends OurTestSuite, ScalatestRouteTest:
 
   private def route =
     path("test"):
-      val x: Directive1[EventRequest[MyEvent]] = eventRequest[MyEvent](minimumDelay = 500.ms, defaultTimeout = 555.s)
+      val x: Directive1[EventRequest[MyEvent]] =
+        eventRequest[MyEvent](minimumDelay = 500.ms, defaultTimeout = 555.s.some)
       x.apply((eventReq: EventRequest[MyEvent]) =>
-        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = 500.ms, timeout = Some(555.s)) then
+        if eventReq == EventRequest[MyEvent](
+          Set(classOf[AEvent]),
+          after = EventId(1), delay = 500.ms, timeout = 555.s.some)
+        then
           complete("DEFAULT")
-        else
-        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(66), delay = 770.millis, timeout = Some(88.s), limit = 99, tornOlder = Some(10.s)) then
+        else if eventReq == EventRequest[MyEvent](
+          Set(classOf[AEvent]),
+          after = EventId(66), delay = 770.millis, timeout = 88.s.some, limit = 99,
+          tornOlder = Some(10.s))
+        then
           complete("A")
-        else
-        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(666), delay = 777.millis, timeout = Some(888.s), limit = 999) then
+        else if eventReq == EventRequest[MyEvent](
+          Set(classOf[AEvent], classOf[BEvent]),
+          after = EventId(666), delay = 777.millis, timeout = 888.s.some, limit = 999)
+        then
           complete("B")
-        else
-        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(3), delay = 500.ms, timeout = None) then
+        else if eventReq == EventRequest[MyEvent](
+          Set(classOf[AEvent], classOf[BEvent]),
+          after = EventId(3), delay = 500.ms, timeout = None)
+        then
           complete("C")
-        else {
+        else
           println(eventReq)
-          reject
-        })
+          reject)
 
   "eventRequest" in:
     Get("/test?return=AEvent&after=1") ~> route ~> check:

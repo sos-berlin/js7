@@ -309,7 +309,7 @@ extends AutoCloseable,
     checkedCurrentEventReader.map(_.journalPosition)
 
   def streamFile(journalPosition: JournalPosition,
-    timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
+    timeout: Option[FiniteDuration], markEOF: Boolean, onlyAcks: Boolean)
   : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]] =
     IO.defer:
       import journalPosition.{fileEventId, position}

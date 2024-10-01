@@ -5,7 +5,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.data.event.*
-import org.apache.pekko.http.scaladsl.model.headers.`Timeout-Access`
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import scala.concurrent.duration.*
@@ -17,11 +16,10 @@ import scala.reflect.ClassTag
 object EventDirectives:
 
   val MinimumDelay: FiniteDuration = 100.ms
-  private val PekkoTimeoutTolerance = 1.s  // To let event reader timeout before Pekko
 
   def eventRequest[E <: Event](
     defaultAfter: Option[EventId] = None,
-    defaultTimeout: FiniteDuration,
+    defaultTimeout: Option[FiniteDuration] = None,
     minimumDelay: FiniteDuration,
     defaultReturnType: Option[String] = None)
     (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
@@ -48,7 +46,7 @@ object EventDirectives:
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[? <: E]],
     defaultAfter: Option[EventId],
-    defaultTimeout: FiniteDuration,
+    defaultTimeout: Option[FiniteDuration],
     minimumDelay: FiniteDuration,
     inner: Tuple1[EventRequest[E]] => Route)
   : Route =
@@ -60,24 +58,15 @@ object EventDirectives:
           _.orElse(defaultAfter) match
             case None => reject(ValidationRejection("Missing parameter after="))
             case Some(after) =>
-              parameter("timeout" ? (defaultTimeout: Duration)): timeout =>
-                val maybeTimeout = timeout match
-                  case o: FiniteDuration => Some(o)
-                  case _/*Duration.Inf only*/ => None
+              parameter("timeout".as[Duration].?): timeout_ =>
+                val timeout = timeout_.orElse(defaultTimeout).collect:
+                  case o: FiniteDuration => o // Ignore Duration.Inf
                 parameter("delay" ? minimumDelay): delay =>
                   parameter("tornOlder" ? none[FiniteDuration]): tornOlder =>
-                    optionalHeaderValueByType(`Timeout-Access`): timeoutAccess =>  // Setting pekko.http.server.request-timeout
                       inner(Tuple1:
                         EventRequest[E](eventClasses,
                           after = after,
-                          timeout =
-                            val maybePekko = timeoutAccess.map(_.timeoutAccess.timeout).collect:
-                              case t: FiniteDuration => t
-                            (maybeTimeout, maybePekko) match
-                              case (Some(timeout), Some(pekko)) =>
-                                Some(timeout min pekko - PekkoTimeoutTolerance)
-                              case (None, Some(t)) => Some(t)
-                              case (t, None) => t,
+                          timeout = timeout,
                           delay = delay max minimumDelay,
                           limit = limit,
                           tornOlder = tornOlder))

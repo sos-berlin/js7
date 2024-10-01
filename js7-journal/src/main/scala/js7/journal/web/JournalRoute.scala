@@ -3,12 +3,12 @@ package js7.journal.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.auth.ValidUserPermission
+import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient
@@ -40,9 +40,9 @@ trait JournalRoute extends RouteProvider:
 
   private given IORuntime = ioRuntime
 
-  private lazy val defaultJsonSeqChunkTimeout = config
-    .getDuration("js7.web.server.services.event.streaming.chunk-timeout")
-    .toFiniteDuration
+  private lazy val defaultJsonSeqChunkTimeout =
+    config.maybeFiniteDuration("js7.web.server.services.event.streaming.timeout").orThrow
+
 
   protected final def journalRoute: Route =
     get:
@@ -52,7 +52,7 @@ trait JournalRoute extends RouteProvider:
             parameter(
               "file".as[EventId].?,
               "position".as[Long].?,
-              "timeout" ? defaultJsonSeqChunkTimeout,
+              "timeout".as[FiniteDuration].?,
               "markEOF" ? false,
               "heartbeat".as[FiniteDuration].?,
               "return" ? ""
@@ -69,7 +69,8 @@ trait JournalRoute extends RouteProvider:
                   case Right((journalPosition, returnAck)) =>
                     completeWithCheckedStream(JournalContentType):
                       eventWatch
-                        .streamFile(journalPosition, timeout,
+                        .streamFile(journalPosition,
+                          timeout = timeout orElse defaultJsonSeqChunkTimeout,
                           markEOF = markEOF, onlyAcks = returnAck)
                         .map(_.map(_
                           .interruptWhenF(shutdownSignaled)

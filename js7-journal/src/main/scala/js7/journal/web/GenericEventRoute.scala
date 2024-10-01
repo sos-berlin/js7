@@ -9,6 +9,7 @@ import izumi.reflect.Tag
 import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.Environment
 import js7.base.circeutils.CirceUtils.RichJsonObject
+import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -34,6 +35,7 @@ import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.GenericEventRoute.*
 import org.apache.pekko.actor.ActorRefFactory
 import org.apache.pekko.http.scaladsl.model.StatusCodes.ServiceUnavailable
+import org.apache.pekko.http.scaladsl.model.headers.`Timeout-Access`
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import org.apache.pekko.util.ByteString
@@ -51,7 +53,7 @@ trait GenericEventRoute extends RouteProvider:
   private given IORuntime = ioRuntime
 
   private lazy val defaultJsonSeqChunkTimeout =
-    config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
+    config.maybeFiniteDuration("js7.web.server.services.event.streaming.timeout").orThrow
   private lazy val minimumStreamingDelay =
     config.getDuration("js7.web.server.services.event.streaming.delay").toFiniteDuration
 
@@ -105,14 +107,26 @@ trait GenericEventRoute extends RouteProvider:
           else
             parameter("serverMetering".as[FiniteDuration].?): serverMetering =>
               eventDirective(eventWatch.lastAddedEventId): request =>
-                eventRoute(eventWatch, request, heartbeat, serverMetering)
+                optionalHeaderValueByType(`Timeout-Access`): timeoutAccess => // Setting pekko.http.server.request-timeout
+                  val request2 = request.copy(
+                    timeout =
+                      val maybePekko = timeoutAccess.map(_.timeoutAccess.timeout).collect:
+                        case t: FiniteDuration
+                          // Respect request-timeout only if shorter than heartbeat
+                          if heartbeat.forall(t < _) && serverMetering.forall(t < _) => t
+                      (request.timeout, maybePekko) match
+                        case (Some(timeout), Some(pekko)) =>
+                          Some(timeout min pekko - PekkoTimeoutTolerance)
+                        case (None, Some(t)) => Some(t)
+                        case (t, None) => t)
+                  eventRoute(eventWatch, request2, heartbeat, serverMetering)
 
     private def eventIdRoute(eventWatch: EventWatch, maybeHeartbeat: Option[FiniteDuration])
     : Route =
-      parameter("timeout" ? defaultJsonSeqChunkTimeout): timeout =>
+      parameter("timeout".as[FiniteDuration].?): timeout =>
         completeWithCheckedStream(`application/x-ndjson`):
           eventWatch
-            .streamEventIds(Some(timeout))
+            .streamEventIds(timeout orElse defaultJsonSeqChunkTimeout)
             .map(_.map(_
               .map((eventId: EventId) => ByteString(eventId.toString) ++ LF)
               .recover:
@@ -226,5 +240,6 @@ object GenericEventRoute:
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
+  private val PekkoTimeoutTolerance = 1.s  // To let event reader timeout before Pekko
 
   final case class TestWiring(testMeteringValue: Option[Double])

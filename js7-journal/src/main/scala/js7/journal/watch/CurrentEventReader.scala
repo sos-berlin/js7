@@ -46,8 +46,8 @@ extends EventReader:
     synchronized:
       journalingEnded && position >= _committedLength
 
-  protected def whenDataAvailableAfterPosition(position: Long, until: CatsDeadline) =
-    flushedLengthSync.whenAvailable(position, until = Some(until))
+  protected def whenDataAvailableAfterPosition(position: Long, until: Option[CatsDeadline]) =
+    flushedLengthSync.whenAvailable(position, until = until)
 
   protected def isFlushedAfterPosition(position: Long) =
     synchronized:
