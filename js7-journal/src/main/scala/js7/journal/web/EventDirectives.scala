@@ -28,24 +28,22 @@ object EventDirectives:
       classTag: ClassTag[E])
   : Directive1[EventRequest[E]] =
     Directive(inner =>
-      parameter("return".?) {
-        _ orElse defaultReturnType match {
+      parameter("return".?):
+        _ orElse defaultReturnType match
           case None => reject(ValidationRejection("Missing parameter return="))
           case Some(returnType) =>
             val eventSuperclass = implicitClass[E]
             val returnTypeNames = if returnType.isEmpty then Set.empty else returnType.split(',').toSet
-            val eventClasses = returnTypeNames flatMap { t =>
-              keyedEventTypedJsonCodec.typenameToClassOption(t)
-            } collect {
-              case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
-              case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
-            }
+            val eventClasses =
+              returnTypeNames.flatMap: t =>
+                keyedEventTypedJsonCodec.typenameToClassOption(t)
+              .collect:
+                case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
+                case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
             if eventClasses.size != returnTypeNames.size then
               reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
             else
-              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, minimumDelay, inner)
-        }
-      })
+              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, minimumDelay, inner))
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[? <: E]],
@@ -54,21 +52,21 @@ object EventDirectives:
     minimumDelay: FiniteDuration,
     inner: Tuple1[EventRequest[E]] => Route)
   : Route =
-    parameter("limit" ? Int.MaxValue) { limit =>
+    parameter("limit" ? Int.MaxValue): limit =>
       if limit <= 0 then
         reject(ValidationRejection(s"Invalid limit=$limit"))
       else
         parameter("after".as[EventId].?):
-          _ orElse defaultAfter match
+          _.orElse(defaultAfter) match
             case None => reject(ValidationRejection("Missing parameter after="))
             case Some(after) =>
-              parameter("timeout" ? (defaultTimeout: Duration)) { timeout =>
+              parameter("timeout" ? (defaultTimeout: Duration)): timeout =>
                 val maybeTimeout = timeout match
                   case o: FiniteDuration => Some(o)
                   case _/*Duration.Inf only*/ => None
-                parameter("delay" ? minimumDelay) { delay =>
-                  parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
-                    optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting pekko.http.server.request-timeout
+                parameter("delay" ? minimumDelay): delay =>
+                  parameter("tornOlder" ? none[FiniteDuration]): tornOlder =>
+                    optionalHeaderValueByType(`Timeout-Access`): timeoutAccess =>  // Setting pekko.http.server.request-timeout
                       inner(Tuple1:
                         EventRequest[E](eventClasses,
                           after = after,
@@ -81,9 +79,5 @@ object EventDirectives:
                               case (None, Some(t)) => Some(t)
                               case (t, None) => t,
                           delay = delay max minimumDelay,
-                          limit = limit, tornOlder = tornOlder))
-                    }
-                  }
-                }
-              }
-    }
+                          limit = limit,
+                          tornOlder = tornOlder))
