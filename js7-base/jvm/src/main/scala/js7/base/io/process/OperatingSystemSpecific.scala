@@ -23,14 +23,6 @@ private[process] sealed trait OperatingSystemSpecific:
 
   def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes*)
 
-  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr) =
-    val file = directory resolve s"$name-$outerr.log"
-    try createFile(file, outputFileAttributes*)
-    catch { case t: FileAlreadyExistsException =>
-      logger.debug(t.toString)  // Should rarely happen
-    }
-    file
-
   protected def outputFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
   def directShellCommandArguments(argument: String): Seq[String]

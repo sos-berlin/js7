@@ -2,7 +2,6 @@ package js7.base.io.process
 
 import cats.effect.{IO, Outcome, Resource, Sync}
 import fs2.Stream
-import java.io.IOException
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
@@ -11,15 +10,11 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.io.ReaderStreams.inputStreamToByteStream
 import js7.base.io.process.OperatingSystemSpecific.OS
-import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
+import js7.base.io.process.StartRobustly.startRobustly
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
-import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 object Processes:
@@ -54,9 +49,6 @@ object Processes:
         OS.newTemporaryShellFile(name))(
       release = file => F.interruptible:
         Files.delete(file))
-
-  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path =
-    OS.newLogFile(directory, name, outerr)
 
   def directShellCommandArguments(argument: String): Seq[String] =
     OS.directShellCommandArguments(argument)
@@ -117,7 +109,7 @@ object Processes:
             inputStreamToByteStream(process.getInputStream),
             inputStreamToByteStream(process.getErrorStream))
 
-  def waitForProcessTermination(process: Process): IO[ReturnCode] =
+  private def waitForProcessTermination(process: Process): IO[ReturnCode] =
     interruptibleVirtualThread:
       logger.traceCallWithResult(s"waitFor ${Pid(process.pid)}"):
         ReturnCode(process.waitFor())
@@ -131,33 +123,3 @@ object Processes:
          |$commandLine
          |""".stripMargin +
         Seq(stderr.utf8String, stdout.utf8String).mkString("\n")
-
-  implicit final class RobustlyStartProcess(private val processBuilder: ProcessBuilder) extends AnyVal:
-    /**
-     * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
-     *
-     * @see https://change.sos-berlin.com/browse/JS-1581
-     * @see https://bugs.openjdk.java.net/browse/JDK-8068370
-     */
-    def startRobustly(durations: Iterable[FiniteDuration] = RobustlyStartProcess.DefaultDurations)
-    : IO[Process] =
-      IO.defer:
-        val durationsIterator = durations.iterator
-        IO.blocking:
-          processBuilder.start()
-        .onErrorRestartLoop(()):
-          case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
-            logger.warn(s"Retrying process start after error: ${e.toString}")
-            restart(()).delayBy(durationsIterator.next())
-
-          case (throwable, _, _) =>
-            IO.raiseError(throwable)
-
-  private[process] object RobustlyStartProcess:
-    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms)
-    assert(DefaultDurations.map(_.toMillis).sum.ms == 2.s)
-
-    object TextFileBusyIOException:
-      private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)
-      def unapply(e: IOException): Option[IOException] =
-        matchesError26(Option(e.getMessage) getOrElse "").matches thenSome e

@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.instances.vector.*
 import cats.syntax.traverse.*
-import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
@@ -12,12 +11,12 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTemporaryFile}
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
+import js7.base.io.process.StartRobustly.startRobustly
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -28,7 +27,6 @@ import scala.util.Try
 final class ProcessesTest extends OurTestSuite:
 
   private given IORuntime = ioRuntime
-  private given ExecutionContext = ioRuntime.compute
 
   "directShellCommandArguments" in:
     if isWindows then
@@ -66,23 +64,6 @@ final class ProcessesTest extends OurTestSuite:
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
       succeed
-
-  "newLogFile" in:
-    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)): file =>
-      assert(exists(file))
-      assert(!(file.toString contains "--"))
-
-  "TextFileBusyIOException" in:
-    val (expected, exceptions) = List(
-      true -> new IOException("xx  error=26, Text file busy"),
-      true -> new IOException("xx  error=26, Das Programm kann nicht ausgeführt oder verändert werden (busy)"),
-      true -> new IOException("error=26"),
-      false -> new IOException("error=261")
-    ).unzip
-    val r = for e <- exceptions yield e match
-      case RobustlyStartProcess.TextFileBusyIOException(x) => assert(x eq e); true
-      case _ => false
-    assert(r == expected)
 
   "Many empty shell script processes" in:
     for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do

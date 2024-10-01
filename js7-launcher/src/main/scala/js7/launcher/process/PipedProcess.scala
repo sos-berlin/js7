@@ -10,6 +10,7 @@ import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.process.ProcessExtensions.onExitIO
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
+import js7.base.io.process.StartRobustly.startRobustly
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
