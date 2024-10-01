@@ -34,7 +34,7 @@ abstract class RecouplingStreamReader[
   @specialized(Long/*EventId or file position*/) I,
   V: Tag,
   Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace,
-](toIndex: V => I,
+](toIndex: V => Option[I],
   conf: RecouplingStreamReaderConf):
 
   private val sym = new BlockingSymbol
@@ -146,7 +146,8 @@ abstract class RecouplingStreamReader[
               Right:
                 streamAfter(after)
                   .map: v =>
-                    lastIndex = toIndex(v)
+                    for i <- toIndex(v) do
+                      lastIndex = i
                     v
                   .handleErrorWith:
                     case t: ProblemException if isSevereProblem(t.problem) =>
@@ -291,7 +292,7 @@ object RecouplingStreamReader:
     @specialized(Long/*EventId or file position*/) I,
     V: Tag,
     Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
-  ](toIndex: V => I,
+  ](toIndex: V => Option[I],
     api: Api,
     conf: RecouplingStreamReaderConf,
     after: I,

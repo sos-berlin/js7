@@ -1,12 +1,13 @@
 package js7.data.event
 
-import io.circe.{Codec, Encoder}
 import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Encoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 
 object EventId:
   val BeforeFirst: EventId = 0L
+  val Missing: EventId = -1L
   val IdsPerMillisecond = 1000
   // JavaScript uses floating point for all numbers, so it have 11 bits for a precise integer to
   // represent all integers between 0 and 2**53 (9.007.199.254.740.992).

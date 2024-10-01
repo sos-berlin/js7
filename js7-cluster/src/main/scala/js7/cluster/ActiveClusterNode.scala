@@ -585,7 +585,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   : Stream[IO, EventId] =
     RecouplingStreamReader
       .stream[EventId, EventId, ClusterNodeApi](
-        toIndex = identity,
+        toIndex = Some(_),
         api,
         clusterConf.recouplingStreamReader,
         after = -1L/*unused, web service returns always the newest EventIds*/,

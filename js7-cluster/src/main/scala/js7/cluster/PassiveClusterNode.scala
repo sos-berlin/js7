@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
+import cats.syntax.option.*
 import fs2.Stream
 import io.circe.syntax.*
 import java.nio.ByteBuffer
@@ -352,7 +353,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
       val recouplingStreamReader =
         new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], ClusterNodeApi](
-          toIndex = _.position,
+          toIndex = _.position.some,
           clusterConf.recouplingStreamReader):
 
           def getStream(api: ClusterNodeApi, position: Long) =

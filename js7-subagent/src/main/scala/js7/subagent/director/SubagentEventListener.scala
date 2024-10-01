@@ -23,7 +23,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, KeyedEvent, NonPersistentEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
@@ -181,7 +181,8 @@ private trait SubagentEventListener:
 
   private def newEventListener() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](
-      _.eventId, recouplingStreamReaderConf):
+      toIndex = stamped => !stamped.value.event.isInstanceOf[NonPersistentEvent] ? stamped.eventId,
+      recouplingStreamReaderConf):
       private var lastProblem: Option[Problem] = None
       override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 

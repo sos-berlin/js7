@@ -79,7 +79,7 @@ extends Service.StoppableByRequest:
         untilFetchingStopped.get
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
-      _.eventId, conf.recouplingStreamReader):
+      _.eventId.some, conf.recouplingStreamReader):
 
     private var attachedOrderIds: Set[OrderId] = null
 

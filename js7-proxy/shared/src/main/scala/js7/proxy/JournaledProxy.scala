@@ -174,7 +174,7 @@ object JournaledProxy:
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
   extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], RequiredApi_[S]](
-    _.eventId, recouplingStreamReaderConf):
+    _.eventId.some, recouplingStreamReaderConf):
     private var addToTornOlder = stateFetchDuration
 
     def getStream(api: RequiredApi_[S], after: EventId) =

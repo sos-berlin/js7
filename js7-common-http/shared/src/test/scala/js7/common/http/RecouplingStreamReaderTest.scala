@@ -2,6 +2,7 @@ package js7.common.http
 
 import cats.effect.IO
 import cats.effect.testkit.TestControl
+import cats.syntax.option.*
 import fs2.Stream
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -49,7 +50,7 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
                   chunkSize = 1)
 
       RecouplingStreamReader.stream[Long, String, TestSessionApi](
-        toIndex = _.toLong,
+        toIndex = _.toLong.some,
         api,
         recouplingStreamReaderConf,
         after = 0L,
