@@ -128,7 +128,6 @@ final class FileWatchManager(
                 // Wait for previous Stream to complete (stop and fiber.join)
                 previous.getOrElse(IO.unit) *>
                   stream
-                    //?.onCancelRaiseError(CanceledException)
                     .handleError: throwable =>
                       logger.error(throwable.toStringWithCauses)  // Ignore ???
                     .start
@@ -238,7 +237,6 @@ final class FileWatchManager(
 
 object FileWatchManager:
   private val logger = Logger[this.type]
-  //private val CanceledException = new Exception
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")

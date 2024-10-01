@@ -21,7 +21,6 @@ import js7.journal.watch.EventWatch
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
-import scala.util.control.NoStackTrace
 
 trait ClusterWatchRequestRoute extends RouteProvider:
 
@@ -56,5 +55,3 @@ trait ClusterWatchRequestRoute extends RouteProvider:
 
 object ClusterWatchRequestRoute:
   private val logger = Logger[this.type]
-
-  private object CanceledException extends Exception, NoStackTrace
