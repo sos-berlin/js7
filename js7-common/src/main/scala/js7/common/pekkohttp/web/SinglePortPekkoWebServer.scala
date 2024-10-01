@@ -199,7 +199,7 @@ private object SinglePortPekkoWebServer:
           IO(Deadline.now).flatMap: now =>
             whenTerminating.complete(now + shutdownTimeout) *>
               IO.whenA(shutdownDelay.isPositive):
-                logger.debugIO(s"Delay web server termination for ${shutdownDelay.pretty}"):
+                logger.debugIO(s"$webServerBinding Delay web server termination for ${shutdownDelay.pretty}"):
                   IO.sleep(shutdownDelay))
         .void
 

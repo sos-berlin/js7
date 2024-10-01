@@ -16,7 +16,7 @@ object StreamUtils:
       .resource(Resource.makeCase(
         acquire = IO.pure(iterator))(
         release = (iterator, exitCase) => IO:
-          logger.trace(s"Close $iterator $exitCase")
+          //logger.trace(s"Close $iterator $exitCase")
           iterator.close()))
       .flatMap: iterator =>
         Stream.fromIterator(iterator, chunkSize = chunkSize)

@@ -134,7 +134,9 @@ object CallMeter:
   //  12,
   //  24,
   //  3)
-  private val _callMeters = Atomic[List[CallMeter]](Nil)
+  private val _callMeters = Atomic[Vector[CallMeter]](Vector.empty)
+
+  given Ordering[CallMeter] = Ordering.by(_.name)
 
   def apply()(using enc: Enclosing): CallMeter =
     new CallMeter(name = enc.value)
@@ -143,12 +145,17 @@ object CallMeter:
     new CallMeter(name)
 
   private def register(callMeter: CallMeter): Unit =
-    _callMeters.getAndUpdate(callMeter :: _)
+    _callMeters.getAndUpdate(_.insertOrdered(callMeter))
 
   def logAndResetAll(): Unit =
     if logger.isTraceEnabled then
-      for callMeter <- _callMeters.get().view.filter(_.count > 0).toVector.sortBy(_.name) do
-        logger.trace(s"${callMeter.asStringAndReset}")
+      val it = _callMeters.get().iterator.filter(_.count > 0)
+      var first = true
+      while it.hasNext do
+        val callMeter = it.next()
+        val mark = if it.hasNext then if first then '┌' else '│' else if first then ' ' else '└'
+        logger.trace(s"$mark ${callMeter.asStringAndReset}")
+        first = false
 
   def logAndResetAbove(minimumQuote: Double): Unit =
     if logger.isTraceEnabled then

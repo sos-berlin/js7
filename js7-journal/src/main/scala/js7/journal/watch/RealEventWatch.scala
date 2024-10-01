@@ -328,7 +328,8 @@ trait RealEventWatch extends EventWatch:
 
 object RealEventWatch:
   private val logger = Logger[this.type]
-  private val meterCollectEventsSince = CallMeter()
+  private val meterCollectEventsSince =
+    CallMeter("RealEventWatch.collectEventsSince")
 
   private def toDeadline(timeout: Option[FiniteDuration]): IO[Option[SyncDeadline]] =
     timeout match

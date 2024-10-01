@@ -652,7 +652,7 @@ extends Actor, Stash, JournalLogging:
 object JournalActor:
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
-  private val meterPersist = CallMeter()
+  private val meterPersist = CallMeter("JournalActor")
 
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion](
     journalLocation: JournalLocation,

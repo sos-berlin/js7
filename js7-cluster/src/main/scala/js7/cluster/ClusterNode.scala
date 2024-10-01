@@ -89,29 +89,31 @@ extends Service.StoppableByRequest:
             Left(ProgramTermination.Restart))
 
   protected def start =
-    startService:
-      untilWorkingNodeStarted
-        .recover:
-          case ProblemException(prblm @ PassiveClusterNodeResetProblem) =>
-            // untilWorkingNodeStarted has logged and handled PassiveClusterNodeResetProblem
-            logger.debug(prblm.toString)
-        .start
-        .flatMap: fiber =>
-          IO.race(recoveryStopRequested.get, fiber.joinStd)
-        .*>(untilStopRequested)
-        .guaranteeCaseLazy: outcome =>
-          logger.debugIO("startService guarantee", outcome):
-            stopRecovery(ProgramTermination()/*???*/) *>
-              IO.defer:
-                (passiveOrWorkingNode.get(), outcome) match
-                  case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
-                    passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
+    startService(run)
 
-                  case (Some(Right(workingClusterNodeAllocated)), _) =>
-                    workingClusterNodeAllocated.release
+  private def run =
+    untilWorkingNodeStarted
+      .recover:
+        case ProblemException(prblm @ PassiveClusterNodeResetProblem) =>
+          // untilWorkingNodeStarted has logged and handled PassiveClusterNodeResetProblem
+          logger.debug(prblm.toString)
+      .start
+      .flatMap: fiber =>
+        IO.race(recoveryStopRequested.get, fiber.joinStd)
+      .*>(untilStopRequested)
+      .guaranteeCaseLazy: outcome =>
+        logger.debugIO("run guarantee", outcome):
+          stopRecovery(ProgramTermination()/*???*/) *>
+            IO.defer:
+              (passiveOrWorkingNode.get(), outcome) match
+                case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
+                  passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
 
-                  case _ => IO.unit
-              //? *> stopWorkingClusterNode
+                case (Some(Right(workingClusterNodeAllocated)), _) =>
+                  workingClusterNodeAllocated.release
+
+                case _ => IO.unit
+            //? *> stopWorkingClusterNode
 
   private def stopWorkingClusterNode: IO[Unit] =
     logger.traceIO:

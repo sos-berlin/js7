@@ -11,7 +11,6 @@ import js7.base.catsutils.Environment
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
-import js7.base.metering.CallMeter
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -202,12 +201,11 @@ trait GenericEventRoute extends RouteProvider:
         Environment.maybe[TestWiring]
       .flatMap: maybeTestWiring =>
         Stream.fixedDelay[IO](every).map: _ =>
-          meterSubagentPriorityDataEvent:
-            var event = ServerMeteringEvent.fromCurrentMxBean()
-            for w <- maybeTestWiring do
-              event = event.copy(testMeteringValue = w.testMeteringValue)
-            // EventId.Missing, because ServerMeteringEvent is a NonPersistentEvent
-            Stamped(EventId.Missing, Timestamp.now, KeyedEvent(event))
+          var event = ServerMeteringEvent.fromCurrentMxBean()
+          for w <- maybeTestWiring do
+            event = event.copy(testMeteringValue = w.testMeteringValue)
+          // EventId.Missing, because ServerMeteringEvent is a NonPersistentEvent
+          Stamped(EventId.Missing, Timestamp.now, KeyedEvent(event))
 
     private def eventDirective(defaultAfter: EventId)
     : Directive1[EventRequest[Event]] =
@@ -228,6 +226,5 @@ object GenericEventRoute:
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
-  private val meterSubagentPriorityDataEvent = CallMeter()
 
   final case class TestWiring(testMeteringValue: Option[Double])

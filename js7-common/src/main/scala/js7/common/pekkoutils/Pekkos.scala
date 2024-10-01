@@ -46,17 +46,16 @@ object Pekkos:
       actorSystem.settings.config.getDuration("js7.pekko.shutdown-timeout").toFiniteDuration)
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
-    logger.debugCall(s"terminateAndWait ActorSystem:${actorSystem.name}")(
+    logger.debugCall(s"ActorSystem:${actorSystem.name} terminateAndWait"):
       try terminateFuture(actorSystem).await(timeout)
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         logger.warn(s"ActorSystem:${actorSystem.name} .terminate(): ${t.toStringWithCauses}")
-      })
 
   def terminate(actorSystem: ActorSystem): IO[Unit] =
-    logger.debugIO(s"terminate ActorSystem:${actorSystem.name}")(
+    logger.debugIO(s"ActorSystem:${actorSystem.name} terminate"):
       IO.fromFutureDummyCancelable(IO:
         terminateFuture(actorSystem)
-      ).void)
+      ).void
 
   /** Shut down connection pool and terminate ActorSystem.
     * Only once callable.
@@ -78,7 +77,8 @@ object Pekkos:
         timeoutPromise.future)
       ).flatMap { _ =>
         if timeoutPromise.isCompleted then
-          logger.debug(s"ActorSystem:${actorSystem.name} shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+          logger.debug(s"ActorSystem:${actorSystem.name
+          } shutdownAllConnectionPools() ⏰ timed out after ${poolShutdownTimeout.pretty}")
         timer.cancel()
         actorSystem.terminate()
       }

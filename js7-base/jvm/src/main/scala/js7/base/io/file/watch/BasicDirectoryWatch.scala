@@ -79,13 +79,13 @@ extends Service.StoppableByRequest:
   /** Wait for events. */
   private def pollWatchKey(): IO[Seq[DirectoryWatchEvent]] =
     interruptibleVirtualThread:
-      logger.traceCallWithResult(
-        s"WatchService.poll() $directory",
-        result = events => if events.isEmpty then "timed out" else events.mkString(", "),
-        body =
-          watchService.poll(pollTimeout.toMillis, MILLISECONDS) match
-            case null => Nil
-            case watchKey => retrieveEvents(watchKey))
+      watchService.poll(pollTimeout.toMillis, MILLISECONDS) match
+        case null => Nil
+        case watchKey =>
+          val result = retrieveEvents(watchKey)
+          logger.trace(s"WatchService.poll() $directory => ${result.mkString(" ")}")
+          result
+
 
   private def retrieveEvents(watchKey: WatchKey): Seq[DirectoryWatchEvent] =
     try watchKey.pollEvents().asScala.view

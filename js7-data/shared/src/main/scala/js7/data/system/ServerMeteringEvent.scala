@@ -3,6 +3,7 @@ package js7.data.system
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.lang.management.ManagementFactory.getPlatformMXBean
+import js7.base.metering.CallMeter
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StandardMapView
@@ -47,14 +48,16 @@ extends NoKeyEvent, NonPersistentEvent:
 
 
 object ServerMeteringEvent:
+  private val meter = CallMeter("ServerMeteringEvent.fromCurrentMxBean")
 
   def fromCurrentMxBean(): ServerMeteringEvent =
-    val bean = getPlatformMXBean(classOf[com.sun.management.OperatingSystemMXBean])
-    ServerMeteringEvent(
-      cpuLoad = normalizePositive(bean.getCpuLoad),
-      committedVirtualMemorySize = bean.getCommittedVirtualMemorySize,
-      freeMemorySize = bean.getFreeMemorySize,
-      totalMemorySize = bean.getTotalMemorySize)
+    meter:
+      val bean = getPlatformMXBean(classOf[com.sun.management.OperatingSystemMXBean])
+      ServerMeteringEvent(
+        cpuLoad = normalizePositive(bean.getCpuLoad),
+        committedVirtualMemorySize = bean.getCommittedVirtualMemorySize,
+        freeMemorySize = bean.getFreeMemorySize,
+        totalMemorySize = bean.getTotalMemorySize)
 
   private def normalizePositive(double: Double): Option[Double] =
     (!double.isNaN && double >= 0) ? double
