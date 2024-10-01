@@ -4,19 +4,19 @@ import cats.effect.IO
 import js7.base.catsutils.CatsExtensions.traverseCombine
 import js7.base.catsutils.{Environment, FiberVar}
 import js7.base.eventbus.EventPublisher
+import js7.base.io.process.ProcessExtensions.{isAlive, maybeProcessHandle, onExitIO, toPid}
 import js7.base.io.process.Processes.*
-import js7.base.io.process.{JavaProcess, Js7Process, Pid, ReturnCode}
+import js7.base.io.process.{JavaProcess, Js7Process, Pid}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.metering.CallMeter
 import js7.base.system.OperatingSystem.isUnix
-import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.base.utils.{Assertions, Tests}
 import js7.launcher.processkiller.ProcessKiller.*
-import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.jdk.CollectionConverters.*
@@ -138,9 +138,9 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
   /** Return a Seq of distinct ProcessHandles */
   private def descendantsOf(processHandles: Seq[ProcessHandle]): Seq[ProcessHandle] =
     val known = mutable.Set[Long]()
-    val result = VectorBuilder[ProcessHandle]()
-    for p <- processHandles if p.isAlive do
-      if !known(p.pid) then
+    val result = Vector.newBuilder[ProcessHandle]
+    for p <- processHandles do
+      if !known(p.pid) && p.isAlive then
         known += p.pid
         result += p
         for d <- p.descendantsIterator do
@@ -221,54 +221,34 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
         if !dontExecute then
           process.destroy()
 
-  final def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
-    // Try onExit to avoid blocking a (virtual) thread
-    process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
-      interruptibleVirtualThread:
-        logger.traceCallWithResult(s"waitFor $process"):
-          process.waitFor()
-
 
   extension (process: Pid | Js7Process)
-    private def toPid: Pid =
-      process match
-        case pid: Pid => pid
-        case process: Js7Process => process.pid
-
-    protected def isAlive: Boolean =
-      process match
-        case pid: Pid => pid.maybeProcessHandle.exists(_.isAlive)
-        case process: Js7Process => process.isAlive
-
     protected def descendants: Vector[ProcessHandle] =
       process.maybeProcessHandle.fold(Vector.empty)(_.descendantsVector)
 
-    private def maybeProcessHandle: Option[ProcessHandle] =
-      process match
-        case pid: Pid => ProcessHandle.of(pid.number).toScala
-        case process: Js7Process => process.maybeHandle
-
   extension (processHandle: ProcessHandle)
-    private def onExitIO: IO[Unit] =
-      IO.fromCompletableFuture(IO:
-        processHandle.onExit())
-      .void
-
     private def descendantsVector: Vector[ProcessHandle] =
       val t = Deadline.now
-      val r = processHandle.descendants.toScala(Vector)
-      logger.trace:
-        s"ProcessHandle(${processHandle.pid}).descendants => ${r.size} PIDs (${t.elapsed.pretty})"
+      val r =
+        meterProcessHandleDescendant:
+          processHandle.descendants.toScala(Vector)
+      val elapsed = t.elapsed
+      if elapsed >= 1.ms then
+        logger.trace:
+          s"ProcessHandle(PID:${processHandle.pid}).descendants => ${r.size} PIDs (${elapsed.pretty})"
       r
 
     private def descendantsIterator: Iterator[ProcessHandle] =
       val t = Deadline.now
-      val r = processHandle.descendants.iterator.asScala
-      logger.trace:
-        s"ProcessHandle(PID:${processHandle.pid}).descendants (${t.elapsed.pretty})"
+      val r = meterProcessHandleDescendant:
+        processHandle.descendants.iterator.asScala
+      val elapsed = t.elapsed
+      if elapsed >= 1.ms then
+        logger.trace(s"ProcessHandle(PID:${processHandle.pid}).descendants (${elapsed.pretty})")
       r
 
 
 object ProcessKiller:
 
+  private val meterProcessHandleDescendant = CallMeter("ProcessHandle.descendants")
   final case class TestChildProcessTerminated(pid: Pid)

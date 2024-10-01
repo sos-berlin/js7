@@ -4,6 +4,7 @@ import cats.effect.kernel.Resource
 import cats.effect.{IO, ResourceIO}
 import js7.base.catsutils.FiberVar
 import js7.base.io.process.Pid
+import js7.base.io.process.ProcessExtensions.isAlive
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*

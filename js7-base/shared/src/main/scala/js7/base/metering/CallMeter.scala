@@ -139,6 +139,9 @@ object CallMeter:
   def apply()(using enc: Enclosing): CallMeter =
     new CallMeter(name = enc.value)
 
+  def apply(name: String): CallMeter =
+    new CallMeter(name)
+
   private def register(callMeter: CallMeter): Unit =
     _callMeters.getAndUpdate(callMeter :: _)
 

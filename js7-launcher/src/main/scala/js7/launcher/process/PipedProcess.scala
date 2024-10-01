@@ -7,6 +7,7 @@ import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, raceBoth, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.io.process.ProcessExtensions.onExitIO
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
@@ -15,6 +16,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
@@ -42,7 +44,7 @@ final class PipedProcess private(
   processKillerAlloc: Allocated[IO, SubagentProcessKiller],
   label: String):
 
-  private val logger = Logger.withPrefix[this.type](toString)
+  private val logger = Logger.withPrefix[this.type](label)
   private val processKiller = processKillerAlloc.allocatedThing
   private val sigkilled = Deferred.unsafe[IO, Unit]
   private var _isKilling = none[ProcessSignal]
@@ -60,7 +62,14 @@ final class PipedProcess private(
       IO.defer:
         process.returnCode.map(IO.pure)
           .getOrElse:
-            processKiller.waitForReturnCode(process)
+            waitForReturnCode(process)
+
+  private def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
+    // Try onExit to avoid blocking a (virtual) thread
+    process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
+      interruptibleVirtualThread:
+        logger.traceCallWithResult(s"waitFor $process"):
+          process.waitFor()
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
