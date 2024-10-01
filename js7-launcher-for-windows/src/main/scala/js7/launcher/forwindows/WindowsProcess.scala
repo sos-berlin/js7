@@ -81,22 +81,26 @@ extends Js7Process:
         call("TerminateProcess"):
           kernel32.TerminateProcess(hProcess, TerminateProcessReturnCode.number) ||
             kernel32.GetLastError == ERROR_ACCESS_DENIED && (
-              Try(waitForProcess(0)).getOrElse(false) || {
+              Try(waitForProcess(timeout = 0)).getOrElse(false) || {
                 kernel32.SetLastError(ERROR_ACCESS_DENIED)
                 false
               })
 
   def waitFor(timeout: FiniteDuration): Boolean =
     returnCodeOnce.isDefined ||
-      waitForProcess(max(0, min(Int.MaxValue, timeout.toMillis)).toInt)
+      waitForProcess(timeout = max(0, min(Int.MaxValue, timeout.toMillis)).toInt)
 
   def waitFor(): ReturnCode =
     returnCodeOnce.getOrElse:
-      waitForProcess(INFINITE)
+      waitForProcess(timeout = INFINITE)
       returnCodeOnce.orThrow
 
   def returnCode =
-    returnCodeOnce.toOption
+    returnCodeOnce.toOption match
+      case Some(rc) => Some(rc)
+      case None =>
+        waitForProcess(timeout = 0)
+        returnCodeOnce.toOption
 
   /** Must be called to release the hProcess handle. */
   private def waitForProcess(timeout: Int): Boolean =

@@ -60,17 +60,15 @@ final class PipedProcess private(
 
   val awaitProcessTermination: IO[ReturnCode] =
     memoize:
-      IO.defer:
-        process.returnCode.map(IO.pure)
-          .getOrElse:
-            waitForReturnCode(process)
-
-  private def waitForReturnCode(process: Js7Process): IO[ReturnCode] =
-    // Try onExit to avoid blocking a (virtual) thread
-    process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
-      interruptibleVirtualThread:
-        logger.traceCallWithResult(s"waitFor $process"):
-          process.waitFor()
+      process.maybeHandle.fold(IO.unit)(_.onExitIO) *>
+        IO.defer:
+          process.returnCode.map(IO.pure)
+            .getOrElse:
+              interruptibleVirtualThread:
+                logger.traceCallWithResult(s"waitFor $process"):
+                  process.waitFor()
+      .flatTap: rc =>
+        IO(logger.trace(s"Process $pid terminated with $rc"))
 
   val watchProcessAndStdouterr: IO[ReturnCode] =
     memoize:
