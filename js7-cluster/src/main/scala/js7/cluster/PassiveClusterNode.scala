@@ -378,6 +378,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.stream(activeNodeApi, after = continuation.fileLength)
+        .interruptWhenF(shutdown.get)
         // TODO Aktiver kann JournalFileIsNotReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
         //  (zB Login klappt nicht, isTemporaryUnreachable).
@@ -615,27 +616,32 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
           case Left(problem) => problem
           //case Right(Completed) => -ignore-
         .head.compile.last
-        .map:
-          case Some(problem) => Left(problem)
+        .flatMap:
+          case Some(problem) => IO.left(problem)
           case None =>
-            logger.debug(s"replicateJournalFile finished, " +
-              s"isReplicatingHeadOfFile=$isReplicatingHeadOfFile, " +
-              s"replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
-            if !isReplicatingHeadOfFile then
-              // In case of fail-over while the next journal file's snapshot is written,
-              // we need to remove the next file and cut this file's open transaction
-              // So we cut off open transaction already now.
-              out.truncate(lastProperEventPosition)
-              eventWatch.onJournalingEnded(lastProperEventPosition)
-            (builder.fileJournalHeader, builder.nextJournalHeader) match
-              case (Some(header), Some(nextHeader)) =>
-                Right(NextFile(
-                  RecoveredJournalFile(file, length = replicatedFileLength,
-                    lastProperEventPosition = lastProperEventPosition,
-                    header, nextHeader, replicatedFirstEventPosition.orThrow, builder.result())))
-              case _ =>
-                Left(Problem.pure("JournalHeader could not be replicated " +
-                  s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
+            IO.defer:
+              logger.debug(s"replicateJournalFile finished, " +
+                s"isReplicatingHeadOfFile=$isReplicatingHeadOfFile, " +
+                s"replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
+              if !isReplicatingHeadOfFile then
+                // In case of fail-over while the next journal file's snapshot is written,
+                // we need to remove the next file and cut this file's open transaction
+                // So we cut off open transaction already now.
+                out.truncate(lastProperEventPosition)
+                eventWatch.onJournalingEnded(lastProperEventPosition)
+              (builder.fileJournalHeader, builder.nextJournalHeader) match
+                case (Some(header), Some(nextHeader)) =>
+                  IO.right(NextFile(
+                    RecoveredJournalFile(file, length = replicatedFileLength,
+                      lastProperEventPosition = lastProperEventPosition,
+                      header, nextHeader, replicatedFirstEventPosition.orThrow, builder.result())))
+                case _ =>
+                  shutdown.tryGet.map(_.isDefined).map:
+                    if _ then
+                      Left(PassiveClusterNodeShutdownProblem)
+                    else
+                      Left(Problem.pure("JournalHeader could not be replicated " +
+                        s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
         .guarantee(IO:
           out.close())
 
@@ -740,3 +746,4 @@ object PassiveClusterNode:
   private val logger = Logger[this.type]
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
+  private val PassiveClusterNodeShutdownProblem = Problem("PassiveClusterNode has been shut down")
