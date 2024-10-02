@@ -1,13 +1,12 @@
 package js7.base.session
 
 import cats.effect.{IO, Outcome, Resource, ResourceIO}
-import cats.syntax.flatMap.*
 import js7.base.auth.UserAndPassword
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
@@ -130,35 +129,26 @@ object SessionApi:
       () => defaultLoginDelays()
 
     override def retryIfSessionLost[A]()(body: IO[A]): IO[A] =
-      IO.defer:
-        val delays = Iterator(0.s) ++ loginDelays()
-        login(onlyIfNotLoggedIn = true) *>
-          ().tailRecM(_ =>
-            body
-              .onErrorRestartLoop(()):
-                case (HttpException.HasProblem(problem), _, retry)
-                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                  renewSession(problem, delays) *>
-                    retry(())
-                case (throwable, _, _) =>
-                  IO.raiseError(throwable)
-              .flatMap: // A may be a Checked[Problem]
-                case Left(problem: Problem)
-                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                  renewSession(problem, delays).as(Left(()))
-                case o => IO.right(o)
-          )
+      login(onlyIfNotLoggedIn = true) *>
+        body.recoverWith:
+          case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) =>
+            renewSession(problem) *>
+              body
+        .flatMap: // A may be a Checked, Left[Problem]
+          case Left(problem: Problem) if problem.is(InvalidSessionTokenProblem) =>
+            renewSession(problem) *>
+              body
+          case o => IO.pure(o)
 
-    private def renewSession(problem: Problem, delays: Iterator[FiniteDuration])
+    private def renewSession(problem: Problem)
     : IO[Completed] =
       IO.defer:
         clearSession()
         // Race condition with a parallel operation,
         // which after the same error has already logged-in again successfully.
-        // Should be okay if login is delayed like here
+        // login() is guarded by a mutex
         logger.debug(s"$toString: Login again due to: $problem")
-        IO.sleep(delays.next()) *>
-          login()
+        login()
 
     override final def retryUntilReachable[A](
       onError: Throwable => IO[Boolean] = this.onErrorTryAgain)
