@@ -15,6 +15,7 @@ import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.Ascii.toPrintableChar
+import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
@@ -339,6 +340,14 @@ object ScalaUtils:
       // About twice as fast
       def mergeOrderedOptimizedBy[B: Ordering](f: A => B): MergeOrderedIterator[A, B] =
         new MergeOrderedIterator(iterables, f)
+
+
+    extension [A](seq: Vector[A])
+      /** Insert into an ordered sequence. */
+      def insertOrdered(a: A)(using Ordering[A]): Vector[A] =
+        val i = binarySearch(seq)(a)._1
+        seq.take(i) :+ a :++ seq.drop(i)
+
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
     extends AnyVal:

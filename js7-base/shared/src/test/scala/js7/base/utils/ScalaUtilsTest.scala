@@ -460,6 +460,18 @@ final class ScalaUtilsTest extends OurTestSuite:
     }
   }
 
+  "insertOrdered" in:
+    case class A(value: Int)
+    given Ordering[A] = Ordering.by(_.value)
+    assert(Vector.empty.insertOrdered(A(1)) == Vector(A(1)))
+    assert(Vector(A(1)).insertOrdered(A(2)) == Vector(A(1), A(2)))
+    assert(Vector(A(2)).insertOrdered(A(1)) == Vector(A(1), A(2)))
+    assert(Vector(A(1), A(3)).insertOrdered(A(2)) == Vector(A(1), A(2), A(3)))
+    assert(Vector(A(1), A(2)).insertOrdered(A(3)) == Vector(A(1), A(2), A(3)))
+    assert(Vector(A(2), A(3)).insertOrdered(A(1)) == Vector(A(1), A(2), A(3)))
+    assert(Vector(A(1), A(2)).insertOrdered(A(1)) == Vector(A(1), A(1), A(2)))
+    assert(Vector(A(1), A(2)).insertOrdered(A(2)) == Vector(A(1), A(2), A(2)))
+
   "PartialFunction" - {
     val pf: PartialFunction[Int, String] =
       case 1 => "ONE"
