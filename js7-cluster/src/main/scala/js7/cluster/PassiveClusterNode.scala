@@ -20,7 +20,7 @@ import js7.base.catsutils.SyncDeadline
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, mapParallelBatch}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.RefCountedResource
@@ -115,7 +115,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       val notifyActive = activeApiResource
         .use(api => api
           .login(onlyIfNotLoggedIn = true)
-          .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
+          .productR:
+            api.retryIfSessionLost():
+              api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId))
           .void
           .handleError(throwable => logger.debug(
             s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
