@@ -6,6 +6,6 @@ import js7.launcher.forjava.internal.BlockingInternalJob;
 public final class EmptyBlockingInternalJob implements BlockingInternalJob
 {
     public OrderProcess toOrderProcess(Step step) {
-        return () -> JOutcome.succeeded();
+        return JOutcome::succeeded;
     }
 }

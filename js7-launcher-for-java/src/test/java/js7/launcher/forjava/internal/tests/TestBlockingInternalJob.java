@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import js7.base.problem.Problem;
 import js7.data.job.JobResourcePath;
 import js7.data.value.NumberValue;
+import js7.data.value.StringValue;
 import js7.data.value.Value;
 import js7.data_for_java.order.JOutcome;
 import js7.data_for_java.value.JExpression;
@@ -82,7 +83,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
                     JExpression.parse("$js7JobName")
                         .flatMap(step::evalExpression)
                         .flatMap(o -> toVavr(o.toStringValue()))
-                        .map(o -> o.string())),
+                        .map(StringValue::string)),
                 equalTo(step.jobName()));
 
             step.out().println("TEST FOR OUT");
@@ -106,7 +107,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             // STEP_ARG is not accessible here.
             assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional
                 .ofNullable(argOrNull)
-                .map(o -> right(o))));
+                .map(Either::right)));
             assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));
 
             // 💥 May throw NullPointerException or ArithmeticException 💥
