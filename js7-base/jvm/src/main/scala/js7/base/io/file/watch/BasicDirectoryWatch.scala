@@ -9,7 +9,6 @@ import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, raceFold}
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac

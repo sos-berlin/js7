@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
 import org.scalatest.matchers.should.Matchers.*
-import scala.collection.{MapView, View}
+import scala.collection.{MapView, View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Random
@@ -367,6 +367,39 @@ final class ScalaUtilsTest extends OurTestSuite:
       val iterator = Iterator(1, 2, 3, 4, 5)
       assert((iterator.takeThrough(_ < 3): Iterator[Int]).toList == List(1, 2, 3))
       assert(iterator.next() == 4)
+
+    "foreachWithBracket" - {
+      "empty" in:
+        assert(testWith(0).isEmpty)
+
+      "One element" in:
+        assert(testWith(1) == Seq(
+          " ·1"))
+
+      "Two elements" in:
+        assert(testWith(2) == Seq(
+          "⎛·1",
+          "⎝·2"))
+
+      "Three elements" in:
+        assert(testWith(3) == Seq(
+          "⎛·1",
+          "⎜·2",
+          "⎝·3"))
+
+      "Four elements" in:
+        assert(testWith(4) == Seq(
+          "⎛·1",
+          "⎜·2",
+          "⎜·3",
+          "⎝·4"))
+
+      def testWith(n: Int): Seq[String] =
+        val buffer = mutable.Buffer[String]()
+        Iterator.range(1, 1 + n).foreachWithBracket(MultipleLinesBracket.Round): (x, bracket) =>
+          buffer += s"${bracket}·$x"
+        buffer.toSeq
+    }
   }
 
   "mergeOrdered" - {

@@ -299,6 +299,24 @@ object ScalaUtils:
         .concat:
           firstNonMatching
 
+      /** Usable for logging a chunk of lines with a long bracket. */
+      def foreachWithBracket(bracket: MultipleLinesBracket)(body: (A, Char) => Unit): Unit =
+        if iterator.hasNext then
+          val a = iterator.next()
+          if iterator.hasNext then
+            body(a, bracket.first)
+          else
+            body(a, bracket.single)
+            return
+
+          while true do
+            val a = iterator.next()
+            if iterator.hasNext then
+              body(a, bracket.middle)
+            else
+              body(a, bracket.last)
+              return
+
     extension [A](iterableOnce: IterableOnce[A])
       //inline def foldChecked[S](init: S)(f: (S, A) => Checked[S]): Checked[S] =
       //  foldEithers[S, Problem](init)(f)

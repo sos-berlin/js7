@@ -12,6 +12,7 @@ import js7.base.metering.CallMeter.*
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
+import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 import scala.quoted.{Expr, Quotes, Type}
@@ -149,13 +150,9 @@ object CallMeter:
 
   def logAndResetAll(): Unit =
     if logger.isTraceEnabled then
-      val it = _callMeters.get().iterator.filter(_.count > 0)
-      var first = true
-      while it.hasNext do
-        val callMeter = it.next()
-        val mark = if it.hasNext then if first then '┌' else '│' else if first then ' ' else '└'
-        logger.trace(s"$mark ${callMeter.asStringAndReset}")
-        first = false
+      _callMeters.get().iterator.filter(_.count > 0)
+        .foreachWithBracket(Square): (callMeter, bracket) =>
+          logger.trace(s"$bracket ${callMeter.asStringAndReset}")
 
   def logAndResetAbove(minimumQuote: Double): Unit =
     if logger.isTraceEnabled then
