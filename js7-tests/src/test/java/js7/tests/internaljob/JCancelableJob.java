@@ -11,6 +11,7 @@ public final class JCancelableJob implements BlockingInternalJob
             volatile boolean canceled = false;
 
             public JOutcome.Completed run() throws InterruptedException {
+                step.out().println("CancelableJob");
                 while (!canceled) {
                     Thread.sleep(10);
                 }

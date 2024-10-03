@@ -22,7 +22,7 @@ import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderCancellationMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderCancellationMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, Value}
@@ -31,7 +31,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
-import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
+import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, InterruptibleBlockingInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
 import js7.tester.ScalaTestUtils.awaitAndAssert
@@ -146,7 +146,13 @@ final class InternalJobTest
   "Kill JavaBlockingJob" in:
     testCancelJob[JCancelableJob]()
 
-  private def testCancelJob[J: ClassTag](): Unit =
+  "Kill InterruptibleBlockingInternalJob" in:
+    testCancelJob[InterruptibleBlockingInternalJob](
+      expected = OrderOutcome.Failed(Some("java.lang.InterruptedException: sleep interrupted")))
+
+  private def testCancelJob[J: ClassTag](
+    expected: OrderOutcome.Failed = OrderOutcome.Failed(Some("Canceled")))
+  : Unit =
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(execute_[J]).withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
@@ -154,7 +160,7 @@ final class InternalJobTest
     val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(1)))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    sleep(300.ms) // Wait until OrderProcess has been started
+    eventWatch.await[OrderStdoutWritten](_.key == order.id)
 
     // Let the cancel handler throw its exception
     controller.api.executeCommand:
@@ -167,7 +173,7 @@ final class InternalJobTest
       CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true))
     .await(99.s).orThrow
     val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
-    assert(outcome == OrderOutcome.Killed(OrderOutcome.Failed(Some("Canceled"))))
+    assert(outcome == OrderOutcome.Killed(expected))
     eventWatch.await[OrderProcessingKilled](_.key == order.id)
 
   "stop" in:
@@ -322,9 +328,10 @@ object InternalJobTest:
     def toOrderProcess(step: Step) =
        new OrderProcess.FiberCancelable:
          def run =
-           CancelableJob.semaphore
-             .flatMap(_.acquire)
-             .as(OrderOutcome.succeeded)
+           step.writeOut("CancelableJob\b") *>
+             CancelableJob.semaphore
+               .flatMap(_.acquire)
+               .as(OrderOutcome.succeeded)
 
          override def cancel(immediately: Boolean) =
            if immediately then

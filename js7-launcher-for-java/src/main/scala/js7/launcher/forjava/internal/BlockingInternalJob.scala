@@ -127,9 +127,17 @@ object BlockingInternalJob:
       logger.warn(s"Cancellation of $toString is not implemented")
 
 
-  trait InterruptibleOrderProcess extends OrderProcess:
+  /** Implements cancel() with interrupt(). */
+  abstract class InterruptibleOrderProcess extends OrderProcess:
     @volatile private var _thread: Thread | Null = null
 
+    /** The interruptible job step.
+     * <p>
+     *   The whole implementation of runInterruptible must be sure,
+     *   that every allocated resource (file, thread, sql, ...) is properly released in
+     *   a finally block.
+     *   OTHERWISE, THE SUBAGENT'S JVM MAY BE POLLUTED.
+     **/
     @throws[Exception] @Nonnull
     def runInteruptible(): JOutcome.Completed
 
@@ -138,7 +146,7 @@ object BlockingInternalJob:
      * Returns null only before or after `run()` is executed.
      */
     @Nullable
-    def thread: Thread =
+    final def thread: Thread =
       _thread.asInstanceOf[Thread] // Java compatible
 
     @throws[Exception] @Nonnull
