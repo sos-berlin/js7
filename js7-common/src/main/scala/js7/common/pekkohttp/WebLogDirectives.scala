@@ -1,25 +1,28 @@
 package js7.common.pekkohttp
 
+import com.typesafe.config.Config
+import io.circe.parser.parse as parseJson
+import java.lang.System.nanoTime
+import java.util.Locale
+import js7.base.auth.SessionToken
+import js7.base.configutils.Configs.*
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, LogLevel, Logger}
+import js7.base.metering.CallMeter
+import js7.base.problem.Problem
+import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.http.PekkoHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
+import js7.common.pekkohttp.WebLogDirectives.*
+import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import org.apache.pekko.http.scaladsl.model.headers.{Referer, `User-Agent`}
 import org.apache.pekko.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive0, Route}
-import com.typesafe.config.Config
-import io.circe.parser.parse as parseJson
-import java.lang.System.nanoTime
-import js7.base.auth.SessionToken
-import js7.base.configutils.Configs.*
-import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, LogLevel, Logger}
-import js7.base.problem.Problem
-import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.pekkohttp.WebLogDirectives.*
-import js7.common.http.PekkoHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
@@ -38,16 +41,33 @@ trait WebLogDirectives extends ExceptionHandling:
   private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.web.server.log.response")
   //private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("pekko.http.server.remote-address-attribute")
 
-  protected def webLog: Directive0 =
-    mapInnerRoute { inner =>
-      extractRequest { request =>
+  protected final def mainRoute: Directive0 =
+    meterRequest &
+      (decodeRequest & encodeResponse) & // Before webLog to allow simple access to HttpEntity.Strict
+      webLog &
+      forbidCSRF
+
+  private def meterRequest: Directive0 =
+    mapInnerRoute: inner =>
+      var t = 0L
+      mapRequest: request =>
+        t = System.nanoTime()
+        request
+      .apply:
+        mapRouteResult: result =>
+          requestCallMeter.addNanos(System.nanoTime() - t)
+          result
+        .apply:
+          inner
+
+  protected final def webLog: Directive0 =
+    mapInnerRoute: inner =>
+      extractRequest: request =>
         val correlId = getCorrelId(request)
         setCorrelIdAttribute(correlId):
           webLogOnly(request, correlId):
             seal:
               inner
-      }
-    }
 
   private def getCorrelId(request: HttpRequest): CorrelId =
     if !CorrelId.isEnabled then
@@ -130,7 +150,11 @@ trait WebLogDirectives extends ExceptionHandling:
         case Some(h) => appendQuotedString(sb, h.value)
 
     maybeResponse match
-      case Some(response) => sb.append(response.status.intValue)
+      case Some(response) =>
+        if streamSuffix.nonEmpty then
+          sb.append("<-|") // Stream response ended
+        else
+          sb.append(response.status.intValue)
       case _ => sb.append("-->")
     sb.append(' ')
     // Let SessionToken and request number look like in PekkoHttpClient
@@ -202,6 +226,8 @@ object WebLogDirectives:
     js7.web.server.shutdown-timeout = 10s
     js7.web.server.shutdown-delay = 500ms
     """
+
+  private val requestCallMeter = CallMeter("web server request")
 
   private def appendQuotedString(sb: StringBuilder, string: String) =
     sb.ensureCapacity(3 + string.length)

@@ -13,7 +13,6 @@ import js7.cluster.web.ClusterNodeRouteBindings
 import js7.common.pekkohttp.PekkoHttpServerUtils.{passIf, pathSegment}
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
-import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.OrderApi
@@ -80,23 +79,18 @@ extends ServiceProviderRoute,
 
   logger.debug(s"new ControllerRoute($webServerBinding #${routeBinding.revision})")
 
-  val webServerRoute: Route =
-    (decodeRequest & encodeResponse):  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog:
-        forbidCSRF:
-          route
+  def webServerRoute: Route =
+    mainRoute:
+      pathSegment("controller"):
+        controllerRoute
+      ~
+        serviceProviderRoute  // External service provider's routes, for example Controller's own experimental GUI
 
-  private lazy val route =
-    pathSegment("controller") {
-      controllerRoute
-    } ~
-    serviceProviderRoute  // External service provider's routes, for example Controller's own experimental GUI
-
-  val controllerRoute: Route =
-    pathSegment("api") {
+  private val controllerRoute: Route =
+    pathSegment("api"):
       seal:
         apiRoute
-    } ~
+    ~
       pathSegment("TEST"):
         passIf(config.getBoolean("js7.web.server.test")):
           testRoute

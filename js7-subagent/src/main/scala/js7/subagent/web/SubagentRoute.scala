@@ -14,7 +14,6 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.WebLogDirectives
 import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
-import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
@@ -27,7 +26,6 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
 import org.apache.pekko.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.RouteConcatenation.*
-import org.apache.pekko.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 
 private final class SubagentRoute(
   routeBinding: RouteBinding,
@@ -57,14 +55,11 @@ extends WebLogDirectives,
   logger.debug(s"new SubagentRoute($webServerBinding #${routeBinding.revision})")
 
   def webServerRoute: Route =
-    (decodeRequest & encodeResponse): // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog(seal(forbidCSRF(route)))
-
-  private lazy val route =
-    pathPrefix(Segment):
-      case "subagent" => subagentRoute
-      case "agent" => ioRoute(directorRoute)
-      case _ => complete(NotFound)
+    mainRoute:
+      pathPrefix(Segment):
+        case "subagent" => subagentRoute
+        case "agent" => ioRoute(directorRoute)
+        case _ => complete(NotFound)
 
   private lazy val subagentRoute: Route =
     pathSegment("api"):

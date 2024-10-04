@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
 import scala.quoted.{Expr, Quotes, Type}
 import sourcecode.Enclosing
 
-// Must only be used in (static) object variables !!!
+// Instances register themselves. Must only be used in (static) object variables !!!
 final class CallMeter(val name: String):
 
   private var _count = 0
@@ -38,26 +38,29 @@ final class CallMeter(val name: String):
     try
       body
     finally
-      add(t)
+      addNanos(System.nanoTime() - t)
 
   private[metering] def io[A](io: IO[A]): IO[A] =
     IO.defer:
       val t = System.nanoTime()
       io.guarantee:
         IO:
-          add(t)
+          addNanos(System.nanoTime() - t)
 
   //private[metering] def sync[F[_], A](Fa: F[A])(using F: Sync[F]): F[A] =
   //  F.defer:
   //    val t = System.nanoTime()
   //    Fa.guarantee:
   //      F.delay:
-  //        add(t)
+  //        addNanos(t)
 
-  protected def add(startedAt: Long): Unit =
+  //def addMeasurement(startedAt: Deadline): Unit =
+  //  addNanos(startedAt.elapsed.toNanos)
+
+  def addNanos(nanos: Long): Unit =
     synchronized:
       _count += 1
-      _nanos += System.nanoTime() - startedAt
+      _nanos += nanos
 
   def count: Int =
     _count
