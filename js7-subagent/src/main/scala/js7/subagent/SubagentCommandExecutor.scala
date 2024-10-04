@@ -54,7 +54,9 @@ private[subagent] final class SubagentCommandExecutor(
                 IO.right(SubagentCommand.Accepted)
               else
                 signatureVerifier.verify(signed.signedString) match
-                  case Left(problem) => IO.pure(Left(problem))
+                  case Left(problem) =>
+                    logger.warn(s"${signed.value.key} could not be verified: $problem")
+                    IO.pure(Left(problem))
                   case Right(signerIds) =>
                     logger.info(Logger.SignatureVerified,
                       s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")

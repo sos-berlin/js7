@@ -543,7 +543,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
     forDirector.signatureVerifier.verify(signed.signedString) match
-      case Left(problem) => Future.successful(Left(problem))
+      case Left(problem) =>
+        logger.warn(s"${signed.value.key} could not be verified: $problem")
+        Future.successful(Left(problem))
       case Right(signerIds) =>
         logger.info(Logger.SignatureVerified,
           s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
