@@ -124,6 +124,14 @@ object ScalaUtils:
           case None => Left(problem)
           case Some(a) => Right(a)
 
+      /** Like Cats map2, but returns None only if both arguments are None. */
+      def merge[B >: A](maybeB: Option[B])(f: (A, B) => B): Option[B] =
+        option match
+          case None => maybeB
+          case aa @ Some(a) => maybeB match
+            case None => aa
+            case Some(b) => Some(f(a, b))
+
 
     extension[A](try_ : Try[A])
       /** Does not create an InvalidOperationException if Success. */

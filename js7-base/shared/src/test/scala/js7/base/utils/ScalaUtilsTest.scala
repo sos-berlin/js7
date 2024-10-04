@@ -175,6 +175,13 @@ final class ScalaUtilsTest extends OurTestSuite:
     "!!" in:
       assert((false !! Problem("PROBLEM")) == Left(Problem("PROBLEM")))
       assert((true !! Problem("PROBLEM")) == Right(()))
+
+    "merge" in:
+      val non = none[Int]
+      assert(non.merge(non)(_ + _) == None)  // Like Cats .map2
+      assert(1.some.merge(non)(_ + _) == 1.some)   // Cats .map2 would return None
+      assert(non.merge(2.some)(_ + _) == 2.some)   // Cats .map2 would return None
+      assert(1.some.merge(2.some)(_ + _) == 3.some)      // Like Cats .map2
   }
 
   "Throwable" - {
