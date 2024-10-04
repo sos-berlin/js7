@@ -31,11 +31,11 @@ final class EventDirectivesTest extends OurTestSuite, ScalatestRouteTest:
   private def route =
     path("test"):
       val x: Directive1[EventRequest[MyEvent]] =
-        eventRequest[MyEvent](minimumDelay = 500.ms, defaultTimeout = 555.s.some)
+        eventRequest[MyEvent](minimumDelay = 500.ms)
       x.apply((eventReq: EventRequest[MyEvent]) =>
         if eventReq == EventRequest[MyEvent](
           Set(classOf[AEvent]),
-          after = EventId(1), delay = 500.ms, timeout = 555.s.some)
+          after = EventId(1), delay = 500.ms, timeout = None)
         then
           complete("DEFAULT")
         else if eventReq == EventRequest[MyEvent](

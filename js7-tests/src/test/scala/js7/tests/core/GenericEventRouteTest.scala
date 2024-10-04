@@ -89,8 +89,8 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
         services {
           event {
             streaming {
-              timeout = 6h
               delay = 20ms
+              timeout = 6h
             }
           }
         }

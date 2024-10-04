@@ -40,7 +40,7 @@ trait JournalRoute extends RouteProvider:
 
   private given IORuntime = ioRuntime
 
-  private lazy val defaultJsonSeqChunkTimeout =
+  private lazy val maximumStreamingTimeout: Option[FiniteDuration] =
     config.maybeFiniteDuration("js7.web.server.services.event.streaming.timeout").orThrow
 
 
@@ -70,7 +70,7 @@ trait JournalRoute extends RouteProvider:
                     completeWithCheckedStream(JournalContentType):
                       eventWatch
                         .streamFile(journalPosition,
-                          timeout = timeout orElse defaultJsonSeqChunkTimeout,
+                          timeout = timeout.merge(maximumStreamingTimeout)(_ min _),
                           markEOF = markEOF, onlyAcks = returnAck)
                         .map(_.map(_
                           .interruptWhenF(shutdownSignaled)

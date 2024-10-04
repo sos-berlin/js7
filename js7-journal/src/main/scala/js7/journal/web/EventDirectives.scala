@@ -19,10 +19,9 @@ object EventDirectives:
 
   def eventRequest[E <: Event](
     defaultAfter: Option[EventId] = None,
-    defaultTimeout: Option[FiniteDuration] = None,
     minimumDelay: FiniteDuration,
     defaultReturnType: Option[String] = None)
-    (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
+    (using keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
       classTag: ClassTag[E])
   : Directive1[EventRequest[E]] =
     Directive(inner =>
@@ -41,12 +40,11 @@ object EventDirectives:
             if eventClasses.size != returnTypeNames.size then
               reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
             else
-              eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, minimumDelay, inner))
+              eventRequestRoute[E](eventClasses, defaultAfter, minimumDelay, inner))
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[? <: E]],
     defaultAfter: Option[EventId],
-    defaultTimeout: Option[FiniteDuration],
     minimumDelay: FiniteDuration,
     inner: Tuple1[EventRequest[E]] => Route)
   : Route =
@@ -59,14 +57,14 @@ object EventDirectives:
             case None => reject(ValidationRejection("Missing parameter after="))
             case Some(after) =>
               parameter("timeout".as[Duration].?): timeout_ =>
-                val timeout = timeout_.orElse(defaultTimeout).collect:
+                val timeout = timeout_.collect:
                   case o: FiniteDuration => o // Ignore Duration.Inf
                 parameter("delay" ? minimumDelay): delay =>
                   parameter("tornOlder" ? none[FiniteDuration]): tornOlder =>
-                      inner(Tuple1:
-                        EventRequest[E](eventClasses,
-                          after = after,
-                          timeout = timeout,
-                          delay = delay max minimumDelay,
-                          limit = limit,
-                          tornOlder = tornOlder))
+                    inner(Tuple1:
+                      EventRequest[E](eventClasses,
+                        after = after,
+                        timeout = timeout,
+                        delay = delay max minimumDelay,
+                        limit = limit,
+                        tornOlder = tornOlder))

@@ -130,7 +130,7 @@ object Configs:
 
     def maybeFiniteDuration(path: String): Checked[Option[FiniteDuration]] =
       catchExpected[ConfigException]:
-        !underlying.getIsNull(path) ?
+        !underlying.getIsNull(path)/*throws*/ ?
           underlying.getDuration(path).toFiniteDuration
 
     def memorySizeAsInt(path: String): Checked[Int] =
