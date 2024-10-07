@@ -29,7 +29,7 @@ object ReaderStreams:
           channel.read(buffer)
         .map:
           case -1 => null
-          case o if o < 1 => throw new RuntimeException(s"'$channel'.read returned unexpected 0'")
+          case o if o < 1 => throw new RuntimeException(s"'$channel'.read returned unexpected 0")
           case _ =>
             buffer.flip()
             ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
