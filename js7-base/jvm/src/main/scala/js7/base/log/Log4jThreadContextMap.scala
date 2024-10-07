@@ -64,8 +64,8 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
       last
     else
       lastKeyToValueVersion = v
-      getReadOnlyContextDataCount2 += 1
-      val r = new Log4jStringMap(correlId)
+      log4jStringMapCount += 1
+      val r = Log4jStringMap(correlId)
       lastLog4jStringMap = r
       r
 
@@ -91,7 +91,7 @@ object Log4jThreadContextMap:
   private var getCount = 0L
   private var getCopyCount = 0L
   private var getReadOnlyContextDataCount = 0L
-  private var getReadOnlyContextDataCount2 = 0L
+  private var log4jStringMapCount = 0L
 
   private[log] def getOtherKey(key: String): String =
     keyToValue.get(key) match
@@ -118,9 +118,9 @@ object Log4jThreadContextMap:
       if n == 0 then
         ""
       else
-        val a = 100 * getReadOnlyContextDataCount2 / n
+        val a = 100 * log4jStringMapCount / n
         s" ($a%)"
-    s"$getReadOnlyContextDataCount×$percent getReadOnlyContextData, " +
+    s"$log4jStringMapCount$percent Log4jStringMap, " +
       s"${Log4jStringMap.forEachCount}× forEach, " +
       s"$getCopyCount× getCopy, " +
       s"$getCount× get, " +
