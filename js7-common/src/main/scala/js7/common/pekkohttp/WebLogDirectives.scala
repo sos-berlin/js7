@@ -138,8 +138,8 @@ trait WebLogDirectives extends ExceptionHandling:
 
   private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
     nanos: Long, streamSuffix: String)
-  =
-    val sb = new StringBuilder(256)
+  : String =
+    val sb = new StringBuilder(512)
 
     def appendHeader[A >: Null <: HttpHeader: ClassTag](): Unit =
       request.header[A] match
@@ -164,11 +164,8 @@ trait WebLogDirectives extends ExceptionHandling:
     sb.append(' ')
     sb.append(request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP)
       .fold("-")(_.ip.getHostAddress))
-    //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
-    //sb.append(' ')
-    //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
     sb.append(' ')
-    sb.append(request.method.value)
+    sb.append(request.method.value.pipeIf(streamSuffix.nonEmpty)(_.toLowerCase(Locale.ROOT)))
     sb.append(' ')
     sb.append(request.uri)
     maybeResponse match
