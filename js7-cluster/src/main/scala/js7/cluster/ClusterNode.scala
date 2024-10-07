@@ -386,9 +386,9 @@ object ClusterNode:
           passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
         else
           IO.some(Left(BackupClusterNodeNotAppointed))
-      val untilActiveRecovered = passiveClusterNode.flatMap(passive =>
+      val untilActiveRecovered = passiveClusterNode.flatMap: passive =>
         activationInhibitor.startPassive *>
-          passive.run(recovered.state))
+          passive.run(recovered.state)
 
       Prepared(
         currentPassiveReplicatedState = currentPassiveState,
@@ -422,16 +422,15 @@ object ClusterNode:
 
           Prepared(
             currentPassiveReplicatedState =
-              failedOver.flatMap {
+              failedOver.flatMap:
                 case None => IO.none
-                case Some((_, passiveClusterNode)) => passiveClusterNode.state.map(s => Some(Right(s)))
-              },
+                case Some((_, passiveClusterNode)) =>
+                  passiveClusterNode.state.map(s => Some(Right(s))),
             untilRecovered =
-              failedOver.flatMap {
+              failedOver.flatMap:
                 case None => IO.right(recovered)
                 case Some((ourRecovered, passiveClusterNode)) =>
-                  passiveClusterNode.run(ourRecovered.state)
-              })
+                  passiveClusterNode.run(ourRecovered.state))
 
         case _ =>
           logger.info("Remaining the active cluster node, not coupled with passive node")

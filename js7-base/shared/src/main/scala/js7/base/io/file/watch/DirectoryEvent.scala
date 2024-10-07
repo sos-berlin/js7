@@ -32,5 +32,4 @@ object DirectoryEvent:
   final case class FileModified(relativePath: Path) extends FileAddedOrModified
   final case class FileDeleted(relativePath: Path) extends DirectoryEvent
 
-  implicit val DirectoryEventEq: Eq[DirectoryEvent] =
-    Eq.fromUniversalEquals
+  given Eq[DirectoryEvent] = Eq.fromUniversalEquals

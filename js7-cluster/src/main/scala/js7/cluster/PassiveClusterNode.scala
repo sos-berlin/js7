@@ -145,9 +145,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
     * Returns also a `IO` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): IO[Checked[Recovered[S]]] =
-    CorrelId.bindNew(logger.debugIO(
+    CorrelId.bindNew(logger.debugIO:
       common.requireValidLicense
-        .flatMapT(_ => IO.defer {
+        .flatMapT(_ => IO.defer:
           val recoveredClusterState = recoveredState.clusterState
           logger.debug(s"recoveredClusterState=$recoveredClusterState")
           assertThat(!stopped)  // Single-use only
@@ -164,20 +164,18 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
           // Other node failed-over while this node was active but lost?
           // Then FailedOver event will be replicated.
-          IO.unlessA(otherFailed) {
+          IO.unlessA(otherFailed):
             backgroundNotifyActiveNodeAboutRestart(recoveredClusterState)
-          } *>
+          *>
             replicateJournalFiles(recoveredClusterState)
-              .guarantee(IO {
-                stopped = true
-              })
+              .guarantee(IO:
+                stopped = true)
               .guarantee(activeApiCache.clear)
-              .flatTap {
+              .flatTap:
                 case Left(PassiveClusterNodeResetProblem) => IO(
                   journalLocation.deleteJournal(ignoreFailure = true))
                 case _ => IO.unit
-              }
-        })))
+        ))
 
   private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): IO[Unit] =
     recoveredClusterState
@@ -214,9 +212,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       if garbage > 0 then
         // Partial event or partial transaction
         logger.info(s"Cutting incomplete data ($garbage bytes) at end of ${file.getFileName} at position $length, EventId $eventId ")
-        autoClosing(FileChannel.open(file, WRITE)) { f =>
+        autoClosing(FileChannel.open(file, WRITE)): f =>
           f.truncate(length)
-        }
 
   private def tryEndlesslyToSendClusterPrepareCoupling: IO[Unit] =
     // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
@@ -421,8 +418,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
-                        IO {
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver):
+                        IO:
                           val file = recoveredJournalFile.file
                           val fileSize =
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
@@ -445,14 +442,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                           eventWatch.onJournalingEnded(fileSize)
                           Right(true)
-                        })
                     else
                       // TODO Similar to then-part
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
-                        IO {
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver):
+                        IO:
                           writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
@@ -462,7 +458,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                           Right(true)
-                        })
                   ).flatMap:
                     case Left(problem) =>
                       if problem.is(ClusterFailOverWhilePassiveLostProblem)
@@ -498,10 +493,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
             // Already logged by PekkoHttpClient:
             //logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
             //  s"${line.utf8StringTruncateAt(200).trim}")
-            val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {
+            val isSnapshotTaken = isReplicatingHeadOfFile && journalRecord.match
               case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
               case _ => false
-            })
             if isSnapshotTaken then
               ensureEqualState(continuation, builder.result())
             builder.put(journalRecord)  // throws on invalid event

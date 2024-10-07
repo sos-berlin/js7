@@ -53,16 +53,15 @@ trait ExceptionHandling:
 
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
-        extractRequest { request =>
+        extractRequest: request =>
           for t <- e.ifStackTrace do webLogger.debug(toLogMessage(request, e), t)
           complete(e.problem.httpStatusCode -> e.problem)
-        }
 
       case e =>
         completeWithError(InternalServerError, e)
 
   private def completeWithError(status: StatusCode, e: Throwable): Route =
-    extractRequest { request =>
+    extractRequest: request =>
       def msg = toLogMessage(request, e)
       //if (whenShuttingDown.isCompleted) {
         webLogger.debug(msg, e)
@@ -73,7 +72,6 @@ trait ExceptionHandling:
         complete(status -> Problem.fromThrowable(e))
       else
         complete(status)
-    }
 
   protected final def seal(route: Route): Route =
     Route.seal(route)(exceptionHandler = exceptionHandler)

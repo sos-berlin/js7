@@ -32,12 +32,11 @@ extends Service.StoppableByRequest:
   private val watchService = directory.getFileSystem.newWatchService()
 
   protected def start =
-    startService(
+    startService:
       untilStopRequested
-        .*>(IO {
+        .*>(IO:
           logger.debug(s"watchService.close() — $directory")
-          watchService.close()
-        }))
+          watchService.close())
 
   private[watch] def streamResource: ResourceIO[Stream[IO, Seq[DirectoryEvent]]] =
     for _ <- directoryWatchResource yield
@@ -52,18 +51,15 @@ extends Service.StoppableByRequest:
   private def directoryWatchResource: ResourceIO[WatchKey] =
     Resource.make(
       acquire =
-        failWhenStopRequested(repeatWhileIOException(options, IO {
+        failWhenStopRequested(repeatWhileIOException(options, IO:
           logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
-          directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
-        }))
+          directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)))
         .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
-      release = watchKey => IO {
+      release = watchKey => IO:
         logger.debug(s"watchKey.cancel() $directory")
         try watchKey.cancel()
-        catch { case t: ClosedWatchServiceException =>
-          logger.debug(s"watchKey.cancel() => ${t.toStringWithCauses}")
-        }
-      })
+        catch case t: ClosedWatchServiceException =>
+          logger.debug(s"watchKey.cancel() => ${t.toStringWithCauses}"))
 
   private def poll: IO[Seq[DirectoryWatchEvent]] =
     pollWatchKey().recover:

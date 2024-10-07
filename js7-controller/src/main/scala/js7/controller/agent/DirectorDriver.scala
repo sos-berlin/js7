@@ -86,56 +86,52 @@ extends Service.StoppableByRequest:
     override protected def couple(eventId: EventId) =
       journal.state
         .map(_.keyTo(AgentRefState).checked(agentPath))
-        .flatMapT(agentRefState =>
-          ((agentRefState.couplingState, agentRefState.agentRunId) match {
+        .flatMapT: agentRefState =>
+          (agentRefState.couplingState, agentRefState.agentRunId) match
             case (Resetting(false), None) =>
               IO.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
 
             case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
               executeCommand(AgentCommand.Reset(maybeAgentRunId))
-                .map {
+                .map:
                   case Left(AgentNotDedicatedProblem) => Checked.unit // Already reset
                   case o => o
-                }
-                .flatMapT(_ =>
-                  journal.persistKeyedEvent(agentPath <-: AgentReset))
+                .flatMapT: _ =>
+                  journal.persistKeyedEvent(agentPath <-: AgentReset)
 
             case _ =>
               IO.pure(Checked.unit)
-          }))
-        .flatMapT(_ => dedicateAgentIfNeeded(directorDriver))
-        .flatMapT { case (agentRunId, agentEventId) =>
+        .flatMapT: _ =>
+          dedicateAgentIfNeeded(directorDriver)
+        .flatMapT: (agentRunId, agentEventId) =>
           val coupleController = CoupleController(agentPath, agentRunId, eventId = agentEventId,
             ControllerRunId(journal.journalId))
-          executeCommand(coupleController)
-            .flatMapT { case CoupleController.Response(orderIds) =>
-              logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
+          executeCommand(coupleController).flatMapT:
+            case CoupleController.Response(orderIds) =>
+              logger.trace:
+                s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}"
               attachedOrderIds = orderIds
-              journal
-                .lock(agentPath)(
-                  journal.persist(controllerState =>
-                    for a <- controllerState.keyTo(AgentRefState).checked(agentPath) yield
-                      Seq(
-                        (a.couplingState != Coupled || a.problem.nonEmpty) ?
-                          (agentPath <-: AgentCoupled),
-                        // The coupled Agent may not yet have an AgentRef (containing the
-                        // processLimit). So we need to check this:
-                        !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
-                          (NoKey <-: ItemAttachable(agentPath, agentPath))
-                      ).flatten))
-                .flatTapT { case (stamped, state) =>
-                  IO
-                    .whenA(stamped.exists(_.value.event.isInstanceOf[ItemAttachable]))(
-                      state.keyToItem(AgentRef).get(agentPath).fold(IO.unit)(agentRef =>
-                        agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))))
-                    .as(Checked.unit)
-                }
-                .rightAs(agentEventId)
-            }
-        }
+              journal.lock(agentPath):
+                journal.persist: controllerState =>
+                  controllerState.keyTo(AgentRefState).checked(agentPath).map: a =>
+                    Seq(
+                      (a.couplingState != Coupled || a.problem.nonEmpty) ?
+                        (agentPath <-: AgentCoupled),
+                      // The coupled Agent may not yet have an AgentRef (containing the
+                      // processLimit). So we need to check this:
+                      !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
+                        (NoKey <-: ItemAttachable(agentPath, agentPath))
+                    ).flatten
+              .flatTapT: (stamped, state) =>
+                IO
+                  .whenA(stamped.exists(_.value.event.isInstanceOf[ItemAttachable])):
+                    state.keyToItem(AgentRef).get(agentPath).fold(IO.unit): agentRef =>
+                      agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))
+                  .as(Checked.unit)
+              .rightAs(agentEventId)
 
     protected def getStream(api: AgentClient, after: EventId) =
-      IO {logger.debug(s"getStream(after=$after)")} *>
+      IO(logger.debug(s"getStream(after=$after)")) *>
         api
           // A Pekko HTTP stream seems not to be cancelable with interruptWhen.
           // So we use a fast heartbeat and stop at the next stream element.
@@ -157,9 +153,8 @@ extends Service.StoppableByRequest:
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         assertThat(attachedOrderIds != null)
         onCoupled_(attachedOrderIds)
-          .*>(IO {
-            attachedOrderIds = null
-          })
+          .*>(IO:
+            attachedOrderIds = null)
           .as(Completed)
 
     override protected def onDecoupled =
@@ -174,20 +169,20 @@ extends Service.StoppableByRequest:
    logger.traceIO:
     observeAndConsumeEvents
       .handleError(t => logger.error(t.toStringWithCauses, t))
-      .flatMapLoop(())((_, _, again) =>
+      .flatMapLoop(()): (_, _, again) =>
         eventFetcher.decouple
           .*>(eventFetcher
             .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
             .raceFold(untilStopRequested))
           .void
           .handleError(t => logger.error(t.toStringWithCauses, t))
-          .*>(IO.defer(IO.unlessA(isStopping)(
-            again(())))))
+          .*>(IO.defer(IO.unlessA(isStopping):
+            again(())))
       .guarantee:
         untilFetchingStopped.complete(()).void
 
   private def observeAndConsumeEvents: IO[Unit] =
-    logger.traceIO(IO.defer {
+    logger.traceIO(IO.defer:
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.stream(client, after = adoptedEventId)
         .pipe(stream =>
@@ -196,38 +191,34 @@ extends Service.StoppableByRequest:
           else
             stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
         .interruptWhenF(untilStopRequested)
-        .evalMapChunk(chunk =>
+        .evalMapChunk: chunk =>
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
           // Avoids "Unknown OrderId" failures due to double activation.
           journal.whenNoFailoverByOtherNode
             .logWhenItTakesLonger("whenNoFailoverByOtherNode")
-            .as(chunk))
+            .as(chunk)
         .map(_.asSeq)
         .evalMap(onEventsFetched)
-        .completedL
-    })
+        .completedL)
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
-    onFetchedEventsLock.lock(logger.traceIO(IO.defer {
+    onFetchedEventsLock.lock(logger.traceIO(IO.defer:
       assertThat(stampedEvents.nonEmpty)
       if isStopping then
-        IO(logger.debug(
-          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping"))
-      else {
-        val reducedStampedEvents = stampedEvents dropWhile { stamped =>
+        IO(logger.debug:
+          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping")
+      else
+        val reducedStampedEvents = stampedEvents.dropWhile: stamped =>
           val drop = stamped.eventId <= adoptedEventId
           if drop then logger.debug(s"Drop duplicate received event: $stamped")
           drop
-        }
-        IO.whenA(reducedStampedEvents.nonEmpty) {
+        IO.whenA(reducedStampedEvents.nonEmpty):
           val lastEventId = stampedEvents.last.eventId
           // The events must be journaled and handled by ControllerOrderKeeper
           adoptedEventId = lastEventId
           adoptEvents(reducedStampedEvents)
-        }
-      }
-    }))
+    ))
 
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     // TODO If stopEventFetcher would not send a Logout, it could run concurrently
@@ -235,10 +226,10 @@ extends Service.StoppableByRequest:
       .flatTapT(_ => stop.map(Right(_)))
 
   private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
-    logger.debugIO(
+    logger.debugIO:
       executeCommand(client, AgentCommand.Reset(agentRunId))
         .logWhenItTakesLonger
-        .rightAs(()))
+        .rightAs(())
 
   def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)
   : IO[Checked[command.Response]] =
@@ -288,12 +279,12 @@ private[agent] object DirectorDriver:
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
   : ResourceIO[DirectorDriver] =
-    Service.resource(IO(
-      new DirectorDriver(
+    Service.resource(IO:
+      DirectorDriver(
         agentDriver, agentPath, initialEventId, client,
         dedicateAgentIfNeeded,
         onCouplingFailed, onCoupled, onDecoupled, adoptEvents,
-        journal, conf)))
+        journal, conf))
 
   final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
   extends Problem.Coded:

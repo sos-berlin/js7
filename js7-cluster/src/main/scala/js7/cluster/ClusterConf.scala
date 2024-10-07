@@ -49,12 +49,11 @@ object ClusterConf:
         else
           config.getObject(key)
             .asScala
-            .map { case (k, v) =>
+            .map: (k, v) =>
               v.unwrapped match
                 case v: String => NodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
                 case _ => Left(Problem(
                   "A cluster node URI is expected to be configured as a string"))
-            }
             .toVector
             .sequence
             .map(o => Some(o.toMap))

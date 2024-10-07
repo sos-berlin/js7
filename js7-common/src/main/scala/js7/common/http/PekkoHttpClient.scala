@@ -255,16 +255,14 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     (implicit s: IO[Option[SessionToken]])
   : IO[Int] =
     post_[A](uri, data, AcceptJson)
-      .flatMap { httpResponse =>
-        IO.defer {
+      .flatMap: httpResponse =>
+        IO.defer:
           if !httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue) then
             failWithResponse(uri, httpResponse)
           else
             IO.pure(httpResponse.status.intValue)
-        }.guarantee(IO {
-          httpResponse.discardEntityBytes()
-        })
-      }
+        .guarantee(IO:
+          httpResponse.discardEntityBytes())
 
   final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: IO[Option[SessionToken]])
@@ -391,8 +389,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         .whenItTakesLonger()(_ => IO:
           val sym = if !waitingLogged then "🟡" else "🟠"
           waitingLogged = true
-          logger.debug(
-            s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}"))
+          logger.debug:
+            s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
         .flatTap(response => IO:
           logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔"))
 

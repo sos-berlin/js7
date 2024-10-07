@@ -106,13 +106,12 @@ trait WebLogDirectives extends ExceptionHandling:
     var byteCount = 0L
     response.entity match
       case entity: HttpEntity.Chunked =>
-        response.withEntity(
+        response.withEntity:
           entity.copy(chunks =
-            entity.chunks.wireTap { part =>
+            entity.chunks.wireTap: part =>
               chunkCount += 1
               byteCount += part.data.size
-            }
-            .watchTermination() { (mat, future) =>
+            .watchTermination(): (mat, future) =>
               future.onComplete { tried =>
                 log(request, Some(response), correlId, logLevel, nanoTime - start,
                   streamSuffix = // Timing of the stream, after response header has been sent
@@ -120,8 +119,7 @@ trait WebLogDirectives extends ExceptionHandling:
                     bytesPerSecondString(since.elapsed, byteCount) +
                       tried.fold(t => " " + t.toStringWithCauses, _ => ""))
               }(ioRuntime.compute)
-              mat
-            }))
+              mat)
       case _ => response
 
   private def log(request: HttpRequest, response: Option[HttpResponse],
@@ -158,9 +156,8 @@ trait WebLogDirectives extends ExceptionHandling:
     sb.append(' ')
     // Let SessionToken and request number look like in PekkoHttpClient
     sb.append(request.headers
-      .collectFirst {
+      .collectFirst:
         case `x-js7-session`(secret) => SessionToken.stringToShort(secret)
-      }
       .getOrElse("-"))
     sb.append(' ')
     sb.append(request.headers.collectFirst { case `x-js7-request-id`(id) => id } getOrElse "#")

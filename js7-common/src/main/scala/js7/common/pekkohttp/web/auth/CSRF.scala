@@ -20,23 +20,21 @@ object CSRF:
   private val logger = Logger[this.type]
 
   /** For a list of cross-site HTML 5 form POST content types, see https://www.w3.org/TR/html5/forms.html#attr-fs-enctype. */
-  private val RejectedContentTypes = Set(
-    `application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`).map(_.value) +
-    "none/none"
+  private val RejectedContentTypes: Set[String] =
+    Set(`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`).map(_.value) +
+      "none/none"
 
   val forbidCSRF: Directive0 =
-    mapInnerRoute { inner =>
-      extractRequest { request =>
+    mapInnerRoute: inner =>
+      extractRequest: request =>
         if looksLikeHtmlFormPost(request) then
-          logger.warn(
+          logger.warn:
             "⛔ Forbidden: HTTP request looks like a HTML form POST, abusable for CSRF: " +
-              s"${request.method} content-type: ${request.entity.contentType}")
+              s"${request.method} content-type: ${request.entity.contentType}"
           complete(Forbidden)   // be quiet: -> "HTML form POST is forbidden")
         else
           inner
-      }
-    }
 
   private def looksLikeHtmlFormPost(request: HttpRequest): Boolean =
     request.method == POST &&
-      RejectedContentTypes.contains(request.entity.contentType.mediaType.value)
+      RejectedContentTypes.contains(request.entity.contentType.mediaType.value: String)

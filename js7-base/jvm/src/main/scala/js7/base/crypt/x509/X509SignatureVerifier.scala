@@ -90,12 +90,11 @@ extends SignatureVerifier:
     try
       signatureCertificate.x509Certificate.verify(publicKey)
       Right(())
-    catch { case NonFatal(t) =>
+    catch case NonFatal(t) =>
       t match
         case _: SignatureException => logger.debug(t.toStringWithCauses)
         case _ => logger.warn(t.toString)
       Left(MessageSignedByUnknownProblem)
-    }
 
 
 object X509SignatureVerifier extends SignatureVerifier.Companion:
@@ -118,13 +117,12 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
         .map(toVerifier(_, origin)))
 
   def ignoreInvalid(pems: Seq[Labeled[ByteArray]], origin: String): X509SignatureVerifier =
-    val certs = pems.flatMap(labeledPem =>
-      X509Cert.fromPem(labeledPem.value.utf8String) match {
+    val certs = pems.flatMap: labeledPem =>
+      X509Cert.fromPem(labeledPem.value.utf8String) match
         case Left(problem) =>
           logger.error(s"Ignoring X.509 certificate '${labeledPem.label}' due to: $problem")
           None
         case Right(o) => Some(o)
-      })
     toVerifier(
       X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
       origin)
@@ -138,10 +136,10 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
     // to allow self-signed certificates (?)
     //.filterNot(_.isCA)
     val rootCertificates = trustedCertificates.filter(_.isCA)
-            for o <- rootCertificates do logger.debug(
-      s"Trusting signatures signed with a certificate which is signed with root $o")
-            for o <- signerDNToTrustedCertificate.values do logger.debug(
-      s"Trusting signatures signed with $o")
+    for o <- rootCertificates do logger.debug:
+      s"Trusting signatures signed with a certificate which is signed with root $o"
+    for o <- signerDNToTrustedCertificate.values do logger.debug:
+      s"Trusting signatures signed with $o"
     new X509SignatureVerifier(
       trustedCertificates,
       rootCertificates,

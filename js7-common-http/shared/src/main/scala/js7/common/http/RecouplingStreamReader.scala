@@ -245,8 +245,8 @@ abstract class RecouplingStreamReader[
         else
           ( for
               otherCoupledClient <- coupledApiVar.tryRead
-              _ <- otherCoupledClient.fold(IO.unit)(_ =>
-                IO.raiseError(new IllegalStateException("Coupling while already coupled")))
+              _ <- otherCoupledClient.fold(IO.unit): _ =>
+                IO.raiseError(new IllegalStateException("Coupling while already coupled"))
               _ <- IO { recouplingPause.onCouple() }
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
               updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/

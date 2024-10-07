@@ -146,10 +146,9 @@ object Configs:
       try ConfigFactory.parseString(
         configString,
         ConfigParseOptions.defaults().setOriginDescription(enclosing.value))
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         logger.warn(s"${enclosing.value} => ${t.toStringWithCauses}")
         throw t
-      }
 
     def configString(args: Any*): String =
       interpolate(sc, args, toHoconString)

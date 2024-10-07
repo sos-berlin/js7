@@ -28,7 +28,8 @@ object StreamPauseDetector:
     def detectPauses_(delay: FiniteDuration): Stream[IO, Expirable[A]] =
       Stream.eval(SyncDeadline.now).flatMap: start =>
         val ticking = Tick(start) +:
-          Stream.awakeEvery[IO](delay).map(elapsed => Tick(start + elapsed))
+          Stream.awakeEvery[IO](delay).map: elapsed =>
+            Tick(start + elapsed)
         stream
           .map(Value(_))
           .mergeHaltBoth(ticking)
