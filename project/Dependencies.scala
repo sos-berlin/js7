@@ -6,9 +6,9 @@ import scala.language.implicitConversions
 object Dependencies
 {
   val pekkoVersion = "1.0.3"
-  val pekkoHttpVersion = "1.0.1"
+  val pekkoHttpVersion = "1.1.0"
   val slf4jVersion = "2.0.13"  // See also plugins.sbt
-  val log4jVersion = "2.23.1"  // See also plugins.sbt
+  val log4jVersion = "2.24.1"  // See also plugins.sbt
   val catsVersion = "2.12.0"
   val catsEffectVersion = "3.5.4"
   val catsEffectTestingVersion = catsEffectVersion
@@ -24,8 +24,7 @@ object Dependencies
   val sourcecodeVersion = "0.4.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
-  val fs2Version = "3.10.2"
-  val monocleVersion = "1.5.0"
+  val fs2Version = "3.11.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"

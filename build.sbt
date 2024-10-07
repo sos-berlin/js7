@@ -49,7 +49,7 @@ import sbtrelease.{Version, versionFormatError}
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.3.4"
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val target = {
@@ -102,6 +102,7 @@ ThisBuild / scalacOptions ++= Seq(
   //? "-Wconf:cat=other-match-analysis:error",
   //? "-Wconf:cat=lint-adapted-args:error",
   //? "-Wconf:cat=unchecked&src=src/main/*:error",
+  "-Xlint:type-parameter-shadow",
   "-Wunused:imports",
   "-Wunused:implicits")
 

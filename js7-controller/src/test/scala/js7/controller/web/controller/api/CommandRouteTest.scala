@@ -10,7 +10,7 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerId}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
-import org.apache.pekko.http.scaladsl.model.StatusCodes.PayloadTooLarge
+import org.apache.pekko.http.scaladsl.model.StatusCodes.ContentTooLarge
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
 
@@ -57,7 +57,7 @@ final class CommandRouteTest extends OurTestSuite, RouteTester, CommandRoute:
 
     "POST /api/command, too big JSON is rejected with 412 Payload to large" in:
       testBigJson(entitySizeLimit.toInt + 1):
-        assert(status == PayloadTooLarge)
+        assert(status == ContentTooLarge)
 
     def testBigJson(size: Int)(checkBody: => Unit): Unit =
       var json = """{ "TYPE": "NoOperation" """
