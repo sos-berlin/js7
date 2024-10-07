@@ -149,3 +149,17 @@ final class Fs2Test extends OurAsyncTestSuite:
         case Chunk.ArraySlice(_, _, _) => succeed
         case _ => fail("ArraySlice expected")
   }
+
+  if false then // Manual test. Start with -Xmx10m
+    "Recursive streams do not eat heap" in:
+      def f(i: Int): Stream[IO, Int] =
+        var last = i
+        Stream.emit(i)
+          .covary[IO]
+          .map: i =>
+            last = i
+            if i % 1_000_000 == 0 then Logger.info(s"$i")
+            i
+          .append:
+            f(last + 1)
+      f(0).last.compile.drain.as(succeed)

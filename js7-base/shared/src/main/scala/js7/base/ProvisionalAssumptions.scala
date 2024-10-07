@@ -12,7 +12,7 @@ object ProvisionalAssumptions:
    */
   object streamChunks:
     private val elementSizeLimit = 8_000_000 // A big Workflow
-    private val heapLimit = 400_000_000 // Bytes
+    private val heapLimit = 100_000_000 // Bytes
 
     val elementsPerChunkLimit: Int = heapLimit / elementSizeLimit
     val groupWithinDelay: FiniteDuration = 10.ms

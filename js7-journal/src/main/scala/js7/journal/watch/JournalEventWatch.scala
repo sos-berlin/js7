@@ -433,5 +433,4 @@ object JournalEventWatch:
     js7.journal.users-allowed-to-release-events = []
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = true
-    js7.monix.tailrecm-limit = 1000
     """

@@ -9,8 +9,6 @@ import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.fs2utils.StreamUtils
-import js7.base.fs2utils.StreamUtils.memoryLeakLimitedStreamTailRecM
 import js7.base.log.Logger
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -50,7 +48,6 @@ extends AutoCloseable:
   protected lazy val journalIndex = new JournalIndex(PositionAnd(firstEventPosition, fileEventId),
     size = config.getInt("js7.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("js7.journal.watch.index-factor")
-  private lazy val limitTailRecM = config.getInt("js7.monix.tailrecm-limit")
   protected final lazy val iteratorPool = new FileEventIteratorPool(
     journalLocation, expectedJournalId, journalFile, fileEventId, () => committedLength)
   @volatile
@@ -164,13 +161,18 @@ extends AutoCloseable:
       o
 
   /** Observes a journal file lines and length. */
-  private def streamFile2(jsonSeqReader: InputStreamJsonSeqReader,
-    position: Long, until: SyncDeadline, markEOF: Boolean = false, onlyAcks: Boolean)
+  private def streamFile2(
+    jsonSeqReader: InputStreamJsonSeqReader,
+    position: Long,
+    until: SyncDeadline,
+    markEOF: Boolean = false,
+    onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
-    jsonSeqReader.seek(position)
-
-    memoryLeakLimitedStreamTailRecM(position, limit = limitTailRecM)(position =>
-      Stream.eval(whenDataAvailableAfterPosition(position, until.toCatsDeadline))
+    Stream.suspend:
+      def streamNext(position: Long): Stream[IO, PositionAnd[ByteArray]] =
+        // Do not logger.streamTrace this nor use onFinished! It would break tail recursion.
+        Stream.eval:
+          whenDataAvailableAfterPosition(position, until.toCatsDeadline)
         .flatMap:
           case false =>  // Timeout
             Stream.empty
@@ -193,19 +195,26 @@ extends AutoCloseable:
               iterator = Option(last).iterator
 
             iterator = iterator
-              .tapEach { o =>
+              .tapEach: o =>
                 if o.value == EndOfJournalFileMarker then
                   sys.error(s"Journal file must not contain a line like $o")
-              } ++
+              .concat:
                 (eof && markEOF).thenIterator:
                   PositionAnd(lastPosition, EndOfJournalFileMarker)
 
             Stream.fromIterator[IO](
-                iterator map Right.apply,
+                iterator,
                 chunkSize = ProvisionalAssumptions.streamChunks.elementsPerChunkLimit)
               .append:
-                Stream.iterable:
-                  (!eof).thenList(Left(lastPosition)))
+                // To be sure, .append must be lazy for lastPosition and
+                // to avoid heap and stack consumption
+                if eof then
+                  Stream.empty
+                else
+                    streamNext(lastPosition)
+
+      jsonSeqReader.seek(position)
+      streamNext(position)
 
   final def lastUsedAt: Long =
     _lastUsed
