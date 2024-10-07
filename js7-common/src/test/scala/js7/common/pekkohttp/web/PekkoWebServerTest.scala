@@ -1,7 +1,7 @@
 package js7.common.pekkohttp.web
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, FiberIO, IO, Outcome}
+import cats.effect.{Deferred, FiberIO, IO}
 import fs2.Stream
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
@@ -17,7 +17,7 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*

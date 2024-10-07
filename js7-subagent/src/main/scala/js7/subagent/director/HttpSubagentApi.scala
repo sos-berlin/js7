@@ -10,7 +10,6 @@ import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
 import js7.common.http.PekkoHttpClient

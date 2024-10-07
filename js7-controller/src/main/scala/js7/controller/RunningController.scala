@@ -3,7 +3,6 @@ package js7.controller
 import cats.effect.unsafe.Scheduler
 import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.OurIORuntime
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Log4j

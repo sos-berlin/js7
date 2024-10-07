@@ -1,7 +1,5 @@
 package js7.base.test
 
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,7 +1,6 @@
 package js7.base.test
 
 import cats.Monoid
-import js7.base.log.Logger
 import js7.base.test.TestMixin.assertionMonoid
 import org.scalatest.{Assertion, Succeeded, Suite}
 

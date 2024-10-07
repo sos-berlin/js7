@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.ValueType.UnknownNameInExpressionProblem
-import js7.data.value.expression.Expression.{Argument, FunctionCall, JobResourceVariable}
+import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ObjectValue, Value}
 

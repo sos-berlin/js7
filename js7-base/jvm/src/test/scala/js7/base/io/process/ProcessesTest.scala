@@ -8,7 +8,7 @@ import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, withTemporaryFile}
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.io.process.StartRobustly.startRobustly

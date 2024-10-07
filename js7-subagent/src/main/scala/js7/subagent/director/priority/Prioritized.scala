@@ -1,6 +1,5 @@
 package js7.subagent.director.priority
 
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.NumberValue
 import scala.collection.immutable.VectorBuilder
 import scala.math.Ordered.orderingToOrdered

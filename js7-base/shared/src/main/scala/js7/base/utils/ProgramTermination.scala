@@ -2,7 +2,6 @@ package js7.base.utils
 
 import cats.effect.ExitCode
 import js7.base.system.startup.Js7ReturnCodes
-import js7.base.system.startup.Js7ReturnCodes.Restart
 import js7.base.utils.ScalaUtils.syntax.*
 
 trait ProgramTermination:

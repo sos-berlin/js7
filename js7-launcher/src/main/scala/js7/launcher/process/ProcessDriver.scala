@@ -17,7 +17,6 @@ import js7.data.value.NamedValues
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
-import js7.launcher.process.PipedProcess.start
 import js7.launcher.process.ProcessDriver.*
 
 final class ProcessDriver(

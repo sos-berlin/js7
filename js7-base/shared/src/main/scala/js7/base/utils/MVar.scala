@@ -4,7 +4,6 @@ import cats.effect.Async
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import io.github.timwspence.cats.stm.STM
-import js7.base.utils.MVar.*
 
 final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A]):
 

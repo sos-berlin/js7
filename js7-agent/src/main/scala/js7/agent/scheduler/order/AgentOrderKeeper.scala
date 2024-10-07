@@ -1,7 +1,7 @@
 package js7.agent.scheduler.order
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Fiber, IO}
+import cats.effect.IO
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import com.softwaremill.tagging.{@@, Tagger}

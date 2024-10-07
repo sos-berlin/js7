@@ -1,6 +1,6 @@
 package js7.controller.client
 
-import cats.effect.{Resource, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.io.https.HttpsConfig
@@ -9,7 +9,6 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.http.PekkoHttpClient
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import cats.effect.IO
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 

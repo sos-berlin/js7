@@ -8,7 +8,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflowPath, ResumeOrder, SuspendOrders}
-import js7.data.order.OrderEvent.OrderMoved.SkippedDueToWorkflowPathControl
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.StringValue

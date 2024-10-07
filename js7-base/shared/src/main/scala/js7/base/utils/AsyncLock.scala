@@ -5,16 +5,13 @@ import cats.effect.std.Mutex
 import cats.effect.{IO, Resource, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.log.LogLevel.Trace
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, LogLevel, Logger}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AsyncLock.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 trait AsyncLock:

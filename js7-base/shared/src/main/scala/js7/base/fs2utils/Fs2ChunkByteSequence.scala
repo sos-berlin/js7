@@ -5,7 +5,6 @@ import fs2.Chunk
 import java.nio.ByteBuffer
 import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
 import js7.base.data.{ByteArray, ByteSequence}
-import js7.base.utils.ScalaUtils.*
 
 object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
 

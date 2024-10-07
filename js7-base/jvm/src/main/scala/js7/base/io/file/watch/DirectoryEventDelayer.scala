@@ -11,7 +11,6 @@ import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
 import js7.base.catsutils.CatsDeadline
-import js7.base.catsutils.CatsDeadline.now
 import js7.base.catsutils.UnsafeMemoizable.{memoize, unsafeMemoize}
 import js7.base.io.file.watch
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}

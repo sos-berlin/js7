@@ -4,7 +4,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.utils.typeclasses.IsEmpty.syntax.*

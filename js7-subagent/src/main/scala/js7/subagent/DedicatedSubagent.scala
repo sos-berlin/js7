@@ -1,7 +1,7 @@
 package js7.subagent
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, Fiber, FiberIO, IO, Outcome, Resource, ResourceIO}
+import cats.effect.{Deferred, FiberIO, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.Pipe
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}

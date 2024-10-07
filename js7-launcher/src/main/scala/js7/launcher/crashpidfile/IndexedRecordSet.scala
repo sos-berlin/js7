@@ -4,7 +4,6 @@ import cats.effect.kernel.Resource
 import cats.effect.{IO, ResourceIO}
 import java.nio.ByteBuffer
 import java.nio.file.Path
-import js7.base.utils.ScalaUtils.*
 
 trait IndexedRecordSet[A]:
 

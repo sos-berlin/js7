@@ -4,8 +4,6 @@ import cats.InvariantMonoidal
 import cats.instances.option.*
 import java.util.concurrent.locks.ReentrantLock
 import js7.base.utils.ScalaUtils.use
-import scala.concurrent
-import scala.concurrent.blocking
 
 /**
   * Like Scala lazy but synchronization moved to own object.

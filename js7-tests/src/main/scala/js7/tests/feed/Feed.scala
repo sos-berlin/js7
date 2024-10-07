@@ -17,7 +17,6 @@ import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
-import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}

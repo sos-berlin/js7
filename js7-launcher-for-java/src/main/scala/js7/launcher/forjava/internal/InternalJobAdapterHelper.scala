@@ -11,7 +11,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.SetOnce
-import js7.data.order.OrderOutcome
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
 import scala.concurrent.ExecutionContext

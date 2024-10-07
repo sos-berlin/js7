@@ -1,9 +1,9 @@
 package js7.base.io.file.watch
 
 import cats.data.NonEmptySeq
+import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.testkit.TestControl
-import cats.effect.{IO, Outcome}
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import fs2.Stream

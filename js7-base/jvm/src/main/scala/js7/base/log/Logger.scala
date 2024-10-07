@@ -9,7 +9,6 @@ import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.fs2utils.StreamExtensions.onStart
-import js7.base.log.Log4j.{initialize, shutdown}
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
