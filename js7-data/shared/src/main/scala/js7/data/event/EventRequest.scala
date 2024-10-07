@@ -41,18 +41,18 @@ object EventRequest:
   val LongTimeout: FiniteDuration = 365.days
 
   /**
-    * Convenience for only one Event class.
-    */
+   * Convenience for only one Event class.
+   * @param after  Begin with events after `after`. `after` must be a known EventId.
+   * @param timeout timeout Wait no longer then `timeout` for events
+   * @param delay Delay after the first event to collect more events at once
+   * @param limit Limit the number of events
+   * @param tornOlder  Return Torn if the first event is older than `tornOlder`
+   */
   def singleClass[E <: Event: ClassTag](
-    /** Begin with events after `after`. `after` must be a known EventId. */
     after: EventId = EventId.BeforeFirst,
-    /** Wait not longer then `timeout` for events. */
     timeout: Option[FiniteDuration] = Some(ZeroDuration),
-    /** Delay after the first event to collect more events at once. **/
     delay: FiniteDuration = DefaultDelay,
-    /** Limit the number of events. */
     limit: Int = DefaultLimit,
-    /** Return Torn if the first event is older than `tornOlder`. */
     tornOlder: Option[FiniteDuration] = None)
   : EventRequest[E] =
     if implicitClass[E] eq classOf[Nothing] then

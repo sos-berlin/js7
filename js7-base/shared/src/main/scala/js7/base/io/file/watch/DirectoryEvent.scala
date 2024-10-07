@@ -20,11 +20,13 @@ object DirectoryWatchEvent:
 
   case object Overflow extends DirectoryWatchEvent
 
+
 sealed trait DirectoryEvent extends DirectoryWatchEvent:
   def relativePath: Path
 
 
 object DirectoryEvent:
+
   sealed trait FileAddedOrModified extends DirectoryEvent
   final case class FileAdded(relativePath: Path) extends FileAddedOrModified
   final case class FileModified(relativePath: Path) extends FileAddedOrModified

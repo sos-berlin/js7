@@ -517,9 +517,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                 out.close()
                 move(tmpFile, file, ATOMIC_MOVE)
                 journalLocation.updateSymbolicLink(file)
-                logger.info(s"Snapshot '${file.getFileName}' " +
-                  s"(${EventId.toString(continuation.fileEventId)}) replicated - " +
-                  bytesPerSecondString(startedAt.elapsed, size(file)))
+                logger.info(s"Snapshot '${file.getFileName}' (${
+                  EventId.toString(continuation.fileEventId)}) replicated - ${
+                  bytesPerSecondString(startedAt.elapsed, size(file))}")
                 out = FileChannel.open(file, APPEND)
                 // replicatedLength is between EventHeader and SnapshotTaken
                 eventWatch.onJournalingStarted(file, journalId,

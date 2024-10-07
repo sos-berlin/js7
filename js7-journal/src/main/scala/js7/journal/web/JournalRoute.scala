@@ -80,7 +80,7 @@ trait JournalRoute extends RouteProvider:
                           .chunkLimit(httpChunkSize)
                           .map(_.toByteString)
                           //.splitBigByteSeqs(httpChunkSize)
-                          //FIXME ? .chunk(httpChunkSize) --> byteStrings.sum(_.length) <= httpChunkSize
+                          //TODO ? .chunk(httpChunkSize) --> byteStrings.sum(_.length) <= httpChunkSize
                           /*.map(HttpEntity.Chunk(_))
                           .toPekkoSourceForHttpResponse*/))
 

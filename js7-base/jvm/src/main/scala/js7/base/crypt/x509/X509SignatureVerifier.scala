@@ -73,7 +73,8 @@ extends SignatureVerifier:
               case Some(checkedSignerId) =>
                 checkedSignerId.map(_ :: Nil)
 
-  private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] =
+  private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert)
+  : Checked[SignerId] =
     catchNonFatalFlatten:
       val sig = Signature.getInstance(signature.algorithm.string)
       sig.initVerify(cert.x509Certificate.getPublicKey)
@@ -84,7 +85,8 @@ extends SignatureVerifier:
       else
         Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
 
-  private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey): Checked[Unit] =
+  private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey)
+  : Checked[Unit] =
     try
       signatureCertificate.x509Certificate.verify(publicKey)
       Right(())
@@ -127,7 +129,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion:
       X509Cert.removeDuplicates(certs, Timestamp.now).toKeyedMap(_.signersDistinguishedName),
       origin)
 
-  private def toVerifier(signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert], origin: String)
+  private def toVerifier(
+    signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
+    origin: String)
   : X509SignatureVerifier =
     val trustedCertificates = signerDNToTrustedCertificate.values.toVector
     // Openssl 1.1.1i always sets the CA critical extension

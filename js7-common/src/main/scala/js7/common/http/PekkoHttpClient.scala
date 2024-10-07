@@ -598,7 +598,6 @@ object PekkoHttpClient:
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
 
   private val logger = Logger[this.type]
-  private val loggerStream = Logger(getClass.scalaName + ".stream")
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
   private val requestCounter = Atomic(0L)

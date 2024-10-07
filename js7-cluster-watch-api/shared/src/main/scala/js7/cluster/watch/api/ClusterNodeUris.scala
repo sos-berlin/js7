@@ -51,7 +51,9 @@ final class ClusterNodeUris private(prefixedUri: Uri):
   def journal(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
-    timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnAck: Boolean = false): Uri
+    timeout: Option[FiniteDuration] = None,
+    markEOF: Boolean = false,
+    returnAck: Boolean = false): Uri
   = Uri(
     api("/journal").string + encodeQuery(
       (returnAck.thenList("return" -> "ack")) :::

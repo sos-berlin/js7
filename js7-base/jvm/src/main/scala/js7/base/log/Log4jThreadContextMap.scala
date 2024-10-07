@@ -12,7 +12,7 @@ import org.apache.logging.log4j.util.StringMap
 final class Log4jThreadContextMap
 extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
   // CopyOnWrite seems to mean that getReadOnlyContextData returns an immutable map.
-  // Otherwise Log4j makes a copy with Log4jStringMap#forEach.
+  // Otherwise, Log4j makes a copy with Log4jStringMap#forEach.
 
   private var lastLog4jStringMap: Log4jStringMap | Null = null
   private var lastKeyToValueVersion = keyToValueVersion - 1

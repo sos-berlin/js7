@@ -39,7 +39,6 @@ trait WebLogDirectives extends ExceptionHandling:
   private lazy val internalServerErrorLevel = LogLevel(config.getString("js7.web.server.log.500-level"))
   private lazy val logRequest = actorSystem.settings.config.getBoolean("js7.web.server.log.request")
   private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.web.server.log.response")
-  //private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("pekko.http.server.remote-address-attribute")
 
   protected final def mainRoute: Directive0 =
     meterRequest &

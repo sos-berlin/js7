@@ -8,14 +8,13 @@ import cats.syntax.monadError.*
 import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.{Pull, Stream}
-import js7.base.catsutils.CatsEffectExtensions.fromFutureWithEC
 import js7.base.catsutils.CatsExtensions.*
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.collection.Factory
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future, TimeoutException}
+import scala.concurrent.{Future, TimeoutException}
 import scala.util.Try
 
 /*
@@ -115,10 +114,6 @@ object MonixLikeExtensions:
       F.race(canceler, underlying)
         .map(_.merge)
 
-    //@deprecated("Use onError")
-    //def tapError(tap: Throwable => Unit)(using F: ApplicativeError[F, Throwable], FM: FlatMap[F]): F[A] =
-    //  underlying.onError(PartialFunction.fromFunction(F.delay(tap)))
-
     // For compatibility with Monix
     def materialize(using ApplicativeError[F, Throwable]): F[Try[A]] =
       underlying.tryIt
@@ -145,27 +140,28 @@ object MonixLikeExtensions:
 
     /** Describes flatMap-driven loops, as an alternative to recursive functions.
      *
+     * ©Monix
+     *
      * Sample:
      *
      * {{{
      *   import scala.util.Random
      *
-     *   val random = Task(Random.nextInt())
+     *   val random = IO(Random.nextInt())
      *   val loop = random.flatMapLoop(Vector.empty[Int]) { (a, list, continue) =>
      *     val newList = list :+ a
      *     if (newList.length < 5)
      *       continue(newList)
      *     else
-     *       Task.now(newList)
+     *       IO.now(newList)
      *   }
      * }}}
      *
      * @param seed initializes the result of the loop
      * @param f    is the function that updates the result
-     *             on each iteration, returning a `Task`.
-     * @return a new [[Task]] that contains the result of the loop.
+     *             on each iteration, returning a `IO`.
+     * @return a new [[IO]] that contains the result of the loop.
      *
-     * (©Monix)
      */
     def flatMapLoop[S](seed: S)(f: (A, S, S => IO[S]) => IO[S]): IO[S] =
       io.flatMap: a =>
@@ -190,14 +186,8 @@ object MonixLikeExtensions:
     : IO[M[B]] =
       in.toSeq.parTraverse(f).map(_.to(factory))
 
-    def deferAction[A](toIO: ExecutionContext => IO[A]): IO[A] =
-      IO.executionContext.flatMap(toIO)
-
     def deferFuture[A](future: => Future[A]): IO[A] =
       IO.fromFuture(IO(future))
-
-    def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =
-      IO.fromFutureWithEC(ec => IO(future(ec)))
 
 
   extension [F[_], A](stream: Stream[F, A])

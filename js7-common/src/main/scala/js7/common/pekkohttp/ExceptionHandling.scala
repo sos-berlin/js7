@@ -1,13 +1,11 @@
 package js7.common.pekkohttp
 
-import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
-import cats.implicits.catsSyntaxEitherId
+import cats.effect.{Deferred, IO}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.ExceptionHandling.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
@@ -33,12 +31,10 @@ trait ExceptionHandling:
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
 
   protected final lazy val isShuttingDown: IO[Option[Deadline]] =
-    whenShuttingDown.get
-      .map(Some(_))
-      .timeoutTo(ZeroDuration, IO.none) // TODO Is this reliable? Maybe use SignallingRef
+    whenShuttingDown.tryGet
 
   protected final lazy val shutdownSignaled: IO[Unit] =
-    whenShuttingDown.get.as(().asRight[Throwable])
+    whenShuttingDown.get.as(())
 
   implicit protected final lazy val exceptionHandler: ExceptionHandler =
     ExceptionHandler:
@@ -47,16 +43,13 @@ trait ExceptionHandling:
 
       case e: pekko.pattern.AskTimeoutException =>
         ioRoute:
-          isShuttingDown
-            .map(Some(_))
-            .timeoutTo(0.s, IO.none)
-            .map:
-              case None =>
-                completeWithError(InternalServerError, e)
-              case Some(_) =>
-                extractRequest: request =>
-                  webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
-                  complete(ServiceUnavailable -> Problem.pure("Shutting down"))
+          isShuttingDown.map:
+            case None =>
+              completeWithError(InternalServerError, e)
+            case Some(_) =>
+              extractRequest: request =>
+                webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
+                complete(ServiceUnavailable -> Problem.pure("Shutting down"))
 
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException

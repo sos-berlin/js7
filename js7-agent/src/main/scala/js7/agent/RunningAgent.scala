@@ -367,6 +367,7 @@ object RunningAgent:
                   .flatMap:
                     case Left(problem @ (ClusterNodeIsNotActiveProblem | ShuttingDownProblem
                               | BackupClusterNodeNotAppointed)) =>
+                      // For a passive node (or bare Subagent?), ClusterNodeIsNotActiveProblem is expected
                       logger.debug(s"❓$problem")
                       IO.right(AgentCommand.Response.Accepted)
 
