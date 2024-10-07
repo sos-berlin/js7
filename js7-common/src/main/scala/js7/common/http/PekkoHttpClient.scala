@@ -152,7 +152,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
       // See also pekko.http.server.stream-cancellation-delay
       // On NoMoreElementsNeeded the Stream ends silently !!! Maybe harmless?
-      logger.warn(s"Ignore ${t.toString}")
+      logger.warn(s"Ignore $t")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Stream.empty
 
@@ -160,7 +160,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
       // Idle timeout is ignored !!!
       // We issue a warning, because the caller should make this not happen.
-      logger.warn(s"Ignore ${t.toString}")
+      logger.warn(s"Ignore $t")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Stream.empty
 
@@ -349,9 +349,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .pipeIf(logger.isDebugEnabled):
             logResponding(request, _, responseLogPrefix)
               .map: response =>
-                if logger.isTraceEnabled then
-                  logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥")(response)
-                else
+                logStream("#" + number, "<-<-  ", "<--|  ", "<~~ 💥"):
                   response
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
@@ -403,14 +401,14 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         case Forbidden =>
           response.entity match
             case HttpEntity.Strict(`application/json`, bytes)
-              if (bytes.parseJsonAs[Problem].exists(_ is InvalidSessionTokenProblem)) =>
+              if bytes.parseJsonAs[Problem].exists(_ is InvalidSessionTokenProblem) =>
               "🔒" // The SessionToken has probably expired. Then the caller will re-login.
             case _ =>
               "⛔"
         case _ => "❓"
 
-    val suffix = response.status.isFailure ??
-      (try response.entity match {
+    val suffix = response.status.isFailure ?? locally:
+      try response.entity match
         case HttpEntity.Strict(`application/json`, bytes) =>
           bytes.parseJsonAs[Problem].toOption.fold("")(" · " + _)
 
@@ -419,13 +417,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             .parseJsonAs[Problem].toOption.fold("")(" · " + _)
 
         case _ => ""
-      } catch {
-        case NonFatal(_) => ""
-      })
+      catch case NonFatal(_) => ""
     val arrow = if response.entity.isChunked then "<--<" else "<--|"
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
 
-  private def logStream[M <: HttpMessage](prefix: => String, msgArrow: String, lastArrow: String, errArrow: String)
+  private def logStream[M <: HttpMessage](
+    prefix: => String,
+    msgArrow: String, lastArrow: String, errArrow: String)
     (message: M)
   : M =
     message.entity match
@@ -460,8 +458,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     if !httpResponse.status.isSuccess then
       failWithResponse(uri, httpResponse)
     else
-      IO
-        .fromFuture[A](IO:
+      IO.fromFuture[A](IO:
           Unmarshal(httpResponse).to[A])
         .onErrorTap(t => IO:
           if !materializer.isShutdown then
@@ -469,8 +466,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               method.name} $uri: ${t.toStringWithCauses}", t))
 
   private def failWithResponse(uri: Uri, response: HttpResponse): IO[Nothing] =
-    response.entity.asUtf8String.flatMap(errorMsg =>
-      IO.raiseError(new HttpException(POST, uri, response, errorMsg)))
+    response.entity.asUtf8String.flatMap: errorMsg =>
+      IO.raiseError(new HttpException(POST, uri, response, errorMsg))
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => IO[A]): IO[A] =
     toCheckedAgentUri(request.uri.asUri) match

@@ -38,8 +38,8 @@ object StreamPauseDetector:
             case (Expired(o), Tick(_)) => Expired(o)
             case (_, tick: Tick) => tick
             case (_, value: Value[A @unchecked]) => value
-            case (_, Expired(_)) => throw new IllegalStateException(
-              "Duplicate Expired in StreamPauseDetector")
+            case (_, Expired(_)) =>
+              throw IllegalStateException("Duplicate Expired in StreamPauseDetector")
           .collect:
             case o: Expirable[A @unchecked] => o
 

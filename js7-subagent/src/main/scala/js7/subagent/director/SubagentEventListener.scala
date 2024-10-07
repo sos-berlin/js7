@@ -183,6 +183,7 @@ private trait SubagentEventListener:
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](
       toIndex = stamped => !stamped.value.event.isInstanceOf[NonPersistentEvent] ? stamped.eventId,
       recouplingStreamReaderConf):
+
       private var lastProblem: Option[Problem] = None
       override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 
@@ -260,9 +261,9 @@ private trait SubagentEventListener:
                   true
 
       override protected val onDecoupled =
-        logger.traceIO(
+        logger.traceIO:
           onSubagentDecoupled(None) *>
-            coupled.switchOff.as(Completed))
+            coupled.switchOff.as(Completed)
 
       protected def stopRequested = false
 

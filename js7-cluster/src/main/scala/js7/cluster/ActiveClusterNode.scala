@@ -525,7 +525,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             Admission(passiveUri, passiveNodeUserAndPassword),
             "acknowledgements")
         .flatMap: api =>
-          streamEventIds(api, timing.heartbeat min keepAlive, Some(EventId.Heartbeat))
+          streamEventIds(api,
+            heartbeat = timing.heartbeat min keepAlive,
+            returnHeartbeatAs = Some(EventId.Heartbeat))
             .through: stream =>
               clusterConf.testAckLossPropertyKey.fold(stream): k =>  // Testing only
                 var logged = false
