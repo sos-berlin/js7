@@ -8,7 +8,7 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class CommandLineArguments private(argMap: mutable.LinkedHashMap[String, Vector[Argument]])
+final class CommandLineArguments private(argMap: mutable./*Sorted!*/Map[String, Vector[Argument]])
   extends PartialFunction[String, Vector[String]],
   ConvertibleMultiPartialFunction[String, String]:
 
@@ -61,8 +61,9 @@ object CommandLineArguments:
   private val OptionWithValueRegex = "(?s)(-[^=]+=)(.*)".r   // "(?s)" to match multi-line arguments
 
   def apply(args: Seq[String]): CommandLineArguments =
-    val m = new mutable.LinkedHashMap[String, Vector[Argument]]:
-      override def default(key: String) = Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
+    val m = mutable.LinkedHashMap.empty[String, Vector[Argument]]
+      .withDefault: _ =>
+        Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
     for a <- args.lastOption if a endsWith "\r" do
       throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")
     for a <- parseArgs(args) do
