@@ -136,9 +136,6 @@ object Logger extends AdHocLogger:
       inline def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
-      inline def trace(inline msg: String): Unit =
-        logger.trace(msg)
-
       def infoCall[A](body: => A)(implicit src: sourcecode.Name): A =
         infoCall[A](src.value)(body)
 
