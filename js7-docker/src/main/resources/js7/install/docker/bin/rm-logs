@@ -1,0 +1,15 @@
+#! /usr/bin/env bash
+set -euo pipefail
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+docker-compose kill
+
+dirs=(volumes/{controller,backup-controller,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/logs)
+dirs+=(volumes/testControllerAgent/*/data/logs)
+
+for dir in "${dirs[@]}"; do :
+  if test -d "$dir"; then :
+    find "$dir" -mindepth 1 -delete
+  fi
+done
