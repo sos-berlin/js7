@@ -13,6 +13,7 @@ import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
 
 final class FileWatchScopeTest extends OurTestSuite:
+
   private val orderWatchPath = OrderWatchPath("FILE-WATCH")
   private val pattern = """file-(.*((A)|(B)))\.csv""".r.pattern
   private val filename = "file-100B.csv"
@@ -21,7 +22,7 @@ final class FileWatchScopeTest extends OurTestSuite:
     val matcher = pattern.matcher(filename)
     val matches = matcher.matches()  // required !!!
     assert(matches)
-    FileWatchScope(orderWatchPath, matcher)
+    new FileWatchScope(orderWatchPath, matcher)
 
   "$0...$n" in:
     assert(fileWatchScope.parseAndEval("$0") == Right(StringValue("file-100B.csv")))
@@ -41,7 +42,7 @@ final class FileWatchScopeTest extends OurTestSuite:
       "orderWatchPath" -> Right(StringValue("FILE-WATCH"))))
 
   "Complete" in:
-    implicit val scope: Scope = fileWatchScope |+| NowScope()
+    implicit val scope: Scope = NowScope() |+| fileWatchScope
     val checkedValue = scope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', " +
         "timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\"")

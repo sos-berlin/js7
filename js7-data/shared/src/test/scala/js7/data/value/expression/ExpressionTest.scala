@@ -8,7 +8,7 @@ import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypePr
 import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.Expression.{Divide, NamedValue, *}
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
-import js7.data.value.expression.scopes.NameToCheckedValueScope
+import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
@@ -43,7 +43,7 @@ final class ExpressionTest extends OurTestSuite:
       override def findValue(search: ValueSearch) =
         search match
           case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-            nameToCheckedValue.get(name)
+            nameToCheckedValue.lift(name)
 
           case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
             Map("KEY" -> "LABEL-VALUE")
@@ -1022,11 +1022,11 @@ final class ExpressionTest extends OurTestSuite:
   }
 
   "ListValue" - {
-    implicit val scope: Scope = NameToCheckedValueScope(MapView(
-      "list" -> Right(ListValue(Seq[Value](
+    implicit val scope: Scope = NamedValueScope:
+      case "list" => Right(ListValue(Seq[Value](
         -1, 111,
         ObjectValue(Map("elem" -> ListValue(Seq(StringValue("CONTENT"))))),
-        ListValue(Seq(StringValue("DEEP"))))))))
+        ListValue(Seq(StringValue("DEEP"))))))
 
     testEval("$list(0)",
       result = Right(-1),

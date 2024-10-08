@@ -20,16 +20,17 @@ import scala.collection.MapView
   * which can be a different `Scope` or a greater CombinedScope
   * (while `this` is the own specicialized `Scope`). */
 trait Scope:
+
   def symbolToValue(symbol: String): Option[Checked[Value]] =
     None
 
-  def nameToCheckedValue: MapView[String, Checked[Value]] =
-    MapView.empty
+  def nameToCheckedValue: PartialFunction[String, Checked[Value]] =
+    Map.empty
 
   def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
     valueSearch match
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-        nameToCheckedValue.get(name)
+        nameToCheckedValue.lift(name)
       case _ =>
         None
 

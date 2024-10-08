@@ -28,9 +28,9 @@ trait OrderScopes:
 
   private def js7VariablesScope =
     minimalJs7VariablesScope(order.id, order.workflowPath, controllerId) |+|
-      NamedValueScope(Map(
-        "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
-        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString)))
+      NamedValueScope.simple:
+        case "js7Label" => StringValue(instructionLabel.fold("")(_.string))
+        case "js7WorkflowPosition" => StringValue(order.workflowPosition.toString)
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
@@ -71,17 +71,17 @@ object OrderScopes:
       nowScope)
     combine(
       nestedScope,
-      NamedValueScope(freshOrder.arguments),
+      NamedValueScope.simple(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
 
   def minimalJs7VariablesScope(
     orderId: OrderId,
     workflowPath: WorkflowPath,
     controllerId: ControllerId): Scope
-  = NamedValueScope(Map(
-     "js7OrderId" -> StringValue(orderId.string),
-     "js7WorkflowPath" -> StringValue(workflowPath.string),
-     "js7ControllerId" -> StringValue(controllerId.string)))
+  = NamedValueScope.simple:
+    case "js7OrderId" => StringValue(orderId.string)
+    case "js7WorkflowPath" => StringValue(workflowPath.string)
+    case "js7ControllerId" => StringValue(controllerId.string)
 
   def scheduledScope(scheduledFor: Option[Timestamp]): Scope =
     TimestampScope("scheduledOrEmpty", scheduledFor)
@@ -105,17 +105,17 @@ trait ProcessingOrderScopes extends OrderScopes:
   final lazy val jobExecutionCount: Int =
     1 + order.historicJobExecutionCount(jobKey, workflow)
 
-  private lazy val js7JobVariablesScope = NamedValueScope(Map(
-    "js7JobName" -> StringValue(simpleJobName), // Legacy
-    "js7JobExecutionCount" -> NumberValue(jobExecutionCount),
-    "js7Job" -> ObjectValue(Map(
+  private lazy val js7JobVariablesScope = NamedValueScope.simple:
+    case "js7JobName" => StringValue(simpleJobName) // Legacy
+    case "js7JobExecutionCount" => NumberValue(jobExecutionCount)
+    case "js7Job" => ObjectValue(Map(
       "name" -> StringValue(simpleJobName),
       "sigkillDelayMillis" ->
         workflowJob.sigkillDelay.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
       "timeoutMillis" ->
         workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
       "processLimit" -> NumberValue(workflowJob.processLimit),
-      "executionCount" -> NumberValue(jobExecutionCount)))))
+      "executionCount" -> NumberValue(jobExecutionCount)))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources =

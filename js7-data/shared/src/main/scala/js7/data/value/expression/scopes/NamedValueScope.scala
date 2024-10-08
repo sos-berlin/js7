@@ -7,7 +7,7 @@ import js7.data.value.expression.scopes.NamedValueScope.namesToString
 import scala.collection.MapView
 
 final class NamedValueScope(
-  override val nameToCheckedValue: MapView[String, Checked[Value]])
+  override val nameToCheckedValue: PartialFunction[String, Checked[Value]])
 extends Scope:
 
   override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"
@@ -16,16 +16,31 @@ extends Scope:
 object NamedValueScope:
 
   def apply(namedValue: (String, Value)*): Scope =
-    apply(namedValue.toMap)
+    apply(namedValue.map((k, v) => k -> Right(v)).toMap)
 
-  def apply(nameToValue: Map[String, Value]): Scope =
-    apply(nameToValue.view)
+  /**
+   * @param nameToValue: Value is expected to be constant.
+   */
+  def simple(nameToValue: PartialFunction[String, Value]): Scope =
+    apply:
+      Function.unlift: (k: String) =>
+        nameToValue.lift(k).map(Right(_))
 
+  /**
+   * @param nameToValue: Value is expected to be constant.
+   */
   def apply(nameToValue: MapView[String, Value]): Scope =
-    new NamedValueScope(nameToValue.view.mapValues(Right(_)))
+    apply:
+      nameToValue.view.mapValues(Right(_))
 
-  def checkedValues(namedValue: (String, Checked[Value])*): Scope =
-    new NamedValueScope(namedValue.toMap.view)
+  /**
+   * @param nameToChecked: Checked[Value] is expected to be constant.
+   */
+  def apply(nameToChecked: PartialFunction[String, Checked[Value]]): Scope =
+    new NamedValueScope(nameToChecked)
 
-  private[scopes] def namesToString[V](nameToV: MapView[String, V]) =
-    nameToV.keys.toVector.sorted.mkString(", ")
+  private[scopes] def namesToString[V](nameToV: PartialFunction[String, V]) =
+    nameToV match
+      case o: MapView[String, ?] @unchecked => o.keys.toVector.sorted.mkString(", ")
+      case o: Map[String, ?] @unchecked => o.keys.toVector.sorted.mkString(", ")
+      case _ => nameToV.toString

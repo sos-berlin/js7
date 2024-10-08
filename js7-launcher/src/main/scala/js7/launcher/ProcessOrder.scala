@@ -9,7 +9,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order
 import js7.data.value.expression.Scope.evalExpressionMap
-import js7.data.value.expression.scopes.{FileValueScope, FileValueState, NameToCheckedValueScope, ProcessingOrderScopes}
+import js7.data.value.expression.scopes.{FileValueScope, FileValueState, NamedValueScope, ProcessingOrderScopes}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{MissingValue, Value}
 import js7.data.workflow.Workflow
@@ -44,7 +44,7 @@ extends ProcessingOrderScopes:
     evalEnv(
       jobResource.env,
       scopeForJobResources |+|
-        NameToCheckedValueScope(evalLazilyJobResourceVariables(jobResource)))
+        NamedValueScope(evalLazilyJobResourceVariables(jobResource)))
 
   /** Eagerly evaluated defaultArguments, used for JS1 compatibility. */
   lazy val checkedJs1DefaultArguments: Checked[Map[String, Value]] =
@@ -55,7 +55,7 @@ extends ProcessingOrderScopes:
 
   lazy val scope: Scope =
     processingOrderScope |+|
-      NameToCheckedValueScope(nameToLazyDefaultArgument)
+      NamedValueScope(nameToLazyDefaultArgument)
 
 
 object ProcessOrder:

@@ -44,12 +44,12 @@ final case class ExprFunction(
           maximumArgumentCount.filter(_ != minimumArgumentCount).fold("")("..." + _) +
           s" in '$name' function"))
     else
-      val argScope = NamedValueScope(
+      val argScope = NamedValueScope.simple:
         parameters
           .view
           .zip(arguments)
           .map { case (p, a) => p.name -> a }
-          .toMap)
+          .toMap
       expression.eval(argScope |+| scope)
 
   override def toString = parameters.mkString("(", ",", ")") + "=>" + expression

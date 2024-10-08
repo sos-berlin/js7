@@ -8,13 +8,13 @@ import js7.data.value.{StringValue, Value}
 import scala.collection.MapView
 import scala.util.Try
 
-private final class FileWatchScope private(
+private[order] final class FileWatchScope(
   orderWatchPath: OrderWatchPath,
   matchedMatcher: Matcher)
 extends Scope:
 
-  override lazy val nameToCheckedValue =
-    new MapView[String, Right[Nothing, Value]]:
+  override lazy val nameToCheckedValue: MapView[String, Right[Nothing, Value]] =
+    new MapView:
       def get(key: String): Option[Right[Nothing, Value]] =
         key match
           case "orderWatchPath" =>

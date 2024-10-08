@@ -17,7 +17,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.FreshOrder
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.{minimalJs7VariablesScope, scheduledScope}
-import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NameToCheckedValueScope, NamedValueScope}
+import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NamedValueScope}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{AnyValue, ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
@@ -71,15 +71,15 @@ final case class OrderParameterList(
       freshOrder.arguments,
       scope = combine(
         nestedScope,
-        NamedValueScope(freshOrder.arguments),
+        NamedValueScope.simple(freshOrder.arguments),
         JobResourceScope(pathToJobResource, useScope = nestedScope))
     )
 
   private def prepareOrderArguments2(arguments: NamedValues, scope: Scope): Checked[NamedValues] =
     lazy val recursiveScope: Scope = combine(
       scope,
-      NameToCheckedValueScope(evalLazilyExpressions(nameToExpression)(
-        recursiveScope)))
+      NamedValueScope:
+        evalLazilyExpressions(nameToExpression)(recursiveScope))
 
     val checkedAllDeclared =
       if allowUndeclared then

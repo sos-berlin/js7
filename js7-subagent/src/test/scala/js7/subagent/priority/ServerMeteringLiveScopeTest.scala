@@ -29,9 +29,9 @@ final class ServerMeteringLiveScopeTest extends OurTestSuite:
     assert(getNumber("js7TotalMemorySize") > NumberValue(0))
 
   "ServerMeteringLiveScope.fromEvent has same keys" in :
-    assert:
-      ServerMeteringEvent(None, 0, 0, 0)
-        .toScope.nameToCheckedValue.keySet == ServerMeteringLiveScope.nameToCheckedValue.keySet
+    val scope = ServerMeteringEvent(None, 0, 0, 0).toScope
+    ServerMeteringLiveScope.nameToCheckedValue.keySet.foreach: k =>
+      assert(scope.nameToCheckedValue isDefinedAt k)
 
   "Speed test" in:
     val n = if isIntelliJIdea then 100_000 else 100
@@ -46,7 +46,10 @@ final class ServerMeteringLiveScopeTest extends OurTestSuite:
 
     Logger.info:
       measureTime(n, "PriorityMxBeans", warmUp = n / 10):
-        ServerMeteringLiveScope.nameToCheckedValue.toMap
+        ServerMeteringLiveScope.nameToCheckedValue("js7CpuLoad")
+        ServerMeteringLiveScope.nameToCheckedValue("js7CommittedVirtualMemorySize")
+        ServerMeteringLiveScope.nameToCheckedValue("js7FreeMemorySize")
+        ServerMeteringLiveScope.nameToCheckedValue("js7TotalMemorySize")
 
     Logger.info:
       assert(ServerMeteringLiveScope.nameToCheckedValue.size == 4)
