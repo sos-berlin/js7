@@ -2,6 +2,7 @@ package js7.controller.agent
 
 import cats.effect.{Deferred, IO, ResourceIO}
 import cats.syntax.option.*
+import cats.syntax.applicativeError.*
 import fs2.Stream
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
@@ -13,14 +14,14 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{completedL, flatMapLoop, raceFold}
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
-import js7.common.http.RecouplingStreamReader
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.controller.agent.AgentDriver.DecoupledProblem
 import js7.controller.agent.DirectorDriver.*
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentReset}
@@ -136,9 +137,14 @@ extends Service.StoppableByRequest:
           // A Pekko HTTP stream seems not to be cancelable with interruptWhen.
           // So we use a fast heartbeat and stop at the next stream element.
           .agentEventStream(
-            EventRequest[Event](EventClasses, after = after, timeout = requestTimeout.some),
-            heartbeat = conf.recouplingStreamReader.keepAlive.some)
+            EventRequest[Event](
+              EventClasses,
+              after = after,
+              timeout = None /*no timeout due to heartbeat keep-alive (otherwise requestTimeout)*/),
+            heartbeat = conf.recouplingStreamReader.keepAlive.some,
+            idleTimeout = idleTimeout)
           .map(_.map(_
+            .recoverWith(PekkoHttpClient.warnIdleTimeout)
             .interruptWhenF(untilStopRequested)))
           .race(untilStopRequested)
           .flatMap:

@@ -38,13 +38,14 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   final def eventStream[E <: Event](
     request: EventRequest[E],
-    heartbeat: Option[FiniteDuration] = None)
+    heartbeat: Option[FiniteDuration] = None,
+    idleTimeout: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    httpClient
-      .getDecodedLinesStream[Stamped[KeyedEvent[E]]](
-        uris.events(request, heartbeat = heartbeat),
-        responsive = true)
+    httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
+      uris.events(request, heartbeat = heartbeat),
+      responsive = true,
+      idleTimeout = idleTimeout)
 
   final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,

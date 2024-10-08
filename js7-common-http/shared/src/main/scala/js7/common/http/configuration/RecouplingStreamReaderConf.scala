@@ -6,7 +6,7 @@ import js7.base.utils.CatsUtils.Nel
 import scala.concurrent.duration.FiniteDuration
 
 final case class RecouplingStreamReaderConf(
-  timeout: FiniteDuration,
+  timeout: Option[FiniteDuration],
   keepAlive: FiniteDuration,
   delay: FiniteDuration,
   failureDelays: NonEmptyList[FiniteDuration])
@@ -14,4 +14,4 @@ final case class RecouplingStreamReaderConf(
 
 object RecouplingStreamReaderConf:
   val forTest: RecouplingStreamReaderConf =
-    RecouplingStreamReaderConf(55.s, 1.s, 1.s, Nel.one(5.s))
+    RecouplingStreamReaderConf(Some(55.s), 1.s, 1.s, Nel.one(5.s))

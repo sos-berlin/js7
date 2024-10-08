@@ -18,7 +18,8 @@ extends SessionApi, HasIsIgnorableStackTrace:
 
   def eventStream[E <: Event](
     request: EventRequest[E],
-    heartbeat: Option[FiniteDuration] = None)
+    heartbeat: Option[FiniteDuration] = None,
+    idleTimeout: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]]
 

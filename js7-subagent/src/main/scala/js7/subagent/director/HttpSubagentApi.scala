@@ -65,6 +65,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
     heartbeat: Option[FiniteDuration] = None,
+    idleTimeout: Option[FiniteDuration] = None,
     serverMetering: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
@@ -78,6 +79,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
                 serverMetering.map("serverMetering" -> _.toDecimalString) ++
                 request.toQueryParameters,
         returnHeartbeatAs = for _ <- heartbeat yield JournalEvent.StampedHeartbeatByteArray,
+        idleTimeout = idleTimeout,
         responsive = true)
 
 

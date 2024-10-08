@@ -82,7 +82,7 @@ object ClusterConf:
         isBackup = isBackup,
         setting,
         recouplingStreamReaderConf.copy(
-          timeout = heartbeat + (heartbeatTimeout - heartbeat) / 2),
+          timeout = Some(heartbeat + (heartbeatTimeout - heartbeat) / 2)),
         timing,
         clusterWatchUniquenessMemorySize,
         testHeartbeatLoss,

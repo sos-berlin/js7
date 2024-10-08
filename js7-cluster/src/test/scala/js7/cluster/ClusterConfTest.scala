@@ -40,7 +40,7 @@ final class ClusterConfTest extends OurTestSuite:
           isBackup = false,
           None,
           RecouplingStreamReaderConf(
-            timeout = 6.s,  // Between 5s and 7s
+            timeout = Some(6.s),  // Between 5s and 7s
             keepAlive = 1.s,
             delay = 1.s,
             failureDelays = Nel.one(5.s)),
@@ -80,7 +80,7 @@ final class ClusterConfTest extends OurTestSuite:
             ClusterTiming(7.s, 5.s),
             clusterWatchId = None)),
           RecouplingStreamReaderConf(
-            timeout = 6.s,  // Between 5s and 7s
+            timeout = Some(6.s),  // Between 5s and 7s
             keepAlive = 1.s,
             delay = 1.s,
             failureDelays = Nel.one(5.s)),

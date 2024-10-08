@@ -18,7 +18,7 @@ object RecouplingStreamReaderConfs:
       delay <- config.finiteDuration("js7.web.client.polling-delay")
       result <- catchExpected[ConfigException]:
         RecouplingStreamReaderConf(
-          timeout = timeout,
+          timeout = Some(timeout),
           keepAlive = keepAlive,
           delay = delay,
           failureDelays =

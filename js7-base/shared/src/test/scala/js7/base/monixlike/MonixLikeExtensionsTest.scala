@@ -10,10 +10,13 @@ import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixlike.MonixLikeExtensionsTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.TimeoutException
+import scala.concurrent.duration.Deadline
 
 final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
 
@@ -22,10 +25,9 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
       "canceled" in:
         @volatile var canceled = false
         IO.never
-          .onCancel(IO {
+          .onCancel(IO:
             canceled = true
-            logger.info(s"raceFold canceled")
-          })
+            logger.info(s"raceFold canceled"))
           .raceFold(IO.sleep(100.ms)/*Wait for .onCancel*/)
           .map(result =>
             assert(result.getClass == classOf[Unit] && canceled))
@@ -47,12 +49,13 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
       "matching PartialFunction" in:
         val throwable = new IllegalArgumentException
         var tapped = none[IllegalArgumentException]
-        for
-          attempted <- IO.raiseError(throwable)
-            .onErrorTap:
-              case t: IllegalArgumentException => IO { tapped = t.some }
-            .attempt
-        yield assert(attempted.left.exists(_ eq throwable) && (tapped.get eq throwable))
+        IO.raiseError(throwable)
+          .onErrorTap:
+            case t: IllegalArgumentException => IO:
+              tapped = t.some
+          .attempt
+          .map: attempted =>
+            assert(attempted.left.exists(_ eq throwable) && (tapped.get eq throwable))
 
       "non-matching PartialFunction" in:
         val throwable = new IllegalStateException()
@@ -76,13 +79,16 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
       Stream
         .fromIterator[IO](Iterator.from(1), chunkSize = 1)
         .delayBy(1.ms)
-        .evalTap(i => IO.whenA(i == 3)(started.complete(()).void))
+        .evalTap: i =>
+          IO.whenA(i == 3):
+            started.complete(()).void
         .takeUntilEval(stop.get)
         .compile
         .count
         .both(
           started.get *> IO.sleep(100.ms) *> stop.complete(()))
-        .flatMap((n, _) => IO(assert(n >= 3)))
+        .flatMap: (n, _) =>
+          IO(assert(n >= 3))
 
     "timeoutOnSlowUpstream" - {
       def runStream(stream: Stream[IO, Any]): IO[Vector[Any]] =
@@ -108,37 +114,80 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
       "Timeout after serval chunk" in:
         val n = if isIntelliJIdea then 10000 else 100
         TestControl.executeEmbed:
-          runStream(Stream
-            .iterable(1 to n)
-            .flatMap(Stream.emit) // Chunk
-            .evalTap(i => IO.whenA(i % 3 == 0)(IO.sleep(1.s)))
-            .append(Stream.sleep_[IO](4.s)) // Timeout
-            .append(Stream(4, 5, 6))
-          ).map: result =>
+          runStream:
+            Stream.iterable(1 to n)
+              .flatMap(Stream.emit) // Chunk
+              .evalTap(i => IO.whenA(i % 3 == 0)(IO.sleep(1.s)))
+              .append(Stream.sleep_[IO](4.s)) // Timeout
+              .append(Stream(4, 5, 6))
+          .map: result =>
             assert(result ==
               (1 to n).toVector :+ "timeoutOnSlowUpstream timed-out after 3s")
+    }
 
-      "headL" - {
-        "nonEmpty Stream" in:
-          for head <- Stream(1, 2, 3).covary[IO].headL yield
-            assert(head == 1)
+    "onSlowUpstreamTerminateWith" - {
+      "onSlowUpstreamTerminateWith" in:
+        TestControl.executeEmbed:
+          Stream(1, 2, 3).append:
+            Stream.sleep_[IO](4.s)
+          .append:
+            Stream(4, 5, 6)
+          .onSlowUpstreamTerminateWith(3.s):
+            Stream(-1, -2)
+          .compile.toVector
+          .map: result =>
+            assert(result == Vector(1, 2, 3, -1, -2))
 
-        "empty Stream" in:
-          for head <- Stream.empty.covary[IO].headL.attempt yield
-            assert(head.left.toOption.get.toString ==
-              "java.util.NoSuchElementException: .headL on empty stream")
-      }
+      "Speed" in:
+        if !sys.props.contains("test.speed") then
+          IO.pure(succeed)
+        else
+          val n = 100_000
 
-      "lastL" - {
-        "nonEmpty Stream" in:
-          for head <- Stream(1, 2, 3).covary[IO].lastL yield
-            assert(head == 3)
+          IO.defer:
+            val t = Deadline.now
+            Stream.iterable(1 to n)
+              .flatMap(Stream.emit) // Make single-element chunks
+              .covary[IO]
+              .fold(0L)(_ + _)
+              .headL
+              .map: sum =>
+                logger.info(itemsPerSecondString(t.elapsed, n, "noop"))
+                assert(sum == (n + 1L) * (n / 2))
+          .productR:
+            IO.defer:
+              val t = Deadline.now
+              Stream.iterable(1 to n)
+                .flatMap(Stream.emit) // Make single-element chunks
+                .onSlowUpstreamTerminateWith(1.s)(Stream.empty)
+                .fold(0L)(_ + _)
+                .headL
+                .map: sum =>
+                  // ~20000 chunks/s on MacBook Pro M1
+                  logger.info(itemsPerSecondString(t.elapsed, n, "onSlowUpstreamTerminateWith"))
+                  assert(sum == (n + 1L) * (n / 2))
+    }
 
-        "empty Stream" in:
-          for head <- Stream.empty.covary[IO].lastL.attempt yield
-            assert(head.left.toOption.get.toString ==
-              "java.util.NoSuchElementException: .lastL on empty stream")
-      }
+    "headL" - {
+      "nonEmpty Stream" in:
+        for head <- Stream(1, 2, 3).covary[IO].headL yield
+          assert(head == 1)
+
+      "empty Stream" in:
+        for head <- Stream.empty.covary[IO].headL.attempt yield
+          assert(head.left.toOption.get.toString ==
+            "java.util.NoSuchElementException: .headL on empty stream")
+    }
+
+    "lastL" - {
+      "nonEmpty Stream" in:
+        for head <- Stream(1, 2, 3).covary[IO].lastL yield
+          assert(head == 3)
+
+      "empty Stream" in:
+        for head <- Stream.empty.covary[IO].lastL.attempt yield
+          assert(head.left.toOption.get.toString ==
+            "java.util.NoSuchElementException: .lastL on empty stream")
     }
   }
 

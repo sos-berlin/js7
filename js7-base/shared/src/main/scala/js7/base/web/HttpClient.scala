@@ -10,6 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Missing
 import js7.base.utils.StackTraces.StackTraceThrowable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -21,13 +22,15 @@ trait HttpClient:
     uri: Uri,
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
+    idleTimeout: Option[FiniteDuration] = None,
     prefetch: Int | Missing =  Missing)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 
   def getRawLinesStream(
     uri: Uri,
-    returnHeartbeatAs: Option[ByteArray] = None)
+    returnHeartbeatAs: Option[ByteArray] = None,
+    idleTimeout: Option[FiniteDuration] = None)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]]
 

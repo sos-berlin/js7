@@ -79,14 +79,16 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
 
   final def agentEventStream(
     request: EventRequest[Event],
-    heartbeat: Option[FiniteDuration] = None)
+    heartbeat: Option[FiniteDuration] = None,
+    idleTimeout: Option[FiniteDuration] = None)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
-    liftProblem(
+    liftProblem:
       getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
         agentUris.controllersEvents(
           request,
           heartbeat = heartbeat),
-        responsive = true))
+        responsive = true,
+        idleTimeout = idleTimeout)
 
 
 object AgentClient:

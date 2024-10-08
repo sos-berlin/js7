@@ -1,7 +1,6 @@
 package js7.common.http
 
 import cats.effect.{Deferred, IO}
-import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
@@ -11,20 +10,18 @@ import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{UpstreamTimeoutException, materialize, timeoutOnSlowUpstream}
+import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.EventSeqTornProblem
 import js7.data.problems.UnknownEventIdProblem
-import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.control.NoStackTrace
@@ -75,9 +72,9 @@ abstract class RecouplingStreamReader[
   // TODO Genügt nicht `terminate` ?
   protected def stopRequested: Boolean
 
-  protected def requestTimeout = conf.timeout
-
-  protected def idleTimeout = Option(requestTimeout + 2.s)/*let service timeout kick in first*/
+  protected def idleTimeout: Option[FiniteDuration] =
+    conf.timeout
+    //??? requestTimeout.map(_ + 2.s)/*let service timeout kick in first*/
 
   private def isStopped =
     stopRequested || coupledApiVar.isStopped || !inUse.is
@@ -212,25 +209,10 @@ abstract class RecouplingStreamReader[
                     IO.right(stream)
 
     private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
-      logger.traceIO("getStreamX", s"after=$after")(IO.defer:
-        sinceLastTry = now
-        getStream(api, after = after)
-          //.timeout(idleTimeout)
-          .recoverWith:
-            case t: TimeoutException =>
-              logger.debug(s"💥 $api: ${t.toString}")
-              IO.right(Stream.empty)
-
-            case HttpException.HasProblem(problem) =>
-              IO.left(problem)
-          .map(_.map(obs =>
-            idleTimeout.fold(obs)(idleTimeout => obs
-              .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
-              .recoverWith { case t: UpstreamTimeoutException =>
-                logger.debug(s"💥 $api: ${t.toString}")
-                // This should let Pekko close the TCP connection to abort the stream
-                Stream.empty
-              }))))
+      logger.traceIO("getStreamX", s"after=$after"):
+        IO.defer:
+          sinceLastTry = now
+          getStream(api, after = after)
 
     private def coupleIfNeeded(after: I): IO[I] =
       coupledApiVar.tryRead.flatMap:

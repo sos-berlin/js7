@@ -19,10 +19,10 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
+import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, onSlowUpstreamTerminateWith, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
@@ -55,8 +55,9 @@ import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline
+import scala.collection.immutable.Map.Map2
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.reflect.ClassTag
 import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
@@ -119,33 +120,46 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     uri: Uri,
     responsive: Boolean = false,
     returnHeartbeatAs: Option[ByteArray] = None,
+    idleTimeout: Option[FiniteDuration] = None,
     prefetch: Int | Missing = Missing)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
+    val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
-    for stream <- getRawLinesStream(uri, returnHeartbeatAs) yield
-      stream.mapParallelBatch(prefetch = myPrefetch):
+    getRawLinesStream(uri, returnHeartbeatAs, idleTimeout = idleTimeout).map: stream =>
+      stream.map:
+        case HttpHeartbeatByteArray => heartbeatAsChunk
+        case o => fs2.Chunk.singleton(o)
+      .unchunks
+      .mapParallelBatch(prefetch = myPrefetch):
         _.parseJsonAs[A].orThrow
 
   final def getRawLinesStream(
     uri: Uri,
-    returnHeartbeatAs: Option[ByteArray] = None)
+    returnHeartbeatAs: Option[ByteArray] = None,
+    idleTimeout: Option[FiniteDuration] = None)
     (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_
         .entity.withoutSizeLimit.dataBytes.asFs2Stream()
-        .pipeIf(logger.isDebugEnabled)(_
-          .logTiming(_.size, (d, n, _) => IO:
+        .pipeIf(logger.isDebugEnabled):
+          _.logTiming(_.size, (d, n, _) => IO:
             if d >= 1.s && n > 10_000_000 then
-              logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}")))
-        .through(LineSplitterPipe())
+              logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))
+        .through:
+          LineSplitterPipe()
+        .pipeMaybe(idleTimeout): (stream, t) =>
+          stream.onSlowUpstreamTerminateWith(t):
+            Stream.suspend:
+              Stream.raiseError(IdleTimeoutException(toString, t))
         .map:
           case HttpHeartbeatByteArray => heartbeatAsChunk
           case o => fs2.Chunk.singleton(o)
         .unchunks
-        .recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
+        .recoverWith:
+          ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded)
       .recover(ignoreIdleTimeout)
 
   private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
@@ -426,15 +440,17 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     msgArrow: String, lastArrow: String, errArrow: String)
     (message: M)
   : M =
-    message.entity match
-      case chunked: Chunked =>
-        lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
-        lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
-        message
-          .withEntity(chunked.copy(
-            chunks = chunked.chunks
-              .map: chunk =>
-                if logger.isTraceEnabled then
+    if !logger.isTraceEnabled then
+      message
+    else
+      message.entity match
+        case chunked: Chunked =>
+          lazy val isJson = chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+          lazy val isUtf8 = isJson || chunked.contentType.charsetOption.contains(`UTF-8`)
+          message.withEntity:
+            chunked.copy(
+              chunks = chunked.chunks
+                .map: chunk =>
                   def arrow = if chunk.isLastChunk then lastArrow else msgArrow
                   def string =
                     if isUtf8 then
@@ -447,12 +463,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                     logger.trace(Logger.Heartbeat, s"$arrow$prefix $string 🩶")
                   else
                     logger.trace(Logger.Stream, s"$arrow$prefix $string")
-                chunk
-              .mapError: t =>
-                logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
-                t))
+                  chunk
+                .mapError: t =>
+                  logger.trace(s"$errArrow$prefix ${t.toStringWithCauses}")
+                  t)
           .asInstanceOf[M]
-      case _ => message
+        case _ => message
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if !httpResponse.status.isSuccess then
@@ -635,7 +651,6 @@ object PekkoHttpClient:
         connectionWasClosedUnexpectedly
 
       case t: pekko.stream.StreamTcpException =>
-        // TODO Long longer active since makePekkoExceptionLegible?
         t.getMessage match
           case PekkoTcpCommandRegex(command, host_) =>
             val host = host_.replace("/<unresolved>", "")
@@ -683,11 +698,28 @@ object PekkoHttpClient:
 
   def hasRelevantStackTrace(throwable: Throwable): Boolean =
     throwable != null && throwable.getStackTrace.nonEmpty &&
-      (throwable match {
+      throwable.match
         case _: pekko.stream.StreamTcpException => false
         case _: java.net.SocketException => false
         case _ => true
-      })
+
+  def warnIdleTimeout: PartialFunction[Throwable, Stream[IO, Nothing]] =
+    case e: IdleTimeoutException =>
+      Stream.exec(IO:
+        logger.warn(e.problem.toString))
+
+
+  final class IdleTimeoutException(serverName: String, duration: FiniteDuration)
+  extends ProblemException(HttpIdleTimeoutProblem(serverName, duration))
+
+  final class HttpIdleTimeoutProblem(serverName: String, duration: FiniteDuration)
+  extends Problem.Coded:
+    def arguments = Map2(
+      "duration", duration.pretty,
+      "serverName", serverName)
+
+  object HttpIdleTimeoutProblem extends Problem.Coded.Companion
+
 
   private final class LegiblePekkoHttpException(
     message: String,

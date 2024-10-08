@@ -34,7 +34,6 @@ import js7.data.system.ServerMeteringEvent
 import js7.data.value.expression.Scope
 import js7.journal.CommitOptions
 import js7.journal.state.Journal
-import js7.subagent.director.SubagentEventListener.*
 import scala.concurrent.duration.Deadline
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
@@ -185,7 +184,6 @@ private trait SubagentEventListener:
       recouplingStreamReaderConf):
 
       private var lastProblem: Option[Problem] = None
-      override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 
       override protected def couple(eventId: EventId) =
         logger.debugIO:

@@ -226,21 +226,25 @@ object MonixLikeExtensions:
 
   extension [A](stream: Stream[IO, A])
 
-    // Implementation taken from Stream.Pull.timeout documentation.
     def timeoutOnSlowUpstream(timeout: FiniteDuration): Stream[IO, A] =
-      stream.pull
-        .timed: timedPull =>
-          def timeoutException = new UpstreamTimeoutException(
-            s"timeoutOnSlowUpstream timed-out after ${timeout.pretty}")
+      onSlowUpstreamTerminateWith(timeout):
+        Stream.suspend:
+          Stream.raiseError:
+            UpstreamTimeoutException(s"timeoutOnSlowUpstream timed-out after ${timeout.pretty}")
 
-          def go(timedPull: Pull.Timed[IO, A]): Pull[IO, A, Unit] =
-            timedPull.timeout(timeout) >> // starts new timeout and stops the previous one
-              timedPull.uncons.flatMap:
-                case Some((Left(_), next)) => Pull.raiseError(timeoutException) >> go(next)
-                case Some((Right(chunk), next)) => Pull.output(chunk) >> go(next)
-                case None => Pull.done
-          go(timedPull)
-        .stream
+    // Implementation taken from Stream.Pull.timeout documentation.
+    def onSlowUpstreamTerminateWith(timeout: FiniteDuration)(onTimeout: => Stream[IO, A])
+    : Stream[IO, A] =
+      lazy val onTimeoutLzy = onTimeout
+      stream.pull.timed: timedPull =>
+        def go(timedPull: Pull.Timed[IO, A]): Pull[IO, A, Unit] =
+          timedPull.timeout(timeout) >> // starts new timeout and stops the previous one
+            timedPull.uncons.flatMap:
+              case Some((Left(_), _)) => onTimeoutLzy.pull.echo
+              case Some((Right(chunk), next)) => Pull.output(chunk) >> go(next)
+              case None => Pull.done
+        go(timedPull)
+      .stream
 
 
   extension(x: Stream.type)

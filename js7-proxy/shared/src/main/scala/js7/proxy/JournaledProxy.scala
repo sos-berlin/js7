@@ -3,6 +3,7 @@ package js7.proxy
 import cats.data.NonEmptySeq
 import cats.effect.{IO, ResourceIO}
 import cats.syntax.flatMap.*
+import cats.syntax.applicativeError.*
 import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
@@ -20,7 +21,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
-import js7.common.http.RecouplingStreamReader
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
@@ -179,14 +180,16 @@ object JournaledProxy:
 
     def getStream(api: RequiredApi_[S], after: EventId) =
       import S.keyedEventJsonCodec
-      HttpClient.liftProblem(api
-        .eventStream(
+      HttpClient.liftProblem:
+        api.eventStream(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
-            tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
-            timeout = Some(recouplingStreamReaderConf.timeout)),
-          heartbeat = recouplingStreamReaderConf.keepAlive.some)
+            tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms))),
+          heartbeat = recouplingStreamReaderConf.keepAlive.some,
+          idleTimeout = recouplingStreamReaderConf.timeout)
+        .map:
+          _.recoverWith(PekkoHttpClient.warnIdleTimeout)
         .flatTap(_ => IO:
-          addToTornOlder = ZeroDuration))
+          addToTornOlder = ZeroDuration)
 
     override def onCoupled(api: RequiredApi_[S], after: EventId) =
       IO:
