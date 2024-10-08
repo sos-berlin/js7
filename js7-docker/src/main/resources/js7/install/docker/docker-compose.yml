@@ -152,6 +152,23 @@ services:
     stop_grace_period: 10s
     restart: unless-stopped
 
+  subagent-1-c:
+    image: js7
+    container_name: js7-subagent-1-c
+    hostname: js7-subagent-1-c
+    command: ["js7-subagent", "--arg0=js7-subagent-1-c", "-J-Xmx200m"]
+    working_dir: /home/js7
+    environment:
+      - TZ=$TZ
+    volumes:
+      - ./volumes/subagent-1-c/config:/var/opt/js7/agent/config:ro
+      - ./volumes/subagent-1-c/data/cache:/var/opt/js7/agent/data/cache:delegated
+      - ./volumes/subagent-1-c/data/logs:/var/opt/js7/agent/data/logs:delegated
+      - ./volumes/subagent-1-c/data/state:/var/opt/js7/agent/data/state:delegated
+      - ./volumes/subagent-1-c/data/work:/var/opt/js7/agent/data/work:delegated
+    stop_grace_period: 10s
+    restart: unless-stopped
+
   subagent-2-a:
     image: js7
     container_name: js7-subagent-2-a

@@ -4,5 +4,5 @@ set -euo pipefail
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 egrep -w "ERROR|WARN|JS7 Controller terminates" \
-  volumes/{controller,backup-controller,subagent-1-a,subagent-1-b,subagent-2-a,provider}/data/logs/stdouterr.log \
+  volumes/{controller,backup-controller,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a,provider}/data/logs/stdouterr.log \
   | sort -k 3 | uniq -f 2 | sort

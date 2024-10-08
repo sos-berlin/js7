@@ -10,6 +10,7 @@ docker-compose start \
  cluster-watch\
  subagent-1-a\
  subagent-1-b\
+ subagent-1-c\
  subagent-2-a\
  controller\
  backup-controller

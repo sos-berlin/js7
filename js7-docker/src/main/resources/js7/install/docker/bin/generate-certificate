@@ -125,6 +125,7 @@ extendedKeyUsage = clientAuth
     generateCertificate --dns --host=cluster-watch-b --cn="JS7 Example ClusterWatchB"
     generateCertificate --dns --host=subagent-1-a --cn="JS7 Example subagent-1-a"
     generateCertificate --dns --host=subagent-1-b --cn="JS7 Example subagent-1-b"
+    generateCertificate --dns --host=subagent-1-c --cn="JS7 Example subagent-1-c"
     generateCertificate --dns --host=subagent-2-a --cn="JS7 Example subagent-2-a"
     generateCertificate --dns --host=provider --cn="JS7 Example Provider"
   fi
@@ -134,7 +135,7 @@ extendedKeyUsage = clientAuth
 )
 
 if $install; then
-  for host in controller backup-controller cluster-watch cluster-watch-b provider subagent-1-a subagent-1-b subagent-2-a; do
+  for host in controller backup-controller cluster-watch cluster-watch-b provider subagent-1-a subagent-1-b subagent-1-c subagent-2-a; do
     dir="volumes/$host/config/private"
     echo "$dir/https-keystore.p12"
     [ -d "$dir" ] || mkdir "$dir"

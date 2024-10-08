@@ -19,6 +19,8 @@ killMonkey subagent-1-a 1 6 &
 pids+="$pids $!"
 killMonkey subagent-1-b 6 6 &
 pids+="$pids $!"
+killMonkey subagent-1-c 6 6 &
+pids+="$pids $!"
 
 trap "kill -- -$$ >/dev/null || kill $pids" EXIT
 wait
