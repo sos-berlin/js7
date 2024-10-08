@@ -1,7 +1,9 @@
 package js7.subagent.director
 
 import cats.effect.{FiberIO, IO}
+import cats.syntax.applicativeError.*
 import cats.syntax.foldable.*
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
@@ -10,7 +12,6 @@ import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -19,11 +20,11 @@ import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MVar}
-import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, KeyedEvent, NonPersistentEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, NonPersistentEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
@@ -208,18 +209,17 @@ private trait SubagentEventListener:
             .eventStream(
               EventRequest.singleClass[Event](after = after, timeout = None),
               subagentRunId,
-              serverMetering = Some(conf.heartbeatTiming.heartbeat))
+              serverMetering = conf.heartbeatTiming.heartbeat.some,
+              idleTimeout = idleTimeout)
             .map(_
-              .detectPauses(conf.heartbeatTiming.longHeartbeatTimeout, PauseDetected)
-              .evalTap:
-                case PauseDetected =>
-                  val problem = Problem.pure(s"Missing heartbeat from $subagentId")
-                  logger.warn(problem.toString)
-                  onSubagentDecoupled(Some(problem))
-                case _ =>
-                  onHeartbeatStarted
-              .filter(_ != JournalEvent.StampedHeartbeat)
-              .takeWhile(_ ne PauseDetected)
+              .evalTap: _ =>
+                onHeartbeatStarted
+              .recoverWith:
+                case _: PekkoHttpClient.IdleTimeoutException =>
+                  Stream.exec(IO.defer:
+                    val problem = Problem.pure(s"Missing heartbeat from $subagentId")
+                    logger.warn(problem.toString)
+                    onSubagentDecoupled(problem.some))
               .onFinalize:
                 onSubagentDecoupled(problem = None)) // Since v2.7
               //.guaranteeCase(exitCase => IO.defer {
@@ -296,8 +296,5 @@ private trait SubagentEventListener:
   private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
     IO.defer:
       if _isHeartbeating.getAndSet(false) then logger.trace("_isHeartbeating := false")
-      IO.whenA(true || isCoupled)(
-        emitSubagentCouplingFailed(problem))
-
-private object SubagentEventListener:
-  private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
+      IO.whenA(true || isCoupled):
+        emitSubagentCouplingFailed(problem)
