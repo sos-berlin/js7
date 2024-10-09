@@ -135,9 +135,7 @@ extends Service.StoppableByRequest:
           testEventPublisher.publish(TestWaitingForConfirmation(request))))
         .*>(requested
           .untilConfirmed
-          .timeoutTo(
-            timing.clusterWatchReactionTimeout,
-            IO.raiseError(new RequestTimeoutException)))
+          .timeoutAndFail(timing.clusterWatchReactionTimeout)(new RequestTimeoutException))
         .onErrorRestartLoop(()):
           case (_: RequestTimeoutException, _, retry) =>
             SyncDeadline

@@ -2,6 +2,7 @@ package js7.base.utils
 
 import cats.effect.{Deferred, IO, ResourceIO}
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.raiseError_
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncVariable
@@ -20,7 +21,7 @@ final class MutableAllocated[A](logMinor: Boolean = false)
 
   def value: IO[A] =
     checked.flatMap:
-      case Left(problem) => IO.raiseError(new IllegalStateException(problem.toString))
+      case Left(problem) => IO.raiseError_(new IllegalStateException(problem.toString))
       case Right(a) => IO.pure(a)
 
   def checked: IO[Checked[A]] =
@@ -51,7 +52,7 @@ final class MutableAllocated[A](logMinor: Boolean = false)
             .start.flatMap: cancelFiber =>
               fiber
                 .joinWith:
-                  IO.defer(IO.raiseError(new AcquisitionCanceledException))
+                  IO.raiseError_(new AcquisitionCanceledException)
                 .guarantee:
                   cancelFiber.cancel
 

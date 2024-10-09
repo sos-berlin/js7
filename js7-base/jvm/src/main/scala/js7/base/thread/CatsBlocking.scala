@@ -6,6 +6,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import izumi.reflect.Tag
 import java.util.concurrent.ArrayBlockingQueue
+import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.time.ScalaTime.*
@@ -30,8 +31,7 @@ object CatsBlocking:
         inline def name = makeBlockingWaitingString[A]("IO", duration)
         try
           io.pipeIf(duration != Duration.Inf):
-            _.timeoutTo(duration, IO.defer(IO.raiseError:
-              new TimeoutException(name + " timed out")))
+            _.timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
           .syncStep(Int.MaxValue)
           .unsafeRunSync() match
             case Left(io) => io.logWhenItTakesLonger(name).unsafeRunSyncX()
@@ -54,8 +54,7 @@ object CatsBlocking:
         inline def name = makeBlockingWaitingString(fTag.tag.toString, duration)
         iterable
           .sequence
-          .timeoutTo(duration,
-            IO.raiseError(new TimeoutException(name + " timed out")))
+          .timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
           .logWhenItTakesLonger(name)
           .unsafeRunSyncX()
 

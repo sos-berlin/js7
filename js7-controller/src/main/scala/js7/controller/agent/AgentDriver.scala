@@ -303,7 +303,7 @@ extends Service.StoppableByRequest:
               case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
             }))
         .*>(maybeAgentRunId.flatMap {
-          case None => IO.raiseError(new IllegalStateException(
+          case None => IO.raiseError_(new IllegalStateException(
             s"onEventsFetched $agentPath: Missing AgentRef or AgentRunId"))
           case Some(agentRunId) => adoptEvents(agentRunId, stampedEvents)
         })

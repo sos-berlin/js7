@@ -3,6 +3,7 @@ package js7.tests.jobs
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome}
+import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -49,7 +50,7 @@ extends InternalJob:
       val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
       IO.defer:
         sema.acquire
-          .timeoutTo(durations.next(), IO.raiseError(new TimeoutException))
+          .timeoutAndFail(durations.next())(new TimeoutException)
       .onErrorRestartLoop(()):
         case (_: TimeoutException, _, retry) =>
           sema.count.flatMap: count =>

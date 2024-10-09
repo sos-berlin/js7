@@ -3,6 +3,7 @@ package js7.base.catsutils
 import cats.effect.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
+import cats.syntax.applicativeError.*
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
@@ -10,6 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.NonFatalInterruptedException
 import scala.annotation.unchecked.uncheckedVariance
+import scala.concurrent.duration.Duration
 import scala.concurrent.{CancellationException, ExecutionContext, Future}
 
 object CatsEffectExtensions:
@@ -65,6 +67,16 @@ object CatsEffectExtensions:
     //def onCancellation(onCancel: IO[Unit]): IO[A] =
     // io.start.flatMap: fiber =>
     //   fiber.join.flatMap(IO.fromOutcome).onCancel(onCancel)
+
+    /** Use this function to compute the Throwable anew for each execution. */
+    def timeoutAndFail(duration: Duration)(throwable: => Throwable): IO[A] =
+      io.timeoutDefer(duration):
+        IO.raiseError(throwable)
+
+    /** Like Cats timeoutTo, but the fallback is computed anew for each execution. */
+    def timeoutDefer[A1 >: A](duration: Duration)(fallback: => IO[A1]): IO[A1] =
+      io.timeoutTo(duration, IO.defer(fallback))
+
 
   private val fromFutureDummyCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
 
@@ -128,7 +140,7 @@ object CatsEffectExtensions:
       outcome match
         case Outcome.Succeeded(a) => a
         case Outcome.Errored(t) => IO.raiseError(t)
-        case Outcome.Canceled() => IO.raiseError(new FiberCanceledException)
+        case Outcome.Canceled() => IO.raiseError_(new FiberCanceledException)
 
     def fromFutureDummyCancelable[A](future: IO[Future[A]]): IO[A] =
       IO.fromFutureCancelable(future.map(_ -> fromFutureDummyCancel))
@@ -148,6 +160,10 @@ object CatsEffectExtensions:
       IO.racePair(left, right).flatMap:
         case Left((l, rFiber)) => resolve(l).map(l => Left(l -> rFiber))
         case Right((lFiber, r)) => resolve(r).map(r => Right(lFiber -> r))
+
+    /** Like Cats raiseError but computes throwable anew for each execution. */
+    def raiseError_[A](throwable: => Throwable): IO[A] =
+      IO.defer(IO.raiseError((throwable)))
 
     def unsafeScheduler: IO[Scheduler] =
       IO.unsafeRuntime.map(_.scheduler)

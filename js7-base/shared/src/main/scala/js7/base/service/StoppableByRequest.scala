@@ -1,7 +1,7 @@
 package js7.base.service
 
 import cats.effect.{Deferred, FiberIO, IO, Outcome}
-import js7.base.catsutils.CatsEffectExtensions.fromOutcome
+import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, raiseError_}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -48,7 +48,7 @@ trait StoppableByRequest:
   protected final def failWhenStopRequested[A](body: IO[A]): IO[A] =
     body.raceFold(
       untilStopRequested *>
-        IO.raiseError(new IllegalStateException(s"$toString is being stopped")))
+        IO.raiseError_(new IllegalStateException(s"$toString is being stopped")))
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
     IO:

@@ -12,13 +12,13 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MVar, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
-import js7.base.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
