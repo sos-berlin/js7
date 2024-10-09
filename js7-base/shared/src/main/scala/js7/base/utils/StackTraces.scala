@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import js7.base.log.Logger
+import js7.base.utils.Tests.isTest
 import scala.util.{Failure, Try}
 
 /**
@@ -25,6 +27,7 @@ object StackTraces:
       delegate
 
   implicit final class StackTraceThrowable[T <: Throwable](val delegate: T) extends AnyVal:
+    // TODO Prefer WrappedException over modifying a Throwable!
     /**
       * Applicable for Throwables of another context, like from a `Future`.
       * Modifies the original `Throwable`.
@@ -33,6 +36,7 @@ object StackTraces:
       appendStackTrace(new Exception().getStackTrace
         .dropWhile(_.getClassName startsWith "js7.base.utils.StackTraces"))
 
+    // TODO Prefer WrappedException over modifying a Throwable!
     /**
       * Applicable for Throwables of another context, like from a `Future`.
       * Modifies the original `Throwable`.
@@ -43,4 +47,13 @@ object StackTraces:
           stackTrace
         else
           (delegate.getStackTrace :+ eyecatcher) ++ stackTrace)
+
+      if isTest then
+        val limit = 5
+        val st = delegate.getStackTrace
+        if st.count(_ == eyecatcher) > limit then
+          Logger.warn:
+            s"🔥🔥🔥 More than $limit appendStackTrace  for the same Exception_:\n  ${
+              st.mkString("\n  ")}"
+
       delegate

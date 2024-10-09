@@ -1,5 +1,7 @@
 package js7.base.problem
 
+import scala.annotation.tailrec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -16,8 +18,12 @@ extends RuntimeException(message, cause):
 
 
 object ProblemException:
-  def unapply(e: ProblemException): Some[Problem] =
-    Some(e.problem)
+  @tailrec
+  def unapply(throwable: Throwable): Option[Problem] =
+    throwable match
+      case e: ProblemException => Some(e.problem)
+      case e: WrappedException => unapply(e.getCause)
+      case _ => None
 
   private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable)
   extends ProblemException(problem, message, cause), scala.util.control.NoStackTrace:
