@@ -47,7 +47,7 @@ object ReaderStreams:
           case -1 =>
             null
           case o if o < 1 =>
-            throw new RuntimeException(s"'$reader'.read returned $o ?'")
+            throw new RuntimeException(s"'$reader'.read returned $o ?")
           case n =>
             Chunk.array(java.util.Arrays.copyOfRange(buffer, 0, n))
       .takeWhile(_ != null)
