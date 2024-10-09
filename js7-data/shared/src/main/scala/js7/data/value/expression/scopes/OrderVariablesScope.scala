@@ -17,11 +17,11 @@ extends Scope:
         .historicOutcomes
         .view
         .reverse
-        .collect {
+        .collect:
           case HistoricOutcome(_, o: OrderOutcome.Completed) =>
             o.namedValues.view.mapValues(Right(_))
-        }
-        .fold(MapView.empty[String, Checked[Value]])((a, b) => a.orElseMapView(b)))
+        .fold(MapView.empty[String, Checked[Value]]): (a, b) =>
+          a.orElseMapView(b))
 
   override def findValue(search: ValueSearch): Option[Checked[Value]] =
     search match

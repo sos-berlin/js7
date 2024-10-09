@@ -505,14 +505,13 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): IO[Checked[Unit]] =
     changeSubagentAndClusterNodeAndProceedFiber
-      .update { fiber =>
+      .update: fiber =>
         changeSubagentAndClusterNodeAndProceedFiberStop = true
         fiber.joinStd *>
           IO.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)
               .start
-      }
       .flatMap(_.joinStd.timeoutTo(10.s /*???*/ , IO.right(()) /*respond the command*/))
 
   private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)

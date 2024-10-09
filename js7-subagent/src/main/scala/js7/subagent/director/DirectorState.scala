@@ -75,7 +75,7 @@ private final case class DirectorState private(
               disabled = disabled)))
 
   def insertOrReplaceBundle(bundle: SubagentBundle): Checked[DirectorState] =
-    logger.trace("insertOrReplaceBundle", bundle)
+    logger.trace(s"insertOrReplaceBundle $bundle")
     Right(copy(
       bundleToEntry = bundleToEntry.updated(
         bundle.id,
