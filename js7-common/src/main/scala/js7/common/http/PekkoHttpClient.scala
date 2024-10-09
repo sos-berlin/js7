@@ -19,7 +19,7 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, onSlowUpstreamTerminateWith, takeUntilEval}
+import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -56,6 +56,7 @@ import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map2
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.reflect.ClassTag
@@ -143,17 +144,22 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     val heartbeatAsChunk = fs2.Chunk.fromOption(returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_
-        .entity.withoutSizeLimit.dataBytes.asFs2Stream()
+        .entity.withoutSizeLimit.dataBytes
+        .pipeMaybe(idleTimeout): (stream, t) =>
+          // Because the FS2/Pekko bridge appears not to be cancelable, we use
+          // Pekko's idleTimeout instead of FS2's timeoutOnPull
+          stream.idleTimeout(t).recover:
+            case _: TimeoutException => throw IdleTimeoutException(toString, t)
+        .asFs2Stream()
         .pipeIf(logger.isDebugEnabled):
           _.logTiming(_.size, (d, n, _) => IO:
             if d >= 1.s && n > 10_000_000 then
               logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))
         .through:
           LineSplitterPipe()
-        .pipeMaybe(idleTimeout): (stream, t) =>
-          stream.onSlowUpstreamTerminateWith(t):
-            Stream.suspend:
-              Stream.raiseError(IdleTimeoutException(toString, t))
+        // See above Pekko's stream.idleTimout
+        //.pipeMaybe(idleTimeout): (stream, t) =>
+        //  stream.timeoutOnPullTo(t, Stream.raiseError[IO](IdleTimeoutException(toString, t)))
         .map:
           case HttpHeartbeatByteArray => heartbeatAsChunk
           case o => fs2.Chunk.singleton(o)
