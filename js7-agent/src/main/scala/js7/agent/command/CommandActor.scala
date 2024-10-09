@@ -1,21 +1,20 @@
 package js7.agent.command
 
-import cats.instances.future.*
-import cats.syntax.traverse.*
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.agent.command.CommandActor.*
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
+import js7.base.catsutils.CatsEffectExtensions.catchAsChecked
 import js7.base.circeutils.JavaDataJsonCodecs.instant.StringInstantJsonCodec
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
-import js7.base.problem.{Checked, Problem}
+import js7.base.monixlike.MonixLikeExtensions.deferFuture
+import js7.base.problem.Checked
+import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.deferFuture
-import js7.base.system.startup.Halt
 import org.apache.pekko.actor.{Actor, ActorRef}
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.{Success, Try}
@@ -80,18 +79,23 @@ extends Actor:
     response: Promise[Checked[Response]])
   : Unit =
     command match
-      case Batch(commands) =>
-        val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
-        for (CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises do
-          subcorrelId.orNew.bind:
-            executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
-        response.completeWith(
-          promises
-            .map(_.future.recover {
-              case t => Left(Problem.fromThrowable(t))
-            })
-            .sequence
-            .map(checkedResponse => Right(AgentCommand.Batch.Response(checkedResponse))))
+      case Batch(wrappedCommands) =>
+        // Execute one command after the other
+        fs2.Stream.iterable(wrappedCommands)
+          .evalMap: wrapped =>
+            IO.fromFuture(IO:
+              val CorrelIdWrapped(subcorrelId, cmd) = wrapped
+              val promise = Promise[Checked[Response]]
+              subcorrelId.orNew.bind:
+                executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
+              promise.future)
+          .compile
+          .toVector
+          .map(AgentCommand.Batch.Response(_))
+          .catchAsChecked
+          .map:
+            response.success
+          .unsafeRunAndForget()
 
       case NoOperation =>
         response.success(Right(AgentCommand.Response.Accepted))
