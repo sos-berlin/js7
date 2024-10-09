@@ -7,14 +7,14 @@ import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
-import fs2.{Pull, Stream}
+import fs2.Stream
 import js7.base.catsutils.CatsExtensions.*
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.collection.Factory
+import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{Future, TimeoutException}
 import scala.util.Try
 
 /*
@@ -222,36 +222,3 @@ object MonixLikeExtensions:
 
     def completedL(using fs2.Compiler[F, F], Functor[F]): F[Unit] =
       stream.compile.drain
-
-
-  extension [A](stream: Stream[IO, A])
-
-    def timeoutOnSlowUpstream(timeout: FiniteDuration): Stream[IO, A] =
-      onSlowUpstreamTerminateWith(timeout):
-        Stream.suspend:
-          Stream.raiseError:
-            UpstreamTimeoutException(s"timeoutOnSlowUpstream timed-out after ${timeout.pretty}")
-
-    // Implementation taken from Stream.Pull.timeout documentation.
-    def onSlowUpstreamTerminateWith(timeout: FiniteDuration)(onTimeout: => Stream[IO, A])
-    : Stream[IO, A] =
-      lazy val onTimeoutLzy = onTimeout
-      stream.pull.timed: timedPull =>
-        def go(timedPull: Pull.Timed[IO, A]): Pull[IO, A, Unit] =
-          timedPull.timeout(timeout) >> // starts new timeout and stops the previous one
-            timedPull.uncons.flatMap:
-              case Some((Left(_), _)) => onTimeoutLzy.pull.echo
-              case Some((Right(chunk), next)) => Pull.output(chunk) >> go(next)
-              case None => Pull.done
-        go(timedPull)
-      .stream
-
-
-  extension(x: Stream.type)
-    /** Like Monix Observable fromAsyncStateAction. */
-    def fromAsyncStateAction[S, A](f: S => IO[(A, S)])(seed: => S): Stream[IO, A] =
-      Stream.unfoldEval(seed): s =>
-        f(s).map(Some(_))
-
-
-  final class UpstreamTimeoutException(msg: String) extends TimeoutException(msg)

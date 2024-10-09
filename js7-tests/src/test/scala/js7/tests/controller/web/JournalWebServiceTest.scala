@@ -1,28 +1,31 @@
 package js7.tests.controller.web
 
-import org.apache.pekko.http.scaladsl.model.StatusCodes.Unauthorized
+import cats.effect.IO
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.toListL
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
+import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
 import js7.data.controller.ControllerCommand
-import js7.data.event.{JournalEvent, JournalSeparators}
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
+import js7.data.event.{JournalEvent, JournalSeparators}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -33,10 +36,7 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.web.JournalWebServiceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
-import cats.effect.IO
-import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
-import js7.base.monixlike.MonixLikeExtensions.{timeoutOnSlowUpstream, toListL}
-import js7.common.http.PekkoHttpClient
+import org.apache.pekko.http.scaladsl.model.StatusCodes.Unauthorized
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
@@ -148,7 +148,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
         Uri(u.string + "&heartbeat=0.1"),
         returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatByteArray))
       .await(99.s)
-      .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
+      .timeoutOnPull(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .onErrorEvalTap(t => IO(logger.error(t.toString)))
       .foreach(bytes => IO:
         observedLines :+= bytes.utf8String

@@ -1,8 +1,6 @@
 package js7.base.monixlike
 
-import cats.effect.testkit.TestControl
 import cats.effect.{Deferred, IO}
-import cats.syntax.applicativeError.*
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.log.Logger
@@ -10,13 +8,8 @@ import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixlike.MonixLikeExtensionsTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Stopwatch
-import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.utils.Tests
-import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.TimeoutException
-import scala.concurrent.duration.Deadline
 
 final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
 
@@ -90,84 +83,6 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
         .flatMap: (n, _) =>
           IO(assert(n >= 3))
 
-    "timeoutOnSlowUpstream" - {
-      def runStream(stream: Stream[IO, Any]): IO[Vector[Any]] =
-        stream
-          .timeoutOnSlowUpstream(3.s)
-          .recoverWith:
-            case t: TimeoutException => Stream.emit(t.getMessage)
-          .compile
-          .toVector
-
-      "Timeout first" in:
-        TestControl.executeEmbed:
-          runStream(Stream.sleep_[IO](4.s) ++ Stream(1, 2, 3) ++ Stream(4, 5, 6))
-            .map: result =>
-              assert(result == Vector("timeoutOnSlowUpstream timed-out after 3s"))
-
-      "Timeout after first chunk" in:
-        TestControl.executeEmbed:
-          runStream(Stream(1, 2, 3) ++ Stream.sleep_[IO](4.s) ++ Stream(4, 5, 6))
-            .map: result =>
-              assert(result == Vector(1, 2, 3, "timeoutOnSlowUpstream timed-out after 3s"))
-
-      "Timeout after serval chunk" in:
-        val n = if isIntelliJIdea then 10000 else 100
-        TestControl.executeEmbed:
-          runStream:
-            Stream.iterable(1 to n)
-              .flatMap(Stream.emit) // Chunk
-              .evalTap(i => IO.whenA(i % 3 == 0)(IO.sleep(1.s)))
-              .append(Stream.sleep_[IO](4.s)) // Timeout
-              .append(Stream(4, 5, 6))
-          .map: result =>
-            assert(result ==
-              (1 to n).toVector :+ "timeoutOnSlowUpstream timed-out after 3s")
-    }
-
-    "onSlowUpstreamTerminateWith" - {
-      "onSlowUpstreamTerminateWith" in:
-        TestControl.executeEmbed:
-          Stream(1, 2, 3).append:
-            Stream.sleep_[IO](4.s)
-          .append:
-            Stream(4, 5, 6)
-          .onSlowUpstreamTerminateWith(3.s):
-            Stream(-1, -2)
-          .compile.toVector
-          .map: result =>
-            assert(result == Vector(1, 2, 3, -1, -2))
-
-      "Speed" in:
-        if !sys.props.contains("test.speed") then
-          IO.pure(succeed)
-        else
-          val n = 100_000
-
-          IO.defer:
-            val t = Deadline.now
-            Stream.iterable(1 to n)
-              .flatMap(Stream.emit) // Make single-element chunks
-              .covary[IO]
-              .fold(0L)(_ + _)
-              .headL
-              .map: sum =>
-                logger.info(itemsPerSecondString(t.elapsed, n, "noop"))
-                assert(sum == (n + 1L) * (n / 2))
-          .productR:
-            IO.defer:
-              val t = Deadline.now
-              Stream.iterable(1 to n)
-                .flatMap(Stream.emit) // Make single-element chunks
-                .onSlowUpstreamTerminateWith(1.s)(Stream.empty)
-                .fold(0L)(_ + _)
-                .headL
-                .map: sum =>
-                  // ~20000 chunks/s on MacBook Pro M1
-                  logger.info(itemsPerSecondString(t.elapsed, n, "onSlowUpstreamTerminateWith"))
-                  assert(sum == (n + 1L) * (n / 2))
-    }
-
     "headL" - {
       "nonEmpty Stream" in:
         for head <- Stream(1, 2, 3).covary[IO].headL yield
@@ -192,19 +107,6 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
   }
 
   "Stream object" - {
-    "fromAsyncStateAction" in:
-      case class State(i: Int):
-        def next = State(i + 1)
-
-      def f(state: State): IO[(Int, State)] =
-        IO:
-          val next = state.next
-          state.i -> next
-
-      val stream = Stream.fromAsyncStateAction(f)(State(0))
-      for list <- stream.take(3).compile.toList yield
-        assert(list == List(0, 1, 2))
-
     "unfoldChunk (similar to fromAsyncStateAction)" in:
       val list =
         Stream
@@ -213,6 +115,7 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
           .toList
       assert(list == List(0, 1, 2))
   }
+
 
 object MonixLikeExtensionsTest:
   private val logger = Logger[this.type]

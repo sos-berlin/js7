@@ -1,10 +1,12 @@
 package js7.tests.controller.proxy
 
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.Admission
+import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
@@ -17,8 +19,6 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.{headL, timeoutOnSlowUpstream}
 import scala.jdk.CollectionConverters.*
 
 final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterProxyTest:
@@ -39,7 +39,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
           .find:
             case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
             case _ => false
-          .timeoutOnSlowUpstream(99.s)
+          .timeoutOnPull(99.s)
           .headL.unsafeToFuture()
         controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         whenFinished await 99.s
