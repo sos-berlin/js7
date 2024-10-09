@@ -23,7 +23,8 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
   def onAdded(a: Long): Unit =
    //Logger.traceCall(s"### onAdded $a"):
     synchronized:
-      if a < _last then throw new IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
+      if a < _last then throw
+        IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
       _last = a
       while valueToPromise.nonEmpty && valueToPromise.firstKey < a do
         for promise <- valueToPromise.remove(valueToPromise.firstKey) do

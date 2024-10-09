@@ -187,8 +187,9 @@ object CirceUtils:
 
     def fieldOrThrow(name: String): Json =
       underlying.asObject match
-        case Some(o) => o(name) getOrElse (throw new IllegalArgumentException(s"Unknown JSON field '$name'"))
-        case None => throw new IllegalArgumentException("Not a JsonObject")
+        case Some(o) => o(name) getOrElse:
+          throw IllegalArgumentException(s"Unknown JSON field '$name'")
+        case None => throw IllegalArgumentException("Not a JsonObject")
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal:
     def parseJsonAs[A: Decoder]: Checked[A] =
