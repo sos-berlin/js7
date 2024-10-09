@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.syntax.option.*
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
@@ -13,13 +14,14 @@ import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.Problems.GoOrderInapplicableProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.{CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, GoOrder, ResumeOrders, SuspendOrders}
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
-import js7.data.value.NamedValues
-import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NamedValues, StringValue}
+import js7.data.workflow.instructions.{Fail, If, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
@@ -55,46 +57,40 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
     super.beforeAll()
 
-  "Nested try catch" in:
-    val workflowNotation = s"""
-       |define workflow {
-       |  try execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0
-       |  catch                                                 // :0/catch
-       |    if (catchCount < 2)                                 // :0/catch:0
-       |      try retry;                                        // :0/catch:0/then:0/try:0
-       |      catch {}                                          // :0/catch:0/then:0/catch
-       |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
-    val versionId = updateVersionedItems(change = workflow :: Nil)
+  "Nested try catch (using catchCount)" in:
+    val workflow = Workflow.of(WorkflowPath("TEST"),
+      TryInstruction(
+        Workflow.of:
+          Fail(),
+        Workflow.of:
+          If(expr("catchCount < 2"),
+            Workflow.of:
+              TryInstruction(
+                Workflow.of:
+                  Retry(),
+                Workflow.empty))))
 
-    val expectedEvents = Vector(
-      OrderAdded(workflow.path ~ versionId),
-      OrderMoved(Position(0) / try_(0) % 0),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+    withItem(workflow): workflow =>
+      val expectedEvents = Vector(
+        OrderAdded(workflow.id),
+        OrderMoved(Position(0) / try_(0) % 0),
+        OrderStarted,
+        OrderOutcomeAdded(OrderOutcome.failed),
 
-      OrderProcessingStarted(subagentId),
-      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
-      OrderCaught(Position(0) / catch_(0) % 0),
-      OrderMoved(Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
+        OrderCaught(Position(0) / catch_(0) % 0),
+        OrderMoved(Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
+        OrderRetrying(),
+        OrderMoved(Position(0) / try_(1) % 0),
 
-      OrderRetrying(),
-      OrderMoved(Position(0) / try_(1) % 0),
+        OrderOutcomeAdded(OrderOutcome.failed),
+        OrderCaught(Position(0) / catch_(1) % 0),   // Retry limit reached
+        OrderMoved(Position(1)),
+        OrderFinished())
 
-      OrderProcessingStarted(subagentId),
-      OrderProcessed(OrderOutcome.Failed(NamedValues.rc(1))),
-      OrderCaught(Position(0) / catch_(1) % 0),   // Retry limit reached
-      OrderMoved(Position(1)),
-
-      OrderDetachable,
-      OrderDetached,
-      OrderFinished())
-
-    val orderId = OrderId("🔺")
-    val afterEventId = eventWatch.lastAddedEventId
-    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
+      val orderId = OrderId("🔺")
+      val afterEventId = eventWatch.lastAddedEventId
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+      awaitAndCheckEventSeq[OrderTerminated](afterEventId, orderId, expectedEvents)
 
   "Nested try catch with outer non-failing catch" in:
     val workflowNotation = s"""
@@ -706,6 +702,42 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderDetached,
         OrderFailed(Position(1) / try_(1) % 0)))
     }
+
+  "$js7TryCount, $js7MaxTries" in :
+    val workflow = Workflow.of(WorkflowPath("MAX-TRIES"),
+      TryInstruction(
+        tryWorkflow = Workflow.of(
+          If(expr("$js7TryCount == $js7MaxTries"),
+            Workflow.of:
+              Prompt(expr("'PROMPT'"))),
+          Fail()),
+        catchWorkflow = Workflow.of:
+          Retry(),
+        maxTries = 2.some))
+
+    withItem(workflow): workflow =>
+      val expectedEvents = Vector(
+        OrderAdded(workflow.id),
+        OrderMoved(Position(0) / try_(0) % 1),
+        OrderStarted,
+        OrderOutcomeAdded(OrderOutcome.failed),
+
+        OrderCaught(Position(0) / catch_(0) % 0),
+        OrderRetrying(),
+        OrderMoved(Position(0) / try_(1) % 0 / "then" % 0),
+        OrderPrompted(StringValue("PROMPT")),
+        OrderPromptAnswered(),
+        OrderMoved(Position(0) / try_(1) % 0 / "then" % 1),
+        OrderMoved(Position(0) / try_(1) % 1),
+        OrderOutcomeAdded(OrderOutcome.failed),
+        OrderFailed(Position(0) / try_(1) % 1))
+
+      val orderId = OrderId("MAX-TRIES")
+      val afterEventId = eventWatch.lastAddedEventId
+      controller.api.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
+      eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+      execCmd(AnswerOrderPrompt(orderId))
+      awaitAndCheckEventSeq[OrderTerminated](afterEventId, orderId, expectedEvents)
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
     eventWatch.await[E](_.key == orderId, after = after)

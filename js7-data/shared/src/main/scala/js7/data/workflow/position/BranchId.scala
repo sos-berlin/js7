@@ -141,9 +141,18 @@ object BranchId:
       "Expected a Cycle BranchId but got: " + toString
 
     override def toString = string
+
   object Named:
     implicit val jsonEncoder: Encoder[Named] = o => Json.fromString(o.string)
     implicit val jsonDecoder: Decoder[Named] = _.as[String] map Named.apply
+
+
+  object NoTryBarrierBranchid:
+    def unapply(branchId: BranchId): Option[Unit] =
+      branchId match
+        case BranchId.Then | BranchId.Else | BranchId.Options => Some(())
+        case _ => None
+
 
   implicit val jsonEncoder: Encoder[BranchId] =
     case o: Named => o.asJson    // String

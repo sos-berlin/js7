@@ -20,9 +20,9 @@ import scala.concurrent.duration.*
   */
 final class RetryExecutorTest extends OurTestSuite:
   "toEvents" in:
-    assert(toEvents(Position(1)) == Left(Problem("Retry, but not in a catch-block")))
-    assert(toEvents(tryPosition) == Left(Problem("Retry, but not in a catch-block")))
-    assert(toEvents(tryPosition / "try+0" % 0) == Left(Problem("Retry, but not in a catch-block")))
+    assert(toEvents(Position(1)) == Left(Problem("Not in a try or catch block")))
+    assert(toEvents(tryPosition) == Left(Problem("Not in a try or catch block")))
+    assert(toEvents(tryPosition / "try+0" % 0) == Left(Problem("Not in a try or catch block")))
 
   "Find try Position and increment BranchId" in:
     assert(toEvents(tryPosition / "catch+0" % 0) == Right(Seq(

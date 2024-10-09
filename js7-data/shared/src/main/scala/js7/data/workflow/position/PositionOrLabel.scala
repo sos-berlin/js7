@@ -7,7 +7,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
-import js7.data.workflow.position.BranchId.nextTryBranchId
+import js7.data.workflow.position.BranchId.{NoTryBarrierBranchid, nextTryBranchId}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position.*
@@ -71,9 +71,24 @@ extends PositionOrLabel:
           case Right(None) => parent.nextRetryBranchPath
           case Right(Some(tryBranchId)) => Right(parent / tryBranchId)
           case Left(problem) => Left(problem)
-      case Some((parent, BranchId.Then | BranchId.Else | BranchId.Options, _)) =>
+      case Some((parent, NoTryBarrierBranchid(()), _)) =>
         parent.nextRetryBranchPath
-      case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be emitted inside a Fork for a Try outside the Fork
+      case _ =>
+        // Everything else is a barrier. For example, Fork.
+        // Retry may not be emitted inside a Fork for a Try outside the Fork
+        Left(NoTryBlockProblem)
+
+  @tailrec
+  def tryPosition: Checked[Position] =
+    splitBranchAndNr match
+      case None => Left(NoTryBlockProblem)
+      case Some((parent, TryCatchBranchId(_), _)) => Right(parent)
+      case Some((parent, NoTryBarrierBranchid(()), _)) =>
+        parent.tryPosition
+      case _ =>
+        // Everything else is a barrier. For example, Fork.
+        // Retry may not be emitted inside a Fork for a Try outside the Fork
+        Left(NoTryBlockProblem)
 
   def isInFork: Boolean =
     branchPath.exists(_.branchId.isFork)
@@ -101,7 +116,7 @@ extends PositionOrLabel:
 
 object Position:
   val First: Position = Position(InstructionNr.First)
-  private val NoTryBlockProblem = Problem.pure("Retry, but not in a catch-block")
+  private val NoTryBlockProblem = Problem.pure("Not in a try or catch block")
 
   def apply(nr: InstructionNr): Position =
     Position(Nil, nr)

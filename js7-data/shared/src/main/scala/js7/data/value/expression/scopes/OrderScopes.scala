@@ -11,7 +11,8 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
+import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -28,9 +29,24 @@ trait OrderScopes:
 
   private def js7VariablesScope =
     minimalJs7VariablesScope(order.id, order.workflowPath, controllerId) |+|
-      NamedValueScope.simple:
-        case "js7Label" => StringValue(instructionLabel.fold("")(_.string))
-        case "js7WorkflowPosition" => StringValue(order.workflowPosition.toString)
+      NamedValueScope:
+        case "js7Label" => Right(StringValue:
+          instructionLabel.fold("")(_.string))
+
+        case "js7WorkflowPosition" => Right(StringValue:
+          order.workflowPosition.toString)
+
+        case "js7TryCount" => Right(NumberValue:
+          order.workflowPosition.position.tryCount)
+
+        //case "js7CatchCount" => Right(NumberValue:
+        //  order.workflowPosition.position.catchCount)
+
+        case "js7MaxTries" =>
+          order.workflowPosition.position.tryPosition.flatMap:
+            workflow.instruction_[TryInstruction]
+          .map: tryInstruction =>
+            tryInstruction.maxTries.fold(missingValue)(NumberValue(_))
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
