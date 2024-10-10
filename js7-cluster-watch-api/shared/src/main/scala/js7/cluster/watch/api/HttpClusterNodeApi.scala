@@ -42,10 +42,11 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     idleTimeout: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
-      uris.events(request, heartbeat = heartbeat),
-      responsive = true,
-      idleTimeout = idleTimeout)
+    retryIfSessionLost:
+      httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
+        uris.events(request, heartbeat = heartbeat),
+        responsive = true,
+        idleTimeout = idleTimeout)
 
   final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
@@ -53,12 +54,13 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     returnHeartbeatAs: Option[EventId] = None)
   : IO[Stream[IO, Checked[EventId]]] =
     import EventId.given_Codec_Checked
-    httpClient
-      .getDecodedLinesStream[Checked[EventId]](
-        uris.eventIds(timeout, heartbeat = heartbeat),
-        responsive = true,
-        returnHeartbeatAs = for h <- returnHeartbeatAs yield ByteArray(h.toString),
-        prefetch = 1000)
+    retryIfSessionLost:
+      httpClient
+        .getDecodedLinesStream[Checked[EventId]](
+          uris.eventIds(timeout, heartbeat = heartbeat),
+          responsive = true,
+          returnHeartbeatAs = for h <- returnHeartbeatAs yield ByteArray(h.toString),
+          prefetch = 1000)
       .map(_
         .mapChunks: chunk =>
           // Only the lastest EventId in chunk
@@ -97,9 +99,10 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     clusterWatchId: ClusterWatchId,
     keepAlive: Option[FiniteDuration])
   : IO[Stream[IO, ClusterWatchRequest]] =
-    httpClient.getDecodedLinesStream[ClusterWatchRequest](
-      uris.clusterWatchMessages(clusterWatchId, keepAlive),
-      responsive = true)
+    retryIfSessionLost:
+      httpClient.getDecodedLinesStream[ClusterWatchRequest](
+        uris.clusterWatchMessages(clusterWatchId, keepAlive),
+        responsive = true)
 
   final def executeClusterCommand(cmd: ClusterCommand): IO[cmd.Response] =
     httpClient.post[ClusterCommand, ClusterCommand.Response](uris.command, cmd)

@@ -98,10 +98,8 @@ extends MainService, Service.StoppableByRequest:
         Stream
           .eval(nodeApi
             .retryUntilReachable():
-              nodeApi.retryIfSessionLost():
-                nodeApi
-                  .clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))
-                  /*.map(_.interruptWhenF(untilStopRequested))*/)
+              nodeApi.clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))
+                /*.map(_.interruptWhenF(untilStopRequested))*/)
             .attempt.evalMap:
               case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
                 IO.left(t) // Trigger onErrorRestartLoop

@@ -82,13 +82,14 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
     heartbeat: Option[FiniteDuration] = None,
     idleTimeout: Option[FiniteDuration] = None)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
-    liftProblem:
-      getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
-        agentUris.controllersEvents(
-          request,
-          heartbeat = heartbeat),
-        responsive = true,
-        idleTimeout = idleTimeout)
+    retryIfSessionLost:
+      liftProblem:
+        getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
+          agentUris.controllersEvents(
+            request,
+            heartbeat = heartbeat),
+          responsive = true,
+          idleTimeout = idleTimeout)
 
 
 object AgentClient:

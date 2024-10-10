@@ -11,12 +11,13 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixlike.MonixLikeExtensions.materialize
-import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isTest
 import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.Problems.AckFromActiveClusterNodeProblem
@@ -235,9 +236,7 @@ abstract class RecouplingStreamReader[
                 else
                   // Fail in next iteration
                   for
-                    _ <- IO.whenA(problem == InvalidSessionTokenProblem)(
-                      api.tryLogout.void)
-                    // TODO pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
+                    // ??? pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
                     continue <- onCouplingFailed(api, problem)
                     either <-
                       if continue then
