@@ -39,7 +39,7 @@ final class OrderScopesTest extends OurTestSuite:
       val scope = orderScopes.pureOrderScope
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
-      assert(scope.parseAndEval("catchCount") == Right(NumberValue(0)))
+      assert(scope.parseAndEval("$js7TryCount") == Right(NumberValue(0)))
 
       assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
       assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
@@ -216,7 +216,7 @@ final class OrderScopesTest extends OurTestSuite:
 
         assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
         assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
-        assert(scope.parseAndEval("catchCount") == Right(NumberValue(0)))
+        assert(scope.parseAndEval("$js7TryCount") == Right(NumberValue(0)))
 
         assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
         assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
@@ -254,7 +254,7 @@ final class OrderScopesTest extends OurTestSuite:
 
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
-      assert(scope.parseAndEval("catchCount") == Left(Problem("Unknown symbol: catchCount")))
+      assert(scope.parseAndEval("$js7TryCount") == Left(Problem("No such named value: js7TryCount")))
 
       assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
       assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))

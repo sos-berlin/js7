@@ -67,9 +67,6 @@ object ExpressionParser:
   private val falseConstant: Parser[BooleanConstant] =
     keyword("false").as(BooleanConstant(false))
 
-  private val catchCount: Parser[OrderCatchCount.type] =
-    keyword("catchCount").as(OrderCatchCount)
-
   val booleanConstant: Parser[BooleanConstant] =
     trueConstant | falseConstant
 
@@ -214,12 +211,15 @@ object ExpressionParser:
     keyword("missing").as(MissingConstant)
 
   private val factor =
-    parenthesizedExpression | booleanConstant | numericConstant |
-      singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
-      catchCount |
+    parenthesizedExpression |
+      booleanConstant | numericConstant |
+      singleQuotedStringConstant | interpolatedString |
+      listExpr | objectExpr |
+      dollarNamedValue |
       missingConstant |
       jobResourceVariable |
-      errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
+      errorFunctionCall | argumentFunctionCall | variableFunctionCall |
+      functionCall
 
   private val dotOrArgumentExpression =
     enum Suffix:

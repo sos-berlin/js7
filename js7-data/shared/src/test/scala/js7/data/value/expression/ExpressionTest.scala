@@ -23,11 +23,6 @@ final class ExpressionTest extends OurTestSuite:
       import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
       import ValueSearch.{LastExecuted, Name}
 
-      override def symbolToValue(symbol: String) =
-        symbol match
-          case "catchCount" => Some(Right(3))
-          case _ => None
-
       override lazy val nameToCheckedValue =
         MapView(
           "ASTRING" -> Right(StringValue("AA")),
@@ -233,10 +228,6 @@ final class ExpressionTest extends OurTestSuite:
       result = Right("JOB-RESOURCE,VARIABLE-NAME,value"),
       JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME")))
   }
-
-  testEval("""catchCount""",
-    result = Right(3),
-    OrderCatchCount)
 
   "variable()" - {
     testEval("""variable("ASTRING")""",
@@ -852,7 +843,7 @@ final class ExpressionTest extends OurTestSuite:
         """Error in expression: Parsing failed at position 2 “!❓!true” · Expected one of "“/*”, “//”" · Unexpected “!”""")
 
       testSyntaxError("! !true", Problem:
-        """Error in expression: Parsing failed at position 3 “! ❓!true” · Expected one of "“''”, “'''”, “JobResource:”, “argument”, “catchCount”, “error”, “false”, “missing”, “true”, “variable”" · Expected properly terminated '…'-quoted string without non-printable characters (except \r and \n) · Expected identifer · Expected a character out of ["$'(+-0123456789[`{]""")
+        """Error in expression: Parsing failed at position 3 “! ❓!true” · Expected one of "“''”, “'''”, “JobResource:”, “argument”, “error”, “false”, “missing”, “true”, “variable”" · Expected properly terminated '…'-quoted string without non-printable characters (except \r and \n) · Expected identifer · Expected a character out of ["$'(+-0123456789[`{]""")
 
       testEval("!(!true)",
         result = Right(true),

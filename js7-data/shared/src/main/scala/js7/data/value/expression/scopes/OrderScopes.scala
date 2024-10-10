@@ -54,9 +54,6 @@ trait OrderScopes:
     combine(
       js7VariablesScope,
       scheduledScope(order.scheduledFor),
-      SymbolScope {
-        case "catchCount" => NumberValue(order.workflowPosition.position.catchCount)
-      },
       EnvScope)
 
   /** For `Order[Order.State]`. */

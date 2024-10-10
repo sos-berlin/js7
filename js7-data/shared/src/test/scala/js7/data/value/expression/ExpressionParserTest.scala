@@ -56,8 +56,6 @@ final class ExpressionParserTest extends OurTestSuite:
       NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("returnCode")))
   }
 
-  testExpression("catchCount", OrderCatchCount)
-
   "Boolean" - {
     testBooleanExpression("true", BooleanConstant(true))
     testBooleanExpression("false", BooleanConstant(false))

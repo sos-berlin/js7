@@ -57,13 +57,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
     super.beforeAll()
 
-  "Nested try catch (using catchCount)" in:
+  "Nested try catch (using $js7TryCount)" in:
     val workflow = Workflow.of(WorkflowPath("TEST"),
       TryInstruction(
         Workflow.of:
           Fail(),
         Workflow.of:
-          If(expr("catchCount < 2"),
+          If(expr("$js7TryCount < 2"),
             Workflow.of:
               TryInstruction(
                 Workflow.of:
@@ -101,9 +101,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
        |      try {                                               // :0/try:0/try:1
        |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCaught
        |        execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
-       |      } catch if (catchCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
+       |      } catch if ($$js7TryCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:2
-       |    } catch if (catchCount < 2) retry else fail;
+       |    } catch if ($$js7TryCount < 2) retry else fail;
        |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow

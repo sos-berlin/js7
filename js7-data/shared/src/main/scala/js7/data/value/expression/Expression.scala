@@ -655,17 +655,6 @@ object Expression:
 
   val LastReturnCode: NamedValue = NamedValue("returnCode")
 
-  case object OrderCatchCount extends IsImpure, NumericExpr:
-    def precedence: Int = Precedence.Factor
-    def subexpressions: Iterable[Expression] = Nil
-
-    def evalRaw(using scope: Scope): Checked[Value] =
-      scope.symbolToValue("catchCount")
-        .getOrElse(Left(Problem(s"Unknown symbol: $OrderCatchCount")))
-        .flatMap(_.toNumberValue)
-
-    override def toString = "catchCount"
-
 
   final case class StripMargin(a: Expression)
   extends StringExpr, IsPureIfSubexpressionsArePure:
