@@ -239,7 +239,7 @@ extends Service.StoppableByRequest:
             elapsed <- session.touchedBefore
             _ <- cell
               .flatMap(_.update(_.
-                delete(session.sessionToken, s"timeout (last used at ${elapsed.pretty})")))
+                delete(session.sessionToken, s" timed out (last used ${elapsed.pretty} ago)")))
           yield true
     yield r
 

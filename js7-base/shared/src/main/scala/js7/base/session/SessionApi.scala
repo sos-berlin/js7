@@ -147,7 +147,7 @@ object SessionApi:
         // Race condition with a parallel operation,
         // which after the same error has already logged-in again successfully.
         // login() is guarded by a mutex
-        logger.debug(s"$toString: Login again due to: $problem")
+        //logger.debug(s"$toString: Login again due to: $problem")
         login()
 
     override final def retryUntilReachable[A](
