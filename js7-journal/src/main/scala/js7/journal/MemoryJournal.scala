@@ -45,6 +45,8 @@ extends Journal[S]:
 
   def isHalted = false
 
+  @TestOnly private[journal] def isEmpty = queue.events.isEmpty
+
   val whenNoFailoverByOtherNode: IO[Unit] = IO.unit
 
   val eventWatch: RealEventWatch = new RealEventWatch:
@@ -171,7 +173,6 @@ extends Journal[S]:
     else
       val (index, found) = q.search(after)
       if !found && after != q.tornEventId then
-        //Left(UnknownEventIdProblem(after, q.tornEventId, q.lastAddedEventId))
         None
       else if eventWatchStopped then
         Some(Iterator.empty)

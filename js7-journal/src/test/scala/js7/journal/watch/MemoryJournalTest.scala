@@ -114,6 +114,7 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
     journal.releaseEvents(1002).await(99.s).orThrow
+    assert(journal.isEmpty)
     assert(eventWatch.tornEventId == 1002)
     assert:
       journal.eventWatch.stream(EventRequest.singleClass[Event](after = 1002))
