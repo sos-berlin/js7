@@ -37,6 +37,5 @@ final class NowScopeTest extends OurTestSuite:
     assert(n == epochMilli)
 
   "nameToCheckedValue" in:
-    assert(nowScope.nameToCheckedValue.toMap == Map(
-      "js7EpochMilli" -> Right(NumberValue(1629115200000L)),
-      "js7EpochSecond" -> Right(NumberValue(1629115200))))
+    assert(nowScope.nameToCheckedValue("js7EpochMilli") == Right(NumberValue(1629115200000L)))
+    assert(nowScope.nameToCheckedValue("js7EpochSecond") == Right(NumberValue(1629115200)))

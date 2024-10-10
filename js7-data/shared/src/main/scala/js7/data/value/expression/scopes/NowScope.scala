@@ -4,23 +4,15 @@ import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NumberValue, Value}
-import scala.collection.MapView
 
 final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
   private lazy val timestampScope = TimestampScope("now", Some(now))
 
-  override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
-    new MapView[String, Checked[Value]]:
-      def get(key: String) = key match
-        case "js7EpochMilli" => Some(Right(NumberValue(now.toEpochMilli)))
-        case "js7EpochSecond" => Some(Right(NumberValue(now.toEpochMilli / 1000)))
-        case _ => None
+  override lazy val nameToCheckedValue =
+    case "js7EpochMilli" => Right(NumberValue(now.toEpochMilli))
+    case "js7EpochSecond" => Right(NumberValue(now.toEpochMilli / 1000))
 
-      def iterator =
-        Iterator("js7EpochMilli", "js7EpochSecond")
-          .flatMap(k => get(k).map(k -> _))
-
-  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(using Scope)
   : Option[Checked[Value]] =
     timestampScope.evalFunctionCall(functionCall)
 
