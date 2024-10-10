@@ -19,6 +19,7 @@ import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
+import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.{Fail, If, Prompt, Retry, TryInstruction}
@@ -30,6 +31,7 @@ import js7.tests.RetryTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import org.scalatest.Assertion
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Random
@@ -57,13 +59,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
     super.beforeAll()
 
-  "Nested try catch (using $js7TryCount)" in:
+  "Nested try catch (using tryCount)" in:
     val workflow = Workflow.of(WorkflowPath("TEST"),
       TryInstruction(
         Workflow.of:
           Fail(),
         Workflow.of:
-          If(expr("$js7TryCount < 2"),
+          If(expr("tryCount < 2"),
             Workflow.of:
               TryInstruction(
                 Workflow.of:
@@ -101,9 +103,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
        |      try {                                               // :0/try:0/try:1
        |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCaught
        |        execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
-       |      } catch if ($$js7TryCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
+       |      } catch if (tryCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:2
-       |    } catch if ($$js7TryCount < 2) retry else fail;
+       |    } catch if (tryCount < 2) retry else fail;
        |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
@@ -703,11 +705,20 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderFailed(Position(1) / try_(1) % 0)))
     }
 
+  "tryCount, maxTries" in :
+    testTryCountAndMaxTries(expr("tryCount == maxTries"))
+
   "$js7TryCount, $js7MaxTries" in :
-    val workflow = Workflow.of(WorkflowPath("MAX-TRIES"),
+    testTryCountAndMaxTries(expr("$js7TryCount == $js7MaxTries"))
+
+  private var nr = 0
+
+  private def testTryCountAndMaxTries(expression: Expression): Assertion =
+    nr += 1
+    val workflow = Workflow.of(WorkflowPath(s"MAX-TRIES-$nr"),
       TryInstruction(
         tryWorkflow = Workflow.of(
-          If(expr("$js7TryCount == $js7MaxTries"),
+          If(expression,
             Workflow.of:
               Prompt(expr("'PROMPT'"))),
           Fail()),
@@ -732,14 +743,17 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         OrderOutcomeAdded(OrderOutcome.failed),
         OrderFailed(Position(0) / try_(1) % 1))
 
-      val orderId = OrderId("MAX-TRIES")
+      val orderId = OrderId(s"MAX-TRIES-$nr")
       val afterEventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
       eventWatch.awaitNext[OrderPrompted](_.key == orderId)
       execCmd(AnswerOrderPrompt(orderId))
       awaitAndCheckEventSeq[OrderTerminated](afterEventId, orderId, expectedEvents)
 
-  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
+
+  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](
+    after: EventId, orderId: OrderId, expected: Vector[OrderEvent])
+  : Assertion =
     eventWatch.await[E](_.key == orderId, after = after)
     sleep(50.millis)  // No more events should arrive
     eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match

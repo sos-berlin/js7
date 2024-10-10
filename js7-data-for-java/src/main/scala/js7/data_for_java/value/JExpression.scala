@@ -4,7 +4,7 @@ import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.value.expression.Expression
+import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data.value.expression.Expression.{BooleanConstant, ListExpr, NumericConstant, ObjectExpr, StringConstant}
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data_for_java.common.JJsonable
@@ -20,6 +20,9 @@ final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 
 object JExpression extends JJsonable.Companion[JExpression]:
   type AsScala = Expression
+
+  val knownSymbols: java.util.Set[String] =
+    ExpressionParser.knownSymbols.asJava
 
   @Nonnull
   @throws[RuntimeException]

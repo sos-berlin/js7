@@ -1191,7 +1191,8 @@ final class ExpressionTest extends OurTestSuite:
 
   "if then else" - {
     testSyntaxError(""" 1 + if true then 1 else 2 """, Problem:
-      "Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …” · Expected character '('")
+      "Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …”" +
+        " · Unexpected 'if' keyword, maybe parentheses are missing?")
 
     testEval(""" 1 + (if true then 2 else 3) """,
       result = Right(3),

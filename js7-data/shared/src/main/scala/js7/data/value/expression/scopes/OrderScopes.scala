@@ -8,6 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
@@ -27,6 +28,21 @@ trait OrderScopes:
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
 
+  private def symbolScope =
+    SymbolScope:
+      case "tryCount" => Right(NumberValue:
+        order.workflowPosition.position.tryCount)
+
+      //case "catchCount" => NumberValue:
+      //  order.workflowPosition.position.catchCount
+
+      case "maxTries" =>
+        order.workflowPosition.position.tryPosition.flatMap:
+          workflow.instruction_[TryInstruction]
+        .map: tryInstruction =>
+          tryInstruction.maxTries.fold(missingValue)(NumberValue(_))
+
+
   private def js7VariablesScope =
     minimalJs7VariablesScope(order.id, order.workflowPath, controllerId) |+|
       NamedValueScope:
@@ -36,22 +52,17 @@ trait OrderScopes:
         case "js7WorkflowPosition" => Right(StringValue:
           order.workflowPosition.toString)
 
-        case "js7TryCount" => Right(NumberValue:
-          order.workflowPosition.position.tryCount)
-
-        //case "js7CatchCount" => Right(NumberValue:
-        //  order.workflowPosition.position.catchCount)
-
+        // $js7TryCount and $js7MaxTries, until we have decided which to choose
+        case "js7TryCount" =>
+          symbolScope.evalFunctionCall(FunctionCall("tryCount"))(using Scope.empty).get
         case "js7MaxTries" =>
-          order.workflowPosition.position.tryPosition.flatMap:
-            workflow.instruction_[TryInstruction]
-          .map: tryInstruction =>
-            tryInstruction.maxTries.fold(missingValue)(NumberValue(_))
+          symbolScope.evalFunctionCall(FunctionCall("maxTries"))(using Scope.empty).get
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
   final lazy val variablelessOrderScope: Scope =
     combine(
+      symbolScope,
       js7VariablesScope,
       scheduledScope(order.scheduledFor),
       EnvScope)

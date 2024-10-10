@@ -12,7 +12,7 @@ define workflow {
       try (retryDelays=[0, 1]) {
         execute agent="agent-1", processLimit=10, executable="fail", env={"HELLO": "やあ"};
       } catch {
-        if ($js7TryCount < 5) {
+        if (tryCount < 5) {
           job SLEEP, defaultArguments={"hello": "Will try again ⭕️"};
           retry;
         } else

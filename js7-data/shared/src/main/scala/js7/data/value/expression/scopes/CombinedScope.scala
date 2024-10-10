@@ -6,8 +6,8 @@ import js7.data.value.expression.{Scope, ValueSearch}
 private[expression] class CombinedScope(first: Scope, second: Scope)
 extends Scope:
 
-  override def symbolToValue(symbol: String) =
-    first.symbolToValue(symbol) orElse second.symbolToValue(symbol)
+  override def symbolToValue =
+    first.symbolToValue orElse second.symbolToValue
 
   override lazy val nameToCheckedValue =
     first.nameToCheckedValue orElse second.nameToCheckedValue

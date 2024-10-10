@@ -11,6 +11,7 @@ import scala.collection.MapView
 
 final class OrderVariablesScope(order: Order[Order.State], workflow: Workflow)
 extends Scope:
+
   override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
     orderArguments.mapValues(Right(_))
       .orElseMapView(order

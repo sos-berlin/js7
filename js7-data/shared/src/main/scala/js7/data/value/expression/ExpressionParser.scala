@@ -17,6 +17,18 @@ import org.jetbrains.annotations.TestOnly
 
 object ExpressionParser:
 
+  private val isKeyword = Set(
+    "argument", "false", "else", "error", "in", "if",
+    "matches", "missing", "then", "true", "variable")
+
+  val knownSymbols = Set("maxTries", "tryCount")
+
+  //private val knownFunctions = Set(
+  //  "env", "impure", "jobResourceVariable", "jobResourceVariables",
+  //  "min", "max", "mkString", "now", "replaceAll",
+  //  "scheduledOrEmpty", "stripMargin", "subagentIds",
+  //  "toBoolean", "toNumber", "toFile")
+
   @TestOnly
   def expr(expressionString: String): Expression =
     parseExpression(expressionString).orThrow
@@ -161,46 +173,56 @@ object ExpressionParser:
         yield NamedValue(where, key, default))
 
   private val functionCall: Parser[Expression] =
-    (identifier ~~ inParentheses(commaSequence(
-      (identifier <* (w ~ symbol("=") ~ w)).backtrack.? ~~ expression/*OrFunction*/))
+    (identifier ~~
+      inParentheses:
+        commaSequence:
+          (identifier <* (w ~ symbol("=") ~ w)).backtrack.? ~~ expression
+      .?
     ).flatMap:
-      case ("toBoolean", arguments) =>
+      case ("toBoolean", Some(arguments)) =>
         arguments match
           case Seq((None, arg)) => pure(ToBoolean(arg))
-          case _ => failWith("toBoolean function expects exacly one argument")
-      case ("toNumber", arguments) =>
+          case _ => failWith("toBoolean function expects exactly one argument")
+      case ("toNumber", Some(arguments)) =>
         arguments match
           case Seq((None, arg)) => pure(ToNumber(arg))
-          case _ => failWith("toNumber function expects exacly one argument")
-      case ("stripMargin", arguments) =>
+          case _ => failWith("toNumber function expects exactly one argument")
+      case ("stripMargin", Some(arguments)) =>
         arguments match
           case Seq((None, arg)) => pure(StripMargin(arg))
-          case _ => failWith("stripMargin function expects exacly one argument")
-      case ("mkString", arguments) =>
+          case _ => failWith("stripMargin function expects exactly one argument")
+      case ("mkString", Some(arguments)) =>
         arguments match
           case Seq((None, arg)) => pure(MkString(arg))
-          case _ => failWith("mkString function expects exacly one argument")
-      case ("impure", arguments) =>
+          case _ => failWith("mkString function expects exactly one argument")
+      case ("impure", Some(arguments)) =>
         arguments match
           case Seq((None, arg)) => pure(Impure(arg))
-          case _ => failWith("'impure' function expects exacly one argument")
-      case ("replaceAll", arguments) =>
+          case _ => failWith("'impure' function expects exactly one argument")
+      case ("replaceAll", Some(arguments)) =>
         arguments match
           case Seq((None, string), (None, pattern), (None, replacement)) =>
             pure(ReplaceAll(string, pattern, replacement))
-          case _ => failWith("replaceAll function expects exacly three arguments")
-      case ("min", arguments) =>
+          case _ => failWith("replaceAll function expects exactly three arguments")
+      case ("min", Some(arguments)) =>
         arguments match
           case Seq((None, a), (None, b)) => pure(Min(a, b))
-          case _ => failWith("min function expects exacly two arguments")
-      case ("max", arguments) =>
+          case _ => failWith("min function expects exactly two arguments")
+      case ("max", Some(arguments)) =>
         arguments match
           case Seq((None, a), (None, b)) => pure(Max(a, b))
-          case _ => failWith("min function expects exacly two arguments")
-      case (name, arguments) =>
+          case _ => failWith("max function expects exactly two arguments")
+      case (name, Some(arguments)) =>
         pure(FunctionCall(
           name,
           arguments.map((maybeName, expr) => Argument(expr, maybeName))))
+      case (name, None) =>
+        if knownSymbols(name) then
+          pure(Symbol_(name))
+        else if isKeyword(name) then
+          failWith(s"Unexpected '$name' keyword, maybe parentheses are missing?")
+        else
+          failWith(s"Unknown symbol: $name")
 
   /** Then special function `error` .*/
   private val errorFunctionCall: Parser[ErrorExpr] =

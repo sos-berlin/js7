@@ -21,8 +21,8 @@ import scala.collection.MapView
   * (while `this` is the own specicialized `Scope`). */
 trait Scope:
 
-  def symbolToValue(symbol: String): Option[Checked[Value]] =
-    None
+  def symbolToValue: PartialFunction[String, Checked[Value]] =
+    Map.empty
 
   def nameToCheckedValue: PartialFunction[String, Checked[Value]] =
     Map.empty
