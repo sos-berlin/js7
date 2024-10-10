@@ -93,7 +93,7 @@ abstract class RecouplingStreamReader[
         .evalTap: _ =>
           decouple
         .flatMap: _ =>
-          new ForApi(api, after).streamAgainAndAgain
+          ForApi(api).streamAgainAndAgain(after)
         .interruptWhenF(stopped.get)
 
   final def terminateAndLogout: IO[Unit] =
@@ -130,83 +130,77 @@ abstract class RecouplingStreamReader[
       .map: _ =>
         sinceLastTry = now  // update asynchronously
 
-  private final class ForApi(api: Api, initialAfter: I):
-    private var lastIndex = initialAfter
+  private final class ForApi(api: Api):
 
-    def streamAgainAndAgain: Stream[IO, V] =
+    def streamAgainAndAgain(after: I): Stream[IO, V] =
       logger.traceStream:
-        initialAfter
-          .tailRecM/*Memory leak ???*/: after =>
+        var lastIndex = after
+        after
+          .tailRecM: after =>
             if eof(after) || isStopped then
               Stream.emit(Right(Stream.empty))
             else
               Right:
-                streamAfter(after)
-                  .map: v =>
-                    for i <- toIndex(v) do
-                      lastIndex = i
-                    v
-                  .handleErrorWith:
-                    case t: ProblemException if isSevereProblem(t.problem) =>
-                      Stream.raiseError[IO](t)
-                    case t =>
-                      Stream
-                        .eval:
-                          onCouplingFailed(api, Problem.fromThrowable(t))
-                        .flatMap:
-                          case false => Stream.raiseError[IO](t)
-                          case true => Stream.empty
+                Stream.eval:
+                  streamOnceAfter(after)
+                .flatMap: (i, stream) =>
+                  lastIndex = i
+                  stream
+                    .map: v =>
+                      for i <- toIndex(v) do
+                        lastIndex = i
+                      v
+                    .handleErrorWith:
+                      case t: ProblemException if isSevereProblem(t.problem) =>
+                        Stream.raiseError[IO](t)
+                      case t =>
+                        Stream
+                          .eval:
+                            onCouplingFailed(api, Problem.fromThrowable(t))
+                          .flatMap:
+                            case false => Stream.raiseError[IO](t)
+                            case true => Stream.empty
               +:
                 Stream.eval:
                   pauseBeforeNextTry(conf.delay) *>
                     IO.defer(IO.left(lastIndex))
           .flatten
 
-    private def streamAfter(after: I): Stream[IO, V] =
-     logger.traceStream("streamAfter", after):
-      Stream
-        .eval:
-          tryEndlesslyToGetStream(after)
-            .<*(IO:
-              logger.log(sym.relievedLogLevel, s"🟢 Streaming $api ...")
-              sym.clear())
-        .flatten
+    private def streamOnceAfter(after: I): IO[(I, Stream[IO, V])] =
+      tryEndlesslyToGetStream(after) <*
+        IO:
+          logger.log(sym.relievedLogLevel, s"🟢 Streaming $api ...")
+          sym.clear()
 
     /** Retries until web request returns an Stream. */
-    private def tryEndlesslyToGetStream(after: I): IO[Stream[IO, V]] =
-      ().tailRecM: _ =>
-        if isStopped then
-          IO.right(Stream.empty)
-          //IO.right(Stream.raiseError[IO](
-          //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
-        else
-          coupleIfNeeded(after = after)
-            .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
-              getStreamX(after = after)
-                .materialize.map(Checked.flattenTryChecked)
-                .flatMap:
-                  case Left(problem) =>
-                    if isStopped then
-                      IO.left(())  // Fail in next iteration
-                    else if isSevereProblem(problem) then
-                      IO.raiseError(problem.throwable)
-                    else
-                      problem.match
-                        case InvalidSessionTokenProblem =>
-                          IO:
-                            logger.debug(s"🔒 $api: $InvalidSessionTokenProblem")
-                            true
-                        case _ =>
-                          onCouplingFailed(api, problem)
-                      .flatMap: continue =>
-                        decouple *>
-                          (if continue then
-                            pauseBeforeRecoupling.as(Left(()))
-                          else
-                            IO.right(Stream.empty))
+    private def tryEndlesslyToGetStream(after: I): IO[(I, Stream[IO, V])] =
+      logger.traceIO:
+        ().tailRecM: _ =>
+          if isStopped then
+            IO.right(after -> Stream.empty)
+            //IO.right(Stream.raiseError[IO](
+            //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
+          else
+            coupleIfNeeded(after = after)
+              .flatMap: after => /*`after` may have changed after initial AgentDedicated.*/
+                getStreamX(after = after)
+                  .materialize.map(Checked.flattenTryChecked)
+                  .flatMap:
+                    case Left(problem) =>
+                      if isStopped then
+                        IO.left(())  // Fail in next iteration
+                      else if isSevereProblem(problem) then
+                        IO.raiseError(problem.throwable)
+                      else
+                        onCouplingFailed(api, problem).flatMap: continue =>
+                          decouple *>
+                            (if continue then
+                              pauseBeforeRecoupling.as(Left(()))
+                            else
+                              IO.right(after -> Stream.empty))
 
-                  case Right(stream) =>
-                    IO.right(stream)
+                    case Right(stream) =>
+                      IO.right(after -> stream)
 
     private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
       logger.traceIO("getStreamX", s"after=$after"):

@@ -95,50 +95,46 @@ private trait SubagentEventListener:
               observing = fiber)
 
   private def observeEvents: IO[Unit] =
-    IO.defer:
-      val recouplingStreamReader = newEventListener()
-      val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-      logger.debugStream(recouplingStreamReader
-        .stream(
-          api,
-          after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
-        .interruptWhenF:
-          // interruptWhen does not work if Stream is busy ???
-          // Maybe due to FS2/Pekko coupling
-          // Tests have to delay before stopping the Director
-          stopObserving.flatMap(_.read)
-        .pipe: stream =>
-          if !bufferDelay.isPositive then
-            stream.chunks
-          else
-            stream.groupWithin(conf.eventBufferSize, bufferDelay)
-        .evalTap(_
-          .traverse(handleEvent)
-          .flatMap: updatedStampedChunk0 =>
-            val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
-            val updatedStampedSeq = updatedStampedSeqSeq.flatten
-            val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
-            val events = updatedStampedSeq.view.map(_.value)
-              .concat(lastEventId.map:
-                subagentId <-: SubagentEventsObserved(_))
-              .toVector
-            // TODO Save Stamped timestamp
-            journal
-              .persistKeyedEvents(events, CommitOptions(transaction = true))
-              .map(_.orThrow/*???*/)
-              // After an OrderProcessed event an DetachProcessedOrder must be sent,
-              // to terminate StartOrderProcess command idempotency detection and
-              // allow a new StartOrderProcess command for a next process.
-              .*>(updatedStampedSeq
-                .collect:
-                  case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o
-                .traverse(detachProcessedOrder))
-              .*>(lastEventId.traverse(releaseEvents))
-              .*>(followUps.combineAll))
-        .onFinalize(recouplingStreamReader
-          .terminateAndLogout
-          .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout"))
-      ).compile.drain
+    logger.debugStream:
+      Stream.suspend:
+        val recouplingStreamReader = newEventListener()
+        val bufferDelay = conf.eventBufferDelay max conf.commitDelay
+        val after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId
+        recouplingStreamReader.stream(api, after = after)
+          .interruptWhenF:
+            stopObserving.flatMap(_.read)
+          .pipe: stream =>
+            if !bufferDelay.isPositive then
+              stream.chunks
+            else
+              stream.groupWithin(conf.eventBufferSize, bufferDelay)
+          .evalTap(_
+            .traverse(handleEvent)
+            .flatMap: updatedStampedChunk0 =>
+              val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
+              val updatedStampedSeq = updatedStampedSeqSeq.flatten
+              val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
+              val events = updatedStampedSeq.view.map(_.value)
+                .concat(lastEventId.map:
+                  subagentId <-: SubagentEventsObserved(_))
+                .toVector
+              // TODO Save Stamped timestamp
+              journal
+                .persistKeyedEvents(events, CommitOptions(transaction = true))
+                .map(_.orThrow /*???*/)
+                // After an OrderProcessed event an DetachProcessedOrder must be sent,
+                // to terminate StartOrderProcess command idempotency detection and
+                // allow a new StartOrderProcess command for a next process.
+                .*>(updatedStampedSeq
+                  .collect:
+                    case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o
+                  .traverse(detachProcessedOrder))
+                .*>(lastEventId.traverse(releaseEvents))
+                .*>(followUps.combineAll))
+          .onFinalize:
+            recouplingStreamReader.terminateAndLogout
+              .logWhenItTakesLonger("recouplingStreamReader.terminateAndLogout")
+    .compile.drain
 
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
