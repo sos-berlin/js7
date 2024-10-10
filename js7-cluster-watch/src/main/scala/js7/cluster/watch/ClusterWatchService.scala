@@ -120,14 +120,14 @@ extends MainService, Service.StoppableByRequest:
 
     private def respond(request: ClusterWatchRequest, confirmed: Checked[Confirmed]): IO[Unit] =
       HttpClient
-        .liftProblem(nodeApi
-          .retryIfSessionLost()(nodeApi
-            .executeClusterWatchingCommand:
+        .liftProblem:
+          nodeApi.retryIfSessionLost:
+            nodeApi.executeClusterWatchingCommand:
               ClusterWatchConfirm(
                 request.requestId, clusterWatchId, clusterWatchRunId,
                 manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
                 problem = confirmed.left.toOption)
-            .void))
+            .void
         .map:
           case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
             // Already confirmed by this or another ClusterWatch

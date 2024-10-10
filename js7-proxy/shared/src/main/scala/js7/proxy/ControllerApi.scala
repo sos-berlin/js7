@@ -176,15 +176,14 @@ extends ControllerApiWithHttp:
     controllerState.map(_.map(_.clusterState))
 
   private def untilReachable[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
-    CorrelId.bindIfEmpty(
+    CorrelId.bindIfEmpty:
       if !failWhenUnreachable then
         untilReachable1(body)
       else
-        liftProblem(
-          apiResource
-            .use(api => api
-              .retryIfSessionLost()(
-                body(api)))))
+        liftProblem:
+          apiResource.use: api =>
+            api.retryIfSessionLost:
+              body(api)
 
   private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
     CorrelId.bindIfEmpty(IO.defer {
@@ -193,7 +192,7 @@ extends ControllerApiWithHttp:
       var warned = now - 1.h
       apiResource
         .use(api => api
-          .retryIfSessionLost()(body(api))
+          .retryIfSessionLost(body(api))
           .materialize.map {
             case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
               Failure(t)  // Trigger onErrorRestartLoop

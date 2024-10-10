@@ -32,7 +32,7 @@ trait SessionApi:
   def clearSession(): Unit
 
   // overrideable
-  def retryIfSessionLost[A]()(body: IO[A])
+  def retryIfSessionLost[A](body: IO[A])
   : IO[A] =
     body
 
@@ -128,7 +128,7 @@ object SessionApi:
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    override def retryIfSessionLost[A]()(body: IO[A]): IO[A] =
+    override def retryIfSessionLost[A](body: IO[A]): IO[A] =
       login(onlyIfNotLoggedIn = true) *>
         body.recoverWith:
           case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) =>

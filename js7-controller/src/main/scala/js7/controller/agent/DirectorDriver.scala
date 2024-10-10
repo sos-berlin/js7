@@ -251,8 +251,8 @@ extends Service.StoppableByRequest:
     IO
       .race(
         untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
-        client.retryIfSessionLost()(
-          client.commandExecute(command)))
+        client.retryIfSessionLost:
+          client.commandExecute(command))
       .map:
         case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
         case Right(o) => o

@@ -116,7 +116,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         .use(api => api
           .login(onlyIfNotLoggedIn = true)
           .productR:
-            api.retryIfSessionLost():
+            api.retryIfSessionLost:
               api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId))
           .void
           .handleError(throwable => logger.debug(
