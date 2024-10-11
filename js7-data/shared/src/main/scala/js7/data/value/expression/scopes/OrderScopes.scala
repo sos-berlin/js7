@@ -12,7 +12,7 @@ import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
+import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
@@ -41,6 +41,9 @@ trait OrderScopes:
           workflow.instruction_[TryInstruction]
         .map: tryInstruction =>
           tryInstruction.maxTries.fold(missingValue)(NumberValue(_))
+
+      case "timedOut" => Right(BooleanValue:
+        order.hasTimedOut)
 
 
   private def js7VariablesScope =

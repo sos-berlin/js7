@@ -581,6 +581,15 @@ final case class Order[+S <: Order.State](
 
       case o => !o.isSucceeded
 
+  /** Looks through OrderCaught. */
+  def hasTimedOut: Boolean =
+    lastOutcome match
+      case OrderOutcome.Caught =>
+        historicOutcomes.get(historicOutcomes.length - 2)
+          .exists(_._2.isInstanceOf[OrderOutcome.TimedOut])
+      case outcome =>
+        outcome.isInstanceOf[OrderOutcome.TimedOut]
+
   def lastOutcome: OrderOutcome =
     historicOutcomes.lastOption.fold_(OrderOutcome.succeeded, _.outcome)
 

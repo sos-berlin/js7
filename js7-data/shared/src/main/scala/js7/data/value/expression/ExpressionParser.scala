@@ -21,7 +21,7 @@ object ExpressionParser:
     "argument", "false", "else", "error", "in", "if",
     "matches", "missing", "then", "true", "variable")
 
-  val knownSymbols = Set("maxTries", "tryCount")
+  val knownSymbols = Set("maxTries", "timedOut", "tryCount")
 
   //private val knownFunctions = Set(
   //  "env", "impure", "jobResourceVariable", "jobResourceVariables",
