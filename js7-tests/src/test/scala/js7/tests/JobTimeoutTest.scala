@@ -92,7 +92,7 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
         Workflow.of:
           Fail(),
         Workflow.of:
-          If(expr("timedOut"),
+          If(expr("timedOut()"),
             Workflow.of:
               Fail(Some(expr("'💥 TIMED OUT'")))))))
 

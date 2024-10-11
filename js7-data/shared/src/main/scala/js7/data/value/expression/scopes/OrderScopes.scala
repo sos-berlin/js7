@@ -29,7 +29,7 @@ trait OrderScopes:
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
 
   private def symbolScope =
-    SymbolScope:
+    ArgumentlessFunctionScope:
       case "tryCount" => Right(NumberValue:
         order.workflowPosition.position.tryCount)
 

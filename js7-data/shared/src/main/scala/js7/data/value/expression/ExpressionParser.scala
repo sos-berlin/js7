@@ -216,11 +216,11 @@ object ExpressionParser:
         pure(FunctionCall(
           name,
           arguments.map((maybeName, expr) => Argument(expr, maybeName))))
-      case (name, None) =>
+      case (name, None) =>  // "()" is optional
         if knownSymbols(name) then
-          pure(Symbol_(name))
+          pure(FunctionCall(name))
         else if isKeyword(name) then
-          failWith(s"Unexpected '$name' keyword, maybe parentheses are missing?")
+          failWith(s"Unexpected '$name' keyword, maybe parentheses around it are missing?")
         else
           failWith(s"Unknown symbol: $name")
 

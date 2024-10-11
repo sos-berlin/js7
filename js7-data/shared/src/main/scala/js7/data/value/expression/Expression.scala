@@ -616,17 +616,17 @@ object Expression:
     case object Argument extends Where
 
 
-  // A name different from predefined scala.Symbol
-  /** Like a function call without parameter list. */
-  final case class Symbol_(name: String) extends IsImpure:
-    def precedence: Int = Precedence.Factor
-
-    def subexpressions: Iterable[Expression] = Nil
-
-    def evalRaw(using scope: Scope): Checked[Value] =
-      scope.symbolToValue.applyOrElse(name, _ => Left(Problem(s"Unknown symbol: $name")))
-
-    override def toString = name
+  //// A name different from predefined scala.Symbol
+  ///** Like a function call without parameter list. */
+  //final case class Symbol_(name: String) extends IsImpure:
+  //  def precedence: Int = Precedence.Factor
+  //
+  //  def subexpressions: Iterable[Expression] = Nil
+  //
+  //  def evalRaw(using scope: Scope): Checked[Value] =
+  //    scope.symbolToValue.applyOrElse(name, _ => Left(Problem(s"Unknown symbol: $name")))
+  //
+  //  override def toString = name
 
 
   final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)

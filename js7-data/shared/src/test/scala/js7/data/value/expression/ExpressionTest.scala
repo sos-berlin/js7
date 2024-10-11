@@ -886,6 +886,23 @@ final class ExpressionTest extends OurTestSuite:
       Or(true, And(false, Equal(3, LessThan(4, Add(5, Multiply(6, Catch(7, 8))))))))
   }
 
+  "timedOut" in:
+    assert(parseExpression("timedOut") == Right(FunctionCall("timedOut")))
+    assert(parseExpression("timedOut()") == Right(FunctionCall("timedOut")))
+
+  "tryCount" in:
+    assert(parseExpression("tryCount") == Right(FunctionCall("tryCount")))
+    assert(parseExpression("tryCount()") == Right(FunctionCall("tryCount")))
+
+  "maxTries" in:
+    assert(parseExpression("maxTries") == Right(FunctionCall("maxTries")))
+    assert(parseExpression("maxTries()") == Right(FunctionCall("maxTries")))
+
+  "Unknown symbol" in:
+    assert(parseExpression("UNKNOWN") == Left(Problem:
+      "Error in expression: Parsing failed at position 8 “UNKNOWN❓” · Unknown symbol: UNKNOWN"))
+    assert(parseExpression("UNKNOWN()") == Right(FunctionCall("UNKNOWN")))
+
   "replaceAll" - {
     testEval(""" replaceAll("abcdef", "([ae])", '»$1«') """,
       result = Right("»a«bcd»e«f"),
@@ -1192,7 +1209,7 @@ final class ExpressionTest extends OurTestSuite:
   "if then else" - {
     testSyntaxError(""" 1 + if true then 1 else 2 """, Problem:
       "Error in expression: Parsing failed at position 9 “ 1 + if ❓true then …”" +
-        " · Unexpected 'if' keyword, maybe parentheses are missing?")
+        " · Unexpected 'if' keyword, maybe parentheses around it are missing?")
 
     testEval(""" 1 + (if true then 2 else 3) """,
       result = Right(3),
