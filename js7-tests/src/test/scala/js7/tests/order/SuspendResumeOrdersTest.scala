@@ -800,7 +800,7 @@ final class SuspendResumeOrdersTest
         HistoricOutcome(Position(0), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(1)))),
         HistoricOutcome(Position(1), OrderOutcome.Succeeded(Map("NEW" -> NumberValue(2)))),
         HistoricOutcome(Position(2) / Try_ % 0, OrderOutcome.Failed(Some("FAILURE"))),
-        HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.succeeded),
+        HistoricOutcome(Position(2) / catch_(0) % 0, OrderOutcome.Caught),
         HistoricOutcome(Position(2) / try_(1) % 0, OrderOutcome.Failed(Some("FAILURE"))))))))
 
   "Resume when Failed" in:
@@ -1132,7 +1132,7 @@ final class SuspendResumeOrdersTest
         deleteWhenTerminated = true,
         historicOutcomes = Vector(
           HistoricOutcome(Position(0) / "try+0" % 0, FailingJob.outcome),
-          HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.succeeded))))
+          HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught))))
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),

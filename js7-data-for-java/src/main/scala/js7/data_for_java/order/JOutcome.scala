@@ -41,6 +41,7 @@ object JOutcome extends JJsonable.Companion[JOutcome]:
   def apply(asScala: OrderOutcome): JOutcome =
     asScala match
       case asScala: OrderOutcome.Succeeded => Succeeded(asScala)
+      case asScala: OrderOutcome.Caught => Caught(asScala)
       case asScala: OrderOutcome.Failed => Failed(asScala)
       case asScala: OrderOutcome.TimedOut => TimedOut(asScala)
       case asScala: OrderOutcome.Killed => Killed(asScala)
@@ -57,7 +58,12 @@ object JOutcome extends JJsonable.Companion[JOutcome]:
     final def namedValues: java.util.Map[String, Value] =
       asScala.namedValues.asJava
 
-  final case class Succeeded(asScala: OrderOutcome.Succeeded) extends Completed
+  sealed trait IsSuccess extends Completed:
+    def asScala: OrderOutcome.IsSucceeded
+
+
+  final case class Succeeded(asScala: OrderOutcome.Succeeded) extends IsSuccess
+  final case class Caught(asScala: OrderOutcome.Caught) extends IsSuccess
   final case class Failed(asScala: OrderOutcome.Failed) extends Completed
   final case class TimedOut(asScala: OrderOutcome.TimedOut) extends JOutcome
   final case class Killed(asScala: OrderOutcome.Killed) extends JOutcome

@@ -14,9 +14,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.order.OrderOutcome.Succeeded
 import js7.data.order.{Order, OrderId, OrderOutcome}
-import js7.data.subagent.Problems
 import js7.data.subagent.Problems.ProcessCancelledBeforeStartProblem
 import js7.data.value.expression.Expression
 import js7.launcher.internal.JobLauncher
@@ -94,7 +92,8 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
             .*>(scheduleTimeoutCancellation)
             .flatMap: timeoutFiber =>
               fiber.joinStd.map(modifyOutcome).mapOrKeep:
-                case outcome: Succeeded => readErrorLine(processOrder).getOrElse(outcome)
+                case outcome: OrderOutcome.IsSucceeded =>
+                  readErrorLine(processOrder).getOrElse(outcome)
               .guarantee(timeoutFiber.cancel)
               .guarantee(sigkillFiber.cancel)
           .handleError: t =>

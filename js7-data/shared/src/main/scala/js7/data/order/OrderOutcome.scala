@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
   */
 sealed trait OrderOutcome:
   final def isSucceeded: Boolean =
-    isInstanceOf[OrderOutcome.Succeeded]
+    isInstanceOf[OrderOutcome.IsSucceeded]
 
   def show: String
 
@@ -84,12 +84,18 @@ object OrderOutcome:
 
     implicit val jsonCodec: TypedJsonCodec[Completed] = TypedJsonCodec(
       Subtype[Failed],
+      Subtype(Caught),
       Subtype(deriveCodec[Succeeded]))
 
-  final case class Succeeded(namedValues: NamedValues) extends Completed:
+
+  sealed trait IsSucceeded extends Completed
+
+
+  final case class Succeeded(namedValues: NamedValues) extends IsSucceeded:
     def show: String =
       if namedValues.isEmpty then "Succeeded" else s"Succeeded($namedValues)"
     override def toString: String = show
+
   object Succeeded extends Completed.Companion[Succeeded]:
     val empty = new Succeeded(Map.empty)
     val returnCode0 = new Succeeded(NamedValues.rc(0))
@@ -109,6 +115,13 @@ object OrderOutcome:
     implicit val jsonDecoder: Decoder[Succeeded] = c =>
       for namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty) yield
         make(namedValues)
+
+
+  type Caught = Caught.type
+  case object Caught extends IsSucceeded:
+    def namedValues = NamedValues.empty
+    def show = "Caught"
+
 
   final case class Failed(
     errorMessage: Option[String],
@@ -238,6 +251,7 @@ object OrderOutcome:
 
   private val typedJsonCodec = TypedJsonCodec[OrderOutcome](
     Subtype[Succeeded],
+    Subtype(Caught),
     Subtype[Failed],
     Subtype(deriveCodec[TimedOut]),
     Subtype(deriveCodec[Killed]),

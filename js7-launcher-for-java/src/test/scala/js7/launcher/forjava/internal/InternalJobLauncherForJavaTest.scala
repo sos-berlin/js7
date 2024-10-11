@@ -96,7 +96,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           processOrder(NumericConstant(i))
             .map(_.orThrow)
             .flatMap:
-              case (outcome: OrderOutcome.Succeeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
+              case (outcome: OrderOutcome.IsSucceeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
               case (outcome: OrderOutcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
               case (outcome, _, _) => IO(fail(s"UNEXPECTED: $outcome"))
         assert(IO.parSequence(processes).await(99.s).reduceLeftEither ==

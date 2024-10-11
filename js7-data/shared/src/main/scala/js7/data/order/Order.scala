@@ -193,7 +193,7 @@ final case class Order[+S <: Order.State](
             var h = outcome.fold(historicOutcomes): outcome =>
               historicOutcomes :+ HistoricOutcome(position, outcome)
             if !h.lastOption.exists(_.outcome.isSucceeded) then
-              h :+= HistoricOutcome(movedTo, OrderOutcome.succeeded)
+              h :+= HistoricOutcome(movedTo, OrderOutcome.Caught)
             copy(
               state = Ready,
               workflowPosition = workflowPosition.copy(position = movedTo),

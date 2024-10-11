@@ -138,7 +138,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished()))
-    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.succeeded)
+    assert(controllerState.idToOrder(orderId).lastOutcome == OrderOutcome.Caught)
 
   "try - if - fail" in:
     val workflow = Workflow(

@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
@@ -23,7 +24,6 @@ import js7.tests.FinishTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
 import scala.reflect.ClassTag
 
 final class FinishTest
@@ -87,7 +87,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0) / "try+0" % 0, FailingJob.outcome),
-      HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.succeeded),
+      HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught),
       HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Succeeded(Map(
         "result" -> StringValue("SUCCESS"))))))
 

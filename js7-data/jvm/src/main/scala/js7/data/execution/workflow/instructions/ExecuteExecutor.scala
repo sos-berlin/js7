@@ -67,7 +67,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
               case _: OrderOutcome.NotSucceeded | _: OrderOutcome.TimedOut =>
                 OrderFailedIntermediate_()
 
-              case _: OrderOutcome.Succeeded =>
+              case _: OrderOutcome.IsSucceeded =>
                 OrderMoved(order.position.increment)
             Right:
               (order.id <-: event) :: Nil

@@ -21,7 +21,7 @@ import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
-import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.BranchId.{Then, catch_}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -992,6 +992,20 @@ final class OrderTest extends OurTestSuite:
             HistoricOutcome(Position(2) / Then % 0, OrderOutcome.failed)))
     }
   }
+
+  "hasTimedOut" in:
+    assert(!testOrder.copy(historicOutcomes = Vector.empty).hasTimedOut)
+    assert(!testOrder.hasTimedOut)
+
+    assert(!testOrder.applyEvent(OrderCaught(Position(1) / catch_(1) % 0 )).orThrow.hasTimedOut)
+
+    var order = testOrder
+      .applyEvent(OrderOutcomeAdded(OrderOutcome.TimedOut(OrderOutcome.succeeded))).orThrow
+    assert(order.hasTimedOut)
+
+    order = order.applyEvent(OrderCaught(Position(1) / catch_(1) % 0 )).orThrow
+    assert(order.hasTimedOut)
+
 
   "forkPositionOf" in:
     assert(testOrder.withPosition(Position(1)).forkPosition.isLeft)
