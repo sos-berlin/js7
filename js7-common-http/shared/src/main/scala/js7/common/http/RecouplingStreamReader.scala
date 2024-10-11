@@ -16,8 +16,6 @@ import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests
-import js7.base.utils.Tests.isTest
 import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.Problems.AckFromActiveClusterNodeProblem
