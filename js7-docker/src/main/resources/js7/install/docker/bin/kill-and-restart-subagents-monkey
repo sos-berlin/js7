@@ -6,10 +6,10 @@ killMonkey() {
   local downDurationExponent="$2"
   local upDurationExponent="$3"
   while true; do
-    docker-compose kill "$container" &>/dev/null || true
+    docker compose kill "$container" &>/dev/null || true
     sleep $((2 ** (RANDOM / (32767 / downDurationExponent)))) # 1...64s
 
-    docker-compose start "$container" &>/dev/null || true
+    docker compose start "$container" &>/dev/null || true
     sleep $((2 ** (RANDOM / (32767 / upDurationExponent)))) # 1...64s
   done
 }

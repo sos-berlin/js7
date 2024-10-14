@@ -7,7 +7,7 @@ cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 build/bin/clean-volumes-data
 
 # Fails if disk is full:
-docker-compose kill
+docker compose kill
 
 # Free again
 build/bin/clean-volumes-data

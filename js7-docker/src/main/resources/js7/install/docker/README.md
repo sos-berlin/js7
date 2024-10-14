@@ -4,8 +4,7 @@ This examples includes one Controller and two Agent containers, running some wor
 
 ### Prequisites
 
-* [Docker](https://docs.docker.com/)
-* [docker-compose](https://docs.docker.com/compose/install/)
+* [Docker](https://docs.docker.com/) with docker-compose-plugin
 * bash
 * Internet connection (to access the Docker registry)
 * The archives
@@ -46,7 +45,7 @@ You may delete this directory after the script has been run, if you don't want t
 
 Run Docker containers.
 
-    docker-compose up
+    docker compose up
 
 The directory `volume` contains your controller's and agents configuration and data files.
 The script "prepare" does not overwrite any configuration file.

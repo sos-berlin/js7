@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Restart both Controller nodes and restart alternating one of the ClusterWatches.
 
-docker-compose stop
+docker compose stop
 
-docker-compose start \
+docker compose start \
  provider\
  cluster-watch\
  subagent-1-a\
@@ -18,18 +18,18 @@ docker-compose start \
 while true; do
   sleep 20
 
-  docker-compose stop controller
-  docker-compose stop backup-controller cluster-watch
-  docker-compose start controller backup-controller
+  docker compose stop controller
+  docker compose stop backup-controller cluster-watch
+  docker compose start controller backup-controller
 
   sleep 30
-  docker-compose start cluster-watch-b
+  docker compose start cluster-watch-b
 
   sleep 20
-  docker-compose stop controller
-  docker-compose stop backup-controller cluster-watch-b
-  docker-compose start controller backup-controller
+  docker compose stop controller
+  docker compose stop backup-controller cluster-watch-b
+  docker compose start controller backup-controller
 
   sleep 30
-  docker-compose start cluster-watch
+  docker compose start cluster-watch
 done

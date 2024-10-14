@@ -5,7 +5,7 @@
 # This is to let access the container to the host's volume ./volumes/.
 # Note that bash's UID is not exported. So you may build with
 #
-# (export UID && docker-compose build)
+# (export UID && docker compose build)
 
 services:
   controller:
