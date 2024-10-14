@@ -102,7 +102,7 @@ object AsyncLock:
             .onCancel(IO:
               if !acquired && sym.used then
                 logger.log(sym.logLevel,
-                  s"◼️️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
+                  s"◼️$nrString $name acquisition canceled after ${since.elapsed.pretty} ↙"))
 
         def logAfterAcquire: IO[Unit] =
           IO:
