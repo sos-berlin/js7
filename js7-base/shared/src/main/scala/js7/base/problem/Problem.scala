@@ -108,6 +108,13 @@ object Problem extends Semigroup[Problem]
   def of(message: String): Problem =
     pure(message)
 
+  /** Reverse to `throwable` method. */
+  def reverseThrowable(throwable: Throwable): Problem =
+    throwable match {
+      case ProblemException(problem) => problem
+      case _ => fromThrowable(throwable)
+    }
+
   def fromThrowable(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 

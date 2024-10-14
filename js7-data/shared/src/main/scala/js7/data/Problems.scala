@@ -136,4 +136,10 @@ object Problems
   case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 
   case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
+
+  final case class NoActiveClusterNodeProblem(clusterStates: Seq[String]) extends Problem.Coded {
+    def arguments: Map[String, String] =
+      Map("clusterStates" -> clusterStates.mkString(", "))
+        .filter(_._2.nonEmpty)
+  }
 }
