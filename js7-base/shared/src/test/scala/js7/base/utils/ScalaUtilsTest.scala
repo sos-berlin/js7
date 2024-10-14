@@ -325,6 +325,9 @@ final class ScalaUtilsTest extends OurTestSuite:
 
       assert(morphed.values.toSeq == Seq(true, false))
 
+      assert(!morphed.isEmpty)
+      assert(morphed.knownSize == 2)
+
     "+++" in:
       val a = MapView(1 -> "ONE", 2 -> "TWO")
       val b = MapView(2 -> "dwa", 3 -> "tri")

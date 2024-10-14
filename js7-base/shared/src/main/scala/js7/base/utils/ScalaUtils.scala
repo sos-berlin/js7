@@ -413,21 +413,29 @@ object ScalaUtils:
               .map(toV1)
 
           override def contains(k1: K1) =
-            tryFromK1(k1)
-              .map(mapView.contains)
-              .getOrElse(false)
+            tryFromK1(k1).exists(mapView.contains)
 
           private def tryFromK1(k1: K1) =
-            Try { fromK1(k1) }.toOption
+            Try(fromK1(k1)).toOption
 
           def iterator =
-            mapView.iterator.map { case (k, v) => toK1(k) -> toV1(v) }
+            mapView.iterator.map: (k, v) =>
+              toK1(k) -> toV1(v)
 
-          override def keys =
-            mapView.keys.view.map(toK1)
+          override def keySet =
+            mapView.keySet.map(toK1)
+
+          override def keysIterator =
+            mapView.keysIterator.map(toK1)
 
           override def values =
             mapView.values.view.map(toV1)
+
+          override def isEmpty =
+            mapView.isEmpty
+
+          override def knownSize =
+            mapView.knownSize
 
       /** Concat to MapViews and return a MapView wit Map behaviour. */
       def +++[V1 >: V](right: MapView[K, V1]): MapView[K, V1] =
