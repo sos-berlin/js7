@@ -14,7 +14,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{completedL, flatMapLoop, raceFold}
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat

@@ -18,7 +18,7 @@ import js7.base.web.HttpClient
 import js7.data.cluster.{ClusterNodeApi, ClusterNodeState}
 import scala.math.Ordered.orderingToOrdered
 
-final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi](
+final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
   apisResource: ResourceIO[Nel[Api]],
   delayConf: DelayConf,
   clusterName: String = "",
@@ -36,15 +36,14 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi](
             apis,
             api => throwable => onCouplingError(api)(throwable))
 
-  private def selectActiveNodeApiOnly(apis: Nel[Api], onCouplingError: Api => Throwable => IO[Unit]): IO[Api] =
+  private def selectActiveNodeApiOnly(apis: Nel[Api]): IO[Api] =
     logger.traceIOWithResult:
       apis match
-        case Nel(api, Nil) =>
-          api
-            .loginUntilReachable(
-              onError = t => onCouplingError(api)(t).as(true),
-              onlyIfNotLoggedIn = true)
-            .map((_: Completed) => api)
+        case Nel(api, Nil) => // Only one api
+          api.loginUntilReachable(
+            onError = t => onCouplingError(api)(t).as(true),
+            onlyIfNotLoggedIn = true)
+          .map((_: Completed) => api)
 
         case _ =>
           delayConf.runIO: delayer =>

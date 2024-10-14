@@ -253,7 +253,7 @@ extends Service.StoppableByRequest:
       state.lock.lock(IO {
         state.directors = agentRef.directors
       }) *>
-        // FIXME Handle Cluster node URI change or forbid this
+        // TODO Handle Cluster node URI change or forbid this
         // TODO Restart DirectorDriver only if one of the URIs has changed
         startNewClusterWatch *>
         startAndForgetDirectorDriver
@@ -409,10 +409,8 @@ extends Service.StoppableByRequest:
       .void
 
   private def startNewDirectorDriver: IO[Unit] =
-    logger.debugIO(
-      directorDriverAllocated
-        .acquire(directorDriverResource)
-        .void)
+    logger.debugIO:
+      directorDriverAllocated.acquire(directorDriverResource).void
 
   private def directorDriverResource: ResourceIO[DirectorDriver] =
     logger.traceResource:

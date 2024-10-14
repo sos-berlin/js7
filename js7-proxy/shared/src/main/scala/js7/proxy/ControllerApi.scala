@@ -23,7 +23,7 @@ import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.Response.Accepted
-import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ClusterAppointNodes, ReleaseEvents}
 import js7.data.controller.ControllerState.*
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -56,22 +56,22 @@ extends ControllerApiWithHttp:
     stop()
 
   def stop(dontLogout: Boolean = true): IO[Unit] =
-    logger.debugIO(
-      IO
-        .whenA(dontLogout)(
-          apiCache.cachedValue
-            .fold(IO.unit)(api => IO(
-              api.clearSession())))
-        .*>(apiCache.release))
+    logger.debugIO:
+      IO.whenA(dontLogout):
+        apiCache.cachedValue
+          .fold(IO.unit): api =>
+            IO(api.clearSession())
+      .productR:
+        apiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
   : IO[EventAndState[Event, ControllerState]] =
-    CorrelId.bindIfEmpty(
+    CorrelId.bindIfEmpty:
       JournaledProxy.stream(apisResource, None, _ => (), proxyConf)
         .filter(predicate)
         .head.compile.last
-        .map(_.getOrElse(throw new EndOfEventStreamException)))
+        .map(_.getOrElse(throw new EndOfEventStreamException))
 
   /** Read events and state from Controller. */
   def eventAndStateStream(
@@ -96,12 +96,11 @@ extends ControllerApiWithHttp:
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : ResourceIO[ControllerProxy] =
     /*CorrelId.bindIfEmpty???*/(logger.debugResource:
-      ControllerProxy
-        .resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
+      ControllerProxy.resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
   : IO[Checked[Accepted]] =
-    executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId))
+    executeCommand(ClusterAppointNodes(idToUri, activeId))
 
   def updateRepo(
     versionId: VersionId,
@@ -113,27 +112,27 @@ extends ControllerApiWithHttp:
         Stream.iterable(delete).map(RemoveVersioned.apply)))
 
   def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): IO[Checked[Completed]] =
-    updateItems(
-      Stream.iterable(items) map ItemOperation.AddOrChangeSimple.apply)
+    updateItems:
+      Stream.iterable(items) map ItemOperation.AddOrChangeSimple.apply
 
   def updateSignedItems(items: Iterable[Signed[SignableItem]], versionId: Option[VersionId] = None)
   : IO[Checked[Completed]] =
-    updateItems(
+    updateItems:
       Stream.iterable(versionId).map(AddVersion(_)) ++
-        Stream.iterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
+        Stream.iterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString))
 
   def updateItems(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
-    logger.debugIO(
-      untilReachable(_
-        .postStream[ItemOperation, JsonObject](
+    logger.debugIO:
+      untilReachable:
+        _.postStream[ItemOperation, JsonObject](
           "controller/api/item",
           operations)
-      ).map(_.map((_: JsonObject) => Completed)))
+      .map(_.map((_: JsonObject) => Completed))
 
   def addOrders(orders: Stream[IO, FreshOrder]): IO[Checked[AddOrders.Response]] =
-    logger.debugIO(
+    logger.debugIO:
       untilReachable(_.postStream[FreshOrder, Json]("controller/api/order", orders))
-        .map(_.flatMap(_.checkedAs[AddOrders.Response])))
+        .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): IO[Checked[Boolean]] =
@@ -142,22 +141,22 @@ extends ControllerApiWithHttp:
 
   def deleteOrdersWhenTerminated(orderIds: Stream[IO, OrderId])
   : IO[Checked[ControllerCommand.Response.Accepted]] =
-    logger.debugIO(
-      untilReachable(_
-        .postStream[OrderId, Json](
+    logger.debugIO:
+      untilReachable:
+        _.postStream[OrderId, Json](
           "controller/api/order/DeleteOrdersWhenTerminated",
-          orderIds))
-        .map(_.flatMap(_
-          .checkedAs[ControllerCommand.Response]
-          .map(_.asInstanceOf[ControllerCommand.Response.Accepted]))))
+          orderIds)
+      .map(_.flatMap(_
+        .checkedAs[ControllerCommand.Response]
+        .map(_.asInstanceOf[ControllerCommand.Response.Accepted])))
 
   def releaseEvents(eventId: EventId): IO[Checked[Completed]] =
     executeCommand(ReleaseEvents(eventId))
-      .mapt((_: ControllerCommand.Response.Accepted) => Completed)
+      .map(_.map((_: ControllerCommand.Response.Accepted) => Completed))
 
   def executeCommand[C <: ControllerCommand](command: C): IO[Checked[command.Response]] =
-    logger.debugIO(s"executeCommand ${command.toShortString}")(
-      untilReachable(_.executeCommand(command)))
+    logger.debugIO(s"executeCommand ${command.toShortString}"):
+      untilReachable(_.executeCommand(command))
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
   //: IO[Checked[command.Response]] =
@@ -165,12 +164,12 @@ extends ControllerApiWithHttp:
   //    untilReachable(_.executeAgentCommand(agentPath, command)))
 
   def journalInfo: IO[Checked[JournalInfo]] =
-    logger.debugIO(
-      untilReachable(_.journalInfo))
+    logger.debugIO:
+      untilReachable(_.journalInfo)
 
   def controllerState: IO[Checked[ControllerState]] =
-    logger.debugIO(
-      untilReachable(_.snapshot()))
+    logger.debugIO:
+      untilReachable(_.snapshot())
 
   def clusterState: IO[Checked[ClusterState]] =
     controllerState.map(_.map(_.clusterState))
@@ -186,34 +185,30 @@ extends ControllerApiWithHttp:
               body(api)
 
   private def untilReachable1[A](body: HttpControllerApi => IO[A]): IO[Checked[A]] =
-    CorrelId.bindIfEmpty(IO.defer {
+    CorrelId.bindIfEmpty(IO.defer:
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
-      apiResource
-        .use(api => api
-          .retryIfSessionLost(body(api))
-          .materialize.map {
+      apiResource.use: api =>
+        api.retryIfSessionLost(body(api))
+          .materialize.map:
             case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
               Failure(t)  // Trigger onErrorRestartLoop
             case o => HttpClient.failureToChecked(o)
-          }
-          .dematerialize)
-        .onErrorRestartLoop(()) {
-          case (t, _, retry)
-            if isTemporaryUnreachable(t) && delays.hasNext =>
-            if warned.elapsed >= 60.s then
-              logger.warn(t.toStringWithCauses)
-              warned = now
-            else
-              logger.debug(t.toStringWithCauses)
-            apiCache.clear *>
-              IO.sleep(delays.next()) *>
-              retry(())
+          .dematerialize
+      .onErrorRestartLoop(()):
+        case (t, _, retry)
+          if isTemporaryUnreachable(t) && delays.hasNext =>
+          if warned.elapsed >= 60.s then
+            logger.warn(t.toStringWithCauses)
+            warned = now
+          else
+            logger.debug(t.toStringWithCauses)
+          apiCache.clear *>
+            IO.sleep(delays.next()) *>
+            retry(())
 
-          case (t, _, _) => IO.raiseError(t)
-        }
-    })
+        case (t, _, _) => IO.raiseError(t))
 
 
 object ControllerApi:
