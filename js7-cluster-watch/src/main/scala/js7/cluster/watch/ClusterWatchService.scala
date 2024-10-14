@@ -1,6 +1,6 @@
 package js7.cluster.watch
 
-import cats.data.NonEmptySeq
+import cats.data.NonEmptyList
 import cats.effect.{IO, Resource, ResourceIO}
 import com.typesafe.config.Config
 import fs2.Stream
@@ -39,7 +39,7 @@ final class ClusterWatchService private[ClusterWatchService](
   nodeApis: Nel[HttpClusterNodeApi],
   label: String,
   keepAlive: FiniteDuration,
-  retryDelays: NonEmptySeq[FiniteDuration],
+  retryDelays: NonEmptyList[FiniteDuration],
   onClusterStateChanged: (HasNodes) => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends MainService, Service.StoppableByRequest:
@@ -83,15 +83,12 @@ extends MainService, Service.StoppableByRequest:
       streamAgainAndAgain(clusterWatchRequestStream)
 
     private def streamAgainAndAgain[A](stream: Stream[IO, A]): Stream[IO, A] =
-      Stream.suspend:
-        Delayer.stream[IO](delayConf)
-          .flatMap: _ =>
-            stream
-              .handleErrorWith: t =>
-                logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
-                streamFailed := true
-                Stream.empty
-          //.interruptWhenF(untilStopRequested)
+      Delayer.stream[IO](delayConf).flatMap: _ =>
+        stream.handleErrorWith: t =>
+          logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
+          streamFailed := true
+          Stream.empty
+      //.interruptWhenF(untilStopRequested)
 
     private def clusterWatchRequestStream: Stream[IO, ClusterWatchRequest] =
       logger.traceStream("clusterWatchRequestStream", nodeApi):
@@ -184,10 +181,10 @@ object ClusterWatchService:
     onClusterStateChanged: (HasNodes) => Unit,
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
   : ResourceIO[ClusterWatchService] =
-    Resource.suspend(IO {
+    Resource.suspend(IO:
       val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
       val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")
-        .asScala.map(_.toFiniteDuration).toVector
+        .asScala.map(_.toFiniteDuration).toList
 
       for
         nodeApis <- apisResource
@@ -198,8 +195,8 @@ object ClusterWatchService:
               nodeApis,
               label = label,
               keepAlive = keepAlive,
-              retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
+              retryDelays = NonEmptyList.fromList(retryDelays) getOrElse NonEmptyList.one(1.s),
               onClusterStateChanged,
               onUndecidableClusterNodeLoss)))
-      yield service
-    })
+      yield
+        service)

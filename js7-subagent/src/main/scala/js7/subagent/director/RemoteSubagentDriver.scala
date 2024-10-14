@@ -374,7 +374,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   private def postCommandUntilSucceeded(command: SubagentCommand): IO[command.Response] =
     logger.traceIO("postCommandUntilSucceeded", command.toShortString):
-      DelayConf.default.run[IO].apply: delayer =>
+      DelayConf.default.runIO: delayer =>
         cancelAndFailWhenStopping:
           api.login(onlyIfNotLoggedIn = true)
             .*>(api.executeSubagentCommand(Numbered(0, command)).orThrow)

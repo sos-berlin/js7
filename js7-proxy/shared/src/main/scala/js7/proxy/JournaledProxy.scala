@@ -1,14 +1,12 @@
 package js7.proxy
 
-import cats.data.NonEmptySeq
 import cats.effect.{IO, ResourceIO}
-import cats.syntax.flatMap.*
 import cats.syntax.applicativeError.*
+import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.catsutils.CatsEffectUtils.durationOfIO
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -21,8 +19,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
-import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.data.problems.UnknownEventIdProblem
@@ -73,48 +71,46 @@ object JournaledProxy:
 
     def stream2(delayer: Delayer[IO]): Stream[IO, EventAndState[Event, S]] =
       none[S].tailRecM: maybeState =>
-        Stream
-          .resource:
-            ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
-              apisResource,
-              failureDelays = proxyConf.recouplingStreamReaderConf.failureDelays,
-              _ => onCouplingError)
-          .flatMap: api =>
-            Stream
-              .eval:
-                durationOfIO:
-                  maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(IO.right)
-              .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
-              .flatMap: (state, stateFetchDuration) =>
-                var lastState = state
-                streamWithState(api, state, stateFetchDuration)
-                  .map: o =>
-                    lastState = o.state
-                    o
-                  .pipe: obs =>
-                    fromEventId.fold(obs):
-                      dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
-                  .map(Right.apply)
-                  .handleErrorWith: t =>
-                    if t.getClass.getName == "org.apache.pekko.stream.AbruptTerminationException"
-                      || fromEventId.nonEmpty && isTorn(t)
-                    then
-                      Stream.raiseError(t)
-                    else
-                      Stream
-                        .suspend(Stream.emit(Left:
-                          if isTorn(t) then
-                            logger.error(t.toStringWithCauses)
-                            logger.warn:
-                              "Restarting stream from a new snapshot, loosing some events"
-                            None
-                          else
-                            logger.warn(t.toStringWithCauses)
-                            if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
-                            logger.debug("Restarting stream and try to continue seamlessly after=" +
-                              EventId.toString(state.eventId))
-                            Some(lastState)))
-                        .evalTap(_ => delayer.sleep)
+        Stream.resource:
+          ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
+            apisResource,
+            proxyConf.recouplingStreamReaderConf.delayConf,
+            _ => onCouplingError)
+        .flatMap: api =>
+          Stream.eval:
+            maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(IO.right).timed
+          .map(o => o._1 -> o._2.orThrow /*!!!*/)
+          .flatMap: (stateFetchDuration, state) =>
+            var lastState = state
+            streamWithState(api, state, stateFetchDuration)
+              .map: o =>
+                lastState = o.state
+                o
+              .pipe: obs =>
+                fromEventId.fold(obs):
+                  dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
+              .map(Right.apply)
+              .evalTap(_ => delayer.reset)
+              .handleErrorWith: t =>
+                if t.getClass.getName == "org.apache.pekko.stream.AbruptTerminationException"
+                  || fromEventId.nonEmpty && isTorn(t)
+                then
+                  Stream.raiseError(t)
+                else
+                  Stream
+                    .suspend(Stream.emit(Left:
+                      if isTorn(t) then
+                        logger.error(t.toStringWithCauses)
+                        logger.warn:
+                          "Restarting stream from a new snapshot, loosing some events"
+                        None
+                      else
+                        logger.warn(t.toStringWithCauses)
+                        if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
+                        logger.debug("Restarting stream and try to continue seamlessly after=" +
+                          EventId.toString(state.eventId))
+                        Some(lastState)))
+                    .evalTap(_ => delayer.sleep)
 
     def isTorn(t: Throwable) =
       checkedCast[ProblemException](t)
@@ -140,12 +136,10 @@ object JournaledProxy:
     def onCouplingError(throwable: Throwable) = IO:
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
 
-    Stream
-      .eval:
-        Delayer.start[IO]:
-          DelayConf(NonEmptySeq.of(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s), resetWhen = 10.s)
-      .flatMap:
-        stream2
+    Stream.eval:
+      DelayConf(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s).start[IO]
+    .flatMap:
+      stream2
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.

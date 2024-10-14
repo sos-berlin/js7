@@ -10,9 +10,9 @@ import js7.base.service.RestartAfterFailureServiceTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.{Atomic, DelayConf}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -118,7 +118,7 @@ final class RestartAfterFailureServiceTest extends OurAsyncTestSuite:
 
     (0 until 8 /*2^3 == 8 combinations*/).toVector
       .parTraverse(i => Service
-        .restartAfterFailure(startDelays = Seq(0.s), runDelays = Seq(0.s))(
+        .restartAfterFailure(restartDelayConf = DelayConf(0.s), runDelayConf = DelayConf(0.s))(
           Service.resource(IO(
             new TestService(
               startFailsRandomly = (i & 1) != 0,

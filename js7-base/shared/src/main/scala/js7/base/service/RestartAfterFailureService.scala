@@ -9,15 +9,16 @@ import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.Delayer.syntax.*
+import js7.base.utils.Delayer.extensions.onFailureRestartWithDelayer
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Atomic, DelayConf, Delayer}
+import js7.base.utils.{Allocated, Atomic, CatsUtils, DelayConf}
 import scala.concurrent.duration.*
 
 final class RestartAfterFailureService[Svc <: Service: Tag] private[service](
-  startDelays: Seq[FiniteDuration] = defaultRestartDelays,
-  runDelays: Seq[FiniteDuration] = defaultRestartDelays)
+  startDelayConf: Option[DelayConf] = Some(defaultRestartConf),
+  runDelayConf: Option[DelayConf] = Some(defaultRestartConf))
   (serviceResource: ResourceIO[Svc])
 extends Service:
   self =>
@@ -26,9 +27,6 @@ extends Service:
   private val currentAllocatedService = Atomic(none[Allocated[IO, Svc]])
   @volatile private var stopping = false
   private val untilStopRequested = Deferred.unsafe[IO, Unit]
-
-  private val maybeStartDelay = DelayConf.maybe(startDelays)
-  private val maybeRunDelay = DelayConf.maybe(runDelays)
 
   protected val stop =
     memoize:
@@ -46,13 +44,13 @@ extends Service:
   private def startUnderlyingService: IO[Svc] =
     serviceResource
       .toAllocated
-      .pipeMaybe(maybeStartDelay)(
+      .pipeMaybe(startDelayConf):
         _.onFailureRestartWithDelayer(_,
           onFailure = t => IO:
             logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
             for st <- t.ifStackTrace do
               logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st),
-          onSleep = logDelay))
+          onSleep = logDelay)
       .flatTap(setCurrentService)
       .map(_.allocatedThing)
 
@@ -64,18 +62,17 @@ extends Service:
         .*>(allocated.release.when(stopping))
 
   private def runUnderlyingService(service: Svc) =
-    maybeRunDelay.fold(service.untilStopped)(delayConf =>
-      Delayer.start[IO](delayConf).flatMap(delayer =>
-        service.some.tailRecM { initialService =>
-          val service = initialService match {
+    runDelayConf.fold(service.untilStopped): delayConf =>
+      delayConf.runIO: delayer =>
+        service.some.tailRecM: initialService =>
+          val service = initialService match
             case Some(initialService) => IO.pure(initialService) // First iteration
             case None => startUnderlyingService // Following iterations
-          }
-          service.flatMap(service =>
+          service.flatMap: service =>
             service
               .untilStopped
               .map(Right(_))
-              .handleErrorWith { throwable =>
+              .handleErrorWith: throwable =>
                 // Service has already logged the throwable
                 logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
                   throwable.nullIfNoStackTrace)
@@ -87,8 +84,6 @@ extends Service:
                       Right(()) // finish tailRecM
                     else
                       Left(None) /*loop*/
-              })
-        }))
 
   private def logDelay(duration: FiniteDuration) =
     IO(logger.info(
@@ -109,5 +104,5 @@ extends Service:
 
 object RestartAfterFailureService:
   private val logger = Logger[this.type]
-  private[service] val defaultRestartDelays: Seq[FiniteDuration] =
-    Vector(0.s, 1.s, 3.s, 6.s, 10.s)
+  private[service] val defaultRestartConf: DelayConf =
+    DelayConf(Nel.of(0.s, 1.s, 3.s, 6.s, 10.s), resetWhen = 10.s)

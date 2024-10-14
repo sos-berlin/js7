@@ -7,6 +7,7 @@ import js7.base.problem.Checked.catchExpected
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.DelayConf
 import scala.jdk.CollectionConverters.*
 
 object RecouplingStreamReaderConfs:
@@ -21,7 +22,7 @@ object RecouplingStreamReaderConfs:
           timeout = Some(timeout),
           keepAlive = keepAlive,
           delay = delay,
-          failureDelays =
+          delayConf = DelayConf:
             Nel.fromList:
               config.getDurationList("js7.web.client.failure-delays").asScala.toList
                 .map(_.toFiniteDuration)

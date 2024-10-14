@@ -3,7 +3,6 @@ package js7.cluster
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.DelayConf
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -43,7 +42,7 @@ final class ClusterConfTest extends OurTestSuite:
             timeout = Some(6.s),  // Between 5s and 7s
             keepAlive = 1.s,
             delay = 1.s,
-            failureDelays = Nel.one(5.s)),
+            DelayConf(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
           delayConf = DelayConf(1.s),
@@ -83,7 +82,7 @@ final class ClusterConfTest extends OurTestSuite:
             timeout = Some(6.s),  // Between 5s and 7s
             keepAlive = 1.s,
             delay = 1.s,
-            failureDelays = Nel.one(5.s)),
+            DelayConf(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
           delayConf = DelayConf(1.s),

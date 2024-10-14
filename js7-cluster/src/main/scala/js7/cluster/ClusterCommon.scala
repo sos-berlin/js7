@@ -12,7 +12,7 @@ import js7.base.system.startup.Halt.haltJava
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Delayer, OneTimeToken, OneTimeTokenProvider, SetOnce}
+import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.core.license.LicenseChecker
@@ -76,7 +76,7 @@ private[cluster] final class ClusterCommon private(
     apiResource: ResourceIO[ClusterNodeApi],
     toCommand: OneTimeToken => C)
   : IO[Unit] =
-    Delayer.start[IO](clusterConf.delayConf).flatMap: delayer =>
+    clusterConf.delayConf.runIO: delayer =>
       val name = toCommand(OneTimeToken("TOKEN")).toShortString
       val since = now
       apiResource

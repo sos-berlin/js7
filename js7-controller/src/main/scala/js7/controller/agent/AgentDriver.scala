@@ -469,14 +469,16 @@ extends Service.StoppableByRequest:
       .onProblemHandleInF(problem => logger.error(problem.toString))
 
   private def activeClientResource: ResourceIO[AgentClient] =
-    ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](
+    ActiveClusterNodeSelector.selectActiveNodeApi(
       clientsResource,
-      failureDelays = conf.recouplingStreamReader.failureDelays,
+      conf.recouplingStreamReader.delayConf,
       onCouplingError = _ => throwable =>
-        onCouplingFailed(throwable match {
-          case ProblemException(problem) => problem
-          case t => Problem.fromThrowable(t)
-        }).void)
+        onCouplingFailed:
+          throwable match
+            case ProblemException(problem) => problem
+            case t => Problem.fromThrowable(t)
+        .void,
+      clusterName = agentPath.toString)
 
   private def clientsResource: ResourceIO[Nel[AgentClient]] =
     Resource

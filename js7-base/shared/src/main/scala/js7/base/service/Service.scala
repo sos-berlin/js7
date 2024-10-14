@@ -10,8 +10,7 @@ import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, ProgramTermination}
-import scala.concurrent.duration.*
+import js7.base.utils.{Atomic, DelayConf, ProgramTermination}
 import scala.util.{Failure, Success, Try}
 
 trait Service:
@@ -75,8 +74,8 @@ trait Service:
 
 object Service:
 
-  private val defaultRestartDelays: Seq[FiniteDuration] =
-    RestartAfterFailureService.defaultRestartDelays
+  private val defaultRestartDelayConf: DelayConf =
+    RestartAfterFailureService.defaultRestartConf
 
   private[service] object Empty extends Service:
     protected lazy val start = startService(IO.unit)
@@ -107,20 +106,19 @@ object Service:
     (body: IO[A])
   : IO[A] =
     IO.defer:
-      val a = args.nonEmpty ?? s"($args)"
-      logger.info(s"$serviceName$a started")
+      logger.info(s"$serviceName${args.nonEmpty ?? s"($args)"} started")
       body.guaranteeCase:
         case Outcome.Errored(_) => IO.unit // start logs the error
         case Outcome.Canceled() => IO(logger.info(s"◼️ $serviceName canceled"))
         case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName stopped"))
 
   def restartAfterFailure[Svc <: Service: Tag](
-    startDelays: Seq[FiniteDuration] = defaultRestartDelays,
-    runDelays: Seq[FiniteDuration] = defaultRestartDelays)
+    restartDelayConf: DelayConf = defaultRestartDelayConf,
+    runDelayConf: DelayConf = defaultRestartDelayConf)
     (serviceResource: ResourceIO[Svc])
   : ResourceIO[RestartAfterFailureService[Svc]] =
     resource(IO:
-      new RestartAfterFailureService(startDelays, runDelays)(serviceResource))
+      new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource))
 
   def simple(body: IO[ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:

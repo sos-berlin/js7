@@ -163,6 +163,9 @@ object CatsUtils:
       else
         Right(NonEmptyList(seq.head, seq.toList.tail))
 
+    def fromSeq[A](seq: Seq[A]): Option[NonEmptyList[A]] =
+      NonEmptyList.fromList(seq.toList)
+
   implicit final class RichNonEmptySeqCompanion(private val x: NonEmptySeq.type)
   extends AnyVal:
     def unsafe[A: Tag](seq: Seq[A]): NonEmptySeq[A] =

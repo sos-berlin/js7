@@ -1,7 +1,7 @@
 package js7.agent.scheduler.order
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import com.softwaremill.tagging.{@@, Tagger}
@@ -23,7 +23,7 @@ import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize
 import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, WrappedException}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
@@ -32,7 +32,6 @@ import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.CatsUtils.{continueWithLast, pureFiberIO}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
 import js7.cluster.ClusterNode
 import js7.common.pekkoutils.Pekkos.{encodeAsActorName, uniqueActorName}
@@ -280,7 +279,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
     val receive: Receive =
       case Internal.SubagentKeeperInitialized(state, tried) =>
-        for t <- tried.ifFailed do throw t.appendCurrentStackTrace
+        for t <- tried.ifFailed do throw WrappedException(t)
 
         for workflow <- state.idToWorkflow.values do
           wrapException(s"Error while recovering ${workflow.path}"):

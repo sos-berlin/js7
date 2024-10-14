@@ -1,16 +1,16 @@
 package js7.base.utils
 
-import cats.data.NonEmptySeq
 import cats.effect.IO
 import cats.effect.testkit.TestControl
 import js7.base.catsutils.CatsDeadline
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import scala.collection.mutable
 import scala.concurrent.duration.*
 
 final class DelayerTest extends OurAsyncTestSuite:
-  private val conf = DelayConf(NonEmptySeq.of(1.s, 2.s, 3.s), resetWhen = 100.s)
+  private val conf = DelayConf(Nel.of(1.s, 2.s, 3.s), resetWhen = 100.s)
 
   "sleep" in:
     TestControl.executeEmbed:

@@ -10,7 +10,7 @@ import js7.base.problem.Problem
 import js7.base.session.TestSessionApi
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.DelayConf
 import js7.common.http.configuration.RecouplingStreamReaderConf
 
 /**
@@ -23,7 +23,7 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
     val api = new TestSessionApi(Some(userAndPassword))
     val recouplingStreamReaderConf = RecouplingStreamReaderConf(
       timeout = Some(5.s), keepAlive = 1.s, delay = 1.s,
-      failureDelays = Nel.one(5.s))
+      DelayConf(5.s))
 
     val stream = Stream.suspend:
       @volatile var lastErrorAt = -2

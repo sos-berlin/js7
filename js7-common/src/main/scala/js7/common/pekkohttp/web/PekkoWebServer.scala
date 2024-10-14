@@ -1,7 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.Deferred
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import cats.instances.vector.*
 import cats.syntax.all.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -20,7 +19,7 @@ import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, DelayConf, Delayer}
+import js7.base.utils.{Allocated, DelayConf}
 import js7.base.web.Uri
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.PekkoWebServer.*
@@ -114,28 +113,27 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   : IO[Option[Allocated[IO, SinglePortPekkoWebServer]]] =
     import bindingAndResource.{resource, webServerBinding as binding}
 
-    Delayer.start[IO](DelayConf.default)
-      .flatMap: delayer =>
-        var errorLogged = false
-        readFileTimes(binding)
-          .flatMap: fileTimes =>
-            resource.toAllocated
-              .map(allo => (fileTimes -> allo).some)
-          .onErrorRestartLoop(()):
-            case (throwable, _, retry) =>
-              errorLogged = true
-              logger.error:
-                s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}"
-              for t <- throwable.ifStackTrace do logger.debug(s"💥 ${t.toStringWithCauses}", t)
-              IO
-                .race(
-                  untilStopRequested,
-                  delayer.sleep(logDelay(_, bindingAndResource.toString)))
-                .flatMap(_.fold(_ => IO.none/*stop requested*/, _ => retry(())))
-          .map(_.map: (fileTimes, allocated) =>
-            _addrToHttpsFileToTime(binding.address) = fileTimes
-            if errorLogged then logger.info(s"🟢 Web server for $bindingAndResource restarted")
-            allocated)
+    DelayConf.default.runIO: delayer =>
+      var errorLogged = false
+      readFileTimes(binding)
+        .flatMap: fileTimes =>
+          resource.toAllocated
+            .map(allo => (fileTimes -> allo).some)
+        .onErrorRestartLoop(()):
+          case (throwable, _, retry) =>
+            errorLogged = true
+            logger.error:
+              s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}"
+            for t <- throwable.ifStackTrace do logger.debug(s"💥 ${t.toStringWithCauses}", t)
+            IO
+              .race(
+                untilStopRequested,
+                delayer.sleep(logDelay(_, bindingAndResource.toString)))
+              .flatMap(_.fold(_ => IO.none/*stop requested*/, _ => retry(())))
+        .map(_.map: (fileTimes, allocated) =>
+          _addrToHttpsFileToTime(binding.address) = fileTimes
+          if errorLogged then logger.info(s"🟢 Web server for $bindingAndResource restarted")
+          allocated)
 
   private def readFileTimes(binding: WebServerBinding)
   : IO[Map[Path, Try[FileTime]]] =

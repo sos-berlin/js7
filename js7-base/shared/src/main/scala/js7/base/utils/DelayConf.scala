@@ -1,27 +1,32 @@
 package js7.base.utils
 
-import cats.data.{NonEmptyList, NonEmptySeq}
-import cats.effect.Async
+import cats.data.NonEmptyList
+import cats.effect.{Async, IO}
 import cats.syntax.flatMap.*
 import fs2.{Pure, Stream}
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import scala.concurrent.duration.*
 
 final case class DelayConf(
-  delays: NonEmptySeq[FiniteDuration],
-  resetWhen: FiniteDuration):
+  delays: NonEmptyList[FiniteDuration],
+  resetWhen: FiniteDuration = FiniteDuration.MaxValue):
 
   def stream: Stream[Pure, FiniteDuration] =
-    Stream.iterable(delays.toSeq) ++ Stream.constant(delays.last)
+    Stream.iterable(delays.toList) ++ Stream.constant(delays.last)
 
   def lazyList: LazyList[FiniteDuration] =
-    LazyList.from(delays.toSeq) ++ LazyList.continually(delays.last)
+    repeatLast(delays.toList)
+
+  /** Like run[IO] — only because Intellij does not detect body's type of run[IO]. */
+  def runIO[A](body: Delayer[IO] => IO[A]): IO[A] =
+    run[IO].apply(body)
 
   def run[F[_]](using Async[F]): Run[F] =
-    new Run[F]
+    Run[F]
 
-  final class Run[F[_]](using Async[F]):
+  final class Run[F[_]] private[DelayConf](using Async[F]):
     def apply[A](body: Delayer[F] => F[A]): F[A] =
       start[F].flatMap(body)
 
@@ -30,24 +35,18 @@ final case class DelayConf(
 
   override def toString = s"DelayConf($argString)"
 
-  def argString: String =
-    delays.toSeq.view.map(_.pretty).mkString(" ") +
-      ((resetWhen != FiniteDuration.MaxValue) ?? " resetWhen=%s".format(resetWhen.pretty) )
+  private def argString: String =
+    delays.toList.view.map(_.pretty).mkString(" ") +
+      ((resetWhen != FiniteDuration.MaxValue) ?? " resetWhen=%s".format(resetWhen.pretty))
 
 
 object DelayConf:
+
   /* Delay up to 10s.*/
   val default: DelayConf = DelayConf(1.s, 3.s, 6.s, 10.s)
 
-  def apply(delays: NonEmptySeq[FiniteDuration]): DelayConf =
-    DelayConf(delays, delays.last)
-
-  def apply(delays: NonEmptyList[FiniteDuration]): DelayConf =
-    DelayConf(delays.head, delays.tail*)
-
   def apply(delay: FiniteDuration, moreDelayes: FiniteDuration*): DelayConf =
-    DelayConf(NonEmptySeq(delay, moreDelayes))
+    DelayConf(NonEmptyList.of(delay, moreDelayes*))
 
   def maybe(delays: Seq[FiniteDuration]): Option[DelayConf] =
-    for delays <- NonEmptySeq.fromSeq(delays) yield
-      DelayConf(delays)
+    NonEmptyList.fromSeq(delays).map(DelayConf(_))
