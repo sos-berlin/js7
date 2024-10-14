@@ -11,8 +11,8 @@ import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
-import scala.concurrent.duration.FiniteDuration
 import scala.collection.immutable.Map.Map1
+import scala.concurrent.duration.FiniteDuration
 
 object Problems:
   case object PassiveClusterNodeShutdownNotAllowedProblem extends Problem.ArgumentlessCoded
@@ -139,3 +139,8 @@ object Problems:
     def arguments: Map[String, String] = Map1("orderId", orderId.toString)
 
   case object ClusterNodeHasBeenSwitchedOverProblem extends Problem.ArgumentlessCoded
+
+  final case class NoActiveClusterNodeProblem(clusterStates: Seq[String]) extends Problem.Coded:
+    def arguments: Map[String, String] =
+      Map1("clusterStates", clusterStates.mkString(", "))
+        .filter(_._2.nonEmpty)

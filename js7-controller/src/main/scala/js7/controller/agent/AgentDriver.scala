@@ -21,7 +21,7 @@ import js7.base.monixlike.MonixLikeExtensions.raceFold
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
@@ -470,12 +470,7 @@ extends Service.StoppableByRequest:
     ActiveClusterNodeSelector.selectActiveNodeApi(
       clientsResource,
       conf.recouplingStreamReader.delayConf,
-      onCouplingError = _ => throwable =>
-        onCouplingFailed:
-          throwable match
-            case ProblemException(problem) => problem
-            case t => Problem.fromThrowable(t)
-        .void,
+      onCouplingError = onCouplingFailed(_).void,
       clusterName = agentPath.toString)
 
   private def clientsResource: ResourceIO[Nel[AgentClient]] =

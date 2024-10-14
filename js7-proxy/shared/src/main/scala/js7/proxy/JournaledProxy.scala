@@ -75,7 +75,7 @@ object JournaledProxy:
           ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
             apisResource,
             proxyConf.recouplingStreamReaderConf.delayConf,
-            _ => onCouplingError)
+            problem => IO(onProxyEvent(ProxyCouplingError(problem))))
         .flatMap: api =>
           Stream.eval:
             maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(IO.right).timed
@@ -132,9 +132,6 @@ object JournaledProxy:
             s.state.applyEvent(stampedEvent.value)
               .orThrow/*TODO Restart*/
               .withEventId(stampedEvent.eventId)))
-
-    def onCouplingError(throwable: Throwable) = IO:
-      onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
 
     Stream.eval:
       DelayConf(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s).start[IO]
