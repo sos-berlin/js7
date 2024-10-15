@@ -8,9 +8,11 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderId, OrderOutcome}
 import js7.data.value.NumberValue
+import js7.data.value.expression.Expression
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, If, TryInstruction}
@@ -37,23 +39,24 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
   protected val items = Nil
 
   "Timeout" in:
-    val workflow = Workflow(WorkflowPath("WORKFLOW"), Seq(
+    val workflow = Workflow(WorkflowPath("TIMEOUT"), Seq(
       TryInstruction(
         Workflow.of:
-          Execute(WorkflowJob(
-            agentPath,
-            ShellScriptExecutable(
-              if isWindows then
-                s"""@echo off
-                   |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
-                   |""".stripMargin
-              else
-                s"""
-                   |#!/usr/bin/env bash
-                   |i=${10 * jobDuration.toSeconds}
-                   |while [ $$i -ge 0 ]; do sleep 0.1; done
-                   |""".stripMargin),
-            timeout = Some(timeout))),
+          Execute:
+            WorkflowJob(
+              agentPath,
+              ShellScriptExecutable:
+                if isWindows then
+                  s"""@echo off
+                     |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
+                     |""".stripMargin
+                else
+                  s"""#!/usr/bin/env bash
+                     |set -euo pipefail
+                     |i=${10 * jobDuration.toSeconds}
+                     |while [ $$i -ge 0 ]; do sleep 0.1; done
+                     |""".stripMargin,
+                timeout = Some(timeout)),
         Workflow.of:
           If(expr("!timedOut"),
             Workflow.of:
@@ -65,26 +68,28 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
         FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path, deleteWhenTerminated = true))
 
       val t = now
-      val events = controller.runOrder(FreshOrder(OrderId("ORDER"), workflowPath = workflow.path))
-        .map(_.value)
+      val events = controller.runOrder:
+        FreshOrder(OrderId("TIMEOIUT"), workflowPath = workflow.path, deleteWhenTerminated = true)
+      .map(_.value)
       val elapsed = t.elapsed
       logger.info(elapsed.pretty)
       assert(elapsed >= timeout && elapsed < jobDuration / 2)
       assert(events ==
         Vector(
-          OrderAdded(workflow.id),
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderMoved(Position(0) / "try+0" % 0),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
           OrderProcessed(OrderOutcome.TimedOut(OrderOutcome.Failed(Map(
-            "returnCode" -> NumberValue(if isWindows then 1 else 128 + SIGTERM.number))))),
+            "returnCode" -> NumberValue(sigtermReturnCode))))),
           OrderCaught(Position(0) / "catch+0" % 0),
           OrderMoved(Position(1)),
           OrderDetachable,
           OrderDetached,
-          OrderFinished()))
+          OrderFinished(),
+          OrderDeleted))
 
   "No timeout" in:
     val workflow = Workflow(WorkflowPath("NO-TIMEOUT"), Seq(
@@ -97,17 +102,74 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
               Fail(Some(expr("'💥 TIMED OUT'")))))))
 
     withItem(workflow): workflow =>
-      val events = controller.runOrder(FreshOrder(OrderId("NO-TIMEOUT"), workflowPath = workflow.path))
-        .map(_.value)
+      val events = controller.runOrder:
+        FreshOrder(OrderId("NO-TIMEOUT"), workflowPath = workflow.path, deleteWhenTerminated = true)
+      .map(_.value)
       assert(events ==
         Vector(
-          OrderAdded(workflow.id),
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderMoved(Position(0) / "try+0" % 0),
           OrderStarted,
           OrderOutcomeAdded(OrderOutcome.failed),
           OrderCaught(Position(0) / "catch+0" % 0),
           OrderMoved(Position(1)),
-          OrderFinished()) )
+          OrderFinished(),
+          OrderDeleted))
+
+  "returnCode and named values after caught timed-out script execution" in :
+    val workflow = Workflow(WorkflowPath("WORKFLOW"), Seq(
+      TryInstruction(
+        Workflow.of:
+          Execute:
+            WorkflowJob(
+              agentPath,
+              ShellScriptExecutable:
+                if isWindows then
+                  s"""@echo off
+                     |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
+                     |""".stripMargin
+                else
+                  s"""#!/usr/bin/env bash
+                     |set -euo pipefail
+                     |i=${10 * jobDuration.toSeconds}
+                     |while [ $$i -ge 0 ]; do sleep 0.1; done
+                     |""".stripMargin,
+                timeout = Some(timeout)),
+        Workflow.of:
+          If(expr("!timedOut || $returnCode == 0"),
+            Workflow.of:
+              Fail(Some(StringConstant:
+                "💥 !timedOut || $returnCode == 0"))))))
+
+    withItem(workflow): workflow =>
+      val t = now
+      val orderId = OrderId("RETURN-CODE")
+      val events = controller.runOrder:
+        FreshOrder(orderId, workflowPath = workflow.path)
+      .map(_.value)
+      val elapsed = t.elapsed
+      logger.info(elapsed.pretty)
+      assert(elapsed >= timeout && elapsed < jobDuration / 2)
+      assert(events ==
+        Vector(
+          OrderAdded(workflow.id),
+          OrderMoved(Position(0) / "try+0" % 0),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted(subagentId),
+          OrderProcessed(OrderOutcome.TimedOut(OrderOutcome.Failed(Map(
+            "returnCode" -> NumberValue(sigtermReturnCode))))),
+          OrderCaught(Position(0) / "catch+0" % 0),
+          OrderMoved(Position(1)),
+          OrderDetachable,
+          OrderDetached,
+          OrderFinished()))
+      assert(controllerState.idToOrder(orderId).historicOutcomes ==
+        Vector(
+          HistoricOutcome(Position(0) / "try+0" % 0, OrderOutcome.TimedOut(OrderOutcome.Failed(Map(
+            "returnCode" -> NumberValue(sigtermReturnCode))))),
+          HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught)))
 
 
 object JobTimeoutTest:
@@ -115,4 +177,5 @@ object JobTimeoutTest:
   private val subagentId = toLocalSubagentId(agentPath)
   private val jobDuration = 10.s
   private val timeout = 200.ms
+  private val sigtermReturnCode = if isWindows then 1 else 128 + SIGTERM.number
   private val logger = Logger[this.type]

@@ -19,8 +19,9 @@ extends Scope:
         .view
         .reverse
         .collect:
-          case HistoricOutcome(_, o: OrderOutcome.Completed) =>
-            o.namedValues.view.mapValues(Right(_))
+          case HistoricOutcome(_, o: OrderOutcome) =>
+            o.findNamedValues.map(_.view.mapValues(Right(_)))
+        .flatten
         .fold(MapView.empty[String, Checked[Value]]): (a, b) =>
           a.orElseMapView(b))
 
@@ -33,7 +34,7 @@ extends Scope:
         order.historicOutcomes
           .reverseIterator
           .collectFirst:
-            case HistoricOutcome(pos, outcome: OrderOutcome.Completed)
+            case HistoricOutcome(pos, outcome: OrderOutcome)
               if workflow.positionMatchesSearch(pos, positionSearch) =>
               whatToValue(outcome, what).map(Right(_))
           .flatten
@@ -47,9 +48,10 @@ extends Scope:
 
 
 object OrderVariablesScope:
+
   def apply(order: Order[Order.State], workflow: Workflow): Scope =
     new OrderVariablesScope(order, workflow)
 
-  private def whatToValue(outcome: OrderOutcome.Completed, what: ValueSearch.What): Option[Value] =
+  private def whatToValue(outcome: OrderOutcome, what: ValueSearch.What): Option[Value] =
     what match
-      case ValueSearch.Name(key) => outcome.namedValues.get(key)
+      case ValueSearch.Name(key) => outcome.findNamedValues.flatMap(_.get(key))

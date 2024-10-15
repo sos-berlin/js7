@@ -21,21 +21,21 @@ import js7.base.utils.Atomic
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
-import js7.data.command.CancellationMode
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
-import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Response, ResumeOrder}
+import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Response, ResumeOrder, SuspendOrders}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderResumed, OrderRetrying, OrderStarted, OrderStateReset, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
-import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BreakOrder, Execute, Fail, Fork, If, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -980,10 +980,82 @@ final class CancelOrdersTest
     end testChildProcessesAreKilled
   }
 
+  "returnCode and named values after caught killed script execution" in :
+    val workflow = Workflow(WorkflowPath("CAUGHT"), Seq(
+      TryInstruction(
+        Workflow.of:
+          Execute:
+            WorkflowJob(
+              agentPath,
+              ShellScriptExecutable:
+                if isWindows then
+                  s"""@echo off
+                     |echo Start
+                     |ping -n 11 127.0.0.1 >nul
+                     |""".stripMargin
+                else
+                  s"""#!/usr/bin/env bash
+                     |set -euo pipefail
+                     |echo Start
+                     |i=100
+                     |while [ $$i -ge 0 ]; do sleep 0.1; done
+                     |""".stripMargin),
+        Workflow.of:
+          If(expr("$returnCode == 0"),
+            Workflow.of:
+              Fail(Some(StringConstant:
+                "💥 $returnCode == 0"))))))
+
+    withItem(workflow): workflow =>
+      val orderId = OrderId("CAUGHT")
+      controller.api.addOrder:
+        FreshOrder(orderId, workflowPath = workflow.path)
+      .await(99.s).orThrow
+      eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
+
+      controller.api.executeCommand:
+        SuspendOrders(Seq(orderId), SuspensionMode.kill)
+      .await(99.s).orThrow
+      eventWatch.awaitNext[OrderSuspended](_.key == orderId)
+
+      controller.api.executeCommand:
+        ResumeOrder(orderId)
+      .await(99.s).orThrow
+      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+      val events = eventWatch.eventsByKey[OrderEvent](orderId)
+      assert(events ==
+        Vector(
+          OrderAdded(workflow.id),
+          OrderMoved(Position(0) / "try+0" % 0),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted(subagentId),
+          OrderStdoutWritten("Start\n"),
+          OrderSuspensionMarked(SuspensionMode.kill),
+          OrderSuspensionMarkedOnAgent,
+          OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Map(
+            "returnCode" -> NumberValue(sigtermReturnCode))))),
+          OrderProcessingKilled,
+          OrderDetachable,
+          OrderDetached,
+          OrderSuspended,
+          OrderResumed(),
+          OrderCaught(Position(0) / "catch+0" % 0),
+          OrderMoved(Position(1)),
+          OrderFinished()))
+      assert(controllerState.idToOrder(orderId).historicOutcomes ==
+        Vector(
+          HistoricOutcome(Position(0) / "try+0" % 0, OrderOutcome.Killed(OrderOutcome.Failed(Map(
+            "returnCode" -> NumberValue(sigtermReturnCode))))),
+          HistoricOutcome(Position(0) / "catch+0" % 0, OrderOutcome.Caught)))
+
 
 object CancelOrdersTest:
 
   private val logger = Logger[this.type]
+  private val sigtermReturnCode = if isWindows then 1 else 128 + SIGTERM.number
 
   private val sleepingExecutable = ShellScriptExecutable(
     if isWindows then

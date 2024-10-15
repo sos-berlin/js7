@@ -20,8 +20,12 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 sealed trait OrderOutcome:
+
   final def isSucceeded: Boolean =
     isInstanceOf[OrderOutcome.IsSucceeded]
+
+  /** Different to namedValues, findNamedValues dives into nested OrderOutcomes. */
+  def findNamedValues: Option[NamedValues]
 
   def show: String
 
@@ -47,6 +51,10 @@ object OrderOutcome:
   /** The job has terminated. */
   sealed trait Completed extends OrderOutcome:
     def namedValues: NamedValues
+
+    def findNamedValues: Some[NamedValues] =
+      Some(namedValues)
+
   object Completed:
     def apply(success: Boolean): Completed =
       apply(success, Map.empty)
@@ -169,16 +177,27 @@ object OrderOutcome:
         uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
         errorMessage <- c.get[Option[String]]("message")
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
-      yield Failed(errorMessage, namedValues, uncatchable)
+      yield
+        Failed(errorMessage, namedValues, uncatchable)
+
 
   final case class TimedOut(outcome: OrderOutcome.Completed)
   extends OrderOutcome:
     def show = s"TimedOut($outcome)"
+
+    def findNamedValues: Option[NamedValues] =
+      outcome.findNamedValues
+
     override def toString = "⚠️ " + show
+
 
   final case class Killed(outcome: OrderOutcome.Completed)
   extends OrderOutcome:
     def show = s"Killed($outcome)"
+
+    def findNamedValues: Option[NamedValues] =
+      outcome.findNamedValues
+
     override def toString = "⚠️ " + show
 
   @TestOnly
@@ -189,10 +208,15 @@ object OrderOutcome:
   val killedInternal: Killed =
     Killed(OrderOutcome.Failed(Some("Canceled")))
 
+
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason, uncatchable: Boolean = false)
   extends OrderOutcome, NotSucceeded:
     def show = s"Disrupted($reason)"
+
+    def findNamedValues: None.type =
+      None
+
     override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
 
   object Disrupted:
