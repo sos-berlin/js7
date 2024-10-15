@@ -6,7 +6,6 @@ import java.io.{InputStream, OutputStream, PipedInputStream, PipedOutputStream, 
 import js7.base.data.ByteArray
 import js7.base.io.ReaderStreams.{inputStreamToByteStream, readerToCharStream}
 import js7.base.test.OurAsyncTestSuite
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 
