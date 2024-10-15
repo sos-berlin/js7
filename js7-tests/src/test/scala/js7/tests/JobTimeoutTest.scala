@@ -126,11 +126,13 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
               ShellScriptExecutable:
                 if isWindows then
                   s"""@echo off
+                     |echo result=Hello >>"%JS7_RETURN_VALUES%"
                      |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
                      |""".stripMargin
                 else
                   s"""#!/usr/bin/env bash
                      |set -euo pipefail
+                     |echo "result=Hello" >>"$$JS7_RETURN_VALUES"
                      |i=${10 * jobDuration.toSeconds}
                      |while [ $$i -ge 0 ]; do sleep 0.1; done
                      |""".stripMargin,

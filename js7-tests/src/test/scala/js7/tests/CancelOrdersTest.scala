@@ -991,12 +991,14 @@ final class CancelOrdersTest
                 if isWindows then
                   s"""@echo off
                      |echo Start
+                     |echo result=Hello >>"%JS7_RETURN_VALUES%"
                      |ping -n 11 127.0.0.1 >nul
                      |""".stripMargin
                 else
                   s"""#!/usr/bin/env bash
                      |set -euo pipefail
                      |echo Start
+                     |echo "result=Hello" >>"$$JS7_RETURN_VALUES"
                      |i=100
                      |while [ $$i -ge 0 ]; do sleep 0.1; done
                      |""".stripMargin),

@@ -27,6 +27,7 @@ final class ProcessDriver(
   import jobLauncherConf.crashPidFile
   private val pipedProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
+  @volatile private var killed = false
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
   def runProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
@@ -108,16 +109,19 @@ final class ProcessDriver(
                     Checked.unit
 
     private def fetchReturnValues(returnCode: ReturnCode): IO[OrderOutcome.Completed] =
-      returnValuesProvider.read.catchAsChecked
-        .logWhenItTakesLonger(s"fetchReturnValues $orderId") // Because IO.interruptible does not execute ?
-        .map:
-          case Left(problem) =>
-            OrderOutcome.Failed.fromProblem(
-              problem.withPrefix("Reading return values failed:"),
-              Map(ProcessExecutable.toNamedValue(returnCode)))
+      if killed then
+        IO.pure(conf.toOutcome(NamedValues.empty, returnCode))
+      else
+        returnValuesProvider.read.catchAsChecked
+          .logWhenItTakesLonger(s"fetchReturnValues $orderId") // Because IO.interruptible does not execute ?
+          .map:
+            case Left(problem) =>
+              OrderOutcome.Failed.fromProblem(
+                problem.withPrefix("Reading return values file failed:"),
+                Map(ProcessExecutable.toNamedValue(returnCode)))
 
-          case Right(namedValues) =>
-            conf.toOutcome(namedValues, returnCode)
+            case Right(namedValues) =>
+              conf.toOutcome(namedValues, returnCode)
 
   def kill(signal: ProcessSignal): IO[Unit] =
     startProcessLock.lock("kill"):
@@ -131,7 +135,9 @@ final class ProcessDriver(
             sendProcessSignal(pipedProcess, signal)
 
   private def sendProcessSignal(pipedProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
-    pipedProcess.sendProcessSignal(signal)
+    IO.defer:
+      killed = true
+      pipedProcess.sendProcessSignal(signal)
 
   override def toString = s"ProcessDriver(${conf.jobKey})"
 
