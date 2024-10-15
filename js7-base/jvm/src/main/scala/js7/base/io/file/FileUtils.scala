@@ -1,6 +1,6 @@
 package js7.base.io.file
 
-import cats.effect.{Resource, Sync}
+import cats.effect.{IO, Resource, Sync}
 import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException, InputStream}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -190,8 +190,23 @@ object FileUtils:
     (using F: Sync[F])
   : Resource[F, Path] =
     Resource.make(
-      acquire = F.delay(Files.createTempFile(prefix, suffix, attributes*)))(
-      release = file => F.delay(Files.deleteIfExists(file)))
+      acquire = F.delay:
+        Files.createTempFile(prefix, suffix, attributes*))(
+      release = file => F.delay:
+        Files.deleteIfExists(file))
+
+  def temporaryFileResource(
+    directory: Path,
+    prefix: String,
+    suffix: String,
+    attributes: FileAttribute[?]*)
+  : Resource[IO, Path] =
+    Resource.make(
+      acquire = IO:
+        Files.createTempFile(directory, prefix, suffix, attributes*))(
+      release = file =>
+        IO.interruptible:
+          FileDeleter.tryDeleteFile(file))
 
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser: closer =>

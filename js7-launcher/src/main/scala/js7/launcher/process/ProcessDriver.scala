@@ -2,7 +2,7 @@ package js7.launcher.process
 
 import cats.effect.IO
 import cats.syntax.traverse.*
-import js7.base.catsutils.CatsEffectExtensions.{left, startAndForget}
+import js7.base.catsutils.CatsEffectExtensions.{catchAsChecked, left, startAndForget}
 import js7.base.io.process.{KeyLogin, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -25,19 +25,26 @@ final class ProcessDriver(
   jobLauncherConf: JobLauncherConf):
 
   import jobLauncherConf.crashPidFile
-  private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
-  private lazy val returnValuesProvider = new ShellReturnValuesProvider(
-    jobLauncherConf.tmpDirectory,
-    jobLauncherConf.systemEncoding,
-    v1Compatible = conf.v1Compatible)
   private val pipedProcessOnce = SetOnce[PipedProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
   def runProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : IO[OrderOutcome.Completed] =
-    startProcess(env, stdObservers)
-      .flatMap:
+    ShellReturnValuesProvider.resource(
+        jobLauncherConf.tmpDirectory,
+        jobLauncherConf.systemEncoding,
+        v1Compatible = conf.v1Compatible)
+      .use: returnValuesProvider =>
+        new Run(env, stdObservers, returnValuesProvider).runProcess
+
+  private class Run(
+    env: Map[String, Option[String]],
+    stdObservers: StdObservers,
+    returnValuesProvider: ShellReturnValuesProvider):
+
+    def runProcess: IO[OrderOutcome.Completed] =
+      startProcess.flatMap:
         case Left(problem) =>
           IO.pure(OrderOutcome.Failed.fromProblem(problem))
 
@@ -64,22 +71,19 @@ final class ProcessDriver(
                           process.duration.pretty}")
                         IO.fromEither(either)
                     .flatMap: returnCode =>
-                      outcomeOf(returnCode)
+                      fetchReturnValues(returnCode)
           .guarantee:
             process.release
       //.guarantee:
       //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
-  private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : IO[Checked[PipedProcess]] =
-    IO.defer:
-      killedBeforeStart match
-        case Some(signal) =>
+    private def startProcess: IO[Checked[PipedProcess]] =
+      IO.defer:
+        if killedBeforeStart.isDefined then
           IO.left(Problem.pure("Processing killed before start"))
-
-        case None =>
+        else
           IO:
-            checkedWindowsLogon.flatMap: maybeWindowsLogon =>
+            conf.login.traverse(WindowsLogon.fromKeyLogin).flatMap: maybeWindowsLogon =>
               catchNonFatal:
                 for o <- maybeWindowsLogon do
                   WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
@@ -103,36 +107,28 @@ final class ProcessDriver(
                     pipedProcessOnce := pipedProcess
                     Checked.unit
 
-  private def outcomeOf(returnCode: ReturnCode)
-  : IO[OrderOutcome.Completed] =
-    fetchReturnValuesThenDeleteFile.map:
-      case Left(problem) =>
-        OrderOutcome.Failed.fromProblem(
-          problem.withPrefix("Reading return values failed:"),
-          Map(ProcessExecutable.toNamedValue(returnCode)))
+    private def fetchReturnValues(returnCode: ReturnCode): IO[OrderOutcome.Completed] =
+      returnValuesProvider.read.catchAsChecked
+        .logWhenItTakesLonger(s"fetchReturnValues $orderId") // Because IO.interruptible does not execute ?
+        .map:
+          case Left(problem) =>
+            OrderOutcome.Failed.fromProblem(
+              problem.withPrefix("Reading return values failed:"),
+              Map(ProcessExecutable.toNamedValue(returnCode)))
 
-      case Right(namedValues) =>
-        conf.toOutcome(namedValues, returnCode)
-    .guarantee(IO.interruptible:
-      returnValuesProvider.tryDeleteFile())
-
-  private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
-    IO.interruptible:
-      catchNonFatal:
-        val result = returnValuesProvider.read()
-        returnValuesProvider.tryDeleteFile()
-        result
-    .logWhenItTakesLonger(s"fetchReturnValuesThenDeleteFile $orderId") // Because IO.interruptible does not execute ?
+          case Right(namedValues) =>
+            conf.toOutcome(namedValues, returnCode)
 
   def kill(signal: ProcessSignal): IO[Unit] =
-    startProcessLock.lock("kill")(IO.defer:
-      pipedProcessOnce.toOption match
-        case None =>
-          IO:
-            killedBeforeStart = Some(signal)
-            logger.debug(s"$orderId ◼️ Kill before start")
-        case Some(pipedProcess) =>
-          sendProcessSignal(pipedProcess, signal))
+    startProcessLock.lock("kill"):
+      IO.defer:
+        pipedProcessOnce.toOption match
+          case None =>
+            IO:
+              killedBeforeStart = Some(signal)
+              logger.debug(s"$orderId ◼️ Kill before start")
+          case Some(pipedProcess) =>
+            sendProcessSignal(pipedProcess, signal)
 
   private def sendProcessSignal(pipedProcess: PipedProcess, signal: ProcessSignal): IO[Unit] =
     pipedProcess.sendProcessSignal(signal)

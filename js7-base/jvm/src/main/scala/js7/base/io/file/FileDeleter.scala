@@ -1,6 +1,6 @@
 package js7.base.io.file
 
-import java.nio.file.Files.deleteIfExists
+import java.nio.file.Files.{deleteIfExists, exists}
 import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,7 +16,8 @@ object FileDeleter:
     var allFilesDeleted = true
     for file <- files do
       try
-        logger.debug(s"Delete file '$file'")
+        logger.whenDebugEnabled:
+          if exists(file) then logger.debug(s"Delete file '$file'")
         deleteIfExists(file)
       catch case NonFatal(t) =>
         allFilesDeleted = false
