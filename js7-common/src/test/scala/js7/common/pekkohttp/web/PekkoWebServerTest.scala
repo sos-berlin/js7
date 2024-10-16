@@ -36,6 +36,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.impl.util.JavaVersion
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
@@ -165,8 +166,11 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll:
             HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"),
             httpsConnectionContext)
           .await(99.s)
-      assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
-             e.getMessage == "General SSLEngine problem")
+      if JavaVersion.majorVersion >= 23 then
+        assert(e.getMessage == "(certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found")
+      else
+        assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found"
+            || e.getMessage == "General SSLEngine problem")
 
     "For this test, localhost must point to 127.0.0.1" in:
       // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).

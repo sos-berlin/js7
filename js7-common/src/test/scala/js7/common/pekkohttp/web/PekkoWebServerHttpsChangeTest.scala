@@ -30,6 +30,7 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.impl.util.JavaVersion
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse}
@@ -131,7 +132,11 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
             HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
             changedHttpsConnectionContext)
           .await(99.s)
-      assert(e.getMessage == "No trusted certificate found")
+      assert(e.getMessage == locally:
+        if JavaVersion.majorVersion >= 23 then
+          "(certificate_unknown) No trusted certificate found"
+        else
+          "No trusted certificate found")
 
     val changedCert = ChangedKeyStoreResource.readAs[ByteArray]
     var writtenLength = 0
