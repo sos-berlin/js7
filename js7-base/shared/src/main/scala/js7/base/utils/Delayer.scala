@@ -29,16 +29,16 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
       _state := State(initialNow, conf.lazyList)
       sym.clear()
 
-  def sleep: F[Unit] =
+  def sleep(using sourcecode.Enclosing): F[Unit] =
     sleep_(_ => F.unit)
 
-  def sleep(onSleep: FiniteDuration => F[Unit]): F[Unit] =
+  def sleep(onSleep: FiniteDuration => F[Unit])(using sourcecode.Enclosing): F[Unit] =
     sleep_(onSleep)
 
   /** Concurrently callable */
-  private def sleep_(onSleep: FiniteDuration => F[Unit]): F[Unit] =
+  private def sleep_(onSleep: FiniteDuration => F[Unit])(using enc: sourcecode.Enclosing): F[Unit] =
     nextDelay2.flatMap: (elapsed, delay) =>
-      logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
+      logger.trace(s"${enc.value} sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
       sym.escalate()
       onSleep(delay) *> F.sleep(delay)
 
@@ -83,7 +83,7 @@ object Delayer:
       .map(CatsDeadline.fromMonotonic)
       .map(now => new Delayer(now, conf))
 
-  def stream[F[_]](conf: DelayConf)(using F: Async[F]): Stream[F, Unit] =
+  def stream[F[_]](conf: DelayConf)(using F: Async[F], enc: sourcecode.Enclosing): Stream[F, Unit] =
     Stream
       .eval(start(conf))
       .flatMap: delayer =>
@@ -97,6 +97,7 @@ object Delayer:
         conf: DelayConf,
         onFailure: Throwable => IO[Unit] = _ => IO.unit,
         onSleep: FiniteDuration => IO[Unit] = _ => IO.unit)
+        (using sourcecode.Enclosing)
       : IO[A] =
         conf.runIO: delayer =>
           ().tailRecM: _ =>

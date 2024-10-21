@@ -465,7 +465,9 @@ extends Actor, Stash, JournalLogging:
       if lastWrittenEventId == lastSnapshotTakenEventId then
         responseAfterSnapshotTaken()
       else if lastAcknowledgedEventId < lastWrittenEventId then
-        logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
+        logger.debug:
+          s"Delaying snapshot until all events have been committed and acknowledged (lastAcknowledgedEventId=${
+            lastAcknowledgedEventId} lastWrittenEventId=$lastWrittenEventId)"
       else
         takeSnapshot()
 

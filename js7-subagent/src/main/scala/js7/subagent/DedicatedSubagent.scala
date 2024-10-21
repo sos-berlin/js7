@@ -171,15 +171,14 @@ extends Service.StoppableByRequest:
       Checked.unit
 
   private def awaitOrderAcknowledgements: IO[Unit] =
-    IO.defer:
-      val oToP = orderToProcessing.toMap.toVector
-      for orderId <- oToP.map(_._1).sorted do logger.info:
-        s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId"
-      oToP
-        .parTraverse: (orderId, processing) =>
-          processing.acknowledged.get
-            .flatMap: _ =>
-              IO(logger.info(s"🟢 Director has acknowledged processing of $orderId"))
+    logger.debugIO:
+      IO.defer:
+        val oToP = orderToProcessing.toMap.toVector
+        for orderId <- oToP.map(_._1).sorted do logger.info:
+          s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId"
+        oToP.parTraverse: (orderId, processing) =>
+          processing.acknowledged.get *>
+            IO(logger.info(s"🟢 Director has acknowledged processing of $orderId"))
         .map(_.combineAll)
 
   private def killAndStopAllJobs(signal: ProcessSignal): IO[Unit] =

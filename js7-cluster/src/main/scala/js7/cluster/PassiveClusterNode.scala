@@ -97,8 +97,10 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   @volatile private var stopped = false
 
   def onShutdown(dontNotifyActiveNode: Boolean = false): IO[Unit] =
-    shutdown.complete(()).attempt *>
-      IO.unlessA(dontNotifyActiveNode)(notifyActiveNodeAboutShutdown)
+    logger.debugIO:
+      shutdown.complete(()).attempt *>
+        IO.unlessA(dontNotifyActiveNode):
+          notifyActiveNodeAboutShutdown
 
   /** Allow the active node to emit ClusterPassiveLost quickly. */
   private def notifyActiveNodeAboutShutdown: IO[Unit] =

@@ -374,7 +374,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
-              logger.debug(s"<~~ ◼️$responseLogPrefix => canceled")
+              logger.debug(s"<~~ ◼️ $responseLogPrefix => canceled")
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match
