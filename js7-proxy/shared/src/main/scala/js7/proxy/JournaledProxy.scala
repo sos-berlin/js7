@@ -59,7 +59,7 @@ object JournaledProxy:
     onEvent: EventAndState[Event, S] => Unit)
     (using SnapshotableState.Companion[S])
   : ResourceIO[JournaledProxy[S]] =
-    JournaledProxyImpl.resource[S](baseStream, proxyConf, onEvent)
+    JournaledProxyService.resource[S](baseStream, proxyConf, onEvent)
 
   def stream[S <: JournaledState[S]](
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],

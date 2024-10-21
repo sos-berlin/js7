@@ -10,11 +10,11 @@ import js7.base.service.Service
 import js7.base.utils.Collections.emptyToNone
 import js7.data.event.{Event, EventId, SnapshotableState}
 import js7.proxy.JournaledProxy.*
-import js7.proxy.JournaledProxyImpl.*
+import js7.proxy.JournaledProxyService.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.EventAndState
 
-private final class JournaledProxyImpl[S <: SnapshotableState[S]] private[JournaledProxyImpl](
+private final class JournaledProxyService[S <: SnapshotableState[S]] private[JournaledProxyService](
   underlyingStream: Stream[IO, EventAndState[Event, S]],
   proxyConf: ProxyConf,
   onEvent: EventAndState[Event, S] => Unit,
@@ -97,7 +97,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
     s"JournaledProxyService[$S]${emptyToNone(name).fold("")(o => s"($o)")}"
 
 
-private object JournaledProxyImpl:
+private object JournaledProxyService:
 
   private val logger = Logger[this.type]
 
@@ -113,6 +113,6 @@ private object JournaledProxyImpl:
         acquire = Topic[IO, EventAndState[Event, S]])(
         release = _.close.void)
       journaledProxy <- Service.resource(IO:
-        new JournaledProxyImpl[S](baseStream, proxyConf, onEvent, topic, supervisor))
+        new JournaledProxyService[S](baseStream, proxyConf, onEvent, topic, supervisor))
     yield
       journaledProxy
