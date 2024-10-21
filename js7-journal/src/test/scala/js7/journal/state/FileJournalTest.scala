@@ -240,6 +240,8 @@ private object FileJournalTest:
 
     def companion = TestState
 
+    def name = "TestState"
+
     def withEventId(eventId: EventId) =
       copy(eventId = eventId)
 

@@ -50,6 +50,8 @@ private object ClusterableStateTest:
   extends ClusterableState[MyState]:
     def companion = MyState
 
+    def name = "MyState"
+
     def estimatedSnapshotSize = standards.snapshotSize
 
     def toSnapshotStream = standards.toSnapshotStream

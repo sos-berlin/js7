@@ -21,6 +21,8 @@ extends JournaledState[S]:
 
   def companion: SnapshotableState.Companion[S]
 
+  def name: String
+
   def toSnapshotStream: Stream[IO, Any]
 
   def estimatedSnapshotSize: Int

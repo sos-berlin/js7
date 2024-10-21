@@ -67,6 +67,12 @@ extends SignedItemContainer,
 
   def companion: AgentState.type = AgentState
 
+  def name: String =
+    if meta.agentPath.isEmpty then
+      "Agent not dedicated"
+    else
+      meta.agentPath.toString
+
   /** A Controller has initialized this Agent? */
   def isDedicated: Boolean =
     agentPath.nonEmpty/*shortcut*/

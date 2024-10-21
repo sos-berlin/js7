@@ -7,6 +7,7 @@ import fs2.concurrent.Topic
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
+import js7.base.utils.Collections.emptyToNone
 import js7.data.event.{Event, EventId, SnapshotableState}
 import js7.proxy.JournaledProxy.*
 import js7.proxy.JournaledProxyImpl.*
@@ -89,7 +90,11 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
       case null => throw new IllegalStateException("JournaledProxy has not yet started")
       case o => o
 
-  override def toString = s"JournaledProxyImpl[$S]"
+  def name: String =
+    Option(_currentState).fold("")(o => s"${o.name}")
+
+  override def toString =
+    s"JournaledProxyService[$S]${emptyToNone(name).fold("")(o => s"($o)")}"
 
 
 private object JournaledProxyImpl:

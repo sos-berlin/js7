@@ -76,6 +76,9 @@ extends SignedItemContainer,
   def companion: ControllerState.type =
     ControllerState
 
+  def name: String =
+    controllerId.toString
+
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     Right(DummyClusterNodeName)
 

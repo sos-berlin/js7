@@ -35,6 +35,8 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
 
   def currentState: S
 
+  def name: String
+
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
   def subscribe(maxQueued: Option[Int] = None): ResourceIO[Stream[IO, EventAndState[Event, S]]]

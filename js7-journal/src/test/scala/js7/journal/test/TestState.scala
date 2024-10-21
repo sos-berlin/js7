@@ -14,7 +14,10 @@ final case class TestState(
   standards: SnapshotableState.Standards = SnapshotableState.Standards.empty,
   keyToAggregate: Map[String, TestAggregate])
 extends SnapshotableState[TestState]:
+
   def companion = TestState
+
+  def name = "TestState"
 
   def estimatedSnapshotSize = standards.snapshotSize + keyToAggregate.size
 

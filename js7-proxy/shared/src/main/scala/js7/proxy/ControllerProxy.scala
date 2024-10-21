@@ -6,6 +6,7 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.data.controller.ControllerCommand.AddOrders
@@ -34,6 +35,9 @@ extends
       .flatMapT: response =>
         journaledProxy.sync(response.eventId)
           .as(Right(response))
+
+  override def toString =
+    s"ControllerProxy${emptyToNone(name).fold("")(o => s"($o)")}"
 
 
 object ControllerProxy:
