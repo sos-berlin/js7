@@ -22,7 +22,7 @@ final case class SubagentState(
   pathToJobResource: Map[JobResourcePath, JobResource])
 extends JournaledState[SubagentState], ItemContainer:
 
-  val companion: SubagentState.type = SubagentState
+  def companion: SubagentState.type = SubagentState
 
   def withEventId(eventId: EventId): SubagentState =
     copy(eventId = eventId)

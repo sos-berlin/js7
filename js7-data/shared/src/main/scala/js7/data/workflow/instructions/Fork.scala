@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.*
-import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder}
+import io.circe.derivation.ConfiguredCodec
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString

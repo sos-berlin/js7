@@ -92,11 +92,11 @@ private object RestartableDirector:
   private val logger = Logger[this.type]
   private val Delay = 1.s // Give Pekko Actors time to terminate and release their names
 
-  def apply(
+  def resource(
     subagent: Subagent,
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
-    (using ioRuntime: IORuntime)
+    (using IORuntime)
   : ResourceIO[RestartableDirector] =
     Service.resource(IO:
       new RestartableDirector(subagent, conf, testWiring))

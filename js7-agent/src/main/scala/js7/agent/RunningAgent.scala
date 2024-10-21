@@ -175,7 +175,7 @@ object RunningAgent:
   : ResourceIO[RestartableDirector] =
     for
       subagent <- subagentResource(conf)
-      director <- RestartableDirector(subagent, conf, testWiring)
+      director <- RestartableDirector.resource(subagent, conf, testWiring)
     yield
       director
 
