@@ -3,9 +3,9 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-rm -rf volumes/{controller,backup-controller,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/cache
-mkdir -p -m 700 volumes/{controller,backup-controller,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/config/private
-mkdir -p volumes/{controller,backup-controller,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/{cache,logs,state,work}
+rm -rf volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/cache
+mkdir -p -m 700 volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/config/private
+mkdir -p volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/{cache,logs,state,work}
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/{subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/config/executables
 

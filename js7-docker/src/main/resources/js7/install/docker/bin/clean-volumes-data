@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
 dirs=()
-dirs+=(volumes/{controller,backup-controller,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/{cache,logs,state})
+dirs+=(volumes/{controller,backup-controller,proxy,proxy-b,cluster-watch,cluster-watch-b,provider,subagent-1-a,subagent-1-b,subagent-1-c,subagent-2-a}/data/{cache,logs,state})
 dirs+=(volumes/testControllerAgent/*/data/{cache,logs,state})
 
 for dir in "${dirs[@]}"; do :

@@ -7,7 +7,7 @@ chown root:root -R /opt/js7-[1-9]*
 chmod o-w -R /opt/js7-[1-9]*
 ln -s /opt/js7-[1-9]* /opt/js7
 
-mkdir -p /var/opt/js7/{provider,cluster-watch,cluster-watch-b,controller,agent}/data &&\
+mkdir -p /var/opt/js7/{provider,proxy,proxy-b,cluster-watch,cluster-watch-b,controller,agent}/data &&\
 mkdir -p /var/opt/js7/testControllerAgent
 
 groupadd --gid "$uid" js7

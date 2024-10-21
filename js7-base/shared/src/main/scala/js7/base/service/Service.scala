@@ -74,14 +74,10 @@ trait Service:
 
 object Service:
 
+  private val logger = Logger[this.type]
   private val defaultRestartDelayConf: DelayConf =
     RestartAfterFailureService.defaultRestartConf
 
-  private[service] object Empty extends Service:
-    protected lazy val start = startService(IO.unit)
-    protected def stop = IO.unit
-
-  private val logger = Logger[this.type]
 
   def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
     Resource.make(
@@ -133,3 +129,13 @@ object Service:
   final class Started private[Service]:
     override def toString = "Service.Started"
   private val Started = new Started
+
+
+  //type Empty = Empty.type
+  //object Empty extends Service:
+  //  def resource: ResourceIO[Empty] =
+  //    Service.resource(IO.pure(Empty))
+  //
+  //  protected lazy val start = startService(IO.unit)
+  //
+  //  protected def stop = IO.unit

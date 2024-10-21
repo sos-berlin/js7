@@ -245,6 +245,7 @@ lazy val `js7-install` = project
         .filter { case (_, path) => (path startsWith "lib/") && !isExcludedJar(path stripPrefix "lib/") }
         // Add other files to get a simple installation
         .++(NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-proxy`.jvm / Compile / classDirectory).value / "js7/proxy/installation"))
         .++(NativePackagerHelper.contentOf((`js7-cluster-watch` / Compile / classDirectory).value / "js7/cluster/watch/installation"))
         .++(NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation"))
         .++(NativePackagerHelper.contentOf((`js7-agent` / Compile / classDirectory).value / "js7/agent/installation"))

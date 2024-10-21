@@ -11,11 +11,11 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.data.Problems.NoActiveClusterNodeProblem
-import js7.data.cluster.{ClusterNodeApi, ClusterNodeState}
+import js7.data.cluster.ClusterNodeState
 import scala.math.Ordered.orderingToOrdered
 
 final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
@@ -69,7 +69,7 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
                       val maybeActive = list.lastOption.collect:
                         case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
                           api -> nodeState
-                      logNonActive(delayer, list, maybeActive, n = apis.length)
+                      /*Duplicate log???*/logNonActive(list, n = apis.length)
                       maybeActive match
                         case None =>
                           val problem =
@@ -102,18 +102,11 @@ final class ActiveClusterNodeSelector[Api <: HttpClusterNodeApi] private(
     .flatTap: checked =>
       IO(logger.trace(s"${api.baseUri} => ${checked.merge}"))
 
-  private def logNonActive(
-    delayer: Delayer[IO],
-    list: List[ApiWithNodeState],
-    maybeActive: Option[(ClusterNodeApi, ClusterNodeState)],
-    n: Int)
-  : Unit =
+  private def logNonActive(list: List[ApiWithNodeState], n: Int): Unit =
     list.foreach:
       case ApiWithNodeState(api, Left(problem)) =>
         logger.warn(s"Cluster node ${api.baseUri} is not accessible: $problem")
       case _ =>
-
-
 
   private case class ApiWithFiber(
     api: Api,

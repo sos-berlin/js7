@@ -10,9 +10,6 @@ if [ "$HOME" = "/home/js7" ]; then
   [ -e "$HOME/data" ] || ln -ns $data "$HOME/data"
 fi
 
-find "$HOME/config"
-find "$HOME/data"
-
 exec /opt/js7/bin/js7-cluster-watch \
   -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
   "$@"

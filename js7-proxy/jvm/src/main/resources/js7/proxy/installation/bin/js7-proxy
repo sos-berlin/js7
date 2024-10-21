@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# JS7 Proxy starter
+
+JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+
+exec "$JS7_HOME/bin/internal/js7-run" \
+  --camel-name=Proxy \
+  --kebab-name=proxy \
+  --main-class=js7.proxy.Proxy \
+  "$@"
