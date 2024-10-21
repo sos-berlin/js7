@@ -2,7 +2,6 @@ package js7.data.event
 
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventRequest.*
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
@@ -13,6 +12,8 @@ import scala.reflect.ClassTag
 final case class EventRequest[E <: Event](
   eventClasses: Set[Class[? <: E]],
   after: EventId,
+  // TODO Simplify timeout to something like lastEventsOnly: Boolean? 
+  //  Entweder nur anstehende Events oder endloser Strom
   timeout: Option[FiniteDuration],
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
@@ -24,10 +25,10 @@ final case class EventRequest[E <: Event](
   def toQueryParameters: Vector[(String, String)] =
     val builder = Vector.newBuilder[(String, String)]
     builder += "return" -> eventClasses.map(_.getSimpleName stripSuffix "$").mkString(",")
-    builder += "delay" -> durationToString(delay)
-    for o <- timeout do builder += "timeout" -> durationToString(o)
+    builder += "delay" -> delay.toDecimalString
+    for o <- timeout do builder += "timeout" -> o.toDecimalString
     if limit != DefaultLimit then builder += "limit" -> limit.toString
-    for o <- tornOlder do builder += "tornOlder" -> durationToString(o)
+    for o <- tornOlder do builder += "tornOlder" -> o.toDecimalString
     builder += "after" -> after.toString
     builder.result()
 
@@ -50,7 +51,7 @@ object EventRequest:
    */
   def singleClass[E <: Event: ClassTag](
     after: EventId = EventId.BeforeFirst,
-    timeout: Option[FiniteDuration] = Some(ZeroDuration),
+    timeout: Option[FiniteDuration]/* = Some(ZeroDuration)*/,
     delay: FiniteDuration = DefaultDelay,
     limit: Int = DefaultLimit,
     tornOlder: Option[FiniteDuration] = None)
@@ -58,6 +59,3 @@ object EventRequest:
     if implicitClass[E] eq classOf[Nothing] then
       throw new IllegalArgumentException("EventRequest.singleClass[Nothing]: Missing type parameter?")
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
-
-  def durationToString(duration: FiniteDuration): String =
-    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.dropLastWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber

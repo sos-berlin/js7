@@ -45,7 +45,7 @@ final class ClusterNodeUris private(prefixedUri: Uri):
     Uri(
       api("/event").string + encodeQuery(
         Seq("onlyAcks" -> "true") ++
-          timeout.map(o => "timeout" -> EventRequest.durationToString(o)) ++
+          timeout.map(o => "timeout" -> o.toDecimalString) ++
           heartbeat.map("heartbeat" -> _.toDecimalString)))
 
   def journal(
