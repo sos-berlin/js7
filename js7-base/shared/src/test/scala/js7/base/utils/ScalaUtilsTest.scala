@@ -86,6 +86,27 @@ final class ScalaUtilsTest extends OurTestSuite:
         assert((Some(Right(7)): O).flatTapT(o => Some(Right(3 * o))) == Some(Right(7)))
     }
 
+    "recoverT" - {
+      "Checked" in:
+        type O = Option[E]
+        assert(none[E].recoverT(_ => ignored) == none[E])
+        assert((Some(Left("A")): O).recoverT { case "X" => ignored } == Some(Left("A")))
+        assert((Some(Left("A")): O).recoverT { case "A" => 1 } == Some(Right(1)))
+        assert((Some(Left("A")): O).recoverT { case "A" => true } == Some(Right(true)))
+        assert((Some(Right(7)): O).recoverT(_ => ignored) == Some(Right(7)))
+    }
+
+    "recoverWithT" - {
+      "Checked" in:
+        type O = Option[E]
+        assert(none[E].recoverWithT(_ => Some(ignored)) == none[E])
+        assert((Some(Left("A")): O).recoverWithT { case "X" => Some(ignored) } == Some(Left("A")))
+        assert((Some(Left("A")): O).recoverWithT { case "A" => Some(Right(1)) } == Some(Right(1)))
+        assert((Some(Left("A")): O).recoverWithT { case "A" => Some(Left("B")) } == Some(Left("B")))
+        assert((Some(Left("A")): O).recoverWithT { case "A" => None } == None)
+        assert((Some(Right(7)): O).recoverWithT(_ => ignored) == Some(Right(7)))
+    }
+
     "SyncIO" in:
       assert(SyncIO[E](Left("A")).flatMapT(_ => SyncIO.pure(Left("B"))).unsafeRunSync() == Left("A"))
       assert(SyncIO[E](Left("A")).flatMapT(right => SyncIO.pure(Right(3 * right))).unsafeRunSync() == Left("A"))

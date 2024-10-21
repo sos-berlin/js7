@@ -66,6 +66,20 @@ object ScalaUtils:
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right)
 
+      /** Like Applicative recover but for F[Either[L, R]]. */
+      def recoverT[R1 >: R](f: PartialFunction[L, R1])(using F: Monad[F]): F[Either[L, R1]] =
+        F.flatMap(underlying):
+          case Left(left) if f isDefinedAt left => F.pure(Right(f(left)))
+          case either => F.pure(either)
+
+      /** Like Applicative recoverWith but for F[Either[L, R]]. */
+      def recoverWithT[R1 >: R](f: PartialFunction[L, F[Either[L, R1]]])(using F: Monad[F])
+      : F[Either[L, R1]] =
+        F.flatMap(underlying):
+          case Left(left) if f isDefinedAt left => f(left)
+          case either => F.pure(either)
+
+
       // TODO A better name ?
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatMapRight[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
