@@ -19,7 +19,7 @@ final class ServiceMainTest extends OurAsyncTestSuite:
     yield
       assert(exitCode == ExitCode(0))
 
-  "MainServiceTerminationException is properly handeled" in:
+  "MainServiceTerminationException is properly handled" in:
     val conf = TestConf(Js7Configuration.defaultConfig)
     for
       exitCode <- ServiceMain.runAsMain(Nil, "TEST", _ => conf)(_ => TerminatingService.resource)

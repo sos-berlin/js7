@@ -32,7 +32,6 @@ trait ServiceApp extends OurApp:
     (program: Cnf => ResourceIO[Svc],
       use: (Cnf, Svc) => IO[ProgramTermination] = (_: Cnf, service: Svc) => service.untilTerminated)
   : IO[ExitCode] =
-
     ServiceMain.runAsMain(
         args, productName,
         argsToConf,

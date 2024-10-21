@@ -173,7 +173,7 @@ object SessionApi:
                     if continue then
                       sym.onWarn()
                       warn(s"$sym $toString", e)
-                        loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
+                      loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
                     else
                       IO.raiseError(e))
 
