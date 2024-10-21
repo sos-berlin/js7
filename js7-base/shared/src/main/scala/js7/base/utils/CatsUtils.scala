@@ -5,13 +5,11 @@ import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resourc
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.{Applicative, Functor}
-import fs2.{Pure, Stream}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
-import js7.base.fs2utils.StreamExtensions.repeatLast
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -176,29 +174,6 @@ object CatsUtils:
         Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longNameWithPrefix}] from empty sequence"))
       else
         Right(NonEmptySeq(seq.head, seq.tail))
-
-  // Scala 2.13 does not allow add a method to an AnyVal class
-  def continueWithLast[A](seq: NonEmptySeq[A]): Iterator[A] =
-    val last = seq.last
-    seq.iterator ++ Iterator.continually(last)
-
-  // Scala 2.13 does not allow add a method to an AnyVal class
-  def continueWithLast[A](seq: NonEmptyList[A]): Iterator[A] =
-    val last = seq.last
-    seq.iterator ++ Iterator.continually(last)
-
-  def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
-    continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
-
-  def repeatLast[A](seq: Seq[A]): LazyList[A] =
-    if seq.isEmpty then
-      LazyList.empty
-    else
-      val last = seq.last
-      seq ++: LazyList.continually(last)
-
-  def continueWithLastAsStream[A](seq: Iterable[A]): Stream[Pure, A] =
-    Stream.iterable(seq).repeatLast
 
   def pureFiberIO[A](a: A): FiberIO[A] =
     PureFiberIO(a)

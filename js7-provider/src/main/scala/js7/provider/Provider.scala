@@ -23,7 +23,7 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction, continueWithLast}
 import js7.base.utils.{Atomic, ProgramTermination}
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.common.pekkoutils.Pekkos
@@ -204,7 +204,7 @@ extends Observing, MainService, Service.StoppableByRequest:
       .mapN((add, del) => InventoryItemDiff(add, del))
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
-    firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.s)
+    firstRetryLoginDurations.iterator.continueWithLast
 
 
 object Provider:

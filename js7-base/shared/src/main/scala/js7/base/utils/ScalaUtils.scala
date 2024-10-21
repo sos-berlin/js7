@@ -19,7 +19,7 @@ import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{AbstractMapView, Factory, MapView, View, mutable}
+import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
@@ -307,6 +307,23 @@ object ScalaUtils:
         .concat:
           firstNonMatching
 
+      def continueWithLast: Iterator[A] =
+        val isNonEmpty = iterator.nonEmpty
+        val iterator_ = iterator
+        case object Empty
+        new AbstractIterator[A]:
+          var last: A | Empty.type = Empty
+          def hasNext = isNonEmpty
+
+          def next() =
+            if iterator_.hasNext then
+              val a = iterator_.next()
+              last = a
+              a
+            else
+              last match
+                case Empty => throw new NoSuchElementException
+                case a: A @unchecked => a
       /** Usable for logging a chunk of lines with a long bracket. */
       def foreachWithBracket(bracket: MultipleLinesBracket)(body: (A, Char) => Unit): Unit =
         if iterator.hasNext then
@@ -326,6 +343,11 @@ object ScalaUtils:
               return
 
     extension [A](iterableOnce: IterableOnce[A])
+      def repeatLast: LazyList[A] =
+        iterableOnce match
+          case seq: IndexedSeq[A] => seq ++: LazyList.continually(seq.last)
+          case _ => LazyList.from(iterableOnce.iterator.continueWithLast)
+
       //inline def foldChecked[S](init: S)(f: (S, A) => Checked[S]): Checked[S] =
       //  foldEithers[S, Problem](init)(f)
 

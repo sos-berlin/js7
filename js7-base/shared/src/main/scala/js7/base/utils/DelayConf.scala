@@ -6,7 +6,7 @@ import cats.syntax.flatMap.*
 import fs2.{Pure, Stream}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.*
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, repeatLast}
 import scala.concurrent.duration.*
 
 final case class DelayConf(
@@ -17,7 +17,7 @@ final case class DelayConf(
     Stream.iterable(delays.toList) ++ Stream.constant(delays.last)
 
   def lazyList: LazyList[FiniteDuration] =
-    repeatLast(delays.toList)
+    delays.iterator.repeatLast
 
   /** Like run[IO] — only because Intellij does not detect body's type of run[IO]. */
   def runIO[A](body: Delayer[IO] => IO[A]): IO[A] =

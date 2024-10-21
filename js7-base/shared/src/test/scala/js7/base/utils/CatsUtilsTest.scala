@@ -4,7 +4,6 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.instances.int.*
 import cats.instances.string.*
-import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurAsyncTestSuite
@@ -45,18 +44,6 @@ final class CatsUtilsTest extends OurAsyncTestSuite:
     assert(NonEmptySeq.checked[Int](Seq(1)) == Right(NonEmptySeq(1, Nil)))
     assert(NonEmptySeq.checked[Int](Seq(1, 2)) == Right(NonEmptySeq(1, 2 :: Nil)))
     assert(NonEmptySeq.checked[Int](Seq(1, 2, 3)) == Right(NonEmptySeq(1, 2 :: 3 :: Nil)))
-
-  "continueWithLast" in:
-    assert(continueWithLast(1, 2, 3).take(5).toSeq == Seq(1, 2, 3, 3, 3))
-
-  "continueWithLastAsStream" in:
-    assert(continueWithLastAsStream(Seq(1, 2, 3)).take(5).toList == List(1, 2, 3, 3, 3))
-    assert(continueWithLastAsStream(Seq.empty).take(5).toList == Nil)
-
-  "repeatLast" in:
-    assert(repeatLast(Nil).isEmpty)
-    assert(repeatLast(Seq(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
-    //assert(repeatLast(NonEmptySeq.of(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
 
   "pureFiberIO" in:
     val fiber = pureFiberIO(7)

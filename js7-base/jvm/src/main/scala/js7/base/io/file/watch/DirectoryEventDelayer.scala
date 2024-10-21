@@ -19,8 +19,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.CatsUtils.continueWithLast
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichThrowable, continueWithLast}
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -228,7 +227,7 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
 
   private final class Entry(val fileAdded: FileAdded, since: CatsDeadline):
     var delayUntil = since + delay
-    private val logDelayIterator = continueWithLast(logDelays)
+    private val logDelayIterator = logDelays.iterator.continueWithLast
     private var lastLoggedAt = since
     private var lastLoggedSize = Try(size(directory.resolve(path))) getOrElse 0L
     private var logDelay = delay + logDelayIterator.next()

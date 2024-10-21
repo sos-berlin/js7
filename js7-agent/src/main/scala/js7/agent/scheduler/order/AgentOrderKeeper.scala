@@ -28,8 +28,8 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
+import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.CatsUtils.{continueWithLast, pureFiberIO}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
@@ -519,7 +519,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       import event.item
       val label = s"${event.getClass.simpleScalaName}(${item.key})"
       val since = now
-      val delays = continueWithLast(1.s, 3.s, 10.s)
+      val delays = Iterator(1.s, 3.s, 10.s).continueWithLast
       val sym = new BlockingSymbol
       ().tailRecM { _ =>
         changeSubagentAndClusterNode(event)

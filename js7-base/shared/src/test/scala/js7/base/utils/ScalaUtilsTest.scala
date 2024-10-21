@@ -360,6 +360,13 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "IterableOnce" - {
+    "repeatLast" in:
+      assert(Nil.repeatLast.isEmpty)
+      assert(Iterator.empty.repeatLast.isEmpty)
+      assert(List(1, 2, 3).repeatLast.take(5) == Seq(1, 2, 3, 3, 3))
+      assert(Vector(1, 2, 3).repeatLast.take(5) == Seq(1, 2, 3, 3, 3))
+      assert(Iterator(1, 2, 3).repeatLast.take(5) == Seq(1, 2, 3, 3, 3))
+
     "foldEithers" in:
       assert:
         List(1, 2).foldEithers("init")((s, a) => Right(s"$s-$a")) == Right("init-1-2")
@@ -377,6 +384,13 @@ final class ScalaUtilsTest extends OurTestSuite:
       val iterator = Iterator(1, 2, 3, 4, 5)
       assert((iterator.takeThrough(_ < 3): Iterator[Int]).toList == List(1, 2, 3))
       assert(iterator.next() == 4)
+
+    "continueWithLast" in:
+        assert(Iterator.empty[Int].continueWithLast.isEmpty)
+        intercept[NoSuchElementException]:
+          Iterator.empty[Int].continueWithLast.next()
+        assert(Iterator(1).continueWithLast.take(5).toSeq == Seq(1, 1, 1, 1, 1))
+        assert(Iterator(1, 2, 3).continueWithLast.take(5).toSeq == Seq(1, 2, 3, 3, 3))
 
     "foreachWithBracket" - {
       "empty" in:

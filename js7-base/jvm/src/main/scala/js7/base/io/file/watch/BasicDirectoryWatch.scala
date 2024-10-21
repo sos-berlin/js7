@@ -14,9 +14,8 @@ import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.continueWithLast
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable, continueWithLast}
 import scala.annotation.nowarn
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -126,7 +125,7 @@ object BasicDirectoryWatch:
 
   def repeatWhileIOException[A](options: WatchOptions, body: IO[A]): IO[A] =
     IO.defer:
-      val delayIterator = continueWithLast(options.retryDelays)
+      val delayIterator = options.retryDelays.iterator.continueWithLast
       body
         .onErrorRestartLoop(now):
           case (t @ (_: IOException | _: NotDirectoryException), since, restart) =>
