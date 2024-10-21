@@ -175,7 +175,9 @@ object JournaledProxy:
       import S.keyedEventJsonCodec
       HttpClient.liftProblem:
         api.eventStream(
-          EventRequest.singleClass[Event](after = after, delay = 1.s,
+          EventRequest.singleClass[Event](
+            after = after,
+            timeout = None,
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms))),
           heartbeat = recouplingStreamReaderConf.keepAlive.some,
           idleTimeout = recouplingStreamReaderConf.timeout)
