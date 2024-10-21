@@ -18,8 +18,10 @@ import js7.base.{BuildInfo, utils}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import scala.concurrent.duration.{Deadline, Duration}
+import scala.util.control.NonFatal
 
 object ServiceMain:
+  private lazy val logger = Logger[this.type]
   private val runningSince: Deadline = Deadline.now
 
   // Run initialization code above.
@@ -42,17 +44,24 @@ object ServiceMain:
         StartUp.initializeMain()
 
         JavaMainLockfileSupport
-          .runMain(name, args.toVector, useLockFile = useLockFile):
-            commandLineArguments => IO.defer:
-              lazy val conf =
-                val conf = argsToConf(commandLineArguments)
-                commandLineArguments.requireNoMoreArguments() // throws
-                conf
+          .runMain(args.toVector, useLockFile = useLockFile): commandLineArguments =>
+            IO.defer:
+              lazy val conf: Cnf =
+                try
+                  val conf = argsToConf(commandLineArguments)
+                  commandLineArguments.requireNoMoreArguments() // throws
+                  conf
+                catch case NonFatal(t) =>
+                  // We have to log the error ourselves, like a Service
+                  logger.error(t.toStringWithCauses)
+                  throw t
               logging.logFirstLines(commandLineArguments, conf)
               logging.run(toServiceResource(conf)):
                 use(conf, _)
           .attempt.map:
-            case Left(throwable) => ExitCode.Error // Service has already logged an error
+            case Left(throwable) =>
+              logger.debug(s"Already logged: ❓${throwable.toStringWithCauses}")
+              ExitCode.Error // Service has already logged an error
             case Right(termination) =>
               if !suppressTerminationLogging then
                 logging.logTermination(name, termination)
@@ -62,7 +71,6 @@ object ServiceMain:
           Log4j.shutdown(suppressLogging = suppressTerminationLogging))
 
   def blockingRun[Svc <: MainService](
-    name: String,
     timeout: Duration = Duration.Inf)
     (using rt: IORuntime, S: Tag[Svc])
     (resource: ResourceIO[Svc],

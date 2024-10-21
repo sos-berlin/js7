@@ -22,19 +22,19 @@ object JavaMainLockfileSupport:
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 
-  def runMain(name: String, args: Seq[String], useLockFile: Boolean = false)
+  def runMain(args: Seq[String], useLockFile: Boolean = false)
     (body: CommandLineArguments => IO[ProgramTermination])
   : IO[ProgramTermination] =
     if useLockFile then
-      lockAndRunMain(name, args)(body)
+      lockAndRunMain(args)(body)
     else
       val arguments = CommandLineArguments(args)
-      JavaMain.runMain(name):
+      JavaMain.runMain:
         body(arguments)
 
   // Cleans also work directory
   /** Exit if lockFile is already locked. */
-  private def lockAndRunMain(name: String, args: Seq[String])
+  private def lockAndRunMain(args: Seq[String])
     (body: CommandLineArguments => IO[ProgramTermination])
   : IO[ProgramTermination] =
     IO.defer:
@@ -45,7 +45,7 @@ object JavaMainLockfileSupport:
       // The lockFile secures the state directory against double use.
       val lockFile = BasicConfiguration.dataToLockFile(data)
       lock(lockFile, ProgramTermination.Failure):
-        JavaMain.runMain(name):
+        JavaMain.runMain:
           cleanWorkDirectory(data.resolve("work"))
           body(arguments)
 

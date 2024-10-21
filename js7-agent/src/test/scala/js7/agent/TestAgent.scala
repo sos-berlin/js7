@@ -144,7 +144,7 @@ object TestAgent:
     (body: TestAgent => Unit)
     (using ioRuntime: IORuntime)
   : ProgramTermination =
-    ServiceMain.blockingRun(conf.name, timeout = timeout)(
+    ServiceMain.blockingRun(timeout = timeout)(
       resource = resource(conf).evalOn(ioRuntime.compute),
       use = (agent: RunningAgent) =>
         try

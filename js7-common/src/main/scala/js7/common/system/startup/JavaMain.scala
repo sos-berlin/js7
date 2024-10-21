@@ -1,16 +1,13 @@
 package js7.common.system.startup
 
 import cats.effect.IO
-import js7.base.log.Logger
 import js7.base.system.startup.Halt
 import js7.base.utils.ProgramTermination
 import js7.common.message.ProblemCodeMessages
 
 object JavaMain:
 
-  private lazy val logger = Logger[this.type]
-
-  def runMain(name: String)(body: => IO[ProgramTermination]): IO[ProgramTermination] =
+  def runMain(body: => IO[ProgramTermination]): IO[ProgramTermination] =
     IO.defer:
       initialize()
       body
