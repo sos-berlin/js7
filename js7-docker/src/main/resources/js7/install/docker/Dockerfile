@@ -32,10 +32,10 @@ END
 #RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
 #    --add-modules java.base,java.compiler,java.desktop,java.logging,java.management,java.security.jgss,java.sql,java.xml,jdk.management,jdk.unsupported \
 #    --output /opt/js7-java
-#ENV JAVA_HOME /opt/js7-java
+#ENV JAVA_HOME=/opt/js7-java
 
 # To find libjdwp.so for --debug-port=
-ENV LD_LIBRARY_PATH "$JAVA_HOME/lib"
+ENV LD_LIBRARY_PATH="$JAVA_HOME/lib"
 
 ADD files /
 ADD js7-*install-[0-9]*.tgz /opt/

@@ -23,10 +23,14 @@ fi
 if [ -z "${TZ:-}" ]; then
   if [ -f /etc/timezone ]; then
     TZ=$(cat /etc/timezone)
-    echo "TZ=$TZ"
+    echo "TZ=${TZ-UTC}"
   elif [ -d /usr/share/zoneinfo ]; then
     TZ=$(realpath --relative-to /usr/share/zoneinfo /etc/localtime)
-    echo "TZ=$TZ"
+    echo "TZ=${TZ-UTC}"
+  elif [ -L /etc/localtime ]; then
+    # Works for Europe/Stockholm but not for UTC
+    a=$(realpath /etc/localtime)
+    TZ="$(basename "$(dirname "$a")")/$(basename "$a")"
   else
     echo "Missing environment variable TZ (time zone)"
     exit 1

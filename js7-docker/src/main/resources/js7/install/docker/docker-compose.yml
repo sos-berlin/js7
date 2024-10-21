@@ -24,7 +24,7 @@ services:
     - "127.0.0.1:4444:4444"
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/controller/config:/var/opt/js7/controller/config:ro
       - ./volumes/controller/data/cache:/var/opt/js7/controller/data/cache:delegated
@@ -48,7 +48,7 @@ services:
     #Does not work for Docker 2.2.3.0 macOS:  - "127.0.0.2:4444:4444"
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/backup-controller/config:/var/opt/js7/controller/config:ro
       - ./volumes/backup-controller/data/cache:/var/opt/js7/controller/data/cache:delegated
@@ -64,7 +64,7 @@ services:
     command: ["js7-provider", "--arg0=js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/provider/config:/var/opt/js7/provider/config:ro
       - ./volumes/provider/data/cache:/var/opt/js7/provider/data/cache:delegated
@@ -85,7 +85,7 @@ services:
       "--cluster-node-uri=https://backup-controller:4443" ]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/cluster-watch/config:/var/opt/js7/cluster-watch/config:ro
       - ./volumes/cluster-watch/data/cache:/var/opt/js7/cluster-watch/data/cache:delegated
@@ -106,7 +106,7 @@ services:
       "--cluster-node-uri=https://backup-controller:4443" ]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/cluster-watch-b/config:/var/opt/js7/cluster-watch/config:ro
       - ./volumes/cluster-watch-b/data/cache:/var/opt/js7/cluster-watch/data/cache:delegated
@@ -125,7 +125,7 @@ services:
     command: ["js7-subagent", "--arg0=js7-subagent-1-a", "-J-Xmx200m"]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/subagent-1-a/config:/var/opt/js7/agent/config:ro
       - ./volumes/subagent-1-a/data/cache:/var/opt/js7/agent/data/cache:delegated
@@ -142,7 +142,7 @@ services:
     command: ["js7-subagent", "--arg0=js7-subagent-1-b", "-J-Xmx200m"]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/subagent-1-b/config:/var/opt/js7/agent/config:ro
       - ./volumes/subagent-1-b/data/cache:/var/opt/js7/agent/data/cache:delegated
@@ -159,7 +159,7 @@ services:
     command: ["js7-subagent", "--arg0=js7-subagent-1-c", "-J-Xmx200m"]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/subagent-1-c/config:/var/opt/js7/agent/config:ro
       - ./volumes/subagent-1-c/data/cache:/var/opt/js7/agent/data/cache:delegated
@@ -176,7 +176,7 @@ services:
     command: ["js7-subagent", "--arg0=js7-subagent-2-a", "-J-Xmx200m"]
     working_dir: /home/js7
     environment:
-      - TZ=$TZ
+      - TZ=${TZ-}
     volumes:
       - ./volumes/subagent-2-a/config:/var/opt/js7/agent/config:ro
       - ./volumes/subagent-2-a/data/cache:/var/opt/js7/agent/data/cache:delegated
@@ -185,5 +185,3 @@ services:
       - ./volumes/subagent-2-a/data/work:/var/opt/js7/agent/data/work:delegated
     stop_grace_period: 10s
     restart: unless-stopped
-    depends_on:
-      - controller
