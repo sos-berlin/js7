@@ -33,15 +33,14 @@ private[cluster] final class ActivationInhibitor:
   private def startAs(state: State): IO[Unit] =
     IO.defer:
       logger.debug(s"startAs $state")
-      stateMvarIO.flatMap(mvar =>
-        mvar.tryTake.flatMap {
+      stateMvarIO.flatMap: mvar =>
+        mvar.tryTake.flatMap:
           case Some(Initial) =>
             mvar.put(state)
           case s =>
             s.fold(IO.unit)(mvar.put) >>
-              IO.raiseError(new IllegalStateException(
-                s"ActivationInhibitor startAs($state): Already '$s''"))
-        })
+              IO.raiseError:
+                new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
 
   def tryToActivate(ifInhibited: IO[Checked[Boolean]], activate: IO[Checked[Boolean]])
   : IO[Checked[Boolean]] =
@@ -78,23 +77,21 @@ private[cluster] final class ActivationInhibitor:
     * @return true if activation is or has been inhibited, false if already active
     */
   def inhibitActivation(duration: FiniteDuration): IO[Checked[Boolean]] =
-    logger.debugIOWithResult[Checked[Boolean]](
-      stateMvarIO.flatMap(mvar =>
-        mvar.take
-          .flatMap {
-            case state @ (Initial | Passive | _: Inhibited) =>
-              val depth = state match
-                case Inhibited(n) => n + 1
-                case _ => 1
-              mvar
-                .put(Inhibited(depth))
-                .flatMap(_ => setInhibitionTimer(duration))
-                .map(_ => Right(true))
+    logger.debugIOWithResult:
+      stateMvarIO.flatMap: mvar =>
+        mvar.take.flatMap:
+          case state @ (Initial | Passive | _: Inhibited) =>
+            val depth = state match
+              case Inhibited(n) => n + 1
+              case _ => 1
+            mvar
+              .put(Inhibited(depth))
+              .flatMap(_ => setInhibitionTimer(duration))
+              .map(_ => Right(true))
 
-            case Active =>
-              mvar.put(Active)
-                .map(_ => Right(false))
-          }))
+          case Active =>
+            mvar.put(Active)
+              .map(_ => Right(false))
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
     stateMvarIO

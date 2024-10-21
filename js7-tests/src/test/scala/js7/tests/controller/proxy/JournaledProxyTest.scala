@@ -87,12 +87,12 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
 
     "success" in:
       val myWorkflow = workflow withVersion versionId
-      proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
+      proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow):
         api.updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(myWorkflow))
         )).map { o => assert(o.orThrow == Completed) }
-      }.await(99.s)
+      .await(99.s)
   }
 
   "addOrders" - {
@@ -114,10 +114,10 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
           case (state, _) => state
         .compile.toList
         .unsafeToFuture()
-      api.addOrders(
-        Stream.iterable(
-          orderIds.map(orderId => FreshOrder(orderId, workflow.path)))
-      ).await(99.s).orThrow
+      api.addOrders:
+        Stream.iterable:
+          orderIds.map(orderId => FreshOrder(orderId, workflow.path))
+      .await(99.s).orThrow
       val observedEvents = whenFinished.await(99.s)
       assert(observedEvents.groupMap(_.key)(_.event) ==
         orderIds

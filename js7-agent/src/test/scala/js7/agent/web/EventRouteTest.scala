@@ -58,15 +58,15 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
 
   "Request events after known EventId" in:
     val Right(stream) = agentClient
-      .agentEventStream(
-        EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
+      .agentEventStream:
+        EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s))
       .await(99.s): @unchecked
     assert(stream.headL.await(99.s).eventId > EventId.BeforeFirst)
 
   "AgentReady" in:
     val Right(stream) = agentClient
-      .agentEventStream(
-        EventRequest[Event](Set(classOf[AgentReady]), after = EventId.BeforeFirst, timeout = Some(0.s)))
+      .agentEventStream:
+        EventRequest[Event](Set(classOf[AgentReady]), after = EventId.BeforeFirst, timeout = Some(0.s))
       .await(99.s): @unchecked
     eventId = stream.lastL.await(99.s).eventId
 

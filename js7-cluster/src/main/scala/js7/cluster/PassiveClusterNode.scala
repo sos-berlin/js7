@@ -105,12 +105,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
     logger.debugIO:
       // Active and passive node may be shut down at the same time. We try to handle this here.
       val untilDecoupled = logger.traceIO:
-        ().tailRecM(_ =>
+        ().tailRecM: _ =>
           stateBuilderAndAccessor.state
             .map(_.clusterState)
             .flatMap:
               case _: Coupled => IO.left(()).delayBy(1.s)
-              case clusterState => IO.right(clusterState))
+              case clusterState => IO.right(clusterState)
 
       val notifyActive = activeApiResource
         .use(api => api

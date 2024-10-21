@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, ConfiguredEncoder}
+import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression

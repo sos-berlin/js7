@@ -720,9 +720,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   private def suspendHeartbeat[A](forEvent: Boolean = false)(io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
   : IO[Checked[A]] =
-    clusterWatchSynchronizer
-      .suspendHeartbeat(journal.clusterState, forEvent = forEvent):
-        io
+    clusterWatchSynchronizer.suspendHeartbeat(journal.clusterState, forEvent = forEvent):
+      io
 
 
 object ActiveClusterNode:

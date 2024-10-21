@@ -111,15 +111,16 @@ extends Service.StoppableByRequest:
       IO.defer:
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
-        lock.lock(
+        lock.lock:
           logger.traceIOWithResult("check",
             s"${isHeartbeat ?? "🩶 "
             }$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
             marker = if isHeartbeat then Logger.Heartbeat else null,
-            body = check2(
-              clusterWatchId, request,
-              new Requested(clusterWatchId, request,
-                clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))))
+            body =
+              check2(
+                clusterWatchId, request,
+                new Requested(clusterWatchId, request,
+                  clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)))
 
   private def check2(
     clusterWatchId: Option[ClusterWatchId],
@@ -168,8 +169,8 @@ extends Service.StoppableByRequest:
               s"◼️ ${request.toShortString} => Canceled after ${since.elapsed.pretty}"
 
           case _ => IO.unit
-        .guarantee(IO(
-          _requested.set(None))))
+        .guarantee(IO:
+          _requested.set(None)))
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): IO[Checked[Unit]] =
     IO(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))

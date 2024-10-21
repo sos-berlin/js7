@@ -37,8 +37,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
 
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
-  def subscribe(maxQueued: Option[Int] = None)
-  : ResourceIO[Stream[IO, EventAndState[Event, S]]]
+  def subscribe(maxQueued: Option[Int] = None): ResourceIO[Stream[IO, EventAndState[Event, S]]]
 
   def sync(eventId: EventId): IO[Unit]
 
@@ -101,8 +100,7 @@ object JournaledProxy:
                     .suspend(Stream.emit(Left:
                       if isTorn(t) then
                         logger.error(t.toStringWithCauses)
-                        logger.warn:
-                          "Restarting stream from a new snapshot, loosing some events"
+                        logger.warn("Restarting stream from a new snapshot, loosing some events")
                         None
                       else
                         logger.warn(t.toStringWithCauses)
@@ -125,18 +123,20 @@ object JournaledProxy:
         tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten,
         proxyConf.recouplingStreamReaderConf)
       recouplingStreamReader.stream(api, after = state.eventId)
-        .onFinalize(recouplingStreamReader.decouple.map(_ => ()))
-        .scan(seed)((s, stampedEvent) =>
+        .onFinalize:
+          recouplingStreamReader.decouple.void
+        .scan(seed): (s, stampedEvent) =>
           EventAndState(stampedEvent,
             s.state,
             s.state.applyEvent(stampedEvent.value)
               .orThrow/*TODO Restart*/
-              .withEventId(stampedEvent.eventId)))
+              .withEventId(stampedEvent.eventId))
 
     Stream.eval:
       DelayConf(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s, 5.s).start[IO]
     .flatMap:
       stream2
+  end stream
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.

@@ -55,7 +55,8 @@ object PekkoHttpControllerApi:
     (implicit actorSystem: ActorSystem)
   : ResourceIO[Nel[HttpControllerApi]] =
     admissions.zipWithIndex
-      .traverse { case (a, i) => resource(a, httpsConfig, name = s"$name-$i") }
+      .traverse: (a, i) =>
+        resource(a, httpsConfig, name = s"$name-$i")
 
   /** Logs out when the resource is being released. */
   def resource(

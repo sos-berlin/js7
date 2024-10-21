@@ -86,9 +86,9 @@ object Delayer:
   def stream[F[_]](conf: DelayConf)(using F: Async[F]): Stream[F, Unit] =
     Stream
       .eval(start(conf))
-      .flatMap(delayer => Stream
-        .constant((), chunkSize = 1)
-        .evalMap(_ => delayer.sleep))
+      .flatMap: delayer =>
+        Stream.constant((), chunkSize = 1).evalMap: _ =>
+          delayer.sleep
       .prependOne(())
 
   object extensions:

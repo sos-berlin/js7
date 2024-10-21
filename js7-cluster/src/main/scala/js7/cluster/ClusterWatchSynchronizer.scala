@@ -40,20 +40,20 @@ private final class ClusterWatchSynchronizer(
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
   def start(currentClusterState: IO[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
   : IO[Checked[Completed]] =
-    logger.debugIO(IO.defer {
+    logger.debugIO(IO.defer:
       this.registerClusterWatchId := registerClusterWatchId
       // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
       // This is more to teach a recently started ClusterWatch.
       currentClusterState
-        .flatMap(clusterState =>
+        .flatMap: clusterState =>
           askClusterWatch(clusterState, registerClusterWatchId)
             // The clusterState may have changed due to ClusterWatchRegistered
-            .when(clusterState.setting.clusterWatchId.isDefined))
-        .flatMapT(_ =>
-          currentClusterState.flatMap(
+            .when(clusterState.setting.clusterWatchId.isDefined)
+        .flatMapT: _ =>
+          currentClusterState.flatMap:
             startHeartbeating(_, registerClusterWatchId)
-              .map(Right.apply)))
-    })
+              .map(Right.apply)
+    )
 
   private def askClusterWatch(
     clusterState: HasNodes,
@@ -70,13 +70,12 @@ private final class ClusterWatchSynchronizer(
         registerClusterWatchId,
         clusterWatchIdChangeAllowed = true,
         alreadyLocked = true
-      ).map(_.map {
+      ).map(_.map:
         case None => Completed
         case Some(confirm) =>
           if logAsInfo then logger.info(
             s"${confirm.confirmer} agreed that this node is the active cluster node")
-          Completed
-      })
+          Completed)
 
   def stop: IO[Unit] =
     stopHeartbeating
@@ -87,10 +86,10 @@ private final class ClusterWatchSynchronizer(
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
     event match
       case _: ClusterPassiveLost =>
-        suspendHeartbeat(IO.pure(updatedClusterState))(
+        suspendHeartbeat(IO.pure(updatedClusterState)):
           clusterWatch.applyEvent(event, updatedClusterState,
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
-            forceWhenUntaught = forceWhenUntaught))
+            forceWhenUntaught = forceWhenUntaught)
 
       case _ =>
         // ClusterSwitchedOver must be emitted by the passive cluster node,
@@ -104,66 +103,58 @@ private final class ClusterWatchSynchronizer(
             // ClusterWatchRegistered may be emitted by the background heartbeat, which
             // does not suspend heartbeat (it would suspend/kill itself).
             // So we send the updated ClusterState directly to the heartbeat (if running)
-            .whenA(event.isInstanceOf[ClusterWatchRegistered])(IO {
-              changeClusterState(updatedClusterState)
-            })
+            .whenA(event.isInstanceOf[ClusterWatchRegistered])(IO:
+              changeClusterState(updatedClusterState))
             .as(Checked.unit))
 
   def suspendHeartbeat[A](getClusterState: IO[ClusterState], forEvent: Boolean = false)
     (io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
   : IO[Checked[A]] =
-    logger.traceIO(
+    logger.traceIO:
       startNestedSuspension *>
-        io
-          .flatTap(ioResult =>
-            endNestedSuspension(
-              getClusterState
-                .flatMap {
-                  case clusterState: HasNodes if clusterState.activeId == ownId
-                    && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
-                    continueHeartbeating(
-                      clusterState,
-                      registerClusterWatchId.orThrow,
-                      forEvent = forEvent
-                    ).tapError(t => IO {
-                      logger.warn(
-                        s"suspendHeartbeat called by ${enclosing.value}: ${t.toStringWithCauses}",
-                        t.nullIfNoStackTrace)
-                    })
-                  case _ => IO.unit
-                }))
-          .guaranteeCase {
-            case Outcome.Succeeded(_) => IO.unit
-            case _ => endNestedSuspension(IO.unit)
-          })
+        io.flatTap: ioResult =>
+          endNestedSuspension:
+            getClusterState.flatMap:
+              case clusterState: HasNodes if clusterState.activeId == ownId
+                && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
+                continueHeartbeating(
+                  clusterState,
+                  registerClusterWatchId.orThrow,
+                  forEvent = forEvent
+                ).tapError(t => IO:
+                  logger.warn(
+                    s"suspendHeartbeat called by ${enclosing.value}: ${t.toStringWithCauses}",
+                    t.nullIfNoStackTrace))
+              case _ => IO.unit
+        .guaranteeCase:
+          case Outcome.Succeeded(_) => IO.unit
+          case _ => endNestedSuspension(IO.unit)
 
   private def startNestedSuspension(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
-    suspendNestingLock.lock(IO.defer {
-      if suspendNesting.getAndIncrement() == 0 then
-        stopHeartbeating
-      else {
-        assertThat(!isHeartbeating)
-        IO.unit
-      }
-    })
+    suspendNestingLock.lock:
+      IO.defer:
+        if suspendNesting.getAndIncrement() == 0 then
+          stopHeartbeating
+        else
+          assertThat(!isHeartbeating)
+          IO.unit
 
   private def endNestedSuspension(onZeroNesting: IO[Unit]): IO[Unit] =
-    suspendNestingLock.lock(IO.defer {
-      assertThat(!isHeartbeating)
-      IO.whenA(suspendNesting.decrementAndGet() == 0)(
-        onZeroNesting)
-    })
+    suspendNestingLock.lock:
+      IO.defer:
+        assertThat(!isHeartbeating)
+        IO.whenA(suspendNesting.decrementAndGet() == 0):
+          onZeroNesting
 
   private def restartHeartbeat() =
-    suspendNestingLock.lock(IO.defer {
-      if suspendNesting.getAndIncrement() == 0 then
-        stopHeartbeating
-      else {
-        assertThat(!isHeartbeating)
-        IO.unit
-      }
-    })
+    suspendNestingLock.lock:
+      IO.defer:
+        if suspendNesting.getAndIncrement() == 0 then
+          stopHeartbeating
+        else
+          assertThat(!isHeartbeating)
+          IO.unit
 
   // forEvent = true: do not check and wait ClusterState after an event has applied.
   // We suppress this to simplify testing.
@@ -187,12 +178,12 @@ private final class ClusterWatchSynchronizer(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
   : IO[Completed] =
-    logger.traceIO(IO.defer {
-      val h = new Heartbeat(clusterState, registerClusterWatchId)
-      heartbeat.getAndSet(Some(h))
-        .fold(IO.completed)(_.stop.as(Completed)) /*just in case*/
-        .*>(h.start)
-    })
+    logger.traceIO:
+      IO.defer:
+        val h = new Heartbeat(clusterState, registerClusterWatchId)
+        heartbeat.getAndSet(Some(h))
+          .fold(IO.completed)(_.stop.as(Completed)) /*just in case*/
+          .*>(h.start)
 
   private def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
     IO.defer:
@@ -224,10 +215,10 @@ private final class ClusterWatchSynchronizer(
     private val heartbeat = MVar.empty[IO, FiberIO[Unit]].unsafeMemoize
 
     def start: IO[Completed] =
-      CorrelId
-        .bindNew(logger.debugIO(s"Heartbeat ($nr) fiber")(
+      CorrelId.bindNew:
+        logger.debugIO(s"Heartbeat ($nr) fiber"):
           sendHeartbeats
-            .guaranteeCase {
+            .guaranteeCase:
               case Outcome.Errored(t) =>
                 logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
                   t.nullIfNoStackTrace)
@@ -239,27 +230,25 @@ private final class ClusterWatchSynchronizer(
                 IO.unit
 
               case Outcome.Succeeded(_) =>
-                stopping.flatMap(_.tryRead).map { maybe =>
+                stopping.flatMap(_.tryRead).map: maybe =>
                   if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
-                }
-            })
         .start
         .flatTap(fiber =>
           heartbeat
             .flatMap(_.tryPut(fiber))
             .flatMap(ok =>
-              IO.whenA(!ok)(
+              IO.whenA(!ok):
                 fiber.cancel *>
                   IO.raiseError(new ConcurrentModificationException(
-                    "Tried to start Cluster heartbeating twice")))))
-        .as(Completed))
+                    "Tried to start Cluster heartbeating twice"))))
+        .as(Completed)
 
     def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
-      logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
+      logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}"):
         stopping.flatMap(_.tryPut(()))
           .flatMap(_ => heartbeat).flatMap(_.tryTake)
           .flatMap(_.fold(IO.unit)(_.joinStd))
-          .logWhenItTakesLonger)
+          .logWhenItTakesLonger
 
     def changeClusterState(clusterState: HasNodes): Unit =
       this.clusterState = clusterState
