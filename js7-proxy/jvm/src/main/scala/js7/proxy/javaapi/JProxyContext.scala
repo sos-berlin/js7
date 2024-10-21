@@ -11,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
 import js7.base.utils.CatsUtils.*
-import js7.base.utils.{HasCloser, Lazy}
+import js7.base.utils.Lazy
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
 final class JProxyContext(config: Config, computeExecutor: Executor | Null)
-extends HasCloser:
+extends AutoCloseable:
   def this() = this(ConfigFactory.empty, null)
   def this(config: Config) = this(config, null)
 
@@ -51,7 +51,7 @@ extends HasCloser:
     executionContext = ioRuntime.compute))
   private lazy val actorSystem = actorSystemLazy()
 
-  onClose:
+  def close(): Unit =
     logger.debugCall("close JS7 JProxyContext"):
       try
         for a <- actorSystemLazy do Pekkos.terminateAndWait(a)
@@ -61,14 +61,14 @@ extends HasCloser:
   @javaApi @Nonnull
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
-    @Nonnull httpsConfig: JHttpsConfig
-  ): JControllerApi =
-    val apiResources = admissionsToApiResource(
+    @Nonnull httpsConfig: JHttpsConfig)
+  : JControllerApi =
+    val apiResource = admissionsToApiResource(
       Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala)(
       actorSystem)
     new JControllerApi(
-      new ControllerApi(apiResources, proxyConf),
+      new ControllerApi(apiResource, proxyConf),
       config_)
 
 

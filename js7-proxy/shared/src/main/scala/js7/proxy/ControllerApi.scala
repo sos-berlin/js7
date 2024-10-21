@@ -35,6 +35,7 @@ import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable
 import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
@@ -44,6 +45,7 @@ final class ControllerApi(
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp:
+
   private val apiCache = new RefCountedResource(
     ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
       apisResource,
@@ -171,6 +173,8 @@ extends ControllerApiWithHttp:
     logger.debugIO:
       untilReachable(_.snapshot())
 
+  /** Fetch the WHOLE ControllerState only to select the ClusterState. */
+  @TestOnly
   def clusterState: IO[Checked[ClusterState]] =
     controllerState.map(_.map(_.clusterState))
 

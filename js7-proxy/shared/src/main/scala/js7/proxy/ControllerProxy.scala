@@ -27,6 +27,7 @@ extends
   protected def start =
     startService(untilStopRequested)
 
+  // Make public
   override def stop: IO[Unit] =
     super.stop
 
@@ -49,12 +50,12 @@ object ControllerProxy:
     eventBus: JournaledStateEventBus[ControllerState],
     proxyConf: ProxyConf = ProxyConf.default)
   : ResourceIO[ControllerProxy] =
-      for
-        journaledProxy <- JournaledProxy.resource(
-          JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
-          proxyConf,
-          eventBus.publish)
-        controllerProxy <- Service.resource(IO:
-          new ControllerProxy(journaledProxy, eventBus, api))
-      yield
-        controllerProxy
+    for
+      journaledProxy <- JournaledProxy.resource(
+        JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
+        proxyConf,
+        eventBus.publish)
+      controllerProxy <- Service.resource(IO:
+        new ControllerProxy(journaledProxy, eventBus, api))
+    yield
+      controllerProxy
