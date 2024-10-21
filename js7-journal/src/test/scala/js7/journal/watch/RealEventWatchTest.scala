@@ -30,14 +30,14 @@ final class RealEventWatchTest extends OurTestSuite:
       onEventsCommitted(events.last.eventId)
       def journalInfo = throw new NotImplementedError
     val a = eventWatch
-      .stream(EventRequest.singleClass[TestEvent](limit = 1))
+      .stream(EventRequest.singleClass[TestEvent](limit = 1, timeout = Some(0.s)))
       .compile.toList
       .unsafeToFuture() await 99.s
     assert(a == events)
 
     // Event from 1970-01-01 is older than 1s
     val stream = eventWatch
-      .stream(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s)))
+      .stream(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s), timeout = Some(0.s)))
       .compile.toList
       .unsafeToCancelableFuture()
     intercept[TornException] { stream await 99.s }
@@ -45,7 +45,9 @@ final class RealEventWatchTest extends OurTestSuite:
 
     assert:
       eventWatch
-        .stream(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
+        .stream:
+          EventRequest.singleClass[TestEvent](
+            limit = 7, timeout = Some(0.s), after = 1L, tornOlder = Some(1.s))
         .compile.toList
         .await(99.s).isEmpty
 

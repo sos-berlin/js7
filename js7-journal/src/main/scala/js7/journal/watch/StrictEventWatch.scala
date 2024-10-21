@@ -151,7 +151,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   @TestOnly
   private def allAfter[E <: Event: ClassTag: Tag](after: EventId = EventId.BeforeFirst)
   : IO[Seq[Stamped[KeyedEvent[E]]]] =
-    when[E](EventRequest.singleClass[E](after = after), _ => true)
+    when[E](EventRequest.singleClass[E](after = after, timeout = Some(0.s)), _ => true)
       .map:
         case TearableEventSeq.Torn(after) =>
           throw new TornException(after = EventId.BeforeFirst, tornEventId = after)

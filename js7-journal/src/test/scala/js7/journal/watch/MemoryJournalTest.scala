@@ -43,8 +43,11 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
       "A" -> TestAggregate("A", "a"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1000)
-    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
-      Stamped(1000, "A" <-: TestEvent.Added("a"))))
+    assert:
+      eventWatch.stream:
+        EventRequest.singleClass[TestEvent](0, timeout = Some(0.s))
+      .compile.toList.await(99.s) == List(
+        Stamped(1000, "A" <-: TestEvent.Added("a")))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
     assert(journal.unsafeCurrentState() == TestState(1001, keyToAggregate = Map(
@@ -52,12 +55,21 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1001)
 
-    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
-      Stamped(1000, "A" <-: TestEvent.Added("a")),
-      Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1000)).compile.toList.await(99.s) == List(
-      Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1001)).compile.toList.await(99.s).isEmpty)
+    assert:
+      eventWatch.stream:
+        EventRequest.singleClass[TestEvent](0, timeout = Some(0.s))
+      .compile.toList.await(99.s) == List(
+        Stamped(1000, "A" <-: TestEvent.Added("a")),
+        Stamped(1001, "A" <-: TestEvent.Appended('1')))
+    assert:
+      eventWatch.stream:
+        EventRequest.singleClass[TestEvent](1000, timeout = Some(0.s))
+      .compile.toList.await(99.s) == List(
+        Stamped(1001, "A" <-: TestEvent.Appended('1')))
+    assert:
+      eventWatch.stream:
+        EventRequest.singleClass[TestEvent](1001, timeout = Some(0.s))
+      .compile.toList.await(99.s).isEmpty
 
   "test" in:
     val journal = newJournal()
@@ -109,7 +121,8 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     journal.releaseEvents(1001).await(99.s).orThrow
     assert(eventWatch.tornEventId == 1001)
     assert(eventWatch
-      .stream(EventRequest.singleClass[TestEvent](after = 1001))
+      .stream:
+        EventRequest.singleClass[TestEvent](after = 1001, timeout = Some(0.s))
       .compile.toList
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
@@ -117,12 +130,14 @@ final class MemoryJournalTest extends OurAsyncTestSuite:
     assert(journal.isEmpty)
     assert(eventWatch.tornEventId == 1002)
     assert:
-      journal.eventWatch.stream(EventRequest.singleClass[Event](after = 1002))
-        .compile.toList.await(99.s)
-        .isEmpty
+      journal.eventWatch.stream:
+        EventRequest.singleClass[Event](after = 1002, timeout = Some(0.s))
+      .compile.toList.await(99.s)
+      .isEmpty
 
     assert(eventWatch
-      .stream(EventRequest.singleClass[TestEvent](after = 1001))
+      .stream:
+        EventRequest.singleClass[TestEvent](after = 1001, timeout = Some(0.s))
       .compile.toList
       .materialize
       .await(99.s)

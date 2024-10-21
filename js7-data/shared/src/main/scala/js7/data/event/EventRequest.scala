@@ -15,6 +15,7 @@ final case class EventRequest[E <: Event](
   // TODO Simplify timeout to something like lastEventsOnly: Boolean? 
   //  Entweder nur anstehende Events oder endloser Strom
   timeout: Option[FiniteDuration],
+  // TODO Do we need delay?
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
   tornOlder: Option[FiniteDuration] = None):

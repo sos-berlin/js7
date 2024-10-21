@@ -324,7 +324,8 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
   private def checkAgentEvents(client: AgentClient): Unit =
     client.login().await(99.s)
     val keyedEvents = client
-      .agentEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+      .agentEventStream:
+        EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s))
       .await(99.s)
       .orThrow
       .map(_.value)

@@ -756,7 +756,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   : Assertion =
     eventWatch.await[E](_.key == orderId, after = after)
     sleep(50.millis)  // No more events should arrive
-    eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match
+    eventWatch.when[OrderEvent](EventRequest.singleClass(after = after, timeout = Some(0.s)))
+      .await(99.s) match
       case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
