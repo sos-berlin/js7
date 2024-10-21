@@ -343,16 +343,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
             .start
             .map(Right(_))
 
-  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
-  : IO[Option[IO[Unit]]] =
-    orderToDeferred.remove(orderId).map:
-      case None =>
-        logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
-        None
-
-      case Some(processing) =>
-        Some(processing.complete(orderProcessed).void)
-
   //private def killAll(signal: ProcessSignal): IO[Unit] =
   //  IO.defer {
   //    val cmds = orderToDeferred.toMap.keys.map(KillProcess(_, signal))

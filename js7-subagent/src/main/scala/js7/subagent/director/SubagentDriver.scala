@@ -4,6 +4,7 @@ import cats.effect.{Deferred, FiberIO, IO}
 import cats.syntax.all.*
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
+import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
@@ -54,6 +55,7 @@ trait SubagentDriver:
 
   protected def api: SubagentApi
 
+  private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   protected final val orderToDeferred =
     AsyncMap.stoppable[OrderId, Deferred[IO, OrderProcessed]]()
 
@@ -115,3 +117,13 @@ trait SubagentDriver:
         signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
       yield
         signedJobResources :+ signedWorkflow
+
+  protected final def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
+  : IO[Option[IO[Unit]]] =
+    orderToDeferred.remove(orderId).map:
+      case None =>
+        logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
+        None
+
+      case Some(processing) =>
+        Some(processing.complete(orderProcessed).void)

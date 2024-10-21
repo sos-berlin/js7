@@ -204,16 +204,6 @@ extends SubagentDriver, Service.StoppableByRequest:
         logger.error(s"Unexpected event: $keyedEvent")
         IO.pure(None -> IO.unit)
 
-  private def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
-  : IO[Option[IO[Unit]]] =
-    orderToDeferred.remove(orderId).map:
-      case None =>
-        logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
-        None
-
-      case Some(processing) =>
-        Some(processing.complete(orderProcessed).void)
-
   def serverMeteringScope(): Option[ServerMeteringLiveScope.type] =
     Some(ServerMeteringLiveScope)
 
