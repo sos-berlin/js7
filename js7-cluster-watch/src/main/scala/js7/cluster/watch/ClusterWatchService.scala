@@ -11,8 +11,6 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
-import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
@@ -32,7 +30,6 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters.*
 
 final class ClusterWatchService private[ClusterWatchService](
   val clusterWatchId: ClusterWatchId,
@@ -182,21 +179,19 @@ object ClusterWatchService:
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
   : ResourceIO[ClusterWatchService] =
     Resource.suspend(IO:
-      val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
-      val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")
-        .asScala.map(_.toFiniteDuration).toList
-
       for
         nodeApis <- apisResource
         service <-
-          Service.resource(
-            IO(new ClusterWatchService(
+          Service.resource:
+            IO(ClusterWatchService(
               clusterWatchId,
               nodeApis,
               label = label,
-              keepAlive = keepAlive,
-              retryDelays = NonEmptyList.fromList(retryDelays) getOrElse NonEmptyList.one(1.s),
+              keepAlive =
+                config.finiteDuration("js7.web.client.keep-alive").orThrow,
+              retryDelays =
+                config.nonEmptyFiniteDurations("js7.journal.cluster.watch.retry-delays").orThrow,
               onClusterStateChanged,
-              onUndecidableClusterNodeLoss)))
+              onUndecidableClusterNodeLoss))
       yield
         service)

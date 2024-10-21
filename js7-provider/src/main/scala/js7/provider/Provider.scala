@@ -9,7 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.completed
-import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.As.*
 import js7.base.crypt.generic.SignatureServices
 import js7.base.generic.{Completed, SecretString}
@@ -19,8 +19,6 @@ import js7.base.monixlike.MonixLikeExtensions.parZip2
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
-import js7.base.time.JavaTimeConverters.*
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction, continueWithLast}
@@ -43,7 +41,6 @@ import js7.proxy.ControllerApi
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 
 // Test in js7.tests.provider.ProviderTest
 
@@ -63,8 +60,8 @@ extends Observing, MainService, Service.StoppableByRequest:
   protected def config = conf.config
 
   private val firstRetryLoginDurations = conf.config
-    .getDurationList("js7.provider.controller.login-retry-delays")
-    .asScala.map(_.toFiniteDuration)
+    .nonEmptyFiniteDurations("js7.provider.controller.login-retry-delays")
+    .orThrow
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
   private val lastEntries = Atomic(Vector.empty[DirectoryReader.Entry])

@@ -1,6 +1,7 @@
 package js7.base.configutils
 
 import cats.Monoid
+import cats.data.NonEmptyList
 import com.typesafe.config.ConfigRenderOptions.concise
 import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigParseOptions, ConfigValue}
 import io.circe.Json
@@ -127,6 +128,17 @@ object Configs:
     def finiteDuration(path: String): Checked[FiniteDuration] =
       catchExpected[ConfigException]:
         underlying.getDuration(path).toFiniteDuration
+
+    def nonEmptyFiniteDurations(path: String): Checked[NonEmptyList[FiniteDuration]] =
+      catchExpected[ConfigException]:
+        NonEmptyList.fromList:
+          underlying.getDurationList(path).asScala.toList.map(_.toFiniteDuration)
+        .match
+          case None =>
+            Left(Problem(s"Config $path must not be an empty list"))
+          case Some(nev) =>
+            Right(nev)
+      .flatten
 
     def maybeFiniteDuration(path: String): Checked[Option[FiniteDuration]] =
       catchExpected[ConfigException]:
