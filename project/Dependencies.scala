@@ -5,9 +5,9 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val pekkoVersion = "1.0.3"
+  val pekkoVersion = "1.1.2"
   val pekkoHttpVersion = "1.1.0"
-  val slf4jVersion = "2.0.13"  // See also plugins.sbt
+  val slf4jVersion = "2.0.16"  // See also plugins.sbt
   val log4jVersion = "2.24.1"  // See also plugins.sbt
   val catsVersion = "2.12.0"
   val catsEffectVersion = "3.5.4"
@@ -16,9 +16,9 @@ object Dependencies
   val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.0.0"
-  val circeVersion = "0.14.9"
+  val circeVersion = "0.14.10"
   val circeGenericExtrasVersion = "0.14.3"
-  val scalaTestVersion = "3.2.18"
+  val scalaTestVersion = "3.2.19"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.18.0"
   val sourcecodeVersion = "0.4.1"
@@ -30,7 +30,7 @@ object Dependencies
   val softwaremillTaggingVersion = "2.3.5"
   val reactorVersion = "3.6.10"
   val vavrVersion = "0.10.4"
-  val jnaVersion = "5.14.0"
+  val jnaVersion = "5.15.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
@@ -75,8 +75,8 @@ object Dependencies
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk18on" % "1.78.1"
-  val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
-                            "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
+  val hamcrest            = "org.hamcrest" % "hamcrest" % "3.0" ::
+                            "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
                             "net.java.dev.jna" % "jna" % jnaVersion :: Nil
 }
