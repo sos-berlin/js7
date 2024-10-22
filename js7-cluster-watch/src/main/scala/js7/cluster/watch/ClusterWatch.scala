@@ -215,7 +215,7 @@ object ClusterWatch:
                   maybeEvent, clusterState, reportedClusterState = reportedClusterState))
 
               case Right(updatedClusterState) =>
-                for event <- maybeEvent do logger.info(s"$from: $event")
+                for event <- maybeEvent do logger.info(s"$from $event")
                 val confirmer = maybeEvent match {
                   case Some(event: ClusterNodeLostEvent) => manualConfirmed(event)
                   case _ => None

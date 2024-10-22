@@ -106,7 +106,8 @@ object JournaledProxy:
                         None
                       else
                         logger.warn(t.toStringWithCauses)
-                        if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
+                        if PekkoHttpClient.hasRelevantStackTrace(t) then
+                          logger.debug(t.toStringWithCauses, t)
                         logger.debug("Restarting stream and try to continue seamlessly after=" +
                           EventId.toString(state.eventId))
                         Some(lastState)))
