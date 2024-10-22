@@ -17,12 +17,11 @@ import js7.base.problem.Checked
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.AckFromActiveClusterNodeProblem
+import js7.data.Problems.{AckFromActiveClusterNodeProblem, OldEventIdProblem}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.watch.RealEventWatch.*
@@ -208,10 +207,13 @@ trait RealEventWatch extends EventWatch:
                   IO.defer:
                     val head = iterator.next()
                     // Don't compare head.timestamp, timestamp may be much older)
-                    if EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now then
+                    if EventId.isOlder(head.eventId, tornOlder) then
                       iterator.close()
                       // Simulate a torn EventSeq
-                      IO.pure(TearableEventSeq.Torn(committedEventIdSync.last))
+                      val torn = TearableEventSeq.Torn(committedEventIdSync.last)
+                      logger.debug(s"$torn due to tornOlder=${tornOlder.pretty} and eventId=${
+                        EventId.toString(head.eventId)}")
+                      IO.pure(torn)
                     else
                       IO.pure(EventSeq.NonEmpty(head +: iterator))
 
@@ -270,18 +272,27 @@ trait RealEventWatch extends EventWatch:
   final def lastAddedEventId: EventId =
     committedEventIdSync.last
 
-  final def checkEventId(eventId: EventId): Checked[Unit] =
+  final def checkEventId(eventId: EventId, tornOlder: Option[FiniteDuration] = None): Checked[Unit] =
+    lazy val unknownEventId = UnknownEventIdProblem(
+      requestedEventId = eventId,
+      tornEventId = tornEventId,
+      lastAddedEventId = lastAddedEventId)
     eventsAfter(eventId) match
-      case Some(iterator) =>
-        iterator.close()
-        Checked.unit
       case None =>
-        val problem = UnknownEventIdProblem(
-          requestedEventId = eventId,
-          tornEventId = tornEventId,
-          lastAddedEventId = lastAddedEventId)
-        logger.warn(s"$problem (tornEventId=$tornEventId lastAddedEventId=$lastAddedEventId)")
-        Left(problem)
+        logger.warn(s"$unknownEventId (tornEventId=$tornEventId lastAddedEventId=$lastAddedEventId)")
+        Left(unknownEventId)
+      case Some(iterator) =>
+        try
+          tornOlder match
+            case None => Checked.unit
+            case Some(tornOlder) =>
+              if !iterator.hasNext then
+                Checked.unit
+              else
+                val eventId = iterator.next().eventId
+                !EventId.isOlder(eventId, tornOlder) !! OldEventIdProblem(eventId, tornOlder)
+        finally
+          iterator.close()
 
   /** TEST ONLY - Blocking. */
   @TestOnly

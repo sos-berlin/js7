@@ -21,6 +21,7 @@ import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
+import js7.data.Problems.OldEventIdProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.data.problems.UnknownEventIdProblem
@@ -117,7 +118,8 @@ object JournaledProxy:
       checkedCast[ProblemException](t)
         .map(_.problem)
         .exists: problem =>
-          problem.is(UnknownEventIdProblem) || problem.is(EventSeqTornProblem)
+          problem.is(OldEventIdProblem) || problem.is(UnknownEventIdProblem) ||
+            problem.is(EventSeqTornProblem)
 
     def streamWithState(api: RequiredApi_[S], state: S, stateFetchDuration: FiniteDuration)
     : Stream[IO, EventAndState[Event, S]] =
@@ -168,8 +170,10 @@ object JournaledProxy:
     tornOlder: Option[FiniteDuration],
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
-  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], RequiredApi_[S]](
-    _.eventId.some, recouplingStreamReaderConf):
+    extends
+      RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], RequiredApi_[S]](
+        _.eventId.some, recouplingStreamReaderConf):
+
     private var addToTornOlder = stateFetchDuration
 
     def getStream(api: RequiredApi_[S], after: EventId) =

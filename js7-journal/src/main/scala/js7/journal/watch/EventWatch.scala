@@ -92,7 +92,7 @@ trait EventWatch:
 
   def tornEventId: EventId
 
-  def checkEventId(eventId: EventId): Checked[Unit]
+  def checkEventId(eventId: EventId, tornOlder: Option[FiniteDuration] = None): Checked[Unit]
 
 
 object EventWatch:

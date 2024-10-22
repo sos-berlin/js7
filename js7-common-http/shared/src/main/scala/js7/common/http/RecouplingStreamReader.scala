@@ -183,7 +183,8 @@ abstract class RecouplingStreamReader[
                   .flatMap:
                     case Left(problem) =>
                       if isStopped then
-                        IO.left(())  // Fail in next iteration
+                        logger.debug(s"While isStopped: $problem")
+                        IO.left(())  // Exit tailRecM in next iteration
                       else if isSevereProblem(problem) then
                         IO.raiseError(problem.throwable)
                       else
@@ -192,7 +193,7 @@ abstract class RecouplingStreamReader[
                             (if continue then
                               pauseBeforeRecoupling.as(Left(()))
                             else
-                              IO.right(after -> Stream.empty))
+                              IO.raiseError(problem.throwable))
 
                     case Right(stream) =>
                       IO.right(after -> stream)

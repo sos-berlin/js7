@@ -150,7 +150,7 @@ trait GenericEventRoute extends RouteProvider:
           awaitFirstEventStream(request, eventWatch)
         else
           IO:
-            eventWatch.checkEventId(request.after) >> Right:
+            eventWatch.checkEventId(request.after, request.tornOlder) >> Right:
               eventStream(request, isRelevantEvent, eventWatch, maybeServerMetering)
                 .through:
                   encodeParallel(httpChunkSize = httpChunkSize, prefetch = prefetch)
@@ -184,7 +184,7 @@ trait GenericEventRoute extends RouteProvider:
               limit = request.limit - 1 max 0,
               delay = (request.delay - runningSince.elapsed) max ZeroDuration)
 
-            eventWatch.checkEventId(request.after) >> Right:
+            eventWatch.checkEventId(request.after, request.tornOlder) >> Right:
               Stream.emit(head)
                 .append:
                   eventStream(tailRequest, isRelevantEvent, eventWatch)

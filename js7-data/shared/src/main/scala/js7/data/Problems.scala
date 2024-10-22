@@ -11,7 +11,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
-import scala.collection.immutable.Map.Map1
+import scala.collection.immutable.Map.{Map1, Map2}
 import scala.concurrent.duration.FiniteDuration
 
 object Problems:
@@ -144,3 +144,12 @@ object Problems:
     def arguments: Map[String, String] =
       Map1("clusterStates", clusterStates.mkString(", "))
         .filter(_._2.nonEmpty)
+
+
+  final case class OldEventIdProblem(eventId: EventId, tornOlder: FiniteDuration)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map2(
+      "eventId", EventId.toString(eventId),
+      "tornOlder", tornOlder.pretty)
+
+  case object OldEventIdProblem extends Problem.ArgumentlessCoded

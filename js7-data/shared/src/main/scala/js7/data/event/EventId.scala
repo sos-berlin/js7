@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Encoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
+import scala.concurrent.duration.FiniteDuration
 
 object EventId:
   val BeforeFirst: EventId = 0L
@@ -51,6 +52,9 @@ object EventId:
           sb += ('0' + micros / 10 % 10).toChar
           sb += ('0' + micros % 10).toChar
           sb.toString
+
+  def isOlder(eventId: EventId, tornOlder: FiniteDuration): Boolean =
+    EventId.toTimestamp(eventId) + tornOlder < Timestamp.now
 
   /** The Cluster acknowledgment stream of EventIds may terminate with a Problem. */
   given Codec[Checked[EventId]] =
