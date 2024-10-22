@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters.*
  */
 object AgentClientMain extends SimpleServiceProgram[AgentClientMain.Conf]:
 
-  override protected def productName = "JS7 AgentClient"
+  override protected val productName = "AgentClient"
 
   protected def program(conf: Conf): IO[ExitCode] =
     program(conf, println)(using runtime)

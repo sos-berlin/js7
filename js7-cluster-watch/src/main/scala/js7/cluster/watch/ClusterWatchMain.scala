@@ -9,7 +9,7 @@ import org.jetbrains.annotations.TestOnly
 object ClusterWatchMain extends ServiceApp:
   // No Logger here!
 
-  override protected def productName = "JS7 ClusterWatch"
+  override protected val productName = "ClusterWatch"
 
   def run(args: List[String]): IO[ExitCode] =
     runService(args, ClusterWatchConf.fromCommandLine):

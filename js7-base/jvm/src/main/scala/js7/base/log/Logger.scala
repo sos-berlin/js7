@@ -50,10 +50,6 @@ object Logger extends AdHocLogger:
         ScalaLogger[this.type].info(StartUp.startUpLine(name))
       Tests.log()
 
-  def initializeOnly(name: String): Unit =
-    ifNotInitialized:
-      Log4j.initialize(name)
-
   /** Don't initialize but mark as initialized.
    * Use this when logging has been initialized by some outer software (like JOC). */
   def dontInitialize(): Unit =

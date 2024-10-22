@@ -40,7 +40,7 @@ object ServiceMain:
   : IO[ExitCode] =
     IO
       .defer:
-        printlnWithClock(s"$name ${BuildInfo.longVersion}")
+        printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
         StartUp.initializeMain()
 
         JavaMainLockfileSupport

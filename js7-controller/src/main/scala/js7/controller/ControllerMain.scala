@@ -8,7 +8,7 @@ import js7.controller.configuration.ControllerConfiguration
 object ControllerMain extends ServiceApp:
 
   // No Logger here!
-  override protected def productName = "JS7 Controller"
+  override protected val productName = "Controller"
 
   def run(args: List[String]): IO[ExitCode] =
     given IORuntime = runtime

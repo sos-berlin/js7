@@ -8,7 +8,7 @@ import js7.common.system.startup.ServiceApp
 object AgentMain extends ServiceApp:
   // No Logger here!
 
-  override protected def productName = "JS7 Agent"
+  override protected val productName = "Agent"
 
   def run(args: List[String]): IO[ExitCode] =
     runService(args, AgentConfiguration.fromCommandLine(_), useLockFile = true):

@@ -57,10 +57,7 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
     val last = lastLog4jStringMap
     val correlId = CorrelId.local()
     val v = keyToValueVersion
-    if last != null
-      && last.correlId.eq(correlId)
-      && v == lastKeyToValueVersion
-    then
+    if last != null && last.correlId.eq(correlId) && v == lastKeyToValueVersion then
       last
     else
       lastKeyToValueVersion = v
@@ -104,11 +101,11 @@ object Log4jThreadContextMap:
       case _ => false
 
   def initialize(name: String): Unit =
-    keyToValue.put("js7.name", name)
+    keyToValue.put("js7.serverId", name) // May be overwritten later by a more specific value
     System.setProperty("log4j2.threadContextMap", myClassName)
     debug(s"log4j2.threadContextMap=$myClassName")
 
-  private[log] def set(key: String, value: String) =
+  private[log] def set(key: String, value: String): Unit =
     keyToValue.put(key, value)
     keyToValueVersion += 1
 
@@ -130,4 +127,4 @@ object Log4jThreadContextMap:
     Logger[this.type].trace(statistics)
 
   private def debug(string: => String): Unit =
-    if isDebug then println(myClassName + " - " + string)
+    if isDebug then println(s"$myClassName - $string")
