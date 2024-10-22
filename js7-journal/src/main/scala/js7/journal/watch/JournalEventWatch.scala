@@ -273,22 +273,19 @@ extends AutoCloseable,
   override def toString = s"JournalEventWatch(${journalLocation.name})"
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
-    historicJournalFileAfter(after) flatMap { historicJournalFile =>
+    historicJournalFileAfter(after).flatMap: historicJournalFile =>
       var last = after
-      historicJournalFile.eventReader.eventsAfter(after) map { events =>
-        events.tapEach { stamped =>
+      historicJournalFile.eventReader.eventsAfter(after).map: events =>
+        events.tapEach: stamped =>
           last = stamped.eventId
-        } ++  // ++ is lazy, so last element will contain last read eventId
-          (if last == after then  // Nothing read
+        .concat:  // concat is lazy, so last element will contain last read eventId
+          if last == after then  // Nothing read
             CloseableIterator.empty
-          else {  // Continue with next HistoricEventReader or CurrentEventReader
-            logger.debug(
-              s"Continue with next HistoricEventReader or CurrentEventReader, last=$last after=$after")
+          else   // Continue with next HistoricEventReader or CurrentEventReader
+            logger.debug:
+              s"Continue with next HistoricEventReader or CurrentEventReader, last=$last after=$after"
             assertThat(last > after, s"last=$last ≤ after=$after ?")
             eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
-          })
-      }
-    }
 
   /** Close unused HistoricEventReader. **/
   private def evictUnusedEventReaders(): Unit =

@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 final case class EventRequest[E <: Event](
   eventClasses: Set[Class[? <: E]],
   after: EventId,
-  // TODO Simplify timeout to something like lastEventsOnly: Boolean? 
+  // TODO Simplify timeout to something like lastEventsOnly: Boolean?
   //  Entweder nur anstehende Events oder endloser Strom
   timeout: Option[FiniteDuration],
   // TODO Do we need delay?

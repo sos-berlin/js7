@@ -41,24 +41,20 @@ abstract class RecouplingStreamReader[
   protected def getStream(api: Api, after: I): IO[Checked[Stream[IO, V]]]
 
   protected def onCouplingFailed(api: Api, problem: Problem): IO[Boolean] =
-    inUse.get
-      .flatMap(inUse =>
-        IO {
-          var logged = false
-          lazy val msg = s"$api: coupling failed: $problem"
-          if inUse && !stopRequested && !coupledApiVar.isStopped then
-            sym.onWarn()
-            logger.warn(s"$sym $msg")
-            logged = true
-          for throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
-               if api.hasRelevantStackTrace(throwable) do {
+    inUse.get.flatMap: inUse =>
+      IO:
+        var logged = false
+        lazy val msg = s"$api: coupling failed: $problem"
+        if inUse && !stopRequested && !coupledApiVar.isStopped then
+          sym.onWarn()
+          logger.warn(s"$sym $msg")
+          logged = true
+        for throwable <- problem.throwableOption.map(_.nullIfNoStackTrace) do
+          if api.hasRelevantStackTrace(throwable) then
             logger.debug(s"💥 $msg", throwable)
             logged = true
-          }
-          if !logged then
-            logger.debug(s"💥 $api: $msg")
-          true  // Recouple and continue
-        })
+        if !logged then logger.debug(s"💥 $api: $msg")
+        true  // Recouple and continue
 
   protected def onCoupled(api: Api, after: I): IO[Completed] =
     IO.completed

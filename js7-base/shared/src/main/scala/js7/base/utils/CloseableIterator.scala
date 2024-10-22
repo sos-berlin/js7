@@ -33,6 +33,9 @@ trait CloseableIterator[+A] extends Iterator[A], AutoCloseable:
     wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
 
   def ++[B >: A](b: => CloseableIterator[B]): CloseableIterator[B] =
+    concat(b)
+
+  def concat[B >: A](b: => CloseableIterator[B]): CloseableIterator[B] =
     new Concatenated(this, b)
 
   override def take(n: Int): CloseableIterator[A] =

@@ -196,16 +196,16 @@ trait RealEventWatch extends EventWatch:
       started
         .flatMap: _ =>
           committedEventIdSync.whenAvailable(after, deadline.map(_.toCatsDeadline), delay)
-        .flatMap(eventArrived =>
-          collectEventsSince(after, collect, limit) match {
+        .flatMap: eventArrived =>
+          collectEventsSince(after, collect, limit) match
             case eventSeq @ EventSeq.NonEmpty(iterator) =>
-              maybeTornOlder match {
+              maybeTornOlder match
                 case None => IO.pure(eventSeq)
                 case Some(tornOlder) =>
                   // If the first event is not fresh, we have a read congestion.
                   // We serve a (simulated) Torn, and the client can fetch the current state
                   // and read fresh events, skipping the congestion.
-                  IO.defer {
+                  IO.defer:
                     val head = iterator.next()
                     // Don't compare head.timestamp, timestamp may be much older)
                     if EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now then
@@ -214,8 +214,6 @@ trait RealEventWatch extends EventWatch:
                       IO.pure(TearableEventSeq.Torn(committedEventIdSync.last))
                     else
                       IO.pure(EventSeq.NonEmpty(head +: iterator))
-                  }
-              }
 
             case empty @ EventSeq.Empty(lastEventId) =>
               SyncDeadline
@@ -224,7 +222,7 @@ trait RealEventWatch extends EventWatch:
                     if lastEventId < committedEventIdSync.last then
                       // May happen due to race condition ???
                       val delay = overheatingDurations.next()
-                      logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
+                      logger.debug(s"❓committedEventIdSync.whenAvailable(after=$after," +
                         s" timeout=${deadline.fold("")(_.timeLeft.pretty)})" +
                         s" last=${committedEventIdSync.last} => $eventArrived," +
                         s" unexpected $empty, delaying ${delay.pretty}")
@@ -237,9 +235,8 @@ trait RealEventWatch extends EventWatch:
                   case None =>
                     IO.pure(EventSeq.Empty(lastEventId)) // Repeat without delay
 
-          case o: TearableEventSeq.Torn =>
-            IO.pure(o)
-        })
+            case o: TearableEventSeq.Torn =>
+              IO.pure(o)
 
     untilNonEmpty(after)
 
