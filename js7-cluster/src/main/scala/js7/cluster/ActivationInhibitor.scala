@@ -10,9 +10,10 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.MVar
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.{DelayConf, MVar}
 import js7.cluster.ActivationInhibitor.*
+import js7.common.http.PekkoHttpClient
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
@@ -89,23 +90,23 @@ private[cluster] final class ActivationInhibitor:
               .as(Right(false))
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
-    stateMvarIO
-      .flatMap: mvar =>
-        mvar.take.flatMap:
-          case Inhibited(1) => mvar.put(Passive)
-          case Inhibited(n) => mvar.put(Inhibited(n - 1))
-          case state => IO(logger.error: // Must not happen
-            s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'")
-      .attempt.map:
-        case Left(throwable) => logger.error(
-          s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-        case Right(()) =>
-      .delayBy(duration)
-      .startAndForget
+    stateMvarIO.flatMap: mvar =>
+      mvar.take.flatMap:
+        case Inhibited(1) => mvar.put(Passive)
+        case Inhibited(n) => mvar.put(Inhibited(n - 1))
+        case state => IO(logger.error: // Must not happen
+          s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'")
+    .attempt.map:
+      case Left(throwable) => logger.error(
+        s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+      case Right(()) =>
+    .delayBy(duration)
+    .startAndForget
 
   @TestOnly
   private[cluster] def state: IO[Option[State]] =
     stateMvarIO.flatMap(_.tryRead)
+
 
 private[cluster] object ActivationInhibitor:
   private val logger = Logger[this.type]
@@ -115,27 +116,25 @@ private[cluster] object ActivationInhibitor:
     peersUserAndPassword: Option[UserAndPassword],
     clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi])
   : IO[Option[FailedOver]] =
-    IO.defer:
-      val retryDelay = 5.s // TODO
-      clusterNodeApi(
-        Admission(setting.passiveUri, peersUserAndPassword),
-        "inhibitActivationOfPassiveNode"
-      ).evalTap(_.loginUntilReachable())
-        .use(_
-          .executeClusterCommand(
-            ClusterInhibitActivation(setting.timing.inhibitActivationDuration))
-          .map(_.failedOver))
-        .onErrorRestartLoop(()): (throwable, _, retry) =>
-          // TODO Code mit loginUntilReachable usw. zusammenfassen.
-          //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
-          val msg = "While trying to reach the other cluster node due to restart: " +
-            throwable.toStringWithCauses
-          logger.warn(msg)
-          for t <- throwable.ifStackTrace do logger.debug(msg, t)
-          retry(()).delayBy(retryDelay)
-    .map: maybeFailedOver =>
-      logger.debug(s"${setting.passiveUri} ClusterInhibitActivation returned failedOver=$maybeFailedOver")
-      maybeFailedOver
+    val admission = Admission(setting.passiveUri, peersUserAndPassword)
+    logger.debugIO(s"inhibitActivationOfPassiveNode ${setting.passiveUri}"):
+      DelayConf.default.runIO: delayer =>
+        clusterNodeApi(admission, "inhibitActivationOfPassiveNode")
+          .evalTap(_.loginUntilReachable())
+          .use:
+            _.executeClusterCommand:
+              ClusterInhibitActivation(setting.timing.inhibitActivationDuration)
+            .map(_.failedOver)
+          .onErrorRestartLoop(()): (throwable, _, retry) =>
+            // TODO Code mit loginUntilReachable usw. zusammenfassen.
+            //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
+            val msg = "While trying to reach the other cluster node due to restart: " +
+              throwable.toStringWithCauses
+            logger.warn(msg)
+            for t <- throwable.ifStackTrace if PekkoHttpClient.hasRelevantStackTrace(t) do
+              logger.debug(msg, t)
+            delayer.sleep >> retry(())
+
 
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State
