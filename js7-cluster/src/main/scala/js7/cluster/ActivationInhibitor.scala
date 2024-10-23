@@ -42,8 +42,7 @@ private[cluster] final class ActivationInhibitor:
               IO.raiseError:
                 new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
 
-  def tryToActivate(ifInhibited: IO[Checked[Boolean]])(activate: IO[Checked[Boolean]])
-  : IO[Checked[Boolean]] =
+  def tryToActivate(activate: IO[Checked[Boolean]]): IO[Checked[Boolean]] =
     logger.debugIO:
       stateMvarIO.flatMap: mvar =>
         mvar.take.flatMap:
@@ -62,11 +61,12 @@ private[cluster] final class ActivationInhibitor:
                   logger.debug("tryToActivate: Active — due to Right(true)")
                   mvar.put(Active)
 
-          case o: Inhibited => IO.defer:
-            logger.debug(s"tryToActivate: $o")
-            mvar.put(o) *>
-              IO { logger.info("Activation inhibited") } *>
-              ifInhibited
+          case o: Inhibited =>
+            IO(logger.debug(s"tryToActivate: $o")) *>
+              mvar.put(o) *>
+                IO:
+                  logger.info("Activation inhibited")
+                  Right(false)
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
@@ -79,14 +79,14 @@ private[cluster] final class ActivationInhibitor:
             val depth = state match
               case Inhibited(n) => n + 1
               case _ => 1
-            mvar
-              .put(Inhibited(depth))
-              .flatMap(_ => setInhibitionTimer(duration))
-              .map(_ => Right(true))
+            mvar.put(Inhibited(depth))
+              .productR:
+                setInhibitionTimer(duration)
+              .as(Right(true))
 
           case Active =>
             mvar.put(Active)
-              .map(_ => Right(false))
+              .as(Right(false))
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
     stateMvarIO

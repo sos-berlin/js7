@@ -116,7 +116,7 @@ private[cluster] final class ClusterCommon private(
     (body: IO[Checked[Boolean]])
   : IO[Checked[Boolean]] =
     logger.traceIOWithResult:
-      activationInhibitor.tryToActivate(ifInhibited = IO.right(false)):
+      activationInhibitor.tryToActivate:
         activate(clusterState, event)(body)
 
   private def activate(

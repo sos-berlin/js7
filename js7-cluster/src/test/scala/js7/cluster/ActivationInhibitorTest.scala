@@ -222,9 +222,9 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
   : IO[Checked[Boolean]] =
-    inhibitor.tryToActivate(ifInhibited = IO.right(false)):
+    inhibitor.tryToActivate:
       IO.pure(bodyResult).delayBy(1.s)
 
   private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Boolean]] =
-    inhibitor.tryToActivate(ifInhibited = IO.right(false)):
+    inhibitor.tryToActivate:
       IO.raiseError(new RuntimeException("TEST")).delayBy(1.s)
