@@ -523,15 +523,19 @@ object ClusterNode:
         else
           preparePassiveNode(recovered, clusterState)
 
-    Service.resource(
+    Service.resource:
       for
-        currentStateRef <- Ref[IO].of(
+        currentStateRef <- Ref[IO].of:
           prepared.currentPassiveReplicatedState
-            .map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten))
-      yield new ClusterNode(
-        prepared, passiveOrWorkingNode, currentStateRef,
-        clusterConf,
-        eventIdGenerator, eventBus.narrowPublisher, common, recovered.extract, actorSystem))
+            .map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten)
+      yield
+        ClusterNode(
+          prepared, passiveOrWorkingNode, currentStateRef,
+          clusterConf, eventIdGenerator, eventBus.narrowPublisher, common,
+          recovered.extract, actorSystem)
+
+  end resource
+
 
   // TODO Provisional fix because it's not easy to restart the recovery
   // ServiceMain catches this exception by its `MainServiceTerminationException` trait !!!

@@ -115,10 +115,9 @@ private[cluster] final class ClusterCommon private(
     event: ClusterNodeLostEvent)
     (body: IO[Checked[Boolean]])
   : IO[Checked[Boolean]] =
-    logger.traceIOWithResult(
-      activationInhibitor.tryToActivate(
-        ifInhibited = IO.right(false),
-        activate = activate(clusterState, event)(body)))
+    logger.traceIOWithResult:
+      activationInhibitor.tryToActivate(ifInhibited = IO.right(false)):
+        activate(clusterState, event)(body)
 
   private def activate(
     clusterState: ClusterState.HasNodes,

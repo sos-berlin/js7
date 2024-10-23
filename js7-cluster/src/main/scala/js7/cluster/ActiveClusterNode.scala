@@ -479,7 +479,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                       persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                      .map(_.toCompleted.map(_ => true))
+                      .map(_.toCompleted)
+                      .rightAs(true)
                 .map(_.flatMap: allowed =>
                   if !allowed then
                     Right(Completed)

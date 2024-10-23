@@ -42,36 +42,31 @@ private[cluster] final class ActivationInhibitor:
               IO.raiseError:
                 new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
 
-  def tryToActivate(ifInhibited: IO[Checked[Boolean]], activate: IO[Checked[Boolean]])
+  def tryToActivate(ifInhibited: IO[Checked[Boolean]])(activate: IO[Checked[Boolean]])
   : IO[Checked[Boolean]] =
-    logger.debugIO(
-      IO.defer {
-        stateMvarIO.flatMap(mvar =>
-          mvar.take.flatMap {
-            case Initial | Passive | Active =>
-              activate
-                .guaranteeCase {
-                  case Outcome.Succeeded(_) => IO.unit
-                  case outcome => IO.defer:
-                    logger.debug(s"tryToActivate: Passive — due to $outcome")
-                    mvar.put(Passive)
-                }
-                .flatTap {
-                  case o @ (Left(_) | Right(false)) => IO.defer:
-                    logger.debug(s"tryToActivate: Passive — due to $o")
-                    mvar.put(Passive)
-                  case Right(true) =>
-                    logger.debug("tryToActivate: Active — due to Right(true)")
-                    mvar.put(Active)
-                }
+    logger.debugIO:
+      stateMvarIO.flatMap: mvar =>
+        mvar.take.flatMap:
+          case Initial | Passive | Active =>
+            activate
+              .guaranteeCase:
+                case Outcome.Succeeded(_) => IO.unit
+                case outcome => IO.defer:
+                  logger.debug(s"tryToActivate: Passive — due to $outcome")
+                  mvar.put(Passive)
+              .flatTap:
+                case o @ (Left(_) | Right(false)) => IO.defer:
+                  logger.debug(s"tryToActivate: Passive — due to $o")
+                  mvar.put(Passive)
+                case Right(true) =>
+                  logger.debug("tryToActivate: Active — due to Right(true)")
+                  mvar.put(Active)
 
-            case o: Inhibited => IO.defer:
-              logger.debug(s"tryToActivate: $o")
-              mvar.put(o) *>
-                IO { logger.info("Activation inhibited") } *>
-                ifInhibited
-          })
-      })
+          case o: Inhibited => IO.defer:
+            logger.debug(s"tryToActivate: $o")
+            mvar.put(o) *>
+              IO { logger.info("Activation inhibited") } *>
+              ifInhibited
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active

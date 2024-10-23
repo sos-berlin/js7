@@ -412,16 +412,16 @@ object RunningController:
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]:
     def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
-      (command match {
+      command.match
         case command: ControllerCommand.ShutDown =>
           logger.info(s"❗ $command")
           if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
             IO.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
-          else {
+          else
             if command.dontNotifyActiveNode && clusterNode.isPassive then
               clusterNode.dontNotifyActiveNodeAboutShutdown()
             clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
-              orderKeeperActor.flatMap {
+              orderKeeperActor.flatMap:
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
                   IO.right(ControllerCommand.Response.Accepted)
                 case Left(problem) => IO.pure(Left(problem))
@@ -429,8 +429,6 @@ object RunningController:
                   IO.deferFuture(
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                       .mapTo[Checked[ControllerCommand.Response]])
-              }
-          }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
           IO(clusterNode.workingClusterNode)
@@ -442,7 +440,7 @@ object RunningController:
             IO.deferFuture(
               (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                 .mapTo[Checked[ControllerCommand.Response]]))
-      }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
+      .map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
 
   private class MyItemUpdater(
     val signedItemVerifier: SignedItemVerifier[SignableItem],
