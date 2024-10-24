@@ -15,6 +15,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
@@ -363,7 +364,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             Right(Some(ClusterActiveNodeShutDown))
           case _ =>
             Right(None)
-        .flatMapT: (_: (Seq[Stamped[?]], _)) =>
+        .recoverT:
+          case ShuttingDownProblem => ()
+        .flatMapT: _ =>
           stopAcknowledgingRequested = true
           stopAcknowledging.complete(())
             .as(Right(Completed))
@@ -622,7 +625,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       .flatMap: clusterState =>
         IO(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT:
-            if _ then // Short cut
+            if _ then // Shortcut
               IO.right(Nil -> clusterState)
             else
               journal

@@ -7,6 +7,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.startup.Halt.haltJava
 import js7.base.time.ScalaTime.*
@@ -117,7 +118,14 @@ private[cluster] final class ClusterCommon private(
   : IO[Checked[Boolean]] =
     logger.traceIOWithResult:
       activationInhibitor.tryToActivate:
-        activate(clusterState, event)(body)
+        activate(clusterState, event):
+          body
+      .flatMap:
+        case Left(problem @ ShuttingDownProblem) =>
+          IO:
+            logger.warn(s"Activation not allowed due to $problem")
+            Right(false)
+        case o => IO.pure(o)
 
   private def activate(
     clusterState: ClusterState.HasNodes,

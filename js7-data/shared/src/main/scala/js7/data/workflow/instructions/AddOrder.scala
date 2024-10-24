@@ -19,7 +19,7 @@ final case class AddOrder(
   forceJobAdmission: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends Instruction.NoInstructionBlock:
-  
+
   def withoutSourcePos: AddOrder =
     copy(sourcePos = None)
 

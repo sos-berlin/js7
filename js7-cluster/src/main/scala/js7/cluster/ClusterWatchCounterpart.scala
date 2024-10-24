@@ -1,15 +1,18 @@
 package js7.cluster
 
+import cats.effect.kernel.DeferredSource
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Outcome, ResourceIO}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
+import js7.base.log.LogLevel.Debug
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.problem.Checked
+import js7.base.problem.Problems.ShuttingDownProblem
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -25,12 +28,14 @@ import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
 import scala.annotation.tailrec
+import scala.math.Ordering.Implicits.*
 import scala.util.Random
 
 final class ClusterWatchCounterpart private(
   pubsub: Fs2PubSub[IO, ClusterWatchRequest],
   clusterConf: ClusterConf,
   timing: ClusterTiming,
+  shuttingDown: DeferredSource[IO, Unit],
   testEventPublisher: EventPublisher[Any])
   (implicit ioRuntime: IORuntime)
 extends Service.StoppableByRequest:
@@ -139,17 +144,23 @@ extends Service.StoppableByRequest:
           .timeoutAndFail(timing.clusterWatchReactionTimeout)(new RequestTimeoutException))
         .onErrorRestartLoop(()):
           case (_: RequestTimeoutException, _, retry) =>
-            SyncDeadline
-              .usingNow:
-                sym.onWarn()
-                logger.warn(s"$sym Still trying to get a confirmation from " +
-                  clusterWatchId.fold("any ClusterWatch")(id =>
-                    id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
-                  s" for ${request.toShortString} for ${since.elapsed.pretty}...")
-              .*>(retry(()))
+            shuttingDown.tryGet.flatMap:
+              case Some(()) => IO.left(ShuttingDownProblem)
+              case None =>
+                SyncDeadline.usingNow:
+                  sym.onWarn()
+                  logger.warn(s"$sym Still trying to get a confirmation from " +
+                    clusterWatchId.fold("any ClusterWatch")(id =>
+                      id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
+                    s" for ${request.toShortString} for ${since.elapsed.pretty}...")
+                .*>(retry(()))
 
           case (t, _, _) => IO.raiseError(t)
         .flatTap:
+          case Left(problem @ ShuttingDownProblem) =>
+            IO(logger.log(sym.relievedLogLevel min Debug,
+              s"⚠️  ${request.toShortString} => $problem · after ${since.elapsed.pretty}"))
+
           case Left(problem) =>
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
@@ -290,13 +301,14 @@ object ClusterWatchCounterpart:
   def resource(
     clusterConf: ClusterConf,
     timing: ClusterTiming,
+    shuttingDown: DeferredSource[IO, Unit],
     testEventPublisher: EventPublisher[Any])
     (using IORuntime)
   : ResourceIO[ClusterWatchCounterpart] =
     for
       pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]
       service <- Service.resource(IO:
-        new ClusterWatchCounterpart(pubsub, clusterConf, timing, testEventPublisher))
+        new ClusterWatchCounterpart(pubsub, clusterConf, timing, shuttingDown, testEventPublisher))
     yield
       service
 

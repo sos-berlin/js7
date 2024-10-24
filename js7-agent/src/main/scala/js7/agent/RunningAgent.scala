@@ -358,7 +358,7 @@ object RunningAgent:
               //⚒️  clusterNode.dontNotifyActiveNodeAboutShutdown()
               //⚒️}
               clusterNode
-                .stopRecovery(DirectorTermination(
+                .onShutdown(DirectorTermination(
                   restartJvm = cmd.restart,
                   restartDirector = cmd.restartDirector)
                 ) >>

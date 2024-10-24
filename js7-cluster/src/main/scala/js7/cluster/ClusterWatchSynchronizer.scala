@@ -11,6 +11,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.tapError
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.Assertions.assertThat
@@ -165,7 +166,9 @@ private final class ClusterWatchSynchronizer(
   : IO[Unit] =
     logger.traceIO:
       doACheckedHeartbeat(clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = false)
-        .rightAs(())
+        .map:
+          case Left(problem) => logger.warn(s"continueHeartbeating => $problem")
+          case Right(_) => 
         .when(!forEvent && clusterState.setting.clusterWatchId.isDefined)
         .*>(IO.defer:
           val h = new Heartbeat(clusterState, registerClusterWatchId)
@@ -285,6 +288,11 @@ private final class ClusterWatchSynchronizer(
               case Left(()) => IO:
                 logger.trace("◼️ doACheckedHeartbeat canceled due to `stopping`")
                 Completed
+
+              case Right(Left(problem @ ShuttingDownProblem)) =>
+                IO:
+                  logger.debug(s"⚠️  doACheckedHeartbeat => $problem")
+                  Completed
 
               case Right(Left(problem)) =>
                 stopping.flatMap(_.tryRead).map:

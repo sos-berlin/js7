@@ -56,6 +56,7 @@ final class ClusterNode[S <: ClusterableState[S]: Tag] private(
   eventIdGenerator: EventIdGenerator,
   eventBus: EventPublisher[Stamped[AnyKeyedEvent]],
   common: ClusterCommon,
+  shuttingDown: Deferred[IO, Unit],
   val recoveredExtract: Recovered.Extract,
   implicit val actorSystem: ActorSystem)
   (implicit S: ClusterableState.Companion[S],
@@ -70,11 +71,7 @@ extends Service.StoppableByRequest:
 
   private val workingNodeStarted =
     Deferred.unsafe[IO, Try[Either[ProgramTermination, WorkingClusterNode[S]]]]
-  private var _testDontNotifyActiveNodeAboutShutdown = false // for test only
-  private val recoveryStopRequested = Deferred.unsafe[IO, Unit]
-
-  def dontNotifyActiveNodeAboutShutdown(): Unit =
-    _testDontNotifyActiveNodeAboutShutdown = true
+  private var _dontNotifyActiveNodeAboutShutdown = false // for test only
 
   val currentState: IO[Checked[S]] =
     currentStateRef.get.flatten
@@ -99,15 +96,15 @@ extends Service.StoppableByRequest:
           logger.debug(prblm.toString)
       .start
       .flatMap: fiber =>
-        IO.race(recoveryStopRequested.get, fiber.joinStd)
+        IO.race(shuttingDown.get, fiber.joinStd)
       .*>(untilStopRequested)
       .guaranteeCaseLazy: outcome =>
         logger.debugIO("run guarantee", outcome):
-          stopRecovery(ProgramTermination()/*???*/) *>
+          onShutdown(ProgramTermination()/*???*/) *>
             IO.defer:
               (passiveOrWorkingNode.get(), outcome) match
                 case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
-                  passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
+                  passiveClusterNode.onShutdown(_dontNotifyActiveNodeAboutShutdown)
 
                 case (Some(Right(workingClusterNodeAllocated)), _) =>
                   workingClusterNodeAllocated.release
@@ -151,10 +148,12 @@ extends Service.StoppableByRequest:
         new IllegalStateException("Controller has recovered from Journal but is not the " +
           s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}"))))
 
-  def stopRecovery(termination: ProgramTermination): IO[Unit] =
+  def onShutdown(termination: ProgramTermination, dontNotifyActiveNode: Boolean = false): IO[Unit] =
     IO.defer:
-      logger.trace("stopRecovery")
-      recoveryStopRequested.complete(()).attempt *>
+      logger.trace("onShutdown")
+      if dontNotifyActiveNode then
+        _dontNotifyActiveNodeAboutShutdown = true
+      shuttingDown.complete(()).attempt *>
         workingNodeStarted.complete(Success(Left(termination))).attempt.void
 
   private def startWorkingNode(recovered: Recovered[S]): IO[WorkingClusterNode[S]] =
@@ -241,7 +240,7 @@ extends Service.StoppableByRequest:
              _: ClusterCommand.ClusterRecouple |
              _: ClusterCommand.ClusterPassiveDown =>
 
-          if _testDontNotifyActiveNodeAboutShutdown then
+          if _dontNotifyActiveNodeAboutShutdown then
           // Avoid immediate recoupling
             IO.left(Problem(
               s"${command.getClass.simpleScalaName} command rejected due to dontNotifyActiveNode"))
@@ -334,14 +333,16 @@ object ClusterNode:
             s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
 
     for _ <- checked yield
+      val shuttingDown = Deferred.unsafe[IO, Unit]
       for
         clusterWatchCounterpart <-
-          ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
+          ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, shuttingDown,
+            testEventBus)
         common <- ClusterCommon.
           resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
-          eventIdGenerator,
+          eventIdGenerator, shuttingDown,
           testEventBus)
       yield clusterNode
 
@@ -351,6 +352,7 @@ object ClusterNode:
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator,
+    shuttingDown: Deferred[IO, Unit],
     eventBus: EventPublisher[Any])
     (implicit
       S: ClusterableState.Companion[S],
@@ -531,7 +533,9 @@ object ClusterNode:
       yield
         ClusterNode(
           prepared, passiveOrWorkingNode, currentStateRef,
-          clusterConf, eventIdGenerator, eventBus.narrowPublisher, common,
+          clusterConf,
+          eventIdGenerator, eventBus.narrowPublisher, common,
+          shuttingDown,
           recovered.extract, actorSystem)
 
   end resource
