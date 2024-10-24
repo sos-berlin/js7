@@ -4,6 +4,7 @@ import cats.effect.IO
 import izumi.reflect.Tag
 import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
+import org.jetbrains.annotations.TestOnly
 
 final class AsyncVariable[V] private(
   initial: V, varName: String, typeName: String, logMinor: Boolean):
@@ -16,6 +17,10 @@ final class AsyncVariable[V] private(
 
   def value: IO[V] =
     IO { _value }
+
+  @TestOnly
+  def lockedValue: IO[V] =
+    lock.lock(value)
 
   def set(value: V)(implicit src: sourcecode.Enclosing): IO[V] =
     update(_ => IO.pure(value))

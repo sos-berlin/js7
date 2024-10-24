@@ -1,17 +1,17 @@
 package js7.cluster
 
-import cats.effect.{IO, Outcome, ResourceIO}
+import cats.effect.{IO, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
+import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.DelayConf
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.base.utils.{DelayConf, MVar}
 import js7.cluster.ActivationInhibitor.*
 import js7.common.http.PekkoHttpClient
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
@@ -23,7 +23,7 @@ import scala.concurrent.duration.FiniteDuration
 /** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor:
 
-  private val stateMvarIO = MVar[IO].of[State](Initial).unsafeMemoize
+  private val _state = AsyncVariable[State](Initial)
 
   def startActive: IO[Unit] =
     startAs(Active)
@@ -34,78 +34,65 @@ private[cluster] final class ActivationInhibitor:
   private def startAs(state: State): IO[Unit] =
     IO.defer:
       logger.debug(s"startAs $state")
-      stateMvarIO.flatMap: mvar =>
-        mvar.tryTake.flatMap:
-          case Some(Initial) =>
-            mvar.put(state)
-          case s =>
-            s.fold(IO.unit)(mvar.put) >>
-              IO.raiseError:
-                new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
+      _state.update:
+        case Initial =>
+          IO.pure(state)
+        case s =>
+          IO.raiseError:
+            new IllegalStateException(s"ActivationInhibitor startAs($state): Already '$s''")
+      .void
 
   def tryToActivate(activate: IO[Checked[Boolean]]): IO[Checked[Boolean]] =
-    logger.debugIO:
-      stateMvarIO.flatMap: mvar =>
-        mvar.take.flatMap:
-          case Initial | Passive | Active =>
-            activate
-              .guaranteeCase:
-                case Outcome.Succeeded(_) => IO.unit
-                case outcome => IO.defer:
-                  logger.debug(s"tryToActivate: Passive — due to $outcome")
-                  mvar.put(Passive)
-              .flatTap:
-                case o @ (Left(_) | Right(false)) => IO.defer:
-                  logger.debug(s"tryToActivate: Passive — due to $o")
-                  mvar.put(Passive)
-                case Right(true) =>
-                  logger.debug("tryToActivate: Active — due to Right(true)")
-                  mvar.put(Active)
-
-          case o: Inhibited =>
-            IO(logger.debug(s"tryToActivate: $o")) *>
-              mvar.put(o) *>
-                IO:
-                  logger.info("Activation inhibited")
-                  Right(false)
+    logger.debugIOWithResult:
+      _state.updateCheckedWithResult:
+        case Initial | Passive | Active =>
+          activate.flatMap:
+            case o @ (Left(_) | Right(false)) => IO:
+              logger.debug(s"tryToActivate: Passive — due to $o")
+              o.map(Passive -> _)
+            case Right(true) =>
+              IO:
+                logger.debug("tryToActivate: Active — due to Right(true)")
+                Right(Active -> true)
+        case inhibited: Inhibited =>
+          IO:
+            logger.info("Activation inhibited")
+            Right(inhibited -> false)
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
     */
   def inhibitActivation(duration: FiniteDuration): IO[Checked[Boolean]] =
     logger.debugIOWithResult:
-      stateMvarIO.flatMap: mvar =>
-        mvar.take.flatMap:
-          case state @ (Initial | Passive | _: Inhibited) =>
-            val depth = state match
-              case Inhibited(n) => n + 1
-              case _ => 1
-            mvar.put(Inhibited(depth))
-              .productR:
-                setInhibitionTimer(duration)
-              .as(Right(true))
+      _state.updateCheckedWithResult:
+        case state @ (Initial | Passive | _: Inhibited) =>
+          setInhibitionTimer(duration) *>
+            IO:
+              val depth = state match
+                case Inhibited(n) => n + 1
+                case _ => 1
+              Right(Inhibited(depth) -> true)
 
-          case Active =>
-            mvar.put(Active)
-              .as(Right(false))
+        case Active =>
+          IO.right(Active -> false)
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
-    stateMvarIO.flatMap: mvar =>
-      mvar.take.flatMap:
-        case Inhibited(1) => mvar.put(Passive)
-        case Inhibited(n) => mvar.put(Inhibited(n - 1))
-        case state => IO(logger.error: // Must not happen
-          s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'")
-    .attempt.map:
-      case Left(throwable) => logger.error(
-        s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-      case Right(()) =>
+    _state.update:
+        case Inhibited(1) => IO.pure(Passive)
+        case Inhibited(n) => IO.pure(Inhibited(n - 1))
+        case state =>
+          // May happend in very race case of race condition
+          IO:
+            logger.error:
+              s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'"
+            state
     .delayBy(duration)
     .startAndForget
 
   @TestOnly
   private[cluster] def state: IO[Option[State]] =
-    stateMvarIO.flatMap(_.tryRead)
+    _state.lockedValue.map(Some(_))
+      .timeoutTo(100.ms, IO.none) // Lock detection
 
 
 private[cluster] object ActivationInhibitor:

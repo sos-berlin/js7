@@ -106,7 +106,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         _ <- IO.sleep(1.s)
         _ = assert(activated.get)
         _ <- for a <- a.joinStd yield assert(a == Left(Problem("PROBLEM")))
-        _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
+        _ <- for s <- inhibitor.state yield assert(s == Some(Initial))
       yield
         succeed
 
