@@ -16,38 +16,35 @@ final class AsyncVariable[V] private(
     _value
 
   def value: IO[V] =
-    IO { _value }
+    IO(_value)
 
   @TestOnly
   def lockedValue: IO[V] =
     lock.lock(value)
 
-  def set(value: V)(implicit src: sourcecode.Enclosing): IO[V] =
+  def set(value: V)(using sourcecode.Enclosing): IO[V] =
     update(_ => IO.pure(value))
 
-  def update(update: V => IO[V])(implicit src: sourcecode.Enclosing): IO[V] =
-    shieldValue(
-      for v <- update(_value) yield {
+  def update(update: V => IO[V])(using sourcecode.Enclosing): IO[V] =
+    shieldValue:
+      for v <- update(_value) yield
         _value = v
         v
-      })
 
-  def updateChecked(update: V => IO[Checked[V]])(implicit src: sourcecode.Enclosing)
-  : IO[Checked[V]] =
+  def updateChecked(update: V => IO[Checked[V]])(using sourcecode.Enclosing): IO[Checked[V]] =
     shieldValue:
       for checked <- update(_value) yield
         for v <- checked do _value = v
         checked
 
-  def updateWithResult[R](update: V => IO[(V, R)])(implicit src: sourcecode.Enclosing): IO[R] =
+  def updateWithResult[R](update: V => IO[(V, R)])(using sourcecode.Enclosing): IO[R] =
     shieldValue:
       update(_value)
         .map: (v, r) =>
           _value = v
           r
 
-  def updateCheckedWithResult[R](update: V => IO[Checked[(V, R)]])
-    (implicit src: sourcecode.Enclosing)
+  def updateCheckedWithResult[R](update: V => IO[Checked[(V, R)]])(using sourcecode.Enclosing)
   : IO[Checked[R]] =
     shieldValue:
       update(_value)
@@ -55,17 +52,18 @@ final class AsyncVariable[V] private(
           _value = v
           r)
 
-  //def use[R](body: V => IO[R])(implicit src: sourcecode.Enclosing): IO[R] =
+  //def use[R](body: V => IO[R])(using sourcecode.Enclosing): IO[R] =
   //  lock.lock(body)
 
-  private def shieldValue[A](body: => IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
-    lock.lock(IO.defer/*shield access to _value in body*/(body))
+  private def shieldValue[A](body: => IO[A])(using sourcecode.Enclosing): IO[A] =
+    lock.lock:
+      IO.defer: /*shield access to _value in body*/
+        body
 
   override lazy val toString = s"$varName: AsyncVariable[$typeName]"
 
 
 object AsyncVariable:
-  def apply[A](initial: A, logMinor: Boolean = false)
-    (using src: sourcecode.Enclosing, tag: Tag[A])
+  def apply[A](initial: A, logMinor: Boolean = false)(using src: sourcecode.Enclosing, tag: Tag[A])
   : AsyncVariable[A] =
     new AsyncVariable(initial, src.value, tag.tag.toString, logMinor = logMinor)
