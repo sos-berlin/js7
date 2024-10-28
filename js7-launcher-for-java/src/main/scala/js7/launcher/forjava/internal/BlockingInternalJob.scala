@@ -139,7 +139,7 @@ object BlockingInternalJob:
      *   OTHERWISE, THE SUBAGENT'S JVM MAY BE POLLUTED.
      **/
     @throws[Exception] @Nonnull
-    def runInteruptible(): JOutcome.Completed
+    def runInterruptible(): JOutcome.Completed
 
     /** The `Thread` of the BlockingInternalJob Step.
      *
@@ -153,7 +153,7 @@ object BlockingInternalJob:
     final def run(): JOutcome.Completed =
       _thread = Thread.currentThread()
       try
-        runInteruptible()
+        runInterruptible()
       finally
         _thread = null
 

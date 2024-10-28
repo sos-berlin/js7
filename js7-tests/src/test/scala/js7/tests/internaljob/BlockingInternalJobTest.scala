@@ -21,7 +21,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.data_for_java.order.JOutcome
 import js7.launcher.forjava.internal.BlockingInternalJob
-import js7.launcher.forjava.internal.BlockingInternalJob.{OrderProcess, Step}
+import js7.launcher.forjava.internal.BlockingInternalJob.{InterruptibleOrderProcess, OrderProcess, Step}
 import js7.tests.internaljob.BlockingInternalJobTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectoryProvider}
@@ -96,29 +96,29 @@ final class BlockingInternalJobTest
       val workflow = Workflow.of(WorkflowPath("THROWING-INTERRUPTIBLE-BLOCKING-JOB"),
         Execute(WorkflowJob(
           agentPath,
-          InternalExecutable(classOf[ThrowingInteruptibleJob].getName))))
+          InternalExecutable(classOf[ThrowingInterruptibleJob].getName))))
       withTemporaryItem(workflow): workflow =>
         val orderId = OrderId("THROWING-INTERRUPTIBLE-BLOCKING-JOB")
 
-        ThrowingInteruptibleJob.lock.lock()
+        ThrowingInterruptibleJob.lock.lock()
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
         eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
 
         waitForCondition(10.s, 10.ms):
-          ThrowingInteruptibleJob.lock.isLocked
+          ThrowingInterruptibleJob.lock.isLocked
 
         execCmd(CancelOrders(Seq(orderId), CancellationMode.kill()))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId).head.value.event
 
-        ThrowingInteruptibleJob.lock.unlock()
+        ThrowingInterruptibleJob.lock.unlock()
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderStdoutWritten("ThrowingInteruptibleJob\n"),
+          OrderStdoutWritten("ThrowingInterruptibleJob\n"),
           OrderCancellationMarked(CancellationMode.kill()),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("java.lang.InterruptedException")))),
@@ -133,17 +133,17 @@ final class BlockingInternalJobTest
       val workflow = Workflow.of(WorkflowPath("INTERRUPTIBLE-BLOCKING-JOB"),
         Execute(WorkflowJob(
           agentPath,
-          InternalExecutable(classOf[InteruptibleJob].getName))))
+          InternalExecutable(classOf[InterruptibleJob].getName))))
       withTemporaryItem(workflow): workflow =>
         val orderId = OrderId("INTERRUPTIBLE-BLOCKING-JOB")
 
-        InteruptibleJob.lock.lock()
+        InterruptibleJob.lock.lock()
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
         eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
 
         waitForCondition(10.s, 10.ms):
-          InteruptibleJob.lock.isLocked
+          InterruptibleJob.lock.isLocked
 
         execCmd(CancelOrders(Seq(orderId), CancellationMode.kill()))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId).head.value.event
@@ -154,7 +154,7 @@ final class BlockingInternalJobTest
           OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted(subagentId),
-          OrderStdoutWritten("InteruptibleJob\n"),
+          OrderStdoutWritten("InterruptibleJob\n"),
           OrderCancellationMarked(CancellationMode.kill()),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(OrderOutcome.Killed(OrderOutcome.Failed(Some("java.lang.InterruptedException")))),
@@ -188,29 +188,24 @@ object BlockingInternalJobTest:
     val lock = ReentrantLock()
 
 
-  final class ThrowingInteruptibleJob extends BlockingInternalJob:
+  final class ThrowingInterruptibleJob extends BlockingInternalJob:
     def toOrderProcess(step: Step) =
-      var thread: Thread | Null = null
-      new OrderProcess:
-        def run() =
-          thread = Thread.currentThread()
-          step.out.println("ThrowingInteruptibleJob")
-          ThrowingInteruptibleJob.lock.lockInterruptibly()
+      new InterruptibleOrderProcess:
+        def runInterruptible() =
+          step.out.println("ThrowingInterruptibleJob")
+          ThrowingInterruptibleJob.lock.lockInterruptibly()
           JOutcome.succeeded
 
-        override def cancel(immediately: Boolean) =
-          thread.interrupt()
-
-  object ThrowingInteruptibleJob:
+  object ThrowingInterruptibleJob:
     val lock = ReentrantLock()
 
 
-  final class InteruptibleJob extends BlockingInternalJob:
+  final class InterruptibleJob extends BlockingInternalJob:
     def toOrderProcess(step: Step): BlockingInternalJob.InterruptibleOrderProcess =
       () =>
-        step.out.println("InteruptibleJob")
-        InteruptibleJob.lock.lockInterruptibly()
+        step.out.println("InterruptibleJob")
+        InterruptibleJob.lock.lockInterruptibly()
         JOutcome.succeeded
 
-  object InteruptibleJob:
+  object InterruptibleJob:
     val lock = ReentrantLock()

@@ -7,7 +7,8 @@ public class InterruptibleBlockingInternalJob implements BlockingInternalJob {
 
     public OrderProcess toOrderProcess(Step step) {
         return new InterruptibleOrderProcess() {
-            public JOutcome.Completed runInteruptible() throws InterruptedException {
+            public JOutcome.Completed runInterruptible() throws InterruptedException {
+                Thread thisIsMyThread = thread();
                 step.out().println("InterruptibleBlockingInternalJob");
                 Thread.sleep(Integer.MAX_VALUE);
                 return JOutcome.succeeded();
