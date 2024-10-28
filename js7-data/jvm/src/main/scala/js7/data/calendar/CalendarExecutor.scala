@@ -42,8 +42,8 @@ final class CalendarExecutor private(
       .toChecked(Problem.pure(s"$orderId does match the pattern defined in ${calendar.path}"))
 
   private def toLocalDateTime(temporalAccessor: TemporalAccessor): Option[LocalDateTime] =
-      Option(temporalAccessor.query(period.query))
-        .map(localDate => LocalDateTime.of(localDate, MIDNIGHT))
+    Option(temporalAccessor.query(period.query))
+      .map(localDate => LocalDateTime.of(localDate, MIDNIGHT))
 
 
 object CalendarExecutor:

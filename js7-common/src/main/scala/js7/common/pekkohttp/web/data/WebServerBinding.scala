@@ -30,16 +30,17 @@ sealed trait WebServerBinding:
 
 
 object WebServerBinding:
+
   def http(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))
 
   def localhostHttp(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("127.0.0.1", port))
 
+
   sealed trait Scheme:
     def name: String
-    // Workaround for Scala 3, which does not allow to override toString in subclasses (?)
-    override def toString: String = name
+
 
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding:
@@ -50,9 +51,11 @@ object WebServerBinding:
       WebServerPort.Http(address)
 
     def requiredFiles: Seq[Path] = Nil
+
   object Http extends Scheme:
     val name = "http"
-    // Scala 3: "Double definition"??? override def toString = "http"
+    override def toString = "http"
+
 
   final case class Https(
     address: InetSocketAddress,
@@ -73,9 +76,11 @@ object WebServerBinding:
 
     //override def toString = super.toString +
     //  s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
+
   object Https extends Scheme:
     val name = "https"
-    // Scala 3: "Double definition"??? override def toString = "https"
+    override def toString = "https"
+
 
   trait HasLocalUris:
     protected def webServerPorts: Seq[WebServerPort]
@@ -84,7 +89,7 @@ object WebServerBinding:
     final lazy val localHttpsUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Https)
     final def localUri: Uri = (localHttpUri.toValidated findValid localHttpsUri.toValidated).orThrow
 
-    final def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
+    private def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
       webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }
         .toChecked(Problem(s"No locally usable '$scheme' address: $webServerPorts"))
 

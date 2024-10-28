@@ -1,5 +1,7 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
@@ -12,15 +14,14 @@ import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.FailUncatchableTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.unsafe.IORuntime
 import scala.reflect.ClassTag
 
 final class FailUncatchableTest extends OurTestSuite:
@@ -232,7 +233,7 @@ final class FailUncatchableTest extends OurTestSuite:
                 Fail(uncatchable = true)))),
           catchWorkflow = Workflow.of(
             Retry()),
-          retryDelays = Option(Vector(100.s)),
+          retryDelays = Vector(100.s).some,
           maxTries = Some(10)))),
       Vector(
         OrderAdded(workflowId),

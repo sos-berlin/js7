@@ -1,6 +1,5 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.IORuntime
 import js7.base.test.OurTestControl
 import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec

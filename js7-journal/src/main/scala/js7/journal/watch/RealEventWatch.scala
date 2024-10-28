@@ -143,7 +143,7 @@ trait RealEventWatch extends EventWatch:
   : IO[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
     whenAnyKeyedEvents(
       request,
-      collect = 
+      collect =
         case e if eventClasses.exists(_.isAssignableFrom(e.event.getClass))
           && predicate(e.asInstanceOf[KeyedEvent[E]]) =>
           e.asInstanceOf[KeyedEvent[E]])

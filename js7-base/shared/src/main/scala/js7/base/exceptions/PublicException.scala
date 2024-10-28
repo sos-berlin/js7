@@ -8,4 +8,5 @@ package js7.base.exceptions
 trait PublicException:
   this: Throwable =>
 
-  def publicMessage: String = Option(getMessage) getOrElse getClass.getName
+  def publicMessage: String = 
+    Option(getMessage) getOrElse getClass.getName

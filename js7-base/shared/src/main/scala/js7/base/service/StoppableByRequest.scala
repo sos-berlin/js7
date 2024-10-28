@@ -11,7 +11,6 @@ import js7.base.service.StoppableByRequest.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 
 trait StoppableByRequest:
-  self =>
 
   protected[service] val stoppableByCancel = false
 
@@ -31,24 +30,23 @@ trait StoppableByRequest:
   private val memoizedStop =
     memoize:
       IO.defer:
-        logger
-          .traceIO(s"$toString stop"):
-            _isStopping = true
-            stopRequested.complete(())
-              .*>(fiber.get)
-              .flatMap: fiber =>
-                IO.whenA(stoppableByCancel)(fiber.cancel) *>
-                  fiber.join.flatMap:
-                    case Outcome.Canceled() => IO.unit
-                    case o => IO.fromOutcome(o)
+        logger.traceIO(s"$toString stop"):
+          _isStopping = true
+          stopRequested.complete(())
+            .*>(fiber.get)
+            .flatMap: fiber =>
+              IO.whenA(stoppableByCancel)(fiber.cancel) *>
+                fiber.join.flatMap:
+                  case Outcome.Canceled() => IO.unit
+                  case o => IO.fromOutcome(o)
 
   protected def stop: IO[Unit] =
     memoizedStop
 
   protected final def failWhenStopRequested[A](body: IO[A]): IO[A] =
-    body.raceFold(
+    body.raceFold:
       untilStopRequested *>
-        IO.raiseError_(new IllegalStateException(s"$toString is being stopped")))
+        IO.raiseError_(new IllegalStateException(s"$toString is being stopped"))
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
     IO:

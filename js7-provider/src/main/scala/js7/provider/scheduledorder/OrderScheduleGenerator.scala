@@ -15,6 +15,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.FreshOrder
 import js7.provider.scheduledorder.OrderScheduleGenerator.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
+import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
@@ -29,6 +30,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => IO[Completed], 
   @volatile private var timer = SyncCancelable.empty
   private val started = Atomic(false)
   @volatile private var closed = false
+  @nowarn("cat=deprecation")
   private val addOrdersCancelable = SerialFutureCancelable()
 
   def close(): Unit =

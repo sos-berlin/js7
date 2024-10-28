@@ -1,5 +1,6 @@
 package js7.tests.feed
 
+import cats.syntax.option.*
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Path}
@@ -24,7 +25,8 @@ extends BasicConfiguration:
 
 
 private object FeedConf:
-  private val defaultUserAndPassword = Option(UserAndPassword(UserId("demo"), SecretString("demo")))
+
+  private val defaultUserAndPassword = UserAndPassword(UserId("demo"), SecretString("demo")).some
   private val pgpPassword = SecretString("PGP-PASSWORD")
 
   def fromCommandLine(args: CommandLineArguments): FeedConf =
