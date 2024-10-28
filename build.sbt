@@ -49,7 +49,7 @@ import sbtrelease.{Version, versionFormatError}
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / scalaVersion := "3.5.2"
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val target = {
@@ -91,20 +91,19 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 
 ThisBuild / scalacOptions ++= Seq(
   //"-explain",
-  //"-Vprofile",
-  //"-Vprofile-sorted-by:tasty",
-  //"-Vprofile-details:10",
   "-java-output-version:17",
-  "-feature",
   "-deprecation",
-  "-Yretain-trees", // Required for Circe derived default values
-  //"-Ysafe-init",
-  //? "-Wconf:cat=other-match-analysis:error",
-  //? "-Wconf:cat=lint-adapted-args:error",
-  //? "-Wconf:cat=unchecked&src=src/main/*:error",
-  "-Xlint:type-parameter-shadow",
+  "-feature",
+  //"-language:noAutoTupling",
+  //"-language:strictEquality",
+  //"-Werror",
+  //"-Wnonunit-statements",
+  "-Wshadow:type-parameter-shadow",
   "-Wunused:imports",
-  "-Wunused:implicits")
+  "-Wunused:implicits",
+  //"-Wsafe-init",
+  //"-Yexplicit-nulls",
+  "-Yretain-trees") // Required for Circe derived default values
 
 Global / concurrentRestrictions := Seq(
   Tags.limit(Tags.Test, max = testParallelization),
