@@ -232,7 +232,7 @@ final case class Repo(
             else
               Right(addEntry(
                 item.path,
-                Add(Signed(item withVersion currentVersionId, event.signedString)))))
+                Add(Signed(item.withVersion(currentVersionId), event.signedString)))))
 
       case None =>
         Right(addEntry(event.path, Add(event.signed)))
@@ -336,7 +336,8 @@ final case class Repo(
         .orElse(
           for
             history <- historyBefore(id.versionId)
-            fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("VersionedItemId", id)
+            fb <- findInHistory(versionToSignedItem, history.contains)
+              .toChecked(UnknownKeyProblem("VersionedItemId", id))
           yield fb
         ): Checked[Option[Signed[VersionedItem]]]
       signedItem <- maybeItem.toChecked(VersionedItemRemovedProblem(id.path))

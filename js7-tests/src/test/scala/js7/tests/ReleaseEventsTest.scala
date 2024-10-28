@@ -145,7 +145,7 @@ private object ReleaseEventsTest:
     (using IORuntime)
   : HttpControllerApi =
     val api = new TestApi(controller, credentials)
-    api.loginUntilReachable() await 99.s
+    api.loginUntilReachable().await(99.s)
     api
 
   private class TestApi(controller: TestController, protected val credentials: UserAndPassword)

@@ -32,7 +32,7 @@ class ScalaConcurrentHashSet[A] extends mutable.Set[A]:
     delegate.keys.asScala
 
   final def contains(a: A): Boolean =
-    delegate containsKey a
+    delegate.containsKey(a)
 
   override final def isEmpty: Boolean =
     delegate.isEmpty

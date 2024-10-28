@@ -144,7 +144,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
     "Next file" in:
       eventWriter.endEventSection(sync = false)
       eventWriter.close()
-      observing await 99.s
+      observing.await(99.s)
       assert(observed.mkString ==
          """{"eventId":1000,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"TEST","versionId":"VERSION"}}
            |""".stripMargin ++

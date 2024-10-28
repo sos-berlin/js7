@@ -48,7 +48,7 @@ final class FileJsonSeqTest extends OurTestSuite:
         w.flush()
       }
       //assert(file.contentString startsWith Ascii.RS.toChar.toString)
-      assert(file.contentString endsWith "\n")
+      assert(file.contentString.endsWith("\n"))
       autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
         assert(reader.iterator.map(_.value.as[A].orThrow).toList == List(
           A(1, "a"),

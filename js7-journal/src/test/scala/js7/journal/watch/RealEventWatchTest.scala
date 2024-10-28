@@ -32,7 +32,7 @@ final class RealEventWatchTest extends OurTestSuite:
     val a = eventWatch
       .stream(EventRequest.singleClass[TestEvent](limit = 1, timeout = Some(0.s)))
       .compile.toList
-      .unsafeToFuture() await 99.s
+      .unsafeToFuture().await(99.s)
     assert(a == events)
 
     // Event from 1970-01-01 is older than 1s
@@ -40,7 +40,8 @@ final class RealEventWatchTest extends OurTestSuite:
       .stream(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s), timeout = Some(0.s)))
       .compile.toList
       .unsafeToCancelableFuture()
-    intercept[TornException] { stream await 99.s }
+    intercept[TornException]:
+      stream.await(99.s)
     stream.cancelAndForget()
 
     assert:

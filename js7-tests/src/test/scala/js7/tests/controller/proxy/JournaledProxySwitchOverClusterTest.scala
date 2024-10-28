@@ -42,7 +42,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
           .timeoutOnPull(99.s)
           .headL.unsafeToFuture()
         controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-        whenFinished await 99.s
+        whenFinished.await(99.s)
 
       try
         primary.runController() { primaryController =>
@@ -63,7 +63,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
 
           lastEventId = primaryController.eventWatch.lastAddedEventId
           primaryController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
-          primaryController.terminated await 99.s
+          primaryController.terminated.await(99.s)
         }
 
         // Try to confuse controllerApi about the active controller and start primary controller again
@@ -87,5 +87,5 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))
         }
       finally
-        proxy.stop.unsafeToFuture() await 99.s
+        proxy.stop.unsafeToFuture().await(99.s)
     }

@@ -44,7 +44,7 @@ final class AgentTest extends OurTestSuite, AgentTester:
   "work/http-uri" in:
     assert((agentConfiguration.workDirectory / "http-uri").contentString ==
       s"${agent.localUri}/subagent")
-    agent.terminate() await 99.s
+    agent.terminate().await(99.s)
 
   "Job working directory" - {
     for ((testName, toWorkingDirectory) <-
@@ -86,7 +86,7 @@ final class AgentTest extends OurTestSuite, AgentTester:
             assert(orderProcessed.outcome == OrderOutcome.Succeeded(Map(
               "returnCode" -> NumberValue(0),
               "WORKDIR" -> StringValue(workingDirectory.toString))))
-            agent.terminate() await 99.s
+            agent.terminate().await(99.s)
           }
         }
   }

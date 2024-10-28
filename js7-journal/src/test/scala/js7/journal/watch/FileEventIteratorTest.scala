@@ -23,7 +23,7 @@ final class FileEventIteratorTest extends OurTestSuite:
 
   "FileEventIterator" in:
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
-      val journalLocation = JournalLocation(TestState, dir resolve "test")
+      val journalLocation = JournalLocation(TestState, dir.resolve("test"))
       val journalFile = journalLocation.file(after = After)
       writeJournal(journalLocation, after = After, TestEvents)
 

@@ -41,8 +41,8 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override def afterAll() =
     try
-      controller.api.stop await 99.s
-      controller.terminate() await longTimeout
+      controller.api.stop.await(99.s)
+      controller.terminate().await(longTimeout)
     finally
       super.afterAll()
 
@@ -50,7 +50,7 @@ final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     val t = new Stopwatch
     addOrders()
     if n > defaultN then println(t.itemsPerSecondString(n, "orders added"))
-    controller.api.executeCommand(TakeSnapshot) await longTimeout
+    controller.api.executeCommand(TakeSnapshot).await(longTimeout)
     if n > defaultN then println(t.itemsPerSecondString(n, "orders written to snapshot"))
     waitUntilAllOrdersFinished(t)
     if n > defaultN then println(t.itemsPerSecondString(n, "orders processed"))

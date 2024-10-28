@@ -64,7 +64,7 @@ object CommandLineArguments:
     val m = mutable.LinkedHashMap.empty[String, Vector[Argument]]
       .withDefault: _ =>
         Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
-    for a <- args.lastOption if a endsWith "\r" do
+    for a <- args.lastOption if a.endsWith("\r") do
       throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")
     for a <- parseArgs(args) do
       m.get(a.key) match

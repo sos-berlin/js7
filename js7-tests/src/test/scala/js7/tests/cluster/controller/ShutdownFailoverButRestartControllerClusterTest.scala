@@ -40,7 +40,7 @@ final class ShutdownFailoverButRestartControllerClusterTest extends ControllerCl
           primaryController.waitUntilReady()
 
           backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
-          backupController.terminated await 99.s
+          backupController.terminated.await(99.s)
         }
       }
     }

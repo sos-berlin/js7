@@ -54,8 +54,8 @@ object InventoryItemKey:
       def apply(cursor: HCursor) =
         for
           string <- cursor.as[String]
-          prefixAndId <- string indexOf ':' match
-            case i if i > 0 => Right((string take i, string.substring(i + 1)))
+          prefixAndId <- string.indexOf(':') match
+            case i if i > 0 => Right((string.take(i), string.substring(i + 1)))
             case _ => Left(DecodingFailure(s"Missing type prefix in InventoryItemKey: $string ", cursor.history))
           prefix = prefixAndId._1
           idString = prefixAndId._2

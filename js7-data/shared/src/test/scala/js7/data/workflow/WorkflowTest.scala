@@ -550,7 +550,7 @@ final class WorkflowTest extends OurTestSuite:
         "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
         "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))
     }
-    .toString contains "Duplicate labels")
+    .toString.contains("Duplicate labels"))
 
   "jobOption" in:
     assert(TestWorkflow.checkedExecute(Position(0)) == Right(AExecute))
@@ -777,7 +777,7 @@ final class WorkflowTest extends OurTestSuite:
       Position(4) -> ImplicitEnd())
 
     for (address, instruction) <- addressToInstruction do
-      assert(TestWorkflow isDefinedAt address)
+      assert(TestWorkflow.isDefinedAt(address))
       assert(TestWorkflow.instruction(address) == instruction, s" - $address")
     assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 0))
     assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 3))

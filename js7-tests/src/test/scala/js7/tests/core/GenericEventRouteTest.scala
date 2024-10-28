@@ -279,11 +279,11 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
           .onStart(IO:
             started.success(()))
           .completedL.unsafeToFuture()
-        started.future await 9.s
+        started.future.await(9.s)
         assert(!streamCompleted.isCompleted)
         // Shut down service
         whenShuttingDown.complete(now).await(99.s)
-        streamCompleted await 99.s
+        streamCompleted.await(99.s)
 
       "completes a stream request, before stream started" in:
         // Shut down service, try again, in case the previous test failed
@@ -291,7 +291,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
         val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
           .completedL.unsafeToFuture()
         // Previous test has already shut down the service
-        streamCompleted await 99.s
+        streamCompleted.await(99.s)
     }
   }
 

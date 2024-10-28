@@ -37,7 +37,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester:
         primaryController.runOrder(FreshOrder(OrderId("🟦"), TestWorkflow.path))
         assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
-        simulateKillActiveNode(primaryController) await 99.s
+        simulateKillActiveNode(primaryController).await(99.s)
         primaryController.terminate().await(99.s)
       }
       // Test may fail here if computer is slow, and backup controller failed over before termination !!!

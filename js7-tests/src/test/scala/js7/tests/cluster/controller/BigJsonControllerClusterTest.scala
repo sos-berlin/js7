@@ -65,7 +65,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite, ControllerCluster
 
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
-      controllerApi.stop await 99.s
+      controllerApi.stop.await(99.s)
     }
 
 

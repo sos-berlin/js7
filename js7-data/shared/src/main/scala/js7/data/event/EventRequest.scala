@@ -34,7 +34,7 @@ final case class EventRequest[E <: Event](
     builder.result()
 
   def matchesClass(clazz: Class[? <: Event]): Boolean =
-    eventClasses.exists(_ isAssignableFrom clazz)
+    eventClasses.exists(_.isAssignableFrom(clazz))
 
 
 object EventRequest:

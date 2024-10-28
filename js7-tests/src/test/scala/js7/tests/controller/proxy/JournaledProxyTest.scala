@@ -86,7 +86,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForS
       assert(response == Left(ItemVersionDoesNotMatchProblem(VersionId("OTHER-VERSION"), workflow.id)))
 
     "success" in:
-      val myWorkflow = workflow withVersion versionId
+      val myWorkflow = workflow.withVersion(versionId)
       proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow):
         api.updateItems(Stream(
           AddVersion(versionId),

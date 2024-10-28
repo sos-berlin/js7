@@ -23,7 +23,8 @@ object JournalFiles:
   private val logger = Logger[this.type]
 
   def currentFile(journalFileBase: Path): Checked[Path] =
-    listJournalFiles(journalFileBase).lastOption.map(_.file) toChecked Problem(s"No journal under '$journalFileBase'")
+    listJournalFiles(journalFileBase).lastOption.map(_.file)
+      .toChecked(Problem(s"No journal under '$journalFileBase'"))
 
   def listJournalFiles(journalFileBase: Path): Vector[JournalFile] =
     listFiles(journalFileBase) { iterator =>
@@ -115,7 +116,7 @@ object JournalFiles:
       JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
 
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit =
-    assertThat(toFile.toString startsWith fileBase.toString)
+    assertThat(toFile.toString.startsWith(fileBase.toString))
     val symLink = Paths.get(s"$fileBase-journal")  // We preserve the suffix ".journal" for the real journal files
     Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
     Try { createSymbolicLink(symLink, toFile.getFileName) }

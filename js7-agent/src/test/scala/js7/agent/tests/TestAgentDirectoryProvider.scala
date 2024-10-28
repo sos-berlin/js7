@@ -35,7 +35,7 @@ trait TestAgentDirectoryProvider extends HasCloser:
     }
     try
       createDirectories(agentDirectory / "config/private")
-      PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
+      PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf").withCloser(delete)
       provideSignature(agentDirectory / "config")
     catch { case NonFatal(t) =>
       repeatUntilNoException(9.s, 10.ms):  // For Windows
@@ -51,7 +51,7 @@ trait TestAgentDirectoryProvider extends HasCloser:
 
   protected[agent] def provideHttpsFiles(): Unit =
     // Certificate files are under src/test/resources and only available for module "agent".
-    PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12") withCloser delete
+    PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12").withCloser(delete)
     (agentDirectory / "config/private/private.conf").append(
       """js7.web.https.keystore {
          |  store-password = "jobscheduler"

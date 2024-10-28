@@ -75,7 +75,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
               assert(queue.poll(9, SECONDS) == text)
           }
           delete(file)
-          completed await 99.s
+          completed.await(99.s)
 
       Get("log") ~> Accept(`text/plain`) ~> route ~> check:
         assert(status == NotFound && entityAs[String] == "The requested resource could not be found.")

@@ -14,7 +14,7 @@ extends NameValidator:
     isExtraNamePart = c => isExtraNamePart0(c) || isSurrogate(c))
 
   override def checked(name: String): Checked[String] =
-    if name endsWith "." then
+    if name.endsWith(".") then
       Left(InvalidNameProblem(typeName, name))
     else
       javaNameValidator.checked(name)

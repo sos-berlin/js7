@@ -60,7 +60,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
                     Coupled(clusterSetting.copy(activeId = backupId)))
 
                   backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
-                  backupController.terminated await 99.s
+                  backupController.terminated.await(99.s)
           }
       }
     }

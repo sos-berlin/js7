@@ -161,7 +161,7 @@ extends PathExecutable:
   def isAbsolute = false
 
   def toFile(directory: Path): Path =
-    directory resolve path.stripPrefix("/")
+    directory.resolve(path.stripPrefix("/"))
 
   override def toString = s"RelativePathExecutable($path)"
 object RelativePathExecutable:

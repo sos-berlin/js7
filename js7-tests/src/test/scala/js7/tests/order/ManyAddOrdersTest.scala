@@ -37,7 +37,7 @@ final class ManyAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     js7.auth.users.TEST-USER {
       password = "plain:TEST-PASSWORD"
     }
-    """ withFallback super.controllerConfig
+    """.withFallback(super.controllerConfig)
   override def agentConfig = config"""js7.job.execution.signed-script-injection-allowed = yes"""
 
   override def beforeAll() =
@@ -71,7 +71,7 @@ final class ManyAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
       .dropWhile(_.nonEmpty)
       .headL
       .void
-    Seq(addOrders, awaitRemoved).sequence await 99.s
+    Seq(addOrders, awaitRemoved).sequence.await(99.s)
 
 
 object ManyAddOrdersTest:

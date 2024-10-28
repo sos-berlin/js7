@@ -58,7 +58,7 @@ final class ResetAgentWhenCancelingTest
     // Delete Agent's journal
     deleteDirectoryContentRecursively(directoryProvider.agentEnvs.head.stateDir)
 
-    val freshAgent = directoryProvider.startAgent(agentPath) await 99.s
+    val freshAgent = directoryProvider.startAgent(agentPath).await(99.s)
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     eventWatch.await[OrderTerminated](_.key == orderId)
 

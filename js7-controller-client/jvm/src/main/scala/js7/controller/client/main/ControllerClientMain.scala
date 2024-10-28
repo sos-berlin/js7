@@ -34,7 +34,7 @@ object ControllerClientMain extends ServiceApp:
     IO.interruptible:
       import conf.{controllerUri, dataDirectory, maybeConfigDirectory, operations}
       val sessionToken = SessionToken(SecretString:
-        Files.readAllLines(dataDirectory resolve "work/session-token")
+        Files.readAllLines(dataDirectory.resolve("work/session-token"))
           .asScala.mkString)
       autoClosing(PekkoHttpControllerTextApi(controllerUri, None, print, maybeConfigDirectory)):
         textApi =>

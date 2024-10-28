@@ -18,7 +18,7 @@ import scala.language.implicitConversions
 final case class JavaResource(classLoader: ClassLoader, path: String):
 
   requireNonNull(classLoader)
-  require(!(path startsWith "/"), s"JavaResource must not start with a slash: $path")
+  require(!path.startsWith("/"), s"JavaResource must not start with a slash: $path")
 
   private lazy val checkedUrl: Checked[URL] =
     classLoader.getResource(path) match
@@ -43,7 +43,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
   def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*)
   : Seq[Path] =
     val resourcePathAndDllFiles = for name <- resourceNames yield
-      (this / name, directory resolve name)
+      (this / name, directory.resolve(name))
     for (resourcePath, file) <- resourcePathAndDllFiles do
       resourcePath.copyToFile(file, copyOptions*)   // After an exception here, already created files are left !!!
     resourcePathAndDllFiles.toVector.map(_._2)
@@ -119,4 +119,4 @@ object JavaResource:
   def asResource(o: JavaResource): Resource[SyncIO, InputStream] =
     o.asResource
 
-  implicit val writable: Writable[JavaResource] = _ writeToStream _
+  implicit val writable: Writable[JavaResource] = _.writeToStream(_)

@@ -491,7 +491,7 @@ extends Actor, Stash, JournalLogging:
     journalHeader = journalHeader.nextGeneration[S](
       eventId = lastWrittenEventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
+      totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms))
     val file = journalLocation.file(after = lastWrittenEventId)
 
     logger.info(

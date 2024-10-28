@@ -184,7 +184,7 @@ object ScalaUtils:
           // Change '$' inner class concatenation character to '.'
           val simpleName = simpleScalaName
           val prefix = scalaName stripSuffix simpleName
-          val name = (if prefix endsWith "$" then prefix.init + '.' else prefix) + simpleName
+          val name = (if prefix.endsWith("$") then prefix.init + '.' else prefix) + simpleName
           removePackageRegex.replaceFirstIn(name, "")
 
     implicit final class ToStringFunction1[A, R](private val delegate: A => R):
@@ -973,7 +973,7 @@ object ScalaUtils:
     val A = implicitClass[A]
     if o == null then
       Left(Problem.fromThrowable(new NullPointerException(s"Expected ${A.getName}, found: null")))
-    else if A isAssignableFrom o.getClass then
+    else if A.isAssignableFrom(o.getClass) then
       Right(o.asInstanceOf[A])
     else
       Left(problem)
@@ -981,7 +981,7 @@ object ScalaUtils:
   def ifCast[A: ClassTag](o: Any): Option[A] =
     if o == null then
       None
-    else if implicitClass[A] isAssignableFrom o.getClass then
+    else if implicitClass[A].isAssignableFrom(o.getClass) then
       Some(o.asInstanceOf[A])
     else
       None

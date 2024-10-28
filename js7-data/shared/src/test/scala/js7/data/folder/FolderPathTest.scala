@@ -12,10 +12,10 @@ final class FolderPathTest extends OurTestSuite:
     assert(FolderPath("").subfolder("x") == FolderPath(""))
     assert(FolderPath("a").subfolder("x") == FolderPath("a/x"))
     assert(FolderPath("a/b").subfolder("x") == FolderPath("a/b/x"))
-    intercept[IllegalArgumentException] { FolderPath("") subfolder "/" }
-    intercept[IllegalArgumentException] { FolderPath("") subfolder "/x" }
-    intercept[IllegalArgumentException] { FolderPath("") subfolder "x/" }
-    intercept[IllegalArgumentException] { FolderPath("") subfolder "x/y" }
+    intercept[IllegalArgumentException](FolderPath("").subfolder("/"))
+    intercept[IllegalArgumentException](FolderPath("").subfolder("/x"))
+    intercept[IllegalArgumentException](FolderPath("").subfolder("x/"))
+    intercept[IllegalArgumentException](FolderPath("").subfolder("x/y"))
 
   "isParentOf" in:
     assert(FolderPath.Root.isParentOf(FolderPath("a")))
@@ -29,14 +29,14 @@ final class FolderPathTest extends OurTestSuite:
     assert(!FolderPath("a/b").isParentOf(TestPath("a/b/c/d")))
 
   "isAncestorOf" in:
-    assert(FolderPath.Root isAncestorOf FolderPath.Root)
-    assert(FolderPath("a") isAncestorOf FolderPath("a"))
+    assert(FolderPath.Root.isAncestorOf(FolderPath.Root))
+    assert(FolderPath("a").isAncestorOf(FolderPath("a")))
     assert(!FolderPath("a").isAncestorOf(TestPath("x")))
     assert(!FolderPath("a/b").isAncestorOf(TestPath("a")))
     assert(!FolderPath("a/b").isAncestorOf(TestPath("a/b")))
-    assert(FolderPath("") isAncestorOf TestPath("x"))
-    assert(FolderPath("a/b") isAncestorOf TestPath("a/b/c"))
-    assert(FolderPath("a/b") isAncestorOf TestPath("a/b/c/d"))
+    assert(FolderPath("").isAncestorOf(TestPath("x")))
+    assert(FolderPath("a/b").isAncestorOf(TestPath("a/b/c")))
+    assert(FolderPath("a/b").isAncestorOf(TestPath("a/b/c/d")))
 
   "resolve" in:
     assert(FolderPath("default").resolve[TestPath]("a") == TestPath("default/a"))

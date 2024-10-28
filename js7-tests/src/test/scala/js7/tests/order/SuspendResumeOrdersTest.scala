@@ -548,7 +548,7 @@ final class SuspendResumeOrdersTest
 
     assert(eventWatch
       .allKeyedEvents[OrderEvent]
-      .filter(_.key.string startsWith "FORK")
+      .filter(_.key.string.startsWith("FORK"))
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Seq(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),

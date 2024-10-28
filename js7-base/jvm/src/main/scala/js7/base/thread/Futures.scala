@@ -120,7 +120,7 @@ object Futures:
           case None => awaitInfinite
 
       def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]], MA: Tag[M[A]]): M[A] =
-        Future.sequence(future)(cbf, ec) await duration
+        Future.sequence(future)(cbf, ec).await(duration)
 
       def awaitInfinite(using
         ec: ExecutionContext,

@@ -117,7 +117,7 @@ private[agent] abstract class CommandQueue(
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           IO.pure(false)
         case _ =>
-          if queue contains queueable then
+          if queue.contains(queueable) then
             logger.trace(s"Ignore duplicate $queueable")
             IO.pure(false)
           else

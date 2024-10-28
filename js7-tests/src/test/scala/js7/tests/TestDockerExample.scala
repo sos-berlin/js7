@@ -61,7 +61,7 @@ object TestDockerExample extends OurApp:
       val dir = if path.startsWith("controller") then directory else env.agentsDir
       createDirectories((dir / path).getParent)
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
-      if path contains "/executables/" then setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
+      if path.contains("/executables/") then setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
 
     provide("controller/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.json")
@@ -98,8 +98,8 @@ object TestDockerExample extends OurApp:
         RunningController.resource(conf)
           .blockingUse(99.s) { controller =>
             //??? controller.api.executeCommand(ControllerCommand.ScheduleOrdersEvery(1.minute)).unsafeToFuture().await(99.s).orThrow
-            controller.terminated await 365 * 24.h
+            controller.terminated.await(365 * 24.h)
         }
-        agents.parTraverse(_.stop) await 60.s
+        agents.parTraverse(_.stop).await(60.s)
       }
     }

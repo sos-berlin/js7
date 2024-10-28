@@ -44,7 +44,7 @@ object Ordinal:
         a != '\uFFFF' && a == b + 1
 
   trait Ops[A]:
-    def isSuccessorOf(a: A): Boolean
+    infix def isSuccessorOf(a: A): Boolean
     def succ: A
     def pred: A
 

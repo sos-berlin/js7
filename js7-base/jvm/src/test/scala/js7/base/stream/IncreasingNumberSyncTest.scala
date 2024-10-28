@@ -67,7 +67,7 @@ final class IncreasingNumberSyncTest extends OurTestSuite:
           yield o)
             .unsafeToFuture()
       eventIds foreach sync.onAdded
-      val result = futures await 99.s
+      val result = futures.await(99.s)
       assert(result forall identity)
       logger.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)

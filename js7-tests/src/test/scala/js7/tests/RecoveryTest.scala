@@ -116,7 +116,7 @@ final class RecoveryTest extends OurTestSuite:
       try body(controller)
       catch { case NonFatal(t) =>
         logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
-        try controller.terminate(suppressSnapshot = true) await 99.s
+        try controller.terminate(suppressSnapshot = true).await(99.s)
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
@@ -135,7 +135,7 @@ final class RecoveryTest extends OurTestSuite:
     catch { case NonFatal(t) =>
       // TODO Compare DirectorProvider
       logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
-      try agents.parTraverse(_.terminate()) await 99.s
+      try agents.parTraverse(_.terminate()).await(99.s)
       catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
       throw t
     }

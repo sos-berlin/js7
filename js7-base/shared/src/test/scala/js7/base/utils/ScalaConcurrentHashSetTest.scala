@@ -34,9 +34,9 @@ final class ScalaConcurrentHashSetTest extends OurTestSuite:
     assert(m(3))
 
   "contains" in:
-    assert(!(m contains 1))
-    assert(m contains 2)
-    assert(m contains 3)
+    assert(!m.contains(1))
+    assert(m.contains(2))
+    assert(m.contains(3))
 
   "isEmpty" in:
     assert(!m.isEmpty)

@@ -17,14 +17,14 @@ final class SetOnceTest extends OurTestSuite:
     assert(!a.isDefined)
     assert(intercept[ProblemException] { a.orThrow } .getMessage == "SetOnce[Int] promise has not been kept so far")
     assert(a.toOption == None)
-    assert((a getOrElse -1) == -1)
+    assert(a.getOrElse(-1) == -1)
     a := 0
     assert(!a.isEmpty)
     assert(a.nonEmpty)
     assert(a.isDefined)
     assert(a.orThrow == 0)
     assert(a.toOption == Some(0))
-    assert((a getOrElse -1) == -0)
+    assert(a.getOrElse(-1) == -0)
     assert(intercept[IllegalStateException] { a := 0 } .getMessage == "SetOnce[Int] has already been set")
     assert((for i <- a.toOption yield (i: Int) + 3) == Some(3))
     var r = 7
@@ -34,9 +34,9 @@ final class SetOnceTest extends OurTestSuite:
   "getOrUpdate" in:
     val counter = Atomic(0)
     val a = SetOnce[A]
-    assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
-    assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
-    assert((a getOrUpdate sys.error("lazy")) == A(1))
+    assert(a.getOrUpdate(A(counter.incrementAndGet())) == A(1))
+    assert(a.getOrUpdate(A(counter.incrementAndGet())) == A(1))
+    assert(a.getOrUpdate(sys.error("lazy")) == A(1))
     assert(counter.get() == 1)
 
   "checked" in:

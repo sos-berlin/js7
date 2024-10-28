@@ -59,7 +59,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
       super.afterAll()
 
   protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit =
-    val config_ = config withFallback TestConfig
+    val config_ = config.withFallback(TestConfig)
     val actorSystem = newActorSystem(getClass.simpleScalaName, config_,
       executionContext = ioRuntime.compute)
     try
@@ -68,7 +68,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
       val actor = actorSystem.actorOf(Props { new TestActor(config_, journalLocation, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
-      (actor ? TestActor.Input.Terminate) await 99.s
+      (actor ? TestActor.Input.Terminate).await(99.s)
       whenJournalStopped.future.await(99.s)   // No memory leak
     finally Pekkos.terminateAndWait(actorSystem, 99.s)
 
@@ -123,13 +123,13 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
   protected final def journalKeyedTestEvents: Vector[KeyedEvent[TestEvent]] =
     journalJsons
       .collect:
-        case o if TestState.keyedEventJsonCodec canDeserialize o =>
+        case o if TestState.keyedEventJsonCodec.canDeserialize(o) =>
           o.as[KeyedEvent[Event]].toChecked.orThrow
       .collect { case KeyedEvent(k: String, e: TestEvent) => k <-: e }  // Ignore JournalEvent.SnapshotTaken
 
   protected final def journalAggregates =
     (journalJsons collect {
-      case o if TestState.snapshotObjectJsonCodec canDeserialize o =>
+      case o if TestState.snapshotObjectJsonCodec.canDeserialize(o) =>
         o.as[TestAggregate].orThrow
     }).toSet
 

@@ -23,7 +23,7 @@ object ReturnCodeMeaning:
 
   final case class Success(returnCodes: RangeSet[ReturnCode]) extends ReturnCodeMeaning:
     def isSuccess(returnCode: ReturnCode): Boolean =
-      returnCodes contains returnCode
+      returnCodes.contains(returnCode)
   object Success:
     def of(returnCodes: Int*): Success =
       new Success(RangeSet.fromIterable(returnCodes.map(ReturnCode.apply)))

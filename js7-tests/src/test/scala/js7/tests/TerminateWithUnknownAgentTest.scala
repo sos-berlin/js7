@@ -33,7 +33,7 @@ final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentF
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()
     eventWatch.await[AgentCouplingFailed]()
-    controller.terminate() await 99.s
+    controller.terminate().await(99.s)
 
 
 private object TerminateWithUnknownAgentTest:

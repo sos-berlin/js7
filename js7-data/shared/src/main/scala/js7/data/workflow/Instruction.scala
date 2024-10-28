@@ -37,7 +37,7 @@ trait Instruction:
     this
 
   def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
-    workflows.exists(_ isVisibleForAgent agentPath)
+    workflows.exists(_.isVisibleForAgent(agentPath))
 
   def withoutBlocks: Instruction
 
@@ -100,7 +100,7 @@ object Instruction:
     def withPositions(position: Position): Labeled =
       copy(
         maybePosition = Some(position),
-        instruction = instruction withPositions position)
+        instruction = instruction.withPositions(position))
   object Labeled:
     implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] =
       case Labeled(None, instruction, None) =>

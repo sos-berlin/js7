@@ -71,5 +71,5 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll:
     assert(!directoryWatcher.isClosed && !streamFuture.isCompleted)
     streamFuture.cancelToFuture().await(99.s)
     intercept[CancellationException]:
-      streamFuture await 99.s
+      streamFuture.await(99.s)
     assert(directoryWatcher.isClosed)

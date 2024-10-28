@@ -26,14 +26,14 @@ trait ScheduleTester extends OurTestSuite:
     (implicit pos: source.Position)
   : Unit =
     for ((onlyOnePeriod, days, timeOfDay) <- View(
-      (false, standardSetting, MIDNIGHT plus dateOffset.toJava),
+      (false, standardSetting, MIDNIGHT.plus(dateOffset.toJava)),
       (true, onlyOnePeriodSetting, onlyOnePeriodTimeOfDay)))
       s"onlyOnePeriod=$onlyOnePeriod" - {
         for day <- days do day.testName in:
           assert(day.dayOfWeek == day.date.getDayOfWeek, "Weekday does not match start date")
           val startOfDay = LocalDateTime.of(day.date, MIDNIGHT)
           val localStart = startOfDay.plusSeconds(timeOfDay.toSecondOfDay)
-          val localEnd = startOfDay plus dateOffset.toJava plusDays 1
+          val localEnd = startOfDay.plus(dateOffset.toJava).plusDays(1)
           val start = ZonedDateTime.of(localStart, zone).toTimestamp
           val end = ZonedDateTime.of(localEnd, zone).toTimestamp
           testDay(

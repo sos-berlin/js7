@@ -93,13 +93,13 @@ object ScalaTime:
   def parseDuration(string: String): FiniteDuration =
     if string.isEmpty || !isAsciiDigit(string.head) then
       throw new IllegalArgumentException(s"Invalid duration: $string")
-    else if string endsWith "ms" then
+    else if string.endsWith("ms") then
       parse(string.dropRight(2), 1000000)
-    else if string endsWith "µs" then
+    else if string.endsWith("µs") then
       parse(string.dropRight(2), 1000)
     else if isAsciiDigit(string.last) then
       parse(string, 1000000000)
-    else if string endsWith "s" then
+    else if string.endsWith("s") then
       parse(string.dropRight(1), 1000000000)
     else
       throw new IllegalArgumentException(s"Invalid duration: $string")

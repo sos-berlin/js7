@@ -106,7 +106,7 @@ object AdmissionPeriodCalculator:
   extends AdmissionPeriodCalculator:
     /** The calendar period may be something like a whole day, week or month. */
     private[time] final def calendarPeriodStart(local: LocalDateTime): LocalDateTime =
-      calendarPeriodStartWithoutDateOffset(local minus dateOffset) plus dateOffset
+      calendarPeriodStartWithoutDateOffset(local.minus(dateOffset)).plus(dateOffset)
 
     @TestOnly // Not used
     private[time] final def hasAdmissionPeriodForDay(localDate: LocalDate) =
@@ -178,7 +178,7 @@ object AdmissionPeriodCalculator:
       LocalDateTime.of(local.toLocalDate, MIDNIGHT)
 
     def nextCalendarPeriodStart(local: LocalDateTime) =
-      Some(calendarPeriodStart(local) plusDays 1)
+      Some(calendarPeriodStart(local).plusDays(1))
 
     private[time] def admissionPeriodStart(local: LocalDateTime) =
       LocalDateTime.of(
@@ -196,14 +196,14 @@ object AdmissionPeriodCalculator:
       startOfMonth(local)
 
     def nextCalendarPeriodStart(local: LocalDateTime) =
-      Some(calendarPeriodStart(local) plusMonths 1)
+      Some(calendarPeriodStart(local).plusMonths(1))
 
     private[time] def admissionPeriodStart(local: LocalDateTime) =
-      val a = startOfMonth(local) plusSeconds admissionPeriod.secondOfMonth
+      val a = startOfMonth(local).plusSeconds(admissionPeriod.secondOfMonth)
       if a.getMonth == local.getMonth then
         a
       else
-        endOfMonth(local) plusSeconds admissionPeriod.secondOfDay
+        endOfMonth(local).plusSeconds(admissionPeriod.secondOfDay)
 
   private def startOfMonth(local: LocalDateTime): LocalDateTime =
     LocalDateTime.of(local.toLocalDate.withDayOfMonth(1), MIDNIGHT)
@@ -219,7 +219,7 @@ object AdmissionPeriodCalculator:
       startOfMonth(local)
 
     def nextCalendarPeriodStart(local: LocalDateTime) =
-      Some(calendarPeriodStart(local) plusMonths 1)
+      Some(calendarPeriodStart(local).plusMonths(1))
 
     private[time] def admissionPeriodStart(local: LocalDateTime) =
       startOfMonth(local)
@@ -237,7 +237,7 @@ object AdmissionPeriodCalculator:
       startOfMonth(local)
 
     def nextCalendarPeriodStart(local: LocalDateTime) =
-      Some(calendarPeriodStart(local) plusMonths 1)
+      Some(calendarPeriodStart(local).plusMonths(1))
 
     private[time] def admissionPeriodStart(local: LocalDateTime): LocalDateTime =
       val startOfMonthSeconds = startOfMonth(local).toEpochSecond(NoOffset)
@@ -258,7 +258,7 @@ object AdmissionPeriodCalculator:
       startOfMonth(local)
 
     def nextCalendarPeriodStart(local: LocalDateTime) =
-      Some(calendarPeriodStart(local) plusMonths 1)
+      Some(calendarPeriodStart(local).plusMonths(1))
 
     private[time] def admissionPeriodStart(local: LocalDateTime) =
       val endOfMonthSecond = endOfMonth(local).toEpochSecond(NoOffset)

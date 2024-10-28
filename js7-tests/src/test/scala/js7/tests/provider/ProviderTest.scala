@@ -238,7 +238,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       val versionId = eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       val events = eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: VersionedItemAdded(sign(TestWorkflow withId path ~ versionId))))
+        .map(path => NoKey <-: VersionedItemAdded(sign(TestWorkflow.withId(path ~ versionId)))))
 
     "Delete a workflow" in:
       whenObserved
@@ -253,7 +253,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: VersionedItemAdded(sign(TestWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: VersionedItemAdded(sign(TestWorkflow.withId(CWorkflowPath ~ versionId)))))
 
     "Change a workflow" in:
       logger.debug("Change a workflow")
@@ -262,7 +262,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       live.resolve(CWorkflowPath.toFile(SourceType.Json)) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: VersionedItemChanged(sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: VersionedItemChanged(sign(ChangedWorkflow.withId(CWorkflowPath ~ versionId)))))
 
     "Add an order generator" in:
       lastEventId = controller.eventWatch.lastAddedEventId
@@ -295,7 +295,7 @@ final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest:
       assert(!whenObserved.isCompleted)
       assert(!whenObserved.isCompleted)
       stopProvider.await(99.s)
-      whenObserved await 99.s
+      whenObserved.await(99.s)
   }
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =

@@ -17,14 +17,14 @@ final class JournalConfTest extends OurTestSuite:
     val c = config"""
       js7.journal.delay = 1ms
       js7.journal.sync-delay = 222ms"""
-    assert(JournalConf.fromConfig(c withFallback config) ==
+    assert(JournalConf.fromConfig(c.withFallback(config)) ==
       journalConf.copy(delay = 222.ms))
 
   "delay is maximum of delay and sync-delay if sync-delay=on (2)" in:
     val c = config"""
       js7.journal.delay = 333ms
       js7.journal.sync-delay = 1ms"""
-    assert(JournalConf.fromConfig(c withFallback config) ==
+    assert(JournalConf.fromConfig(c.withFallback(config)) ==
       journalConf.copy(delay = 333.ms))
 
   "On sync=off sync-delay is not respected" in:
@@ -32,7 +32,7 @@ final class JournalConfTest extends OurTestSuite:
       js7.journal.sync = off
       js7.journal.delay = 1ms
       js7.journal.sync-delay = 222ms"""
-    assert(JournalConf.fromConfig(c withFallback config) ==
+    assert(JournalConf.fromConfig(c.withFallback(config)) ==
       journalConf.copy(syncOnCommit = false, delay = 1.ms))
 
 

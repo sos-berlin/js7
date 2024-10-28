@@ -45,7 +45,7 @@ final case class OrderId private(string: String) extends GenericString:
       .toVector
 
   def root: OrderId =
-    string indexOf ChildSeparator match
+    string.indexOf(ChildSeparator) match
       case -1 => this
       case n => OrderId(string take n)
 
@@ -82,7 +82,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]:
       new ChildId(string)
 
     override def checked(string: String): Checked[ChildId] =
-      if string contains ChildSeparator then
+      if string.contains(ChildSeparator) then
         Left(Problem.pure(s"Order ChildId must not contain '$ChildSeparator'"))
       else
         super.checked(string)

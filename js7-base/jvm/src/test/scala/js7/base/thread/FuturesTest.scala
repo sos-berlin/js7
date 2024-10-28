@@ -56,7 +56,7 @@ final class FuturesTest extends OurTestSuite:
       assert(Await.result(future, 9.s) == "x")
     }.toString)
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
-    assert(Await.ready(future, 9.s).value.get.asInstanceOf[Failure[?]].exception.getMessage contains "TEST-ERROR")
+    assert(Await.ready(future, 9.s).value.get.asInstanceOf[Failure[?]].exception.getMessage.contains("TEST-ERROR"))
 
   "promiseFuture" in:
     val a: Future[Int] = promiseFuture[Int] { _ => }
@@ -65,16 +65,16 @@ final class FuturesTest extends OurTestSuite:
     assert(b.value.get.get == 7)
 
   "future.await" in:
-    Future { true } await 9.s shouldBe true
+    Future(true).await(9.s) shouldBe true
     intercept[TimeoutException]:
-      Future { sleep(1.s) } await 1.ms
+      Future(sleep(1.s)).await(1.ms)
 
   "futures.await" in:
-    List(Future { true }, Future { 1 }) await 9.s shouldBe List(true, 1)
+    List(Future(true), Future(1)).await(9.s) shouldBe List(true, 1)
     intercept[TimeoutException]:
-      Future { sleep(1.s) } await 1.ms
+      Future(sleep(1.s)).await(1.ms)
 
   private def stackTraceContainsCreationsStackTrace(body: => Int): Boolean =
-    intercept[TestException] { body } .getStackTrace.exists(_.toString contains classOf[AnyFreeSpec].getName)
+    intercept[TestException] { body } .getStackTrace.exists(_.toString.contains(classOf[AnyFreeSpec].getName))
 
   private class TestException extends Exception

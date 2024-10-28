@@ -31,7 +31,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
       touchFile(dir / "TEST-1")
       touchFile(dir / "IGNORED")
       touchFile(dir / "TEST-2")
-      val state = DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")
+      val state = DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
       assert(state == DirectoryState(Map(
         Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
         Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
@@ -39,7 +39,7 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
       touchFile(dir / "TEST-A")
       touchFile(dir / "TEST-1")
 
-      assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
+      assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))).toSet ==
         Set(FileAdded(Paths.get("TEST-A"))))
 
   "readDirectoryThenStream" in:

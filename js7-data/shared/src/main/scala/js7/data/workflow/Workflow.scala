@@ -103,7 +103,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
         val position = branchPath % InstructionNr(i)
         labeled.copy(
           maybePosition = Some(position),
-          instruction = labeled.instruction withPositions position)
+          instruction = labeled.instruction.withPositions(position))
       })
 
   private def checkJobReferences: View[Checked[Unit]] =
@@ -338,12 +338,12 @@ extends VersionedItem, TrivialItemState[Workflow]:
 
   private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
     instruction match
-      case o: Fork => o isStartableOnAgent agentPath
+      case o: Fork => o.isStartableOnAgent(agentPath)
       case o: Execute => o.isVisibleForAgent(agentPath, this)
       case _ => false
 
   private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
-    checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentPath)
+    checkedWorkflowJob(Position(0)).exists(_.isExecutableOnAgent(agentPath))
 
   def agentPath(position: Position): Option[AgentPath] =
     instruction(position) match
@@ -359,7 +359,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
     position match
       case Position(Nil, nr) => isDefinedAt(nr)
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
-        instruction(nr).workflow(branchId).exists(_ isDefinedAt Position(tail, tailNr))
+        instruction(nr).workflow(branchId).exists(_.isDefinedAt(Position(tail, tailNr)))
 
   private def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
@@ -456,7 +456,7 @@ extends VersionedItem, TrivialItemState[Workflow]:
   def instruction_[A <: Instruction: ClassTag](position: Position)
   : Checked[A] =
     instruction(position) match
-      case o if implicitClass[A] isAssignableFrom o.getClass =>
+      case o if implicitClass[A].isAssignableFrom(o.getClass) =>
         Right(o.asInstanceOf[A])
       case o =>
         Left(Problem(s"'${Instructions.jsonCodec.classToName(implicitClass[A])}' Instruction " +

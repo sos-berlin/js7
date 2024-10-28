@@ -18,7 +18,7 @@ extends Ordered[ExtendedLocalTime]:
     ExtendedLocalTime.ofNanoOfDay(toNanoOfDay + o.toNanos)
 
   def atDate(date: LocalDate): LocalDateTime =
-    LocalDateTime.of(date plusDays days, localTime)
+    LocalDateTime.of(date.plusDays(days), localTime)
 
   def compare(o: ExtendedLocalTime): Int =
     toNanoOfDay compare o.toNanoOfDay
@@ -28,7 +28,7 @@ extends Ordered[ExtendedLocalTime]:
     local.toInstant(zone.getRules.getOffset(local))
 
   def toLocalDateTime(localDate: LocalDate): LocalDateTime =
-    LocalDateTime.of(localDate plusDays days, localTime)
+    LocalDateTime.of(localDate.plusDays(days), localTime)
 
   def localTime: LocalTime =
     LocalTime.ofNanoOfDay(toNanoOfDay % (24*60*60*Billion))
@@ -68,7 +68,7 @@ object ExtendedLocalTime:
   def fromString(o: String): ExtendedLocalTime =
     o match
       case ParseRegex(hours, minutes, seconds) =>
-        of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
+        of(hours.toInt, minutes.toInt, Option(seconds).getOrElse("0").toInt)
       case _ => throw new IllegalArgumentException(s"Not a local time: '$o'")
 
   def of(hour: Int, minute: Int, second: Int = 0): ExtendedLocalTime =

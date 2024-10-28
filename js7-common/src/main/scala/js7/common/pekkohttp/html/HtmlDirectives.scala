@@ -112,7 +112,7 @@ object HtmlDirectives:
     }
 
   private def isHtmlPreferred(request: HttpRequest): Boolean =
-    request.header[Accept] exists { o => isHtmlPreferred(o.mediaRanges) }
+    request.header[Accept].exists(o => isHtmlPreferred(o.mediaRanges))
 
   /**
     * Workaround for Spray 1.3.3, which weights the MediaType ordering of the UnMarshaller over the (higher) weight of more specific MediaRange.

@@ -181,11 +181,11 @@ extends HasCloser:
           catch case NonFatal(t) =>
             // Pekko may crash before the caller gets the error so we log the error here
             logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-            try testController.terminate() await 99.s
+            try testController.terminate().await(99.s)
             catch case t2: Throwable if t2 ne t =>
               t.addSuppressed(t2)
             throw t
-        try testController.stop await 99.s
+        try testController.stop.await(99.s)
         catch case NonFatal(t) =>
           // Pekko may crash before the caller gets the error so we log the error here
           logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
@@ -244,7 +244,7 @@ extends HasCloser:
             .await(99.s).orThrow
 
           if items.nonEmpty then
-            val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
+            val versionedItems = items.collect { case o: VersionedItem => o }.map(_.withVersion(Vinitial))
             val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
               .updateItemsAsSystemUser(
@@ -285,12 +285,12 @@ extends HasCloser:
       catch case NonFatal(t) =>
         // Pekko may crash before the caller gets the error so we log the error here
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-        try agents.parTraverse(_.stop) await 99.s
+        try agents.parTraverse(_.stop).await(99.s)
         catch case t2: Throwable if t2 ne t =>
           t.addSuppressed(t2)
         throw t
 
-    agents.traverse(_.terminate()) await 99.s
+    agents.traverse(_.terminate()).await(99.s)
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
@@ -325,7 +325,7 @@ extends HasCloser:
     controller.updateItemsAsSystemUser(
       AddVersion(versionId) +:
         (Stream.iterable(change)
-          .map(_ withVersion versionId)
+          .map(_.withVersion(versionId))
           .map(itemSigner.toSignedString)
           .map(AddOrChangeSigned(_)) ++
           Stream.iterable(delete)

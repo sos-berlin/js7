@@ -87,7 +87,7 @@ final class UpdateItemsTest
           case EventSeq.NonEmpty(_) => IO(promises(i).success(now))
           case o => IO(promises(i).failure(new AssertionError(s"Unexpected: $o")))
         .unsafeRunAndForget()
-    val finishedAt = promises.map(_.future) await 99.s
+    val finishedAt = promises.map(_.future).await(99.s)
     // The two orders running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
 

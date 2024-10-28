@@ -32,7 +32,7 @@ final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAl
             count:
               if i % 3 == 0 then sleep(Random.nextInt(10).ms)
               i
-      assert((futures await 60.s).sum == range.sum)
+      assert(futures.await(60.s).sum == range.sum)
     }
 
   "With quick operation" in:
@@ -42,7 +42,7 @@ final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAl
           measureTime(10000, "FutureThrottle") {
             implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(myExecutionContext)
             val futures = for i <- 1 to n yield Future { i }
-            assert((futures await 60.s).sum == (1 to n).sum)
+            assert(futures.await(60.s).sum == (1 to n).sum)
           }.toString)
 
   if false then
@@ -53,5 +53,5 @@ final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAl
       info(s"n=$n: " +
         measureTime(10000, "Future") {
           val futures = for i <- 1 to n yield Future { i }
-          assert((futures await 60.s).sum == (1 to n).sum)
+          assert(futures.await(60.s).sum == (1 to n).sum)
         }.toString)

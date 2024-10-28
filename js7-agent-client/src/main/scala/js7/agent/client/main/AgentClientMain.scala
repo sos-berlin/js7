@@ -31,7 +31,7 @@ object AgentClientMain extends SimpleServiceProgram[AgentClientMain.Conf]:
     IO.interruptible:
       import conf.{agentUri, dataDirectory, maybeConfigDirectory, operations}
       val sessionToken = SessionToken(SecretString:
-        Files.readAllLines(dataDirectory resolve "work/session-token").asScala.mkString)
+        Files.readAllLines(dataDirectory.resolve("work/session-token")).asScala.mkString)
       autoClosing(PekkoHttpAgentTextApi(agentUri, None, print, maybeConfigDirectory)): textApi =>
         textApi.setSessionToken(sessionToken)
         if operations.isEmpty then

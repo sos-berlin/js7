@@ -49,7 +49,7 @@ sealed trait Problem:
   final def withPrefix(prefix: String): Problem =
     Problem.pure(prefix) |+| this
 
-  final def is(companion: Problem.Coded.Companion): Boolean =
+  final infix def is(companion: Problem.Coded.Companion): Boolean =
     maybeCode contains companion.code
 
   final def wrapProblemWith(message: String) = new Problem.Lazy(message, Some(this))
@@ -288,8 +288,8 @@ object Problem extends Semigroup[Problem]:
       None
 
   private def normalizePrefix(prefix: String): String =
-    if prefix matches ".*[:-] *" then
-      if prefix endsWith " " then prefix else prefix + " "
+    if prefix.matches(".*[:-] *") then
+      if prefix.endsWith(" ") then prefix else prefix + " "
     else if prefix.trim.isEmpty && prefix.endsWith(" ") then
       prefix
     else

@@ -143,7 +143,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
       totalEventCount = totalEventCount,
       totalRunningTime = _journalHeader.toOption.fold(ZeroDuration) { header =>
         val lastJournalDuration = lastEventIdTimestamp - header.timestamp
-        header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
+        (header.totalRunningTime + lastJournalDuration).roundUpToNext(1.ms)
       },
       timestamp = lastEventIdTimestamp))
 
@@ -194,7 +194,7 @@ object SnapshotableStateBuilder:
         updateEventId(stamped.eventId)
 
     def result(): S =
-      _state withEventId eventId
+      _state.withEventId(eventId)
 
     protected final def state =
       _state

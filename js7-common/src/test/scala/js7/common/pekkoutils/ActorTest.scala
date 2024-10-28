@@ -51,7 +51,7 @@ final class ActorTest extends OurTestSuite, BeforeAndAfterAll, ProvideActorSyste
     })
 
     actor ! "CRASH"
-    stopped.future await 99.s
+    stopped.future.await(99.s)
     assert(!restarted.get() && startCounter.get() == 1)
     sleep(1.s)
     assert(!restarted.get() && startCounter.get() == 1)

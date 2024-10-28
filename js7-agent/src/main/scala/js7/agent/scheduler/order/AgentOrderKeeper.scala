@@ -379,7 +379,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           if !events.lastOption.contains(OrderDetached) then
             proceedWithOrder(order)
 
-    case Internal.Due(orderId) if orderRegister contains orderId =>
+    case Internal.Due(orderId) if orderRegister.contains(orderId) =>
       proceedWithOrder(orderId)
 
     case Internal.JobDue(jobKey) =>
@@ -629,7 +629,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
                 case Some(workflow) =>
                   if !workflow.isDefinedAt(order.position) then
                     Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
-                  else if orderRegister contains order.id then
+                  else if orderRegister.contains(order.id) then
                     Future.successful(Left(AgentDuplicateOrder(order.id)))
                   else if shuttingDown then
                     Future.successful(Left(AgentIsShuttingDown))
@@ -920,7 +920,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         jobRegister.keys.toVector.foreach(jobRegister.remove)
         shutdown.continue()
 
-      case Terminated(actorRef) if orderRegister contains actorRef =>
+      case Terminated(actorRef) if orderRegister.contains(actorRef) =>
         val orderEntry = orderRegister(actorRef)
         val orderId = orderEntry.orderId
         logger.debug(s"Actor '$orderId' stopped")

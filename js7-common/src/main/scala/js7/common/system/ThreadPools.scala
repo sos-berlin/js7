@@ -89,7 +89,7 @@ object ThreadPools:
           logger.whenDebugEnabled:
             logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala
-              .filter(_._1.getName startsWith name)
+              .filter(_._1.getName.startsWith(name))
               .toSeq.sortBy(_._1.threadId)
               .foreach { case (thread, stacktrace) =>
                 logger.debug(s"Thread #${thread.threadId} ${thread.getName} ⏎" +

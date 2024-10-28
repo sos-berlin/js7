@@ -23,7 +23,8 @@ final class EventIdGeneratorTest extends OurTestSuite:
     (for _ <- 1 to n yield
       Future {
         eventIds += ((eventIdGenerator.next(), ()))
-      }) await 99.s
+      }
+    ).await(99.s)
     assert(eventIds.size == n)  // All EventIds are distinct
 
   "updateLastEventId" in:

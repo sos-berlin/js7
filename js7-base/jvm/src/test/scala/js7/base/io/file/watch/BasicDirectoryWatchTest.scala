@@ -27,7 +27,7 @@ final class BasicDirectoryWatchTest extends OurAsyncTestSuite:
       BasicDirectoryWatch
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY),
-            isRelevantFile = _.toString startsWith "TEST-"))
+            isRelevantFile = _.toString.startsWith("TEST-")))
         .use(watcher => IO {
           for i <- 2 to 4 do {
             watcher.streamResource.use(stream => IO.interruptible {

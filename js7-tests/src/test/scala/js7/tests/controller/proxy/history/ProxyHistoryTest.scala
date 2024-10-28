@@ -67,8 +67,8 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
     js7.journal.users-allowed-to-release-events = [ "Proxy" ]
     js7.journal.release-events-delay = 0s
     """
-  override protected def primaryControllerConfig = controllerConfig withFallback super.primaryControllerConfig
-  override protected def backupControllerConfig = controllerConfig withFallback super.backupControllerConfig
+  override protected def primaryControllerConfig = controllerConfig.withFallback(super.primaryControllerConfig)
+  override protected def backupControllerConfig = controllerConfig.withFallback(super.backupControllerConfig)
   override protected val items = Seq(TestWorkflow)
   override protected val agentPaths = AAgentPath :: BAgentPath :: Nil
 

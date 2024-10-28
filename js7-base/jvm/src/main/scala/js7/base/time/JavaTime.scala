@@ -20,11 +20,11 @@ object JavaTime:
 
   implicit final class JavaDurationRichInt(private val delegate: Int) extends AnyVal:
     def *(o: Duration): Duration =
-      o multipliedBy delegate
+      o.multipliedBy(delegate)
 
   implicit final class JavaDurationRichLong(private val delegate: Long) extends AnyVal:
     def *(o: Duration): Duration =
-      o multipliedBy delegate
+      o.multipliedBy(delegate)
 
   def bigDecimalToDuration(o: BigDecimal): Duration =
     val (seconds, fraction) = o /% 1
@@ -36,19 +36,19 @@ object JavaTime:
   implicit final class RichDuration(private val delegate: Duration)
   extends AnyVal, Ordered[RichDuration]:
     def unary_- : Duration =
-      Duration.ZERO minus delegate
+      Duration.ZERO.minus(delegate)
 
     def +(o: Duration): Duration =
-      delegate plus o
+      delegate.plus(o)
 
     def -(o: Duration): Duration =
-      delegate minus o
+      delegate.minus(o)
 
     def *(o: Long): Duration =
-      delegate multipliedBy o
+      delegate.multipliedBy(o)
 
     def /(o: Long): Duration =
-      delegate dividedBy o
+      delegate.dividedBy(o)
 
     def *(o: BigDecimal): Duration =
       bigDecimalToDuration(delegate.toBigDecimal * o)
@@ -77,14 +77,14 @@ object JavaTime:
       else
         delegate.toFiniteDuration.pretty
 
-    def compare(o: RichDuration): Int = delegate compareTo o.delegate
+    def compare(o: RichDuration): Int = delegate.compareTo(o.delegate)
 
   implicit final class RichInstant(private val delegate: Instant) extends AnyVal, Ordered[RichInstant]:
     def +(o: Duration): Instant =
-      delegate plus o
+      delegate.plus(o)
 
     def -(o: Duration): Instant =
-      delegate minus o
+      delegate.minus(o)
 
     def -(o: Instant): Duration =
       Duration.between(o, delegate)
@@ -96,10 +96,10 @@ object JavaTime:
       if this > o then delegate else o
 
     def compare(o: RichInstant): Int =
-      delegate compareTo o.delegate
+      delegate.compareTo(o.delegate)
 
     def roundTo(duration: Duration): Instant =
-      this + duration / 2 roundDownTo duration
+      (this + duration / 2).roundDownTo(duration)
 
     def roundDownTo(duration: Duration): Instant =
       val durationMillis = duration.toMillis
@@ -110,18 +110,18 @@ object JavaTime:
 
   implicit final class RichLocalTime(private val delegate: LocalTime) extends AnyVal, Ordered[RichLocalTime]:
     def compare(o: RichLocalTime): Int =
-      delegate compareTo o.delegate
+      delegate.compareTo(o.delegate)
 
   implicit final class RichLocalDateTime(private val localDateTime: LocalDateTime)
   extends AnyVal, Ordered[RichLocalDateTime]:
     def +(o: Duration): LocalDateTime =
-      localDateTime plus o
+      localDateTime.plus(o)
 
     def +(o: FiniteDuration): LocalDateTime =
       localDateTime.plusNanos(o.toNanos)
 
     def -(o: Duration): LocalDateTime =
-      localDateTime minus o
+      localDateTime.minus(o)
 
     def -(o: FiniteDuration): LocalDateTime =
       localDateTime.minusNanos(o.toNanos)
@@ -133,7 +133,7 @@ object JavaTime:
       if this > o then localDateTime else o
 
     def compare(o: RichLocalDateTime): Int =
-      localDateTime compareTo o.localDateTime
+      localDateTime.compareTo(o.localDateTime)
 
     def toInstant(zone: ZoneId): Instant =
       ZonedDateTime.of(localDateTime, zone).toInstant

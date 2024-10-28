@@ -191,8 +191,9 @@ object PekkoHttpServerUtils:
     @tailrec
     def startsWithPath(prefix: Uri.Path): Boolean =
       (delegate, prefix) match
-        case (Slash(a), Slash(b)) => a startsWithPath b
-        case (Segment(aHead, aTail), Segment(bHead, bTail)) => aHead == bHead && (aTail startsWithPath bTail)
+        case (Slash(a), Slash(b)) => a.startsWithPath(b)
+        case (Segment(aHead, aTail), Segment(bHead, bTail)) => 
+          aHead == bHead && aTail.startsWithPath(bTail)
         case _ => prefix.isEmpty
 
     @tailrec
@@ -201,7 +202,7 @@ object PekkoHttpServerUtils:
         delegate
       else
         require(n > 0)
-        delegate.tail drop n - 1
+        delegate.tail.drop(n - 1)
 
   /** Like `pathPrefix`, but `prefix` denotes a path segment. */
   def pathSegment(segment: String): Directive0 =
@@ -242,8 +243,8 @@ object PekkoHttpServerUtils:
     else
       new PathMatcher[Unit]:
         def apply(path: Uri.Path) =
-          if path startsWithPath prefix then
-            Matched(path drop prefix.length, ())
+          if path.startsWithPath(prefix) then
+            Matched(path.drop(prefix.length), ())
           else
             Unmatched
 

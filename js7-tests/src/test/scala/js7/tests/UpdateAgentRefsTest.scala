@@ -64,7 +64,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
   override def afterAll() =
     try
       controllerApi.stop.await(99.s)
-      controller.terminate() await 99.s
+      controller.terminate().await(99.s)
     finally
       super.afterAll()
 
@@ -74,7 +74,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     directoryProvider.prepareAgentFiles(agentEnv)
 
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
-    agent = TestAgent.start(agentEnv.agentConf) await 99.s
+    agent = TestAgent.start(agentEnv.agentConf).await(99.s)
 
     controllerApi
       .updateItems(
@@ -82,7 +82,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
           AddOrChangeSimple(agentRef),
           AddOrChangeSimple(subagentItem),
           AddVersion(v1),
-          AddOrChangeSigned(toSignedString(workflow withVersion v1))))
+          AddOrChangeSigned(toSignedString(workflow.withVersion(v1)))))
       .await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path, deleteWhenTerminated = true))
 
@@ -107,10 +107,10 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     ).await(99.s).orThrow
 
     eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
-    agent.untilTerminated await 99.s
+    agent.untilTerminated.await(99.s)
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in:
-    agent = TestAgent.start(agentEnv.agentConf) await 99.s
+    agent = TestAgent.start(agentEnv.agentConf).await(99.s)
 
     val eventId = eventWatch.lastAddedEventId
     val versionId = VersionId("AGAIN")
@@ -123,10 +123,11 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
             AddOrChangeSimple(agentRef),
             AddOrChangeSimple(subagentItem),
             AddVersion(versionId),
-            AddOrChangeSigned(toSignedString(workflow withVersion versionId))))
+            AddOrChangeSigned(toSignedString(workflow.withVersion(versionId)))))
         .await(99.s)
-        if n > 0 && checked.left.exists(_.toString contains
-          "AgentDrivers for the following Agents are still running — please retry after some seconds:") then
+        if n > 0 && checked.left
+          .exists(_.toString
+            .contains("AgentDrivers for the following Agents are still running — please retry after some seconds:")) then
           sleep(1.s)
           loop(n - 1)
         else
@@ -136,7 +137,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     eventWatch.await[AgentDedicated](after = eventId)
     eventWatch.await[AgentReady](after = eventId)
     controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
-    agent.terminate() await 99.s
+    agent.terminate().await(99.s)
 
   "Change Directors's URI to an unreachable address" in:
     val eventId = eventWatch.lastAddedEventId
@@ -151,10 +152,10 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
       agentEnv.agentConf.copy(
         subagentConf = agentEnv.agentConf.subagentConf.copy(
           webServerPorts = List(WebServerPort.localhost(agentPort2))))
-    ) await 99.s
+    ).await(99.s)
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
-    agent.terminate() await 99.s
+    agent.terminate().await(99.s)
 
   "Coupling fails with outdated Director" in:
     deleteDirectoryRecursively(agentEnv.stateDir)
@@ -165,7 +166,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
       agentEnv.agentConf.copy(
         subagentConf = agentEnv.agentConf.subagentConf.copy(
           webServerPorts = List(WebServerPort.localhost(agentPort2))))
-    ) await 99.s
+    ).await(99.s)
 
     // TODO May timeout due to repeated
     //  "Coupling failed: UnknownEventId: An unknown EventId has been requested"
@@ -173,7 +174,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
       _.event.problem == AgentRunIdMismatchProblem(agentPath),
       after = eventId)
 
-    agent.terminate() await 99.s
+    agent.terminate().await(99.s)
 
   "Change Directors's URI and start Agent with clean state: fails" in:
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
@@ -183,7 +184,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
       agentEnv.agentConf.copy(
         subagentConf = agentEnv.agentConf.subagentConf.copy(
           webServerPorts = List(WebServerPort.localhost(agentPort3))))
-    ) await 99.s
+    ).await(99.s)
 
     val eventId = eventWatch.lastAddedEventId
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
@@ -191,7 +192,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
       _.event.problem == AgentNotDedicatedProblem,
       after = eventId)
 
-    agent.terminate() await 99.s
+    agent.terminate().await(99.s)
 
 
 object UpdateAgentRefsTest:

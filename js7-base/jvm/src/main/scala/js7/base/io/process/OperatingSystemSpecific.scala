@@ -35,9 +35,9 @@ private object OperatingSystemSpecific:
 
   private object Unix extends OperatingSystemSpecific:
     val shellFileExtension = ".sh"
-    val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
+    val shellFileAttributes = List(asFileAttribute(PosixFilePermissions.fromString("rwx------")))
       .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
-    val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
+    val outputFileAttributes = List(asFileAttribute(PosixFilePermissions.fromString("rw-------")))
       .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
     def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)

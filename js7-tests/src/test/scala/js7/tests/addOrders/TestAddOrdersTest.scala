@@ -42,7 +42,7 @@ final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     val statistics = TestAddOrders.run(settings, logToStdout = testSpeed.isDefined)
       .awaitInfinite.orThrow
-    controller.eventWatch.await[OrderDeleted](_.key.string startsWith "TestAddOrders-")
+    controller.eventWatch.await[OrderDeleted](_.key.string.startsWith("TestAddOrders-"))
     for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
     Log4jThreadContextMap.logStatistics()

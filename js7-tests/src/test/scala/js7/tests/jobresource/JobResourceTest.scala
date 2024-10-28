@@ -129,17 +129,17 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       logger.info(stdouterr.trim)
-      assert(stdouterr contains s"JS7_ORDER_ID=/ORDER-SOS/$nl")
-      assert(stdouterr contains s"JS7_WORKFLOW_NAME=/WORKFLOW-SOS/$nl")
-      assert(stdouterr contains s"JS7_JOB_NAME=/TEST-JOB/$nl")
-      assert(stdouterr contains s"JS7_LABEL=/TEST-LABEL/$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_DATE=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_YEAR=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_MONTH=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_DAY=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_HOUR=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=//$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_SECOND=//$nl")
+      assert(stdouterr.contains(s"JS7_ORDER_ID=/ORDER-SOS/$nl"))
+      assert(stdouterr.contains(s"JS7_WORKFLOW_NAME=/WORKFLOW-SOS/$nl"))
+      assert(stdouterr.contains(s"JS7_JOB_NAME=/TEST-JOB/$nl"))
+      assert(stdouterr.contains(s"JS7_LABEL=/TEST-LABEL/$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_DATE=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_YEAR=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_MONTH=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_DAY=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_HOUR=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_MINUTE=//$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_SECOND=//$nl"))
 
     "with scheduledFor" in:
       controller.api.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
@@ -159,10 +159,10 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
       val dateTime = scheduledFor
         .toOffsetDateTime(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
-      assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_YEAR=/2021/$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=/11/$nl")
-      assert(stdouterr contains s"JS7_SCHEDULED_SECOND=/22/$nl")
+      assert(stdouterr.contains(s"JS7_SCHEDULED_DATE=/$dateTime/$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_YEAR=/2021/$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_MINUTE=/11/$nl"))
+      assert(stdouterr.contains(s"JS7_SCHEDULED_SECOND=/22/$nl"))
   }
 
   "JobResource.variables in JVM job" in:
@@ -317,8 +317,8 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     val stdout = events
       .collect { case OrderStdoutWritten(chunk) => chunk }
       .combineAll
-    assert(stdout contains resourceContent)
-    assert(stdout contains executableContent)
+    assert(stdout.contains(resourceContent))
+    assert(stdout.contains(executableContent))
 
 
 object JobResourceTest:

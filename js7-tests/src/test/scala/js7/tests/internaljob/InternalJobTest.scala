@@ -177,9 +177,9 @@ final class InternalJobTest
     eventWatch.await[OrderProcessingKilled](_.key == order.id)
 
   "stop" in:
-    controller.api.stop await 99.s
-    controller.terminate() await 99.s
-    agent.terminate() await 99.s
+    controller.api.stop.await(99.s)
+    controller.terminate().await(99.s)
+    agent.terminate().await(99.s)
     assert(SimpleJob.stopped)
     assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
     assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))

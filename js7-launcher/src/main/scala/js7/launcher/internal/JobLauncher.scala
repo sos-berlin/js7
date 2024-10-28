@@ -78,5 +78,5 @@ object JobLauncher:
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
     if !exists(file) then
       logger.warn(s"Executable '$file' not found")
-    else if isUnix && !Try(getPosixFilePermissions(file) contains OWNER_EXECUTE).getOrElse(true) then
+    else if isUnix && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true) then
       logger.warn(s"Executable '$file' is not user executable")

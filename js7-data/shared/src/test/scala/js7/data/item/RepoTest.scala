@@ -422,7 +422,7 @@ final class RepoTest extends OurTestSuite:
       for i <- 1 to n do
         val v = VersionId(i.toString)
         val eventBlock = repo
-          .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
+          .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A").withVersion(v)) :: Nil).orThrow
         repo = repo.applyEvents(eventBlock.events).orThrow
         if i % 1000 == 0 then
           logger.info(sw.itemsPerSecondString(1000, "versions"))

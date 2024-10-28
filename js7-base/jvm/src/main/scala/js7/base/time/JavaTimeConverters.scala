@@ -32,14 +32,14 @@ object JavaTimeConverters:
   implicit final class AsScalaDuration(private val underlying: Duration) extends AnyVal:
     /** Absolute values above ~292 years are converted to Inf respective MinusInf. */
     def toScala: ScalaDuration =
-      if (underlying compareTo MaxDuration) > 0 then ScalaDuration.Inf
-      else if (underlying compareTo MinDuration) < 0 then ScalaDuration.MinusInf
+      if underlying.compareTo(MaxDuration) > 0 then ScalaDuration.Inf
+      else if underlying.compareTo(MinDuration) < 0 then ScalaDuration.MinusInf
       else javaToFiniteDuration(underlying)
 
     /** Absolute values above ~292 years are capped (±2**63ns). */
     def toFiniteDuration: FiniteDuration =
-      if (underlying compareTo MaxDuration) > 0 then FiniteDuration.MaxValue
-      else if (underlying compareTo MinDuration) < 0 then FiniteDuration.MinValue
+      if underlying.compareTo(MaxDuration) > 0 then FiniteDuration.MaxValue
+      else if underlying.compareTo(MinDuration) < 0 then FiniteDuration.MinValue
       else javaToFiniteDuration(underlying)
 
   implicit final class AsJavaFiniteDuration(private val underlying: FiniteDuration) extends AnyVal:

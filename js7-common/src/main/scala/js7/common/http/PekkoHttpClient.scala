@@ -649,11 +649,11 @@ object PekkoHttpClient:
     def default = Problem.fromThrowable(throwable)
     throwable match
       case pekko.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
-        if summary contains "connection was closed unexpectedly" then
+        if summary.contains("connection was closed unexpectedly") then
           connectionWasClosedUnexpectedly
         else Problem.pure(summary)
 
-      case t if t.getClass.getName endsWith "UnexpectedConnectionClosureException" =>
+      case t if t.getClass.getName.endsWith("UnexpectedConnectionClosureException") =>
         connectionWasClosedUnexpectedly
 
       case t: pekko.stream.StreamTcpException =>

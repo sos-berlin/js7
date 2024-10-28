@@ -22,7 +22,7 @@ object ScheduledOrderGeneratorXmlParser:
     Checked.catchNonFatal:
       ScalaXMLEventReader.parseDocument(source) { eventReader =>
         import eventReader.*
-        val folderPath = FolderPath parentOf id.path
+        val folderPath = FolderPath.parentOf(id.path)
         parseElement("order"):
           val workflowPath = attributeMap.as("job_chain")(As(o => folderPath.resolve[WorkflowPath](o)))
           val elements = forEachStartElement:

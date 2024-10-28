@@ -116,7 +116,7 @@ object LoggingAsyncFreeSpec:
       case _ => false
 
   private def appendStackTrace(throwable: Throwable): Throwable =
-    if throwable.getClass.getName startsWith "org.scalatest." then
+    if throwable.getClass.getName.startsWith("org.scalatest.") then
       throwable
     else
       throwable match

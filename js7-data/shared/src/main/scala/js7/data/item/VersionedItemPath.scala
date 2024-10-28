@@ -92,7 +92,7 @@ object VersionedItemPath:
       def apply(c: HCursor) =
         for
           string <- c.as[String]
-          prefixAndPath <- string indexOf ':' match
+          prefixAndPath <- string.indexOf(':') match
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
             case _ => Left(DecodingFailure(s"Missing type prefix in VersionedItemPath: $string", c.history))
           prefix = prefixAndPath._1

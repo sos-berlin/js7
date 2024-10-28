@@ -42,7 +42,7 @@ trait ApiRootRoute extends ControllerRouteProvider:
         initiallyStartedAt = checkedControllerState.toOption
           .map(_.controllerMetaState.initiallyStartedAt),
         startedAt = StartUp.startedAt,
-        totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms,
+        totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms),
         orderCount = checkedControllerState.toOption.map(_.idToOrder.size),
         system = systemInformation(),
         java = javaInformation())

@@ -52,7 +52,7 @@ final class ProcessesTest extends OurTestSuite:
   "newTemporaryShellFile, toShellCommandArguments and script execution" in:
     autoDeleting(newTemporaryShellFile("NAME")): file =>
       assert(exists(file))
-      assert(!(file.toString contains "--"))
+      assert(!file.toString.contains("--"))
       file := ShellScript
       val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava)
         .redirectOutput(PIPE)

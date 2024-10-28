@@ -25,7 +25,7 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
         backupController.stop.await(99.s)
         primaryController.eventWatch.await[ClusterPassiveLost]()
 
-        primaryController.terminate(suppressSnapshot = true) await 99.s
+        primaryController.terminate(suppressSnapshot = true).await(99.s)
       }
 
       truncateLastJournalFile(primary.controllerEnv)
@@ -37,7 +37,7 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
           assert(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
-          primaryController.terminate() await 99.s
+          primaryController.terminate().await(99.s)
         }
       }
     }

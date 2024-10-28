@@ -57,6 +57,6 @@ final class ResourceGuardTest extends OurTestSuite:
     sleep(100.ms)
     awaitAndAssert(notReleased.get() > 1)
     g.releaseAfterUse()
-    futures await 99.s
+    futures.await(99.s)
     assert(released.get() == 1)
     assert(notReleased.get() > 1)

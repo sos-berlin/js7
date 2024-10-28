@@ -142,11 +142,10 @@ trait RealEventWatch extends EventWatch:
   : IO[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
     whenAnyKeyedEvents(
       request,
-      collect = {
-        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass)
+      collect = 
+        case e if eventClasses.exists(_.isAssignableFrom(e.event.getClass))
           && predicate(e.asInstanceOf[KeyedEvent[E]]) =>
-          e.asInstanceOf[KeyedEvent[E]]
-      })
+          e.asInstanceOf[KeyedEvent[E]])
 
   final def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
@@ -259,7 +258,7 @@ trait RealEventWatch extends EventWatch:
             var lastEventId = after
             val eventIterator = stampeds
               .tapEach { o => lastEventId = o.eventId }
-              .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
+              .collect { case stamped if collect isDefinedAt stamped.value => stamped.map(collect) }
               .take(limit)
             if eventIterator.isEmpty then
               eventIterator.close()

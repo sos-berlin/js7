@@ -29,7 +29,7 @@ final class WorkflowPrinter(sb: StringBuilder):
   def appendQuotedExpression(string: String): Any =
     if string.contains('\n') then
       @tailrec def q(quote: String): Unit =
-        if string contains quote then q(quote + "'")
+        if string.contains(quote) then q(quote + "'")
         else sb.append('\n')
           .append(quote)
           .append(string.split('\n').map(o => o + "\n" + " "*(quote.length - 1) + "|").mkString)

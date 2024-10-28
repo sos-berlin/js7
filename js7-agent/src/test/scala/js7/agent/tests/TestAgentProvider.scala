@@ -28,7 +28,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider, BeforeAndAfterAll:
 
   override def afterAll() =
     // Terminate Agent properly to avoid StackOverflowError due to a RejectedExecutionException when terminating Akka 2.6.6
-    agent.terminate(Some(SIGKILL)) await 99.s
+    agent.terminate(Some(SIGKILL)).await(99.s)
     super.afterAll()
 
   protected lazy final val agent: TestAgent =

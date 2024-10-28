@@ -8,7 +8,8 @@ object Bitness extends Enumeration:
   // private val arch64 = Set("x64", "amd64")
   // private val osArch = Option(System.getProperty("os.arch")) getOrElse error("System property os.arch is undefined")
 
-  private val sunModel = Option(System.getProperty("sun.arch.data.model")) getOrElse
+  private val sunModel: String =
+    Option(System.getProperty("sun.arch.data.model")).getOrElse:
       error("System property sun.arch.data.model is undefined")
 
   val Bits32: Bitness.Value = Value

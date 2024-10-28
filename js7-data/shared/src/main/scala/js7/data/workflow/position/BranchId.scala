@@ -97,9 +97,9 @@ object BranchId:
   final case class Named(string: String) extends BranchId:
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized: BranchId =
-      if string startsWith TryPrefix then "try"
-      else if string startsWith CatchPrefix then "catch"
-      else if string startsWith CyclePrefix then "cycle"
+      if string.startsWith(TryPrefix) then "try"
+      else if string.startsWith(CatchPrefix) then "catch"
+      else if string.startsWith(CyclePrefix) then "cycle"
       else this
 
     def isFork: Boolean =
@@ -123,15 +123,15 @@ object BranchId:
               .toVector
               .takeWhile(_ => checked.isRight)
               .foreach(part =>
-                if part startsWith "end=" then
+                if part.startsWith("end=") then
                   end = Timestamp.ofEpochMilli(part.substring(4).toLong)
-                else if part startsWith "scheme=" then
+                else if part.startsWith("scheme=") then
                   schemeIndex = part.substring(7).toInt
-                else if part startsWith "period=" then
+                else if part.startsWith("period=") then
                   periodIndex = part.substring(7).toInt
-                else if part startsWith "i=" then
+                else if part.startsWith("i=") then
                   index = part.substring(2).toInt
-                else if part startsWith "next=" then
+                else if part.startsWith("next=") then
                   next = Timestamp.ofEpochMilli(part.substring(5).toLong)
                 else
                   checked = Left(Problem.pure(cycleFailed)))

@@ -79,8 +79,8 @@ object ServerOperatingSystem:
 
 
   final class Unix private[system] extends ServerOperatingSystem:
-    val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] =
-      Seq(asFileAttribute(PosixFilePermissions fromString "rw-------"))
+    val secretFileAttributes: Seq[FileAttribute[util.Set[?]]] =
+      Seq(asFileAttribute(PosixFilePermissions.fromString("rw-------")))
         .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
     def makeExecutableFilename(name: String): String = name
@@ -99,7 +99,7 @@ object ServerOperatingSystem:
         val file = "/etc/os-release"
         autoClosing(new FileInputStream(file)): in =>    // https://man7.org/linux/man-pages/man5/os-release.5.html
           fromInputStream(in).getLines() collectFirst:
-            case line if line startsWith prettyNamePrefix =>
+            case line if line.startsWith(prettyNamePrefix) =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
         .getOrElse:
           sys.error(s"Key PRETTY_NAME not found in files $file")
@@ -154,4 +154,5 @@ object ServerOperatingSystem:
 
   def concatFileAndPathChain(f: File, pathChain: String): String =
     val abs = f.getAbsolutePath
-    abs +: (pathChain split File.pathSeparator).filter(o => o.nonEmpty && o != abs) mkString File.pathSeparatorChar.toString
+    (abs +: pathChain.split(File.pathSeparator).filter(o => o.nonEmpty && o != abs))
+      .mkString(File.pathSeparatorChar.toString)

@@ -35,8 +35,8 @@ object EventDirectives:
               returnTypeNames.flatMap: t =>
                 keyedEventTypedJsonCodec.typenameToClassOption(t)
               .collect:
-                case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
-                case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
+                case eventClass_ if eventSuperclass.isAssignableFrom(eventClass_) => eventClass_
+                case eventClass_ if eventClass_.isAssignableFrom(eventSuperclass) => eventSuperclass
             if eventClasses.size != returnTypeNames.size then
               reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
             else

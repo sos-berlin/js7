@@ -38,7 +38,7 @@ final class PassiveLostControllerClusterTest extends ControllerClusterTester:
 
       for orderId <- (1 to 5).map(i => OrderId(s"🔶$i")) do
         val eventId = primaryController.eventWatch.lastAddedEventId
-        backupController.terminate(dontNotifyActiveNode = true) await 99.s
+        backupController.terminate(dontNotifyActiveNode = true).await(99.s)
 
         val passiveLost = primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
           .head.eventId

@@ -180,12 +180,12 @@ final class OrderEventSourceTest extends OurTestSuite:
     for isAgent <- Seq(false, true) do s"isAgent=$isAgent" - {
       "Job, Fork" in:
         val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder), isAgent = isAgent)
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Vector.empty))
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Right(Vector.empty))
+        assert(eventSource.applyMoveInstructions(succeededOrder.withPosition(Position(0))) == Right(Vector.empty))
+        assert(eventSource.applyMoveInstructions(succeededOrder.withPosition(Position(1))) == Right(Vector.empty))
 
       "In forked order" in:
         val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder), isAgent = isAgent)
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1) / "fork+🥕" % 1) == Right(Vector.empty))
+        assert(eventSource.applyMoveInstructions(succeededOrder.withPosition(Position(1) / "fork+🥕" % 1)) == Right(Vector.empty))
     }
   }
 

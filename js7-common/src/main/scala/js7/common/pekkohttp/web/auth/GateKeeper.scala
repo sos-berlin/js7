@@ -318,7 +318,7 @@ object GateKeeper:
     new GateKeeper(
       scheme = scheme,
       GateKeeper.Configuration.fromConfig(
-        config withFallback config"""
+        config.withFallback(config"""
           js7.web.server.auth {
             realm = "TEST REALM"
             invalid-authentication-delay = 100ms
@@ -327,5 +327,5 @@ object GateKeeper:
             get-is-public = false
             public = $isPublic
           }
-          """,
+          """),
         SimpleUser.apply))

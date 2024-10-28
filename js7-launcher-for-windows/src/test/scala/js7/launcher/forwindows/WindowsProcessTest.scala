@@ -23,7 +23,7 @@ final class WindowsProcessTest extends OurTestSuite:
 
   if isWindows then
     // TODO Test fails
-    val commandCharset = Charset forName "cp850"
+    val commandCharset = Charset.forName("cp850")
     for withUserProfile <- Seq(false, true) do
       s"withUserProfile=$withUserProfile" - {
         lazy val logon = sys.props.get(TargetSystemProperty)
@@ -72,16 +72,16 @@ final class WindowsProcessTest extends OurTestSuite:
           assert(Files.size(stdoutFile) > 0)
           val stdout = stdoutFile.contentString(commandCharset)
           println(stdout)
-          assert(stdout contains "TEST-STDERR")
-          assert(stdout contains "127.0.0.1")
+          assert(stdout.contains("TEST-STDERR"))
+          assert(stdout.contains("127.0.0.1"))
           val stdoutLines = stdout.split("\n").map(_.trim.toLowerCase(Locale.ROOT))
           assert(stdoutLines contains s"env-userdomain=${sys.env("USERDOMAIN").toLowerCase(Locale.ROOT)}")
-          val userNameLines = stdoutLines filter { _ contains "test-username=" }
-          assert(userNameLines exists { _ endsWith "self-test" })
+          val userNameLines = stdoutLines.filter(_.contains("test-username="))
+          assert(userNameLines.exists(_.endsWith("self-test")))
           val me = sys.env("USERNAME").toLowerCase(Locale.ROOT)
           logon match
             case Some(WindowsLogon(WindowsProcessCredential(WindowsUserName(user), _), _)) =>
-              assert(stdout.toLowerCase(Locale.ROOT) contains s"env-username=$user".toLowerCase(Locale.ROOT))
+              assert(stdout.toLowerCase(Locale.ROOT).contains(s"env-username=$user".toLowerCase(Locale.ROOT)))
               assert(userNameLines.forall(o => !o.endsWith("\\" ++ me)))
               // whoami outputs nothing, but quits whole command ???
               //assert(userNameLines forall { _ endsWith ("\\" + user) })  // whoami outputs domain backslash username
@@ -141,7 +141,7 @@ final class WindowsProcessTest extends OurTestSuite:
           assert(process.returnCode == Some(ReturnCode(0)))
 
           awaitAndAssert(Try(stdoutFile.byteArray).isSuccess)  // For Windows
-          assert(stdoutFile.contentString(commandCharset) contains s"$testVariableName=$testVariableValue")
+          assert(stdoutFile.contentString(commandCharset).contains(s"$testVariableName=$testVariableValue"))
 
           awaitAndAssert(Try(delete(stdoutFile)).isSuccess)  // For Windows
           deleteIfExists(stdoutFile)
@@ -184,7 +184,8 @@ final class WindowsProcessTest extends OurTestSuite:
             body(file)
             val icaclsOut = icacls(file)
             println(icaclsOut)
-            assert(icaclsOut.replace("\r\n", "\n").toLowerCase(Locale.ROOT) contains s"$user:$expected\n".toLowerCase(Locale.ROOT))
+            assert(icaclsOut.replace("\r\n", "\n").toLowerCase(Locale.ROOT)
+              .contains(s"$user:$expected\n".toLowerCase(Locale.ROOT)))
             delete(file)
 
           "makeFileAppendableForUser, script appends" in:
@@ -228,7 +229,7 @@ final class WindowsProcessTest extends OurTestSuite:
             process.waitFor()
             println(f"exitValue=${process.returnCode.get.number}%08x")
             assert(process.returnCode == Some(ReturnCode(0)))
-            assert(stdoutFile.contentString(commandCharset) contains "java version 1.8.0_131")
+            assert(stdoutFile.contentString(commandCharset).contains("java version 1.8.0_131"))
             delete(stdoutFile)
             delete(scriptFile)
 
@@ -248,7 +249,7 @@ final class WindowsProcessTest extends OurTestSuite:
             println(stderrFile.contentString(commandCharset))
             println(f"exitValue=${process.returnCode.get.number}%08x")
             assert(process.returnCode == Some(ReturnCode(0)))
-            assert(stdoutFile.contentString(commandCharset) contains "java version 1.8.0_131")
+            assert(stdoutFile.contentString(commandCharset).contains("java version 1.8.0_131"))
             delete(stdoutFile)
             delete(stderrFile)
       }
@@ -268,10 +269,10 @@ final class WindowsProcessTest extends OurTestSuite:
         val Failure(t) = Try {
           WindowsProcess.execute(windowsDirectory / "System32\\icacls.exe", file, "/q", "/grant", s"$user:R")
         }: @unchecked
-        val Array(a, b) = t.getMessage split "=>"
+        val Array(a, b) = t.getMessage.split("=>")
         println(t.getMessage)
-        assert(a contains "icacls.exe")
-        assert(b contains user)
+        assert(a.contains("icacls.exe"))
+        assert(b.contains(user))
 
   "injectableUserName" in:
     check("a")

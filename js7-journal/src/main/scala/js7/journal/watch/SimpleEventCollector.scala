@@ -33,7 +33,7 @@ extends AutoCloseable:
 
   lazy val (eventWriter, eventWatch) =
     // Start the other when accessing one.
-    val eventWatch = new JournalEventWatch(journalLocation, config withFallback JournalEventWatch.TestConfig)
+    val eventWatch = new JournalEventWatch(journalLocation, config.withFallback(JournalEventWatch.TestConfig))
     val eventWriter =
       val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, Some(eventWatch))
       w.writeHeader(JournalHeaders.forTest("TestState", journalId, tornEventId))

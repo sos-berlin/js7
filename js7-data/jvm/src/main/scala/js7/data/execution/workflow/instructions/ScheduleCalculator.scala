@@ -36,7 +36,7 @@ extends ScheduleSimulator:
   def maybeRecalcCycleState(now: Timestamp, cycleState: CycleState)
   : Checked[Option[Option[CycleState]]] =
     for scheme <- schedule.schemes.checked(cycleState.schemeIndex) yield
-      !scheme.admissionTimeScheme.isPermitted(now max cycleState.next, zone, dateOffset) ?
+      !scheme.admissionTimeScheme.isPermitted(now.max(cycleState.next), zone, dateOffset) ?
         nextCycleState(now, cycleState)
 
   /** Returns schemeIndex and Timestamp. */
@@ -48,10 +48,10 @@ extends ScheduleSimulator:
           // For each current or next (periodIndex, TimeInterval) in Schemes
           .flatMap { case (periodIndex, interval) =>
             import scheme.repeat
-            val lastScheduledCycleStart = cycleState.next max interval.start
-            val end = cycleState.end min interval.end
-            val first = (schemeIndex != cycleState.schemeIndex
-              || periodIndex != cycleState.periodIndex)
+            val lastScheduledCycleStart = cycleState.next.max(interval.start)
+            val end = cycleState.end.min(interval.end)
+            val first = schemeIndex != cycleState.schemeIndex
+              || periodIndex != cycleState.periodIndex
             repeat
               .match
                 case periodic: Periodic =>

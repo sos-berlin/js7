@@ -122,7 +122,7 @@ trait BlockingItemUpdater:
           // execute this eagerly to trigger versionId
           .map:
             case item: VersionedItem if item.id.versionId.isAnonymous =>
-              item withVersion versionId()
+              item.withVersion(versionId())
             case o => o
       .map:
         case item: SignableItem => AddOrChangeSigned(sign(item).signedString)

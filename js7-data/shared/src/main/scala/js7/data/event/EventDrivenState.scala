@@ -20,7 +20,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
       for stamped <- stampedEvents.iterator do
         state.applyEvent(stamped.value) match
           case Left(o) =>
-            problem = o withPrefix s"Event '$stamped' cannot be applied to '${companion.name}':"
+            problem = o.withPrefix(s"Event '$stamped' cannot be applied to '${companion.name}':")
             boundary.break()
           case Right(s) =>
             state = s
@@ -38,7 +38,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
       for keyedEvent <- keyedEvents.iterator do
         state.applyEvent(keyedEvent) match
           case Left(o) =>
-            problem = o withPrefix s"Event '$keyedEvent' cannot be applied to '${companion.name}':"
+            problem = o.withPrefix(s"Event '$keyedEvent' cannot be applied to '${companion.name}':")
             boundary.break()
           case Right(s) =>
             state = s

@@ -71,5 +71,5 @@ final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebServ
     "Accept: application/json returns compact JSON" in {
       Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check:
         assert(responseAs[Json] == expectedOverviewJson)
-        assert(!(response.utf8String.await(99.s) contains " ")) // Compact JSON
+        assert(!response.utf8String.await(99.s).contains(" ")) // Compact JSON
     }}

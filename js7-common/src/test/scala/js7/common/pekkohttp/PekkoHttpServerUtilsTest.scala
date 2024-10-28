@@ -15,17 +15,17 @@ final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest:
     import Uri.Path
 
     "startsWithPath" in:
-      assert(!(Path("/aa/b") startsWithPath Path("/a")))
+      assert(!Path("/aa/b").startsWithPath(Path("/a")))
       assert(Path("/aa/b") startsWith Path("/a"))  // startsWith matches this
 
-      assert(Path.Empty startsWithPath Path.Empty)
-      assert(!(Path.Empty startsWithPath Path("/a")))
-      assert(Path("/a") startsWithPath Path("/a"))
-      assert(Path("a/b") startsWithPath Path(""))
-      assert(Path("a/b") startsWithPath Path("a"))
-      assert(Path("a/b") startsWithPath Path("a/"))
-      assert(Path("a/b") startsWithPath Path("a/b"))
-      assert(!(Path("/b") startsWithPath Path("/a")))
+      assert(Path.Empty.startsWithPath(Path.Empty))
+      assert(!Path.Empty.startsWithPath(Path("/a")))
+      assert(Path("/a").startsWithPath(Path("/a")))
+      assert(Path("a/b").startsWithPath(Path("")))
+      assert(Path("a/b").startsWithPath(Path("a")))
+      assert(Path("a/b").startsWithPath(Path("a/")))
+      assert(Path("a/b").startsWithPath(Path("a/b")))
+      assert(!Path("/b").startsWithPath(Path("/a")))
 
     "drop" in:
       assert(Path.Empty.length == 0)

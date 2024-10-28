@@ -217,7 +217,7 @@ final class CancelOrdersTest
 
     assert(controller.eventWatch
       .allKeyedEvents[OrderEvent]
-      .filter(_.key.string startsWith "FORK")
+      .filter(_.key.string.startsWith("FORK"))
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
@@ -248,7 +248,7 @@ final class CancelOrdersTest
 
     assert(controller.eventWatch
       .allKeyedEvents[OrderEvent]
-      .filter(_.key.string startsWith "CANCEL-CHILD")
+      .filter(_.key.string.startsWith("CANCEL-CHILD"))
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
         OrderId("CANCEL-CHILD") <-: OrderAdded(forkJoinIfFailedWorkflow.id, order.arguments,
@@ -334,7 +334,7 @@ final class CancelOrdersTest
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     eventWatch.await[OrderStdoutWritten]:
-      case KeyedEvent(order.id, OrderStdoutWritten(chunk)) if chunk startsWith "READY" => true
+      case KeyedEvent(order.id, OrderStdoutWritten(chunk)) if chunk.startsWith("READY") => true
       case _ => false
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,

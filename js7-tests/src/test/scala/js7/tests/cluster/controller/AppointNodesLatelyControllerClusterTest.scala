@@ -80,8 +80,8 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite, Contro
           assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
           assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
 
-        primaryController.terminate() await 99.s
+        primaryController.terminate().await(99.s)
         sleep(200.ms) // TODO Early ShutDown seems to be ignored
-        backupController.terminate() await 99.s
+        backupController.terminate().await(99.s)
       }
     }

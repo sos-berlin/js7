@@ -29,7 +29,7 @@ final class Closer extends AutoCloseable:
     */
   def closeThen(body: => Unit): Unit =
     val c = new Closer
-    c onClose body
+    c.onClose(body)
     c.register(this)
     c.close()
 

@@ -262,9 +262,8 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
   "ScheduleTester standard example" - {
     addStandardScheduleTests {  (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
       val expectedCycleStartTimes = expected
-        .map { case (cycleWaitTimestamp, cycleState) =>
-          cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
-        }
+        .map: (cycleWaitTimestamp, cycleState) =>
+          cycleWaitTimestamp.max(cycleState.next) // Expected time of OrderCycleStart
       assert(testCycle(timeInterval, cycleDuration, zone, onlyOnePeriod) == expectedCycleStartTimes)
     }
 

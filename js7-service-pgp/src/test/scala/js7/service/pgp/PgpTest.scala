@@ -134,8 +134,8 @@ final class PgpTest extends OurTestSuite:
         out.toByteArray
 
       val string = new String(publicKeyAscii, UTF_8)
-      assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
-      assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
+      assert(string.startsWith("-----BEGIN PGP PUBLIC KEY BLOCK-----" + System.lineSeparator))
+      assert(string.endsWith("-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator))
 
       val verifier = new PgpSignatureVerifier(
         readPublicKeyRingCollection(Seq(Labeled(ByteArray(publicKeyAscii), "PgpTest"))).orThrow,

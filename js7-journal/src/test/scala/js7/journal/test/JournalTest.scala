@@ -28,10 +28,10 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
 
   "First run" in:
     withTestActor() { (actorSystem, actor) =>
-      for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s
+      for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd).await(99.s)
       assert(journalAggregates.isEmpty)
       assert(journalKeyedTestEvents == testEvents("TEST"))
-      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+      (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"))
     }
@@ -41,13 +41,13 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
   "Second run, recovering from journal, then taking snapshot" in:
     withTestActor() { (actorSystem, actor) =>
       assert(journalAggregates.isEmpty)
-      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+      (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"))
 
-      execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s  // 1000068
+      execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")).await(99.s) // 1000068
 
-      (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
+      (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type].await(99.s)
       assert({
           val jsons = journalJsons
           jsons.slice(0, 2) ++
@@ -62,13 +62,13 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
 
       assert(journalJsons(directory / "test--0.journal") == FirstJournal)  // Archived journal for history
 
-      execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
+      execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove).await(99.s)
     }
     assert(journalFileNames == Vector("test--0.journal", "test--1000066.journal", "test--1000068.journal"))
 
   "Third run, recovering from journal, no events" in:
     withTestActor() { (_, actor) =>
-      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+      (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"))
     }
@@ -80,17 +80,17 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
 
   "acceptEarly" in:
     withTestActor() { (actorSystem, actor) =>
-      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.JournalActorState] await 99.s
+      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.JournalActorState].await(99.s)
 
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")).await(99.s)
       assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
 
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AcceptEarly) await 99.s
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AcceptEarly).await(99.s)
       //assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true))
 
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")) await 99.s
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")).await(99.s)
       assert(journalState == JournalActor.Output.JournalActorState(isFlushed = true, isSynced = true, isRequiringClusterAcknowledgement = false))
-      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+      (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ACc"))
@@ -99,9 +99,9 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
 
   "persist empty event list" in:
     withTestActor() { (actorSystem, actor) =>
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendEmpty) await 99.s
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("!")) await 99.s
-      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendEmpty).await(99.s)
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("!")).await(99.s)
+      (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ACc!"))
@@ -121,19 +121,23 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
         (for p <- prefixes yield {
           val (key, cmd) = testCommands(p).head
           simpleExecute(actor, key, cmd)
-        }) await 99.s
+        }).await(99.s)
         // Start executing remaining commands ...
-        val executed = for p <- prefixes yield blockingThreadFuture { for (key, cmd) <- testCommands(p).tail do simpleExecute(actor, key, cmd) await 99.s }
+        val executed =
+          for p <- prefixes yield
+            blockingThreadFuture:
+              for (key, cmd) <- testCommands(p).tail do
+                simpleExecute(actor, key, cmd).await(99.s)
         // ... while disturbing form a different Actor to test persistAsync()
         // DisturbAndRespond responds with String, not Done. See TestActor
         val disturbed = for p <- prefixes yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
-        (executed ++ disturbed) await 99.s
+        (executed ++ disturbed).await(99.s)
         info(s"$n actors, coalesce-event-limit=$coalesceEventLimit " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedTestEvents.groupBy(_.key.split("-").head)
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
         for p <- prefixes do assert(prefixToKeyedEvents(p) == testEvents(p))
-        ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
+        (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet shouldEqual
           prefixes.flatMap(p => Set(
             TestAggregate(s"$p-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
             TestAggregate(s"$p-C", "(C.Add)"))
@@ -152,17 +156,17 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
     val keys = for i <- 1 to 100000 yield s"TEST-$i"
     withTestActor() { (_, actor) =>
       val stopwatch = new Stopwatch
-      (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
+      ((for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
         (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-a"))) ++
-        (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b"))) await 999.s
+        (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b")))).await(999.s)
       info("Stored    " + stopwatch.itemsPerSecondString(3 * keys.size, "events"))
     }
     val stopwatch = new Stopwatch
     withTestActor() { (_, actor) =>
-      (actor ? TestActor.Input.WaitUntilReady) await 999.s
+      (actor ? TestActor.Input.WaitUntilReady).await(999.s)
       info("Recovered " + stopwatch.itemsPerSecondString(keys.size, "objects"))  // Including initial snapshots
       assertResult((for key <- keys yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet):
-        ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet
+        (actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]].await(99.s).toSet
     }
 
   private def journalFileNames =

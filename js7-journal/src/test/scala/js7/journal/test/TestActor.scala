@@ -63,7 +63,7 @@ extends Actor, Stash:
       keyToAggregate += aggregate.key -> actor
 
   override def postStop() =
-    journalAllocated.release await 99.s
+    journalAllocated.release.await(99.s)
     journalStopped.success(())
     super.postStop()
 
@@ -105,7 +105,7 @@ extends Actor, Stash:
       (keyToAggregate(key) ? command).mapTo[TestAggregateActor.Response.Completed] pipeTo sender()
 
     case Input.GetAll =>
-      sender() ! (keyToAggregate.values map { a => (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate] await 99.s }).toVector
+      sender() ! (keyToAggregate.values map { a => (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate].await(99.s) }).toVector
 
     case Input.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] pipeTo sender()

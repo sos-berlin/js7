@@ -33,5 +33,5 @@ final class AgentClientTest extends OurTestSuite, ScalaFutures, AgentTester:
       super.afterAll()
 
   "get /" in:
-    val overview = client.overview await 99.s
+    val overview = client.overview.await(99.s)
     assert(overview.version == BuildInfo.prettyVersion)

@@ -77,7 +77,7 @@ trait StateView extends ItemContainer:
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq
       .collect:
-        case x if keyTo(BoardState).get(x.boardPath).exists(_ containsNotice x.noticeId) =>
+        case x if keyTo(BoardState).get(x.boardPath).exists(_.containsNotice(x.noticeId)) =>
           x.boardPath
       .toSet
 

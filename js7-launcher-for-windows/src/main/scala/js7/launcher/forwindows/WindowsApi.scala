@@ -97,10 +97,9 @@ private object WindowsApi:
           myUserenv.DestroyEnvironmentBlock(handle)
 
     (strings map { o =>
-      o indexOf '=' match {
+      o.indexOf('=') match
         case -1 => o -> ""
         case i => o.substring(0, i) -> o.substring(i + 1)
-      }
     })
       .toMap
 

@@ -78,7 +78,7 @@ final class OrderAgentTest extends OurTestSuite:
             .await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
-          agentClient.login() await 99.s
+          agentClient.login().await(99.s)
 
           // Without Login, this registers all anonymous clients
           assert(agentClient
@@ -158,7 +158,7 @@ final class OrderAgentTest extends OurTestSuite:
             newActorSystem(getClass.getSimpleName, executionContext = ioRuntime.compute)
           val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
             .closeWithCloser
-          agentClient.login() await 99.s
+          agentClient.login().await(99.s)
           assert(
             agentClient
               .commandExecute(
@@ -175,7 +175,7 @@ final class OrderAgentTest extends OurTestSuite:
             Seq(AttachSignedItem(signedSimpleWorkflow))
               .concat(orders.map(AttachOrder(_)))
               .map(CorrelIdWrapped(CorrelId.empty, _)))
-          ) await 99.s
+          ).await(99.s)
 
           val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set.empty[OrderId]

@@ -59,7 +59,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       primaryController.api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
-      primaryController.terminated await 99.s
+      primaryController.terminated.await(99.s)
       primaryController.stop.await(99.s)
       logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
       assert(since.elapsed < sleepWhileFailing, "— The Controller should have terminated while the shell script runs")
@@ -115,7 +115,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](
         after = failedOverEventId).head.eventId
 
-      backupController.terminated await 99.s
+      backupController.terminated.await(99.s)
       backupController.stop.await(99.s)
 
       backupController = backup.newController()
@@ -136,7 +136,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 
-      whenClusterWatchDoesNotAgree await 99.s
+      whenClusterWatchDoesNotAgree.await(99.s)
       assert(!whenClusterWatchAgrees.isCompleted)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)

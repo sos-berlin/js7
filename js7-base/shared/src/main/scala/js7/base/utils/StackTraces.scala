@@ -34,7 +34,7 @@ object StackTraces:
       */
     def appendCurrentStackTrace: T =
       appendStackTrace(new Exception().getStackTrace
-        .dropWhile(_.getClassName startsWith "js7.base.utils.StackTraces"))
+        .dropWhile(_.getClassName.startsWith("js7.base.utils.StackTraces")))
 
     // TODO Prefer WrappedException over modifying a Throwable!
     /**

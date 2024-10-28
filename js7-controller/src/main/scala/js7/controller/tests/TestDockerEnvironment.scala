@@ -36,7 +36,7 @@ extends AutoCloseable:
     temporaryDirectory / "controller"
 
   def agentFile(agentPath: AgentPath, path: VersionedItemPath, t: SourceType): Path =
-    agentDir(agentPath) / "config/live" resolve path.toFile(t)
+    (agentDir(agentPath) / "config/live").resolve(path.toFile(t))
 
   def agentDir(name: AgentPath): Path =
     agentsDir / name.string

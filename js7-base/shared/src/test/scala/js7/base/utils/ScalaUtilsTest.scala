@@ -673,7 +673,7 @@ final class ScalaUtilsTest extends OurTestSuite:
       val throwable = new Exception with NoStackTrace {}
       val t = intercept[Exception]:
         (Left(throwable): Either[Throwable, Nothing]).orThrow
-      assert(t.getStackTrace.head.getMethodName startsWith "f$proxy")
+      assert(t.getStackTrace.head.getMethodName.startsWith("f$proxy"))
 
     "tapEach" in:
       val left: Either[String, Int] = Left("STRING")

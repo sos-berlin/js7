@@ -96,7 +96,7 @@ object Pekkos:
   def encodeAsActorName(o: String): String =
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
     encodeAsActorName2(
-      if a startsWith "$" then "%24" + a.tail
+      if a.startsWith("$") then "%24" + a.tail
       else a)
 
   private val ValidSymbols = "%" + """-_.*$+:@&=,!~';""" // See ActorPath.ValidSymbols (private)

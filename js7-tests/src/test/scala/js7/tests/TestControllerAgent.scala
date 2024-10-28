@@ -164,7 +164,7 @@ object TestControllerAgent extends OurApp:
                 }
               }
             })
-            controller.terminated await 365 * 24.h
+            controller.terminated.await(365 * 24.h)
             controller.stop.await(99.s)
             for agent <- agents do agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
           }

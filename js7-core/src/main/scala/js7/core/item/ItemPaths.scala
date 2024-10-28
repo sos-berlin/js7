@@ -28,7 +28,7 @@ object ItemPaths:
       .map(_._1.asInstanceOf[VersionedItemPath])
 
   def fileToItemPathAndSourceType(companions: Iterable[InventoryItemPath.AnyCompanion], directory: Path, file: Path): Checked[(js7.data.item.InventoryItemPath, SourceType)] =
-    assertThat(file startsWith directory)
+    assertThat(file.startsWith(directory))
     val relativePath = file.subpath(directory.getNameCount, file.getNameCount)
     val string = fileToString(relativePath)
     companions.iterator

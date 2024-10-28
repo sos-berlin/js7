@@ -28,8 +28,8 @@ final class DeadLetterActorTest extends OurTestSuite:
     awaitAndAssert { buffer.size == 1 }
     Pekkos.terminateAndWait(actorSystem, 99.s)
     assert(buffer.size == 1)
-    assert(buffer.head startsWith "DeadLetter ")
-    assert(buffer.head contains classOf[TestMessage].getName)
+    assert(buffer.head.startsWith("DeadLetter "))
+    assert(buffer.head.contains(classOf[TestMessage].getName))
 
 
 object DeadLetterActorTest:

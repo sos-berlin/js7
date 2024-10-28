@@ -394,10 +394,10 @@ final class ScalaTimeTest extends OurTestSuite:
       (Timestamp.ofEpochMilli(7) - Timestamp.ofEpochMilli(2): Duration) shouldEqual Duration(7 - 2, MILLISECONDS)
 
     "Timestamp max Timestamp" in:
-      Timestamp.ofEpochMilli(1) max Timestamp.ofEpochMilli(2) shouldEqual Timestamp.ofEpochMilli(2)
+      Timestamp.ofEpochMilli(1).max(Timestamp.ofEpochMilli(2)) shouldEqual Timestamp.ofEpochMilli(2)
 
     "Timestamp min Timestamp" in:
-      Timestamp.ofEpochMilli(1) min Timestamp.ofEpochMilli(2) shouldEqual Timestamp.ofEpochMilli(1)
+      Timestamp.ofEpochMilli(1).min(Timestamp.ofEpochMilli(2)) shouldEqual Timestamp.ofEpochMilli(1)
 
     "roundTo" in:
       assert(Timestamp.parse("2015-01-01T12:01:01.499Z").roundTo(1.s) == Timestamp.parse("2015-01-01T12:01:01Z"))

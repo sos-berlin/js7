@@ -36,7 +36,7 @@ extends ForkInstruction:
   override def withPositions(position: Position): Fork =
     copy(branches =
       branches.map(branch => branch.copy(
-        workflow = branch.workflow withPositions position / branch.id.toBranchId)))
+        workflow = branch.workflow.withPositions(position / branch.id.toBranchId))))
 
   override def adopt(outer: Workflow): Fork = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
@@ -52,7 +52,7 @@ extends ForkInstruction:
 
   def isStartableOnAgent(agentPath: AgentPath): Boolean =
     // Any Agent or the controller can fork. The current Agent is okay.
-    branches.exists(_.workflow isStartableOnAgent agentPath)
+    branches.exists(_.workflow.isStartableOnAgent(agentPath))
 
   //def isJoinableOnAgent(agentPath: AgentPath): Boolean =
   //  // If branches end on multiple Agents, only the Controller can join the Orders

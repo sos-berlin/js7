@@ -14,7 +14,7 @@ final class DirectoryStateTest extends OurTestSuite:
       dir / "TEST-1" := ""
       dir / "IGNORE" := ""
       dir / "TEST-2" := ""
-      assert(DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-") ==
+      assert(DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-")) ==
         DirectoryState.fromIterable(Seq(
           Entry(Paths.get("TEST-1")),
           Entry(Paths.get("TEST-2")))))

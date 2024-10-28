@@ -11,7 +11,7 @@ private class AssignableFrom[A : ClassTag] extends PartialFunction[Any, A]:
     if !isDefinedAt(o) then throw new ClassCastException(s"Not a ${implicitClass[A].getName}: '$o' (${o.getClass})")
     o.asInstanceOf[A]
 
-  def isDefinedAt(o: Any) = implicitClass[A] isAssignableFrom o.getClass
+  def isDefinedAt(o: Any) = implicitClass[A].isAssignableFrom(o.getClass)
 
 
 object AssignableFrom:

@@ -40,7 +40,7 @@ final class IOExecutorTest extends OurAsyncTestSuite:
   if !VirtualThreads.isEnabled then
     "Thread name" in:
       assert:
-        IOExecutor.blocking(Thread.currentThread.getName).await(99.s) startsWith "JS7 global I/O-"
+        IOExecutor.blocking(Thread.currentThread.getName).await(99.s).startsWith("JS7 global I/O-")
 
   "interruptible" in:
     val expectedThreadPrefix = (!VirtualThreads.isEnabled) ? (IOExecutor.globalName + "-")

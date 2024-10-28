@@ -81,12 +81,12 @@ final class JavaTimeTest extends OurTestSuite:
       (3L * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
 
     "min" in:
-      assert((1.s min 2.s) == 1.s)
-      assert((-1.s min -2.s) == -2.s)
+      assert(1.s.min(2.s) == 1.s)
+      assert(-1.s.min(-2.s) == -2.s)
 
     "max" in:
-      assert((1.s max 2.s) == 2.s)
-      assert((-1.s max -2.s) == -1.s)
+      assert(1.s.max(2.s) == 2.s)
+      assert(-1.s.max(-2.s) == -1.s)
 
     "Duration < Duration" in:
       assert(!(7.s < 2.s))
@@ -112,10 +112,10 @@ final class JavaTimeTest extends OurTestSuite:
       (Instant.ofEpochMilli(7) - Instant.ofEpochMilli(2): Duration) shouldEqual Duration.ofMillis(7 - 2)
 
     "Instant max Instant" in:
-      Instant.ofEpochMilli(1) max Instant.ofEpochMilli(2) shouldEqual Instant.ofEpochMilli(2)
+      Instant.ofEpochMilli(1).max(Instant.ofEpochMilli(2)) shouldEqual Instant.ofEpochMilli(2)
 
     "Instant min Instant" in:
-      Instant.ofEpochMilli(1) min Instant.ofEpochMilli(2) shouldEqual Instant.ofEpochMilli(1)
+      Instant.ofEpochMilli(1).min(Instant.ofEpochMilli(2)) shouldEqual Instant.ofEpochMilli(1)
 
     "roundTo" in:
       assert(Instant.parse("2015-01-01T12:01:01.499Z").roundTo(1.s) == Instant.parse("2015-01-01T12:01:01Z"))
@@ -171,7 +171,7 @@ final class JavaTimeTest extends OurTestSuite:
       assert(a.compareTo(LocalDateTime.of(2016, 1, 1, 12, 0, 0)) == 0)
 
     "toInstant" in:
-      val timeZone = ZoneId of "Europe/Helsinki"
+      val timeZone = ZoneId.of("Europe/Helsinki")
       assert(LocalDateTime.of(2016, 1, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-01-01T10:00:00Z"))
       assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
   }
@@ -192,19 +192,19 @@ object JavaTimeTest:
     /**
      * Duration, counted in microseconds.
      */
-    def µs = Duration ofNanos 1000L * delegate
+    def µs = Duration.ofNanos(1000L * delegate)
 
     /**
      * Duration, counted in milliseconds.
      */
-    def ms = Duration ofMillis delegate
+    def ms = Duration.ofMillis(delegate)
 
     /**
      * Duration, counted in seconds.
      */
-    def s = Duration ofSeconds delegate
+    def s = Duration.ofSeconds(delegate)
 
     /**
      * Duration, counted in hours.
      */
-    def h = Duration ofHours delegate
+    def h = Duration.ofHours(delegate)

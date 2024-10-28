@@ -56,5 +56,5 @@ object As:
     As(o => DecimalPrefixes.toLong(o stripSuffix "B"/*optional*/).orThrow)
 
   val StringAsPercentage: As[String, BigDecimal] = As:
-    case o if o endsWith "%" => BigDecimal(o.dropRight(1)) / 100
+    case o if o.endsWith("%") => BigDecimal(o.dropRight(1)) / 100
     case o => BigDecimal(o)

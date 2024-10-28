@@ -45,7 +45,7 @@ trait EnvScope extends Scope:
 
 object EnvScope extends EnvScope:
   def get(name: String): Option[String] =
-    Option(testEnv.get(name)) orElse sys.env.get(name)
+    Option(testEnv.get(name)).orElse(sys.env.get(name))
 
   private val testEnv = new ConcurrentHashMap[String, String]
 

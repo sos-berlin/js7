@@ -669,7 +669,7 @@ final case class Order[+S <: Order.State](
     isState[A] ? this.asInstanceOf[Order[A]]
 
   def isState[A <: State: ClassTag]: Boolean =
-    implicitClass[A] isAssignableFrom state.getClass
+    implicitClass[A].isAssignableFrom(state.getClass)
 
   def markString: Option[String] =
     mark.map(o => s"marked as $o")

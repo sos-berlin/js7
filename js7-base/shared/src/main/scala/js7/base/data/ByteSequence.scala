@@ -372,10 +372,10 @@ object ByteSequence:
     def indexOf(byte: Byte, from: Int, until: Int): Int =
       typeClassInstance.indexOf(self, byte, from, until)
 
-    def startsWith(prefix: ByteSeq): Boolean =
+    infix def startsWith(prefix: ByteSeq): Boolean =
       typeClassInstance.startsWith(self, prefix)
 
-    def endsWith(suffix: ByteSeq): Boolean =
+    infix def endsWith(suffix: ByteSeq): Boolean =
       typeClassInstance.endsWith(self, suffix)
 
     def take(n: Int): ByteSeq =

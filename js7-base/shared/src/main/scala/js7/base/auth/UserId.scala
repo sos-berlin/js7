@@ -33,8 +33,8 @@ object UserId extends GenericString.Checked_[UserId]:
     string.nonEmpty &&
       string.last != '-' &&
       !string.contains("--") &&
-      isNameStart(string charAt 0) &&
-      (1 until string.length forall { i => isNamePart(string charAt i) })
+      isNameStart(string.charAt(0)) &&
+      1.until(string.length).forall(i => isNamePart(string.charAt(i)))
 
   private def isNameStart(c: Char): Boolean =
     isUnicodeIdentifierStart(c) || c.isDigit

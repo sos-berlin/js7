@@ -19,7 +19,7 @@ final class AgentClientMainTest extends OurAsyncTestSuite, BeforeAndAfterAll, Te
 
   private given IORuntime = ioRuntime
 
-  override def afterAll() = closer closeThen super.afterAll()
+  override def afterAll() = closer.closeThen(super.afterAll())
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {
@@ -71,8 +71,8 @@ final class AgentClientMainTest extends OurAsyncTestSuite, BeforeAndAfterAll, Te
         output += _)
       .map: exitCode =>
         assert(exitCode == ExitCode.Error)
-        assert(output.head contains "JS7 Agent is not responding: ")
-        assert(output.head contains "Connection refused")
+        assert(output.head.contains("JS7 Agent is not responding: "))
+        assert(output.head.contains("Connection refused"))
 
 
 private object AgentClientMainTest:

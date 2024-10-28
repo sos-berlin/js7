@@ -33,7 +33,7 @@ private[journal] final case class JournalFile private[journal](fileEventId: Even
 
 object JournalFile:
   def toFile(fileBase: Path, fileEventId: EventId): Path =
-    fileBase resolveSibling s"${fileBase.getFileName}--$fileEventId.journal"
+    fileBase.resolveSibling(s"${fileBase.getFileName}--$fileEventId.journal")
 
   private[files] def anyJournalFilePattern(fileBase: Path): Pattern =
     Pattern.compile(

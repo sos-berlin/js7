@@ -81,7 +81,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
         implicit val s = IO.pure(none[SessionToken])
         assert(Try(httpClient.get_[HttpResponse](uri).await(99.s)).failed.get.getMessage
-          contains "does not match")
+          .contains("does not match"))
     }
 
     "normalizeAgentUri" - {

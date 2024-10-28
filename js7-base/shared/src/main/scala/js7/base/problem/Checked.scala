@@ -89,7 +89,7 @@ object Checked:
     def apply[A](f: => A)(implicit T: ClassTag[T], @unused ev: NotGiven[T =:= Nothing]): Checked[A] =
       try Right(f)
       catch
-        case t if T.runtimeClass isAssignableFrom t.getClass =>
+        case t if T.runtimeClass.isAssignableFrom(t.getClass) =>
           Left(Problem.fromThrowable(t))
 
   def catchProblem[A](f: => A): Checked[A] =
@@ -99,7 +99,7 @@ object Checked:
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal:
     def withProblemKey(key: Any): Checked[A] =
-      mapProblem (_ withKey key)
+      mapProblem(_.withKey(key))
 
     def mapProblem(f: Problem => Problem): Checked[A] =
       underlying match

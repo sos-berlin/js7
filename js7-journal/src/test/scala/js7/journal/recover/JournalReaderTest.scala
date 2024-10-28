@@ -87,10 +87,10 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
 
   "Journal file with snapshot and events" in:
     withTestActor() { (actorSystem, actor) =>
-      for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s
-      (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
-      execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")) await 99.s
-      execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")) await 99.s
+      for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd).await(99.s)
+      (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type].await(99.s)
+      execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")).await(99.s)
+      execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")).await(99.s)
     }
     autoClosing(new JournalReader(journalLocation.S, currentFile, journalId)) { journalReader =>
       assert(journalReader.readSnapshot.compile.to(Set).await(99.s) == Set(

@@ -41,7 +41,7 @@ object JOrderPredicates:
   @Nonnull
   def byOrderState(@Nonnull stateClass: Class[? <: Order.State]): Predicate =
     requireNonNull(stateClass)
-    order => stateClass isAssignableFrom order.state.getClass
+    order => stateClass.isAssignableFrom(order.state.getClass)
 
   @Nonnull
   def byOrderObstacleClass(

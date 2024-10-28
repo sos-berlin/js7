@@ -33,11 +33,11 @@ final class SimpleControllerClusterTest extends ControllerClusterTester:
       assert(
         intercept[ProblemException]:
           primaryController.eventWatch.underlying.streamEventIds(timeout = Some(0.s))
-            .await(99.s).orThrow.completedL await 99.s
+            .await(99.s).orThrow.completedL.await(99.s)
         .problem == AckFromActiveClusterNodeProblem)
 
       backupController.eventWatch.underlying.streamEventIds(timeout = Some(0.s))
-        .await(99.s).orThrow.completedL await 99.s
+        .await(99.s).orThrow.completedL.await(99.s)
 
       val n = sys.props.get("test.speed").fold(1)(_.toInt)
       val orderIds = (1 to n).map(i => OrderId(s"🔶 $i"))
@@ -53,6 +53,6 @@ final class SimpleControllerClusterTest extends ControllerClusterTester:
         .toVector.sequence
         .await(99.s)
         .sequence.orThrow
-      whenFinished await 99.s
+      whenFinished.await(99.s)
 
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)

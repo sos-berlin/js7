@@ -86,7 +86,7 @@ object UnsignedVersionedItemId:
       this
 
     final def checked(string: String): Checked[UnsignedVersionedItemId[P]] =
-      string indexOf VersionSeparator match
+      string.indexOf(VersionSeparator) match
         case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")
         case i => Right(apply(P(string take i), VersionId(string drop i + 1)))
 

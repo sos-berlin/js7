@@ -16,7 +16,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
 
   "overview" in:
     val exception = intercept[Exception]:
-      httpControllerApi.overview await 99.s
+      httpControllerApi.overview.await(99.s)
     assert(!exception.isInstanceOf[TimeoutException])
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||
@@ -25,7 +25,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
 
   "Login" in:
     val exception = intercept[Exception]:
-      httpControllerApi.login() await 99.s
+      httpControllerApi.login().await(99.s)
     assert(!exception.isInstanceOf[TimeoutException])
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||

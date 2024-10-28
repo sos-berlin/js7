@@ -22,7 +22,7 @@ extends Schedule:
   def instants(instantInterval: InstantInterval, limit: Int = Int.MaxValue): Iterator[Instant] =
     new AbstractIterator[Instant]:
       private var remaining = limit
-      private var from = instantInterval.from minusNanos 1
+      private var from = instantInterval.from.minusNanos(1)
       private var _next: Instant = null
 
       def hasNext =
@@ -44,7 +44,7 @@ extends Schedule:
             match
               case Some(o) if o < instantInterval.until =>
                 remaining -= 1
-                from = o plusNanos 1
+                from = o.plusNanos(1)
                 o
               case Some(_) =>
                 null

@@ -58,8 +58,8 @@ extends OurTestSuite, SessionRouteTester:
     withSessionApi(None) { api =>
       // In the rare case of an already used TCP port (alien software) pekko.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
       val exception = intercept[RuntimeException]:
-        api.login() await 99.s
-      assert(exception.getMessage contains "java.net.ConnectException")
+        api.login().await(99.s)
+      assert(exception.getMessage.contains("java.net.ConnectException"))
     }
 
   "loginUntilReachable" - {
@@ -82,7 +82,7 @@ extends OurTestSuite, SessionRouteTester:
         // Start web server
         allocatedWebServer
         val exception = intercept[PekkoHttpClient.HttpException]:
-          whenLoggedIn await 99.s
+          whenLoggedIn.await(99.s)
         assert(exception.status == Unauthorized)
         assert(runningSince.elapsed >= invalidAuthenticationDelay)
         requireAccessIsUnauthorizedOrPublic(api)
@@ -91,9 +91,9 @@ extends OurTestSuite, SessionRouteTester:
     "authorized" in:
       withSessionApi(Some(AUserAndPassword)) { api =>
         import api.implicitSessionToken
-        api.loginUntilReachable(Iterator.continually(10.ms), _ => IO.pure(true)) await 99.s
+        api.loginUntilReachable(Iterator.continually(10.ms), _ => IO.pure(true)).await(99.s)
         requireAuthorizedAccess(api)
-        api.logout() await 99.s
+        api.logout().await(99.s)
         requireAccessIsUnauthorizedOrPublic(api)
       }
   }
@@ -101,7 +101,7 @@ extends OurTestSuite, SessionRouteTester:
   "Login without credentials is accepted as Anonymous but access is nevertheless unauthorized if not public" in:
     withSessionApi(None) { api =>
       import api.implicitSessionToken
-      api.login() await 99.s
+      api.login().await(99.s)
       requireAccessIsUnauthorizedOrPublic(api)
     }
 
@@ -110,7 +110,7 @@ extends OurTestSuite, SessionRouteTester:
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
-        api.login() await 99.s
+        api.login().await(99.s)
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
@@ -123,7 +123,7 @@ extends OurTestSuite, SessionRouteTester:
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
-        api.login() await 99.s
+        api.login().await(99.s)
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
@@ -136,7 +136,7 @@ extends OurTestSuite, SessionRouteTester:
       withSessionApi(Some(AUserAndPassword), Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
-        api.login() await 99.s
+        api.login().await(99.s)
         assert(api.hasSession)
       }
 
@@ -148,7 +148,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == Unauthorized)
         assert(exception.problem == Some(InvalidLoginProblem))
         requireAuthorizedAccess(api)
@@ -162,7 +162,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == BadRequest &&
           exception.problem == Some(Problem("Login user does not match HTTP(S) user")))
       }
@@ -175,7 +175,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
       }
 
@@ -186,7 +186,7 @@ extends OurTestSuite, SessionRouteTester:
       ) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
-        api.login() await 99.s
+        api.login().await(99.s)
         requireAuthorizedAccess(api)
       }
   }
@@ -196,7 +196,7 @@ extends OurTestSuite, SessionRouteTester:
       withSessionApi(Some(AUserAndPassword), Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))) { api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
-        api.login() await 99.s
+        api.login().await(99.s)
         assert(api.hasSession)
       }
 
@@ -208,7 +208,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == BadRequest &&
           exception.problem == Some(specificLoginRequiredProblem))
       }
@@ -221,7 +221,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == Unauthorized)
         assert(exception.problem == Some(InvalidLoginProblem))
       }
@@ -234,7 +234,7 @@ extends OurTestSuite, SessionRouteTester:
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[PekkoHttpClient.HttpException]:
-          api.login() await 99.s
+          api.login().await(99.s)
         assert(exception.status == Unauthorized && exception.problem == Some(InvalidLoginProblem))
       }
   }
@@ -243,7 +243,7 @@ extends OurTestSuite, SessionRouteTester:
     withSessionApi(None, Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)) { api =>
       import api.implicitSessionToken
       requireAuthorizedAccess(api)
-      api.login() await 99.s
+      api.login().await(99.s)
       assert(api.hasSession)
       requireAuthorizedAccess(api)
     }
@@ -252,7 +252,7 @@ extends OurTestSuite, SessionRouteTester:
     withSessionApi(Some(UserId.Anonymous -> SecretString(""))) { api =>
       import api.implicitSessionToken
       val exception = intercept[PekkoHttpClient.HttpException]:
-        api.login() await 99.s
+        api.login().await(99.s)
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
@@ -265,7 +265,7 @@ extends OurTestSuite, SessionRouteTester:
       import api.implicitSessionToken
       val runningSince = now
       val exception = intercept[PekkoHttpClient.HttpException]:
-        api.login() await 99.s
+        api.login().await(99.s)
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
@@ -282,21 +282,21 @@ extends OurTestSuite, SessionRouteTester:
 
       if isPublic then
           // Access without Login (Session) is allowed
-        api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
+        api.get_[String](Uri(s"$localUri/authorizedUser")).await(99.s)
       else
         // Access without Login (Session) is rejected
         intercept[HttpException] {
-          api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
+          api.get_[String](Uri(s"$localUri/authorizedUser")).await(99.s)
         }.status shouldEqual Unauthorized
         assert(!api.hasSession)
 
       // Login and Logout
-      api.login() await 99.s
+      api.login().await(99.s)
       val Some(sessionToken) = api.sessionToken: @unchecked
       assert(api.hasSession)
       requireAuthorizedAccess(api)
       assert(api.hasSession)
-      api.logout() await 99.s shouldEqual Completed
+      api.logout().await(99.s) shouldEqual Completed
       assert(!api.hasSession)
 
       // Using old SessionToken is Unauthorized
@@ -308,7 +308,7 @@ extends OurTestSuite, SessionRouteTester:
   "Logout without SessionToken is short-circuited" in:
     withSessionApi(None) { api =>
       assert(!api.hasSession)
-      api.logout() await 99.s shouldEqual Completed
+      api.logout().await(99.s) shouldEqual Completed
       assert(!api.hasSession)
     }
 
@@ -323,26 +323,26 @@ extends OurTestSuite, SessionRouteTester:
       assert(api.hasSession)
 
       api.clearSession()
-      api.login() await 99.s
+      api.login().await(99.s)
       assert(api.hasSession)
-      api.logout() await 99.s
+      api.logout().await(99.s)
     }
 
   "logout clears SessionToken even if unknown" in:
     withSessionApi(None) { api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       assert(api.hasSession)
-      api.logout() await 99.s
+      api.logout().await(99.s)
       assert(!api.hasSession)
     }
 
   "Login with SessionToken" - {
     "Known SessionToken is invalidated" in:
       withSessionApi(None) { api =>
-        api.login_(Some(AUserAndPassword)) await 99.s
+        api.login_(Some(AUserAndPassword)).await(99.s)
         val Some(firstSessionToken) = api.sessionToken: @unchecked
         assert(api.hasSession)
-        api.login_(Some(BUserAndPassword)) await 99.s
+        api.login_(Some(BUserAndPassword)).await(99.s)
         assert(api.hasSession)
 
         withSessionApi(None) { otherClient =>
@@ -350,12 +350,12 @@ extends OurTestSuite, SessionRouteTester:
           otherClient.setSessionToken(firstSessionToken)
           import otherClient.implicitSessionToken
           val exception = intercept[PekkoHttpClient.HttpException]:
-            otherClient.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
+            otherClient.get_[String](Uri(s"$localUri/authorizedUser")).await(99.s)
           requireAccessIsForbidden(otherClient)
           assert(HttpClient.sessionMayBeLost(exception))
         }
 
-        api.logout() await 99.s shouldEqual Completed
+        api.logout().await(99.s) shouldEqual Completed
         assert(!api.hasSession)
       }
 
@@ -363,9 +363,9 @@ extends OurTestSuite, SessionRouteTester:
       withSessionApi(Some(AUserAndPassword)) { api =>
         val unknown = SessionToken(SecretString("UNKNKOWN"))
         api.setSessionToken(unknown)
-        api.login() await 99.s
+        api.login().await(99.s)
         assert(api.sessionToken.exists(_ != unknown))
-        api.logout() await 99.s shouldEqual Completed
+        api.logout().await(99.s) shouldEqual Completed
       }
   }
 

@@ -65,7 +65,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
     val agentEnv = directoryProvider.agentEnvs.head
     locally:
       val agentClient = AgentClient(Admission(agent.localUri, agentEnv.controllerUserAndPassword))
-      agentClient.login() await 99.s
+      agentClient.login().await(99.s)
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
         .await(99.s)

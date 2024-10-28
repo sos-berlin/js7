@@ -61,7 +61,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     js7.subagent-driver.reset-timeout = 10s # Allow slow testing
-    """ withFallback super.agentConfig
+    """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
   protected val bareSubagentId = SubagentId("BARE-SUBAGENT")
@@ -140,7 +140,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     barrier.flatMap(_.tryPut(())).await(99.s)
 
-    myAgent = directoryProvider.startAgent(agentPath) await 99.s
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
 
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -208,7 +208,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   "Simulate journal deletion at restart" in:
     var eventId = eventWatch.lastAddedEventId
-    myAgent = directoryProvider.startAgent(agentPath) await 99.s
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     eventWatch.await[AgentDedicated](after = eventId)
     eventWatch.await[AgentCoupled](after = eventId)
 
@@ -225,7 +225,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     journalFile := "Would crash but will be deleted"
     touchFile(garbageFile)
 
-    myAgent = directoryProvider.startAgent(agentPath) await 99.s
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     eventWatch.await[AgentReset](after = eventId)
     eventWatch.await[AgentDedicated](after = eventId)
 
@@ -279,7 +279,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
         secondControllerApi.stop.await(99.s)  // ActorSystem still alive ???
         myAgent.untilTerminated.await(99.s)
 
-        myAgent = directoryProvider.startAgent(agentPath) await 99.s
+        myAgent = directoryProvider.startAgent(agentPath).await(99.s)
 
         // Now, the Agent is our! It is dedicated to secondController
         secondController.eventWatch.await[AgentDedicated]()

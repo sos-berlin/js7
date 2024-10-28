@@ -74,7 +74,7 @@ final class ControllerRepoTest extends OurTestSuite:
         provider.runController() { controller =>
           withClue("Add Workflow: "):
             val v = V1
-            val workflow = testWorkflow(v) withId AWorkflowPath ~ v
+            val workflow = testWorkflow(v).withId(AWorkflowPath ~ v)
             val signed = itemSigner.sign(workflow)
             controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("A"), workflow.path))
@@ -89,14 +89,14 @@ final class ControllerRepoTest extends OurTestSuite:
 
           withClue("Add another Workflow: "):
             val v = V2
-            val workflow = testWorkflow(v) withId BWorkflowPath ~ v
+            val workflow = testWorkflow(v).withId(BWorkflowPath ~ v)
             val signed = itemSigner.sign(workflow)
             controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
 
           withClue("Change first Workflow: "):
             val v = V3
-            val workflow = testWorkflow(v) withId AWorkflowPath ~ v
+            val workflow = testWorkflow(v).withId(AWorkflowPath ~ v)
             controller.api.updateRepo(v, Seq(itemSigner.sign(workflow))).await(99.s).orThrow
             runOrder(controller, workflow.id, OrderId("A-3"))
 
@@ -129,7 +129,7 @@ final class ControllerRepoTest extends OurTestSuite:
           // V4 - Add and use a new workflow
           locally:
             val v = V4
-            val workflow = testWorkflow(v) withId CWorkflowPath ~ v
+            val workflow = testWorkflow(v).withId(CWorkflowPath ~ v)
             val signed = itemSigner.sign(workflow)
             controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("C"), workflow.path))
@@ -177,7 +177,7 @@ final class ControllerRepoTest extends OurTestSuite:
         val orderAdded: OrderAdded = controller.eventWatch.await[OrderAdded](_.key == orderId).head.value.event
         assert(orderAdded.workflowId == workflowId)
         val written = controller.eventWatch.await[OrderStdoutWritten](_.key == orderId).head.value.event
-        assert(written.chunk contains s"/VERSION-${workflowId.versionId.string}/")
+        assert(written.chunk.contains(s"/VERSION-${workflowId.versionId.string}/"))
         controller.eventWatch.await[OrderFinished](_.key == orderId)
 
       def testSpeed(uri: Uri, credentials: Option[UserAndPassword], n: Int, itemCount: Int): Unit =

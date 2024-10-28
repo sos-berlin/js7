@@ -46,7 +46,7 @@ extends immutable.Set[A]:
     fromRanges(ranges :+ Single(elem))
 
   def excl(elem: A): RangeSet[A] =
-    ranges.indexWhere(_ contains elem) match
+    ranges.indexWhere(_.contains(elem)) match
       case -1 => this
       case i =>
         fromRanges(
@@ -124,7 +124,7 @@ object RangeSet:
       if last.end >= next.start then
         // Merge overlapping ranges
         buffer(buffer.length - 1) = range(last.start, last.end max next.end)
-      else if next.start isSuccessorOf last.end then
+      else if next.start.isSuccessorOf(last.end) then
         // Merge successive ranges
         buffer(buffer.length - 1) = range(last.start, next.end)
       else
@@ -134,7 +134,7 @@ object RangeSet:
       .view
       // Normalize two-element ranges to two Singles: 1-2 => 1, 2
       .flatMap:
-        case Interval(a, b) if b isSuccessorOf a =>
+        case Interval(a, b) if b.isSuccessorOf(a) =>
           Single(a) :: Single(b) :: Nil
         case o =>
           o :: Nil

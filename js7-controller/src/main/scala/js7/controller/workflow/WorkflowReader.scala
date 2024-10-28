@@ -16,10 +16,10 @@ object WorkflowReader extends VersionedItemReader:
 
   def read(workflowId: WorkflowId, source: ByteArray): PartialFunction[SourceType, Checked[Workflow]] =
     case t: SourceType.JsonLike =>
-      readAnonymousJsonLike(t, source).map(_ withId workflowId)
+      readAnonymousJsonLike(t, source).map(_.withId(workflowId))
 
     case SourceType.Txt =>
-      WorkflowParser.parse(source.utf8String).map(_ withId workflowId)
+      WorkflowParser.parse(source.utf8String).map(_.withId(workflowId))
 
   override def convertFromJson(json: Json): Checked[Workflow] =
     Workflow.topJsonDecoder.decodeJson(json).toChecked

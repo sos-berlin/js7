@@ -24,7 +24,7 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
   override protected lazy val controllerHttpsPort = Some(httpsPort)
 
   "is https://" in:
-    assert(controller.localUri.string startsWith "https://")
+    assert(controller.localUri.string.startsWith("https://"))
 
   "main with Controller URI only checks whether Controller is responding (it is)" in:
     val output = mutable.Buffer[String]()
@@ -51,8 +51,8 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         output += _)
       .map: exitCode =>
         assert(exitCode == ExitCode.Success)
-        assert(output(0) contains "\"version\":")
-        assert(output(1) contains "\"count\": 0")
+        assert(output(0).contains("\"version\":"))
+        assert(output(1).contains("\"count\": 0"))
 
   "main with Controller URI only checks whether Controller is responding (it is not)" in:
     val unusedPort = 0
@@ -66,7 +66,7 @@ final class ControllerClientMainTest extends OurAsyncTestSuite, ControllerAgentF
         output += _)
       .map: exitCode =>
         assert(exitCode == ExitCode.Error)
-        assert(output.head contains "JS7 Controller is not responding: ")
+        assert(output.head.contains("JS7 Controller is not responding: "))
         //assert(output.head contains "Connection refused")
 
   "ShutDown responds with Accepted" in:

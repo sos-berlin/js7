@@ -16,7 +16,7 @@ final class StackTracesTest extends OurTestSuite:
     assert(stackTraceContainsCreationsStackTrace { new MyTest().f(t).get })
 
   private def stackTraceContainsCreationsStackTrace(body: => Unit): Boolean =
-    intercept[TestException] { body } .getStackTrace.exists(_.toString contains classOf[MyTest].getName)
+    intercept[TestException] { body } .getStackTrace.exists(_.toString.contains(classOf[MyTest].getName))
 
   private class TestException extends Exception
 

@@ -35,7 +35,7 @@ final case class FolderPath private(string: String) extends VersionedItemPath:
 
   def isAncestorOf(path: VersionedItemPath): Boolean =
     isRoot ||
-      (path.string startsWith withTrailingSlash) ||
+      path.string.startsWith(withTrailingSlash) ||
       PartialFunction.cond(path):
         case path: FolderPath => this == path
 
@@ -58,7 +58,7 @@ object FolderPath extends VersionedItemPath.Companion[FolderPath]:
       super.checked(string)
 
   def parentOf(path: VersionedItemPath): FolderPath =
-    path.string lastIndexOf '/' match
+    path.string.lastIndexOf('/') match
       case -1 =>
         if path == FolderPath.Root then throw new IllegalStateException("Root path has no parent folder")
         FolderPath.Root

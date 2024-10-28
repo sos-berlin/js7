@@ -172,7 +172,7 @@ final class CollectionsTest extends OurTestSuite:
     intercept[DuplicateKeyException] { m.insert(3, "drei") }
 
   "isDisjoint with" in:
-    assert(Set(1, 2) isDisjointWith Set(3, 4))
+    assert(Set(1, 2).isDisjointWith(Set(3, 4)))
     assert(!Set(1, 2).isDisjointWith(Set(2, 3)))
     assert(!Set(1, 2).isDisjointWith(Set(1, 2)))
 
@@ -198,24 +198,24 @@ final class CollectionsTest extends OurTestSuite:
     intercept[DuplicateKeyException] { badList.uniqueToMap }
 
   "compareChain" in:
-    assert((Iterator.empty[Int] compareElementWise Iterator()) == 0)
-    assert((Iterator(1) compareElementWise Iterator()) > 0)
-    assert((Iterator(1) compareElementWise Iterator(1)) == 0)
-    assert((Iterator() compareElementWise Iterator(1)) < 0)
-    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2, 3)) == 0)
-    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2)) > 0)
-    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2, 3, 4)) < 0)
-    assert((Iterator(3, 2, 3) compareElementWise Iterator(1, 2, 3)) > 0)
-    assert((Iterator(0, 2, 3) compareElementWise Iterator(1, 2, 3)) < 0)
+    assert(Iterator.empty[Int].compareElementWise(Iterator()) == 0)
+    assert(Iterator(1).compareElementWise(Iterator()) > 0)
+    assert(Iterator(1).compareElementWise(Iterator(1)) == 0)
+    assert(Iterator().compareElementWise(Iterator(1)) < 0)
+    assert(Iterator(1, 2, 3).compareElementWise(Iterator(1, 2, 3)) == 0)
+    assert(Iterator(1, 2, 3).compareElementWise(Iterator(1, 2)) > 0)
+    assert(Iterator(1, 2, 3).compareElementWise(Iterator(1, 2, 3, 4)) < 0)
+    assert(Iterator(3, 2, 3).compareElementWise(Iterator(1, 2, 3)) > 0)
+    assert(Iterator(0, 2, 3).compareElementWise(Iterator(1, 2, 3)) < 0)
 
   "Map" - {
     "toChecked" in:
-      val m = Map(1 -> "A") toChecked (key => Problem(s"NO SUCH KEY: $key"))
+      val m = Map(1 -> "A").toChecked(key => Problem(s"NO SUCH KEY: $key"))
       assert(m(1) == Right("A"))
       assert(m(2) == Left(Problem("NO SUCH KEY: 2")))
 
     "withNoSuchKey" in:
-      val m = Map(1 -> "A") withNoSuchKey (key => throw new NoSuchElementException(s"NO SUCH KEY: $key"))
+      val m = Map(1 -> "A").withNoSuchKey(key => throw new NoSuchElementException(s"NO SUCH KEY: $key"))
       assert(m(1) == "A")
       assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
   }

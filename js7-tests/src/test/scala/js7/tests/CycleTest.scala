@@ -377,9 +377,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         eventWatch.await[OrderCyclingPrepared](_.key == orderId)
       val cycleStartedTimes = new VectorBuilder[Timestamp]
       val expectedCycleStartTimes = expected
-        .map { case (cycleWaitTimestamp, cycleState) =>
-          cycleWaitTimestamp max cycleState.next // Expected time of OrderCycleStart
-        }
+        .map: (cycleWaitTimestamp, cycleState) =>
+          cycleWaitTimestamp.max(cycleState.next) // Expected time of OrderCycleStart
 
       for t <- expectedCycleStartTimes do
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted

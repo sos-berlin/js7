@@ -153,8 +153,8 @@ final class ProblemTest extends OurTestSuite:
     val d = Problem.fromThrowable(Try(throwD()).failed.get: Throwable)
     val combinedThrowable = (a |+| b |+| c |+| d).throwable
     assert(combinedThrowable.toString == "ProblemException: A-PROBLEM;\nB-EXCEPTION;\nC-PROBLEM;\nD-EXCEPTION")
-    assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwB"))
-    assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwD"))
+    assert(combinedThrowable.getStackTrace.exists(_.getMethodName.contains("throwB")))
+    assert(combinedThrowable.getStackTrace.exists(_.getMethodName.contains("throwD")))
 
   "head" in:
     val a = Problem("A")

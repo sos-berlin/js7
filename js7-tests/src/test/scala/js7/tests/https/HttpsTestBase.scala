@@ -99,7 +99,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
         (!controllerHttpsMutual ? config"""
           js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
           """)
-    ).reduce(_ withFallback _)
+    ).reduce(_.withFallback(_))
 
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
   protected def clientKeyAlias: Option[String] = None

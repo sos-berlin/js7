@@ -120,4 +120,4 @@ object SyncDeadline:
   //implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
   //  def compare(a: SyncDeadline, b: SyncDeadline) = a compare b
 
-  given Eq[SyncDeadline] = _ equals _
+  given Eq[SyncDeadline] = _.equals(_)

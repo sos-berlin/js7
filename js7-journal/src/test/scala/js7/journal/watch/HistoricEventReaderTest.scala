@@ -20,7 +20,7 @@ final class HistoricEventReaderTest extends OurTestSuite:
 
   "eventsAfter" in:
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
-      val journalLocation = JournalLocation(TestState, dir resolve "test")
+      val journalLocation = JournalLocation(TestState, dir.resolve("test"))
 
       autoClosing(EventJournalWriter.forTest(journalLocation, after = After, journalId)) { writer =>
         writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = After))

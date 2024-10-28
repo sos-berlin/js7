@@ -59,7 +59,7 @@ trait Timestamp extends Ordered[Timestamp]:
 
   final def secondsOnly: Timestamp = copy(toEpochMilli / 1000 * 1000)
 
-  def roundTo(duration: FiniteDuration): Timestamp = this + duration / 2 roundDownTo duration
+  def roundTo(duration: FiniteDuration): Timestamp = (this + duration / 2).roundDownTo(duration)
 
   def roundDownTo(duration: FiniteDuration): Timestamp =
     val durationMillis = duration.toMillis

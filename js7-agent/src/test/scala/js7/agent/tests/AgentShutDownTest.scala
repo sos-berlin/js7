@@ -51,12 +51,12 @@ final class AgentShutDownTest
     TestAgent.blockingRun(agentConfiguration,  99.s) { agent =>
       actorSystemResource("AgentShutDownTest").blockingUse(99.s) { implicit actorSystem =>
         val userId = UserId("TEST-USER")
-        closer onClose Pekkos.terminateAndWait(actorSystem, 10.s)
+        closer.onClose(Pekkos.terminateAndWait(actorSystem, 10.s))
 
         val client = AgentClient(Admission(
           agent.localUri,
           Some(userId -> SecretString("TEST-PASSWORD"))))
-        client.login() await 99.s
+        client.login().await(99.s)
 
         val controllerRunId = ControllerRunId(JournalId.random())
         client
@@ -77,24 +77,24 @@ final class AgentShutDownTest
             client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
               .await(99.s).orThrow
 
-            (for orderId <- orderIds yield
-              client.commandExecute(AttachOrder(
-                Order(
-                  orderId,
-                  SimpleTestWorkflow.id /: Position(0),
-                  Order.Ready,
-                  Map("a" -> StringValue("A"))),
-                TestAgentPath))
-            ) await 99.s
+        (for orderId <- orderIds yield
+          client.commandExecute(AttachOrder(
+            Order(
+              orderId,
+              SimpleTestWorkflow.id /: Position(0),
+              Order.Ready,
+              Map("a" -> StringValue("A"))),
+            TestAgentPath))
+        ).await(99.s)
 
-            for orderId <- orderIds do
-              agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-            sleep(2.s)
+        for orderId <- orderIds do
+          agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+        sleep(2.s)
 
-            client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
-            agent.untilTerminated.await(99.s)
-            client.close()
-        }
+        client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
+        agent.untilTerminated.await(99.s)
+        client.close()
+      }
     }
 
     //Times out, but why ??? Since v2.6.0-SNAPSHOT 2023-03-13

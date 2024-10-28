@@ -68,11 +68,11 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
 
   "/controller/api/journal requires authentication" in:
     val e = intercept[HttpException]:
-      httpClient.getDecodedLinesStream[String](Uri(s"$uri/controller/api/journal?file=0&position=0")) await 99.s
+      httpClient.getDecodedLinesStream[String](Uri(s"$uri/controller/api/journal?file=0&position=0")).await(99.s)
     assert(e.status == Unauthorized)
 
   "Login" in:
-    httpControllerApi.login() await 99.s
+    httpControllerApi.login().await(99.s)
 
   "/controller/api/journal" in:
     pending // TODO Duplicate with JournalRouteTest, active node does not provide event acknowledgements
@@ -110,14 +110,14 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
 
     // After a snapshot (a new journal file is started),
     // the web services returns the end of the currently read journal file and ends itself.
-    httpControllerApi.executeCommand(ControllerCommand.TakeSnapshot) await 99.s
+    httpControllerApi.executeCommand(ControllerCommand.TakeSnapshot).await(99.s)
 
-    whenReplicated await 9.s
+    whenReplicated.await(9.s)
     awaitAndAssert(replicated endsWith EndOfJournalFileMarker)
     assert(replicated.utf8String == controller0File.contentString ++ EndOfJournalFileMarker.utf8String)  // Compare strings for legible error message
     assert(replicated == controller0File.byteArray ++ EndOfJournalFileMarker)
 
-    whenLengthsObserved await 9.s
+    whenLengthsObserved.await(9.s)
     assert(observedLengths.last == EndOfJournalFileMarker.utf8String)
     assert(observedLengths.dropRight(1).last.stripSuffix("\n").toLong == Files.size(controller0File))
 
@@ -157,13 +157,13 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
       .unsafeToFuture()
 
     val orderId = OrderId("🔷")
-    httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
+    httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s)
     controller.eventWatch.await[OrderFinished](_.key == orderId)
-    awaitAndAssert(lines.exists(_ contains "OrderFinished"))
+    awaitAndAssert(lines.exists(_.contains("OrderFinished")))
     for o <- observeWithHeartbeat.value; t <- o.failed do throw t.appendCurrentStackTrace
-    assert(lines.exists(_ contains "OrderFinished"))
+    assert(lines.exists(_.contains("OrderFinished")))
 
-    awaitAndAssert(observedLines.exists(_ contains "OrderFinished"))
+    awaitAndAssert(observedLines.exists(_.contains("OrderFinished")))
     awaitAndAssert(observedLines.count(_ == JournalEvent.StampedHeartbeatString) > 1)
     awaitAndAssert(observedLines.filterNot(_ == JournalEvent.StampedHeartbeatString) == lines)
 

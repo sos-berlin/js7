@@ -37,7 +37,8 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingI
   private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
 
-  private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
+  private val nextOrderId: () => OrderId = 
+    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next 
 
   private lazy val aSubagent = Lazy:
     subagentResource(aSubagentItem, director = toLocalSubagentId(agentPath))

@@ -78,7 +78,7 @@ final class InventoryItemDiffTest extends OurTestSuite:
         diffItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil
-        ) == AddedOrChanged(b withVersion VersionId("CHANGED")) :: Nil)
+        ) == AddedOrChanged(b.withVersion(VersionId("CHANGED"))) :: Nil)
 
     "version updated, ignoreVersion=true" in:
       assert(
@@ -94,8 +94,8 @@ final class InventoryItemDiffTest extends OurTestSuite:
       List(
         Removed(BWorkflow.path),
         AddedOrChanged(BTestItem.withVersion(V0)),
-        AddedOrChanged(CWorkflow withVersion V1),
-        AddedOrChanged(D1Workflow withVersion V1)))
+        AddedOrChanged(CWorkflow.withVersion(V1)),
+        AddedOrChanged(D1Workflow.withVersion(V1))))
 
     assert(diff == InventoryItemDiff[VersionedItemPath, VersionedItem](
       addedOrChanged = List(
@@ -111,7 +111,7 @@ final class InventoryItemDiffTest extends OurTestSuite:
 
     assert(diff.select[TestPath, TestVersionedItem] ==
       InventoryItemDiff[TestPath, TestVersionedItem](
-        addedOrChanged = List(BTestItem withVersion V0),
+        addedOrChanged = List(BTestItem.withVersion(V0)),
         removed = Nil))
 
 
@@ -142,7 +142,7 @@ object InventoryItemDiffTest:
 
     protected def read(testId: TestVersionedItem.Key, byteArray: ByteArray) =
       case t: SourceType.JsonLike =>
-        readAnonymousJsonLike(t, byteArray).map(_ withId testId)
+        readAnonymousJsonLike(t, byteArray).map(_.withId(testId))
 
     def convertFromJson(json: Json) =
       Json.fromJsonObject(

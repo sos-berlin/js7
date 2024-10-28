@@ -20,9 +20,9 @@ final class HashedPasswordTest extends OurTestSuite:
     val c = a.hashAgainRandom
     assert(b.hashed.string != c.hashed.string)
     assert(b.hashAgainRandom.hashed.string != c.hashAgainRandom.hashed.string)
-    assert(a equalsClearText SecretString("123"))
-    assert(b equalsClearText SecretString("123"))
-    assert(c equalsClearText SecretString("123"))
+    assert(a.equalsClearText(SecretString("123")))
+    assert(b.equalsClearText(SecretString("123")))
+    assert(c.equalsClearText(SecretString("123")))
 
   "empty" in:
     val a = HashedPassword.newEmpty()
@@ -30,8 +30,8 @@ final class HashedPasswordTest extends OurTestSuite:
     assert(a != b)
     assert(a.hashed != b.hashed)
     assert(a.hashed.string != b.hashed.string)
-    assert(a equalsClearText SecretString(""))
-    assert(b equalsClearText SecretString(""))
+    assert(a.equalsClearText(SecretString("")))
+    assert(b.equalsClearText(SecretString("")))
     assert(a.hasher("") == a.hashed.string)
     assert(b.hasher("") == b.hashed.string)
 

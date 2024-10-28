@@ -23,10 +23,10 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase:
 
   "Login" in:
     controller.waitUntilReady()
-    httpControllerApi.login() await 99.s
+    httpControllerApi.login().await(99.s)
 
   "Run a job" in:
-    httpControllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
+    httpControllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))).await(99.s)
     val KeyedEvent(AgentPath("TEST-AGENT"), AgentCouplingFailed(problem)) =
       eventWatch.await[AgentCouplingFailed](timeout = 99.seconds).head.value: @unchecked
     logger.info(problem.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!

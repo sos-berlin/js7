@@ -105,7 +105,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
       "Exception is caught and returned as Left" in:
         val (outcome, out, err) = processOrder(StringConstant("INVALID TYPE")).await(99.s).orThrow
         assert(outcome.asInstanceOf[OrderOutcome.Failed]
-          .errorMessage.get startsWith "java.lang.ClassCastException")
+          .errorMessage.get.startsWith("java.lang.ClassCastException"))
         assertOutErr(out, err)
 
       "stop" in:

@@ -55,7 +55,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
       val exception = intercept[IllegalArgumentException]:
         withJournal(journalLocation, MyEvents1.last.eventId) { (_, eventWatch) =>
         }
-      assert(exception.getMessage startsWith "requirement failed: JournalId ")
+      assert(exception.getMessage.startsWith("requirement failed: JournalId "))
     }
 
   "eventWatch.when" in:
@@ -207,7 +207,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
         def keyedEvent[E <: MyEvent: ClassTag: Tag](using E: Event.KeyCompanion[? >: E])(key: E.Key) =
-          eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = Some(99.s)), key) await 10.s
+          eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = Some(99.s)), key).await(10.s)
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)
         assert(keyedEvent[BEvent]("1") == B1)
@@ -267,7 +267,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
         assert(stampeds == Seq(Stamped(1L, "1" <-: A1), Stamped(3L, "3" <-: A1), Stamped(4L, "4" <-: A1)))
 
         // limit=3 reached
-        observed await 99.s
+        observed.await(99.s)
       }
 
     "stream Torn" in:

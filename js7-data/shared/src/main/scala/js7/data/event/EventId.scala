@@ -25,7 +25,7 @@ object EventId:
   def apply(eventId: Long): Long = eventId
 
   def toTimestamp(eventId: EventId): Timestamp =
-    Timestamp ofEpochMilli(toEpochMilli(eventId))
+    Timestamp.ofEpochMilli(toEpochMilli(eventId))
 
   def toEpochMilli(eventId: EventId): Long =
     eventId / IdsPerMillisecond

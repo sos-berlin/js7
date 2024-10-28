@@ -41,7 +41,7 @@ object JavaDataJsonCodecs:
       if cursor.value.isNumber then
         cursor.as[Long] map Instant.ofEpochMilli
       else
-        cursor.as[String].map(o => Instant.from(dateTimeFormatter parse o))
+        cursor.as[String].map(o => Instant.from(dateTimeFormatter.parse(o)))
   object InstantDecoder extends InstantDecoder
 
   object instant:

@@ -32,7 +32,7 @@ trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(
       config"js7.web.server.auth.loopback-is-public = true"
-        withFallback DefaultConfig,
+        .withFallback(DefaultConfig),
       SimpleUser.apply),
     isLoopback = true)
 

@@ -38,7 +38,7 @@ extends Authenticator[U]:
 
   def authenticate(userAndPassword: UserAndPassword): Option[U] =
     memoizedToUser(userAndPassword.userId)
-      .filter(_.hashedPassword equalsClearText userAndPassword.password)
+      .filter(_.hashedPassword.equalsClearText(userAndPassword.password))
 
 
 object OurMemoizingAuthenticator:

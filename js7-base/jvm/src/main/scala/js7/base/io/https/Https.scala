@@ -102,7 +102,7 @@ object Https:
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
           .getOrElse(throw new RuntimeException(
             s"Certificate store must not have more than $sizeLimit bytes: $sourcePath"))
-        if content startsWith PemHeader then
+        if content.startsWith(PemHeader) then
           pemToKeyStore(content.toInputStream, name = sourcePathToName(sourcePath))
         else
           pkcs12ToKeyStore(content.toInputStream, password)

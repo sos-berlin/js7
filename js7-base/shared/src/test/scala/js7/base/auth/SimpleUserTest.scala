@@ -8,7 +8,7 @@ import js7.base.test.OurTestSuite
   */
 final class SimpleUserTest extends OurTestSuite:
   "Anonymous" in:
-    assert(SimpleUser.TestAnonymous.hashedPassword equalsClearText SecretString(""))
+    assert(SimpleUser.TestAnonymous.hashedPassword.equalsClearText(SecretString("")))
     assert(SimpleUser(UserId.Anonymous, HashedPassword.newEmpty()).grantedPermissions.isEmpty)
 
     intercept[RuntimeException]:

@@ -96,7 +96,7 @@ final class PipedProcessTest extends OurAsyncTestSuite:
               sleep(1.s)
               assert(shellProcess.isAlive)
               shellProcess.sendProcessSignal(SIGTERM).await(99.s)
-              val rc = shellProcess.watchProcessAndStdouterr await 99.s
+              val rc = shellProcess.watchProcessAndStdouterr.await(99.s)
               assert(rc == ReturnCode(7))
           .await(99.s)
 

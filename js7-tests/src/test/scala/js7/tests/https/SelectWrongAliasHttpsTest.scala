@@ -15,5 +15,5 @@ final class SelectWrongAliasHttpsTest extends ControllerHttpsStandardTests:
 
   "Login" in:
     val t = intercept[IllegalArgumentException](
-      httpControllerApi.login_(standardUserAndPassword) await 99.s)
-    assert(t.getMessage startsWith "Unknown alias=WRONG ALIAS")
+      httpControllerApi.login_(standardUserAndPassword).await(99.s))
+    assert(t.getMessage.startsWith("Unknown alias=WRONG ALIAS"))

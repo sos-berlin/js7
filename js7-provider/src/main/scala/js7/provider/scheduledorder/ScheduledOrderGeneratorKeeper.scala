@@ -13,7 +13,7 @@ import js7.provider.scheduledorder.oldruntime.InstantInterval
 final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator]):
 
   private val pathToOrderGenerator: Map[ScheduledOrderGeneratorPath, ScheduledOrderGenerator] =
-    scheduledOrderGenerators toKeyedMap (_.path)
+    scheduledOrderGenerators.toKeyedMap(_.path)
 
   def generateOrders(instantInterval: InstantInterval): Seq[FreshOrder] =
     (for

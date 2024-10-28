@@ -64,7 +64,7 @@ extends AutoCloseable:
       case Left(problem) =>
         val lineNr = lineNumber - 1
         val extra =
-          if problem.toString startsWith "JSON ParsingFailure: " then
+          if problem.toString.startsWith("JSON ParsingFailure: ") then
             problem.toString.stripPrefix("JSON ParsingFailure: ").replace(" (line 1, ", " (")
           else
             problem.toString

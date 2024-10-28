@@ -26,21 +26,21 @@ final class UserTest extends OurTestSuite:
     assert(bUser.checkPermissions(A, B) == Left(UserDoesNotHavePermissionProblem(bUser.id, A)))
 
   "hasPermissions" in:
-    assert(testUser(Set.empty) hasPermissions Set.empty)
-    assert(testUser(Set(A)) hasPermissions Set.empty)
-    assert(testUser(Set(A)) hasPermissions Set(A))
-    assert(testUser(Set(A, B)) hasPermissions Set(A))
+    assert(testUser(Set.empty).hasPermissions(Set.empty))
+    assert(testUser(Set(A)).hasPermissions(Set.empty))
+    assert(testUser(Set(A)).hasPermissions(Set(A)))
+    assert(testUser(Set(A, B)).hasPermissions(Set(A)))
 
     assert(!testUser(Set.empty).hasPermissions(Set(A)))
     assert(!testUser(Set(B)).hasPermissions(Set(A)))
     assert(!testUser(Set(B)).hasPermissions(Set(A, B)))
 
   "SuperPermission" in:
-    assert(testUser(Set(SuperPermission)) hasPermissions Set.empty)
-    assert(testUser(Set(SuperPermission)) hasPermissions Set(A))
-    assert(testUser(Set(SuperPermission, A)) hasPermissions Set.empty)
-    assert(testUser(Set(SuperPermission, A)) hasPermissions Set(A))
-    assert(testUser(Set(SuperPermission, A)) hasPermissions Set(B))
+    assert(testUser(Set(SuperPermission)).hasPermissions(Set.empty))
+    assert(testUser(Set(SuperPermission)).hasPermissions(Set(A)))
+    assert(testUser(Set(SuperPermission, A)).hasPermissions(Set.empty))
+    assert(testUser(Set(SuperPermission, A)).hasPermissions(Set(A)))
+    assert(testUser(Set(SuperPermission, A)).hasPermissions(Set(B)))
 
 private object UserTest:
   private case object A extends Permission

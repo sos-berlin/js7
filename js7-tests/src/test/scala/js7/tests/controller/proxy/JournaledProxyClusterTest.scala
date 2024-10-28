@@ -77,8 +77,8 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         assert(processed.stampedEvent.value.event == OrderProcessed(OrderOutcome.succeededRC0))
         assert(processed.state.idToOrder(OrderId("🔺")).state == Order.Processed)
 
-        whenFinished await 99.s  // Await order termination before shutting down the JS7
-      finally proxy.stop await 99.s
+        whenFinished.await(99.s)  // Await order termination before shutting down the JS7
+      finally proxy.stop.await(99.s)
     }
 
   "JControllerProxy with Flux" in:
@@ -111,7 +111,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         .mapParallelBatch(): path =>
           ItemOperation.AddOrChangeSigned(
             primary.toSignedString(workflow.copy(id = path ~ versionId)))
-        .compile.toList await 99.s
+        .compile.toList.await(99.s)
       logger.info(sw.itemsPerSecondString(n, "signatures"))
       val logLine = measureTimeOfSingleRun(n, "workflows"):
         api.updateItems(Stream.iterable(AddVersion(versionId) :: operations))
@@ -123,7 +123,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         awaitAndAssert(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
         assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
           workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
-      finally proxy.stop await 99.s
+      finally proxy.stop.await(99.s)
 
       locally:
         meterTakeSnapshot(n, api)
@@ -159,7 +159,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       try
         waitForCondition(30.s, 50.ms)(proxy.currentState.idToOrder.sizeIs == n)
         assert(proxy.currentState.idToOrder.keys.toVector.sorted == orderIds.sorted)
-      finally proxy.stop await 99.s
+      finally proxy.stop.await(99.s)
 
       locally:
         meterTakeSnapshot(n, api)

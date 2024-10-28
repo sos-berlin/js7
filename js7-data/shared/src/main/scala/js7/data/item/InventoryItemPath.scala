@@ -54,7 +54,7 @@ object InventoryItemPath:
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension
         .collectFirst:
-          case (t, ext) if normalized endsWith ext =>
+          case (t, ext) if normalized.endsWith(ext) =>
             checked(normalized.dropRight(ext.length)).map(_ -> t)
 
     final def toPossibleFilenames(path: P): Iterable[String] =
@@ -74,7 +74,7 @@ object InventoryItemPath:
       def apply(c: HCursor) =
         for
           string <- c.as[String]
-          prefixAndPath <- string indexOf ':' match
+          prefixAndPath <- string.indexOf(':') match
             case i if i > 0 => Right((string.take(i), string.substring(i + 1)))
             case _ => Left(DecodingFailure(s"Missing type prefix in InventoryItemPath: $string", c.history))
           prefix = prefixAndPath._1

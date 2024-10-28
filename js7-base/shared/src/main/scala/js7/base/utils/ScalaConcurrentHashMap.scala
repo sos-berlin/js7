@@ -32,7 +32,7 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]:
     Option(delegate.get(key))
 
   override final def contains(key: K): Boolean =
-    delegate containsKey key
+    delegate.containsKey(key)
 
   override final def getOrElse[V1 >: V](key: K, default: => V1): V1 =
     delegate.get(key) match

@@ -14,7 +14,7 @@ object ProxyConfs:
   lazy val default: ProxyConf = fromConfig(defaultConfig)
 
   def fromConfig(config: Config): ProxyConf =
-    val c = config withFallback defaultConfig
+    val c = config.withFallback(defaultConfig)
     ProxyConf(
       tornOlder = Some(c.getDuration("js7.proxy.torn-older").toFiniteDuration),
       syncPolling = c.getDuration("js7.proxy.sync-polling").toFiniteDuration,

@@ -44,9 +44,9 @@ final class PekkoHttpControllerApiTest extends OurTestSuite, ControllerAgentForS
 
   "login" in:
     assert(controller.sessionRegister.count.await(99.s) == 1)
-    api.login() await 99.s
+    api.login().await(99.s)
     assert(controller.sessionRegister.count.await(99.s) == 2)
-    api.login() await 99.s
+    api.login().await(99.s)
     assert(controller.sessionRegister.count.await(99.s) == 2)
 
   "POST order" in:
@@ -67,14 +67,14 @@ final class PekkoHttpControllerApiTest extends OurTestSuite, ControllerAgentForS
 
   "logout" in:
     assert(controller.sessionRegister.count.await(99.s) == 2)
-    api.logout() await 99.s
+    api.logout().await(99.s)
     assert(controller.sessionRegister.count.await(99.s) == 1)
 
   "resource" in:
     PekkoHttpControllerApi
       .separatePekkoResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
       .use(api => IO {
-        api.login() await 99.s
+        api.login().await(99.s)
         assert(controller.sessionRegister.count.await(99.s) == 2)
         api.overview.await(99.s): ControllerOverview
       })

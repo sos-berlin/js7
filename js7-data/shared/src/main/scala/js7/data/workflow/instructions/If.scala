@@ -63,7 +63,6 @@ extends Instruction:
       case _ =>
         super.workflow(branchId)
 
-
   override def branchWorkflows: Seq[(BranchId, Workflow)] =
     ifThens.toVector.zipWithIndex.map: (ifThen, i) =>
       BranchId.then_(1 + i) -> ifThen.thenBlock

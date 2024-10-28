@@ -74,7 +74,7 @@ trait TextApi:
         case _: pekko.stream.StreamTcpException =>
           true
         case t: RuntimeException =>
-          t.toString contains "java.net.ConnectException: Connection refused"
+          t.toString.contains("java.net.ConnectException: Connection refused")
         case _ if t.getMessage == "Connection was shutdown." =>  // pekko.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
           true
         case _ =>

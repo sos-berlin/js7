@@ -36,7 +36,7 @@ extends ForkInstruction:
 
   override def withPositions(position: Position): ForkList =
     copy(workflow =
-      workflow withPositions position / BranchId.ForkList)
+      workflow.withPositions(position / BranchId.ForkList))
 
   override def adopt(outer: Workflow): ForkList = copy(
     workflow = workflow.copy(outer = Some(outer)))

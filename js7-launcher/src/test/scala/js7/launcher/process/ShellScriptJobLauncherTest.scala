@@ -14,11 +14,11 @@ final class ShellScriptJobLauncherTest extends OurTestSuite:
         .writeScriptToFile(script, dir, ISO_8859_1, None, isWindows = false)
         .orThrow
       assert(file.contentString(ISO_8859_1) == script)
-      assert(file.toString endsWith ".sh")
+      assert(file.toString.endsWith(".sh"))
 
       val windowsFile = ShellScriptJobLauncher
         .writeScriptToFile(script, dir, ISO_8859_1, None, isWindows = true)
         .orThrow
       assert(windowsFile.contentString(ISO_8859_1) == s"råd 1\r\nråd 2\r\nråd 3\r\nråd 4\r...")
-      assert(windowsFile.toString endsWith ".cmd")
+      assert(windowsFile.toString.endsWith(".cmd"))
     }

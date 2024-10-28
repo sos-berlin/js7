@@ -40,7 +40,7 @@ object FileUtils:
    */
   def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type =
     touchFile(path)
-    path withCloser delete
+    path.withCloser(delete)
     path
 
   def touchFile(path: Path): Unit =
@@ -66,12 +66,12 @@ object FileUtils:
       file.toPath
 
   object syntax:
-    implicit val PathOrdering: Ordering[Path] = (a, b) => a compareTo b
+    implicit val PathOrdering: Ordering[Path] = (a, b) => a.compareTo(b)
 
     implicit final class RichPath(private val delegate: Path) extends AnyVal:
       /** Must be a relative path without backslashes or single or double dot directories. */
       def /(relative: String): Path =
-        delegate resolve checkRelativePath(relative).orThrow
+        delegate.resolve(checkRelativePath(relative).orThrow)
 
       /** Writes `string` encoded with UTF-8 to file. */
       def :=(string: String): Unit =

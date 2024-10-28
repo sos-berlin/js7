@@ -26,12 +26,12 @@ final class IdToUserTest extends OurTestSuite:
   "Plain password" in:
     val Some(u) = idToUser(PlainUserId): @unchecked
     assert(u.id == PlainUserId)
-    assert(u.hashedPassword equalsClearText PlainPassword)
+    assert(u.hashedPassword.equalsClearText(PlainPassword))
 
   "SHA512 hashed password" in:
     val Some(u) = idToUser(Sha512UserId): @unchecked
     assert(u.id == Sha512UserId)
-    assert(u.hashedPassword equalsClearText Sha512Password)
+    assert(u.hashedPassword.equalsClearText(Sha512Password))
 
   "fromConfig" - {
     "No js7.auth.users" in:
@@ -79,11 +79,11 @@ final class IdToUserTest extends OurTestSuite:
       assert(d.id == UserId("D"))
       assert(e1.id == UserId("E1"))
       assert(e2.id == UserId("E2"))
-      assert(a.hashedPassword equalsClearText PlainPassword)
-      assert(b.hashedPassword equalsClearText Sha512Password)
-      assert(b1.hashedPassword equalsClearText Sha512Password)
-      assert(c.hashedPassword equalsClearText PlainPassword)
-      assert(d.hashedPassword equalsClearText PlainPassword)
+      assert(a.hashedPassword.equalsClearText(PlainPassword))
+      assert(b.hashedPassword.equalsClearText(Sha512Password))
+      assert(b1.hashedPassword.equalsClearText(Sha512Password))
+      assert(c.hashedPassword.equalsClearText(PlainPassword))
+      assert(d.hashedPassword.equalsClearText(PlainPassword))
       assert(d.distinguishedNames == List(DistinguishedName("CN=IdToUserTest"), DistinguishedName("CN=D")))
       assert(!e1.hashedPassword.equalsClearText(PlainPassword))
       assert(!e2.hashedPassword.equalsClearText(PlainPassword))
@@ -100,17 +100,17 @@ final class IdToUserTest extends OurTestSuite:
         Left(Problem("Unknown distinguished name (not defined as an user): CN=UNKNOWN")))
 
       val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD")): @unchecked
-      assert(emptyPasswordUser.hashedPassword equalsClearText SecretString(""))
+      assert(emptyPasswordUser.hashedPassword.equalsClearText(SecretString("")))
 
     "thread-safe" in:
       val n = 10000
       val a = Future.sequence(
         for i <- 1 to n yield
-          Future { assert(idToUser(UserId("A")).get.hashedPassword equalsClearText PlainPassword, s"#$i identity") })
+          Future { assert(idToUser(UserId("A")).get.hashedPassword.equalsClearText(PlainPassword), s"#$i identity") })
       val b = Future.sequence(
         for i <- 1 to n yield
-          Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") })
-      List(a, b) await 99.s
+          Future { assert(idToUser(UserId("B")).get.hashedPassword.equalsClearText(Sha512Password), s"#$i SHA-512") })
+      List(a, b).await(99.s)
   }
 
 private object IdToUserTest:

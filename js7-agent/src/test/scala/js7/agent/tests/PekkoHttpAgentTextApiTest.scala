@@ -73,15 +73,15 @@ extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
   "Unauthorized when credentials are wrong" in:
     autoClosing(newTextAgentClient(Some(TestUserId -> SecretString("WRONG-PASSWORD")))(_ => ())) { client =>
       val e = intercept[PekkoHttpClient.HttpException]:
-        client.login() await 99.s
+        client.login().await(99.s)
       assert(e.status == Unauthorized)
-      assert(e.dataAsString contains "Login: unknown user or invalid password")
+      assert(e.dataAsString.contains("Login: unknown user or invalid password"))
     }
 
   "AgentCommand" in:
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
-      client.login() await 99.s
+      client.login().await(99.s)
       client.executeCommand("""{ "TYPE": "NoOperation" }""")
       client.getApi("")
     }
@@ -91,7 +91,7 @@ extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
   "requireIsResponding" in:
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
-      client.login() await 99.s
+      client.login().await(99.s)
       client.requireIsResponding()
     }
     assert(output == List("JS7 Agent is responding"))

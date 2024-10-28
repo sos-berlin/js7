@@ -42,8 +42,8 @@ extends Instruction:
 
   override def withPositions(position: Position): TryInstruction =
     copy(
-      tryWorkflow = tryWorkflow withPositions position / BranchId.Try_,
-      catchWorkflow = catchWorkflow withPositions position / BranchId.Catch_)
+      tryWorkflow = tryWorkflow.withPositions(position / BranchId.Try_),
+      catchWorkflow = catchWorkflow.withPositions(position / BranchId.Catch_))
 
   override def adopt(outer: Workflow): TryInstruction = copy(
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),

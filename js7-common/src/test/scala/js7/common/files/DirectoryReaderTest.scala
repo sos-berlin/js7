@@ -60,7 +60,7 @@ final class DirectoryReaderTest extends OurTestSuite:
 
     "parallel" in:
       for _ <- 1 to 10 do
-        val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file
+        val comparator: Comparator[Entry] = (a, b) => a.file.compareTo(b.file)
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             val array = entries.toArray

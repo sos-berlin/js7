@@ -217,13 +217,13 @@ object Value:
 object AnyValue extends ValueType:
   val name = "Any"
 
-  override def is(t: ValueType): Boolean =
+  override infix def is(t: ValueType): Boolean =
     true
 
 sealed trait GoodValue extends Value
 object GoodValue:
   trait Companion[V <: GoodValue] extends Value.Companion[V]:
-    override def is(t: ValueType): Boolean =
+    override infix def is(t: ValueType): Boolean =
       (companion eq t) || super.is(t)
 
   implicit val companion: Companion[GoodValue] =
@@ -434,7 +434,7 @@ case object MissingValue extends Value, ValueType.Simple:
 sealed trait ValueType:
   def name: String
 
-  def is(t: ValueType): Boolean =
+  infix def is(t: ValueType): Boolean =
     this eq t
 
   override def toString: String = name

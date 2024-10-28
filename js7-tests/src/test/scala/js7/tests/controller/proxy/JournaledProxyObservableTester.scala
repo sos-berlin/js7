@@ -40,7 +40,7 @@ object JournaledProxyStreamTester:
       })
       .collect:
         case es @ EventAndState(Stamped(_, _, KeyedEvent(_, event)), _, _)
-          if implicitClass[E] isAssignableFrom event.getClass =>
+          if implicitClass[E].isAssignableFrom(event.getClass) =>
           es.asInstanceOf[EventAndState[E, S]]
       .filter(predicate)
       .headL

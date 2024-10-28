@@ -45,7 +45,7 @@ object Execute:
 
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
       workflow.findJob(name) // Should always find!
-        .fold(_ => true, _ isExecutableOnAgent agentPath)
+        .fold(_ => true, _.isExecutableOnAgent(agentPath))
 
     override def productPrefix = "Execute.Named"
     //override def toString = s"execute $name, defaultArguments=$defaultArguments"
@@ -73,7 +73,7 @@ object Execute:
       copy(sourcePos = None)
 
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
-      job isExecutableOnAgent agentPath
+      job.isExecutableOnAgent(agentPath)
 
     override def productPrefix = "Execute.Anonymous"
     override def toString = s"execute($job)$sourcePosToString"

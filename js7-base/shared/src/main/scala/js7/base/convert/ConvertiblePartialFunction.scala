@@ -22,7 +22,7 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
     checkedAs[W](key, None)
 
   def checkedAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Checked[W] =
-    optionAs[W](key, default) toChecked MissingConfigurationKeyProblem(key.toString)
+    optionAs[W](key, default).toChecked(MissingConfigurationKeyProblem(key.toString))
 
   def checkedOptionAs[W](key: K)(implicit convert: As[V, W]): Checked[Option[W]] =
     Right(lift(key) map wrappedConvert(convert.apply, renderKey(key)))

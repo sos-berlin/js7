@@ -346,7 +346,7 @@ object Expression:
         a <- a.eval.map(_.missingToEmptyString).flatMap(_.toStringValueString)
         b <- b.evalToString
         result <- catchExpected[PatternSyntaxException](
-          BooleanValue(a matches b))
+          BooleanValue(a.matches(b)))
       yield result
 
     override def toString: String = makeString(a, "matches", b)

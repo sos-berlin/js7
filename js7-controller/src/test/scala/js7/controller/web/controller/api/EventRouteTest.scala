@@ -62,7 +62,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
       parallelism-min = 1
       parallelism-factor = 0
       parallelism-max = 2
-    }""" withFallback super.config
+    }""".withFallback(super.config)
 
   private lazy val defaultDelay =
     config.finiteDuration("js7.web.server.services.event.streaming.delay").orThrow

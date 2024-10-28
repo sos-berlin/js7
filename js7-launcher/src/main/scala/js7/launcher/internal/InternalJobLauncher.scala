@@ -70,7 +70,7 @@ extends JobLauncher:
     catchNonFatalFlatten:
       loadClass(className)
         .flatMap: cls =>
-          if classOf[InternalJob] isAssignableFrom cls then
+          if classOf[InternalJob].isAssignableFrom(cls) then
             getConstructor(cls.asInstanceOf[Class[InternalJob]])
               .map(con => () => construct(con, toJobContext(cls)))
           else
@@ -128,7 +128,7 @@ object InternalJobLauncher:
   : Checked[InternalJob] =
     val args = constructor.getParameterTypes
       .map(cls =>
-        if cls isAssignableFrom classOf[InternalJob.JobContext] then
+        if cls.isAssignableFrom(classOf[InternalJob.JobContext]) then
           jobContext
         else
           sys.error(s"Unsupported constructor parameter: ${cls.getName}"))  // Should not happen

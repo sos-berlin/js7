@@ -94,7 +94,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
   protected final def requireAuthorizedAccess(client: PekkoHttpClient, expectedUserId: UserId = UserId("A-USER"))
     (implicit s: IO[Option[SessionToken]]): Unit =
     requireAccessToUnprotected(client)
-    client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s shouldEqual expectedUserId.string
+    client.get_[String](Uri(s"$localUri/authorizedUser")).await(99.s) shouldEqual expectedUserId.string
 
   protected final def requireAccessIsUnauthorizedOrPublic(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): Unit =
     requireAccessToUnprotected(client)
@@ -126,7 +126,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
     exception
 
   private def getViaAuthorizedUsed(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]) =
-    client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
+    client.get_[String](Uri(s"$localUri/authorizedUser")).await(99.s)
 
   protected final def requireAccessToUnprotected(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): Unit =
-    client.get_[String](Uri(s"$localUri/unprotected")) await 99.s shouldEqual "THE RESPONSE"
+    client.get_[String](Uri(s"$localUri/unprotected")).await(99.s) shouldEqual "THE RESPONSE"
