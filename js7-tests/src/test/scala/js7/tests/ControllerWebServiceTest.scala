@@ -27,6 +27,7 @@ import js7.base.web.Uri
 import js7.base.{BuildInfo, Js7Version}
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.common.http.PekkoHttpUtils.RichHttpResponse
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import js7.controller.RunningController
 import js7.data.Problems.UnknownItemPathProblem
 import js7.data.agent.{AgentPath, AgentRefStateEvent}
@@ -245,14 +246,14 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers).await(99.s)
         assert(response.status.intValue == 201/*Created*/)
-        assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
+        assert(response.header3[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
 
       "Duplicate" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers).await(99.s)
         assert(response.status.intValue == 409/*Conflict*/)
-        assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
+        assert(response.header3[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
 
       "Bad OrderId" in:
@@ -266,7 +267,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8String.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
-        assert(response.header[Location].isEmpty)
+        assert(response.header3[Location].isEmpty)
 
       "Multiple" in:
         val orders = json"""
@@ -279,7 +280,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers).await(99.s)
         assert(response.status == OK)  // Duplicates are silently ignored
-        assert(response.header[Location].isEmpty)
+        assert(response.header3[Location].isEmpty)
         response.entity.discardBytes()
 
       "Multiple with bad OrderId" in:
@@ -293,7 +294,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers).await(99.s)
         assert(response.status.intValue == 400/*BadRequest*/)
-        assert(response.header[Location].isEmpty)
+        assert(response.header3[Location].isEmpty)
         assert(response.utf8String.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
     }

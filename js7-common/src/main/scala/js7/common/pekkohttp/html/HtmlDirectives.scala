@@ -1,6 +1,7 @@
 package js7.common.pekkohttp.html
 
 import js7.common.pekkohttp.PekkoHttpServerUtils.passIf
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/html`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.TemporaryRedirect
@@ -112,7 +113,7 @@ object HtmlDirectives:
     }
 
   private def isHtmlPreferred(request: HttpRequest): Boolean =
-    request.header[Accept].exists(o => isHtmlPreferred(o.mediaRanges))
+    request.header3[Accept].exists(o => isHtmlPreferred(o.mediaRanges))
 
   /**
     * Workaround for Spray 1.3.3, which weights the MediaType ordering of the UnMarshaller over the (higher) weight of more specific MediaRange.

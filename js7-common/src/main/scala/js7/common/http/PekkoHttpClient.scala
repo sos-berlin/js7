@@ -37,6 +37,7 @@ import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import org.apache.pekko
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
@@ -682,7 +683,7 @@ object PekkoHttpClient:
     // Don't publish httpResponse because its entity stream has already been consumed for dataAsString
     def status: StatusCode = httpResponse.status
 
-    def header[A >: Null <: HttpHeader: ClassTag]: Option[A] = httpResponse.header[A]
+    def header[A <: HttpHeader: ClassTag]: Option[A] = httpResponse.header3[A]
 
     override def toString = getMessage
 
