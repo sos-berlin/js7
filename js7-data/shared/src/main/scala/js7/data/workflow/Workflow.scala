@@ -170,13 +170,13 @@ extends VersionedItem, TrivialItemState[Workflow]:
   lazy val referencedAttachableUnsignedPaths
   : Vector[InventoryItemPath.AttachableToAgent & UnsignedSimpleItemPath] =
     referencedItemPaths
-      .collect { case o: InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath => o }
+      .collect { case o: (InventoryItemPath.AttachableToAgent & UnsignedSimpleItemPath) => o }
       .toVector
 
   lazy val referencedAttachableToAgentSignablePaths
   : Vector[InventoryItemPath.AttachableToAgent & SignableSimpleItemPath] =
     referencedItemPaths
-      .collect { case o: InventoryItemPath.AttachableToAgent with SignableSimpleItemPath => o }
+      .collect { case o: (InventoryItemPath.AttachableToAgent & SignableSimpleItemPath) => o }
       .toVector
 
   override lazy val referencedItemPaths: View[SimpleItemPath] =

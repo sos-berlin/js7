@@ -14,7 +14,7 @@ final class ItemSigner[A <: SignableItem](val signer: DocumentSigner, jsonEncode
       case simpleItem: SignableSimpleItem =>
         Signed(item, toSignedString(simpleItem.withRevision(None).asInstanceOf[A1]))
 
-      case item: VersionedItem with (A1 @unchecked) =>
+      case item: (VersionedItem & (A1 @unchecked)) =>
         Signed(item, toSignedString(item))
 
   def toSignedString[A1 <: A](item: A1): SignedString =
