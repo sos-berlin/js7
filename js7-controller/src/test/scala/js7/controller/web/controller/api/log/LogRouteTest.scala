@@ -1,12 +1,11 @@
 package js7.controller.web.controller.api.log
 
-import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import java.util.Objects.requireNonNull
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.implicits.*
@@ -30,14 +29,14 @@ import scala.concurrent.duration.*
   */
 final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Deferred.unsafe
-  protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
+  protected def currentLogFile = _currentLogFile.nn
 
   override protected def config = config"js7.web.server.services.log.poll-interval = 1.ms"
     .withFallback(super.config)
 
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
-  private var _currentLogFile: Path = null
+  private var _currentLogFile: Path | Null = null
 
   private given IORuntime = ioRuntime
 

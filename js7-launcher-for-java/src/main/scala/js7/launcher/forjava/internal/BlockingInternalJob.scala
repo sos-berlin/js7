@@ -146,7 +146,7 @@ object BlockingInternalJob:
      * Returns null only before or after `run()` is executed.
      */
     @Nullable
-    final def thread: Thread =
+    final def thread: Thread | Null =
       _thread.asInstanceOf[Thread] // Java compatible
 
     @throws[Exception] @Nonnull
@@ -160,8 +160,8 @@ object BlockingInternalJob:
     /** if immediately, then interrupt the Job's thread, otherwise do nothing. */
     @throws[Exception] @Nonnull
     override def cancel(immediately: Boolean): Unit =
-      thread match
+      _thread match
         case null =>
-        case t =>
+        case t: Thread =>
           logger.debug(s"interrupt $toString, thread $t")
           t.interrupt()

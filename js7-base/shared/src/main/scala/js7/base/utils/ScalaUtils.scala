@@ -16,6 +16,7 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.BinarySearch.binarySearch
+import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
@@ -251,11 +252,11 @@ object ScalaUtils:
 
       /** Useable for logging.
         * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
-      def nullIfNoStackTrace: Throwable =
+      def nullIfNoStackTrace: Throwable | Null =
         if throwable.getStackTrace.isEmpty then null else throwable
 
       def ifStackTrace: Option[Throwable] =
-        Option(nullIfNoStackTrace)
+        nullToNone(nullIfNoStackTrace)
 
       def dropTopMethodsFromStackTrace(methodName: String): A =
         val stackTrace = throwable.getStackTrace
@@ -877,6 +878,15 @@ object ScalaUtils:
           if underlying.charAt(i) == '\n' then return i + 1
           i += 1
         n
+
+    extension (problemOrNull: Problem | Null)
+      def toChecked: Checked[Unit] =
+        toLeftOr(())
+
+      def toLeftOr[R](right: R): Checked[R] =
+        problemOrNull match
+          case null => Right(right)
+          case o: Problem => Left(o)
 
 
     implicit final class RichStringBuilder(private val sb: StringBuilder) extends AnyVal:

@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import java.util.Objects.requireNonNull
 import js7.base.log.Logger
 import scala.util.control.{ControlThrowable, NonFatal}
 
@@ -23,7 +24,7 @@ object AutoClosing:
     result
 
   final def closeOnError[A <: AutoCloseable, B](closeable: A)(body: => B): B =
-    if closeable == null then throw new NullPointerException
+    requireNonNull(closeable)
     try body
     catch
       case t: Throwable =>

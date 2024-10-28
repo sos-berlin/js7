@@ -8,11 +8,13 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
 import js7.base.utils.Collections.emptyToNone
+import js7.base.utils.Nulls.nullToNone
 import js7.data.event.{Event, EventId, SnapshotableState}
 import js7.proxy.JournaledProxy.*
 import js7.proxy.JournaledProxyService.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.EventAndState
+import js7.base.utils.Nulls.notNullOr
 
 private final class JournaledProxyService[S <: SnapshotableState[S]] private[JournaledProxyService](
   underlyingStream: Stream[IO, EventAndState[Event, S]],
@@ -23,7 +25,7 @@ private final class JournaledProxyService[S <: SnapshotableState[S]] private[Jou
   (using S: SnapshotableState.Companion[S])
 extends Service.StoppableByRequest, JournaledProxy[S]:
 
-  @volatile private var _currentState: S = null.asInstanceOf[S]
+  @volatile private var _currentState: S | Null = null
 
   protected def start =
     Deferred[IO, Unit].flatMap: whenStateFetched =>
@@ -86,12 +88,11 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
         .map(_.getOrElse(throw new EndOfEventStreamException))
 
   def currentState: S =
-    _currentState match
-      case null => throw new IllegalStateException("JournaledProxy has not yet started")
-      case o => o
+    _currentState.notNullOr:
+      throw new IllegalStateException("JournaledProxy has not yet started")
 
   def name: String =
-    Option(_currentState).fold("")(o => s"${o.name}")
+    nullToNone(_currentState).fold("")(o => s"${o.name}")
 
   override def toString =
     s"JournaledProxyService[$S]${emptyToNone(name).fold("")(o => s"($o)")}"

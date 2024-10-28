@@ -16,6 +16,7 @@ import js7.subagent.Subagent
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, tapError}
+import js7.base.utils.Nulls.nullToNone
 import scala.util.{Failure, Success, Try}
 
 final class RestartableDirector private(
@@ -27,7 +28,7 @@ extends MainService, Service.StoppableByRequest:
 
   protected type Termination = DirectorTermination
 
-  private val _currentDirector = AsyncVariable[RunningAgent](null: RunningAgent)
+  private val _currentDirector = AsyncVariable[RunningAgent | Null](null)
   private val _untilTerminated = Deferred.unsafe[IO, Try[DirectorTermination]]
 
   protected def start =
@@ -80,7 +81,10 @@ extends MainService, Service.StoppableByRequest:
     _untilTerminated.get.dematerialize
 
   def currentDirector: IO[RunningAgent] =
-    _currentDirector.value
+    _currentDirector.value.map(nullToNone).flatMap:
+      case None =>
+        IO.raiseError(new IllegalStateException("RestartableDirector.currentDirector: Not started"))
+      case Some(o) => IO.pure(o)
 
   def webServer: PekkoWebServer =
     subagent.webServer

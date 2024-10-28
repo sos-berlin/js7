@@ -71,7 +71,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           errorLineLengthMax = 1024,
           worryAboutStdoutAfterTermination = 100.ms,
           globalIOX, blockingJobEC = blockingJobEC,
-          null: AlarmClock,
+          null/*unused*/.asInstanceOf[AlarmClock],
           CrashPidFile.Dummy)
 
         val jobConf = JobConf(

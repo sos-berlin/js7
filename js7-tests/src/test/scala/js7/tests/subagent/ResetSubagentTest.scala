@@ -31,7 +31,7 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
     enableSubagents(directoryProvider.subagentId -> false)
 
     val orderId = OrderId("RESET-SUBAGENT-AFTER-SHUTDOWN")
-    var firstSubagentRunId: SubagentRunId = null
+    var firstSubagentRunId: SubagentRunId | Null = null
 
     runSubagent(bareSubagentItem): subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
@@ -63,7 +63,7 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
         case _ => None
       .flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId, Some(PlatformInfo.test)),
+        SubagentDedicated(firstSubagentRunId.nn, Some(PlatformInfo.test)),
         SubagentCoupled,
         OrderAdded(workflow.id),
         OrderAttachable(agentPath),

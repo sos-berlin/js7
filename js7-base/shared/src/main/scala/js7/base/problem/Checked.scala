@@ -210,7 +210,7 @@ object Checked:
     /** Like map(f).sequence, but fails fast. `L` does not accumulate. */
     def failFastMap[B, L](f: A => Either[L, B]): Either[L, Seq[B]] =
       val builder = new VectorBuilder[B]
-      var failed: Left[L, B] = null
+      var failed: Left[L, ?] | Null = null
       val it = underlying.iterator
       while failed == null && it.hasNext do
         f(it.next()) match

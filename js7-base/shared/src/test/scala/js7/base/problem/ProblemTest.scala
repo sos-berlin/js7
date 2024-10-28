@@ -52,8 +52,8 @@ final class ProblemTest extends OurTestSuite:
     val a = TestCodeProblem(Map("argument" -> "ARGUMENT")).toString
     assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).toString == "TestCode(argument=ARGUMENT)")
 
-    assert(Problem("").toString == "A problem occurred (no message)")
-    assert(Problem(null: String).toString == "A problem occurred (null)")
+    assert(Problem("").toString == "A problem occurred (empty message)")
+    assert(Problem(null.asInstanceOf[String]).toString == "A problem occurred (null message)")
 
     val problem = Problem("MESSAGE")
     assert(problem.toString == "MESSAGE")

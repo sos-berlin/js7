@@ -6,9 +6,10 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.language.unsafeNulls
 
 private final class TransactionReader:
-  private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]] = null
+  private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]] | Null = null
   private var next = 0
 
   def begin(): Unit =
@@ -17,7 +18,7 @@ private final class TransactionReader:
 
   def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[Event]]]): Unit =
     assertThat(isInTransaction)
-    buffer += positionAndStamped
+    buffer = buffer.nn :+ positionAndStamped
 
   def onCommit(): Unit =
     assertThat(isInTransaction)
@@ -46,4 +47,4 @@ private final class TransactionReader:
     buffer != null
 
   def length =
-    buffer.length
+    buffer.nn.length

@@ -73,7 +73,7 @@ private object WindowsApi:
   /**
     * Calls `CreateEnvironmentBlock`, returns the environment defined for the given user.
     */
-  def usersEnvironment(userToken: HANDLE): Map[String, String] =
+  def usersEnvironment(userToken: HANDLE | Null): Map[String, String] =
     val strings =
       val handle =
         val ref = new PointerByReference
@@ -152,5 +152,5 @@ private object WindowsApi:
   trait MyUserenv extends StdCallLibrary:
     def LoadUserProfile(userToken: HANDLE, profileInfo: PROFILEINFO): Boolean
     def UnloadUserProfile(userToken: HANDLE, profileHandle: HANDLE): Boolean
-    def CreateEnvironmentBlock(environment: PointerByReference, userToken: HANDLE, inherit: Boolean): Boolean
+    def CreateEnvironmentBlock(environment: PointerByReference, userToken: HANDLE | Null, inherit: Boolean): Boolean
     def DestroyEnvironmentBlock(environment: Pointer): Boolean

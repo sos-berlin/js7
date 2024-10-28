@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-case class ProblemException private(problem: Problem, message: String, cause: Throwable)
+case class ProblemException private(problem: Problem, message: String, cause: Throwable | Null)
 extends RuntimeException(message, cause):
 
   protected[problem] def this(problem: Problem, cause: Throwable) =
@@ -25,9 +25,9 @@ object ProblemException:
       case e: WrappedException => unapply(e.getCause)
       case _ => None
 
-  private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable)
+  private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable | Null)
   extends ProblemException(problem, message, cause), scala.util.control.NoStackTrace:
-    def this(problem: Problem, cause: Throwable) =
+    def this(problem: Problem, cause: Throwable | Null) =
       this(problem, problem.message, cause)
 
     def this(problem: Problem) =

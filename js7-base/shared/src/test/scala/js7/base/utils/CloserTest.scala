@@ -89,7 +89,7 @@ final class CloserTest extends OurTestSuite:
     "AnyRef.withCloser" in:
       implicit val closer = new Closer
       class A
-      var closedA: A = null
+      var closedA: A | Null = null
       val a = new A
       val c = a.withCloser { a => closedA = a }
       assert(a eq c)

@@ -10,13 +10,13 @@ extends X509KeyManager:
   protected val keyManager: X509KeyManager
   protected val alias: String
 
-  def getCertificateChain(alias: String): Array[X509Certificate] =
+  def getCertificateChain(alias: String): Array[X509Certificate] | Null =
     if alias != this.alias then
       null
     else
       keyManager.getCertificateChain(alias)
 
-  def getPrivateKey(alias: String): PrivateKey =
+  def getPrivateKey(alias: String): PrivateKey | Null =
     if alias != this.alias then
       null
     else

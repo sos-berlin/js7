@@ -28,7 +28,7 @@ extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
   def isEmpty = false
 
   // Not used
-  def get(key: String): String =
+  def get(key: String): String | Null =
     assert(!isTest)
     if key == CorrelIdKey then
       getCount += 1
@@ -90,7 +90,7 @@ object Log4jThreadContextMap:
   private var getReadOnlyContextDataCount = 0L
   private var log4jStringMapCount = 0L
 
-  private[log] def getOtherKey(key: String): String =
+  private[log] def getOtherKey(key: String): String | Null =
     keyToValue.get(key) match
       case o @ (null | _: String) => o
       case lzy: Lazy[String] => lzy.value

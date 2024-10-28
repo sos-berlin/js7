@@ -2,6 +2,7 @@ package js7.common.files
 
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Comparator
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
@@ -49,7 +50,8 @@ final class DirectoryReaderTest extends OurTestSuite:
 
   if sys.props contains "test.speed" then "Sort speed" - {
     val n = 200000
-    val entries = (1 to n).map(_ => Entry(Paths.get(Random.nextString(100)), null))
+    val entries = (1 to n).map: _ =>
+      Entry(Paths.get(Random.nextString(100)), null/*unused*/.asInstanceOf[BasicFileAttributes])
 
     "single thread" in:
       for _ <- 1 to 10 do

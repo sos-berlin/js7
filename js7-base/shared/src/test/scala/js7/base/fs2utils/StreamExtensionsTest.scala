@@ -406,9 +406,9 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
 
     "logTiming" in:
       val n = 7777
-      var duration: FiniteDuration = null
+      var duration: FiniteDuration = null.asInstanceOf[FiniteDuration]
       var count: Long = 0
-      var exitCase: ExitCase = null
+      var exitCase: ExitCase = null.asInstanceOf[ExitCase]
       Stream
         .iterable(0 until n)
         .covary[IO]
@@ -422,7 +422,7 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
 
     "onErrorEvalTap" in:
       val throwable = new Exception("TEST")
-      var catched: Throwable = null
+      var catched: Throwable = null.asInstanceOf[Throwable]
       for
         _ <- Stream.eval(IO(1)).onErrorEvalTap(t => IO.unit).compile.drain
         result <- Stream
@@ -433,6 +433,20 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       yield
         val Left(t) = result: @unchecked
         assert((t eq throwable) && (catched eq throwable))
+
+    "collectNonNull" in:
+      val list: List[Int] =
+        Stream[Pure, Int | Null](1, 2, 3, null, 4, 5)
+          .collectNonNull
+          .toList
+      assert(list == List(1, 2, 3, 4, 5))
+
+    "takeWhileNotNull" in:
+      val list: List[Int] =
+        Stream[Pure, Int | Null](1, 2, 3, null, 4, 5)
+          .takeWhileNotNull
+          .toList
+      assert(list == List(1, 2, 3))
   }
 
   "Chunk" - {

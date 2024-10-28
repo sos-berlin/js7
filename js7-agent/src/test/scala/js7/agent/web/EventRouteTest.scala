@@ -24,6 +24,7 @@ import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.ActorSystem
+import scala.compiletime.uninitialized
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +39,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
   private lazy val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
     .closeWithCloser
   private lazy val controllerRunId = ControllerRunId(JournalId.random())
-  private var agentRunId: AgentRunId = _
+  private var agentRunId: AgentRunId = uninitialized
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
 

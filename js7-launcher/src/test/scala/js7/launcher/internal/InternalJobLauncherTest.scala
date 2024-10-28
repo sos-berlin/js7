@@ -46,7 +46,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
         UTF_8),
       Map.empty,
       blockingJobEC = globalIOX.executionContext,
-      null: AlarmClock)
+      null/*unused*/.asInstanceOf[AlarmClock])
 
     StdObservers
       .testSink(name = "InternalJobLauncherTest")

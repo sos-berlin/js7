@@ -140,7 +140,10 @@ transparent trait AdHocLogger:
     (using sourcecode.Enclosing): IO[A] =
     logger.debugIOWithResult(function, args)(io)
 
-  inline def debugIOWithResult[A](function: String, args: => Any = "", result: A => Any = null)
+  inline def debugIOWithResult[A](
+    function: String,
+    args: => Any = "",
+    result: (A => Any) | Null = null)
     (io: IO[A])
     (using sourcecode.Enclosing)
   : IO[A] =

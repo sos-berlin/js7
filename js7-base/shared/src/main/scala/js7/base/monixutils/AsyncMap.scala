@@ -167,7 +167,7 @@ object AsyncMap:
     this: AsyncMap[?, ?] =>
 
     private val whenEmpty = Deferred.unsafe[IO, Unit]
-    @volatile private var stoppingProblem: Problem = null
+    @volatile private var stoppingProblem: Problem | Null = null
 
     private def isStopping = stoppingProblem != null
 
@@ -212,7 +212,7 @@ object AsyncMap:
             whenEmpty.complete(()).attempt.void)
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
-      Option(stoppingProblem).toLeft(())
+      stoppingProblem.toChecked
 
     override protected[monixutils] final def onEntryRemoved() =
       IO.defer(

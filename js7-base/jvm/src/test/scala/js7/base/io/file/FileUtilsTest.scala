@@ -188,14 +188,14 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
     assert(!exists(f))
 
   "temporaryDirectoryResource" in:
-    var directory: Path = null
+    var directory: Path = null.asInstanceOf[Path]
     temporaryDirectoryResource[IO]("FileUtilsTest-")
-      .use(dir => IO {
-        directory = dir
-        touchFile(dir / "FILE")
-        createDirectory(dir / "SUBDIRECTORY")
-        touchFile(dir / "SUBDIRECTORY" / "FILE")
-      })
+      .use: dir =>
+        IO:
+          directory = dir
+          touchFile(dir / "FILE")
+          createDirectory(dir / "SUBDIRECTORY")
+          touchFile(dir / "SUBDIRECTORY" / "FILE")
       .*>(IO(assert(!exists(directory))))
 
   "autoDeleting" in:

@@ -1,10 +1,13 @@
 package js7.base.utils
 
+import js7.base.utils.Nulls.isNull
+
 trait HasCloser extends AutoCloseable:
   private val _closer: Closer = new Closer
 
   protected implicit final def closer: Closer =
-    if _closer == null then throw new NullPointerException(s"$getClass should extend HasClose further in front?")
+    if isNull(_closer) then
+      throw new NullPointerException(s"$getClass should extend HasClose further in front?")
     _closer
 
   /** Registers the function for execution in close(), in reverse order of registering. */

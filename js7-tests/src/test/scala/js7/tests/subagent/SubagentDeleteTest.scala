@@ -25,7 +25,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
-  private var myAgent: TestAgent = null
+  private var myAgent: TestAgent = null.asInstanceOf[TestAgent]
 
   override def beforeAll() =
     super.beforeAll()

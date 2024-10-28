@@ -1,7 +1,6 @@
 package js7.base.utils
 
 import cats.Monoid
-import javax.annotation.Nullable
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass}
@@ -233,13 +232,15 @@ object Collections:
     def headOption: Option[A] =
       delegate.hasNext thenSome delegate.head
 
-  def emptyToNone(@Nullable o: String): Option[String] =
-    if o == null || o.isEmpty then None else Some(o)
+  def emptyToNone(o: String | Null): Option[String] =
+    o match
+      case null => None
+      case o: String => if o.isEmpty then None else Some(o)
 
-  def emptyToNone[A <: Iterable[?]](@Nullable o: A): Option[A] =
-    if o == null || o.isEmpty then None else Some(o)
+  def emptyToNone[A <: Iterable[?]](a: A | Null): Option[A] =
+    if a == null || a.isEmpty then None else Some(a)
 
-  def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
+  def emptyToNone[A](o: Array[A] | Null): Option[Array[A]] =
     if o == null || o.isEmpty then None else Some(o)
 
   @tailrec

@@ -14,6 +14,7 @@ import js7.base.problem.Checked
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SetOnce
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression
@@ -36,7 +37,7 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
   // - JobDriverForOrder, for each order //
 
   private val orderToProcess = AsyncMap.empty[OrderId, JobDriverForOrder]
-  @volatile private var lastProcessTerminated: Deferred[IO, Unit] | Null = null
+  private val lastProcessTerminated = SetOnce[Deferred[IO, Unit]]
 
   for launcher <- checkedJobLauncher do
     // TODO JobDriver.start(): IO[Checked[JobDriver]]
@@ -46,13 +47,14 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
   def stop(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("stop", signal):
       IO.defer:
-        lastProcessTerminated = Deferred.unsafe
+        val deferred = Deferred.unsafe[IO, Unit]
+        lastProcessTerminated := deferred
         IO.unlessA(orderToProcess.isEmpty):
           killAll(signal) *>
             IO.unlessA(signal == SIGKILL):
               IO.sleep(sigkillDelay) *> killAll(SIGKILL)
             .background.surround:
-              lastProcessTerminated.get
+              deferred.get
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
         .flatMap: _ =>
           checkedJobLauncher.toOption.fold(IO.unit): jobLauncher =>
@@ -98,8 +100,9 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
   private def removeOrderEntry(forOrder: JobDriverForOrder): IO[Unit] =
       orderToProcess.remove(forOrder.orderId) *>
         IO.defer:
-          IO.whenA(orderToProcess.isEmpty && lastProcessTerminated != null):
-            lastProcessTerminated.complete(()).void
+          IO.whenA(orderToProcess.isEmpty):
+            lastProcessTerminated.fold(IO.unit):
+              _.complete(()).void
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:

@@ -19,7 +19,7 @@ object Atomic:
   inline def apply(initial: Long): AtomicLong =
     new AtomicLong(initial)
 
-  inline def apply[A <: AnyRef](initial: A): AtomicReference[A] =
+  inline def apply[A <: AnyRef | Null](initial: A): AtomicReference[A] =
     new AtomicReference(initial)
 
   //transparent inline def apply(initial: Any): Any =

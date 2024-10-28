@@ -88,10 +88,10 @@ object CalendarExecutor:
     def next(zoned: ZonedDateTime) = zoned.plusDays(7)
 
   private object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]():
-    def queryFrom(temporal: TemporalAccessor): LocalDate =
+    def queryFrom(temporal: TemporalAccessor): LocalDate | Null =
       if !temporal.isSupported(WEEK_OF_WEEK_BASED_YEAR)
         || !temporal.isSupported(WEEK_BASED_YEAR) then
-        null
+        null // Not found
       else
         val week = temporal.get(WEEK_OF_WEEK_BASED_YEAR)
         val year = temporal.get(WEEK_BASED_YEAR)

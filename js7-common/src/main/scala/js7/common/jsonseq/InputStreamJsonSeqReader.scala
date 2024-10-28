@@ -34,7 +34,7 @@ final class InputStreamJsonSeqReader(
   withRS: Boolean = false)
 extends AutoCloseable:
 
-  private val inAtomic = Atomic(inputStream_)
+  private val inAtomic = Atomic[SeekableInputStream | Null](inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
   private var blockLength = 0
@@ -50,7 +50,8 @@ extends AutoCloseable:
   /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
   def close(): Unit =
     synchronized:
-      for in <- Option(inAtomic.getAndSet(null)) do
+      val in = inAtomic.getAndSet(null)
+      if in != null then
         in.close()
 
   private def isClosed = inAtomic.get() == null

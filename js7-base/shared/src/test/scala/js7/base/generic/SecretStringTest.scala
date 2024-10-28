@@ -8,8 +8,9 @@ import scala.util.Random
   * @author Joacim Zschimmer
   */
 final class SecretStringTest extends OurTestSuite:
+
   "provideCharArray deletes provided characters" in:
-    var a: Array[Char] = null
+    var a: Array[Char] = null.asInstanceOf[Array[Char]]
     SecretString("SECRET").provideCharArray { chars =>
       assert(chars sameElements Array('S', 'E', 'C', 'R', 'E', 'T'))
       a = chars
@@ -17,7 +18,7 @@ final class SecretStringTest extends OurTestSuite:
     assert(a sameElements Array.fill(6)('\u0000'))
 
   "provideCharArray deletes provided characters on exception" in:
-    var a: Array[Char] = null
+    var a: Array[Char] = null.asInstanceOf[Array[Char]]
     intercept[IllegalStateException]:
       SecretString("SECRET").provideCharArray:
         chars => a = chars

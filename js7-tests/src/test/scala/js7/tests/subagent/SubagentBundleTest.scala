@@ -45,10 +45,10 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester, BlockingIte
   private lazy val dSubagentItem = newSubagentItem(dSubagentId)
   private lazy val subagentItems = Seq(aSubagentItem, bSubagentItem, cSubagentItem, dSubagentItem)
 
-  private var myAgent: TestAgent = null
+  private var myAgent: TestAgent = null.asInstanceOf[TestAgent]
 
-  private val nextOrderId: () => OrderId = 
-    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next 
+  private val nextOrderId: () => OrderId =
+    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next
 
   private lazy val idToRelease = subagentItems
     .traverse(subagentItem =>

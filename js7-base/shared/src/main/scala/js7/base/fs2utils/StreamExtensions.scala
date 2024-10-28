@@ -295,6 +295,17 @@ object StreamExtensions:
           .onFinalizeCase: exitCase =>
             onComplete(startedAt.elapsed, count, exitCase)
 
+
+  extension [F[_], O](stream: Stream[F, O | Null])
+    def collectNonNull: Stream[F, O] =
+      stream.collect:
+        case o if o != null => o.asInstanceOf[O]
+
+    def takeWhileNotNull: Stream[F, O] =
+      stream.collectWhile:
+        case o if o != null => o.asInstanceOf[O]
+
+
   extension[F[_]](stream: Stream[F, String])
     def stringToChar: Stream[F, Char] =
       stream.map(Chunk.fromString).unchunks

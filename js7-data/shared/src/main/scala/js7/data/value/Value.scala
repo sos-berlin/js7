@@ -102,8 +102,8 @@ sealed trait Value:
   final def asObject: Checked[Map[String, Value]] =
     as[ObjectValue].map(_.nameToValue)
 
-  @javaApi @Nullable/*for MissingValue ???*/
-  def toJava: java.lang.Object
+  @javaApi @Nullable
+  def toJava: java.lang.Object | Null/*for MissingValue*/
 
   def convertToString: String
 

@@ -70,14 +70,17 @@ final class CheckedTest extends OurTestSuite:
 
   "catchNonFatal" in:
     assert(catchNonFatal(7) == Right(7))
+
     val t = new IllegalArgumentException("TEST")
-    assert(catchNonFatal(throw t).swap.getOrElse(null).throwable eq t)
+    val t2: Throwable = catchNonFatal(throw t).swap.toOption.get.throwable
+    assert(t2 eq t)
 
   "catchExpected" in:
-    assert(catchExpected[IllegalArgumentException](7) == Right(7))
+    assert((catchExpected[IllegalArgumentException](7): Checked[Int]) == Right(7))
     val t = new IllegalArgumentException("TEST")
 
-    assert(catchExpected[IllegalArgumentException](throw t).swap.getOrElse(null).throwable eq t)
+    val checked = catchExpected[IllegalArgumentException](throw t)
+    assert(checked.swap.toOption.get.throwable eq t)
 
     intercept[IllegalArgumentException]:
       catchExpected[IllegalStateException](throw t)

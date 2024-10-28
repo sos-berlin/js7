@@ -6,6 +6,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import javax.annotation.Nullable
 import js7.base.annotation.javaApi
+import js7.base.utils.Nulls.isNull
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
@@ -19,7 +20,7 @@ sealed trait Problem:
   def maybeCode: Option[ProblemCode] = None
 
   @javaApi @Nullable
-  final def codeOrNull: ProblemCode =
+  final def codeOrNull: ProblemCode | Null =
     maybeCode.orNull
 
   def throwable: Throwable
@@ -149,10 +150,13 @@ object Problem extends Semigroup[Problem]:
 
     // A val, to compute message only once.
     final lazy val message =
-      rawMessage match
-        case null => "A problem occurred (null)"
-        case "" => "A problem occurred (no message)"
-        case o => o
+      val m = rawMessage
+      if isNull(m) then
+        "A problem occurred (null message)"
+      else if m == "" then
+        "A problem occurred (empty message)"
+      else
+        m
 
     final def throwable =
       cause match

@@ -168,7 +168,7 @@ private[launcher] object WindowsProcess:
       val processInformation = new PROCESS_INFORMATION
       call("CreateProcessAsUser", application, commandLine, s"directory=$workingDirectory"):
         advapi32.CreateProcessAsUser(loggedOn.userToken, application, commandLine,
-          null: SECURITY_ATTRIBUTES, null: SECURITY_ATTRIBUTES, /*inheritHandles=*/true, creationFlags,
+          null, null, /*inheritHandles=*/true, creationFlags,
           getEnvironmentBlock(env
             .removedAll:
               additionalEnv.collect { case (k, None) => k }

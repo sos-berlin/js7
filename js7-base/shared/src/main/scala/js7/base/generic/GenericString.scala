@@ -25,9 +25,10 @@ trait GenericString:
 
 
 object GenericString:
-  @Nullable def stringOrNull[A <: GenericString](o: Option[A]): String = o match
-    case Some(a) => a.string
-    case None => null
+  @Nullable def stringOrNull[A <: GenericString](o: Option[A]): String | Null =
+    o match
+      case Some(a) => a.string
+      case None => null
 
   def ordering[A <: GenericString]: Ordering[A] =
     (a, b) => a.string.compareTo(b.string)

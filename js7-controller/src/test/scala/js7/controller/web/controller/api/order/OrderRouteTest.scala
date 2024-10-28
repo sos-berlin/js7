@@ -29,6 +29,7 @@ import js7.data.workflow.position.Position
 import cats.effect.IO
 import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 
 /**
   * @author Joacim Zschimmer
@@ -80,14 +81,14 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
       Some(Timestamp.parse("2017-03-07T12:00:00Z")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Created)  // New order
-      assert(response.header[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B7"))
+      assert(response.header3[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B7"))
       assert(responseAs[Json] == Json.obj())
 
   "POST duplicate order" in:
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW"))
     Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Conflict)  // Duplicate order
-      assert(response.header[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
+      assert(response.header3[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
       assert(responseAs[Json] == Problem("Order:DUPLICATE has already been added").asJson(Problem.typedJsonEncoder))
 
   "POST multiple orders" in:
@@ -96,7 +97,7 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
       jsonMarshaller
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == OK)
-      assert(response.header[Location].isEmpty)
+      assert(response.header3[Location].isEmpty)
       assert(responseAs[ControllerCommand.Response] == AddOrders.Response(1234L))
 
 

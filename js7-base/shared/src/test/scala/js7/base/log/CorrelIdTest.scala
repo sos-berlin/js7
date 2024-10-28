@@ -75,7 +75,7 @@ final class CorrelIdTest extends OurTestSuite:
   "bind[Unit]" in:
     pending // FIXME Monix
     assert(CorrelId.current.isEmpty)
-    var a: CorrelId = null
+    var a: CorrelId = null.asInstanceOf[CorrelId]
     CorrelId("__SYNC__").bind:
       a = CorrelId.current
     assert(CorrelId.current.isEmpty)
@@ -84,7 +84,7 @@ final class CorrelIdTest extends OurTestSuite:
   "bindNow" in:
     pending // FIXME Monix
     assert(CorrelId.current.isEmpty)
-    var a: CorrelId = null
+    var a: CorrelId = null.asInstanceOf[CorrelId]
     CorrelId("__SYNC__").bindNow:
       a = CorrelId.current
       7  // A type other than Unit requires bindNow

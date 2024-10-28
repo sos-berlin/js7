@@ -16,6 +16,7 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentRestartTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import scala.collection.View
+import scala.compiletime.uninitialized
 
 final class SubagentRestartTest extends OurTestSuite, SubagentTester:
 
@@ -23,7 +24,7 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
-  private var myAgent: TestAgent = null
+  private var myAgent: TestAgent = uninitialized
 
   override def beforeAll() =
     super.beforeAll()

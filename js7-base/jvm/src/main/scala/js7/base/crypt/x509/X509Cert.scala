@@ -11,6 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestampCompanion
 import js7.base.time.Timestamp
+import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
@@ -37,8 +38,8 @@ extends X509CertInterface:
   val notAfter: Timestamp =
     Timestamp.fromJavaUtilDate(getNotAfter)
 
-  private def containsCA(strings: java.util.Set[String]) =
-    Option(strings).fold(false)(_.contains(MayActAsCA))
+  private def containsCA(strings: java.util.Set[String] | Null) =
+    nullToNone(strings).fold(false)(_.contains(MayActAsCA))
 
   def toLongString =
     "X.509 certificate " +

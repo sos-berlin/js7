@@ -73,10 +73,9 @@ final class PekkosTest extends OurTestSuite:
     finally Pekkos.terminateAndWait(actorSystem, 99.s)
 
   "actorSystemResource" in:
-    var _actorSystem: ActorSystem = null
-    actorSystemResource("PekkosTest")
-      .use(actorSystem => IO {
+    var _actorSystem: ActorSystem | Null = null
+    actorSystemResource("PekkosTest").use: actorSystem =>
+      IO:
         _actorSystem = actorSystem
-      })
-      .await(99.s)
-    assert(_actorSystem.whenTerminated.value.get.get.isInstanceOf[pekko.actor.Terminated])
+    .await(99.s)
+    assert(_actorSystem.nn.whenTerminated.value.get.get.isInstanceOf[pekko.actor.Terminated])

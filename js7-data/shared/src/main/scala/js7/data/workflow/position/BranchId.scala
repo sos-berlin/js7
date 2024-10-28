@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
+import js7.base.utils.Nulls.nonNull
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
 import scala.collection.View
@@ -110,39 +111,38 @@ object BranchId:
 
     def toCycleState: Checked[CycleState] =
       var CycleState(end, schemeIndex, periodIndex, index, next) = CycleState.empty
-      val checked: Checked[Unit] =
-        try
-          if string == "cycle" then
-            Checked.unit
-          else if !string.startsWith(CyclePrefix) then
-            Left(Problem.pure(cycleFailed))
-          else
-            var checked: Checked[Unit] = Checked.unit
-            string.substring(6)
-              .split(',')
-              .toVector
-              .takeWhile(_ => checked.isRight)
-              .foreach(part =>
-                if part.startsWith("end=") then
-                  end = Timestamp.ofEpochMilli(part.substring(4).toLong)
-                else if part.startsWith("scheme=") then
-                  schemeIndex = part.substring(7).toInt
-                else if part.startsWith("period=") then
-                  periodIndex = part.substring(7).toInt
-                else if part.startsWith("i=") then
-                  index = part.substring(2).toInt
-                else if part.startsWith("next=") then
-                  next = Timestamp.ofEpochMilli(part.substring(5).toLong)
-                else
-                  checked = Left(Problem.pure(cycleFailed)))
-            checked
-        catch
-          case NonFatal(t) =>
-            Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
       for
-        _ <- checked
-        _ <- (end != null) !! Problem("Invalid ")
-      yield CycleState(end, schemeIndex, periodIndex, index, next)
+        _ <-
+          try
+            if string == "cycle" then
+              Checked.unit
+            else if !string.startsWith(CyclePrefix) then
+              Left(Problem.pure(cycleFailed))
+            else
+              var checked: Checked[Unit] = Checked.unit
+              string.substring(6)
+                .split(',')
+                .toVector
+                .takeWhile(_ => checked.isRight)
+                .foreach(part =>
+                  if part.startsWith("end=") then
+                    end = Timestamp.ofEpochMilli(part.substring(4).toLong)
+                  else if part.startsWith("scheme=") then
+                    schemeIndex = part.substring(7).toInt
+                  else if part.startsWith("period=") then
+                    periodIndex = part.substring(7).toInt
+                  else if part.startsWith("i=") then
+                    index = part.substring(2).toInt
+                  else if part.startsWith("next=") then
+                    next = Timestamp.ofEpochMilli(part.substring(5).toLong)
+                  else
+                    checked = Left(Problem.pure(cycleFailed)))
+              checked
+          catch case NonFatal(t) =>
+            Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
+        _ <- nonNull(end) !! Problem.pure(cycleFailed) // null ???
+      yield
+        CycleState(end, schemeIndex, periodIndex, index, next)
 
     private def cycleFailed =
       "Expected a Cycle BranchId but got: " + toString

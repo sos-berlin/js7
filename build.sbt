@@ -102,7 +102,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wunused:imports",
   "-Wunused:implicits",
   //"-Wsafe-init",
-  //"-Yexplicit-nulls",
+  "-Yexplicit-nulls",
   "-Yretain-trees") // Required for Circe derived default values
 
 Global / concurrentRestrictions := Seq(

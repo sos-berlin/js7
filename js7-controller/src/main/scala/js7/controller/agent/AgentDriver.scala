@@ -120,7 +120,7 @@ extends Service.StoppableByRequest:
 
   private def onCoupled(attachedOrderIds: Set[OrderId]): IO[Unit] =
     IO.defer:
-      assertThat(attachedOrderIds != null)
+      assertThat(nonNull(attachedOrderIds))
       onCoupled(attachedOrderIds)
       sessionNumber += 1
       state

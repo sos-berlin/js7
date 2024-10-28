@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import com.typesafe.config.Config
 import fs2.Stream
 import java.nio.file.Path
@@ -13,6 +14,7 @@ import js7.base.log.Logger
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
+import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, CloseableIterator}
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
@@ -89,7 +91,7 @@ extends AutoCloseable:
   extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
     private val iteratorAtomic = Atomic(iterator_)
     private var eof = false
-    private var _next: Stamped[KeyedEvent[Event]] = null
+    private var _next = none[Stamped[KeyedEvent[Event]]]
 
     def close(): Unit =
       synchronized:
@@ -110,7 +112,7 @@ extends AutoCloseable:
               eof = true // EOF to avoid exception logging (when closed (cancelled) asynchronously before hasNext, but not before `next`).
               false
             case iterator =>
-              _next != null || {
+              _next.isDefined || {
                 val has = iterator.hasNext
                 eof |= !has
                 if has then
@@ -122,7 +124,7 @@ extends AutoCloseable:
                   assertThat(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
                   if isHistoric then
                     journalIndex.tryAddAfter(stamped.eventId, iterator.position)
-                  _next = stamped
+                  _next = Some(stamped)
                 else
                   if isHistoric then
                     journalIndex.freeze(journalIndexFactor)
@@ -135,11 +137,11 @@ extends AutoCloseable:
       synchronized:
         hasNext
         _next match
-          case null =>
+          case None =>
             if iteratorAtomic.get() == null then throw new ClosedException(iterator_.journalFile)
             throw new NoSuchElementException("EventReader read past end of file")
-          case result =>
-            _next = null
+          case Some(result) =>
+            _next = None
             result
 
     private def iteratorName = iterator_.toString
@@ -191,9 +193,9 @@ extends AutoCloseable:
             if onlyAcks then
               // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
               //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-              var last = null.asInstanceOf[PositionAnd[ByteArray]]
+              var last: PositionAnd[ByteArray] | Null  = null
               iterator foreach { last = _ }
-              iterator = Option(last).iterator
+              iterator = nullToNone(last).iterator
 
             iterator = iterator
               .tapEach: o =>

@@ -648,13 +648,14 @@ final class ScalaUtilsTest extends OurTestSuite:
     "toThrowableChecked" in:
       assert(Right[Throwable, Int](7).toThrowableChecked == Right(7))
       val t = new IllegalArgumentException
-      assert(Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null).throwable eq t)
+      assert:
+        Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null.asInstanceOf[Problem]).throwable eq t
 
     "toMessageOnlyChecked" in:
       assert(Right[Throwable, Int](7).toMessageOnlyChecked == Right(7))
       val t = new IllegalArgumentException("EXCEPTION")
-      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).throwable ne t)
-      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
+      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.toOption.get.throwable ne t)
+      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.toOption.get.toString == "EXCEPTION")
 
     "orThrow for Left(Throwable)" in:
       assert(Right[Throwable, Int](7).orThrow == 7)
@@ -875,6 +876,16 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert("123\n".firstLineLengthN(2) == 2)
       assert("123\n456".firstLineLengthN(2) == 2)
       assert("123\n456\n".firstLineLengthN(2) == 2)
+  }
+
+  "Problem | Null" - {
+    "toChecked" in:
+      assert((null: Problem | Null).toChecked == Checked.unit)
+      assert((Problem("PROBLEM"): Problem | Null).toChecked == Left(Problem("PROBLEM")))
+
+    "toLeftOr" in:
+      assert((null: Problem | Null).toLeftOr(7) == Checked(7))
+      assert((Problem("PROBLEM"): Problem | Null).toLeftOr(7) == Left(Problem("PROBLEM")))
   }
 
   "StringBuilder" - {

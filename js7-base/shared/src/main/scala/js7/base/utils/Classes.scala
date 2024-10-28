@@ -9,7 +9,7 @@ object Classes:
   def superclassesOf[A <: U, U](cls: Class[A], upperClass: Class[U]): Set[Class[? >: A <: U]] =
     superOf(cls, upperClass).asInstanceOf[Set[Class[? >: A <: U]]]
 
-  private def superOf[U](cls: Class[?], upperClass: Class[U]): Set[Class[? <: U]] =
+  private def superOf[U](cls: Class[?] | Null, upperClass: Class[U]): Set[Class[? <: U]] =
     if cls == null || !upperClass.isAssignableFrom(cls) then
       Set.empty
     else

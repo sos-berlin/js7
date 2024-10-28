@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
 final class Closer extends AutoCloseable:
 
   private val stack = new ConcurrentLinkedDeque[AutoCloseable]
-  private val throwable = Atomic[Throwable](null)
+  private val throwable = Atomic[Throwable | Null](null)
 
   def onCloseOrShutdown(body: => Unit): Unit =
     onClose(body)
@@ -43,7 +43,9 @@ final class Closer extends AutoCloseable:
   def close(): Unit =
     stack.pollLast() match
       case null =>  // finish
-        for t <- Option(throwable.get()) do throw t
+        throwable.get() match
+          case null =>
+          case t: Throwable => throw t
 
       case closeable =>
         //Not in JavaScript: logger.traceCall[Unit](s"close $closeable") {
@@ -52,12 +54,11 @@ final class Closer extends AutoCloseable:
           case NonFatal(t) =>
             if !throwable.compareAndSet(null, t) then
               val tt = throwable.get()
-              if tt ne t then
+              if tt.ne(null) && tt.ne(t) then
                 logger.debug(s"Throwable.addSuppressed($t)")
                 tt.addSuppressed(t)
           case fatal: Throwable =>
             throw fatal
-        //}
         close()
 
 

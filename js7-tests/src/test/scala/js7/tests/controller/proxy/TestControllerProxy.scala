@@ -44,26 +44,24 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
         val apiResource = PekkoHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
         val proxyEventBus = new StandardEventBus[ProxyEvent]
         val eventBus = new JournaledStateEventBus[ControllerState]
-        var currentState: ControllerState = null
+        var currentState: ControllerState | Null = null
         eventBus.subscribe[Event] { e => currentState = e.state }
         val api = new ControllerApi(apiResource map Nel.one)
-        api.startProxy(proxyEventBus, eventBus)
-          .flatMap { proxy =>
-            PekkoWebServer
-              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState)))
-              .use(_ =>
-                ().tailRecM(_ =>
-                  IO {
-                    println(
-                      Try(currentState).map(controllerState =>
-                        EventId.toTimestamp(controllerState.eventId).show + " " +
-                          controllerState.idToOrder.size + " orders: " +
-                          controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
-                      ).fold(identity, identity))
-                    Left(())
-                  }.andWait(1.s)))
-          }
-          .guarantee(api.stop)
+        api.startProxy(proxyEventBus, eventBus).flatMap: proxy =>
+          PekkoWebServer
+            .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState.nn)))
+            .use: _ =>
+              ().tailRecM: _ =>
+                IO:
+                  println:
+                    Try(currentState.nn).map(controllerState =>
+                      EventId.toTimestamp(controllerState.eventId).show + " " +
+                        controllerState.idToOrder.size + " orders: " +
+                        controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
+                    ).fold(identity, identity)
+                  Left(())
+                .andWait(1.s)
+        .guarantee(api.stop)
       }
 
 

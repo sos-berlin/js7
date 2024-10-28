@@ -9,7 +9,7 @@ final class Log4jStringMap(private[log] val correlId: CorrelId)
 extends StringMap:
 
   private def correlIdString =
-    if correlId != null then
+    if correlId != null.asInstanceOf[CorrelId] then
       correlId.fixedWidthString
     else if isTest then
       throw new NullPointerException("Log4jStringMap: correlId is null") // ???
@@ -34,7 +34,7 @@ extends StringMap:
     key == CorrelIdKey
 
   def getValue[V](key: String): V =
-    val string: String =
+    val string: String | Null =
       if key == CorrelIdKey then
         CorrelId.onCorrelIdLogged()
         correlIdString

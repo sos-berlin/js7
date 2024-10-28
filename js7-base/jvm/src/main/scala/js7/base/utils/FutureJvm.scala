@@ -22,6 +22,7 @@ object FutureJvm:
             t match
               case _: CancellationException =>
                 future.cancelToFuture() // Runs in asynchronously background ???
+                ()
               case _ =>
 
         case _ =>

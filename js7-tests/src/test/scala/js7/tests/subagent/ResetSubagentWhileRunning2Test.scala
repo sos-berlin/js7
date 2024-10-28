@@ -33,7 +33,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
 
     val aOrderId = OrderId("A-ORDER")
     val bOrderId = OrderId("B-ORDER")
-    var firstSubagentRunId: SubagentRunId = null
+    var firstSubagentRunId: SubagentRunId | Null = null
 
     runSubagent(bareSubagentItem,
       config = config"""js7.tests.SubagentDriver.suppressResetShutdown = true"""
@@ -92,7 +92,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
         case KeyedEvent(`bareSubagentId`, event) => Some(event)
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId, Some(PlatformInfo.test)),
+        SubagentDedicated(firstSubagentRunId.nn, Some(PlatformInfo.test)),
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),

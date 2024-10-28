@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventDrivenState.*
 import scala.util.boundary
 
@@ -14,7 +14,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
 
   def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] =
     var state = this
-    var problem: Problem = null
+    var problem: Problem | Null = null
 
     boundary:
       for stamped <- stampedEvents.iterator do
@@ -25,14 +25,11 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
           case Right(s) =>
             state = s
 
-    if problem != null then
-      Left(problem)
-    else
-      Right(state)
+    problem.toLeftOr(state)
 
   def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     var state = this
-    var problem: Problem = null
+    var problem: Problem | Null = null
 
     boundary:
       for keyedEvent <- keyedEvents.iterator do
@@ -43,10 +40,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
           case Right(s) =>
             state = s
 
-    if problem != null then
-      Left(problem)
-    else
-      Right(state)
+    problem.toLeftOr(state)
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))

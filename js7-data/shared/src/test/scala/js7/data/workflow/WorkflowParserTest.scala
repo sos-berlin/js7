@@ -528,4 +528,6 @@ final class WorkflowParserTest extends OurTestSuite:
   private def parse(workflowString: String): Workflow =
     WorkflowParser.parse(workflowString) match
       case Right(workflow) => workflow
-      case Left(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
+      case Left(problem) =>
+        throw new AssertionError(problem.toString, problem.throwableOption.getOrElse(null))
+          with NoStackTrace

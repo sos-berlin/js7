@@ -231,7 +231,7 @@ final class InternalJobTest
 
     val eventId = eventWatch.lastAddedEventId
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next())
-    var workflowId: WorkflowId = null
+    var workflowId: WorkflowId | Null = null
     val result = withTemporaryItem(workflow): workflow =>
       workflowId = workflow.id
       val eventId = eventWatch.lastAddedEventId
@@ -256,7 +256,7 @@ final class InternalJobTest
         .groupMap(_.key)(_.event)
 
     // When Workflow has been deleted, its Jobs are stopped
-    eventWatch.await[ItemDeleted](_.event.key == workflowId, after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == workflowId.nn, after = eventId)
     result
 
   private def testPrintAndParse(anonymousWorkflow: Workflow): Unit =

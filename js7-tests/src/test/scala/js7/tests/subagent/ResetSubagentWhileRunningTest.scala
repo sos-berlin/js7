@@ -36,7 +36,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
 
     val aOrderId = OrderId("A-ORDER")
     val bOrderId = OrderId("B-ORDER")
-    var firstSubagentRunId: SubagentRunId = null
+    var firstSubagentRunId: SubagentRunId | Null = null
 
     runSubagent(bareSubagentItem) { subagent =>
       firstSubagentRunId = subagent.subagentRunId
@@ -86,7 +86,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
         case KeyedEvent(`bareSubagentId`, event) => Some(event)
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId, Some(PlatformInfo.test)),
+        SubagentDedicated(firstSubagentRunId.nn, Some(PlatformInfo.test)),
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),

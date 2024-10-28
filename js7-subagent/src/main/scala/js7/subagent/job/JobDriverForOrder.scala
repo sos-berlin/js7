@@ -4,7 +4,6 @@ import cats.effect.{FiberIO, IO, ResourceIO}
 import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
-import java.util.Objects.requireNonNull
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.{FiberVar, SyncDeadline}
 import js7.base.io.process.ProcessSignal
@@ -120,14 +119,14 @@ private final class JobDriverForOrder(val orderId: OrderId, jobDriverParams: Job
 
   private def scheduleTimeoutCancellation: IO[FiberIO[Unit]] =
     IO.defer:
-      requireNonNull(runningSince)
+      val since = runningSince.nn
       workflowJob.timeout.fold(IO.unit): timeout =>
         IO.sleep(timeout)
           .flatMap: _ =>
             SyncDeadline.usingNow:
               timedOut = true
               logger.warn(s"OrderProcess has timed out after ${
-                runningSince.elapsed.pretty} and will be killed now")
+                since.elapsed.pretty} and will be killed now")
           .flatMap: _ =>
             killWithSigkillDelay(SIGTERM)
               .handleError: t =>

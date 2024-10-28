@@ -92,7 +92,7 @@ final case class Order[+S <: Order.State](
 
   def applyEvents(events: Iterable[OrderEvent.OrderCoreEvent]): Checked[Order[State]] =
     // TODO Generalize this in ScalaUtils!
-    var problem: Problem = null
+    var problem: Problem | Null = null
     var order: Order[Order.State] = this
     val it = events.iterator
     while it.hasNext && problem == null do
@@ -100,7 +100,7 @@ final case class Order[+S <: Order.State](
       order.applyEvent(event) match
         case Right(o) => order = o
         case Left(prblm) => problem = prblm
-    if problem != null then Left(problem) else Right(order)
+    problem.toLeftOr(order)
 
   def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)

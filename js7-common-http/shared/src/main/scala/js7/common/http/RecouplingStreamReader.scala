@@ -49,7 +49,7 @@ abstract class RecouplingStreamReader[
           sym.onWarn()
           logger.warn(s"$sym $msg")
           logged = true
-        for throwable <- problem.throwableOption.map(_.nullIfNoStackTrace) do
+        for throwable <- problem.throwableOption.flatMap(_.ifStackTrace) do
           if api.hasRelevantStackTrace(throwable) then
             logger.debug(s"💥 $msg", throwable)
             logged = true

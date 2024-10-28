@@ -27,15 +27,11 @@ extends ExecutionContext:
       })
 
   private def executeThisAndQueued(runnable: Runnable): Unit =
-    delegate.execute(new Runnable {   // Avoid memory-leak with runnable.
-      def run(): Unit = {
-        runnable.run()
-        tryDequeue() match {
-          case null =>
-          case next => executeThisAndQueued(next)
-        }
-      }
-    })
+    delegate.execute: () =>
+      runnable.run()
+      tryDequeue() match
+        case null =>
+        case next => executeThisAndQueued(next)
 
   private def enqueueIfThrottled(runnable: Runnable): Boolean =
     synchronized:
@@ -44,7 +40,7 @@ extends ExecutionContext:
         true
       }
 
-  private def tryDequeue(): Runnable =
+  private def tryDequeue(): Runnable | Null =
     synchronized:
       val next = queue.poll()
       if next == null then

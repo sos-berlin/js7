@@ -28,13 +28,13 @@ object StdoutOrStderr:
       case None => Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", cursor.history))
   }
 
-case object Stdout extends StdoutOrStderr, GenericString:
+case object Stdout extends StdoutOrStderr:
   @javaApi
   val singleton: Stdout.type = this
 
   val string = "stdout"
 
-case object Stderr extends StdoutOrStderr, GenericString:
+case object Stderr extends StdoutOrStderr:
   @javaApi
   val singleton: Stderr.type = this
 

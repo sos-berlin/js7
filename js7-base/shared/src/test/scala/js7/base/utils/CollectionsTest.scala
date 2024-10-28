@@ -178,13 +178,15 @@ final class CollectionsTest extends OurTestSuite:
 
   "emptyToNone" in:
     emptyToNone("") shouldEqual None
-    emptyToNone(null: String) shouldEqual None
+    emptyToNone(null: String | Null) shouldEqual None
+    emptyToNone(null.asInstanceOf[String]) shouldEqual None
     emptyToNone("x") shouldEqual Some("x")
     emptyToNone(Nil) shouldEqual None
-    emptyToNone(null: Iterable[?]) shouldEqual None
+    emptyToNone(null: Iterable[?] | Null) shouldEqual None
+    emptyToNone(null.asInstanceOf[Iterable[?]]) shouldEqual None
     emptyToNone(List(1)) shouldEqual Some(List(1))
     emptyToNone(Array.empty[Int]) shouldEqual None
-    emptyToNone(null: Array[Int]) shouldEqual None
+    emptyToNone(null: Array[Int] | Null) shouldEqual None
     val a = Array(1)
     emptyToNone(a) shouldEqual Some(a)
 

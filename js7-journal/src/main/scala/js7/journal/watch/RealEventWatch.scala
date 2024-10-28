@@ -19,6 +19,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.CloseableIterator
+import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.{AckFromActiveClusterNodeProblem, OldEventIdProblem}
@@ -347,7 +348,7 @@ object RealEventWatch:
       case _ => IO.none
 
   private def lastOfIterator[A <: AnyRef](iterator: CloseableIterator[A]): CloseableIterator[A] =
-    var last = null.asInstanceOf[A]
+    var last: A | Null = null
     while iterator.hasNext do last = iterator.next()
     iterator.close()
-    CloseableIterator.fromIterator(Option(last).iterator)
+    CloseableIterator.fromIterator(nullToNone(last).iterator)

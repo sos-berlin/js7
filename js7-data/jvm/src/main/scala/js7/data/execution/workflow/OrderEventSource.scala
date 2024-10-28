@@ -117,14 +117,14 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       checkedCast[Map[OrderId, Order[Order.State]]](idToOrder)
         .flatMap: idToOrder_ =>
           var iToO = idToOrder_
-          var problem: Problem = null
+          var problem: Problem | Null = null
           while it.hasNext && problem == null do
             val KeyedEvent(orderId, event) = it.next()
             iToO.checked(orderId).flatMap(_.applyEvent(event)) match
               case Left(prblm) => problem = prblm
               case Right(order) => iToO = iToO.updated(order.id, order)
           this.idToOrder = iToO
-          (problem == null) !! problem
+          problem.toChecked
 
   private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) =
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]

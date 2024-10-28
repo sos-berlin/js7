@@ -1,11 +1,13 @@
 package js7.common.scalautil.xmls
 
+import js7.base.utils.Nulls.notNullOr
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import js7.base.convert.ConvertiblePartialFunction
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.NonNull
 import js7.base.utils.ScalaUtils.{cast, implicitClass}
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import js7.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
@@ -18,7 +20,7 @@ import scala.reflect.ClassTag
 final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Config.Default)
 extends AutoCloseable:
 
-  private var _simpleAttributeMap: SimpleAttributeMap = null
+  private var _simpleAttributeMap: SimpleAttributeMap | Null = null
 
   def close(): Unit = delegate.close()
 
@@ -150,22 +152,23 @@ extends AutoCloseable:
     releaseAttributeMap()
     _simpleAttributeMap =
       if withAttributeMap && peek.isStartElement then
-        new SimpleAttributeMap(peek.asStartElement.attributes filter { a =>
-          !IgnoredAttributeNamespaces(a.getName.getNamespaceURI)
-        } map { a =>
-          a.getName.getLocalPart -> a.getValue }
-        )
+        new SimpleAttributeMap(
+          peek.asStartElement.attributes.filter: a =>
+            !IgnoredAttributeNamespaces(a.getName.getNamespaceURI)
+          .map: a =>
+            a.getName.getLocalPart -> a.getValue)
       else
         null
 
   private def releaseAttributeMap(): Unit =
-    if !config.ignoreUnknown && _simpleAttributeMap != null then
-      _simpleAttributeMap.requireAllAttributesRead()
+    _simpleAttributeMap match
+      case NonNull(o) if !config.ignoreUnknown => o.requireAllAttributesRead()
+      case _ =>
     _simpleAttributeMap = null
 
   def attributeMap: SimpleAttributeMap =
-    if _simpleAttributeMap eq null then throw new IllegalStateException(s"No attributes possible here, at $locationString")
-    _simpleAttributeMap
+    _simpleAttributeMap.notNullOr:
+      throw new IllegalStateException(s"No attributes possible here, at $locationString")
 
   def locationString: String =
     locationToString(peek.getLocation)

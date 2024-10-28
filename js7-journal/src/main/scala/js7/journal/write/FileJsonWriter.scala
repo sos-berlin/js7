@@ -66,6 +66,9 @@ extends AutoCloseable:
 
   protected def wrapException[A](body: => A): A =
     try body
-    catch { case NonFatal(t) if t == null || t.getMessage == null || !t.getMessage.contains(file.toAbsolutePath.toString) =>
-      throw new RuntimeException(s"Error while writing file '$file': $t", t)
-    }
+    catch case NonFatal(t) =>
+      val msg = t.getMessage
+      if msg == null || !msg.contains(file.toAbsolutePath.toString) then
+        throw new RuntimeException(s"Error while writing file '$file': $t", t)
+      else
+        throw t

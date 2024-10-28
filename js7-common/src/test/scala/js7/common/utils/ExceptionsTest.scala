@@ -38,11 +38,11 @@ final class ExceptionsTest extends OurTestSuite:
 
   "ignoreException ignores exception" in:
     val exception = new RuntimeException("TEST")
-    var ignored: (String, Throwable) = null
+    var ignored: (String, Throwable) | Null = null
     def onException(message: => String, t: Throwable) = ignored = (message, t)
     val t = ignoreException(onException):
       throw exception
-    assert(ignored == ((s"Ignoring exception $exception", exception)))
+    assert(ignored.nn == ((s"Ignoring exception $exception", exception)))
     assert(t.isFailure)
     assert(t.failed.get.getMessage == "TEST")
 
@@ -52,12 +52,12 @@ final class ExceptionsTest extends OurTestSuite:
 
   "logException" in:
     val exception = new RuntimeException("TEST")
-    var logged: (String, Throwable) = null
+    var logged: (String, Throwable) | Null = null
     def onException(message: => String, t: Throwable) = logged = (message, t)
     intercept[RuntimeException]:
       logException(onException):
         throw exception
-    assert(logged == ((exception.toString, exception)))
+    assert(logged.nn == ((exception.toString, exception)))
 
   "andRethrow" in:
     assert(

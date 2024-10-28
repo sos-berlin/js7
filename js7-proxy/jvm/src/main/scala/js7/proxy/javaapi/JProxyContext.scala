@@ -12,6 +12,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.Lazy
+import js7.base.utils.Nulls.nullToNone
 import js7.common.message.ProblemCodeMessages
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
@@ -40,7 +41,7 @@ extends AutoCloseable:
 
   private val (ioRuntime, ioRuntimeShutdown) =
     OurIORuntime
-      .resource[SyncIO]("JS7 Proxy", config_, computeExecutor = Option(computeExecutor))
+      .resource[SyncIO]("JS7 Proxy", config_, computeExecutor = nullToNone(computeExecutor))
       .allocated
       .unsafeRunSync()
 

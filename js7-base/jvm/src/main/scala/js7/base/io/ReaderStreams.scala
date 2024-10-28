@@ -8,6 +8,7 @@ import java.nio.channels.Channels.newChannel
 import java.nio.channels.{Channels, ReadableByteChannel}
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 
 object ReaderStreams:
@@ -33,7 +34,7 @@ object ReaderStreams:
           case _ =>
             buffer.flip()
             ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
-      .takeWhile(_ != null)
+      .takeWhileNotNull
       .unchunks
 
   def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize)
@@ -50,5 +51,5 @@ object ReaderStreams:
             throw new RuntimeException(s"'$reader'.read returned $o ?")
           case n =>
             Chunk.array(java.util.Arrays.copyOfRange(buffer, 0, n))
-      .takeWhile(_ != null)
+      .takeWhileNotNull
       .unchunks

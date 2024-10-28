@@ -82,7 +82,7 @@ extends Service.StoppableByRequest:
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
       _.eventId.some, conf.recouplingStreamReader):
 
-    private var attachedOrderIds: Set[OrderId] = null
+    private var attachedOrderIds: Set[OrderId] | Null = null
 
     override protected def couple(eventId: EventId) =
       journal.state
@@ -157,8 +157,7 @@ extends Service.StoppableByRequest:
     override protected def onCoupled(api: AgentClient, after: EventId) =
       IO.defer:
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
-        assertThat(attachedOrderIds != null)
-        onCoupled_(attachedOrderIds)
+        onCoupled_(attachedOrderIds.nn)
           .*>(IO:
             attachedOrderIds = null)
           .as(Completed)

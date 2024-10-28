@@ -1,5 +1,6 @@
 package js7.common.pekkohttp
 
+import js7.common.pekkoutils.PekkoForExplicitNulls.header3
 import com.typesafe.config.Config
 import io.circe.parser.parse as parseJson
 import java.lang.System.nanoTime
@@ -141,8 +142,8 @@ trait WebLogDirectives extends ExceptionHandling:
   : String =
     val sb = new StringBuilder(512)
 
-    def appendHeader[A >: Null <: HttpHeader: ClassTag](): Unit =
-      request.header[A] match
+    def appendHeader[A <: HttpHeader: ClassTag](): Unit =
+      request.header3[A] match
         case None => sb.append(" -")
         case Some(h) => appendQuotedString(sb, h.value)
 

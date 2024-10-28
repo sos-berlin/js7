@@ -702,7 +702,7 @@ object PekkoHttpClient:
             None
           case Right(o) => Some(o)
 
-  def hasRelevantStackTrace(throwable: Throwable): Boolean =
+  def hasRelevantStackTrace(throwable: Throwable | Null): Boolean =
     throwable != null && throwable.getStackTrace.nonEmpty &&
       throwable.match
         case _: pekko.stream.StreamTcpException => false

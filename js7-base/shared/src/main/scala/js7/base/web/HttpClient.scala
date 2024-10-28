@@ -98,7 +98,7 @@ object HttpClient:
       case t =>
         Failure(t.appendCurrentStackTrace)
 
-  abstract class HttpException(message: String = null) extends RuntimeException(message):
+  abstract class HttpException(message: String | Null = null) extends RuntimeException(message):
     def statusInt: Int
     def problem: Option[Problem]
     def isTemporaryUnreachable: Boolean =

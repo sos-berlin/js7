@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -12,15 +13,14 @@ import js7.data.item.ItemOperation
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
+import js7.data.subagent.SubagentId
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentReset, SubagentResetStarted}
-import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.StealAndResetSubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import fs2.Stream
-import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
 import scala.concurrent.TimeoutException
 
 final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
@@ -41,7 +41,6 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
 
     val aOrderId = OrderId("A-ORDER")
     val thieveOrderId = OrderId("THIEVE-ORDER")
-    var firstSubagentRunId: SubagentRunId = null
 
     val bareSubagentConfig = config"""
       js7.auth.users.${toLocalSubagentId(agentPath)} {
@@ -55,7 +54,6 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
 
     runSubagent(bareSubagentItem, config = bareSubagentConfig) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
-      firstSubagentRunId = subagent.subagentRunId
 
       // Start an Order
       locally:

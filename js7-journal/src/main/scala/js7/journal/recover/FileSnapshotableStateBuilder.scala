@@ -31,7 +31,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   private var _progress: JournalProgress = JournalProgress.Initial
 
   private object transaction:
-    var buffer: ArrayBuffer[Stamped[KeyedEvent[Event]]] = null
+    var buffer: ArrayBuffer[Stamped[KeyedEvent[Event]]] | Null = null
 
     def begin(): Unit =
       require(!isInTransaction)
@@ -39,7 +39,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
 
     def add(stamped: Stamped[KeyedEvent[Event]]): Unit =
       require(isInTransaction)
-      buffer += stamped
+      buffer = buffer.nn :+ stamped
 
     def clear(): Unit =
       buffer = null
@@ -101,7 +101,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         journalRecord match
           case Commit =>
             _progress = InCommittedEventsSection
-            for stamped <- transaction.buffer do
+            for stamped <- transaction.buffer.nn do
               builder.addEvent(stamped)
             transaction.clear()
           case _ =>

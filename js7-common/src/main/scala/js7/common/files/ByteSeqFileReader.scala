@@ -8,6 +8,7 @@ import java.nio.file.StandardOpenOption.READ
 import java.nio.file.{Files, Path}
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.log.Logger
 import js7.common.files.ByteSeqFileReader.*
 import scala.concurrent.duration.FiniteDuration
@@ -71,7 +72,7 @@ object ByteSeqFileReader:
           IO.sleep(pollDuration).as(Chunk.empty) // Delay and try again
         else
           IO.pure(null /*end of stream*/)
-      .takeWhile(_ ne null)
+      .takeWhileNotNull
       .filter(_.nonEmpty)
       .unchunks
 

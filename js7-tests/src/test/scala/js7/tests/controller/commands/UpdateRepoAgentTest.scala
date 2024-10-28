@@ -5,10 +5,11 @@ import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
-import js7.base.test.{OurTestSuite}
+import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Nulls.nullToNone
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
@@ -44,13 +45,13 @@ final class UpdateRepoAgentTest extends OurTestSuite:
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
       val agent1 = directoryProvider.startAgents().await(99.s).head
-      var agent2: TestAgent = null
+      var agent2: TestAgent | Null = null
       directoryProvider.runController() { controller =>
         runOrder(controller, OrderId("🔺"))
         agent1.terminate().await(99.s)
 
         for i <- 1 to 3 do
-          if agent2 != null then agent2.terminate().await(99.s)
+          for a <- nullToNone(agent2) do a.terminate().await(99.s)
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
           agent2 = TestAgent.start(AgentConfiguration.forTest(
@@ -61,7 +62,7 @@ final class UpdateRepoAgentTest extends OurTestSuite:
 
           controller.api
             .updateUnsignedSimpleItems(Seq(
-              directoryProvider.subagentItems.head.copy(uri = agent2.localUri)))
+              directoryProvider.subagentItems.head.copy(uri = agent2.nn.localUri)))
             .await(99.s).orThrow
           runOrder(controller, OrderId(s"♣️-$i"))
       }
@@ -71,7 +72,7 @@ final class UpdateRepoAgentTest extends OurTestSuite:
         runOrder(controller, OrderId("♠️"))
       }
 
-      agent2.terminate().await(99.s)
+      agent2.nn.terminate().await(99.s)
     }
 
 

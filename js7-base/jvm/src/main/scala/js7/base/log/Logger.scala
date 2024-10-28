@@ -93,7 +93,7 @@ object Logger extends AdHocLogger:
   private def warnIfNotInitialized(cls: Class[?] | Null, prefix: String = ""): Unit =
     if !ifNotInitialized.isInitialized then
       ifNotMissingInitializingWarned:
-        val classArg = (cls != null) ?? s"[${cls.scalaName}]"
+        val classArg = if cls == null then "" else s"[${cls.scalaName}]"
         val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
         val msg =
           s"Log4j will not be properly initialized because Logger$classArg$prefixArg is being created too early"
@@ -220,7 +220,10 @@ object Logger extends AdHocLogger:
       : IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, args)(io)
 
-      def debugIOWithResult[A](function: String, args: => Any = "", result: A => Any = null)
+      def debugIOWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: (A => Any) | Null  = null)
         (io: IO[A])
       : IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, args, result)(io)
@@ -369,7 +372,7 @@ object Logger extends AdHocLogger:
       logLevel: LogLevel,
       function: String,
       args: => Any = "",
-      resultToLoggable: A => Any = null,
+      resultToLoggable: (A => Any) | Null = null,
       marker: Marker | Null = null)
       (body: F[A])
       (implicit F: Sync[F])
