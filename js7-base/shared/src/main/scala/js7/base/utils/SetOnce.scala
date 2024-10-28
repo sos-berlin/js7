@@ -17,7 +17,7 @@ import scala.util.Success
  */
 final class SetOnce[A](label: => String, notYetSetProblem: Problem):
 
-  protected[this] val promise = Promise[A]()
+  protected val promise = Promise[A]()
 
   /** May leak on cancel, until SetOnce is garbage-collected. */
   lazy val io: IO[A] =

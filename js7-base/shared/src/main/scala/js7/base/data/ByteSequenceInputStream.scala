@@ -5,8 +5,8 @@ import java.io.InputStream
 /** Slow if ByteSeq has many Chunks. */
 final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) extends InputStream:
 
-  private[this] var i = 0
-  private[this] var marked = 0
+  private var i = 0
+  private var marked = 0
   private val length = A.length(byteSeq)
 
   def read(): Int =
