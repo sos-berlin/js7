@@ -35,8 +35,8 @@ final class BasicParsersTest extends OurTestSuite:
   "symbol" in:
     assert(checkedParse("+-", symbol("+") ~ char('-')) == Left:
       Problem("Parsing failed at position 2 “+❓-” · Expected one of \"“/*”, “//”\" · Unexpected “-”"))
-    assert(checkedParse("+a", symbol("+") ~ char('a')) == Right((), ()))
-    assert(checkedParse("+//", symbol("+") ~ w) == Right((), ()))
+    assert(checkedParse("+a", symbol("+") ~ char('a')) == Right(((), ())))
+    assert(checkedParse("+//", symbol("+") ~ w) == Right(((), ())))
     assert(checkedParse("+", symbol("+")) == Right(()))
 
   "identifier" in:
