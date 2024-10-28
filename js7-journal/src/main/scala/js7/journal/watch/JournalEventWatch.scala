@@ -244,7 +244,8 @@ extends AutoCloseable,
 
   def snapshotAfter(after: EventId): Option[Stream[IO, Any]] =
     rawSnapshotAfter(after)
-      .map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
+      .map(_.mapParallelBatch():
+        _.parseJsonAs(using journalLocation.snapshotObjectJsonCodec).orThrow)
 
   def rawSnapshotAfter(after: EventId): Option[Stream[IO, ByteArray]] =
     maybeCurrentEventReader match

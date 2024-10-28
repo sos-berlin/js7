@@ -18,5 +18,5 @@ object InstructionExecuterTester:
         stateView
           .idToOrder.checked(orderId)
           .flatMap(order => stateView
-            .instruction_(order.workflowPosition)(ClassTag(instructionExecutor.instructionClass))
+            .instruction_(order.workflowPosition)(using ClassTag(instructionExecutor.instructionClass))
             .flatMap(instructionExecutor.toEvents(_, order, stateView)))

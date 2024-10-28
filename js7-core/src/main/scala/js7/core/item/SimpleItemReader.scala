@@ -12,7 +12,7 @@ extends ItemReader:
   : PartialFunction[SourceType, Checked[InventoryItem]] =
     case SourceType.Json =>
       source
-        .parseJsonAs(companion.jsonDecoder)
+        .parseJsonAs(using companion.jsonDecoder)
         .map(item => item
           .rename(key.asInstanceOf[item.companion.Key]))
 

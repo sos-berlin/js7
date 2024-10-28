@@ -413,7 +413,7 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
       Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
-      Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
+      Subtype(SignedItemAdded.jsonCodec(using this)),  // For Repo and SignedItemAdded
       Subtype(signableSimpleItemJsonCodec),
       Subtype(unsignedItemJsonCodec),
       Subtype[BasicItemEvent])

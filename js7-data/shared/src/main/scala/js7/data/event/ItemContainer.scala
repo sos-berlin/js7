@@ -66,7 +66,7 @@ object ItemContainer:
       TypedJsonCodec[InventoryItem](inventoryItems.map(_.subtype)*)
 
     implicit final lazy val inventoryItemEventJsonCodec: TypedJsonCodec[InventoryItemEvent] =
-      InventoryItemEvent.jsonCodec(this)
+      InventoryItemEvent.jsonCodec(using this)
 
     implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
       InventoryItemKey.jsonCodec(inventoryItems.map(_.Key))

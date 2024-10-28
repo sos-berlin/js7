@@ -60,7 +60,7 @@ extends JJsonable[JOrder]:
 
   @Nonnull
   def checkedState[S <: State](@Nonnull s: StateType[S]): VEither[Problem, S] =
-    asScala.checkedState(ClassTag(s.scalaClass))
+    asScala.checkedState(using ClassTag(s.scalaClass))
       .flatMap((o: Order[Order.State]) =>
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
