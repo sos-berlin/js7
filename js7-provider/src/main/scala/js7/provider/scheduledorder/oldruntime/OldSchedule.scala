@@ -6,6 +6,7 @@ import js7.base.time.JavaTime.*
 import js7.provider.scheduledorder.oldruntime.OldSchedule.*
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
+import scala.language.unsafeNulls
 
 final case class OldSchedule(
   timeZone: ZoneId,

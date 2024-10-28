@@ -130,8 +130,9 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
 
 object ExecuteAdmissionTimeSwitchTest:
 
-  private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(using zone: ZoneId)
-  :
+  private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(using zone: ZoneId):
+    import scala.language.unsafeNulls
+
     private implicit val clock: TestAlarmClock = TestAlarmClock(Timestamp.Epoch)
     private var _switched: Option[TimeInterval] = null
     private val switch = new ExecuteAdmissionTimeSwitch(admissionTimeScheme, zone,

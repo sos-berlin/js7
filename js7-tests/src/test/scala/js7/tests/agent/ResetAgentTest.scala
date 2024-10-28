@@ -49,6 +49,7 @@ import js7.tests.agent.ResetAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
+import scala.language.unsafeNulls
 
 final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
 

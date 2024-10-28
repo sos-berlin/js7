@@ -45,6 +45,7 @@ import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.language.unsafeNulls
 import scala.util.control.NonFatal
 
 /**

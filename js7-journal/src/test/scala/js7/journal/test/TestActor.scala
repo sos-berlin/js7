@@ -23,6 +23,7 @@ import js7.journal.{EventIdGenerator, JournalActor}
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

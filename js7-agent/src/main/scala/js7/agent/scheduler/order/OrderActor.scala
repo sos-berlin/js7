@@ -25,6 +25,7 @@ import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import org.apache.pekko.pattern.pipe
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

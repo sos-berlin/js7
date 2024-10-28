@@ -126,6 +126,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
   private class RunningJournal(
     using protected val executionContext: ExecutionContext)
   extends ProvideActorSystem:
+    import scala.language.unsafeNulls
 
     protected def config = TestConfig
 

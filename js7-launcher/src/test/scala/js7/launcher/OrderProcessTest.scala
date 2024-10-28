@@ -28,6 +28,8 @@ final class OrderProcessTest extends OurAsyncTestSuite:
       assert(outcome == OrderOutcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
+    import scala.language.unsafeNulls
+
     val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 

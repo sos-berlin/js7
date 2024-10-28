@@ -11,6 +11,7 @@ import js7.data.event.{Event, EventId, JournalId, KeyedEvent, SnapshotableState,
 import js7.journal.recover.JournalReader
 import js7.journal.watch.FileEventIterator.*
 import scala.concurrent.duration.Deadline.now
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

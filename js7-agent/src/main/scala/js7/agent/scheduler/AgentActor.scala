@@ -44,6 +44,7 @@ import js7.subagent.Subagent
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.{AskTimeoutException, ask}
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

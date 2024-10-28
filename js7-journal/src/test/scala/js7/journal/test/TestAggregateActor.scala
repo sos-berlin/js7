@@ -12,6 +12,7 @@ import js7.journal.{JournalActor, KeyedJournalingActor}
 import cats.effect.unsafe.IORuntime
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

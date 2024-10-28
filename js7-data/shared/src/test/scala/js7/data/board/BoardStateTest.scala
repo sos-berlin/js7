@@ -122,6 +122,8 @@ final class BoardStateTest extends OurAsyncTestSuite:
             }""")))
 
     "toSnapshotStream and recover" in:
+      import scala.language.unsafeNulls
+      
       var recovered: BoardState = null
       boardState.toSnapshotStream
         .map(o =>

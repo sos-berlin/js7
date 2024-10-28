@@ -33,6 +33,7 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
+import scala.language.unsafeNulls
 
 final class ControlWorkflowPathSuspendWorkflowTest
 extends OurTestSuite, DirectoryProviderForScalaTest:

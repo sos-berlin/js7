@@ -42,6 +42,7 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.collection.mutable
 import scala.concurrent.duration.*
+import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer

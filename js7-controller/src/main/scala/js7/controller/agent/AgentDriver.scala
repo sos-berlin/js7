@@ -29,6 +29,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.CatsUtils.{Nel, pureFiberIO}
+import js7.base.utils.Nulls.nonNull
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MutableAllocated}
 import js7.base.web.Uri

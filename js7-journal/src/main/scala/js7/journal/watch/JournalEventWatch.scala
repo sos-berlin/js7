@@ -372,6 +372,9 @@ extends AutoCloseable,
     val fileEventId: EventId,
     val file: Path,
     initialEventReader: Option[EventReader] = None):
+
+    import scala.language.unsafeNulls
+
     private val _eventReader = Atomic[EventReader](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =

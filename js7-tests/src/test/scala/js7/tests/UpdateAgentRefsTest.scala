@@ -30,6 +30,7 @@ import js7.tests.testenv.{DirectorEnv, DirectoryProviderForScalaTest}
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import scala.annotation.tailrec
+import scala.language.unsafeNulls
 
 final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaTest:
 
