@@ -18,8 +18,8 @@ class PekkoHttpControllerApi(
   actorSystem: ActorSystem,
   protected final val config: Config = ConfigFactory.empty,
   httpsConfig: HttpsConfig = HttpsConfig.empty,
-  override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi
-    .defaultLoginDelays _,
+  override protected final val loginDelays: () => Iterator[FiniteDuration] = 
+    SessionApi.defaultLoginDelays,
   name: String = "")
 extends HttpControllerApi, SessionApi.HasUserAndPassword, AutoCloseable:
 
@@ -62,7 +62,7 @@ object PekkoHttpControllerApi:
   def resource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : ResourceIO[HttpControllerApi] =

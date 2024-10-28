@@ -20,7 +20,7 @@ object HasPrecedence:
 
 object Precedence:
   // Higher number means higher precedence
-  private val next = Iterator.from(1).next _
+  private val next: () => Int = Iterator.from(1).next
   val IfThenElse: Int = next()
   val Function: Int = next()
   val WordOperator: Int = next()

@@ -29,4 +29,4 @@ trait JavaJobContext extends JavaWrapper:
     * </li>
     */
   final val internalJs7Executor: java.util.concurrent.Executor =
-    asScala.ioRuntime.compute.execute _
+    asScala.ioRuntime.compute.execute(_)

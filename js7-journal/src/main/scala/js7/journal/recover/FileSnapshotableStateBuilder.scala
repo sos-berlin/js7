@@ -25,7 +25,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
 
   def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])
     (implicit S: SnapshotableState.Companion[S])
-  = this(journalFileForInfo, expectedJournalId, S.newBuilder _)
+  = this(journalFileForInfo, expectedJournalId, S.newBuilder)
 
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial

@@ -83,7 +83,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
         .update: sequence =>
           sequence
             .zip(bindingAndResources)
-            .parTraverse((checkFilesThenRestart _).tupled)
+            .parTraverse((checkFilesThenRestart).tupled)
         .void)
 
   private def checkFilesThenRestart(

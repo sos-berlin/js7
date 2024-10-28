@@ -122,7 +122,7 @@ object HttpClusterNodeApi:
     admission: Admission,
     httpClient: HttpClient,
     uriPrefix: String,
-    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   : ResourceIO[HttpClusterNodeApi] =
     SessionApi.resource(IO(
       new HttpClusterNodeApi.Standard(admission, httpClient, uriPrefix, loginDelays)))
@@ -132,7 +132,7 @@ object HttpClusterNodeApi:
     val httpClient: HttpClient,
     uriPrefix: String,
     override protected val loginDelays: () => Iterator[FiniteDuration] =
-      SessionApi.defaultLoginDelays _)
+      SessionApi.defaultLoginDelays)
   extends HttpClusterNodeApi:
     val baseUri = admission.uri
     protected val prefixedUri = admission.uri / uriPrefix

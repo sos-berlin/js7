@@ -68,7 +68,7 @@ private object SinglePortPekkoWebServer:
             toBoundRoute(RouteBinding(webServerBinding, rev, terminatingPromise)) ->
               terminatingPromise
 
-          resource2(webServerBinding, makeBoundRoute _, shutdownTimeout, shutdownDelay,
+          resource2(webServerBinding, makeBoundRoute, shutdownTimeout, shutdownDelay,
             httpsClientAuthRequired)
 
   private def resource2(

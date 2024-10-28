@@ -49,7 +49,7 @@ final class SwitchTest extends OurAsyncTestSuite:
       .*>(IO.race(
         switch.whenOff.map(_ => fail()),
         IO.sleep(200.ms)))
-      .map(_.fold(identity _: @nowarn, identity))
+      .map(_.fold(identity: @nowarn, identity))
       .*>(switch.switchOff)
       .*>(IO.race(
         switch.whenOff,

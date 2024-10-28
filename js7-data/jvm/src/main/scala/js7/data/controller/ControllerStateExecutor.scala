@@ -146,7 +146,7 @@ final case class ControllerStateExecutor private(
   : Checked[ControllerStateExecutor] =
     for
       tuple <- applyEvents(keyedEvents)
-      result <- (subsequentEvents _).tupled(tuple)
+      result <- subsequentEvents.tupled(tuple)
     yield
       result
 

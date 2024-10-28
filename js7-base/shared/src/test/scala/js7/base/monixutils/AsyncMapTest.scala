@@ -55,8 +55,8 @@ final class AsyncMapTest extends OurAsyncTestSuite:
 
   "getAndUpdate, crashing" - {
     for ((upd, name) <- View(
-      propertlyCrashingUpdate _ -> "properly",
-      earlyCrashingUpdate _ -> "early"))
+      propertlyCrashingUpdate -> "properly",
+      earlyCrashingUpdate -> "early"))
       name in:
         asyncMap.getAndUpdate(0, upd)
           .attempt
@@ -103,8 +103,8 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         throw new RuntimeException("CRASH")
 
       for ((upd, name) <- View(
-        properlyCrashingUpdateChecked _ -> "properly",
-        earlyCrashingUpdateChecked _ -> "early"))
+        properlyCrashingUpdateChecked -> "properly",
+        earlyCrashingUpdateChecked -> "early"))
         name in:
           asyncMap.updateChecked(0)(upd)
             .materialize
@@ -147,8 +147,8 @@ final class AsyncMapTest extends OurAsyncTestSuite:
         throw new RuntimeException("CRASH")
 
       for ((upd, name) <- View(
-        properlyCrashingUpdateChecked _ -> "properly",
-        earlyCrashingUpdateChecked _ -> "early"))
+        properlyCrashingUpdateChecked -> "properly",
+        earlyCrashingUpdateChecked -> "early"))
         name in:
           asyncMap.updateCheckedWithResult(0, upd)
             .materialize

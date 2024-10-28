@@ -94,7 +94,7 @@ object HttpControllerApi:
   def resource(
     admission: Admission,
     httpClient: HttpClient,
-    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   : ResourceIO[HttpControllerApi] =
     SessionApi.resource(IO(
       new HttpControllerApi.Standard(admission, httpClient, loginDelays)))
@@ -102,7 +102,7 @@ object HttpControllerApi:
   final class Standard(
     admission: Admission,
     val httpClient: HttpClient,
-    override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
+    override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
   extends HttpControllerApi:
     val baseUri: Uri = admission.uri
     protected val userAndPassword = admission.userAndPassword

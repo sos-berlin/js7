@@ -504,7 +504,7 @@ final class OrderTest extends OurTestSuite:
       assert(allEvents.map(_.getClass).toVector.sortBy(_.getName) ==
         OrderEvent.jsonCodec.classes[OrderCoreEvent]
           .filterNot(_ == classOf[OrderNoticeExpected])
-          .filterNot(classOf[LegacyOrderLockEvent] isAssignableFrom _)
+          .filterNot(classOf[LegacyOrderLockEvent].isAssignableFrom)
           .toVector.sortBy(_.getName))
 
     val IsDetached  = none[AttachedState]
@@ -834,26 +834,26 @@ final class OrderTest extends OurTestSuite:
 
     def deletionMarkable[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderDeletionMarked, _, IsChild(false), _) =>
-        implicitClass[S] isAssignableFrom _.getClass
+        o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def markable[S <: Order.State: ClassTag]: ToPredicate =
       case (_: OrderCancellationMarked | _: OrderSuspensionMarked | _: OrderResumptionMarked, _, _, _) =>
-        implicitClass[S] isAssignableFrom _.getClass
+        o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def cancelMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate =
-      case (_: OrderCancellationMarked, _, _, _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderCancellationMarked, _, _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def suspendMarkedAllowed[S <: Order.State: ClassTag]: ToPredicate =
-      case (_: OrderSuspensionMarked, IsSuspended(false), _, _) => implicitClass[S] isAssignableFrom _.getClass
-      case (_: OrderResumptionMarked , _                , _, _) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderSuspensionMarked, IsSuspended(false), _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
+      case (_: OrderResumptionMarked , _                , _, _) => o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate =
-      case (_: OrderAttachable, _, _, IsDetached ) => implicitClass[S] isAssignableFrom _.getClass
-      case (_: OrderAttached  , _, _, IsAttaching) => implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderAttachable, _, _, IsDetached ) => o => implicitClass[S].isAssignableFrom(o.getClass)
+      case (_: OrderAttached  , _, _, IsAttaching) => o => implicitClass[S].isAssignableFrom(o.getClass)
 
     def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate =
-      case (OrderDetachable, _, _, IsAttached ) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderDetached  , _, _, IsAttaching | IsAttached | IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetachable, _, _, IsAttached ) => o => implicitClass[S].isAssignableFrom(o.getClass)
+      case (OrderDetached  , _, _, IsAttaching | IsAttached | IsDetaching) => o => implicitClass[S].isAssignableFrom(o.getClass)
 
     /** Checks each event in `allEvents`. */
     def checkAllEvents(templateOrder: Order[State], toPredicate: ToPredicate)(implicit pos: source.Position): Unit =
@@ -921,7 +921,7 @@ final class OrderTest extends OurTestSuite:
             order.copy(attachedState = Some(Attached(AgentPath("AGENT")))),
             order.copy(attachedState = None)))
         val Left(problem) = o.detaching: @unchecked
-        assert(problem.toString contains "ORDER-ID")
+        assert(problem.toString.contains("ORDER-ID"))
   }
 
   "Events" - {

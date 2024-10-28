@@ -47,7 +47,8 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester, BlockingIte
 
   private var myAgent: TestAgent = null
 
-  private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
+  private val nextOrderId: () => OrderId = 
+    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next 
 
   private lazy val idToRelease = subagentItems
     .traverse(subagentItem =>

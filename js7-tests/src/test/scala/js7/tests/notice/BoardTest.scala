@@ -497,7 +497,7 @@ object BoardTest:
 
   private val qualifiers = Seq("2222-01-01", "2222-02-02", "2222-03-03")
   private val noticeIds = qualifiers.map(NoticeId(_))
-  private val nextQualifier = qualifiers.iterator.next _
+  private val nextQualifier: () => String = qualifiers.iterator.next
 
   // One lifeTime per board
   private val lifeTimes = Seq(1.days, 2.days, 3.days)

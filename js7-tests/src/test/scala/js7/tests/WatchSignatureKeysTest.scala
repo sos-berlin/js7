@@ -78,7 +78,8 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
   private lazy val subagentsKeyDirectory = directoryProvider
     .bareSubagentToDirectory(bareSubagentId) / "config" / "private" / "trusted-x509-keys"
 
-  private val nextVersion = Iterator.from(1).map(i => VersionId(s"V$i")).next _
+  private val nextVersion: () => VersionId = 
+    Iterator.from(1).map(i => VersionId(s"V$i")).next
 
   override def beforeAll() =
     super.beforeAll()
