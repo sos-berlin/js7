@@ -6,7 +6,7 @@ import js7.data.item.{SourceType, VersionedItemPath}
   * @author Joacim Zschimmer
   */
 final case class ScheduledOrderGeneratorPath(string: String) extends VersionedItemPath:
-  def companion: VersionedItemPath.Companion[_ <: VersionedItemPath] = ScheduledOrderGeneratorPath
+  def companion: VersionedItemPath.Companion[? <: VersionedItemPath] = ScheduledOrderGeneratorPath
 
 
 object ScheduledOrderGeneratorPath extends VersionedItemPath.Companion[ScheduledOrderGeneratorPath]:

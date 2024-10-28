@@ -62,7 +62,7 @@ object ServerOperatingSystem:
 
 
   final class Windows private[system] extends ServerOperatingSystem:
-    val secretFileAttributes: Seq[FileAttribute[util.Set[_]]] = Nil  // TODO File must not be accessible for other Windows users
+    val secretFileAttributes: Seq[FileAttribute[util.Set[?]]] = Nil  // TODO File must not be accessible for other Windows users
 
     def makeExecutableFilename(name: String): String = name + ".exe"
 

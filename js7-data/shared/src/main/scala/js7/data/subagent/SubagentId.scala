@@ -13,7 +13,7 @@ import js7.data.node.NodeName
 final case class SubagentId(string: String)
 extends UnsignedSimpleItemPath, DelegateId, AttachableToAgent:
 
-  def companion: UnsignedSimpleItemPath.Companion[_ <: UnsignedSimpleItemPath] = SubagentId
+  def companion: UnsignedSimpleItemPath.Companion[? <: UnsignedSimpleItemPath] = SubagentId
 
   def toUserId: Checked[UserId] =
     UserId.checked(string)

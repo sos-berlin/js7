@@ -9,7 +9,7 @@ import scala.collection.MapView
 // EXPERIMENTAL !!!
 private object MXBeanMapView:
 
-  private val supportedPlatformManagedObjects: Seq[Class[_ <: PlatformManagedObject]] = Seq(
+  private val supportedPlatformManagedObjects: Seq[Class[? <: PlatformManagedObject]] = Seq(
     classOf[com.sun.management.OperatingSystemMXBean],
     classOf[java.lang.management.MemoryMXBean],
     classOf[java.lang.management.OperatingSystemMXBean],

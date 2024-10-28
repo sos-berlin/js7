@@ -5,7 +5,7 @@ import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
 
 final case class WorkflowPath private(string: String)
 extends VersionedItemPath, InventoryItemPath.AttachableToAgent:
-  def companion: VersionedItemPath.Companion[_ <: VersionedItemPath] = WorkflowPath
+  def companion: VersionedItemPath.Companion[? <: VersionedItemPath] = WorkflowPath
 
 
 object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]:
