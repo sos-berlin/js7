@@ -97,7 +97,7 @@ ThisBuild / scalacOptions ++= Seq(
   //"-language:noAutoTupling",
   //"-language:strictEquality",
   //"-Werror",
-  //"-Wnonunit-statements",
+  //"-Wnonunit-statement",
   "-Wshadow:type-parameter-shadow",
   "-Wunused:imports",
   "-Wunused:implicits",
