@@ -1,6 +1,6 @@
 package js7.base.io.https
 
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigObject}
 import java.net.URL
 import java.nio.file.Path
 import js7.base.configutils.Configs.*
@@ -31,13 +31,14 @@ object TrustStoreRef:
       Nil
     else
       config.getObjectList(configKey)
+        .asInstanceOf[java.util.List[ConfigObject]] // Due to Scala 3.5.2 -Yexplicit-nulls
         .asScala
         .toVector
-        .map(obj =>
+        .map: obj =>
           TrustStoreRef(
             file = obj.toConfig.as[Path]("file"),
             storePassword =
-              obj.toConfig.as[SecretString]("store-password", SecretString.empty)))
+              obj.toConfig.as[SecretString]("store-password", SecretString.empty))
 
   def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
     new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)

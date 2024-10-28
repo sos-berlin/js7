@@ -43,17 +43,21 @@ object ClusterWatchConf:
       if uris.nonEmpty then
         Nel.fromListUnsafe(uris.map(Admission(_)).toList)
       else
-        Nel
-          .fromList:
-            for cnf <- config.getConfigList("js7.journal.cluster.watch.cluster-nodes").asScala.toList yield
+        Nel.fromList:
+          config.getConfigList("js7.journal.cluster.watch.cluster-nodes")
+            .asInstanceOf[java.util.List[Config]] // Due to Scala 3.5.2 -Yexplicit-nulls
+            .asScala.toList
+            .map: cnf =>
               Admission(
                 cnf.as[Uri]("uri"),
                 for
                   userId <- cnf.optionAs[UserId]("user")
                   password <- cnf.optionAs[SecretString]("password")
-                yield UserAndPassword(userId, password))
-          .getOrElse(throw new IllegalArgumentException(
-            "Missing Cluster node admissions: js7.cluster.watch.nodes[]"))
+                yield
+                  UserAndPassword(userId, password))
+        .getOrElse:
+          throw new IllegalArgumentException(
+            "Missing Cluster node admissions: js7.cluster.watch.nodes[]")
 
     new ClusterWatchConf(
       configDirectory = configDir,
