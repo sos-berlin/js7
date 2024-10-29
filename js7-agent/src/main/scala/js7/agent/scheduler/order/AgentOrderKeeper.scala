@@ -381,11 +381,13 @@ extends MainJournalingActor[AgentState, Event], Stash:
             proceedWithOrder(order)
 
     case Internal.Due(orderId) if orderRegister.contains(orderId) =>
-      proceedWithOrder(orderId)
+      if !shuttingDown then
+        proceedWithOrder(orderId)
 
     case Internal.JobDue(jobKey) =>
-      for jobEntry <- jobRegister.get(jobKey) do
-        tryStartProcessing(jobEntry)
+      if !shuttingDown then
+        for jobEntry <- jobRegister.get(jobKey) do
+          tryStartProcessing(jobEntry)
 
     case Internal.TryStartProcessing =>
       tryStartProcessing()
