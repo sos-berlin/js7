@@ -181,9 +181,8 @@ object AsyncMap:
 
     final val stop: IO[Unit] =
       memoize:
-        logger
-          .traceIO(s"$name.stop")(
-            initiateStop *> whenStopped)
+        logger.traceIO(s"$name.stop"):
+          initiateStop *> whenStopped
 
     /** Initiate stop. */
     final def initiateStop: IO[Unit] =

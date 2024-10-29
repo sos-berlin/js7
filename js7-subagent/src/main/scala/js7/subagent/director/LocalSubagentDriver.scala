@@ -208,10 +208,10 @@ extends SubagentDriver, Service.StoppableByRequest:
     Some(ServerMeteringLiveScope)
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
-    IO(subagent.checkedDedicatedSubagent.toOption)
-      .flatMap(_
-        .fold(IO.unit)(_
-          .stopJobs(jobKeys, signal)))
+    IO.defer:
+      subagent.checkedDedicatedSubagent.toOption
+        .fold(IO.unit):
+          _.stopJobs(jobKeys, signal)
 
   def terminate: IO[Unit] =
     logger.traceIO:
@@ -317,10 +317,9 @@ extends SubagentDriver, Service.StoppableByRequest:
                 subagentId <-: SubagentCouplingFailed(problem)))
         .map(_.orThrow)
         .void
-        .handleErrorWith(t => IO.defer:
+        .onError(t => IO:
           // Error isn't logged until stopEventListener is called
-          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
-          IO.raiseError(t)))
+          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
     enqueueCommandAndForget(

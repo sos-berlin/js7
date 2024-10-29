@@ -98,25 +98,24 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     order: Order[Order.IsFreshOrReady],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : IO[Checked[Unit]] =
-    selectSubagentDriverCancelable(order)
-      .flatMap:
-        case Left(problem) =>
-          // Maybe suppress when this SubagentKeeper has been stopped ???
-          IO.defer:
-            // ExecuteExecutor should have prechecked this:
-            val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
-              // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
-              OrderProcessingStarted.noSubagent ::
-              OrderProcessed(OrderOutcome.Disrupted(problem)) :: Nil
-            persist(order.id, events, onEvents)
-              .rightAs(())
+    selectSubagentDriverCancelable(order).flatMap:
+      case Left(problem) =>
+        // Maybe suppress when this SubagentKeeper has been stopped ???
+        IO.defer:
+          // ExecuteExecutor should have prechecked this:
+          val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
+            // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+            OrderProcessingStarted.noSubagent ::
+            OrderProcessed(OrderOutcome.Disrupted(problem)) :: Nil
+          persist(order.id, events, onEvents)
+            .rightAs(())
 
-        case Right(None) =>
-          logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
-          IO.right(())
+      case Right(None) =>
+        logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
+        IO.right(())
 
-        case Right(Some(selectedDriver)) =>
-          processOrderAndForwardEvents(order, onEvents, selectedDriver)
+      case Right(Some(selectedDriver)) =>
+        processOrderAndForwardEvents(order, onEvents, selectedDriver)
 
   private def processOrderAndForwardEvents(
     order: Order[Order.IsFreshOrReady],
@@ -139,8 +138,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           .flatMap(_.checkedState[Order.Processing])
           .orThrow)
       .flatMapT: order =>
-        forProcessingOrder(order.id, subagentDriver, onEvents)(
-          subagentDriver.startOrderProcessing(order))
+        forProcessingOrder(order.id, subagentDriver, onEvents):
+          subagentDriver.startOrderProcessing(order)
       .handleErrorWith(t => IO:
         logger.error(s"processOrderAndForwardEvents ${order.id} => ${t.toStringWithCauses}",
           t.nullIfNoStackTrace)
@@ -295,8 +294,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       orderToWaitForSubagent
         .get(orderId)
         .fold(IO.unit)(_.complete(()))
-        .*>(orderToSubagent
-          .get(orderId) match
+        .*>(IO.defer:
+          orderToSubagent.get(orderId) match
             case None => IO(logger.error:
               s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
             case Some(driver) => driver.killProcess(orderId, signal))

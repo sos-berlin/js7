@@ -90,7 +90,7 @@ extends Service.StoppableByRequest:
       val first = !shuttingDown.getAndSet(true)
       IO
         .whenA(first)(IO.defer:
-          val orderCount = orderIdToJobDriver.toMap.size
+          val orderCount = orderIdToJobDriver.size
           if orderCount > 0 then
             logger.info(s"Stopping, waiting for $orderCount processes")
           IO
@@ -110,7 +110,7 @@ extends Service.StoppableByRequest:
                   orderToProcessing.whenStopped
                     .logWhenItTakesLonger("Director-acknowledged Order processes"))
             .*>(journal
-              // The event may get lost due to immediate shutdown !!!
+              // Maybe the director does not read this event due to immediate shutdown !!!
               .persistKeyedEvent(NoKey <-: SubagentShutdown)
               .rightAs(())
               .map(_.onProblemHandle: problem =>
@@ -360,8 +360,8 @@ extends Service.StoppableByRequest:
     for
       maybeJobDriver <- IO(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver
-        .fold(IO(logger.debug(s"⚠️ killProcess $orderId => no JobDriver for Order")))(_
-          .killProcess(orderId, signal))
+        .fold(IO(logger.debug(s"⚠️ killProcess $orderId => no JobDriver for Order"))):
+          _.killProcess(orderId, signal)
     yield ()
 
   override def toString =
@@ -383,10 +383,10 @@ object DedicatedSubagent:
     subagentConf: SubagentConf)
     (using ioRuntime: IORuntime)
   : ResourceIO[DedicatedSubagent] =
-  Service.resource(IO(
-    new DedicatedSubagent(
-      subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
-      jobLauncherConf, subagentConf)))
+    Service.resource(IO:
+      DedicatedSubagent(
+        subagentId, subagentRunId, commandExecutor, journal, agentPath, agentRunId, controllerId,
+        jobLauncherConf, subagentConf))
 
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,
