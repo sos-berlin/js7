@@ -6,7 +6,7 @@ import js7.data.command.CancellationMode
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.instructions.Fork
+import js7.data.workflow.instructions.ForkBranchId
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 
@@ -15,7 +15,7 @@ final class JOrderTest extends OurTestSuite:
     OrderId("ORDER-ID|A"),
     (WorkflowPath("WORKFLOW") ~ "1.0") /: (Position(1) / "fork+A" % 2),
     Order.Forked(Vector(
-      Order.Forked.Child(Fork.Branch.Id("A1"), OrderId("ORDER-ID|A|A1")))),
+      Order.Forked.Child(ForkBranchId("A1"), OrderId("ORDER-ID|A|A1")))),
     arguments = Map("KEY" -> StringValue("VALUE")),
     attachedState = Some(Order.Attached(AgentPath("AGENT"))),
     parent = Some(OrderId("ORDER-ID")),

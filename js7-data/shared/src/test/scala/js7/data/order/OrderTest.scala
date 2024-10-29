@@ -20,7 +20,7 @@ import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fork}
+import js7.data.workflow.instructions.{Execute, ForkBranchId}
 import js7.data.workflow.position.BranchId.{Then, catch_}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
@@ -286,8 +286,8 @@ final class OrderTest extends OurTestSuite:
 
       "Forked (distinct branches)" in:
         testJson[State](Forked(Vector(
-          Forked.Child(Fork.Branch.Id("A"), OrderId("A") / "1"),
-          Forked.Child(Fork.Branch.Id("B"), OrderId("B") / "2"))),
+          Forked.Child(ForkBranchId("A"), OrderId("A") / "1"),
+          Forked.Child(ForkBranchId("B"), OrderId("B") / "2"))),
           json"""{
             "TYPE": "Forked",
               "children": [

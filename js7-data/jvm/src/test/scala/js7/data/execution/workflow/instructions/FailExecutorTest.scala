@@ -7,7 +7,7 @@ import js7.data.execution.workflow.instructions.FailExecutorTest.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.state.TestStateView
-import js7.data.workflow.instructions.{Fail, Fork}
+import js7.data.workflow.instructions.{Fail, Fork, ForkBranchId}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
@@ -65,8 +65,8 @@ object FailExecutorTest:
 
   private val ForkedOrder = Order(OrderId("FORKED"), TestWorkflowId /: Position(1),
     Order.Forked(Vector(
-      Order.Forked.Child(Fork.Branch.Id("🥕"), OrderId("FORKED") / "🥕"),
-      Order.Forked.Child(Fork.Branch.Id("🍋"), OrderId("FORKED") / "🍋"))))
+      Order.Forked.Child(ForkBranchId("🥕"), OrderId("FORKED") / "🥕"),
+      Order.Forked.Child(ForkBranchId("🍋"), OrderId("FORKED") / "🍋"))))
 
   private val Carrot = Order(ForkedOrder.id / "🥕", TestWorkflowId /: (Position(1) / "fork+🥕" % 2 / Then % 3),
     Order.FailedInFork, parent = Some(ForkedOrder.id))

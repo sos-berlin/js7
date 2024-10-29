@@ -27,7 +27,7 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Options, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, ForkBranchId, LockInstruction, Options, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
@@ -478,7 +478,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
       WorkflowPath("FINISH-IN-FORK"),
       Seq(
         Fork.forTest(Seq(Fork.Branch(
-          Fork.Branch.Id("BRANCH"),
+          ForkBranchId("BRANCH"),
           Workflow.of(
             LockInstruction.single(
               lockPath,

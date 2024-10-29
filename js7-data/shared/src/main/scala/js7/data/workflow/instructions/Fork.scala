@@ -16,6 +16,7 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Fork.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
+import scala.collection.immutable.Map.Map1
 import scala.language.implicitConversions
 
 /**
@@ -67,8 +68,8 @@ extends ForkInstruction:
 
   override def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
-      case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
-        val id = Branch.Id(name drop BranchId.ForkPrefix.length)
+      case BranchId.Named(name) if name.startsWith(BranchId.ForkPrefix) =>
+        val id = ForkBranchId(name.drop(BranchId.ForkPrefix.length))
         branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
           .fold(super.workflow(branchId))(Right.apply)
       case _ =>
@@ -99,10 +100,9 @@ object Fork:
       .checkUniqueness_(_._1)(_
         .view
         .mapValues(_.map(_._2))
-        .map { case (name, branchIds) =>
+        .map: (name, branchIds) =>
           Problem(s"Result name '$name' is used duplicately in Fork branches " +
             s"${branchIds.mkString("'", "' , '", "'")}")
-        }
         .reduce(Problem.combine))
     val checkedUniqueBranchIds = branches.duplicateKeys(_.id)
       .map(dups => DuplicatedBranchIdsInForkProblem(dups.keys.toSeq))
@@ -113,38 +113,31 @@ object Fork:
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(
-      idAndWorkflows
-        .map { case (id, workflow) => Branch(Branch.Id(id), workflow) }
-        .toVector)
+      idAndWorkflows.map: (id, workflow) =>
+        Branch(ForkBranchId(id), workflow)
+      .toVector)
 
-  final case class Branch(id: Branch.Id, workflow: Workflow):
+
+  final case class Branch(id: ForkBranchId, workflow: Workflow):
     def result: Map[String, Expression] =
       workflow.result.getOrElse(Map.empty)
+
   object Branch:
     implicit def fromPair(pair: (String, Workflow)): Branch =
-      new Branch(Branch.Id(pair._1), pair._2)
+      new Branch(ForkBranchId(pair._1), pair._2)
 
-    /** Branch.Id("x").string == BranchId("fork+x") */
-    final case class Id(string: String) extends GenericString:
-      def toBranchId: BranchId.Named = BranchId.fork(string)
-    object Id extends GenericString.Checked_[Id]:
-      def unchecked(string: String) = new Id(string)
-
-      implicit def fromString(string: String): Id =
-        this.apply(string)
-
-    implicit val jsonCodec: Codec.AsObject[Branch] =
+    given jsonCodec: Codec.AsObject[Branch] =
       ConfiguredCodec.derive[Branch](useDefaults = true)
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
-  implicit val jsonEncoder: Encoder.AsObject[Fork] =
+  given Encoder.AsObject[Fork] =
     o => JsonObject(
       "branches" -> o.branches.asJson,
       "sourcePos" -> o.sourcePos.asJson,
       "agentPath" -> o.agentPath.asJson,
       "joinIfFailed" -> o.joinIfFailed.?.asJson)
 
-  implicit val jsonDecoder: Decoder[Fork] =
+  given Decoder[Fork] =
     c => for
       branches <- c.get[Vector[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
@@ -152,9 +145,21 @@ object Fork:
       joinIfFailed <- c.getOrElse[Boolean]("joinIfFailed")(false)
       fork <- checked(branches, agentPath, joinIfFailed, sourcePos)
         .toDecoderResult(c.history)
-    yield fork
+    yield
+      fork
 
-  final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded:
-    def arguments: Map[String, String] = Map(
-      "branchIds" -> branchIds.mkString(", ")
-    )
+  final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[ForkBranchId])
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map1(
+      "branchIds", branchIds.mkString(", "))
+
+
+/** ForkBranchId("x").string == BranchId("fork+x") */
+final case class ForkBranchId(string: String) extends GenericString:
+  def toBranchId: BranchId.Named = BranchId.fork(string)
+
+object ForkBranchId extends GenericString.Checked_[ForkBranchId]:
+  def unchecked(string: String) = new ForkBranchId(string)
+
+  implicit def fromString(string: String): ForkBranchId =
+    apply(string)

@@ -27,7 +27,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, Fork, If, LockInstruction, TryInstruction}
+import js7.data.workflow.instructions.{Execute, Fail, Fork, ForkBranchId, If, LockInstruction, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -206,8 +206,8 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.nextEvents(order.id) == Seq(
               order.id <-: OrderStarted,
               order.id <-: OrderForked(Vector(
-                OrderForked.Child(Fork.Branch.Id("🥕"), order.id / "🥕"),
-                OrderForked.Child(Fork.Branch.Id("🍋"), order.id / "🍋")))))
+                OrderForked.Child(ForkBranchId("🥕"), order.id / "🥕"),
+                OrderForked.Child(ForkBranchId("🍋"), order.id / "🍋")))))
 
           testController(freshOrder, detached): (order, controller) =>
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Seq(OrderCancelled)))

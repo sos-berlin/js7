@@ -29,7 +29,7 @@ import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueT
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
-import js7.data.workflow.instructions.Fork
+import js7.data.workflow.instructions.ForkBranchId
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
@@ -265,14 +265,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     final case class Child(
       orderId: OrderId,
       arguments: Map[String, Value],
-      branchId: Option[Fork.Branch.Id] = None)
+      branchId: Option[ForkBranchId] = None)
 
     object Child:
-      def apply(branchId: Fork.Branch.Id, orderId: OrderId): Child =
+      def apply(branchId: ForkBranchId, orderId: OrderId): Child =
         new Child(orderId, Map.empty, Some(branchId))
 
       implicit def fromPair(pair: (String, OrderId)): Child =
-        apply(Fork.Branch.Id(pair._1), pair._2)
+        apply(ForkBranchId(pair._1), pair._2)
 
       implicit val jsonEncoder: Encoder.AsObject[Child] =
         o => JsonObject(
@@ -284,7 +284,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         c => for
           orderId <- c.get[OrderId]("orderId")
           arguments <- c.getOrElse[Map[String, Value]]("arguments")(Map.empty)
-          branchId <- c.get[Option[Fork.Branch.Id]]("branchId")
+          branchId <- c.get[Option[ForkBranchId]]("branchId")
         yield Child(orderId, arguments, branchId)
 
 

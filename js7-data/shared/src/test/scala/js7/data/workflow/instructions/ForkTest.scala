@@ -109,7 +109,7 @@ final class ForkTest extends OurTestSuite:
     val checked = Fork.checked(Seq(
       Fork.Branch("A", Workflow.empty),
       Fork.Branch("A", Workflow.empty)))
-    assert(checked == Left(DuplicatedBranchIdsInForkProblem(Seq(Fork.Branch.Id("A")))))
+    assert(checked == Left(DuplicatedBranchIdsInForkProblem(Seq(ForkBranchId("A")))))
 
   "Duplicate result names are rejected" in:
     val expr = StringConstant.empty
