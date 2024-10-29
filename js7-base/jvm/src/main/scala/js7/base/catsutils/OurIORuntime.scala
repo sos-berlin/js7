@@ -135,7 +135,7 @@ object OurIORuntime:
     Resource(F.delay:
       locally:
         if Logger.isInitialized then
-          logger.debug(s"↘ IORuntime '$label': create with $threads threads ↘")
+          logger.debug(s"↘ IORuntime '$label' $threads threads ↘")
       -> F.delay:
         if Logger.isInitialized then logger.debug(s"↙ IORuntime '$label' closed ↙"))
 
