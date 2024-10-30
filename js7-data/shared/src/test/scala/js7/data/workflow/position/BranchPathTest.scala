@@ -4,6 +4,7 @@ import cats.syntax.show.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.tester.CirceJsonTester.testJson
@@ -12,6 +13,7 @@ import js7.tester.CirceJsonTester.testJson
   * @author Joacim Zschimmer
   */
 final class BranchPathTest extends OurTestSuite:
+
   "JSON" in:
     testJson(Nil: BranchPath                          , json"""[]""")
     testJson(Segment(1, "BRANCH") :: Nil              , json"""[ 1, "BRANCH" ]""")
@@ -85,11 +87,16 @@ final class BranchPathTest extends OurTestSuite:
     assert((Segment(1, "A") :: Segment(2, "B") :: Nil).show == "1/A:2/B")
 
   "normalize" in:
-    assert(BranchPath.normalize(Position(0) / "X") == (Position(0) / "X"))
+    /** Check new BranchStack conversion, too */
+    def check(dymamicBranchPath: BranchPath, staticBranchPath: BranchPath): Unit =
+      assert(BranchPath.normalize(dymamicBranchPath) == (staticBranchPath))
+      assert(BranchStack.fromLegacy(dymamicBranchPath).orThrow.toStatic.toLegacy == staticBranchPath)
+
+    assert(BranchPath.normalize(Position(0) / "UNKNOWN") == (Position(0) / "UNKNOWN"))
     assert(BranchPath.normalize(Position(0) / "try") == (Position(0) / "try"))
-    assert(BranchPath.normalize(Position(0) / "try+0") == (Position(0) / "try"))
-    assert(BranchPath.normalize(Position(0) / "try+1") == (Position(0) / "try"))
-    assert(BranchPath.normalize(Position(0) / "try+123") == (Position(0) / "try"))
+    check(Position(0) / "try+0", Position(0) / "try")
+    check(Position(0) / "try+1", Position(0) / "try")
+    check(Position(0) / "try+123", Position(0) / "try")
     assert(BranchPath.normalize(Position(0) / "catch") == (Position(0) / "catch"))
-    assert(BranchPath.normalize(Position(0) / "catch+0") == (Position(0) / "catch"))
-    assert(BranchPath.normalize(Position(0) / "catch+123") == (Position(0) / "catch"))
+    check(Position(0) / "catch+0", Position(0) / "catch")
+    check(Position(0) / "catch+123", Position(0) / "catch")
