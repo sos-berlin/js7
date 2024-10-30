@@ -26,7 +26,7 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
 
 
 object SleepJob extends InternalJob.Companion[SleepJob]:
-  
+
   def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute =
     execute(
       agentPath,

@@ -7,7 +7,7 @@ import js7.data.workflow.Instruction
 
 final case class Stop(sourcePos: Option[SourcePos] = None)
 extends Instruction.NoInstructionBlock:
-  
+
   def withoutSourcePos: Stop =
     copy(sourcePos = None)
 

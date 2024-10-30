@@ -14,7 +14,7 @@ import js7.data.workflow.{Instruction, Workflow}
   * @author Joacim Zschimmer
   */
 sealed trait Execute extends Instruction.NoInstructionBlock:
-  
+
   def defaultArguments: Map[String, Expression]
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
