@@ -12,8 +12,8 @@ final case class JBoardState(asScala: BoardState):
     asScala.path
 
   @Nonnull
-  def board: JBoard =
-    JBoard(asScala.board)
+  def board: JGlobalBoard =
+    JGlobalBoard(asScala.board)
 
   def idToNotice(noticeId: NoticeId): Optional[JNoticePlace] =
     asScala.idToNotice

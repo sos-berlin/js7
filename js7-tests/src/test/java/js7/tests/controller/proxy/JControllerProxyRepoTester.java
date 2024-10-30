@@ -20,7 +20,7 @@ import js7.data.item.VersionedEvent;
 import js7.data.item.VersionedItemPath;
 import js7.data.lock.LockPath;
 import js7.data.workflow.WorkflowPath;
-import js7.data_for_java.board.JBoard;
+import js7.data_for_java.board.JGlobalBoard;
 import js7.data_for_java.item.JUnsignedSimpleItem;
 import js7.data_for_java.item.JUpdateItemOperation;
 import js7.data_for_java.lock.JLock;
@@ -93,7 +93,7 @@ final class JControllerProxyRepoTester
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         JLock lock = JLock.of(LockPath.of("MY-LOCK"), 1);
-        JBoard board = JBoard.of(BoardPath.of("MY-BOARD"),
+        JGlobalBoard board = JGlobalBoard.of(BoardPath.of("MY-BOARD"),
             getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
             getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
             getOrThrow(JExpression.parse("$js7EpochMilli + 24 * 3600 * 1000")));

@@ -25,13 +25,13 @@ object VerifiedUpdateItemsExecutor:
       AgentPath <-> SubagentItem ->
       Workflow ->
         AgentPath <-> SubagentItem ->
-        Board ->
+        GlobalBoard ->
         Calendar ->
         JobResource ->
         Lock
 
      Ordered by dependency;
-     OrderWatch, Workflow, (AgentPath <-> SubagentItem), Board, Calendar, JobResource, Lock
+     OrderWatch, Workflow, (AgentPath <-> SubagentItem), GlobalBoard, Calendar, JobResource, Lock
 
      Delete in the reverse order of addition?
    */

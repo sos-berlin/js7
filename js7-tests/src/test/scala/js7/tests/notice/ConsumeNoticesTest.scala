@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}
@@ -106,7 +106,7 @@ final class ConsumeNoticesTest
     val orderIdToNoticeId = expr(
       """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#(.*)$', '$1-$2')""")
 
-    val myBoard = Board(
+    val myBoard = GlobalBoard(
       BoardPath("MY-BOARD"),
       postOrderToNoticeId = orderIdToNoticeId,
       endOfLife = expr(s"$$js7EpochMilli + ${lifetime.toMillis}"),
@@ -686,8 +686,8 @@ object ConsumeNoticesTest:
 
   // One lifetime per board
   private val lifetime = 1.day
-  private val aBoard = Board.joc(BoardPath("A-BOARD"), lifetime)
-  private val bBoard = Board.joc(BoardPath("B-BOARD"), lifetime)
+  private val aBoard = GlobalBoard.joc(BoardPath("A-BOARD"), lifetime)
+  private val bBoard = GlobalBoard.joc(BoardPath("B-BOARD"), lifetime)
 
   final class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]

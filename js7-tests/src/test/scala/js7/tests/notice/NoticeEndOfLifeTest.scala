@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{Board, BoardPath, BoardPathExpression, NoticeId}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeId}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.OrderEvent.{OrderFinished, OrderNoticesExpected}
@@ -30,7 +30,7 @@ final class NoticeEndOfLifeTest
 
   protected val agentPaths = Seq(agentPath)
 
-  private val board = Board.joc(BoardPath("BOARD"), lifetime = 500.ms)
+  private val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = 500.ms)
   private val postWorkflow = Workflow(WorkflowPath("POST-WORKFLOW"), Vector(
     PostNotices(Seq(board.path))))
   private val consumeWorkflow = Workflow(WorkflowPath("CONSUME-WORKFLOW"), Vector(

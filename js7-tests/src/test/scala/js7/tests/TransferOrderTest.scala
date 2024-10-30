@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.{Board, BoardPath, BoardPathExpression, NoticeId}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeId}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
@@ -41,7 +41,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     js7.order.stdout-stderr.delay = 1ms"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(noticeBoard)
+  protected val items = Seq(board)
 
   "TransferOrder" in:
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
@@ -49,7 +49,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       "B" @: BSemaphoreJob.execute(agentPath),
       "C" @: Fork.of("BRANCH" -> Workflow.of(
         CSemaphoreJob.execute(agentPath))),
-      "D" @: ConsumeNotices(ExpectNotice(noticeBoard.path)):
+      "D" @: ConsumeNotices(ExpectNotice(board.path)):
           EmptyJob.execute(agentPath))
 
     withItem(workflow): workflow1 =>
@@ -152,14 +152,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       eventWatch.await[OrderFinished](_.key == cOrderId)
 
       // Notice-consuming dOrderId finished, too
-      execCmd(PostNotice(noticeBoard.path, NoticeId("NOTICE")))
+      execCmd(PostNotice(board.path, NoticeId("NOTICE")))
       eventWatch.await[OrderFinished](_.key == dOrderId)
 
   "TransferOrder with changed ConsumeNotices instruction in surrounding block is rejected" in:
     BSemaphoreJob.reset()
 
-    val aBoard = Board.joc(BoardPath("BOARD-A"))
-    val bBoard = Board.joc(BoardPath("BOARD-B"))
+    val aBoard = GlobalBoard.joc(BoardPath("BOARD-A"))
+    val bBoard = GlobalBoard.joc(BoardPath("BOARD-B"))
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
       ConsumeNotices(ExpectNotice(aBoard.path)):
         Prompt(expr("'PROMPT-1'")))
@@ -224,4 +224,4 @@ object TransferOrderTest:
   final class DSemaphoreJob extends SemaphoreJob(DSemaphoreJob)
   object DSemaphoreJob extends SemaphoreJob.Companion[DSemaphoreJob]
 
-  private val noticeBoard = Board.singleNotice(BoardPath("BOARD"))
+  private val board = GlobalBoard.singleNotice(BoardPath("BOARD"))

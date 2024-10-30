@@ -48,7 +48,10 @@ object PostNoticesExecutor:
       .appended(order.id <-: OrderMoved(order.position.increment))
 
   // For PostNotice command
-  def postedNoticeToExpectingOrderEvents(boardState: BoardState, notice: Notice, state: StateView)
+  def postedNoticeToExpectingOrderEvents(
+    boardState: BoardState, 
+    notice: Notice, 
+    state: StateView)
   : Checked[Seq[KeyedEvent[OrderEvent.OrderActorEvent]]] =
     toExpectingOrderEvents(Vector(FatNotice(notice, boardState)), state)
 

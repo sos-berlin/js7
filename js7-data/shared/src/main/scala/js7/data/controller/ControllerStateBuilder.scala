@@ -7,8 +7,8 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{Board, BoardPath, BoardSnapshot, BoardState}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeSnapshot}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -128,7 +128,7 @@ extends SnapshotableStateBuilder[ControllerState],
       for subagentItem <- maybeSubagentItem do
         _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
 
-    case snapshot: BoardSnapshot =>
+    case snapshot: NoticeSnapshot =>
       _keyToUnsignedItemState(snapshot.boardPath) =
         keyTo(BoardState)(snapshot.boardPath)
           .recover(snapshot)
@@ -244,7 +244,7 @@ extends SnapshotableStateBuilder[ControllerState],
                   case orderWatch: OrderWatch =>
                     ow.changeOrderWatch(orderWatch).orThrow
 
-                  case board: Board =>
+                  case board: GlobalBoard =>
                     _keyToUnsignedItemState.update(
                       board.path,
                       keyTo(BoardState)

@@ -25,10 +25,10 @@ import js7.data.value.expression.{Expression, PositionSearch, Scope}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, NoticeInstruction, Retry, TryInstruction}
+import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.*
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
@@ -184,8 +184,8 @@ extends VersionedItem, TrivialItemState[Workflow]:
       flattenedInstructions.view
         .map(_._2.instruction)
         .collect:
-          case lock: LockInstruction => lock.lockPaths
-          case board: BoardInstruction => board.referencedBoardPaths
+          case instr: LockInstruction => instr.lockPaths
+          case instr: NoticeInstruction => instr.referencedBoardPaths
         .flatten
         .toSet
 

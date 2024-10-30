@@ -19,7 +19,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, End}
+import js7.data.workflow.instructions.{End, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
@@ -86,11 +86,12 @@ trait StateView extends ItemContainer:
     for
       boardPath <- workflowPositionToBoardPath(workflowPosition)
       boardState <- keyTo(BoardState).checked(boardPath)
-    yield boardState
+    yield
+      boardState
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
-    instruction_[BoardInstruction](workflowPosition)
+    instruction_[NoticeInstruction](workflowPosition)
       .flatMap(_.referencedBoardPaths.toSeq match {
         case Seq(boardPath) => Right(boardPath)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
@@ -127,12 +128,13 @@ trait StateView extends ItemContainer:
   protected def orderIdToBoardState(orderId: OrderId): Checked[BoardState] =
     for
       order <- idToOrder.checked(orderId)
-      instr <- instruction_[BoardInstruction](order.workflowPosition)
+      instr <- instruction_[NoticeInstruction](order.workflowPosition)
       boardPath <- instr.referencedBoardPaths.toVector match
         case Vector(o) => Right(o)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       boardState <- keyTo(BoardState).checked(boardPath)
-    yield boardState
+    yield
+      boardState
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow

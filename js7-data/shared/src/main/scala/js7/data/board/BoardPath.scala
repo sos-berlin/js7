@@ -10,7 +10,7 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
 
 
 object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]:
-  type Item = Board
+  type Item = GlobalBoard
 
   protected def unchecked(string: String) = new BoardPath(string)
 

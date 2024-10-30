@@ -3,6 +3,7 @@ package js7.data.board
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
+import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
@@ -11,7 +12,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
 
-final case class Board(
+final case class GlobalBoard(
   path: BoardPath,
   postOrderToNoticeId: Expression,
   expectOrderToNoticeId: Expression,
@@ -19,13 +20,13 @@ final case class Board(
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
 
-  protected type Self = Board
-  val companion: Board.type = Board
+  protected type Self = GlobalBoard
+  val companion: GlobalBoard.type = GlobalBoard
 
-  def withRevision(revision: Option[ItemRevision]): Board =
+  def withRevision(revision: Option[ItemRevision]): GlobalBoard =
     copy(itemRevision = revision)
 
-  def rename(path: BoardPath): Board =
+  def rename(path: BoardPath): GlobalBoard =
     copy(path = path)
 
   def toInitialItemState: BoardState =
@@ -55,8 +56,8 @@ extends UnsignedSimpleItem:
       yield Notice(noticeId, path, endOfLife)
 
 
-object Board extends UnsignedSimpleItem.Companion[Board]:
-  val cls: Class[Board] = classOf[Board]
+object GlobalBoard extends UnsignedSimpleItem.Companion[GlobalBoard]:
+  val cls: Class[GlobalBoard] = classOf[GlobalBoard]
 
   type Key = BoardPath
   def Key: UnsignedSimpleItemPath.Companion[BoardPath] = BoardPath
@@ -66,13 +67,16 @@ object Board extends UnsignedSimpleItem.Companion[Board]:
 
   type ItemState = BoardState
 
-  /** A Board with a single, constant Notice. */
+  override val subtype: Subtype[GlobalBoard] =
+    Subtype[GlobalBoard](aliases = Seq("Board"/*until v2.7.2*/))
+
+  /** A GlobalBoard with a single, constant Notice. */
   def singleNotice(
     boardPath: BoardPath,
     orderToNoticeId: String = "'NOTICE'",
     lifetime: FiniteDuration = 24.h)
-  : Board =
-    Board(
+  : GlobalBoard =
+    GlobalBoard(
       boardPath,
       postOrderToNoticeId = expr(orderToNoticeId),
       expectOrderToNoticeId = expr(orderToNoticeId),
@@ -81,12 +85,12 @@ object Board extends UnsignedSimpleItem.Companion[Board]:
   private val sosOrderToNotice =
     expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
 
-  /** A Board for JOC-style OrderIds. */
-  def joc(boardPath: BoardPath, lifetime: FiniteDuration = 24.h): Board =
-    Board(
+  /** A GlobalBoard for JOC-style OrderIds. */
+  def joc(boardPath: BoardPath, lifetime: FiniteDuration = 24.h): GlobalBoard =
+    GlobalBoard(
       boardPath,
       postOrderToNoticeId = sosOrderToNotice,
       expectOrderToNoticeId = sosOrderToNotice,
       endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
-  implicit val jsonCodec: Codec.AsObject[Board] = ConfiguredCodec.derive(useDefaults = true)
+  given jsonCodec: Codec.AsObject[GlobalBoard] = ConfiguredCodec.derive(useDefaults = true)

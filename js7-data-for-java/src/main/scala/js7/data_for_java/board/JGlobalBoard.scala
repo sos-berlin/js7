@@ -4,30 +4,30 @@ import io.vavr.control.Either as VEither
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
-import js7.data.board.{Board, BoardPath}
+import js7.data.board.{BoardPath, GlobalBoard}
 import js7.data.item.ItemRevision
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.value.JExpression
 import scala.jdk.OptionConverters.*
 
-final case class JBoard(asScala: Board)
-extends JJsonable[JBoard], JUnsignedSimpleItem:
+final case class JGlobalBoard(asScala: GlobalBoard)
+extends JJsonable[JGlobalBoard], JUnsignedSimpleItem:
 
-  type AsScala = Board
-  protected def companion = JBoard
+  type AsScala = GlobalBoard
+  protected def companion = JGlobalBoard
 
   @Nonnull
   def path: BoardPath =
     asScala.path
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]): JBoard =
+  def withRevision(revision: Optional[ItemRevision]): JGlobalBoard =
     copy(asScala.withRevision(revision.toScala))
 
 
-object JBoard extends JJsonable.Companion[JBoard]:
-  type AsScala = Board
+object JGlobalBoard extends JJsonable.Companion[JGlobalBoard]:
+  type AsScala = GlobalBoard
 
   @Nonnull
   def of(
@@ -35,12 +35,12 @@ object JBoard extends JJsonable.Companion[JBoard]:
     @Nonnull toNotice: JExpression,
     @Nonnull expectingOrderToNoticeId: JExpression,
     @Nonnull endOfLife: JExpression)
-  : JBoard =
-    JBoard(Board(path, toNotice.asScala, expectingOrderToNoticeId.asScala, endOfLife.asScala))
+  : JGlobalBoard =
+    JGlobalBoard(GlobalBoard(path, toNotice.asScala, expectingOrderToNoticeId.asScala, endOfLife.asScala))
 
   @Nonnull
-  override def fromJson(jsonString: String): VEither[Problem, JBoard] =
+  override def fromJson(jsonString: String): VEither[Problem, JGlobalBoard] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = Board.jsonCodec
-  protected def jsonDecoder = Board.jsonCodec
+  protected def jsonEncoder = GlobalBoard.jsonCodec
+  protected def jsonDecoder = GlobalBoard.jsonCodec

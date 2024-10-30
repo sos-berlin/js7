@@ -71,7 +71,7 @@ object NoticePlace:
     noticeId: NoticeId,
     isInConsumption: Boolean,
     consumptionCount: Int)
-  extends BoardSnapshot
+  extends NoticeSnapshot
 
   object Snapshot:
     val subtype: Subtype[Snapshot] =

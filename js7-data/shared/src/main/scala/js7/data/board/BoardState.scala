@@ -1,21 +1,21 @@
 package js7.data.board
 
 import cats.effect.IO
+import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.order.{Order, OrderId}
-import fs2.Stream
 import scala.collection.View
 
 final case class BoardState(
-  board: Board,
+  board: GlobalBoard,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
   orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
 extends UnsignedSimpleItemState:
@@ -23,15 +23,15 @@ extends UnsignedSimpleItemState:
   protected type Self = BoardState
   val companion: BoardState.type = BoardState
 
-  val item: Board = board
+  val item: GlobalBoard = board
   def path: BoardPath = item.path
 
-  def updateItem(item: Board): Checked[BoardState] =
+  def updateItem(item: GlobalBoard): Checked[BoardState] =
     Right(copy(board = item))
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
-  override def toSnapshotStream: Stream[IO, Any/*BoardState | BoardSnapshot*/] =
+  override def toSnapshotStream: Stream[IO, Any/*BoardState | NoticeSnapshot*/] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
     Stream.iterable:
       View(board) ++
@@ -41,7 +41,7 @@ extends UnsignedSimpleItemState:
           .map: (orderId, consumptionStack) =>
             NoticeConsumptionSnapshot(path, orderId, consumptionStack)
 
-  def recover(snapshot: BoardSnapshot): Checked[BoardState] =
+  def recover(snapshot: NoticeSnapshot): Checked[BoardState] =
     snapshot match
       case notice: Notice =>
         addNotice(notice)
@@ -152,13 +152,13 @@ extends UnsignedSimpleItemState:
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
   type Key = BoardPath
-  type Item = Board
+  type Item = GlobalBoard
   override type ItemState = BoardState
 
   final case class NoticeConsumptionSnapshot(
     boardPath: BoardPath,
     orderId: OrderId,
     noticeIdStack: List[NoticeId])
-  extends BoardSnapshot
+  extends NoticeSnapshot
   object NoticeConsumptionSnapshot:
     val subtype: Subtype[NoticeConsumptionSnapshot] = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")

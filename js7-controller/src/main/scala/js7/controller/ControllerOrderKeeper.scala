@@ -48,7 +48,7 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, ClusterModuleShuttingDownProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
-import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent

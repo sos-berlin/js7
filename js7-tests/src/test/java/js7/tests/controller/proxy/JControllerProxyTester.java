@@ -96,7 +96,7 @@ class JControllerProxyTester
                     try {
                         couplingState.coupled.get(99, SECONDS);
                         new JControllerProxyTester(proxy).test(itemJsons, manyItemJsons);
-                        new JBoardTester(proxy).test();
+                        new JGlobalBoardTester(proxy).test();
                     } finally {
                         proxy.stop().get(99, SECONDS);
                     }

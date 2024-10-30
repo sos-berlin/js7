@@ -14,10 +14,10 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
-import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
+import js7.data.board.NoticeEvent.NoticeDeleted
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, PostNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
@@ -30,13 +30,13 @@ import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstructio
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
-import js7.tests.notice.BoardTest.*
+import js7.tests.notice.GlobalBoardTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class BoardTest
+final class GlobalBoardTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater, TransferOrdersWaitingForNoticeTest:
 
   override protected val controllerConfig = config"""
@@ -189,8 +189,8 @@ final class BoardTest
           ).toKeyedMap(_.noticeId)))
 
     "Detach order when at Agent" in:
-      // TODO Post kann am Agenten ausgeführt werden, wenn Board (ohne BoardState) dahin übertragen wird,
-      //  und anschließend der Controller Order.ExpectingNotice löst.
+      // TODO Post kann am Agenten ausgeführt werden, wenn GlobalBoard (ohne BoardState)
+      //  dahin übertragen wird, und anschließend der Controller Order.ExpectingNotice löst.
       val qualifier = nextQualifier()
       val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
@@ -346,7 +346,7 @@ final class BoardTest
       val noticeId = NoticeId(qualifier)
       val orderId = OrderId(s"#$qualifier#CANCEL-EXPECT")
 
-      val board = Board.joc(BoardPath("CANCEL-EXPECT"), 1.h)
+      val board = GlobalBoard.joc(BoardPath("CANCEL-EXPECT"), 1.h)
       val workflow = Workflow(WorkflowPath("CANCEL-EXPECT"), Seq(
         ExpectNotices(ExpectNotice(board.path))))
       val Some(versionId) = updateItems(board, workflow): @unchecked
@@ -405,7 +405,7 @@ final class BoardTest
                 noticeId -> NoticePlace(noticeId, Some(Notice(noticeId, board2.path, endOfLife)))))))
   }
 
-  "Update Board" in:
+  "Update GlobalBoard" in:
     val boardState = controllerState.keyTo(BoardState)(board0.path)
 
     val updatedBoard = board0.copy(postOrderToNoticeId = expr("$jsOrderId"))
@@ -415,7 +415,7 @@ final class BoardTest
       boardState.copy(
         board = updatedBoard.withRevision(Some(ItemRevision(1)))))
 
-  "Delete Board" in:
+  "Delete GlobalBoard" in:
     val checked = controller
       .updateItemsAsSystemUser(Stream(
         DeleteSimple(board0.path),
@@ -462,7 +462,7 @@ final class BoardTest
     assert(!controllerState.keyTo(BoardState).contains(board0.path))
 
   "JOC-1446 Bug: Wrong OrderMoved event after OrderNoticeRead" in:
-    val board = Board.joc(BoardPath("JOC-1446"))
+    val board = GlobalBoard.joc(BoardPath("JOC-1446"))
 
     val postingWorkflow = Workflow(WorkflowPath("JOC-1446-POST"), Seq(
       TryInstruction(
@@ -490,7 +490,7 @@ final class BoardTest
       eventWatch.await[OrderDeleted](_.key == expectOrderId)
 
 
-object BoardTest:
+object GlobalBoardTest:
 
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
@@ -502,11 +502,11 @@ object BoardTest:
   // One lifeTime per board
   private val lifeTimes = Seq(1.days, 2.days, 3.days)
   private val startTimestamp = Timestamp("2222-10-10T00:00:00Z")
-  private val endOfLifes = lifeTimes.map(BoardTest.startTimestamp + _)
+  private val endOfLifes = lifeTimes.map(GlobalBoardTest.startTimestamp + _)
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
   private val boards = for (lifetime, i) <- lifeTimes.zipWithIndex yield
-    Board.joc(BoardPath(s"BOARD-$i"), lifetime)
+    GlobalBoard.joc(BoardPath(s"BOARD-$i"), lifetime)
 
   private val Seq(board0, board1, board2) = boards
 

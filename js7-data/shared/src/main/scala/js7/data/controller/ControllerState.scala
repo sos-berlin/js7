@@ -17,8 +17,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice, NoticePlace}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -396,13 +396,11 @@ extends SignedItemContainer,
 
   def orderToAvailableNotices(orderId: OrderId): Seq[Notice] =
     val pathToBoardState = keyTo(BoardState)
-    orderToExpectedNotices(orderId)
-      .flatMap(expected =>
-        pathToBoardState
-          .get(expected.boardPath)
+    orderToExpectedNotices(orderId).flatMap: expected =>
+      pathToBoardState.get(expected.boardPath)
           .flatMap(_
             .idToNotice.get(expected.noticeId)
-            .flatMap(_.notice)))
+            .flatMap(_.notice))
 
   def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     val pathToBoardState = keyTo(BoardState)
@@ -741,7 +739,7 @@ extends ClusterableState.Companion[ControllerState],
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
-    AgentRef, SubagentItem, SubagentBundle, Lock, Board, Calendar, FileWatch, JobResource,
+    AgentRef, SubagentItem, SubagentBundle, Lock, GlobalBoard, Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
@@ -755,7 +753,7 @@ extends ClusterableState.Companion[ControllerState],
       Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),
       SubagentBundle.subtype,
       Subtype[LockState],
-      Subtype[Board],
+      GlobalBoard.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,
@@ -778,7 +776,7 @@ extends ClusterableState.Companion[ControllerState],
       KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[BoardEvent],
+      KeyedSubtype[NoticeEvent],
       KeyedSubtype.singleEvent[ServerMeteringEvent])
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")

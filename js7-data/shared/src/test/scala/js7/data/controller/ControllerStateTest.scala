@@ -12,7 +12,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerStateTest.*
@@ -244,7 +244,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         },
         "queue": []
       }, {
-        "TYPE": "Board",
+        "TYPE": "GlobalBoard",
         "path": "BOARD",
         "postOrderToNoticeId": "$$orderId",
         "expectOrderToNoticeId": "$$orderId",
@@ -459,7 +459,7 @@ object ControllerStateTest:
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
 
-  private val board = Board(
+  private val board = GlobalBoard(
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("$orderId"),
     expectOrderToNoticeId = expr("$orderId"),

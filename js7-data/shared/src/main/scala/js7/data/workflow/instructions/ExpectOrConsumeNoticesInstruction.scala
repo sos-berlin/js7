@@ -5,7 +5,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 
-trait ExpectOrConsumeNoticesInstruction extends BoardInstruction:
+trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
 
   def boardPaths: BoardPathExpression
 

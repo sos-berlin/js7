@@ -17,7 +17,7 @@ import js7.data.item.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
-import js7.data_for_java.board.JBoard;
+import js7.data_for_java.board.JGlobalBoard;
 import js7.data_for_java.board.JNoticePlace;
 import js7.data_for_java.item.JUpdateItemOperation;
 import js7.data_for_java.order.JFreshOrder;
@@ -35,14 +35,15 @@ import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class JBoardTester
+public class JGlobalBoardTester
 {
     private static final VersionId versionId = JControllerProxyTest.boardVersion();
     private static final WorkflowPath postingBoardWorkflowPath =
         JControllerProxyTest.postingBoardWorkflow().path();
     private static final WorkflowPath expectingBoardWorkflowPath =
         JControllerProxyTest.expectingBoardWorkflow().path();
-    private static final JBoard board = JBoard.of(JControllerProxyTest.boardPath(),
+    private static final JGlobalBoard board = JGlobalBoard.of(
+        JControllerProxyTest.boardPath(),
         getOrThrow(JExpression.parse(
             "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
         getOrThrow(JExpression.parse(
@@ -53,7 +54,7 @@ public class JBoardTester
     private final JControllerProxy proxy;
     private final JControllerApi api;
 
-    JBoardTester(JControllerProxy proxy) {
+    JGlobalBoardTester(JControllerProxy proxy) {
         this.proxy = proxy;
         this.api = proxy.api();
     }

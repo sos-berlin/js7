@@ -12,7 +12,7 @@ import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{Board, BoardPath, BoardState}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
@@ -27,7 +27,7 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.{JBoard, JBoardState, JNotice}
+import js7.data_for_java.board.{JBoardState, JGlobalBoard, JNotice}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
@@ -136,10 +136,10 @@ extends JJournaledState[JControllerState, ControllerState]:
 
   /** Looks up a Board item. */
   @Nonnull
-  def pathToBoard: JMap[BoardPath, JBoard] =
-    keyToItem(Board, JBoard.apply)
+  def pathToBoard: JMap[BoardPath, JGlobalBoard] =
+    keyToItem(GlobalBoard, JGlobalBoard.apply)
 
-  /** Looks up a BoardState. */
+  /** Looks up a GlobalBoard item. */
   @Nonnull
   def pathToBoardState: JMap[BoardPath, JBoardState] =
     asScala.keyTo(BoardState)

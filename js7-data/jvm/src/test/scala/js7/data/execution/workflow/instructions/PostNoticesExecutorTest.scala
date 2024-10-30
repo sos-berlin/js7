@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
@@ -176,7 +176,7 @@ object PostNoticesExecutorTest:
     s"""replaceAll($$js7OrderId, '^%([0-9]{4}-[0-9]{2}-[0-9]{2})%.*$$', '$$1-$i')""")
 
   private val boards = for i <- 0 to 3 yield
-    Board(
+    GlobalBoard(
       BoardPath(s"BOARD-$i"),
       postOrderToNoticeId = postingOrderToNoticeId(i),
       endOfLife = expr(s"$$js7EpochMilli + ($i + 1) * ${lifeTime.toMillis}"),

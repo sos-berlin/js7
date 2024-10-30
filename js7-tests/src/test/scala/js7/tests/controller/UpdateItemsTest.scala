@@ -1,6 +1,7 @@
 package js7.tests.controller
 
 import cats.effect.IO
+import fs2.Stream
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{UpdateItemPermission, UserId}
@@ -8,14 +9,14 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.RichFutures
-import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
+import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.RichFutures
+import js7.base.time.ScalaTime.*
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
-import js7.data.board.{Board, BoardPath}
+import js7.data.board.{BoardPath, GlobalBoard}
 import js7.data.controller.ControllerCommand.{ControlWorkflow, DeleteOrdersWhenTerminated}
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, RemoveVersioned}
@@ -30,10 +31,9 @@ import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, Workflow
 import js7.tests.controller.UpdateItemsTest.*
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import fs2.Stream
-import scala.concurrent.{ExecutionContext, Promise}
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -130,8 +130,8 @@ final class UpdateItemsTest
     assert(controller.api.updateItems(Stream(AddOrChangeSigned(toSignedString(jobResource).tamper)))
       .await(99.s) == Left(TamperedWithSignedMessageProblem))
 
-  "Change a Workflow and delete the unused Board" in:
-    val board = Board.singleNotice(BoardPath("BOARD"))
+  "Change a Workflow and delete the unused GlobalBoard" in:
+    val board = GlobalBoard.singleNotice(BoardPath("BOARD"))
 
     val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-BOARD"), Seq(
       PostNotices(Seq(board.path))))

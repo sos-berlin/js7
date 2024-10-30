@@ -1,4 +1,4 @@
 package js7.data.board
 
-trait BoardSnapshot:
+trait NoticeSnapshot:
   def boardPath: BoardPath

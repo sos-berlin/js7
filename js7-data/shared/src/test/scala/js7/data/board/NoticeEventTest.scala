@@ -3,12 +3,13 @@ package js7.data.board
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
-import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.tester.CirceJsonTester.testJson
 
-final class BoardEventTest extends OurTestSuite:
+final class NoticeEventTest extends OurTestSuite:
+
   "NoticePosted" in:
-    testJson[BoardEvent](
+    testJson[NoticeEvent](
       NoticePosted(
         NoticePosted.PostedNotice(NoticeId("NOTICE"), Timestamp("1970-01-01T01:00:00Z"))),
       json"""{
@@ -20,7 +21,7 @@ final class BoardEventTest extends OurTestSuite:
         }""")
 
   "NoticeDeleted" in:
-    testJson[BoardEvent](
+    testJson[NoticeEvent](
       NoticeDeleted(NoticeId("NOTICE")),
       json"""{
          "TYPE": "NoticeDeleted",

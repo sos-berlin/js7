@@ -20,7 +20,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
     "v2.4 JSON compatibility" in:
       val boardState = BoardState(
-        Board(
+        GlobalBoard(
           boardPath,
           postOrderToNoticeId =
             expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
@@ -39,26 +39,26 @@ final class BoardStateTest extends OurAsyncTestSuite:
         .map(s => parseJson(s).orThrow)
         .compile
         .toVector
-        .map(snapshots =>
+        .map: snapshots =>
           assert(snapshots == List(
             json"""{
-          "TYPE": "Board",
-          "path": "BOARD",
-          "postOrderToNoticeId":
-            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-          "expectOrderToNoticeId":
-            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-          "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
-        }""",
+              "TYPE": "GlobalBoard",
+              "path": "BOARD",
+              "postOrderToNoticeId":
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+              "expectOrderToNoticeId":
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+              "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+            }""",
             json"""{
-          "TYPE": "Notice",
-          "id": "NOTICE",
-          "boardPath": "BOARD",
-          "endOfLife": 123000
-        }""")))
+              "TYPE": "Notice",
+              "id": "NOTICE",
+              "boardPath": "BOARD",
+              "endOfLife": 123000
+            }"""))
 
     lazy val boardState = BoardState(
-      Board(
+      GlobalBoard(
         boardPath,
         postOrderToNoticeId =
           expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
@@ -90,7 +90,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
         .map(snapshots =>
           assert(snapshots == List(
             json"""{
-              "TYPE": "Board",
+              "TYPE": "GlobalBoard",
               "path": "BOARD",
               "postOrderToNoticeId":
                 "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
@@ -123,15 +123,15 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
     "toSnapshotStream and recover" in:
       import scala.language.unsafeNulls
-      
+
       var recovered: BoardState = null
       boardState.toSnapshotStream
         .map(o =>
           reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
         .map:
-          case board: Board =>
+          case board: GlobalBoard =>
             recovered = BoardState(board)
-          case snapshot: BoardSnapshot =>
+          case snapshot: NoticeSnapshot =>
             recovered = recovered.recover(snapshot).orThrow
         .compile
         .drain
@@ -300,7 +300,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
 private object BoardStateTest:
 
-  private val board = Board(
+  private val board = GlobalBoard(
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("'NOTICE'"),
     expectOrderToNoticeId = expr("'NOTICE'"),
