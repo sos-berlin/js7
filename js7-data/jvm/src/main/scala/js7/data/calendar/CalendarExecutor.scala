@@ -53,20 +53,22 @@ object CalendarExecutor:
       _ <- (calendar.dateOffset >= 0.s && calendar.dateOffset < period.normalDuration) !!
         Problem("Invalid dateOffset")
       zoneId <- timezone.toZoneId
-      orderIdToDateRegex <- catchExpected[PatternSyntaxException](
-        calendar.orderIdPattern.r)
-    yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
+      orderIdToDateRegex <- catchExpected[PatternSyntaxException]:
+        calendar.orderIdPattern.r
+    yield
+      CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
 
   private def toPeriod(pattern: String): Checked[Period] =
     catchExpected[Exception]:
       if pattern.startsWith("Y"/*week based year*/) then
-        val formatter = new DateTimeFormatterBuilder()
-          .appendPattern(pattern)
-          .parseDefaulting(WeekFields.ISO.dayOfWeek, 1)
-          .toFormatter
-        Weekly(formatter)
+        Weekly:
+          new DateTimeFormatterBuilder()
+            .appendPattern(pattern)
+            .parseDefaulting(WeekFields.ISO.dayOfWeek, 1)
+            .toFormatter
       else
         Daily(DateTimeFormatter.ofPattern(pattern))
+
 
   private sealed trait Period:
     protected val formatter_ : DateTimeFormatter
@@ -75,17 +77,20 @@ object CalendarExecutor:
     def next(zoned: ZonedDateTime): ZonedDateTime
     def query: TemporalQuery[LocalDate]
 
+
   private final case class Daily(protected val formatter_ : DateTimeFormatter)
   extends Period:
     val normalDuration = 24.h
     val query = TemporalQueries.localDate
     def next(zoned: ZonedDateTime) = zoned.plusDays(1)
 
+
   private final case class Weekly(protected val formatter_ : DateTimeFormatter)
   extends Period:
     val normalDuration = 7 * 24.h
     val query = DateOfWeekBasedYearQuery
     def next(zoned: ZonedDateTime) = zoned.plusDays(7)
+
 
   private object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]():
     def queryFrom(temporal: TemporalAccessor): LocalDate | Null =
@@ -102,4 +107,4 @@ object CalendarExecutor:
           .parse(f"$year%04d-W$week%02d-1")
           .query(TemporalQueries.localDate)
 
-    override def toString = "DateOfWeekBasedYear"
+    override def toString = "DateOfWeekBasedYearQuery"
