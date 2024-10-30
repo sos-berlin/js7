@@ -50,6 +50,7 @@ import sbtrelease.{Version, versionFormatError}
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 ThisBuild / scalaVersion := "3.5.2"
+ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT")
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val target = {
