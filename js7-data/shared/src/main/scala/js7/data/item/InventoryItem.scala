@@ -46,7 +46,11 @@ object InventoryItem:
   trait Companion[A <: InventoryItem]:
     type Item <: A
     def cls: Class[A]
+
     val typeName: String = getClass.simpleScalaName
+
+    protected lazy val typeNameAliases: Seq[String] =
+      Path.itemTypeNameAliases
 
     type Key <: InventoryItemKey
     def Key: InventoryItemKey.Companion[Key]
@@ -56,10 +60,10 @@ object InventoryItem:
 
     type ItemState <: InventoryItemState
 
-    implicit def jsonCodec: Codec.AsObject[A]
-
     def subtype: Subtype[A] =
-      Subtype(jsonCodec)(using ClassTag(cls))
+      Subtype[A](jsonCodec, aliases = typeNameAliases)(using ClassTag(cls))
+
+    implicit def jsonCodec: Codec.AsObject[A]
 
     def jsonEncoder: Encoder.AsObject[A] =
       jsonCodec

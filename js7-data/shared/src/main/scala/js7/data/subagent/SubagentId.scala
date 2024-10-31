@@ -25,8 +25,7 @@ extends UnsignedSimpleItemPath, DelegateId, AttachableToAgent:
 object SubagentId
 extends DelegateId.Companion[SubagentId], UnsignedSimpleItemPath.Companion[SubagentId]:
 
-  override val itemTypeName = "Subagent"
-  override val pathTypeName: String = itemTypeName
+  override val itemTypeNameAliases = Seq("SubagentRef")
 
   protected def unchecked(string: String) =
     new SubagentId(string)

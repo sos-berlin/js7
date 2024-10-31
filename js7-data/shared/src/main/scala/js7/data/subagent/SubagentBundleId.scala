@@ -27,8 +27,7 @@ extends DelegateId.Companion[SubagentBundleId],
 
   type Item = SubagentBundle
 
-  override val itemTypeName = "SubagentBundle"
-  override val pathTypeName: String = itemTypeName
+  override val itemTypeNameAliases = Seq("SubagentSelection"/*COMPATIBLE with v2.7.1*/)
 
   protected def unchecked(string: String) =
     new SubagentBundleId(string)

@@ -9,6 +9,7 @@ import js7.data.item.{InventoryItem, ItemRevision}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class SubagentItemTest extends OurTestSuite:
+
   "JSON" in:
     testJson[InventoryItem](
       SubagentItem(
@@ -26,7 +27,7 @@ final class SubagentItemTest extends OurTestSuite:
         "itemRevision": 1
       }""")
 
-    // COMPATIBLE with v2.2.2
+  "JSON until v2.2.2" in: // COMPATIBLE
     testJsonDecoder[InventoryItem](
       SubagentItem(
         SubagentId("SUBAGENT"),
@@ -39,4 +40,17 @@ final class SubagentItemTest extends OurTestSuite:
         "agentPath": "AGENT",
         "uri": "https://example.com",
         "itemRevision": 1
+      }""")
+
+  "JSON, a long time ago" in: // COMPATIBLE
+    testJsonDecoder[InventoryItem](
+      SubagentItem(
+        SubagentId("SUBAGENT"),
+        AgentPath("AGENT"),
+        Uri("https://example.com")),
+      json"""{
+        "TYPE": "SubagentRef",
+        "id": "SUBAGENT",
+        "agentPath": "AGENT",
+        "uri": "https://example.com"
       }""")

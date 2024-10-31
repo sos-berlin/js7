@@ -12,7 +12,6 @@ extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:
 
 
 object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]:
-  // May deadlock: override val itemTypeName = Calendar.typeName
   type Item = Calendar
 
   protected def unchecked(string: String) = new CalendarPath(string)

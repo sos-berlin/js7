@@ -11,7 +11,6 @@ extends SignableSimpleItemPath, InventoryItemPath.AttachableToAgent:
 
 
 object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]:
-  // May deadlock: override val itemTypeName = JobResource.typeName
 
   protected def unchecked(string: String) =
     new JobResourcePath(string)

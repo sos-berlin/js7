@@ -51,6 +51,8 @@ object VersionedItemPath:
     final lazy val NoId: VersionedItemId[P] = Anonymous ~ VersionId.Anonymous
     implicit override final val self: Companion[P] = this
 
+    def pathTypeNameAliases: Seq[String] = Nil
+
     private def P = this
 
     override def checked(string: String): Checked[P] =

@@ -2,7 +2,6 @@ package js7.data.subagent
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
-import js7.base.circeutils.typed.Subtype
 import js7.data.item.{InventoryItemPath, ItemRevision, UnsignedItemPath, UnsignedSimpleItem}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.NumericConstant
@@ -82,6 +81,3 @@ object SubagentBundle extends UnsignedSimpleItem.Companion[SubagentBundle]:
 
   implicit val jsonCodec: Codec.AsObject[SubagentBundle] =
     Codec.AsObject.from(jsonDecoder, jsonEncoder)
-
-  override val subtype: Subtype[SubagentBundle] =
-    Subtype[SubagentBundle](aliases = Seq("SubagentSelection"))

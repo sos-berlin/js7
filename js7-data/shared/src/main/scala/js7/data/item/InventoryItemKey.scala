@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.{Codec, DecodingFailure, HCursor, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked
-import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.Collections.implicits.*
 import js7.data.item.InventoryItemKey.*
 import scala.math.Ordered.orderingToOrdered
 
@@ -35,10 +35,18 @@ object InventoryItemKey:
 
     def itemTypeName: String
 
+    protected def itemTypeNameAliases: Seq[String]
+
     def pathTypeName: String
 
+    protected def pathTypeNameAliases: Seq[String] =
+      itemTypeNameAliases
+
+    final def pathTypeNames: Seq[String] =
+      pathTypeName +: pathTypeNameAliases
+
   def jsonCodec(companions: Iterable[Companion_]): Codec[InventoryItemKey] =
-    val typeToCompanion = companions.toKeyedMap(_.pathTypeName)
+    val typeToCompanion = companions.view.flatMap(o => o.pathTypeNames.map(_ -> o)).uniqueToMap
 
     new Codec[InventoryItemKey]:
       def apply(key: InventoryItemKey) = Json.fromString(key.toTypedString)

@@ -84,6 +84,8 @@ object VersionedItemId:
 
     final lazy val itemTypeName = P.itemTypeName
 
+    protected def itemTypeNameAliases: Seq[String] = Nil
+
     implicit final val implicitCompanion: Companion[P] =
       this
 
