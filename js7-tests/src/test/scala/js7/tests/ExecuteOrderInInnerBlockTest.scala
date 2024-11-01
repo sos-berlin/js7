@@ -142,17 +142,18 @@ object ExecuteOrderInInnerBlockTest:
 
   private val workflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    If(expr("false"), Workflow.of(
+    If(expr("false")):
       Fork.forTest(Seq("BRANCH" -> Workflow.of(
-        If(expr("true"), Workflow.of(
-        If(expr("false"), Workflow.of(
-          EmptyJob.execute(agentPath))),
-          TryInstruction(
-            Workflow.of(
-              If(expr("$FAIL ? false"), Workflow.of(
-          FailingJob.execute(agentPath))),
-              EmptyJob.execute(agentPath)),
-            catchWorkflow = Workflow.empty)))))))),
+        If(expr("true")):
+          Workflow.of(
+            If(expr("false")):
+              EmptyJob.execute(agentPath),
+            TryInstruction(
+              Workflow.of(
+                If(expr("$FAIL ? false")):
+                  FailingJob.execute(agentPath),
+                EmptyJob.execute(agentPath)),
+              catchWorkflow = Workflow.empty))))),
     EmptyJob.execute(agentPath)))
 
   private val forkBranchPath = Position(1) / "then" % 0 / BranchId.fork("BRANCH")

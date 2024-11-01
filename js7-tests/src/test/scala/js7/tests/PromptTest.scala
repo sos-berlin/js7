@@ -111,9 +111,11 @@ object PromptTest:
 
   private val failingWorkflow = Workflow(WorkflowPath("FAILING-WORKFLOW") ~ "INITIAL", Seq(
     Prompt(StringConstant("MY QUESTION")),
-    If(expr("$UNKNOWN"), Workflow.empty)))
+    If(expr("$UNKNOWN")):
+      Workflow.empty))
 
   private val skippedWorkflow = Workflow(WorkflowPath("SKIPPED-WORKFLOW") ~ "INITIAL", Seq(
     Prompt(StringConstant("MY QUESTION")),
     "LABEL" @: EmptyJob.execute(agentPath),
-    If(expr("$UNKNOWN"), Workflow.empty)))
+    If(expr("$UNKNOWN")):
+      Workflow.empty))

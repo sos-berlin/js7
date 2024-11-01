@@ -279,7 +279,10 @@ object ScalaUtils:
         if delegate.compareAndSet(true, false) then body
 
     implicit final class RichView[A](private val view: View[A]) extends AnyVal:
-      def :+[B >: A](b: B): View[B] =
+      inline def :+[B >: A](b: B): View[B] =
+        appended(b)
+
+      def appended[B >: A](b: B): View[B] =
         view.concat(b :: Nil)
 
       def +:[B >: A](b: B): View[B] =

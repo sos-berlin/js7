@@ -147,8 +147,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         TryInstruction(
           tryWorkflow = Workflow.of(
             EmptyJob.execute(agentPath),
-            If(expr("true"),
-              Workflow.of(Fail()))),
+            If(expr("true")):
+              Fail()),
           catchWorkflow = Workflow.of(
             EmptyJob.execute(agentPath))),
         EmptyJob.execute(agentPath)))

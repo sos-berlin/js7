@@ -15,8 +15,8 @@ case object NewBranchId:
   case object Options extends NewBranchId(BlockNesting.BlockId.Options):
     def toLegacy: BranchId.Named = BranchId.Options
 
-  case object Then extends NewBranchId(BlockNesting.BlockId.Then):
-    def toLegacy = BranchId.Then
+  final case class Then(index: Int = 1) extends NewBranchId(BlockNesting.BlockId.Then):
+    def toLegacy = BranchId.then_(index)
 
   case object Else extends NewBranchId(BlockNesting.BlockId.Else):
     def toLegacy = BranchId.Else
@@ -49,7 +49,7 @@ case object NewBranchId:
   def fromLegacy(branchId: BranchId): Checked[NewBranchId] =
     branchId match
       case BranchId.Options => Right(Options)
-      case BranchId.Then => Right(Then)
+      case BranchId.Then => Right(Then())
       case BranchId.Else => Right(Else)
       case BranchId.ConsumeNotices => Right(ConsumeNotices)
       case BranchId.StickySubagent => Right(StickySubagent)
@@ -57,7 +57,10 @@ case object NewBranchId:
       case BranchId.ForkList => Right(ForkList)
       case _ =>
         val string = branchId.string
-        if string.startsWith(BranchId.TryPrefix) then
+        if string.startsWith(BranchId.ThenPrefix) then
+          catchNonFatal:
+            Then(string.drop(BranchId.ThenPrefix.length).toInt)
+        else if string.startsWith(BranchId.TryPrefix) then
           catchNonFatal:
             Try(string.drop(BranchId.TryPrefix.length).toInt)
         else if string.startsWith(BranchId.CatchPrefix) then

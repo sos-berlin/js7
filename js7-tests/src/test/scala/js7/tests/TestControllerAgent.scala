@@ -1,20 +1,23 @@
 package js7.tests
 
-import org.apache.pekko.actor.{Actor, Props}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO}
 import cats.syntax.parallel.*
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import js7.agent.data.commands.AgentCommand
+import js7.base.catsutils.OurApp
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{Log4j, Logger}
+import js7.base.monixlike.MonixLikeExtensions.{parZip2, scheduleAtFixedRate}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -35,10 +38,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.testenv.DirectoryProvider
-import cats.effect.{ExitCode, IO}
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.OurApp
-import js7.base.monixlike.MonixLikeExtensions.{parZip2, scheduleAtFixedRate}
+import org.apache.pekko.actor.{Actor, Props}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 
@@ -189,9 +189,11 @@ object TestControllerAgent extends OurApp:
               WorkflowPath("TestControllerAgent") ~ "1",
               Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentPath, TestPathExecutable)) })))
         .orThrow,
-      If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),
-        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentPaths.head))),
-        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentPaths.head))))))
+      If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))))
+        .Then:
+          Execute(testJob(conf, conf.agentPaths.head))
+        .Else:
+          Workflow.of(Execute(testJob(conf, conf.agentPaths.head))))
 
   private case class Conf(
     directory: Path,

@@ -207,15 +207,23 @@ final class WorkflowPrinter(sb: StringBuilder):
       case EmptyInstruction(_) =>
         sb ++= "/*empty*/\n"
 
-      case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
-        sb ++= "if (" ++= predicate.toString ++= ") {\n"
-        appendWorkflowContent(nesting + 1, thenWorkflow)
-        for els <- elseWorkflowOption do
+      case If(ifThens, elseWorkflow, _) =>
+        for (If.IfThen(predicate, then_), i) <- ifThens.toVector.zipWithIndex do
+          if i > 0 then sb ++= " else "
+          sb ++= "if ("
+          sb ++= predicate.toString
+          sb ++= ") {\n"
+          appendWorkflowContent(nesting + 1, then_)
           indent(nesting)
-          sb ++= "} else {\n"
-          appendWorkflowContent(nesting + 1, els)
-        indent(nesting)
-        sb ++= "}\n"
+          sb ++= "}"
+        elseWorkflow match
+          case None =>
+            sb ++= "\n"
+          case Some(els) =>
+            sb ++= " else {\n"
+            appendWorkflowContent(nesting + 1, els)
+            indent(nesting)
+            sb ++= "}\n"
 
       case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, maxTries, _) =>
         sb ++= "try "

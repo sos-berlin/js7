@@ -63,8 +63,8 @@ final class OrderEventSourceTest extends OurTestSuite:
   "if" - {
     val workflow = Workflow.of(TestWorkflowId,
       executeScript,                                  // 0
-      If(Equal(LastReturnCode, NumericConstant(0)),   // 1
-        Workflow.of(executeScript)),                  // 1/then:0
+      If(Equal(LastReturnCode, NumericConstant(0))):  // 1
+        Workflow.of(executeScript),                   // 1/then:0
       executeScript)                                  // 2
 
     "then branch executed" in:
@@ -93,11 +93,13 @@ final class OrderEventSourceTest extends OurTestSuite:
 
   "if returnCode else" - {
     val workflow = Workflow.of(TestWorkflowId,
-      executeScript,                                        // 0
-      If(Equal(LastReturnCode, NumericConstant(0)),         // 1
-        thenWorkflow = Workflow.of(executeScript),          // 1/0:0
-        elseWorkflow = Some(Workflow.of(executeScript))),   // 1/1:0
-      executeScript)                                        // 2
+      executeScript,                                  // 0
+      If(Equal(LastReturnCode, NumericConstant(0)))   // 1
+        .Then:
+          Workflow.of(executeScript)    // 1/0:0
+        .Else:
+          Workflow.of(executeScript),   // 1/1:0
+      executeScript)                                  // 2
 
     "then branch executed" in:
       assert(step(workflow, OrderOutcome.succeededRC0) == Seq(OrderMoved(Position(1) / Then % 0)))
@@ -1107,9 +1109,9 @@ final class OrderEventSourceTest extends OurTestSuite:
       lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentPath, ShellScriptExecutable(":")))
       lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(
         /*0*/ execute,
-        /*1*/ If(BooleanConstant(true),
-          Workflow.of(execute),
-          Some(Workflow.of(execute))),
+        /*1*/ If(BooleanConstant(true))
+          .Then(Workflow.of(execute))
+          .Else(Workflow.of(execute)),
         /*2*/ TryInstruction(
           Workflow.of(execute),
           Workflow.of(execute)),

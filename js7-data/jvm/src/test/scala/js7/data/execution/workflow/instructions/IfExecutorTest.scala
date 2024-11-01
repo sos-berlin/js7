@@ -12,6 +12,7 @@ import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
 import js7.data.state.TestStateView
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, If}
@@ -46,7 +47,7 @@ final class IfExecutorTest extends OurTestSuite:
   }
 
   "If true" in:
-    assert(
+    assert:
       executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to ==
         Position(7) / Then % 0
 
@@ -71,6 +72,21 @@ final class IfExecutorTest extends OurTestSuite:
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
     assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
 
+  "JS-2134 else if" in:
+    val instr =
+      If(expr("false")).Then:
+        Workflow.of(ThenJob)
+      .elseIf(expr("false")).Then:
+        Workflow.of(Then2Job)
+      .elseIf(expr("true")).Then:
+        Workflow.of(Then3Job)
+      .Else:
+        Workflow.of(ElseJob)
+
+    testJson(
+      ifExecutor.nextMove(instr, AOrder, stateView).orThrow.get.to,
+      json"""[ 7, "then+3", 0 ]""")
+
 
 object IfExecutorTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
@@ -79,10 +95,15 @@ object IfExecutorTest:
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX"))))))
   private val ThenJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
+  private val Then2Job = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN-2")))
+  private val Then3Job = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN-2")))
   private val ElseJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
 
   private def ifThenElse(booleanExpr: BooleanExpr) =
-    If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))
+    If(booleanExpr).Then:
+      Workflow.of(ThenJob)
+    .Else:
+      Workflow.of(ElseJob)
 
   private def ifThen(booleanExpr: BooleanExpr) =
-    If(booleanExpr, Workflow.of(ThenJob))
+    If(booleanExpr)(Workflow.of(ThenJob))

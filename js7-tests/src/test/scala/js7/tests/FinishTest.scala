@@ -96,10 +96,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     checkEvents[OrderFinished](
       Workflow.of(
         EmptyJob.execute(agentPath),
-        If(expr("true"),
+        If(expr("true")):
           Workflow.of(
             EmptyJob.execute(agentPath),
-            Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH")))))),
+            Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH"))))),
         Fail()),
       orderId,
       Vector(
@@ -124,19 +124,18 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "finish in fork, finish first" in:
     val orderId = OrderId("♥️")
     val events = runUntil[OrderTerminated](
-      Workflow.of(
+      Workflow.of:
         Fork(
           Vector(
             "🥕" -> Workflow.of(
               EmptyJob.execute(agentPath),
-              If(expr("true"),
-                Workflow.of(
-                  Finish())),
+              If(expr("true")):
+                Finish(),
               EmptyJob.execute(agentPath)),
             "🍋" -> Workflow.of(
               SleepJob.sleep(agentPath, 100.ms),
               Finish(Some(OrderOutcome.Succeeded(Map(
-                "result" -> StringValue("FINISH"))))))))),
+                "result" -> StringValue("FINISH")))))))),
       orderId)
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
@@ -185,9 +184,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
             Vector(
               "🥕" -> Workflow.of(
                 EmptyJob.execute(agentPath),
-                If(expr("true"),
-                  Workflow.of(
-                    Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))))),
+                If(expr("true")):
+                  Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))),
                 EmptyJob.execute(agentPath)),
               "🍋" -> Workflow.of(
                 Finish(Some(OrderOutcome.Succeeded(Map(
@@ -231,9 +229,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           Vector(
             "🥕" -> Workflow.of(
               EmptyJob.execute(agentPath),
-              If(expr("true"),
-                Workflow.of(
-                  Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))))),
+              If(expr("true")):
+                Finish(Some(OrderOutcome.Failed(Some("FINISH WITH FAILURE")))),
               EmptyJob.execute(agentPath)),
             "🍋" -> Workflow.of(
               Finish(Some(OrderOutcome.Succeeded(Map(
@@ -299,9 +296,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         Vector(
           "🥕" -> Workflow.of(
             SleepJob.sleep(agentPath, 100.ms),
-            If(expr("true"),
-              Workflow.of(
-                Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH")))))),
+            If(expr("true")):
+              Finish(Some(OrderOutcome.Failed(Some("FAIL WITH FINISH")))),
             FailingJob.execute(agentPath)),
           "🍋" -> Workflow.of(
             EmptyJob.execute(agentPath)))))

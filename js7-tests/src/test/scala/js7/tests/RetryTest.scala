@@ -65,12 +65,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         Workflow.of:
           Fail(),
         Workflow.of:
-          If(expr("tryCount < 2"),
-            Workflow.of:
-              TryInstruction(
-                Workflow.of:
-                  Retry(),
-                Workflow.empty))))
+          If(expr("tryCount < 2")):
+            TryInstruction(
+              Workflow.of:
+                Retry(),
+              Workflow.empty)))
 
     withItem(workflow): workflow =>
       val expectedEvents = Vector(
@@ -718,9 +717,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     val workflow = Workflow.of(WorkflowPath(s"MAX-TRIES-$nr"),
       TryInstruction(
         tryWorkflow = Workflow.of(
-          If(expression,
-            Workflow.of:
-              Prompt(expr("'PROMPT'"))),
+          If(expression):
+            Prompt(expr("'PROMPT'")),
           Fail()),
         catchWorkflow = Workflow.of:
           Retry(),

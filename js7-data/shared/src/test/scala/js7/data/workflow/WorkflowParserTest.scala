@@ -1,10 +1,12 @@
 package js7.data.workflow
 
+import cats.data.NonEmptyVector
 import cats.syntax.show.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nev
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
@@ -233,31 +235,33 @@ final class WorkflowParserTest extends OurTestSuite:
 
   "if (...) {...}" in:
     checkWithSourcePos("""define workflow { if (($returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
-      Workflow.anonymous(
-        Vector(
-          If(
+      Workflow.of(
+        If(
+          Nev.one(If.IfThen(
             Or(
               In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(NamedValue("KEY"), StringConstant("VALUE"))),
-            Workflow.of(
+            thenBlock = Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
                 sourcePos = sourcePos(68, 109)),
-              ImplicitEnd(sourcePos(110, 111))),
-            sourcePos = sourcePos(18, 65)),
-          ImplicitEnd(sourcePos(112, 113)))))
+              ImplicitEnd(sourcePos(110, 111))))),
+          sourcePos = sourcePos(18, 65)),
+        ImplicitEnd(sourcePos(112, 113))))
 
   "if (...) {...} else {...}" in:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(LastReturnCode, NumericConstant(-1)),
-            Workflow.of(
-              Execute.Anonymous(
-                WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
-                sourcePos = sourcePos(43, 84)),
-              ImplicitEnd(sourcePos(85, 86))),
-            Some(Workflow.of(
+          If(
+            Nev.one(If.IfThen(
+              Equal(LastReturnCode, NumericConstant(-1)),
+              thenBlock = Workflow.of(
+                Execute.Anonymous(
+                  WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
+                  sourcePos = sourcePos(43, 84)),
+                ImplicitEnd(sourcePos(85, 86))))),
+            elseBlock = Some(Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentPath("AGENT"), PathExecutable("/ELSE")),
                 sourcePos = sourcePos(94, 135)),
@@ -269,8 +273,9 @@ final class WorkflowParserTest extends OurTestSuite:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(LastReturnCode, NumericConstant(-1)),
-            Workflow.of(Fail(sourcePos = sourcePos(41, 45))),
+          If(
+            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(-1)),
+              thenBlock = Workflow.of(Fail(sourcePos = sourcePos(41, 45))))),
             sourcePos = sourcePos(18, 40)),
           ImplicitEnd(sourcePos(46, 47)))))
 
@@ -278,9 +283,11 @@ final class WorkflowParserTest extends OurTestSuite:
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(LastReturnCode, NumericConstant(-1)),
-            Workflow.of(Fail(sourcePos = sourcePos(41, 45))),
-            Some(Workflow.of(Execute.Anonymous(
+          If(
+            Nev.one(If.IfThen(
+              Equal(LastReturnCode, NumericConstant(-1)),
+              thenBlock = Workflow.of(Fail(sourcePos = sourcePos(41, 45))))),
+            elseBlock = Some(Workflow.of(Execute.Anonymous(
               WorkflowJob(AgentPath("AGENT"), PathExecutable("/ELSE")),
               sourcePos = sourcePos(51, 92)))),
             sourcePos(18, 40)),
@@ -295,13 +302,14 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow.anonymous(
         Vector(
           If(
-            Equal(LastReturnCode, NumericConstant(1)),
-            Workflow.of(
-              ImplicitEnd(sourcePos(51, 52))),
+            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(1)),
+              thenBlock = Workflow.of(
+                ImplicitEnd(sourcePos(51, 52))))),
             sourcePos = sourcePos(28, 49)),
-          If(Equal(LastReturnCode, NumericConstant(2)),
-            Workflow.of(
-              ImplicitEnd(sourcePos(86, 87))),
+          If(
+            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(2)),
+              thenBlock = Workflow.of:
+                ImplicitEnd(sourcePos(86, 87)))),
             sourcePos = sourcePos(63, 84)),
           ImplicitEnd(sourcePos(96, 97)))))
 
@@ -316,13 +324,12 @@ final class WorkflowParserTest extends OurTestSuite:
       Workflow.anonymous(
         Vector(
           If(
-            Equal(LastReturnCode, NumericConstant(1)),
-            Workflow.of(
-              ImplicitEnd(sourcePos(62, 63))),
+            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(1)),
+              thenBlock = Workflow.of(ImplicitEnd(sourcePos(62, 63))))),
             sourcePos = sourcePos(28, 49)),
-          If(Equal(LastReturnCode, NumericConstant(2)),
-            Workflow.of(
-              ImplicitEnd(sourcePos(108, 109))),
+          If(
+            Nev.one(If.IfThen(Equal(LastReturnCode, NumericConstant(2)),
+              thenBlock = Workflow.of(ImplicitEnd(sourcePos(108, 109))))),
             sourcePos = sourcePos(74, 95)),
           ImplicitEnd(sourcePos(118, 119)))))
 

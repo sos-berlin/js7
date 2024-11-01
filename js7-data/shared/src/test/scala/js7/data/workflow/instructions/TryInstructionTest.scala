@@ -100,14 +100,12 @@ final class TryInstructionTest extends OurTestSuite:
     "retry nested in if-then-try is okay" in:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
-        Workflow.of(
-          If(BooleanConstant(true),
-            Workflow.of(
-              If(BooleanConstant(true),
-                Workflow.of(
-                  TryInstruction(
-                    Workflow.of(Retry()),  // This retry belongs to the outer catch-block
-                    Workflow.empty)))))),
+        Workflow.of:
+          If(BooleanConstant(true)):
+            If(BooleanConstant(true)):
+              TryInstruction(
+                Workflow.of(Retry()),  // This retry belongs to the outer catch-block
+                Workflow.empty),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
 
@@ -115,12 +113,13 @@ final class TryInstructionTest extends OurTestSuite:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
-          If(BooleanConstant(true),
-            Workflow.empty,
-            Some(Workflow.of(
-              If(BooleanConstant(true),
-                Workflow.empty,
-                Some(Workflow.of(Retry()))))))),
+          If(BooleanConstant(true)).Then:
+            Workflow.empty
+          .Else:
+            If(BooleanConstant(true)).Then:
+              Workflow.empty
+            .Else:
+              Retry()),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
 
@@ -128,12 +127,13 @@ final class TryInstructionTest extends OurTestSuite:
       val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
-          If(BooleanConstant(true),
-            Workflow.empty,
-            Some(Workflow.of(
-              If(BooleanConstant(true),
-                Workflow.empty,
-                Some(Workflow.of(Retry()))))))),
+          If(BooleanConstant(true)).Then:
+            Workflow.empty
+          .Else:
+            If(BooleanConstant(true)).Then:
+              Workflow.empty
+            .Else:
+              Retry()),
         Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
   }

@@ -447,20 +447,18 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         instructions = Seq(
           Cycle(Schedule.continuous(0.s, limit = Some(1))):
             Workflow.of:
-              If(
-                expr("true"),
-                Workflow.of:
-                  LockInstruction(
-                    List(LockDemand(lock.path)),
-                    Workflow.of:
-                      TryInstruction(
-                        Workflow.of(
-                          EmptyJob.execute(agentPath),
-                          If(expr("true"), Workflow.of(
-                            Break())),
-                          Fail()),
-                        Workflow.of:
-                          Fail())))))
+              If(expr("true")):
+                LockInstruction(
+                  List(LockDemand(lock.path)),
+                  Workflow.of:
+                    TryInstruction(
+                      Workflow.of(
+                        EmptyJob.execute(agentPath),
+                        If(expr("true")):
+                          Break(),
+                        Fail()),
+                      Workflow.of:
+                        Fail()))))
 
       withTemporaryItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#BREAK")
@@ -508,8 +506,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
             Cycle(Schedule.continuous(0.s, limit = Some(1))):
               Workflow.of(
                 EmptyJob.execute(agentPath),
-                If(expr("true"), Workflow.of(
-                  Break())),
+                If(expr("true")):
+                  Break(),
                 Fail())))
 
       withTemporaryItem(workflow): workflow =>
@@ -550,8 +548,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(Workflow.of(
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
-            If(expr("true"), Workflow.of(
-              Break())))))))
+            If(expr("true")):
+              Break())))))
         .await(99.s)
 
       assert(checked == Left(Problem(
@@ -571,8 +569,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                 Workflow.of:
                   Fork.of:
                     "A" -> Workflow.of:
-                      If(expr("true"), Workflow.of(
-                        Break()))))))))
+                      If(expr("true")):
+                        Break()))))))
         .await(99.s)
 
       assert(checked == Left(Problem(
@@ -653,9 +651,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           instructions = Seq(
             Cycle(Schedule.continuous(1.s)):
               Workflow.of:
-                If(expr("true"),
-                  Workflow.of(
-                    Break()))))
+                If(expr("true")):
+                  Break()))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-IF")
 
@@ -682,10 +679,10 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           instructions = Seq(
             Cycle(Schedule.continuous(pause = 1.s)):
               Workflow.of:
-                If(expr("true"),
+                If(expr("true")):
                   Workflow.of(
                     EmptyJob.execute(agentPath),
-                    Break()))))
+                    Break())))
         withTemporaryItem(workflow): workflow =>
           val orderId = OrderId("#2024-03-25#PLACED-ORDER-INNER-BLOCK-IF-EXECUTE")
 
@@ -818,15 +815,13 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
       timeZone = timezone,
       calendarPath = Some(calendar.path),
       instructions = Seq(
-        If(expr("true"),
-          Workflow.of(
-            Cycle(Schedule.continuous(1.s)):
-              Workflow.of:
-                If(expr("true"),
-                  Workflow.of(
-                    TryInstruction(
-                      Workflow.of(Stop()),
-                      Workflow.empty)))))))
+        If(expr("true")):
+          Cycle(Schedule.continuous(1.s)):
+            Workflow.of:
+              If(expr("true")):
+                TryInstruction(
+                  Workflow.of(Stop()),
+                  Workflow.empty)))
 
     withTemporaryItem(workflow) { workflow =>
       locally:

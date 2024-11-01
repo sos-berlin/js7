@@ -58,9 +58,8 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
                      |""".stripMargin,
                 timeout = Some(timeout)),
         Workflow.of:
-          If(expr("!timedOut"),
-            Workflow.of:
-              Fail(Some(expr("'💥 NOT TIMED OUT'")))))))
+          If(expr("!timedOut")):
+            Fail(Some(expr("'💥 NOT TIMED OUT'"))))))
 
     withItem(workflow): workflow =>
       // Warm-up
@@ -97,9 +96,8 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
         Workflow.of:
           Fail(),
         Workflow.of:
-          If(expr("timedOut()"),
-            Workflow.of:
-              Fail(Some(expr("'💥 TIMED OUT'")))))))
+          If(expr("timedOut()")):
+            Fail(Some(expr("'💥 TIMED OUT'"))))))
 
     withItem(workflow): workflow =>
       val events = controller.runOrder:
@@ -138,10 +136,9 @@ final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, Bl
                      |""".stripMargin,
                 timeout = Some(timeout)),
         Workflow.of:
-          If(expr("!timedOut || $returnCode == 0"),
-            Workflow.of:
-              Fail(Some(StringConstant:
-                "💥 !timedOut || $returnCode == 0"))))))
+          If(expr("!timedOut || $returnCode == 0")):
+            Fail(Some(StringConstant:
+              "💥 !timedOut || $returnCode == 0")))))
 
     withItem(workflow): workflow =>
       val t = now

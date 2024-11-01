@@ -531,21 +531,21 @@ object ForkListTest:
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
         Workflow.of(
-          If(
-            expr("$element == 'ELEMENT-X'"),
-            Workflow.of(EmptyJob.execute(agentPath)),
-            Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
+          If(expr("$element == 'ELEMENT-X'")).Then:
+            EmptyJob.execute(agentPath)
+          .Else:
+            Workflow.of(EmptyJob.execute(bAgentPath)))),
 
       // Each child order starts at a different Agent. So let forking order detached.
       ForkList(
         expr("$myList"),
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
-        Workflow.of(
-          If(
-            expr("$element == 'ELEMENT-1'"),
-            Workflow.of(EmptyJob.execute(agentPath)),
-            Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
+        Workflow.of:
+          If(expr("$element == 'ELEMENT-1'")).Then:
+            EmptyJob.execute(agentPath)
+          .Else:
+            Workflow.of(EmptyJob.execute(bAgentPath))),
 
       EmptyJob.execute(agentPath),
       // Each child order starts at a different Agent. So detach forking order.
@@ -554,10 +554,10 @@ object ForkListTest:
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
         Workflow.of(
-          If(
-            expr("$element == 'ELEMENT-1'"),
-            Workflow.of(EmptyJob.execute(agentPath)),
-            Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
+          If(expr("$element == 'ELEMENT-1'")).Then:
+            EmptyJob.execute(agentPath)
+          .Else:
+            EmptyJob.execute(bAgentPath))),
 
       EmptyJob.execute(agentPath),
       // Each child order starts at bAgentPath. So detach and then attach forking order to bAgentPath.
@@ -566,10 +566,10 @@ object ForkListTest:
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
         Workflow.of(
-          If(
-            expr("$element == 'ELEMENT-X'"),
-            Workflow.of(EmptyJob.execute(agentPath)),
-            Some(Workflow.of(EmptyJob.execute(bAgentPath))))))))
+          If(expr("$element == 'ELEMENT-X'")).Then:
+            EmptyJob.execute(agentPath)
+          .Else:
+            Workflow.of(EmptyJob.execute(bAgentPath))))))
 
   private val errorWorkflow = Workflow(
     WorkflowPath("ERROR-WORKFLOW") ~ "INITIAL",
@@ -579,9 +579,8 @@ object ForkListTest:
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
         Workflow.of(
-          If(
-            expr("$UNKNOWN == 'UNKNOWN'"),
-            Workflow.of(EmptyJob.execute(agentPath)))))))
+          If(expr("$UNKNOWN == 'UNKNOWN'")):
+            EmptyJob.execute(agentPath)))))
 
   private val failingChildOrdersWorkflow = Workflow(
     WorkflowPath("FAILING-CHILD-ORDER-WORKFLOW") ~ "INITIAL",
@@ -614,8 +613,8 @@ object ForkListTest:
         exprFunction("(element, i) => $i"),
         exprFunction("(element, i) => { element: $element, index: $i }"),
         Workflow.of(
-          If(expr("$index < 0 || $index > 9999"),
-            Workflow.of(Fail())),
+          If(expr("$index < 0 || $index > 9999")):
+            Fail(),
           EmptyJob.execute(agentPath)))))
 
   private val exampleWorkflow = Workflow(

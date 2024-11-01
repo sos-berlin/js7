@@ -34,6 +34,7 @@ sealed trait BranchId:
 
 object BranchId:
   val Then: Named = BranchId("then")
+  val ThenPrefix = "then+"
   val Else: Named = BranchId("else")
   val Try_ : Named = BranchId("try")
   val TryPrefix = "try+"
@@ -53,6 +54,12 @@ object BranchId:
   private[BranchId] val NoMoveBoundaryPrefixes = Seq(TryPrefix, CatchPrefix, CyclePrefix/*???*/)
 
   implicit def apply(branchId: String): Named = Named(branchId)
+
+  def then_(index: Int): BranchId.Named =
+    if index == 1 then
+      Then
+    else
+      BranchId(s"then+$index")
 
   def try_(retry: Int): BranchId.Named =
     require(retry >= 0)

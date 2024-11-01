@@ -1,14 +1,17 @@
 package js7.data.workflow
 
 import cats.syntax.show.*
+import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpr, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
+import js7.data.workflow.WorkflowPrinterTest.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -136,12 +139,11 @@ final class WorkflowPrinterTest extends OurTestSuite:
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          If(
-            Or(
-              In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue("KEY"), StringConstant("VALUE"))),
-            Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))),
+          If(Or(
+            In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+            Equal(NamedValue("KEY"), StringConstant("VALUE")))
+          ):
+            Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))),
       """define workflow {
         |  if (($returnCode in [1, 2]) || $KEY == 'VALUE') {
         |    execute agent='AGENT', executable='EXECUTABLE';
@@ -154,14 +156,13 @@ final class WorkflowPrinterTest extends OurTestSuite:
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          If(Equal(LastReturnCode, NumericConstant(-1)),
+          If(Equal(LastReturnCode, NumericConstant(-1))):
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A-THEN"))),
-              If(BooleanConstant(true),
-                Workflow.of(
-                  Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B-THEN")))),
-                Some(Workflow.of(
-                  Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B-ELSE")))))))))),
+              If(BooleanConstant(true)).Then:
+                Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B-THEN")))
+              .Else:
+                Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B-ELSE")))))),
       """define workflow {
         |  if ($returnCode == -1) {
         |    execute agent='AGENT', executable='A-THEN';
@@ -195,7 +196,17 @@ final class WorkflowPrinterTest extends OurTestSuite:
         |""".stripMargin)
 
   private def check(workflow: Workflow, source: String): Unit =
-    assert(workflow.show == source)
-    val result = WorkflowParser.parse(source).map(_.withoutSourcePos)
-    val expected = Right(workflow.copy(source = Some(source)).withoutSourcePos)
-    assert(result == expected)
+    try
+      assert(workflow.show == source)
+      val result = WorkflowParser.parse(source).map(_.withoutSourcePos)
+      val expected = Right(workflow.copy(source = Some(source)).withoutSourcePos)
+      if result != expected then
+        assert(result == expected)
+    catch case NonFatal(t) =>
+      logger.error(s"GENERATED:\n" + workflow.show)
+      logger.info(s"EXPECTED:\n" + source)
+      throw t
+
+
+object WorkflowPrinterTest:
+  private val logger = Logger[WorkflowPrinterTest]

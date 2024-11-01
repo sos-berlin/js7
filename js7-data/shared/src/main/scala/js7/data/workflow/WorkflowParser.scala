@@ -8,6 +8,7 @@ import js7.base.parser.Parsers.checkedParse
 import js7.base.parser.Parsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nev
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
@@ -217,7 +218,7 @@ object WorkflowParser:
         ~~ (string("else") *> w *> curlyWorkflowOrInstruction).?
         ~~<* instructionTerminator.?
       ).map { case (((start, (expr, end)), then_), else_) =>
-        If(expr, then_, else_, sourcePos(start, end))
+        If(Nev.one(If.IfThen(expr, then_)), else_, sourcePos(start, end))
       }
 
     private val retryInstruction: Parser[Retry] =

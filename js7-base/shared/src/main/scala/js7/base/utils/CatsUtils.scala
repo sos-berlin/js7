@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import cats.data.{NonEmptyList, NonEmptySeq, Validated}
+import cats.data.{NonEmptyList, NonEmptySeq, NonEmptyVector, Validated}
 import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
@@ -15,6 +15,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
+import scala.collection.View
 import scala.concurrent.duration.*
 
 /**
@@ -24,6 +25,9 @@ object CatsUtils:
 
   type Nel[+A] = NonEmptyList[A]
   val Nel: NonEmptyList.type = NonEmptyList
+
+  type Nev[+A] = NonEmptyVector[A]
+  val Nev: NonEmptyVector.type = NonEmptyVector
 
   private val logger = Logger[this.type]
 
@@ -142,6 +146,12 @@ object CatsUtils:
             .map(_.toSingleUseResource))
 
 
+    extension [A](nonEmptyList: NonEmptyList[A])
+      def view: View[A] = nonEmptyList.toList.view
+
+    extension [A](nonEmptyVector: NonEmptyVector[A])
+      def view: View[A] = nonEmptyVector.toVector.view
+
   implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal:
     def orThrow: A =
       underlying.valueOr(t => throw t.appendCurrentStackTrace)
@@ -149,6 +159,7 @@ object CatsUtils:
   implicit final class RichProblemValidated[E <: Problem, A](private val underlying: Validated[E, A]) extends AnyVal:
     def orThrow: A =
       underlying.valueOr(problem => throw problem.throwable.appendCurrentStackTrace)
+
 
   implicit final class RichNonEmptyListCompanion(private val x: NonEmptyList.type)
   extends AnyVal:

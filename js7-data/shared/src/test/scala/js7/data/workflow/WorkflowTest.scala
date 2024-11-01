@@ -79,25 +79,27 @@ final class WorkflowTest extends OurTestSuite:
             }, {
               "label": "TEST-LABEL",
               "TYPE": "If",
-              "predicate": "$$returnCode == 1",
-              "then": {
-                "instructions": [
-                  { "TYPE": "Execute.Named", "jobName": "A" },
-                  { "TYPE": "Execute.Named", "jobName": "B" }
-                ],
-                "jobs": {
-                  "B": {
-                    "agentPath": "AGENT",
-                    "executable": {
-                      "TYPE": "PathExecutable",
-                      "v1Compatible": true,
-                      "path": "B.cmd"
-                    },
-                    "processLimit": 3 ,
-                    "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
+              "ifThens": [{
+                "predicate": "$$returnCode == 1",
+                "then": {
+                  "instructions": [
+                    { "TYPE": "Execute.Named", "jobName": "A" },
+                    { "TYPE": "Execute.Named", "jobName": "B" }
+                  ],
+                  "jobs": {
+                    "B": {
+                      "agentPath": "AGENT",
+                      "executable": {
+                        "TYPE": "PathExecutable",
+                        "v1Compatible": true,
+                        "path": "B.cmd"
+                      },
+                      "processLimit": 3 ,
+                      "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
+                    }
                   }
                 }
-              },
+              }],
               "else": {
                 "instructions": [
                   {
@@ -246,26 +248,28 @@ final class WorkflowTest extends OurTestSuite:
               "position": [ 1 ],
               "label": "TEST-LABEL",
               "TYPE": "If",
-              "predicate": "$$returnCode == 1",
-              "then": {
-                "instructions": [
-                  { "position": [ 1, "then", 0 ], "TYPE": "Execute.Named", "jobName": "A" },
-                  { "position": [ 1, "then", 1 ], "TYPE": "Execute.Named", "jobName": "B" },
-                  { "position": [ 1, "then", 2 ], "TYPE": "ImplicitEnd" }
-                ],
-                "jobs": {
-                  "B": {
-                    "agentPath": "AGENT",
-                    "executable": {
-                      "TYPE": "PathExecutable",
-                      "v1Compatible": true,
-                      "path": "B.cmd"
-                    },
-                    "processLimit": 3 ,
-                    "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
+              "ifThens": [{
+                "predicate": "$$returnCode == 1",
+                "then": {
+                  "instructions": [
+                    { "position": [ 1, "then", 0 ], "TYPE": "Execute.Named", "jobName": "A" },
+                    { "position": [ 1, "then", 1 ], "TYPE": "Execute.Named", "jobName": "B" },
+                    { "position": [ 1, "then", 2 ], "TYPE": "ImplicitEnd" }
+                  ],
+                  "jobs": {
+                    "B": {
+                      "agentPath": "AGENT",
+                      "executable": {
+                        "TYPE": "PathExecutable",
+                        "v1Compatible": true,
+                        "path": "B.cmd"
+                      },
+                      "processLimit": 3 ,
+                      "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
+                    }
                   }
                 }
-              },
+              }],
               "else": {
                 "instructions": [
                   {
@@ -492,13 +496,14 @@ final class WorkflowTest extends OurTestSuite:
   }
 
   "positionMatchesSearch" in:
-    val workflow = Workflow(WorkflowPath.NoId, Vector(
-      "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
-      If(Equal(LastReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))))),
-      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))
-      .completelyChecked.orThrow
+    val workflow =
+      Workflow(WorkflowPath.NoId,
+        Seq(
+          "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
+          If(Equal(LastReturnCode, NumericConstant(1))):
+            "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))),
+        Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))
+      ).completelyChecked.orThrow
     assert(workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("A")))
     assert(!workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("B")))
     assert(!workflow.positionMatchesSearch(Position(1), PositionSearch.ByLabel("B")))
@@ -509,35 +514,35 @@ final class WorkflowTest extends OurTestSuite:
     assert(!workflow.positionMatchesSearch(Position(1) / Then % 0, PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB-X"))))
 
   "labelToPosition of a branch" in:
-    val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
-      If(Equal(LastReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
-      .completelyChecked.orThrow
+    val workflow =
+      Workflow.of(
+        "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
+        If(Equal(LastReturnCode, NumericConstant(1))):
+          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))
+      ).completelyChecked.orThrow
     assert(workflow.labelToPosition(Nil, Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
     assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Right(Position(1) / Then % 0))
 
   "labelToPosition of whole workflow" in:
-    val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
-      If(Equal(LastReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
-      .completelyChecked.orThrow
+    val workflow =
+      Workflow.of(
+        "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
+        If(Equal(LastReturnCode, NumericConstant(1))):
+          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))
+      ).completelyChecked.orThrow
     assert(workflow.labelToPosition(Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Label("B")) == Right(Position(1) / Then % 0))
     assert(workflow.labelToPosition(Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
 
   "Duplicate labels" in:
-    assert(Workflow.of(
-      "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
-      If(Equal(LastReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.of(
-          "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
-      .completelyChecked ==
-      Left(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
+    assert(
+      Workflow.of(
+        "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
+        If(Equal(LastReturnCode, NumericConstant(1))):
+          "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))
+      ).completelyChecked ==
+        Left(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
 
   "Duplicate label in nested workflow" in:
     assert(intercept[RuntimeException] {
@@ -571,8 +576,8 @@ final class WorkflowTest extends OurTestSuite:
   "flattendWorkflows" in:
     assert(TestWorkflow.flattenedBranchToWorkflow == Map(
       Nil -> TestWorkflow,
-      (Position(1) / Then) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
-      (Position(1) / Else) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,
+      (Position(1) / Then) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].ifThens.head.thenBlock,
+      (Position(1) / Else) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseBlock.get,
       (Position(2) / "fork+🥕") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
       (Position(2) / "fork+🍋") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
     ))
@@ -581,10 +586,10 @@ final class WorkflowTest extends OurTestSuite:
     assert(TestWorkflow.flattenedInstructions.toSeq == Seq[(Position, Instruction.Labeled)](
       (Position(0), AExecute),
       (Position(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
-      (Position(1) / Then % 0, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(0)),
-      (Position(1) / Then % 1, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(1)),
+      (Position(1) / Then % 0, TestWorkflow.instruction(1).asInstanceOf[If].ifThens.head.thenBlock.instructions(0)),
+      (Position(1) / Then % 1, TestWorkflow.instruction(1).asInstanceOf[If].ifThens.head.thenBlock.instructions(1)),
       (Position(1) / Then % 2, ImplicitEnd()),
-      (Position(1) / Else % 0, TestWorkflow.instruction(1).asInstanceOf[If].elseWorkflow.get.instructions(0)),
+      (Position(1) / Else % 0, TestWorkflow.instruction(1).asInstanceOf[If].elseBlock.get.instructions(0)),
       (Position(1) / Else % 1, ImplicitEnd()),
       (Position(2), TestWorkflow.instruction(2)),
       (Position(2) / "fork+🥕" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(0)),
@@ -607,9 +612,9 @@ final class WorkflowTest extends OurTestSuite:
     val wrongWorkflow = Workflow(
       WorkflowPath.NoId,
       Vector(
-        If(BooleanConstant(true),
-          Workflow.of(
-            Execute.Named(AJobName/*undefined*/)))))
+        If(BooleanConstant(true)):
+          Execute.Named(AJobName/*undefined*/)))
+
     "Unknown job" in:
       assert(wrongWorkflow.completelyChecked == Left(Problem("Unknown job name 'A'")))
 
@@ -630,7 +635,7 @@ final class WorkflowTest extends OurTestSuite:
       assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isRight)
 
     "'if' in catch" in:
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry())))))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true))(Retry()))))
         .completelyChecked.isRight)
 
     "'fork' is a barrier" in:
@@ -648,13 +653,14 @@ final class WorkflowTest extends OurTestSuite:
       Vector(
         LockInstruction.single(a, None, Workflow.of(
           Execute(job),
-          If(BooleanConstant(true), Workflow.of(
-            LockInstruction.single(b, None, Workflow.of(
-            Execute(job),
-            Fork.of(
-              "BRANCH" -> Workflow.of(
-                LockInstruction.single(c, None, Workflow.of(
-                  Execute(job)))))))))))))
+          If(BooleanConstant(true)):
+            Workflow.of(
+              LockInstruction.single(b, None, Workflow.of(
+              Execute(job),
+              Fork.of:
+                "BRANCH" -> Workflow.of:
+                  LockInstruction.single(c, None, Workflow.of:
+                    Execute(job)))))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c, AgentPath("AGENT")))
 
   "referencedBoardPaths" in:
@@ -665,11 +671,11 @@ final class WorkflowTest extends OurTestSuite:
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
         PostNotices(Seq(a)),
-        If(BooleanConstant(true), Workflow.of(
-          Fork.of(
+        If(BooleanConstant(true)):
+          Fork.of:
             "BRANCH" -> Workflow.of(
               PostNotices(Seq(b)),
-              ExpectNotices(BoardPathExpression.ExpectNotice(c))))))))
+              ExpectNotices(BoardPathExpression.ExpectNotice(c)))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
 
   "referencedAgentPaths" in:
@@ -685,11 +691,12 @@ final class WorkflowTest extends OurTestSuite:
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
         Execute(aJob),
-        If(BooleanConstant(true), Workflow.of(
-          Execute(bJob),
-          Fork.of(
-            "BRANCH" -> Workflow.of(
-              Execute(cJob)))))),
+        If(BooleanConstant(true)):
+          Workflow.of(
+            Execute(bJob),
+            Fork.of:
+              "BRANCH" -> Workflow.of(
+                Execute(cJob)))),
       Map(
         WorkflowJob.Name("D") -> dJob))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c, d))
@@ -709,11 +716,12 @@ final class WorkflowTest extends OurTestSuite:
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
         Execute(job.copy(jobResourcePaths = Seq(a))),
-        If(BooleanConstant(true), Workflow.of(
-          Execute(job.copy(jobResourcePaths = Seq(b, c))),
-          Fork.of(
-            "BRANCH" -> Workflow.of(
-              Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
+        If(BooleanConstant(true)):
+          Workflow.of(
+            Execute(job.copy(jobResourcePaths = Seq(b, c))),
+            Fork.of:
+              "BRANCH" -> Workflow.of(
+                Execute(job.copy(jobResourcePaths = Seq(c, d)))))),
       orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter.Final("V", JobResourceVariable(f, Some("V"))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c, d, e, f, AgentPath("AGENT")))
@@ -738,9 +746,9 @@ final class WorkflowTest extends OurTestSuite:
     val w = Workflow(
       WorkflowPath("TEST") ~ "VERSION",
       Vector(
-        If(BooleanConstant(true),     // :0
-          Workflow.of(Fail()),        // :0/then:0
-          Some(Workflow.of(Fail()))), // :0/else:0
+        If(BooleanConstant(true))     // :0
+          .Then(Fail())             // :0/then:0
+          .Else(Fail()),            // :0/else:0
         TryInstruction(               // :1
           Workflow.of(Fail()),        // :1/Try:0
           Workflow.of(Fail()))))      // :1/1:0
@@ -811,9 +819,9 @@ final class WorkflowTest extends OurTestSuite:
       lazy val lockWorkflow = Workflow(WorkflowPath("TEST") ~ "1",
         Vector(
           AExecute,
-          LockInstruction.single(LockPath("LOCK"), None, Workflow.of(
-            If(BooleanConstant(true),
-              Workflow.of(AExecute))))),
+          LockInstruction.single(LockPath("LOCK"), None, Workflow.of:
+            If(BooleanConstant(true)):
+              AExecute)),
         Map(
           AJobName -> AJob))
 
@@ -962,10 +970,10 @@ final class WorkflowTest extends OurTestSuite:
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
           LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
-            If(BooleanConstant(true), Workflow.of(
-              TryInstruction(Workflow.empty, Workflow.empty),
-              Fail(),
-            )),
+            If(BooleanConstant(true)):
+              Workflow.of(
+                TryInstruction(Workflow.empty, Workflow.empty),
+                Fail()),
             AExecute,
             Fork.of(
               "🥕" -> Workflow.of(AExecute))))),
@@ -978,13 +986,13 @@ final class WorkflowTest extends OurTestSuite:
         Vector(
           LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
             AExecute,
-            If(BooleanConstant(true),
+            If(BooleanConstant(true)).Then:
               Workflow.of(
                 BExecute,
                 TryInstruction(Workflow.empty, Workflow.empty),
-                Fail()),
-              Some(Workflow.of(
-                BExecute))),
+                Fail())
+            .Else:
+              BExecute,
             AExecute))),
         Map(
           AJobName -> AJob,
@@ -995,13 +1003,13 @@ final class WorkflowTest extends OurTestSuite:
           Vector(
             LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
               AExecute,
-              If(BooleanConstant(true),
+              If(BooleanConstant(true)).Then:
                 Workflow.of(
                   Gap(),
                   TryInstruction(Workflow.empty, Workflow.empty),
-                  Fail()),
-                Some(Workflow.of(
-                  Gap()))),
+                  Fail())
+              .Else:
+                Gap(),
               AExecute))),
           Map(
             AJobName -> AJob)))
@@ -1011,14 +1019,14 @@ final class WorkflowTest extends OurTestSuite:
           Vector(
             LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
               Gap(),
-              If(BooleanConstant(true),
+              If(BooleanConstant(true)).Then:
                 Workflow.of(
                   BExecute,
                   TryInstruction(Workflow.empty, Workflow.empty),
-                  Fail()),
-              Some(Workflow.of(
-                BExecute))),
-            Gap()))),
+                  Fail())
+              .Else:
+                BExecute,
+              Gap()))),
           Map(
             BJobName -> BJob)))
 
@@ -1097,15 +1105,16 @@ private object WorkflowTest:
     WorkflowPath("TEST") ~ "VERSION",
     Vector(
       AExecute,
-      "TEST-LABEL" @: If(Equal(LastReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.anonymous(
-          Vector(
-            Execute.Named(AJobName),
-            Execute.Named(BJobName)),
-          Map(
-            BJobName -> B1Job)),
-        elseWorkflow = Some(Workflow.of(
-          BExecute))),
+      "TEST-LABEL" @:
+        If(Equal(LastReturnCode, NumericConstant(1))).Then:
+          Workflow.anonymous(
+            Vector(
+              Execute.Named(AJobName),
+              Execute.Named(BJobName)),
+            Map(
+              BJobName -> B1Job))
+        .Else:
+          BExecute,
       Fork.of(
         "🥕" -> Workflow.of(
           AExecute,

@@ -1003,10 +1003,9 @@ final class CancelOrdersTest
                      |while [ $$i -ge 0 ]; do sleep 0.1; done
                      |""".stripMargin),
         Workflow.of:
-          If(expr("$returnCode == 0"),
-            Workflow.of:
-              Fail(Some(StringConstant:
-                "💥 $returnCode == 0"))))))
+          If(expr("$returnCode == 0")):
+            Fail(Some(StringConstant:
+              "💥 $returnCode == 0")))))
 
     withItem(workflow): workflow =>
       val orderId = OrderId("CAUGHT")

@@ -23,7 +23,7 @@ final class DynamicPositionTest extends OurTestSuite:
       BranchStack.Segment(5, NewBranchId.Catch(66)),
       BranchStack.Segment(4, NewBranchId.Try(55)),
       BranchStack.Segment(3, NewBranchId.Else),
-      BranchStack.Segment(2, NewBranchId.Then),
+      BranchStack.Segment(2, NewBranchId.Then()),
       BranchStack.Segment(1, NewBranchId.Options))))
 
   "fromLegacy" in:

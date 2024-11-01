@@ -218,7 +218,8 @@ final class StopOnFailureTest
   "Fail while Fresh" in:
     val workflow = Workflow.of(WorkflowPath("FRESH-WORKFLOW"),
       Options(stopOnFailure = true):
-        If(expr("$param"), Workflow.empty))
+        If(expr("$param")):
+          Workflow.empty)
 
     withItem(workflow): workflow =>
       val orderId = OrderId("FAIL-WHILE-FRESH-AT-AGENT")

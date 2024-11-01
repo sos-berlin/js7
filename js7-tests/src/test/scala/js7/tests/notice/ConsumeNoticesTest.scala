@@ -648,8 +648,8 @@ final class ConsumeNoticesTest
           ConsumeNotices(
             boardPathExpr(s"'${aBoard.path.string}'"),
             Workflow.of:
-              If(expr("true"),
-                Workflow.of(Fail())))))
+              If(expr("true")):
+                Fail())))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")
@@ -669,8 +669,8 @@ final class ConsumeNoticesTest
         ConsumeNotices(
           boardPathExpr(s"'${aBoard.path.string}'"),
           Workflow.of(
-            If(expr("true"),
-              Workflow.of(Fail()))))))
+            If(expr("true")):
+              Fail()))))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#ConsumeNotices-If-Fail")

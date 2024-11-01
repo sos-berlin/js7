@@ -184,21 +184,23 @@ object OrderStartAndStopPositionsTest:
   private val agentPath = AgentPath("A-AGENT")
 
   private val workflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL", Seq(
-    If(expr("true"), Workflow.of(
-      Fork.of("BRANCH" -> Workflow.of(Fail())))),
+    If(expr("true")):
+      Fork.of("BRANCH" -> Workflow.of(Fail())),
     EmptyJob.execute(agentPath),
     EmptyJob.execute(agentPath),
-    If(expr("true"), Workflow.of(Fail()))))
+    If(expr("true")):
+      Fail()))
 
   private val tryWorkflow = Workflow(WorkflowPath("TRY-WORKFLOW") ~ "INITIAL", Seq(
-    If(expr("true"),
-      Workflow.of(EmptyJob.execute(agentPath))),
+    If(expr("true")):
+      EmptyJob.execute(agentPath),
     TryInstruction(
       Workflow.of(
         EmptyJob.execute(agentPath),
         EmptyJob.execute(agentPath),
-        If(expr("true"), Workflow.of(
-          "LABEL" @: EmptyJob.execute(agentPath))),
-        If(expr("true"), Workflow.of(Fail()))),
+        If(expr("true")):
+          "LABEL" @: EmptyJob.execute(agentPath),
+        If(expr("true")):
+          Fail()),
       Workflow.of(
         "CATCHED" @: Fail()))))

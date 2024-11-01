@@ -106,8 +106,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "JS-2103 Bug: frozen Orders and \"Unhandled message StartProcessing\"" in:
     val workflow = Workflow(WorkflowPath("JS-2103-WORKFLOW"), Seq(
       EmptyJob.execute(agentPath),
-      If(expr("true"), Workflow.of(
-        label @: Execute(WorkflowJob.Name("JOB")))),
+      If(expr("true")):
+        label @: Execute(WorkflowJob.Name("JOB")),
       EmptyJob.execute(agentPath),
       // JS-2103 bug blocks here
       Execute(WorkflowJob.Name("JOB"))),
@@ -250,9 +250,11 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "Skip any instruction (JS-2112)" - {
     "Skip first instruction" in:
       val workflow = Workflow.of(WorkflowPath("SKIP-FIRST-INSTRUCTION"),
-        label @: If(expr("true"),
-          Workflow.of(EmptyJob.execute(agentPath))),
+        label @:
+          If(expr("true")):
+            EmptyJob.execute(agentPath),
         EmptyInstruction())
+
       withTemporaryItem(workflow): workflow =>
         skipInstruction(workflow.path)
         val orderId = OrderId("SKIP-FIRST-INSTRUCTION")
@@ -270,9 +272,10 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     "Skip instruction after Execute" in:
       val workflow = Workflow.of(WorkflowPath("SKIP-AFTER-EXECUTE"),
         EmptyJob.execute(agentPath),
-        label @: If(expr("true"),
-          Workflow.of(
-            EmptyInstruction())))
+        label @:
+          If(expr("true")):
+            EmptyInstruction())
+
       withTemporaryItem(workflow): workflow =>
         skipInstruction(workflow.path)
         val orderId = OrderId("SKIP-AFTER-EXECUTE")
@@ -394,6 +397,6 @@ object ControlWorkflowPathSkipTest:
 
   private val bWorkflow = Workflow(WorkflowPath("B-WORKFLOW") ~ VersionId("INITIAL"), Seq(
     EmptyJob.execute(agentPath),
-    If(expr("true"), Workflow.of(
-      label @: EmptyJob.execute(agentPath))),
+    If(expr("true")):
+      label @: EmptyJob.execute(agentPath),
     EmptyJob.execute(agentPath)))

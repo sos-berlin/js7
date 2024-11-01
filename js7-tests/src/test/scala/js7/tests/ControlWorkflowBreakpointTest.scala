@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
@@ -31,7 +32,6 @@ import js7.tests.ControlWorkflowBreakpointTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
@@ -216,10 +216,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   "Breakpoint at an If instruction" in:
     val workflow = Workflow.of(WorkflowPath("IF-WORKFLOW"),
-      If(expr("true"), Workflow.of(
-        If(expr("true"), Workflow.of(
-          EmptyJob.execute(agentPath),
-          If(expr("true"), Workflow.empty))))))
+      If(expr("true")):
+        If(expr("true")):
+          Workflow.of(
+            EmptyJob.execute(agentPath),
+            If(expr("true")):
+              Workflow.empty))
 
     val positions = Seq(
       Position(0),
