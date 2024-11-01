@@ -73,14 +73,14 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         Set(Position(0), Position(1)),
         itemRevision = Some(ItemRevision(0)))
 
-      assert(controllerState.keyTo(WorkflowControl).toMap == Map(
-        expectedWorkflowControl.id -> expectedWorkflowControl))
+      assert(controllerState.keyTo(WorkflowControl).toMap == Map:
+        expectedWorkflowControl.id -> expectedWorkflowControl)
 
-      assert(controllerState.keyToItem(WorkflowControl).toMap == Map(
-        expectedWorkflowControl.id -> expectedWorkflowControl))
+      assert(controllerState.keyToItem(WorkflowControl).toMap == Map:
+        expectedWorkflowControl.id -> expectedWorkflowControl)
 
-      assert(JControllerState(controllerState).idToWorkflowControl.asScala.toMap == Map(
-        JWorkflowControlId(expectedWorkflowControl.id) -> JWorkflowControl(expectedWorkflowControl)))
+      assert(JControllerState(controllerState).idToWorkflowControl.asScala.toMap == Map:
+        JWorkflowControlId(expectedWorkflowControl.id) -> JWorkflowControl(expectedWorkflowControl))
 
     val aOrderId = OrderId("A")
 
@@ -177,7 +177,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         Workflow.of(EmptyJob.execute(agentPath)),
         Workflow.of(EmptyJob.execute(agentPath)))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("🟦")
       controller.api
         .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = Set(
@@ -191,7 +191,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
-    }
 
   "Breakpoint at a Try block" in:
     val workflow = Workflow(WorkflowPath("AT-TRY-WORKFLOW"), Seq(
@@ -200,7 +199,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         Workflow.of(EmptyJob.execute(agentPath)),
         Workflow.of(EmptyJob.execute(agentPath)))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("🟪")
       controller.api
         .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = Set(
@@ -214,7 +213,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
-    }
 
   "Breakpoint at an If instruction" in:
     val workflow = Workflow.of(WorkflowPath("IF-WORKFLOW"),
@@ -228,7 +226,8 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       Position(0) / "then" % 0,
       Position(0) / "then" % 0 / "then" % 0,
       Position(0) / "then" % 0 / "then" % 1)
-    withTemporaryItem(workflow) { workflow =>
+
+    withItem(workflow): workflow =>
       val orderId = OrderId("🟩")
       controller.api
         .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = positions.toSet))
@@ -244,7 +243,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
 
       eventWatch.await[OrderFinished](_.key == orderId)
-    }
 
 
 object ControlWorkflowBreakpointTest:
@@ -265,22 +263,21 @@ object ControlWorkflowBreakpointTest:
     resultBreakpoints: Set[Position],
     revision: ItemRevision,
     workflowControlToEvent: WorkflowControl => UnsignedItemEvent)
-    (implicit controllerApi: ControllerApi, eventWatch: StrictEventWatch, ioRuntime: IORuntime)
+    (using controllerApi: ControllerApi, eventWatch: StrictEventWatch, ioRuntime: IORuntime)
   : EventId =
     val eventId = eventWatch.lastAddedEventId
-    val jCmd = JControllerCommand
-      .controlWorkflow(
-        JWorkflowId(workflowId),
-        breakpoints.view
-          .map { case (k, v) => JPosition(k) -> Boolean.box(v) }
-          .toMap
-          .asJava)
+    val jCmd = JControllerCommand.controlWorkflow(
+      JWorkflowId(workflowId),
+      breakpoints.view
+        .map((k, v) => JPosition(k) -> Boolean.box(v))
+        .toMap
+        .asJava)
     controllerApi.executeCommand(jCmd.asScala).await(99.s).orThrow
     val keyedEvents = eventWatch.await[UnsignedItemAddedOrChanged](after = eventId)
-    assert(keyedEvents.map(_.value) == Seq(
-      NoKey <-: workflowControlToEvent(
+    assert(keyedEvents.map(_.value) == Seq:
+      NoKey <-: workflowControlToEvent:
         WorkflowControl(
           WorkflowControlId(workflowId),
           breakpoints = resultBreakpoints,
-          itemRevision = Some(revision)))))
+          itemRevision = Some(revision)))
     keyedEvents.last.eventId

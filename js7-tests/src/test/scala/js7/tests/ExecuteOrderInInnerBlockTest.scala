@@ -48,21 +48,21 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           stopPositions = stopPositions))
         .await(99.s)
 
-    assert(
+    assert:
       addOrder(Position(0) / "then") == Left(Problem(
-        "Instruction 'Execute.Anonymous' does not have a nested workflow for branch 'then'")))
-    assert(
-      addOrder(forkBranchPath, startPosition = Some(Position(1))) == Left(Problem(
-        "Position 1 must be in innerBlock=1/then:0/fork+BRANCH")))
-    assert(
-      addOrder(forkBranchPath, stopPositions = Set(Position(2), forkBranchPath % 1)) == Left(
-        Problem("Position 2 must be in innerBlock=1/then:0/fork+BRANCH")))
+        "Instruction 'Execute.Anonymous' does not have a nested workflow for branch 'then'"))
+    assert:
+      addOrder(forkBranchPath, startPosition = Some(Position(1))) == Left(Problem:
+        "Position 1 must be in innerBlock=1/then:0/fork+BRANCH")
+    assert:
+      addOrder(forkBranchPath, stopPositions = Set(Position(2), forkBranchPath % 1)) == Left:
+        Problem("Position 2 must be in innerBlock=1/then:0/fork+BRANCH")
 
   "Execute in a Fork block" in:
     val innerBlock = forkBranchPath
 
-    val stampedEvents = controller.runOrder(
-      FreshOrder(OrderId("FORK"), workflow.path, innerBlock = innerBlock))
+    val stampedEvents = controller.runOrder:
+      FreshOrder(OrderId("FORK"), workflow.path, innerBlock = innerBlock)
 
     assert(stampedEvents.map(_.value) == Seq(
       OrderAdded(workflow.id, innerBlock = innerBlock),
@@ -82,9 +82,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "Execute in a 'then' block of a Fork block" in:
     val innerBlock = forkBranchPath % 0 / "then" % 0 / "then"
 
-    val stampedEventsevents = controller.runOrder(
+    val stampedEventsevents = controller.runOrder:
       FreshOrder(OrderId("FORK-THEN"), workflow.path,
-        innerBlock = innerBlock, startPosition = Some(innerBlock % 0)))
+        innerBlock = innerBlock, startPosition = Some(innerBlock % 0))
 
     assert(stampedEventsevents.map(_.value) == Seq(
       OrderAdded(workflow.id, innerBlock = innerBlock, startPosition = Some(innerBlock % 0)),
@@ -103,9 +103,9 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
   "Leave innerBlock on failure, ignoring outer catch block" in:
     val innerBlock = forkBranchPath % 0 / "then" % 1 / "try" % 0 / "then"
 
-    val stampedEvents = controller.runOrder(
+    val stampedEvents = controller.runOrder:
       FreshOrder(OrderId("FORK-FAIL"), workflow.path, innerBlock = innerBlock,
-        arguments = Map("FAIL" -> BooleanValue.True)))
+        arguments = Map("FAIL" -> BooleanValue.True))
 
     assert(stampedEvents.map(_.value) == Seq(
       OrderAdded(workflow.id, innerBlock = innerBlock,
@@ -122,12 +122,12 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderFailed(innerBlock % 0)))
 
   "JS-2093 OutOfMemoryError" in:
-    val workflow = Workflow(WorkflowPath("OOM"), Seq(
-      Fork.forTest(Seq(
-        "BRANCH" -> Workflow.of(
-          EmptyJob.execute(agentPath))))))
+    val workflow = Workflow(WorkflowPath("OOM"), Seq:
+      Fork.forTest(Seq:
+        "BRANCH" -> Workflow.of:
+          EmptyJob.execute(agentPath)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val innerBlock = Position(0) / BranchId.fork("BRANCH")
       controller.runOrder(
         FreshOrder(OrderId("OOM"), workflow.path,
@@ -135,7 +135,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           startPosition = Some(innerBlock % 0),
           stopPositions = Set(innerBlock % 1),
           arguments = Map("FAIL" -> BooleanValue.True)))
-    }
 
 
 object ExecuteOrderInInnerBlockTest:

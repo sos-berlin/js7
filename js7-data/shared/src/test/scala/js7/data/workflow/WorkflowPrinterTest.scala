@@ -178,10 +178,10 @@ final class WorkflowPrinterTest extends OurTestSuite:
     check(
       Workflow.of(
         Fork.of(
-            "🥕" -> Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")))),
-            "🍋" -> Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B")))))),
+          "🥕" -> Workflow.of(
+            Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")))),
+          "🍋" -> Workflow.of(
+            Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B")))))),
       """define workflow {
         |  fork {
         |    '🥕': {

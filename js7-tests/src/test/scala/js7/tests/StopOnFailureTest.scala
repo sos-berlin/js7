@@ -45,7 +45,7 @@ final class StopOnFailureTest
       Options(stopOnFailure = true):
         Fail(Some(expr("'TEST-FAILURE'"))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -54,8 +54,8 @@ final class StopOnFailureTest
       assert(order.isState[Stopped] && order.isFailed)
 
       controller.api
-        .executeCommand(
-          ResumeOrder(orderId, asSucceeded = true, position = Some(order.position.increment)))
+        .executeCommand:
+          ResumeOrder(orderId, asSucceeded = true, position = Some(order.position.increment))
         .await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
 
@@ -68,7 +68,6 @@ final class StopOnFailureTest
         OrderResumed(Some(Position(0) / "options" % 1), asSucceeded = true),
         OrderMoved(Position(1)),
         OrderFinished()))
-    }
 
   "Two nested Options instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-OPTIONS-WORKFLOW"),
@@ -76,7 +75,7 @@ final class StopOnFailureTest
         Options(stopOnFailure = false/*Switch off again*/):
           Fail(Some(expr("'TEST-FAILURE'"))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("NESTED-OPTIONS")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
@@ -88,7 +87,6 @@ final class StopOnFailureTest
         OrderStarted,
         OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST-FAILURE"))),
         OrderFailed(Position(0) / "options" % 0 / "options" % 0)))
-    }
 
   "Fail in two nested Lock instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-LOCK-WORKFLOW"),
@@ -100,7 +98,7 @@ final class StopOnFailureTest
               lockedWorkflow = Workflow.of(
                 FailingJob.execute(agentPath))))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("NESTED-LOCKS")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -143,7 +141,6 @@ final class StopOnFailureTest
         OrderLocksReleased(List(aLockPath)),
         OrderMoved(Position(1)),
         OrderFinished()))
-    }
 
   "Cancel a stopped locking Order" in:
     val workflow = Workflow.of(WorkflowPath("LOCK-CANCEL-WORKFLOW"),
@@ -152,7 +149,7 @@ final class StopOnFailureTest
           lockedWorkflow = Workflow.of:
             FailingJob.execute(agentPath)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("CANCEL-IN-LOCK")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -183,14 +180,13 @@ final class StopOnFailureTest
 
         OrderLocksReleased(List(aLockPath)),
         OrderCancelled))
-    }
 
   "Fail at Agent" in:
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
       Options(stopOnFailure = true):
         FailingJob.execute(agentPath))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("STOP-ON-FAILURE-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -218,14 +214,13 @@ final class StopOnFailureTest
         OrderResumed(Some(Position(0) / "options" % 1), asSucceeded = true),
         OrderMoved(Position(1)),
         OrderFinished()))
-    }
 
   "Fail while Fresh" in:
     val workflow = Workflow.of(WorkflowPath("FRESH-WORKFLOW"),
       Options(stopOnFailure = true):
         If(expr("$param"), Workflow.empty))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("FAIL-WHILE-FRESH-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -254,7 +249,6 @@ final class StopOnFailureTest
         OrderMoved(Position(1)),
         OrderStarted,
         OrderFinished()))
-    }
 
 
 object StopOnFailureTest:

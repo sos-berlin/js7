@@ -282,8 +282,8 @@ final class WorkflowTest extends OurTestSuite:
                       "defaultArguments": { "JOB_B": "'B-VALUE'" }
                     }
                   }, {
-                  "position": [ 1, "else", 1 ],
-                  "TYPE": "ImplicitEnd"
+                    "position": [ 1, "else", 1 ],
+                    "TYPE": "ImplicitEnd"
                   }
                 ]
               }

@@ -26,12 +26,12 @@ import js7.tester.CirceJsonTester.testJson
   */
 final class IfExecutorTest extends OurTestSuite:
 
-  private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
+  private val ifExecutor = IfExecutor(InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(
     isAgent = false,
     orders = Some(Seq(AOrder, BOrder)),
     workflows = Some(Seq(Workflow.of(TestWorkflowId))))
-  private lazy val executorService = new InstructionExecutorService(WallClock)
+  private lazy val executorService = InstructionExecutorService(WallClock)
 
   "JSON BranchId" - {
     "then" in:
@@ -48,12 +48,12 @@ final class IfExecutorTest extends OurTestSuite:
   "If true" in:
     assert(
       executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to ==
-        Position(7) / Then % 0)
+        Position(7) / Then % 0
 
   "If false" in:
-    assert(
+    assert:
       executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
-        Position(7) / Else % 0)
+        Position(7) / Else % 0
 
   "If false, no else branch" in:
     assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
