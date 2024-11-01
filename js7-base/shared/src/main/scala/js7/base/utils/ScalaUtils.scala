@@ -287,6 +287,9 @@ object ScalaUtils:
 
 
     extension [CC[a] <: Iterable[a], A](iterable: CC[A])(using C: Factory[A, CC[A]])
+      def takeUntil(predicate: A => Boolean): CC[A] =
+        takeThrough(a => !predicate(a))
+
       def takeThrough(predicate: A => Boolean): CC[A] =
         val builder = C.newBuilder
         val iterator = iterable.iterator
@@ -298,6 +301,9 @@ object ScalaUtils:
         builder.result()
 
     extension [A](iterator: Iterator[A])
+      def takeUntil(predicate: A => Boolean): Iterator[A] =
+        takeThrough(a => !predicate(a))
+
       def takeThrough(predicate: A => Boolean): Iterator[A] =
         var firstNonMatching: Iterator[A] = Iterator.empty
         iterator.takeWhile: a =>

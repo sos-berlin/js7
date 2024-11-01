@@ -351,7 +351,14 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "Iterable" - {
-    "takeTrough" in:
+    "takeUntil" in:
+      assert((Vector.empty.takeUntil(_ == 3): Vector[Int]) == Vector.empty)
+      assert((Vector(1, 2, 3, 4, 5).takeUntil(_ == 3): Vector[Int]) == Vector(1, 2, 3))
+
+      assert((List.empty.takeUntil(_ == 3): List[Int]) == List.empty)
+      assert((List(1, 2, 3, 4, 5).takeUntil(_ == 3): List[Int]) == List(1, 2, 3))
+
+    "takeThrough" in:
       assert((Vector.empty.takeThrough(_ < 3): Vector[Int]) == Vector.empty)
       assert((Vector(1, 2, 3, 4, 5).takeThrough(_ < 3): Vector[Int]) == Vector(1, 2, 3))
 
@@ -378,7 +385,14 @@ final class ScalaUtilsTest extends OurTestSuite:
   }
 
   "Iterator" - {
-    "takeTrough" in:
+    "takeUntil" in:
+      assert((Iterator.empty.takeUntil(_ == 33): Iterator[Int]).toList == List.empty)
+
+      val iterator = Iterator(1, 2, 3, 4, 5)
+      assert((iterator.takeUntil(_ == 3): Iterator[Int]).toList == List(1, 2, 3))
+      assert(iterator.next() == 4)
+
+    "takeThrough" in:
       assert((Iterator.empty.takeThrough(_ < 3): Iterator[Int]).toList == List.empty)
 
       val iterator = Iterator(1, 2, 3, 4, 5)
