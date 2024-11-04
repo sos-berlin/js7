@@ -1,11 +1,12 @@
 package js7.cluster
 
-import cats.effect.{FiberIO, IO, Outcome}
+import cats.effect.std.Queue
+import cats.effect.{Deferred, FiberIO, IO, Outcome}
 import cats.syntax.option.*
 import fs2.Stream
 import java.util.ConcurrentModificationException
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, prependOne}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
@@ -17,7 +18,7 @@ import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic, MVar, SetOnce}
+import js7.base.utils.{AsyncLock, Atomic, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
@@ -213,8 +214,8 @@ private final class ClusterWatchSynchronizer(
 
     @volatile private var clusterState = initialClusterState
     private val nr = heartbeatSessionNr.next()
-    private val stopping = MVar.empty[IO, Unit].unsafeMemoize
-    private val heartbeat = MVar.empty[IO, FiberIO[Unit]].unsafeMemoize
+    private val stopping = Deferred.unsafe[IO, Unit]
+    private val heartbeat = memoize(Queue.bounded[IO, FiberIO[Unit]](1))
 
     def start: IO[Completed] =
       CorrelId.bindNew:
@@ -232,22 +233,22 @@ private final class ClusterWatchSynchronizer(
                 IO.unit
 
               case Outcome.Succeeded(_) =>
-                stopping.flatMap(_.tryRead).map: maybe =>
+                stopping.tryGet.map: maybe =>
                   if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
         .start
-        .flatTap(fiber =>
+        .flatTap: fiber =>
           heartbeat
-            .flatMap(_.tryPut(fiber))
-            .flatMap(ok =>
+            .flatMap(_.tryOffer(fiber))
+            .flatMap: ok =>
               IO.whenA(!ok):
                 fiber.cancel *>
                   IO.raiseError(new ConcurrentModificationException(
-                    "Tried to start Cluster heartbeating twice"))))
+                    "Tried to start Cluster heartbeating twice"))
         .as(Completed)
 
     def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
       logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}"):
-        stopping.flatMap(_.tryPut(()))
+        stopping.complete(())
           .flatMap(_ => heartbeat).flatMap(_.tryTake)
           .flatMap(_.fold(IO.unit)(_.joinStd))
           .logWhenItTakesLonger
@@ -259,9 +260,9 @@ private final class ClusterWatchSynchronizer(
       Stream
         .fixedRate[IO](timing.clusterWatchHeartbeat)
         .prependOne(())
-        // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
+        // interruptWhenF before doAHeartbeat otherwise a heartbeat sticking in network congestion
         // would continue independently and arrive out of order (bad).
-        .interruptWhenF(stopping.flatMap(_.read))
+        .interruptWhenF(stopping.get)
         .evalMap: _ =>
           doAHeartbeat
             .handleErrorWith: t =>
@@ -269,19 +270,19 @@ private final class ClusterWatchSynchronizer(
                 if t.isInstanceOf[AskTimeoutException] then null else t.nullIfNoStackTrace)
               IO.raiseError(t)
         // Again interruptWhenF() to cancel a sticking doAHeartbeat
-        .interruptWhenF(stopping.flatMap(_.read))
+        .interruptWhenF(stopping.get)
         .compile.drain
         .as(Completed)
 
     private def doAHeartbeat: IO[Completed] =
-      stopping.flatMap(_.tryRead).flatMap:
+      stopping.tryGet.flatMap:
         case Some(()) => IO.completed
         case None =>
           val clusterState = this.clusterState
           //logger.trace(s"Heartbeat ($nr) $clusterState")
           IO
             .race(
-              stopping.flatMap(_.read),
+              stopping.get,
               doACheckedHeartbeat(
                 clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true))
             .flatMap:
@@ -295,7 +296,7 @@ private final class ClusterWatchSynchronizer(
                   Completed
 
               case Right(Left(problem)) =>
-                stopping.flatMap(_.tryRead).map:
+                stopping.tryGet.map:
                   case Some(()) => Completed
                   case None =>
                     haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
