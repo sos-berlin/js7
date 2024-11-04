@@ -43,7 +43,7 @@ extends Service.StoppableByRequest:
   import clusterConf.ownId
 
   private val nextRequestId = Atomic(if isTest then 1 else
-    Random.nextLong((Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds))
+    Random.nextLong(Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds)
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
   private val _requested = Atomic(None: Option[Requested])
@@ -213,11 +213,11 @@ extends Service.StoppableByRequest:
           Checked.unit
 
   private def toConfirmation(confirm: ClusterWatchConfirm): Checked[ClusterWatchConfirmation] =
-    confirm.problem.toLeft(
+    confirm.problem.toLeft:
       ClusterWatchConfirmation(
         confirm.requestId,
         confirm.clusterWatchId,
-        confirm.clusterWatchRunId))
+        confirm.clusterWatchRunId)
 
   // Recursive in case of (wrong) concurrent access to this._requested
   @tailrec private def takeRequest(confirm: ClusterWatchConfirm): Checked[Requested] =
