@@ -6,9 +6,10 @@ import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import fs2.Stream
+import fs2.concurrent.SignallingRef
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
+import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -19,7 +20,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, Atomic, MVar}
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.data.delegate.DelegateCouplingState
@@ -59,7 +60,7 @@ private trait SubagentEventListener:
   protected def untilStopRequested: IO[Unit]
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
-  private val stopObserving = MVar.empty[IO, Unit].unsafeMemoize
+  private val stopObserving = memoize(SignallingRef[IO].of(false))
   @volatile private var observing: FiberIO[Unit] = pureFiberIO(())
   private val _isHeartbeating = Atomic(false)
   private val isListening = Atomic(false)
@@ -75,7 +76,7 @@ private trait SubagentEventListener:
       logger.debugIO:
         IO.defer(IO.whenA(isListening.getAndSet(false)):
           stopObserving
-            .flatMap(_.tryPut(()))
+            .flatMap(_.set(true))
             .*>(IO.defer:
               observing.joinStd))
           .logWhenItTakesLonger
@@ -88,21 +89,23 @@ private trait SubagentEventListener:
           logger.error(msg)
           IO.raiseError(new RuntimeException(s"$toString: $msg"))
         else
-          stopObserving.flatMap(_.tryTake)
-            .*>(observeEvents)
+          stopObserving.flatMap(_.set(false))
+            .productR:
+              stopObserving.flatMap:
+                _.getAndDiscreteUpdates.use: (o, stream) =>
+                  observeEvents(stopRequested = o +: stream)
             .start
             .flatMap(fiber => IO:
               observing = fiber)
 
-  private def observeEvents: IO[Unit] =
+  private def observeEvents(stopRequested: Stream[IO, Boolean]): IO[Unit] =
     logger.debugStream:
       Stream.suspend:
         val recouplingStreamReader = newEventListener()
         val bufferDelay = conf.eventBufferDelay max conf.commitDelay
         val after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId
         recouplingStreamReader.stream(api, after = after)
-          .interruptWhenF:
-            stopObserving.flatMap(_.read)
+          .interruptWhen(stopRequested)
           .pipe: stream =>
             if !bufferDelay.isPositive then
               stream.chunks
@@ -240,7 +243,7 @@ private trait SubagentEventListener:
             .map(Right(_))
 
       override protected def onCouplingFailed(api: HttpSubagentApi, problem: Problem) =
-        stopObserving.flatMap(_.tryRead).map(_.isDefined)
+        stopObserving.flatMap(_.get)
           .flatMap: stopped =>
             if stopped then
               IO.pure(false)
