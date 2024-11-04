@@ -1,5 +1,6 @@
 package js7.cluster
 
+import cats.effect.std.Supervisor
 import cats.effect.{IO, ResourceIO}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -21,7 +22,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Inhibits activation of cluster node for the specified duration. */
-private[cluster] final class ActivationInhibitor:
+private[cluster] final class ActivationInhibitor private(supervisor: Supervisor[IO]):
 
   private val _state = AsyncVariable[State](Initial)
 
@@ -77,17 +78,18 @@ private[cluster] final class ActivationInhibitor:
           IO.right(Active -> false)
 
   private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
-    _state.update:
-        case Inhibited(1) => IO.pure(Passive)
-        case Inhibited(n) => IO.pure(Inhibited(n - 1))
-        case state =>
-          // May happend in very race case of race condition
-          IO:
-            logger.error:
-              s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'"
-            state
-    .delayBy(duration)
-    .startAndForget
+    supervisor.supervise:
+      _state.update:
+          case Inhibited(1) => IO.pure(Passive)
+          case Inhibited(n) => IO.pure(Inhibited(n - 1))
+          case state =>
+            // May happend in very race case of race condition
+            IO:
+              logger.error:
+                s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'"
+              state
+      .delayBy(duration)
+    .void
 
   @TestOnly
   private[cluster] def state: IO[Option[State]] =
@@ -97,6 +99,10 @@ private[cluster] final class ActivationInhibitor:
 
 private[cluster] object ActivationInhibitor:
   private val logger = Logger[this.type]
+
+  def resource: ResourceIO[ActivationInhibitor] =
+    Supervisor[IO].map:
+      new ActivationInhibitor(_)
 
   def inhibitActivationOfPassiveNode(
     setting: ClusterSetting,
@@ -121,7 +127,6 @@ private[cluster] object ActivationInhibitor:
             for t <- throwable.ifStackTrace if PekkoHttpClient.hasRelevantStackTrace(t) do
               logger.debug(msg, t)
             delayer.sleep >> retry(())
-
 
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State

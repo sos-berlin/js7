@@ -30,12 +30,12 @@ private[cluster] final class ClusterCommon private(
   val clusterNodeApi: (Admission, String) => ResourceIO[ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
-  val testEventBus: EventPublisher[Any])(
-  implicit val journalActorAskTimeout: Timeout):
+  val testEventBus: EventPublisher[Any],
+  val activationInhibitor: ActivationInhibitor)
+  (using val journalActorAskTimeout: Timeout):
 
   import clusterConf.ownId
 
-  val activationInhibitor = new ActivationInhibitor
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
   val couplingTokenProvider = OneTimeTokenProvider.unsafe()
 
@@ -188,11 +188,17 @@ private[js7] object ClusterCommon:
     testEventPublisher: EventPublisher[Any])(
     implicit pekkoTimeout: Timeout)
   : ResourceIO[ClusterCommon] =
-      Resource.make(
-        IO(new ClusterCommon(
-          clusterWatchCounterpart,
-          clusterNodeApi, clusterConf, licenseChecker, testEventPublisher)))(
+    for
+      activationInhibitor <- ActivationInhibitor.resource
+      common <- Resource.make(
+        acquire = IO:
+          new ClusterCommon(
+            clusterWatchCounterpart,
+            clusterNodeApi, clusterConf, licenseChecker, testEventPublisher,
+            activationInhibitor))(
         release = _.stop)
+    yield
+      common
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"

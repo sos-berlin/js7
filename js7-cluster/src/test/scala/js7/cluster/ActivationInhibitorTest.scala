@@ -1,10 +1,12 @@
 package js7.cluster
 
 import cats.effect.testkit.TestControl
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -12,8 +14,10 @@ import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, Sta
 
 final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
+  private given IORuntime = ioRuntime
+
   "startActive, startPassive" - {
-    lazy val inhibitor = new ActivationInhibitor
+    lazy val inhibitor = startActivationInhibitor.await(99.s)
 
     "state is Initial" in:
       TestControl.executeEmbed:
@@ -42,7 +46,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
   }
 
   "tryActivate" - {
-    lazy val inhibitor = new ActivationInhibitor
+    lazy val inhibitor = startActivationInhibitor.await(99.s)
     lazy val activation = succeedingActivation(inhibitor, Right(true))
 
     "first" in:
@@ -76,10 +80,10 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   "tryActivate but body rejects with Right(false)" in:
     TestControl.executeEmbed:
-      lazy val inhibitor = new ActivationInhibitor
-      lazy val activation = succeedingActivation(inhibitor, Right(false))
       val activated = Atomic(false)
       for
+        inhibitor <- startActivationInhibitor
+        activation = succeedingActivation(inhibitor, Right(false))
         a <- activation.<*(IO(activated := true)).start
         _ <- IO.sleep(1.ms)
         _ = assert(!activated.get)
@@ -94,7 +98,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   "tryActivate but body returns Left(problem)" in:
     TestControl.executeEmbed:
-      lazy val inhibitor = new ActivationInhibitor
+      lazy val inhibitor = startActivationInhibitor.await(99.s)
       lazy val activation = succeedingActivation(inhibitor, Left(Problem("PROBLEM")))
       val activated = Atomic(false)
       for
@@ -111,7 +115,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
         succeed
 
   "tryActivate with failed activation" - {
-    lazy val inhibitor = new ActivationInhibitor
+    lazy val inhibitor = startActivationInhibitor.await(99.s)
 
     "first" in:
       TestControl.executeEmbed:
@@ -147,9 +151,9 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
   }
 
   "inhibitActivation" in:
-    val inhibitor = new ActivationInhibitor
     TestControl.executeEmbed:
       for
+        inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive
         inhibited <- inhibitor.inhibitActivation(2.s)
         _ = assert(inhibited == Right(true))
@@ -179,8 +183,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   "inhibitActivation waits when currently activating" in:
     TestControl.executeEmbed:
-      val inhibitor = new ActivationInhibitor
       for
+        inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive.timeout(1.ms)
         b <- succeedingActivation(inhibitor, Right(true)).start
 
@@ -199,8 +203,8 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
 
   "inhibit while inhibiting" in:
     TestControl.executeEmbed:
-      val inhibitor = new ActivationInhibitor
       for
+        inhibitor <- startActivationInhibitor
         _ <- inhibitor.startPassive.timeout(1.ms)
         inhibited <- inhibitor.inhibitActivation(2.s).timeout(1.ms)
         _ = assert(inhibited == Right(true))
@@ -220,11 +224,14 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite:
       yield
         succeed
 
+  private def startActivationInhibitor: IO[ActivationInhibitor] =
+    ActivationInhibitor.resource.allocated.map(_._1)
+
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
   : IO[Checked[Boolean]] =
     inhibitor.tryToActivate:
-      IO.pure(bodyResult).delayBy(1.s)
+      IO.sleep(1.s).as(bodyResult)
 
   private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Boolean]] =
     inhibitor.tryToActivate:
-      IO.raiseError(new RuntimeException("TEST")).delayBy(1.s)
+      IO.sleep(1.s) *> IO.raiseError(new RuntimeException("TEST"))
