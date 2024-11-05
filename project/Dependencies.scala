@@ -12,7 +12,6 @@ object Dependencies
   val catsVersion = "2.12.0"
   val catsEffectVersion = "3.5.4"
   val catsEffectTestingVersion = catsEffectVersion
-  val catsSTMVersion = "0.13.4"
   val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "1.0.0"
@@ -49,7 +48,6 @@ object Dependencies
   val catsEffectTesting   = List(
     "org.typelevel" %% "cats-effect-testkit" % catsEffectTestingVersion % Test,
     "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test)
-  val catsSTM             = "io.github.timwspence" %% "cats-stm" % catsSTMVersion
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
