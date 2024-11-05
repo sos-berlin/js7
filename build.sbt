@@ -292,12 +292,6 @@ lazy val `js7-engine` = project.in(file("target/js7-engine"))
     `js7-tests`)
   .settings(commonSettings)
   .settings(
-    Compile / resourceGenerators += Def.task {
-      val file = (Compile / resourceManaged).value / "js7/js7-engine.properties"
-      IO.write(file, BuildInfos.info.value.buildPropertiesString)
-      Seq(file)
-    }.taskValue,
-
     // Provide a single jar with all our relevant subprojects:
     assembly / assemblyJarName := s"js7-engine-${version.value}.jar",
     assembly / assemblyOutputPath := js7Target / (assembly / assemblyJarName).value,
@@ -384,9 +378,16 @@ lazy val `js7-base` = crossProject(JVMPlatform)
     }.taskValue)
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoPackage := "js7.base",
+    buildInfoPackage := "js7.base.unused",
     buildInfoUsePackageAsPath := true,
-    buildInfoKeys := BuildInfos.info.value.buildInfoMap.map(BuildInfoKey(_)).toSeq)
+    buildInfoOptions += BuildInfoOption.PackagePrivate,
+    buildInfoKeys := BuildInfos.info.value.buildInfoMap.map(BuildInfoKey(_)).toSeq,
+    Compile / resourceGenerators += Def.task {
+      val file = (Compile / resourceManaged).value / "js7/js7-engine.properties"
+      IO.write(file, BuildInfos.info.value.buildPropertiesString)
+      Seq(file)
+    }.taskValue,
+  )
 
 /** js7-build-info provides version info in a Scala-free jar. */
 lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))

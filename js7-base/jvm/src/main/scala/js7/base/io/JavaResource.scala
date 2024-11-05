@@ -6,6 +6,7 @@ import java.io.{File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
+import java.util.Properties
 import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -74,6 +75,15 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   def asUTF8String: String =
     readAs[ByteArray].utf8String
+
+  def toProperties: Properties =
+    val props = new Properties
+    val in = openStream()
+    try
+      props.load(in)
+    finally
+      in.close()
+    props
 
   def simpleName: String =
     new File(path).getName
