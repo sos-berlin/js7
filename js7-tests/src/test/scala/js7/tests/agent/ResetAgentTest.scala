@@ -1,13 +1,14 @@
 package js7.tests.agent
 
 import cats.effect.IO
+import cats.effect.std.Queue
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import java.nio.file.Files.exists
 import java.time.LocalTime
 import js7.agent.TestAgent
 import js7.base.auth.Admission
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
@@ -19,7 +20,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.MVar
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
@@ -132,14 +132,14 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     // The Director has terminated the BareSubagent, too
     idToAllocatedSubagent(bareSubagentId).allocatedThing.untilTerminated.await(99.s)
 
-    barrier.flatMap(_.tryPut(())).await(99.s)
+    barrier.flatMap(_.tryOffer(())).await(99.s)
 
   "Run another order" in:
     val orderId = OrderId("RESET-AGENT-2")
     controller.api.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
 
-    barrier.flatMap(_.tryPut(())).await(99.s)
+    barrier.flatMap(_.tryOffer(())).await(99.s)
 
     myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
@@ -191,7 +191,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderMoved(Position(1)),
       OrderFinished()))
 
-    barrier.flatMap(_.tryPut(())).await(99.s)
+    barrier.flatMap(_.tryOffer(())).await(99.s)
 
   "ResetAgent when Agent is reset already" in:
     val checked = controller.api.executeCommand(ResetAgent(agentPath)).await(99.s)
@@ -349,7 +349,7 @@ object ResetAgentTest:
             joinIfFailed = true)),
         Workflow.empty)))
 
-  private val barrier = MVar.empty[IO, Unit].unsafeMemoize
+  private val barrier = memoize(Queue.bounded[IO, Unit](1))
 
   private final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
