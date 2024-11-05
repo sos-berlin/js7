@@ -1,28 +1,24 @@
 package js7.base.monixutils
 
 import cats.effect.IO
+import fs2.concurrent.SignallingRef
 import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.utils.MVar
+import js7.base.fs2utils.StreamExtensions.+:
 
 final class Switch private(initiallyOn: Boolean)
 extends Switch.ReadOnly:
-  private val lock = SimpleLock[IO]
 
-  private val filledWhenOff: IO[MVar[IO, Unit]] =
-    memoize:
-      if initiallyOn then MVar[IO].empty[Unit] else MVar[IO].of(())
-
-  private val filledWhenOn: IO[MVar[IO, Unit]] =
-    memoize:
-      if !initiallyOn then MVar[IO].empty[Unit] else MVar[IO].of(())
+  private val ref = memoize(SignallingRef[IO].of(initiallyOn))
 
   /** Returns true iff switch turned from off to on. */
   val switchOn: IO[Boolean] =
-    lock.surround:
-      filledWhenOff
-        .flatMap(_.tryTake)
-        .flatTap(_ => filledWhenOn.flatMap(_.tryPut(())))
-        .map(_.nonEmpty)
+    ref.flatMap: ref =>
+      ref.modify(true -> !_)
+
+  /** Returns true iff switch turned from on to off. */
+  val switchOff: IO[Boolean] =
+    ref.flatMap: ref =>
+      ref.modify(false -> _)
 
   // Not nestable !!!
   def switchOnAround[A](body: IO[A]): IO[A] =
@@ -32,27 +28,25 @@ extends Switch.ReadOnly:
   def switchOnThen(body: => IO[Unit]): IO[Unit] =
     switchOn.flatMap(IO.whenA(_)(body))
 
-  /** Returns true iff switch turned from on to off. */
-  val switchOff: IO[Boolean] =
-    lock.surround:
-      filledWhenOff
-        .flatMap(_.tryPut(()))
-        .flatTap(_ => filledWhenOn.flatMap(_.tryTake))
-
   def switchOffThen(body: => IO[Unit]): IO[Unit] =
     switchOff.flatMap(IO.whenA(_)(body))
 
   val isOn: IO[Boolean] =
-    filledWhenOff.flatMap(_.isEmpty)
+    ref.flatMap(_.get)
 
   val isOff: IO[Boolean] =
     isOn.map(!_)
 
-  val whenOff: IO[Unit] =
-    filledWhenOff.flatMap(_.read).void
-
   val whenOn: IO[Unit] =
-    filledWhenOn.flatMap(_.read).void
+    when(true)
+
+  val whenOff: IO[Unit] =
+    when(false)
+
+  def when(predicate: Boolean): IO[Unit] =
+    ref.flatMap:
+      _.getAndDiscreteUpdates.use: (o, stream) =>
+        (o +: stream).takeThrough(_ == !predicate).compile.last.map(_.isDefined)
 
 
 object Switch:
@@ -62,5 +56,7 @@ object Switch:
     def isOn: IO[Boolean]
 
     def isOff: IO[Boolean]
+
+    def whenOn: IO[Unit]
 
     def whenOff: IO[Unit]
