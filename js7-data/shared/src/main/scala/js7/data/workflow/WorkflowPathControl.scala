@@ -37,7 +37,5 @@ extends UnsignedSimpleItem.Companion[WorkflowPathControl],
   val Path: WorkflowPathControlPath.type = WorkflowPathControlPath
   val cls: Class[WorkflowPathControl] = classOf[WorkflowPathControl]
 
-  override type ItemState = WorkflowPathControl
-
   implicit val jsonCodec: Codec.AsObject[WorkflowPathControl] =
     deriveCodec[WorkflowPathControl]

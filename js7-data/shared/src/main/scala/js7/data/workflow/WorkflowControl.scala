@@ -36,7 +36,5 @@ object WorkflowControl extends
   type Path = WorkflowControlPath
   val Path: WorkflowControlPath.type = WorkflowControlPath
 
-  override type ItemState = WorkflowControl
-
   implicit val jsonCodec: Codec.AsObject[WorkflowControl] =
     deriveCodec[WorkflowControl]

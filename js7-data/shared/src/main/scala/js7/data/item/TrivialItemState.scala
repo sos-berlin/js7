@@ -28,3 +28,4 @@ object TrivialItemState:
   trait Companion[A <: TrivialItemState[A]]
   extends InventoryItemState.Companion[A], InventoryItem.Companion[A]:
     type Item = A
+    type ItemState = A
