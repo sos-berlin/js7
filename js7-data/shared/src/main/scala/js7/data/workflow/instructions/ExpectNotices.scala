@@ -23,7 +23,7 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
   def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
     @unused expected: Vector[OrderNoticesExpected.Expected])
-  : List[OrderEvent.OrderActorEvent] =
+  : List[OrderNoticesRead | OrderMoved] =
     OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
 
 

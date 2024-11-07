@@ -34,7 +34,7 @@ extends ExpectOrConsumeNoticesInstruction:
   def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
     expected: Vector[OrderNoticesConsumptionStarted.Consumption])
-  : List[OrderEvent.OrderActorEvent] =
+  : List[OrderNoticesConsumptionStarted] =
     OrderNoticesConsumptionStarted(expected) :: Nil
 
   def withoutBlocks: ConsumeNotices =

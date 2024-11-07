@@ -73,6 +73,7 @@ extends MainService, Service.StoppableByRequest:
       .compile
       .drain
 
+
   private final class NodeServer(nodeApi: HttpClusterNodeApi):
     private val streamFailed = Atomic(false)
 
@@ -129,6 +130,9 @@ extends MainService, Service.StoppableByRequest:
           case Right(()) =>
         .handleError: t =>
           logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+
+  end NodeServer
+
 
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
     clusterWatch.manuallyConfirmNodeLoss(lostNodeId, confirmer)

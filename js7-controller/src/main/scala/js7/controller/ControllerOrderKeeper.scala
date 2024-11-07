@@ -49,7 +49,7 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
+import js7.data.board.{BoardPath, BoardState, Notice, NoticeEventSource, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath, TransferOrders}
@@ -62,7 +62,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.{InstructionExecutorService, PostNoticesExecutor}
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
@@ -76,7 +76,6 @@ import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
-import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
@@ -740,25 +739,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         executeOrderMarkCommands(orderIds.toVector):
           orderEventSource.resume(_, None, Nil, asSucceeded)
 
-      case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
-        val scope = NowScope(alarmClock.now())
-        val checked = for
-          boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
-          notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
-          _ <- boardState.addNotice(notice) // Check
-          subsequentEvents <-
-            if notice.endOfLife <= alarmClock.now() then
-              logger.debug(
-                s"Delete $notice immediately because endOfLife is reached")
-              Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
-            else
-              PostNoticesExecutor
-                .postedNoticeToExpectingOrderEvents(boardState, notice, _controllerState)
-        yield (notice, subsequentEvents)
-        checked match
+      case cmd: ControllerCommand.PostNotice =>
+        NoticeEventSource(alarmClock).executePostNoticeCommand(cmd, _controllerState) match
           case Left(problem) => Future.successful(Left(problem))
-          case Right((notice, expectingOrderEvents)) =>
-            val events = NoticePosted.toKeyedEvent(notice) +: expectingOrderEvents
+          case Right(events) =>
             persistTransactionAndSubsequentEvents(events)(handleEvents)
               .map(_ => Right(ControllerCommand.Response.Accepted))
 

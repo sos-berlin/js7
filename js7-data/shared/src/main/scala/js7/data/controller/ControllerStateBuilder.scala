@@ -202,7 +202,9 @@ extends SnapshotableStateBuilder[ControllerState],
 
                     _keyToUnsignedItemState.insert(agentRef.path, agentRef.toInitialItemState)
                     for subagentItem <- maybeSubagentItem do
-                      _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+                      _keyToUnsignedItemState.insert(
+                        subagentItem.id,
+                        SubagentItemState.initial(subagentItem))
 
                   case orderWatch: OrderWatch =>
                     ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
