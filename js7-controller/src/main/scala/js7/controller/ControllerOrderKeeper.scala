@@ -132,10 +132,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), SyncCancelable]
 
     def schedule(notice: Notice): Unit =
-      schedule(notice.boardPath, notice.id, notice.endOfLife)
+      notice.endOfLife.foreach:
+        schedule(notice.boardPath, notice.id, _)
 
     def schedule(boardPath: BoardPath, notice: NoticePosted.PostedNotice): Unit =
-      schedule(boardPath, notice.id, notice.endOfLife)
+      notice.endOfLife.foreach:
+        schedule(boardPath, notice.id, _)
 
     private def schedule(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Timestamp): Unit =
       noticeToSchedule += boardPath -> noticeId ->
@@ -582,7 +584,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         notice <- boardState.notice(noticeId);
         keyedEvent <- boardState.deleteNoticeEvent(noticeId)
       do
-        if alarmClock.now() < notice.endOfLife then
+        if notice.endOfLife.exists(alarmClock.now() < _) then
           notices.schedule(notice)
         else
           logger.debug(s"Notice lifetime expired: $boardPath $noticeId")

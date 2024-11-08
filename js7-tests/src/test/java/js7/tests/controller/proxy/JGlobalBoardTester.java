@@ -108,7 +108,7 @@ public class JGlobalBoardTester
             .get();
         assert noticePlace.notice().isPresent();
         assertThat(noticePlace.noticeId(), equalTo(postedNoticeId));
-        assertThat(noticePlace.notice().get().endOfLife(), Matchers.greaterThan(Instant.now()));
+        assertThat(noticePlace.notice().get().endOfLife().get(), Matchers.greaterThan(Instant.now()));
     }
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {

@@ -1,6 +1,7 @@
 package js7.tests.notice
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.syntax.option.*
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
@@ -67,7 +68,7 @@ final class GlobalBoardTest
     "expect(0, 1), post(1, 2), expect(0, 2), post(0)" in:
       val qualifier = nextQualifier()
       val notices = for (boardPath, endOfLife) <- boards.map(_.path) zip endOfLifes yield
-        Notice(NoticeId(qualifier), boardPath, endOfLife)
+        Notice(NoticeId(qualifier), boardPath, endOfLife.some)
       val Seq(notice0, notice1, notice2) = notices
 
       val expecting01OrderIds = Seq(
@@ -137,7 +138,7 @@ final class GlobalBoardTest
 
     "Two orders expect a notice, then post the notice" in:
       val qualifier = nextQualifier()
-      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
+      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0.some)
 
       val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
       controller.api.addOrders(
@@ -160,7 +161,7 @@ final class GlobalBoardTest
           Map(
             NoticeId("2222-01-01") -> NoticePlace(
               NoticeId("2222-01-01"),
-              Some(Notice(NoticeId("2222-01-01"), board0.path, endOfLife0))),  // from previous test
+              Some(Notice(NoticeId("2222-01-01"), board0.path, endOfLife0.some))),  // from previous test
             notice.id -> NoticePlace(
               notice.id,
               Some(notice)))))
@@ -182,7 +183,7 @@ final class GlobalBoardTest
           View(
             NoticePlace(
               NoticeId("2222-01-01"),
-              Some(Notice(NoticeId("2222-01-01"), board0.path, endOfLife0))),  // from previous test
+              Some(Notice(NoticeId("2222-01-01"), board0.path, endOfLife0.some))),  // from previous test
             NoticePlace(
               notice.id,
               Some(notice))
@@ -192,7 +193,7 @@ final class GlobalBoardTest
       // TODO Post kann am Agenten ausgeführt werden, wenn GlobalBoard (ohne BoardState)
       //  dahin übertragen wird, und anschließend der Controller Order.ExpectingNotice löst.
       val qualifier = nextQualifier()
-      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
+      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0.some)
 
       val posterEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#POSTING"), postingAgentWorkflow.path))
@@ -240,7 +241,7 @@ final class GlobalBoardTest
       ).await(99.s).orThrow
       for orderId <- orderIds do eventWatch.await[OrderNoticesRead](_.key == orderId)
 
-      val notice2 = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
+      val notice2 = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0.some)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id)
       ).await(99.s).orThrow
@@ -248,16 +249,16 @@ final class GlobalBoardTest
         NoticePlace(notice2.id, Some(notice2)))
 
     "PostNotices command without expecting order" in:
-      val notice = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
+      val notice = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0.some)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice.id)
       ).await(99.s).orThrow
 
       // With explicit endOfLife
-      val notice2 = Notice(NoticeId("2222-08-10"), board0.path, clock.now() + 1.h)
+      val notice2 = Notice(NoticeId("2222-08-10"), board0.path, Some(clock.now() + 1.h))
       controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id,
-          endOfLife = Some(notice2.endOfLife))
+          endOfLife = notice2.endOfLife)
       ).await(99.s).orThrow
 
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice.id) ==
@@ -267,7 +268,7 @@ final class GlobalBoardTest
 
     "DeleteNotice command" in:
       val qualifier = "2222-09-09"
-      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
+      val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0.some)
 
       val posterEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#POSTING"), posting0Workflow.path))

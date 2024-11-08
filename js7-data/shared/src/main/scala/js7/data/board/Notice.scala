@@ -5,8 +5,9 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.time.Timestamp
 import js7.data.order.OrderEvent.OrderNoticesExpected
 
-final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)
+final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Option[Timestamp])
 extends NoticeSnapshot:
+
   def toExpected: OrderNoticesExpected.Expected =
     OrderNoticesExpected.Expected(boardPath, id)
 

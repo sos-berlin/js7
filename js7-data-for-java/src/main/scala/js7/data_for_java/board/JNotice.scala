@@ -25,8 +25,8 @@ final case class JNoticePlace(asScala: NoticePlace):
 
 final case class JNotice(asScala: Notice):
   @Nonnull
-  def endOfLife: Instant =
-    asScala.endOfLife.toInstant
+  def endOfLife: Optional[Instant] =
+    asScala.endOfLife.map(_.toInstant).toJava
 
 
 object JNotice:
@@ -34,9 +34,9 @@ object JNotice:
   def of(
     @Nonnull id: NoticeId,
     @Nonnull boardPath: BoardPath,
-    @Nonnull endOfLife: Instant)
+    @Nonnull endOfLife: Optional[Instant])
   : JNotice =
-    JNotice(Notice(id, boardPath, endOfLife.toTimestamp))
+    JNotice(Notice(id, boardPath, endOfLife.toScala.map(_.toTimestamp)))
 
 @Deprecated
 final case class JNoticeExpectation(orderIds: java.util.Set[OrderId])

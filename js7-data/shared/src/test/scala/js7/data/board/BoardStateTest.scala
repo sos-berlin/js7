@@ -1,5 +1,6 @@
 package js7.data.board
 
+import cats.syntax.option.*
 import io.circe.Printer
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
@@ -30,7 +31,8 @@ final class BoardStateTest extends OurAsyncTestSuite:
         idToNotice = Map(
           NoticeId("NOTICE") -> NoticePlace(
             NoticeId("NOTICE"),
-            Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
+            Some(Notice(NoticeId("NOTICE"), boardPath,
+              endOfLife = Timestamp.ofEpochSecond(123).some)))))
 
       boardState.toSnapshotStream
         .map(_
@@ -71,7 +73,8 @@ final class BoardStateTest extends OurAsyncTestSuite:
           isInConsumption = true),
         NoticeId("NOTICE-2") -> NoticePlace(
           NoticeId("NOTICE-2"),
-          Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
+          Some(Notice(NoticeId("NOTICE-2"), boardPath,
+            endOfLife = Timestamp.ofEpochSecond(123).some)),
           expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
           consumptionCount = 7)),
       orderToConsumptionStack = Map(
@@ -178,7 +181,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
 
-    val a1Notice = Notice(aNotice.id, board.path, endOfLife)
+    val a1Notice = Notice(aNotice.id, board.path, endOfLife.some)
     boardState = boardState.addNotice(a1Notice).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(a1Notice.id, Some(a1Notice))))
@@ -307,12 +310,12 @@ private object BoardStateTest:
     endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
 
   private val endOfLife = Timestamp.ofEpochSecond(1)
-  private val notice = Notice(NoticeId("A"), board.path, endOfLife)
+  private val notice = Notice(NoticeId("A"), board.path, endOfLife.some)
   private val aOrderId = OrderId("A")
   private val bOrderId = OrderId("B")
 
-  private val aNotice = Notice(NoticeId("A"), board.path, endOfLife)
-  private val bNotice = Notice(NoticeId("B"), board.path, endOfLife)
+  private val aNotice = Notice(NoticeId("A"), board.path, endOfLife.some)
+  private val bNotice = Notice(NoticeId("B"), board.path, endOfLife.some)
 
   private val boardState = BoardState(
     board,

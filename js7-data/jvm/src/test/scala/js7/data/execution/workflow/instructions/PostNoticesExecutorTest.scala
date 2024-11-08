@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import cats.syntax.option.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TestWallClock, Timestamp}
@@ -188,15 +189,15 @@ object PostNoticesExecutorTest:
   private val qualifier = "2222-01-01"
   private val postingOrderId = OrderId(s"#$qualifier#POST")
   private val expectingOrderId = OrderId(s"%$qualifier%EXPECT")
-  private val notice0 = Notice(NoticeId(s"$qualifier-0"), board0.path, endOfLife0)
-  private val notice1 = Notice(NoticeId(s"$qualifier-1"), board1.path, endOfLife1)
-  private val notice2 = Notice(NoticeId(s"$qualifier-2"), board2.path, endOfLife2)
-  private val notice3 = Notice(NoticeId(s"$qualifier-3"), board3.path, endOfLife3)
+  private val notice0 = Notice(NoticeId(s"$qualifier-0"), board0.path, endOfLife0.some)
+  private val notice1 = Notice(NoticeId(s"$qualifier-1"), board1.path, endOfLife1.some)
+  private val notice2 = Notice(NoticeId(s"$qualifier-2"), board2.path, endOfLife2.some)
+  private val notice3 = Notice(NoticeId(s"$qualifier-3"), board3.path, endOfLife3.some)
 
   // This is for a different expecting, endlessly waiting Order
   private val otherQualifier = "3333-11-11"
   private val otherExpectingOrderId = OrderId(s"%$otherQualifier%OTHER")
-  private val otherNotice0 = Notice(NoticeId(s"$otherQualifier-0"), board0.path, endOfLife0)
+  private val otherNotice0 = Notice(NoticeId(s"$otherQualifier-0"), board0.path, endOfLife0.some)
 
   private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ "1", Seq(
     PostNotices(Seq(board0.path, board1.path)),

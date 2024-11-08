@@ -7,7 +7,7 @@ import js7.base.time.Timestamp
 // COMPATIBLE with v2.3
 final case class NoticeV2_3(id: NoticeId, endOfLife: Timestamp):
   def toNotice(boardPath: BoardPath): Notice =
-    Notice(id, boardPath, endOfLife)
+    Notice(id, boardPath, Some(endOfLife))
 
 
 object NoticeV2_3:

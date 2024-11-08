@@ -1,5 +1,6 @@
 package js7.data.order
 
+import cats.syntax.option.*
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
@@ -830,7 +831,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](OrderNoticePosted(Notice(
       NoticeId("NOTICE"),
       BoardPath("BOARD"),
-      endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
+      endOfLife = Timestamp("1970-01-01T01:00:00Z").some)),
       json"""
       {
         "TYPE": "OrderNoticePosted",

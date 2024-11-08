@@ -1,6 +1,7 @@
 package js7.tests.notice
 
 import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import java.time.LocalDate
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
@@ -126,13 +127,13 @@ final class ConsumeNoticesTest
           FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         val endOfLife = Timestamp.Epoch
         assert(events.map(_.value).map {
-          case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
+          case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
           case o => o
         } == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderStarted,
-          OrderNoticePosted(Notice(NoticeId("2022-10-23"), aBoard.path, endOfLife)),
-          OrderNoticePosted(Notice(NoticeId("2022-10-23-X"), myBoard.path, endOfLife)),
+          OrderNoticePosted(Notice(NoticeId("2022-10-23"), aBoard.path, endOfLife.some)),
+          OrderNoticePosted(Notice(NoticeId("2022-10-23-X"), myBoard.path, endOfLife.some)),
           OrderMoved(Position(1)),
           OrderNoticesConsumptionStarted(Vector(
             Expected(aBoard.path, NoticeId("2022-10-23")),
@@ -166,12 +167,12 @@ final class ConsumeNoticesTest
       val events = eventWatch.eventsByKey[OrderEvent](orderId, after = eventId)
       val endOfLife = Timestamp.Epoch
       assert(events.map {
-        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
+        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
         case o => o
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(NoticeId("2022-10-24"), aBoard.path, endOfLife)),
+        OrderNoticePosted(Notice(NoticeId("2022-10-24"), aBoard.path, endOfLife.some)),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
           Expected(aBoard.path, NoticeId("2022-10-24")))),
@@ -576,12 +577,12 @@ final class ConsumeNoticesTest
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
       val endOfLife = Timestamp.Epoch
       assert(events.map(_.value).map {
-        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
+        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
         case o => o
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(noticeId, aBoard.path, endOfLife)),
+        OrderNoticePosted(Notice(noticeId, aBoard.path, endOfLife.some)),
         OrderMoved(Position(1) / "try+0" % 0),
 
         OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),

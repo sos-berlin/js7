@@ -476,7 +476,7 @@ final class OrderTest extends OurTestSuite:
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
-        Notice(NoticeId("NOTICE"), BoardPath("BOARD"), endOfLife = Timestamp.ofEpochSecond(1))),
+        Notice(NoticeId("NOTICE"), BoardPath("BOARD"), endOfLife = Timestamp.ofEpochSecond(1).some)),
       OrderNoticesExpected(Vector(
         OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE")))),
       OrderNoticesRead,

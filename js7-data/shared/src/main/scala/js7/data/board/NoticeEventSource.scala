@@ -40,7 +40,7 @@ final class NoticeEventSource(clock: WallClock):
       notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
       _ <- boardState.addNotice(notice) // Check
       expectingOrderEvents <-
-        if notice.endOfLife <= clock.now() then
+        if notice.endOfLife.exists(_ <= clock.now()) then
           logger.debug(s"Delete $notice immediately because endOfLife is reached")
           Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
         else

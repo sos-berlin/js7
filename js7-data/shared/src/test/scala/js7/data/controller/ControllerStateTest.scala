@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
@@ -466,7 +467,8 @@ object ControllerStateTest:
     endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
 
-  private val notice = Notice(NoticeId("NOTICE-1"), board.path, Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
+  private val notice = Notice(NoticeId("NOTICE-1"), board.path,
+    endOfLife = Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000).some)
   private val expectedNoticeId = NoticeId("NOTICE-2")
 
   private val boardState = BoardState(

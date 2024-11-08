@@ -53,7 +53,7 @@ extends UnsignedSimpleItem:
   def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice] =
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_))
-      yield Notice(noticeId, path, endOfLife)
+      yield Notice(noticeId, path, Some(endOfLife))
 
 
 object GlobalBoard extends UnsignedSimpleItem.Companion[GlobalBoard]:
