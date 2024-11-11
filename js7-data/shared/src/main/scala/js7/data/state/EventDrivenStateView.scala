@@ -74,27 +74,27 @@ extends EventDrivenState[Self, E], StateView:
                   removeOrders = forked.childOrderIds)
 
               case state =>
-                Left(Problem(
-                  s"For event $event, $orderId must be in Forked state, not: $state"))
+                Left(Problem:
+                  s"For event $event, $orderId must be in Forked state, not: $state")
 
         case event: OrderLockEvent =>
           event
             .match
               case OrderLocksQueued(demands) =>
-                foreachLockDemand(demands)(_
-                  .enqueue(orderId, _))
+                foreachLockDemand(demands):
+                  _.enqueue(orderId, _)
 
               case OrderLocksAcquired(demands) =>
-                foreachLockDemand(demands)(_
-                  .acquire(orderId, _))
+                foreachLockDemand(demands):
+                  _.acquire(orderId, _)
 
               case OrderLocksReleased(lockPaths) =>
-                foreachLock(lockPaths)(_
-                  .release(orderId))
-            .flatMap(lockStates =>
+                foreachLock(lockPaths):
+                  _.release(orderId)
+            .flatMap: lockStates =>
               update(
                 addOrders = updatedOrder :: Nil,
-                addItemStates = lockStates))
+                addItemStates = lockStates)
 
         case event: OrderNoticeEvent =>
           applyOrderNoticeEvent(previousOrder, event)
@@ -169,25 +169,29 @@ extends EventDrivenState[Self, E], StateView:
       .match
         case OrderNoticePostedV2_3(notice) =>
           orderIdToBoardState(orderId)
-            .flatMap(boardState => boardState.addNoticeV2_3(notice))
+            .flatMap: boardState =>
+              boardState.addNoticeV2_3(notice)
             .map(_ :: Nil)
 
         case OrderNoticePosted(notice) =>
           keyTo(BoardState)
             .checked(notice.boardPath)
-            .flatMap(_.addNotice(notice))
+            .flatMap:
+              _.addNotice(notice)
             .map(_ :: Nil)
 
         case OrderNoticeExpected(noticeId) =>
           orderIdToBoardState(orderId)
-            .flatMap(_.addExpectation(noticeId, orderId))
+            .flatMap:
+              _.addExpectation(noticeId, orderId)
             .map(_ :: Nil)
 
         case OrderNoticesExpected(expectedSeq) =>
-          expectedSeq.traverse(expected =>
+          expectedSeq.traverse: expected =>
             keyTo(BoardState)
               .checked(expected.boardPath)
-              .flatMap(_.addExpectation(expected.noticeId, orderId)))
+              .flatMap:
+                _.addExpectation(expected.noticeId, orderId)
 
         case OrderNoticesRead =>
           previousOrder.ifState[Order.ExpectingNotices] match
@@ -195,11 +199,11 @@ extends EventDrivenState[Self, E], StateView:
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
 
         case OrderNoticesConsumptionStarted(consumptions) =>
-          consumptions
-            .traverse(consumption =>
-              keyTo(BoardState)
-                .checked(consumption.boardPath)
-                .flatMap(_.addConsumption(consumption.noticeId, previousOrder, consumption)))
+          consumptions.traverse: consumption =>
+            keyTo(BoardState)
+              .checked(consumption.boardPath)
+              .flatMap:
+                _.addConsumption(consumption.noticeId, previousOrder, consumption)
 
         case OrderNoticesConsumed(failed) =>
           val consumeNotices: Checked[ConsumeNotices] =
@@ -211,10 +215,10 @@ extends EventDrivenState[Self, E], StateView:
           consumeNotices.flatMap(_
             .referencedBoardPaths.toSeq
             .traverse(keyTo(BoardState).checked)
-            .flatMap(_.traverse(_
-              .removeConsumption(previousOrder.id, succeeded = !failed))))
-    .flatMap(o => update(
-      addItemStates = o))
+            .flatMap(_.traverse:
+              _.removeConsumption(previousOrder.id, succeeded = !failed)))
+    .flatMap: o =>
+      update(addItemStates = o)
 
   private def findInstructionInCallStack[I <: Instruction: ClassTag](
     workflowPosition: WorkflowPosition)
@@ -227,6 +231,6 @@ extends EventDrivenState[Self, E], StateView:
 
   private def removeNoticeExpectation(order: Order[ExpectingNotices]): Checked[Seq[BoardState]] =
     order.state.expected
-      .traverse(expected => keyTo(BoardState)
-        .checked(expected.boardPath)
-        .flatMap(_.removeExpectation(expected.noticeId, order.id)))
+      .traverse: expected =>
+        keyTo(BoardState).checked(expected.boardPath).flatMap:
+          _.removeExpectation(expected.noticeId, order.id)

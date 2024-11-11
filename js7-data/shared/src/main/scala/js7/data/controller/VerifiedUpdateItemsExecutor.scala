@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Problems.DuplicateKey
@@ -89,30 +90,33 @@ object VerifiedUpdateItemsExecutor:
     : Checked[View[KeyedEvent[InventoryItemEvent]]] =
       import verifiedUpdateItems.simple
       simple.verifiedSimpleItems
-        .traverse(verifiedSimpleItemToEvent(_, controllerState))
-        .flatMap(signedEvents =>
+        .traverse:
+          verifiedSimpleItemToEvent(_, controllerState)
+        .flatMap: signedEvents =>
           simple.unsignedSimpleItems
-            .traverse(unsignedSimpleItemToEvent(_, controllerState))
-            .map { unsignedEvents =>
+            .traverse:
+              unsignedSimpleItemToEvent(_, controllerState)
+            .map: unsignedEvents =>
               // Check again, is deletedAgents necessary ???
               val deletedAgents = simple.delete.view.collect { case a: AgentPath => a }.toSet
               simple.delete.view
-                .flatMap(simpleItemDeletionEvents(_, deletedAgents, controllerState))
+                .flatMap:
+                  simpleItemDeletionEvents(_, deletedAgents, controllerState)
                 .view ++ signedEvents ++ unsignedEvents
-            }
-          .map(_.map(NoKey <-: _)))
+          .map(_.view.map(NoKey <-: _))
 
     def toDerivedWorkflowPathControlEvents(controllerState: ControllerState)
     : View[KeyedEvent[InventoryItemEvent]] =
       verifiedUpdateItems.maybeVersioned.view
         .flatMap(_.remove)
-        .collect { case o: WorkflowPath => o }
-        .flatMap(toDerivedWorkflowPathControlEvent(controllerState, _))
+        .collect:
+          case o: WorkflowPath => o
+        .flatMap:
+          toDerivedWorkflowPathControlEvent(controllerState, _)
 
     def toDerivedWorkflowPathControlEvent(controllerState: ControllerState, workflowPath: WorkflowPath)
     : Option[KeyedEvent[InventoryItemEvent]] =
       val path = WorkflowPathControlPath(workflowPath)
-
       (controllerState.keyTo(WorkflowPathControl).contains(path)
         && !controllerState.repo.pathToItems(Workflow).contains(workflowPath)
         && !controllerState.itemToAgentToAttachedState.contains(path)
@@ -122,8 +126,10 @@ object VerifiedUpdateItemsExecutor:
     : View[KeyedEvent[InventoryItemEvent]] =
       verifiedUpdateItems.maybeVersioned.view
         .flatMap(_.remove)
-        .collect { case o: WorkflowPath => o }
-        .flatMap(toDerivedWorkflowControlEvent(controllerState, _))
+        .collect:
+          case o: WorkflowPath => o
+        .flatMap:
+          toDerivedWorkflowControlEvent(controllerState, _)
 
     def toDerivedWorkflowControlEvent(controllerState: ControllerState, workflowId: WorkflowId)
     : Option[KeyedEvent[InventoryItemEvent]] =
@@ -141,17 +147,17 @@ object VerifiedUpdateItemsExecutor:
       if item.itemRevision.isDefined then
         Left(Problem.pure("ItemRevision is not accepted here"))
       else
-        Right(
-          controllerState.pathToSimpleItem.get(item.key) match {
+        Right:
+          controllerState.pathToSimpleItem.get(item.key) match
             case None =>
-              SignedItemAdded(verified.signedItem.copy(value =
-                item.withRevision(Some(ItemRevision.Initial))))
+              SignedItemAdded(verified.signedItem.copy(
+                value = item.withRevision(ItemRevision.Initial.some)))
             case Some(existing) =>
-              SignedItemChanged(verified.signedItem.copy(
-                value = verified.signedItem.value
-                  .withRevision(Some(
-                    existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
-          })
+              SignedItemChanged:
+                verified.signedItem.copy(
+                  value = verified.signedItem.value
+                    .withRevision(Some:
+                      existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
 
     def unsignedSimpleItemToEvent(
       item: UnsignedSimpleItem,
@@ -160,18 +166,19 @@ object VerifiedUpdateItemsExecutor:
       if item.itemRevision.isDefined then
         Left(Problem.pure("ItemRevision is not accepted here"))
       else
-        checkItem.getOrElse(item, Checked.unit)
-          .flatMap(_ => controllerState.pathToSimpleItem.get(item.key) match {
+        checkItem.getOrElse(item, Checked.unit).flatMap: _ =>
+          controllerState.pathToSimpleItem.get(item.key) match
             case None =>
-              Right(UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial))))
+              Right:
+                UnsignedSimpleItemAdded(item.withRevision(ItemRevision.Initial.some))
             case Some(existing) =>
               if controllerState.deletionMarkedItems.contains(item.key) then
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
-                Right(UnsignedSimpleItemChanged(item
-                  .withRevision(Some(
-                    existing.itemRevision.fold(ItemRevision.Initial /*not expected*/)(_.next)))))
-          })
+                Right:
+                  UnsignedSimpleItemChanged:
+                    item.withRevision:
+                      existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next).some
 
     def simpleItemDeletionEvents(
       path: SimpleItemPath,
@@ -209,7 +216,9 @@ object VerifiedUpdateItemsExecutor:
       // Now we have the overridden item
       .flatMap(_.maybeSignedItem)
       .map(_.value.id)
-      .flatMap(itemId => !controllerState.isInUse(itemId) ? (NoKey <-: ItemDeleted(itemId)))
+      .flatMap: itemId =>
+        !controllerState.isInUse(itemId) ?
+          (NoKey <-: ItemDeleted(itemId))
 
   private def checkVerifiedUpdateConsistency(
     verifiedUpdateItems: VerifiedUpdateItems,
