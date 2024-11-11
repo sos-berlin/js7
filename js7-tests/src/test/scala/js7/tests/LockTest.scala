@@ -1280,7 +1280,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
         RemoveVersioned(promptInLockWorkflow.path)))
       .await(99.s)
     // Lock cannot be deleted due to orders in the deleted (but still versioned) Workflow
-    assert(removeWorkflowAndLock() == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
+    assert(removeWorkflowAndLock() == Left:
+      ItemIsStillReferencedProblem(lockPath, workflow.id, "with Order:DELETING"))
 
     controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)

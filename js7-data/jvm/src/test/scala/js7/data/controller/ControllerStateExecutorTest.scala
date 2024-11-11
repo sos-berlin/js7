@@ -129,7 +129,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
-        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id)))
+        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id, "with Order:ORDER")))
 
       executor
         .applyEventsAndReturnSubsequentEvents(Seq(

@@ -11,7 +11,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
-import scala.collection.immutable.Map.{Map1, Map2}
+import scala.collection.immutable.Map.{Map1, Map2, Map3}
 import scala.concurrent.duration.FiniteDuration
 
 object Problems:
@@ -57,11 +57,13 @@ object Problems:
 
   final case class ItemIsStillReferencedProblem(
     itemPath: InventoryItemPath,
-    referencingItemKey: InventoryItemKey)
+    referencingItemKey: InventoryItemKey,
+    moreInfo: String = "")
   extends Problem.Coded:
-    def arguments: Map[String, String] = Map(
-      "itemPath" -> itemPath.toString,
-      "referencingItemKey" -> referencingItemKey.toString)
+    def arguments: Map[String, String] = Map3(
+      "itemPath", itemPath.toString,
+      "referencingItemKey", referencingItemKey.toString,
+      "moreInfo", moreInfo)
 
   final case class AgentResetProblem(agentPath: AgentPath) extends Problem.Coded:
     def arguments: Map[String, String] = Map(
