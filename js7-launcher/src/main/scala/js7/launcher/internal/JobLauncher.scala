@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, RelativePathExecutable, ShellScriptExecutable}
@@ -23,7 +23,7 @@ import scala.util.Try
 trait JobLauncher:
   protected val jobConf: JobConf
 
-  def precheckAndWarn: IO[Unit] = IO.unit
+  def precheck: IO[Checked[Unit]] = IO.pure(Checked.unit)
 
   protected def start: IO[Checked[Unit]]
 
@@ -80,3 +80,14 @@ object JobLauncher:
       logger.warn(s"Executable '$file' not found")
     else if isUnix && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true) then
       logger.warn(s"Executable '$file' is not user executable")
+
+  private[launcher] def checkIsExecutable(file: Path): IO[Checked[Unit]] =
+    IO.blocking:
+      if !exists(file) then
+        Left(Problem(s"Executable '$file' not found"))
+      else if isUnix
+        && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true)
+      then
+        Left(Problem(s"Executable '$file' is not user executable"))
+      else
+        Checked.unit

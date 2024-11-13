@@ -1,7 +1,6 @@
 package js7.subagent.job
 
 import cats.effect
-import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
@@ -22,7 +21,7 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.StdObservers
 import js7.launcher.internal.JobLauncher
 
-private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntime: IORuntime):
+private[subagent] final class JobDriver private(params: JobDriver.Params):
 
   import params.{checkedJobLauncher, jobConf}
   import jobConf.{jobKey, sigkillDelay, workflowJob}
@@ -39,10 +38,13 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
   private val orderToProcess = AsyncMap.empty[OrderId, JobDriverForOrder]
   private val lastProcessTerminated = SetOnce[Deferred[IO, Unit]]
 
-  for launcher <- checkedJobLauncher do
-    // TODO JobDriver.start(): IO[Checked[JobDriver]]
-    launcher.precheckAndWarn.unsafeRunAndForget()
-  for problem <- checkedJobLauncher.left do logger.error(problem.toString)
+  private def precheckAndWarn: IO[Unit] =
+    IO(checkedJobLauncher)
+      .flatMapT:
+        _.precheck
+      .flatMap:
+        case Left(problem) => IO(logger.warn(problem.toString))
+        case Right(()) => IO.unit
 
   def stop(signal: ProcessSignal): IO[Unit] =
     logger.debugIO("stop", signal):
@@ -116,6 +118,13 @@ private[subagent] final class JobDriver(params: JobDriver.Params)(using ioRuntim
 
 
 private[subagent] object JobDriver:
+
+  def start(params: JobDriver.Params): IO[JobDriver] =
+    for
+      jobDriver <- IO(new JobDriver(params))
+      _ <- jobDriver.precheckAndWarn
+    yield
+      jobDriver
 
   final case class Params(
     jobConf: JobConf,
