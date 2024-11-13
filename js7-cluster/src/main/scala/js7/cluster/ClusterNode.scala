@@ -78,12 +78,12 @@ extends Service.StoppableByRequest:
 
   /** None when stopped before activated. */
   def untilActivated: IO[Either[ProgramTermination, WorkingClusterNode[S]]] =
-    logger.traceIOWithResult("untilActivated", body =
+    logger.traceIOWithResult("untilActivated"):
       workingNodeStarted.get.dematerialize
         .recover:
           case t: RestartAfterJournalTruncationException =>
             logger.info(t.getMessage)
-            Left(ProgramTermination.Restart))
+            Left(ProgramTermination.Restart)
 
   protected def start =
     startService(run)

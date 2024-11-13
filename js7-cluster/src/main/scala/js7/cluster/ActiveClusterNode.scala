@@ -614,13 +614,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : IO[Checked[Unit]] =
-    logger.traceIOWithResult("registerClusterWatchId", confirmation, body =
+    logger.traceIOWithResult("registerClusterWatchId", confirmation):
       IO.defer:
         if alreadyLocked then
           nonLockingRegisterClusterWatchId(confirmation)
         else
           clusterStateLock.lock:
-            nonLockingRegisterClusterWatchId(confirmation))
+            nonLockingRegisterClusterWatchId(confirmation)
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : IO[Checked[Unit]] =
