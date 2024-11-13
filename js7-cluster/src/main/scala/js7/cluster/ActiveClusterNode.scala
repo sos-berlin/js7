@@ -522,9 +522,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : IO[Checked[Completed]] =
-    logger.debugIOWithResult(HttpClient
-      .liftProblem(Stream
-        .resource:
+    logger.debugIOWithResult:
+      HttpClient.liftProblem:
+        Stream.resource:
           common.clusterNodeApi(
             Admission(passiveUri, passiveNodeUserAndPassword),
             "acknowledgements")
@@ -533,7 +533,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             heartbeat = timing.heartbeat min keepAlive,
             returnHeartbeatAs = Some(EventId.Heartbeat))
             .through: stream =>
-              clusterConf.testAckLossPropertyKey.fold(stream): k =>  // Testing only
+              clusterConf.testAckLossPropertyKey.fold(stream): k => // Testing only
                 var logged = false
                 stream.filter: _ =>
                   val suppress = sys.props(k).toBoolean
@@ -560,29 +560,32 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
               case Right(eventId) =>
                 Stream.exec:
-                  IO.fromFuture(IO:
+                  IO.fromFuture:
+                    IO:
                       // Possible dead letter when `stopAcknowledging` is detected too late !!!
                       // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                      journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
-                    .void
+                      journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId)
+                  .void
         .head.compile.last // The first problem, if any
-        .map(_.toLeft(Completed)))
-      .map(_.flatten))
+        .map(_.toLeft(Completed))
+      .map(_.flatten)
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): IO[Checked[EventId]] =
-    logger.debugIOWithResult(common
-      .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
-      .use(api => HttpClient
-        .liftProblem:
-          streamEventIds(api, heartbeat = keepAlive)
-            .dropWhile(_ < eventId)
-            .head
-            .compile
-            .last
-            .map(_.toRight(Problem.pure(
-              s"awaitAcknowledgement($eventId): Stream ended unexpectedly")))
-        .map(_.flatten))
-      .logWhenItTakesLonger("passive cluster node acknowledgement"))
+    logger.debugIOWithResult:
+      common.clusterNodeApi(
+          Admission(passiveUri, passiveNodeUserAndPassword),
+          "awaitAcknowledgement")
+        .use: api =>
+          HttpClient.liftProblem:
+            streamEventIds(api, heartbeat = keepAlive)
+              .dropWhile(_ < eventId)
+              .head
+              .compile
+              .last
+              .map(_.toRight:
+                Problem.pure(s"awaitAcknowledgement($eventId): Stream ended unexpectedly"))
+          .map(_.flatten)
+        .logWhenItTakesLonger("passive cluster node acknowledgement")
 
   private def streamEventIds(
     api: ClusterNodeApi,
@@ -628,12 +631,11 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             if _ then // Shortcut
               IO.right(Nil -> clusterState)
             else
-              journal
-                .persistTransaction[ClusterEvent](NoKey)(s =>
-                  isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
-                    .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId)))
-                .map(_.map: (stampedEvents, journaledState) =>
-                  stampedEvents -> journaledState.clusterState)
+              journal.persistTransaction[ClusterEvent](NoKey): s =>
+                isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
+                  .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId))
+              .map(_.map: (stampedEvents, journaledState) =>
+                stampedEvents -> journaledState.clusterState)
       .flatTapT: _ =>
         common.clusterWatchCounterpart.onClusterWatchRegistered(confirmation.clusterWatchId)
         .as(Checked.unit)

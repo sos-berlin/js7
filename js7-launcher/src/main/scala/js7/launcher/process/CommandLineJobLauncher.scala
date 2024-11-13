@@ -21,14 +21,13 @@ extends ProcessJobLauncher:
     IO:
       new CommandLineEvaluator()(processOrder.scope)
         .eval(executable.commandLineExpression)
-        .flatMap { commandLine =>
+        .flatMap: commandLine =>
           warnIfNotExecutable(commandLine.file)
           ProcessOrder.evalEnv(executable.env, processOrder.scope)
-            .map(env =>
+            .map: env =>
               makeOrderProcess(
                 processOrder,
                 StartProcess(
                   commandLine,
                   name = commandLine.file.getFileName.toString,
-                  env)))
-        }
+                  env))

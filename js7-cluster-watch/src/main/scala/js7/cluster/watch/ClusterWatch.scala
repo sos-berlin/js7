@@ -149,8 +149,8 @@ final class ClusterWatch(
     "ClusterWatch(" +
       _state.fold("untaught")(state =>
         state.clusterState.toShortString/* + ", " +
-          state.lastHeartbeat.elapsed.pretty + " ago"*/) +
-      ")"
+          state.lastHeartbeat.elapsed.pretty + " ago"*/)
+      + ")"
 
 
 object ClusterWatch:
