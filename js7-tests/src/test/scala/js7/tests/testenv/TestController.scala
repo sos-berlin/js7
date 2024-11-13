@@ -3,6 +3,7 @@ package js7.tests.testenv
 import cats.effect.IO
 import com.typesafe.config.Config
 import fs2.Stream
+import izumi.reflect.Tag
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
@@ -27,7 +28,7 @@ import js7.controller.{OrderApi, RunningController}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
-import js7.data.controller.ControllerState
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
@@ -74,6 +75,8 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
   val eventWatch: StrictEventWatch =
     runningController.eventWatch
 
+  export eventWatch.{await, awaitNext, resetLastWatchedEventId}
+
   def recoveredEventId: EventId =
     runningController.recoveredEventId
 
@@ -110,6 +113,10 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
         clusterAction = clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
       ).guarantee(stop))
+
+  def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response]): command.Response =
+    import runningController.ioRuntime
+    api.executeCommand(command).await(99.s).orThrow
 
   private def shutdown(cmd: ShutDown): IO[ProgramTermination] =
     logger.debugIO(IO.defer {

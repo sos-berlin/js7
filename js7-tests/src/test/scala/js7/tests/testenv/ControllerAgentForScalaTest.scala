@@ -217,7 +217,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   final def execCmd[C <: ControllerCommand](command: C)(using Tag[command.Response])
   : command.Response =
-    controller.api.executeCommand(command).await(99.s).orThrow
+    controller.execCmd(command)
 
 
 object ControllerAgentForScalaTest:

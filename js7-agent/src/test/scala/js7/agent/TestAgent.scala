@@ -94,6 +94,8 @@ final class TestAgent(
   def eventWatch: EventWatch =
     agent.eventWatch
 
+  export agent.eventWatch.{await, awaitNext, resetLastWatchedEventId}
+
   def testEventBus: StandardEventBus[Any] =
     agent.testEventBus
 
