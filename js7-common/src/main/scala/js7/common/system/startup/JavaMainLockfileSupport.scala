@@ -26,14 +26,15 @@ object JavaMainLockfileSupport:
     (body: CommandLineArguments => IO[ProgramTermination])
   : IO[ProgramTermination] =
     if useLockFile then
-      lockAndRunMain(args)(body)
+      lockAndRunMain(args):
+        body
     else
-      val arguments = CommandLineArguments(args)
-      JavaMain.runMain:
-        body(arguments)
+      JavaMain.runMain(args):
+        body
 
-  // Cleans also work directory
-  /** Exit if lockFile is already locked. */
+  /** Exit if lockFile is already locked.
+    * Cleans also the `workDirectory`.
+    */
   private def lockAndRunMain(args: Seq[String])
     (body: CommandLineArguments => IO[ProgramTermination])
   : IO[ProgramTermination] =
@@ -67,18 +68,18 @@ object JavaMainLockfileSupport:
       .use: lockFileChannel =>
         Try(lockFileChannel.tryLock()) match
           case Failure(throwable) =>
-            IO:
+            IO.blocking:
               printlnWithClock(s"tryLock: $throwable")
               lockedValue
 
           case Success(null) =>
-            IO:
+            IO.blocking:
               printlnWithClock("Duplicate start of JS7")
               lockedValue
 
           case Success(_) =>
-            IO.defer:
+            IO.blocking:
               lockFileChannel.write:
                 ByteBuffer.wrap:
                   ProcessHandle.current.pid.toString.getBytes(UTF_8)
-              body
+            *> body
