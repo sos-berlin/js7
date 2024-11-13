@@ -19,7 +19,7 @@ import js7.data.cluster.ClusterWatchRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.util.chaining.scalaUtilChainingOps
 
 final class ClusterWatch(
@@ -113,24 +113,26 @@ final class ClusterWatch(
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): IO[Checked[Unit]] =
     logger.debugIO("manuallyConfirmNodeLoss", lostNodeId):
       lock.lock(IO:
-        matchRejectedNodeLostEvent(lostNodeId)
-          .toRight(ClusterNodeIsNotLostProblem(lostNodeId))
-          .map: lossRejected =>
-            _nodeToLossRejected.clear()
-            _nodeToLossRejected(lostNodeId) = lossRejected.copy(
-              manualConfirmer = Some(confirmer)))
+        matchRejectedNodeLostEvent(lostNodeId).map: lossRejected =>
+          _nodeToLossRejected.clear()
+          _nodeToLossRejected(lostNodeId) = lossRejected.copy(
+            manualConfirmer = Some(confirmer)))
 
-  private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Option[LossRejected] =
+  private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Checked[LossRejected] =
     (_nodeToLossRejected.get(lostNodeId), _state.map(_.clusterState)) match
       case (Some(lossRejected), None)
         if lossRejected.event.lostNodeId == lostNodeId =>
-        Some(lossRejected)
+        Right(lossRejected)
 
       case (Some(lossRejected), Some(Coupled(setting)))
         if lossRejected.event.lostNodeId == lostNodeId && lostNodeId == setting.activeId =>
-        Some(lossRejected)
+        Right(lossRejected)
 
-      case _ => None
+      case (maybeLossRejected, maybeClusterState) =>
+        val problem = ClusterNodeIsNotLostProblem(lostNodeId)
+        logger.debug:
+          s"⚠️  $problem │ ${View(maybeLossRejected, maybeClusterState).flatten.mkString(" ")}"
+        Left(problem)
 
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     _nodeToLossRejected.get(lostNodeId)
