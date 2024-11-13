@@ -28,7 +28,7 @@ import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.system.startup.ServiceMain
 import js7.core.command.CommandMeta
-import js7.journal.watch.EventWatch
+import js7.journal.watch.StrictEventWatch
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
@@ -91,7 +91,7 @@ final class TestAgent(
     given IORuntime = agent.ioRuntime
     agent.agentState.await(99.s).orThrow
 
-  def eventWatch: EventWatch =
+  def eventWatch: StrictEventWatch =
     agent.eventWatch
 
   export agent.eventWatch.{await, awaitNext, resetLastWatchedEventId}

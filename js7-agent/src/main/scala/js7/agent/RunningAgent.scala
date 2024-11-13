@@ -51,7 +51,7 @@ import js7.data.subagent.SubagentId
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
-import js7.journal.watch.JournalEventWatch
+import js7.journal.watch.StrictEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
@@ -76,7 +76,7 @@ extends MainService, Service.StoppableByRequest:
   protected type Termination = DirectorTermination
 
   lazy val localUri: Uri = getLocalUri()
-  val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
+  val eventWatch: StrictEventWatch = clusterNode.recoveredExtract.eventWatch.strict
   val subagent: Subagent = forDirector.subagent
   private val isTerminating = Atomic(false)
 
