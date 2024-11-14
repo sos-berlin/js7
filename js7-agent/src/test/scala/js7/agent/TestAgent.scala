@@ -58,7 +58,7 @@ final class TestAgent(
   : IO[ProgramTermination] =
     IO.defer:
       if released then
-        // The Agent's own test IORuntime have have been shutdown
+        // The Agent's own test IORuntime has been shutdown
         IO.pure(ProgramTermination())
       else
         logger.traceIO:

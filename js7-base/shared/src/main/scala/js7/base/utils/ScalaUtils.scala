@@ -216,20 +216,25 @@ object ScalaUtils:
             if !result.contains(c) then
               result = result.stripSuffix(":") + ", caused by: " + c
         if throwable.getSuppressed.nonEmpty then
-          result += throwable.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
+          result += throwable.getSuppressed
+            .map(t => " [suppressed: " + t.toStringWithCauses + "]")
+            .mkString
         result
 
-      def toSimplifiedString: String = {
-        val msg = throwable.getMessage
-        throwable match
+      def toSimplifiedString: String =
+        lazy val msg = throwable.getMessage
+        throwable.match
           case _: java.util.NoSuchElementException =>
-            throwable.toString stripPrefix "java.util."
+            throwable.toString.stripPrefix("java.util.")
 
           case _: IllegalStateException | _: NumberFormatException =>
-            throwable.toString stripPrefix "java.lang."
+            throwable.toString.stripPrefix("java.lang.")
 
-          case t: ArithmeticException if msg != null =>
+          case _: ArithmeticException if msg != null =>
             s"ArithmeticException: $msg"
+
+          case _: java.util.concurrent.TimeoutException =>
+            throwable.toString.stripPrefix("java.util.concurrent.")
 
           case _ =>
             if msg != null && msg != "" && (
@@ -239,11 +244,12 @@ object ScalaUtils:
                 throwable.getClass == classOf[Exception] ||
                 throwable.isInstanceOf[PublicException] ||
                 throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
-                throwable.getClass.getName == "java.util.concurrent.CompletionException") then
+                throwable.getClass.getName == "java.util.concurrent.CompletionException")
+            then
               msg
             else
               throwable.toString
-      }.trim
+        .trim
 
       def stackTraceAsString: String =
         val w = new StringWriter
