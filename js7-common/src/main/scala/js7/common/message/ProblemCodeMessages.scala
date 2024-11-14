@@ -15,7 +15,7 @@ object ProblemCodeMessages:
   private val config = Configs.loadResource(resource)
 
   private[message] val problemCodeToPattern: ProblemCode => Option[String] =
-    code => Try(config.getString(code.string)).toOption
+    code => Try(config.getString(code.string).trim).toOption
   private val ifNotInitialized = new Once
 
   def initialize(): Unit =

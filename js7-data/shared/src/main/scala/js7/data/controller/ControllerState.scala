@@ -518,7 +518,8 @@ extends SignedItemContainer,
     referencingItemKeys(path)
       .toVector
       .sortBy(_.path)
-      .map(ItemIsStillReferencedProblem(path, _))
+      .map:
+        itemIsStillReferencedProblem(path, _)
       .reduceLeftOption(Problem.combine)
       .toLeft(())
 
@@ -537,9 +538,24 @@ extends SignedItemContainer,
         case _ => true
       .toVector
       .sortBy(_.path)
-      .map(ItemIsStillReferencedProblem(path, _))
+      .map: itemKey =>
+        itemIsStillReferencedProblem(path, itemKey)
       .reduceLeftOption(Problem.combine)
       .toLeft(())
+
+  private def itemIsStillReferencedProblem(
+    itemPath: InventoryItemPath,
+    referencingItemKey: InventoryItemKey)
+  =
+    ItemIsStillReferencedProblem(itemPath, referencingItemKey,
+      moreInfo = referencingItemKey match
+        case WorkflowId.as(workflowId) =>
+          val refOrders = orders.view.filter(_.workflowId == workflowId).toVector
+          refOrders.length match
+            case 0 => ""
+            case 1 => s"with ${refOrders.head.id}"
+            case n => s"with $n Orders"
+        case _ => "")
 
   private[controller] def detach(itemKey: InventoryItemKey): View[ItemDetachable] =
     itemToAgentToAttachedState

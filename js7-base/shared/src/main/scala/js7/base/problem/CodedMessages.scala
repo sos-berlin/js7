@@ -26,9 +26,10 @@ object CodedMessages:
     None
 
   def problemCodeToMessage(code: ProblemCode, arguments: Map[String, String]): String =
-    codeToPattern(code) match
+    codeToPattern(code).match
       case None => code.string + unusedArgumentsToString(arguments)
       case Some(pattern) => patternToMessage(pattern, arguments)
+    .trim
 
   private[problem] def patternToMessage(pattern: String, arguments: Map[String, String]) =
     val used = mutable.Set.empty[String]
