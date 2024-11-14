@@ -405,6 +405,34 @@ final class ScalaUtilsTest extends OurTestSuite:
         == Left("LEFT-2")
   }
 
+  "Seq[A]" - {
+    "get" in:
+      val seq = Seq(1, 2, 3)
+      assert(seq.get(-1) == None)
+      assert(seq.get(0) == Some(1))
+      assert(seq.get(1) == Some(2))
+      assert(seq.get(2) == Some(3))
+      assert(seq.get(3) == None)
+
+    "checked for LazyList (unknown size, maybe infinite)" in:
+      val seq = LazyList(1, 2, 3)
+      given sourcecode.Line = 999
+      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds in ScalaUtilsTest.scala:999")))
+      assert(seq.checked(0) == Right(1))
+      assert(seq.checked(1) == Right(2))
+      assert(seq.checked(2) == Right(3))
+      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds in ScalaUtilsTest.scala:999")))
+
+    "checked for Vector (known size)" in:
+      val seq = Vector(1, 2, 3)
+      given sourcecode.Line = 999
+      assert(seq.checked(-1) == Left(Problem(s"Index -1 is out of bounds 0...2 in ScalaUtilsTest.scala:999")))
+      assert(seq.checked(0) == Right(1))
+      assert(seq.checked(1) == Right(2))
+      assert(seq.checked(2) == Right(3))
+      assert(seq.checked(3) == Left(Problem(s"Index 3 is out of bounds 0...2 in ScalaUtilsTest.scala:999")))
+  }
+
   "Iterator" - {
     "takeUntil" in:
       assert((Iterator.empty.takeUntil(_ == 33): Iterator[Int]).toList == List.empty)

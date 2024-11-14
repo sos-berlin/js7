@@ -20,7 +20,7 @@ import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapView, View, mutable}
+import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
@@ -420,14 +420,33 @@ object ScalaUtils:
         new MergeOrderedIterator(iterables, f)
 
 
-    extension [A](seq: Vector[A])
+    //extension methods collide with other names in the namespace, for example pekko-http get
+    //extension [A](seq: collection.Seq[A])
+    implicit final class RichSeq[A](private val seq: Seq[A]) extends AnyVal:
+      def get(i: Int): Option[A] =
+        try
+          seq(i).some
+        catch case _: IndexOutOfBoundsException =>
+          None
+
+      def checked(i: Int)(using filename: sourcecode.FileName, line: sourcecode.Line): Checked[A] =
+        try
+          Right(seq(i))
+        catch case t: IndexOutOfBoundsException =>
+          Left:
+            val range = seq.knownSize match
+              case -1 => ""
+              case n => s" 0...${n - 1}"
+            Problem(s"Index $i is out of bounds$range in ${filename.value}:${line.value}")
+
+    extension [A](vector: Vector[A])
       /** Insert into an ordered sequence. */
       def insertOrdered(a: A)(using Ordering[A]): Vector[A] =
-        val i = binarySearch(seq)(a)._1
-        seq.take(i) :+ a :++ seq.drop(i)
+        val i = binarySearch(vector)(a)._1
+        vector.take(i) :+ a :++ vector.drop(i)
 
 
-    implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
+    implicit final class RichScalaUtilsMap[K, V](private val underlying: MapOps[K, V, ?, ?])
     extends AnyVal:
       def checked(key: K)(implicit K: Tag[K]): Checked[V] =
         rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
