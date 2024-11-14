@@ -320,6 +320,12 @@ final class ScalaUtilsTest extends OurTestSuite:
       assert(c(3) == "tri")
       assert(c.toSeq == Seq(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
       assert(c.toMap == Map(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
+      assert(c.keySet == Set(1, 2, 3))
+      assert(c.keys.toSet == Set(1, 2, 3))
+      assert(c.values.toSeq == Seq("ONE", "TWO", "tri"))
+      assert(c.knownSize == -1)
+      assert(c.size == 3)
+      assert(!c.isEmpty)
 
     "mapIsomorphic" in:
       val morphed: MapView[String, Boolean] =

@@ -473,6 +473,12 @@ object ScalaUtils:
           def iterator =
             mapView.iterator ++ other.filterKeys(k => !mapView.contains(k))
 
+          override def keySet =
+            mapView.keySet ++ other.keySet
+
+          override def isEmpty =
+            mapView.isEmpty && other.isEmpty
+
       /** K1 and K must be isomorphic, fromK1(toK1(k)) == k), maybe keeping the ordering.
        * @param fromK1 A NonFatal exception will be ignored
        */
