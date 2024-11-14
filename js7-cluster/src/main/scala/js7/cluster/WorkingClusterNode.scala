@@ -58,9 +58,8 @@ final class WorkingClusterNode[
     clusterState match
       case ClusterState.Empty => IO.right(Completed)
       case clusterState: HasNodes =>
-        common.requireValidLicense
-          .flatMapT(_ =>
-            startActiveClusterNode(clusterState, eventId))
+        common.requireValidLicense.flatMapT: _ =>
+          startActiveClusterNode(clusterState, eventId)
 
   def stop: IO[Unit] =
     IO.defer:
@@ -72,21 +71,20 @@ final class WorkingClusterNode[
       case Some(o) => o.beforeJournalingStarts
 
   def afterJournalingStarted: IO[Checked[Completed]] =
-    automaticallyAppointConfiguredBackupNode.flatMapT(_ =>
-      _activeClusterNode.toOption match {
+    automaticallyAppointConfiguredBackupNode.flatMapT: _ =>
+      _activeClusterNode.toOption match
         case None => IO.right(Completed)
         case Some(o) => o.onRestartActiveNode
-      })
 
   def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId,
     extraEvent: Option[ItemAttachedToMe] = None)
   : IO[Checked[Unit]] =
-    IO(
+    IO:
       ClusterSetting.checked(
         idToUri, activeId, clusterConf.timing,
         clusterWatchId = None)
-    ).flatMapT(
-      appointNodes2(_, extraEvent))
+    .flatMapT:
+      appointNodes2(_, extraEvent)
 
   private def automaticallyAppointConfiguredBackupNode: IO[Checked[Unit]] =
     IO.defer:
@@ -111,31 +109,30 @@ final class WorkingClusterNode[
 
   private def appointNodes2(setting: ClusterSetting, extraEvent: Option[ItemAttachedToMe] = None)
   : IO[Checked[Unit]] =
-    logger.debugIO(appointNodesLock.lock(
-      currentClusterState.flatMap {
-        case ClusterState.Empty =>
-          journal
-            .persistTransaction[NoKeyEvent](NoKey)(_ =>
-              Right(extraEvent.toList ::: List(ClusterNodesAppointed(setting))))
-            .flatMapT { case (_, state) =>
-              state.clusterState match {
-                case clusterState: HasNodes =>
-                  startActiveClusterNode(clusterState, state.eventId)
-                case clusterState => IO.left(Problem.pure(
-                  s"Unexpected ClusterState $clusterState after ClusterNodesAppointed"))
-              }
-            }
+    logger.debugIO:
+      appointNodesLock.lock:
+        currentClusterState.flatMap:
+          case ClusterState.Empty =>
+            journal
+              .persistTransaction[NoKeyEvent](NoKey): _ =>
+                Right(extraEvent.toList ::: List(ClusterNodesAppointed(setting)))
+              .flatMapT: (_, state) =>
+                state.clusterState match
+                  case clusterState: HasNodes =>
+                    startActiveClusterNode(clusterState, state.eventId)
+                  case clusterState => IO.left(Problem.pure:
+                    s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")
 
-        case clusterState @ HasNodes(current) =>
-          if setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri) then
-            IO.left(ClusterSettingNotUpdatable(clusterState))
-          else if setting.passiveUri == current.passiveUri then
-            extraEvent.fold(IO.pure(Checked.unit))(extraEvent =>
-              journal.persistKeyedEvent(extraEvent).rightAs(()))
-          else
-            activeClusterNodeIO
-              .flatMapT(_.changePassiveUri(setting.passiveUri, extraEvent))
-      }))
+          case clusterState @ HasNodes(current) =>
+            if setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri)
+            then
+              IO.left(ClusterSettingNotUpdatable(clusterState))
+            else if setting.passiveUri == current.passiveUri then
+              extraEvent.fold(IO.pure(Checked.unit)): extraEvent =>
+                journal.persistKeyedEvent(extraEvent).rightAs(())
+            else
+              activeClusterNodeIO.flatMapT:
+                _.changePassiveUri(setting.passiveUri, extraEvent)
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): IO[Checked[Unit]] =
     logger.traceIO:
@@ -144,15 +141,14 @@ final class WorkingClusterNode[
         .map(_.clusterNodeToUserAndPassword(
           ourNodeId = clusterState.activeId,
           otherNodeId = passiveNodeId))
-        .flatMapT(passiveNodeUserAndPassword =>
-          IO.defer {
+        .flatMapT: passiveNodeUserAndPassword =>
+          IO.defer:
             val activeClusterNode =
               new ActiveClusterNode(journal, passiveNodeUserAndPassword, common, clusterConf)
             if _activeClusterNode.trySet(activeClusterNode) then
               activeClusterNode.start(eventId)
             else
               IO.left(Problem.pure("ActiveClusterNode has already been started"))
-          })
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): IO[Checked[Unit]] =
     IO.defer:
@@ -160,8 +156,8 @@ final class WorkingClusterNode[
         _.executeClusterWatchConfirm(cmd))
 
   def onTerminatedUnexpectedly: IO[Checked[Completed]] =
-    _activeClusterNode.io
-      .flatMap(_.onTerminatedUnexpectedly)
+    _activeClusterNode.io.flatMap:
+      _.onTerminatedUnexpectedly
 
   def switchOver: IO[Checked[Completed]] =
     activeClusterNodeIO
@@ -198,17 +194,18 @@ object WorkingClusterNode:
       timeout: pekko.util.Timeout)
   : ResourceIO[WorkingClusterNode[S]] =
     for
-      _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty)(
-        common.requireValidLicense.map(_.orThrow)))
+      _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
+        common.requireValidLicense.map(_.orThrow))
       journalAllocated <- Resource.eval(FileJournal
         .resource(recovered, clusterConf.journalConf, eventIdGenerator, keyedEventBus)
         // Not compilable with Scala 3.3.1: .toAllocated
         .toLabeledAllocated(label = s"FileJournal[${implicitly[Tag[S]].tag.shortName}]")
         /* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(
-        acquire = IO.defer {
+        acquire = IO.defer:
           val w = new WorkingClusterNode(recovered.failedNodeId, journalAllocated, common, clusterConf)
           w.start(recovered.clusterState, recovered.eventId).as(w)
-        })(
+        )(
         release = _.stop)
-    yield workingClusterNode
+    yield
+      workingClusterNode

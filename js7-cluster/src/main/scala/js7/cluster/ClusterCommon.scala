@@ -136,9 +136,10 @@ private[cluster] final class ClusterCommon private(
       IO.pure(clusterState.applyEvent(event)).flatMapT:
         case updatedClusterState: HasNodes =>
           clusterWatchSynchronizer(clusterState)
-            .flatMap(_.applyEvent(event, updatedClusterState,
-              // Changed ClusterWatch must only confirm when taught and sure !!!
-              clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver]))
+            .flatMap:
+              _.applyEvent(event, updatedClusterState,
+                // Changed ClusterWatch must only confirm when taught and sure !!!
+                clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver])
             .flatMap:
               case Left(problem) =>
                 if problem.is(ClusterNodeLossNotConfirmedProblem)
