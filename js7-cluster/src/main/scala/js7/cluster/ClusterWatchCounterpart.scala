@@ -11,7 +11,6 @@ import js7.base.log.LogLevel.Debug
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
@@ -21,6 +20,7 @@ import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
+import js7.data.Problems.ClusterModuleShuttingDownProblem
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
@@ -145,7 +145,7 @@ extends Service.StoppableByRequest:
         .onErrorRestartLoop(()):
           case (_: RequestTimeoutException, _, retry) =>
             shuttingDown.tryGet.flatMap:
-              case Some(()) => IO.left(ShuttingDownProblem)
+              case Some(()) => IO.left(ClusterModuleShuttingDownProblem)
               case None =>
                 SyncDeadline.usingNow:
                   sym.onWarn()
@@ -157,7 +157,7 @@ extends Service.StoppableByRequest:
 
           case (t, _, _) => IO.raiseError(t)
         .flatTap:
-          case Left(problem @ ShuttingDownProblem) =>
+          case Left(problem @ ClusterModuleShuttingDownProblem) =>
             IO(logger.log(sym.relievedLogLevel min Debug,
               s"⚠️  ${request.toShortString} => $problem · after ${since.elapsed.pretty}"))
 

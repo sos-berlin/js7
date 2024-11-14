@@ -95,6 +95,9 @@ object Problems:
     def arguments: Map[String, String] = Map(
       "orderId" -> orderId.string)
 
+  case object ClusterModuleShuttingDownProblem extends Problem.ArgumentlessCoded:
+    override val httpStatusCode = 503 // Service Unavailable
+
   case object ClusterNodeIsNotReadyProblem extends Problem.ArgumentlessCoded:
     override val httpStatusCode = 503  // ServiceUnavailable
 

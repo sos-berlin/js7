@@ -15,7 +15,6 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
-import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
@@ -29,7 +28,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
-import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
+import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterModuleShuttingDownProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
 import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
@@ -365,7 +364,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           case _ =>
             Right(None)
         .recoverT:
-          case ShuttingDownProblem => ()
+          case ClusterModuleShuttingDownProblem => ()
         .flatMapT: _ =>
           stopAcknowledgingRequested = true
           stopAcknowledging.complete(())
@@ -502,7 +501,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
 
-        case Success(Left(problem @ ShuttingDownProblem)) =>
+        case Success(Left(problem @ ClusterModuleShuttingDownProblem)) =>
           logger.debug(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
 
         case Success(Left(problem)) =>

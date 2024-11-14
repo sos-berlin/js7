@@ -12,7 +12,6 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.tapError
-import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.startup.Halt.haltJava
 import js7.base.utils.Assertions.assertThat
@@ -21,6 +20,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
+import js7.data.Problems.ClusterModuleShuttingDownProblem
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
@@ -121,7 +121,7 @@ private final class ClusterWatchSynchronizer(
               case clusterState: HasNodes
                 if clusterState.activeId == ownId
                 && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem)
-                && ioResult != Left(ShuttingDownProblem) =>
+                && ioResult != Left(ClusterModuleShuttingDownProblem) =>
                 continueHeartbeating(
                   clusterState,
                   registerClusterWatchId.orThrow,
@@ -293,7 +293,7 @@ private final class ClusterWatchSynchronizer(
                 logger.trace("◼️ doACheckedHeartbeat canceled due to `stopping`")
                 Completed
 
-              case Right(Left(problem @ ShuttingDownProblem)) =>
+              case Right(Left(problem @ ClusterModuleShuttingDownProblem)) =>
                 IO:
                   logger.debug(s"⚠️  doACheckedHeartbeat => $problem")
                   Completed

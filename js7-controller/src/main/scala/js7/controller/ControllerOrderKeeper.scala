@@ -24,7 +24,6 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.problem.Checked.*
-import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -46,7 +45,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttingDownProblem, ControllerIsSwitchingOverProblem}
 import js7.core.command.CommandMeta
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
+import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, ClusterModuleShuttingDownProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
@@ -682,8 +681,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     case Internal.ClusterModuleTerminatedUnexpectedly(tried) =>
       // Stacktrace has been debug-logged by Cluster
       tried match
-        case Success(Left(problem @ ShuttingDownProblem)) =>
-          logger.error(s"Cluster module terminated with $problem")
+        case Success(Left(problem @ ClusterModuleShuttingDownProblem)) if shuttingDown =>
+          logger.debug(s"Cluster module terminated with $problem")
         case Success(checked: Checked[Completed]) =>
           val msg: Any = checked.fold(identity, identity)
           logger.error(s"Cluster module terminated unexpectedly: $msg")
