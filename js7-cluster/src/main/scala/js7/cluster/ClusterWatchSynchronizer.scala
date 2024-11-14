@@ -166,16 +166,17 @@ private final class ClusterWatchSynchronizer(
     forEvent: Boolean)
   : IO[Unit] =
     logger.traceIO:
-      doACheckedHeartbeat(clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = false)
-        .map:
-          case Left(problem) => logger.warn(s"continueHeartbeating => $problem")
-          case Right(_) => 
-        .when(!forEvent && clusterState.setting.clusterWatchId.isDefined)
-        .*>(IO.defer:
+      IO.whenA(!forEvent && clusterState.setting.clusterWatchId.isDefined):
+        doACheckedHeartbeat(clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = false)
+          .map:
+            case Left(problem) => logger.warn(s"continueHeartbeating => $problem")
+            case Right(_) =>
+      .productR:
+        IO.defer:
           val h = new Heartbeat(clusterState, registerClusterWatchId)
           heartbeat.getAndSet(Some(h))
-            .fold(IO.unit)(_.stop) /*just in case*/
-            .*>(h.start.void))
+            .fold(IO.unit)(_.stop)
+            *> h.start.void
 
   private def startHeartbeating(
     clusterState: HasNodes,
