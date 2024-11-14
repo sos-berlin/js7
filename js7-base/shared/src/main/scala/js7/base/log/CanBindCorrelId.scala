@@ -28,8 +28,8 @@ object CanBindCorrelId:
   implicit def io[R]: CanBindCorrelId[IO[R]] =
     IOCan.asInstanceOf[CanBindCorrelId[IO[R]]]
 
-  implicit def future[R]: CanBindCorrelId[Future[R]] =
-    FutureCan.asInstanceOf[CanBindCorrelId[Future[R]]]
+  implicit def future[F[r] <: Future[r], R]: CanBindCorrelId[F[R]] =
+    FutureCan.asInstanceOf[CanBindCorrelId[F[R]]]
 
   implicit def cancelableFuture[R]: CanBindCorrelId[CancelableFuture[R]] =
     CancelableFutureCan.asInstanceOf[CanBindCorrelId[CancelableFuture[R]]]

@@ -14,16 +14,15 @@ extends Scope:
 
   override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
     orderArguments.mapValues(Right(_))
-      .orElseMapView(order
-        .historicOutcomes
-        .view
-        .reverse
-        .collect:
-          case HistoricOutcome(_, o: OrderOutcome) =>
-            o.findNamedValues.map(_.view.mapValues(Right(_)))
-        .flatten
-        .fold(MapView.empty[String, Checked[Value]]): (a, b) =>
-          a.orElseMapView(b))
+      .orElseMapView:
+        order.historicOutcomes
+          .view.reverse
+          .collect:
+            case HistoricOutcome(_, o: OrderOutcome) =>
+              o.findNamedValues.map(_.view.mapValues(Right(_)))
+          .flatten
+          .fold(MapView.empty[String, Checked[Value]]): (a, b) =>
+            a.orElseMapView(b)
 
   override def findValue(search: ValueSearch): Option[Checked[Value]] =
     search match

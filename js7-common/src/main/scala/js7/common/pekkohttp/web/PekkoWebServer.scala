@@ -220,10 +220,12 @@ object PekkoWebServer:
   private lazy val stillNotAvailableRoute: Route =
     complete(WebServiceStillNotAvailableProblem)
 
+
   private final case class BindingAndResource(
     webServerBinding: WebServerBinding,
     resource: ResourceIO[SinglePortPekkoWebServer]):
     override def toString = webServerBinding.toString
+
 
   final case class RouteBinding private[web](
     webServerBinding: WebServerBinding,
@@ -231,6 +233,7 @@ object PekkoWebServer:
      * established anew due to changed HTTPS key or certificate. */
     revision: Int,
     whenStopRequested: Deferred[IO, Deadline])
+
 
   trait BoundRoute:
     def serviceName: String
@@ -241,6 +244,7 @@ object PekkoWebServer:
     def webServerRoute: IO[Route]
 
     def startupSecurityHint(scheme: WebServerBinding.Scheme): String
+
   object BoundRoute:
     def simple(route: Route): BoundRoute =
       new Simple(route)
@@ -251,6 +255,7 @@ object PekkoWebServer:
       val webServerRoute: IO[Route] = IO.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
+
 
   /** Event only for testing with EventBus. */
   object BeforeRestartEvent

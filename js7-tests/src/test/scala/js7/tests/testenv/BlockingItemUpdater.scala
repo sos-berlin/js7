@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
+import cats.syntax.functor.*
 import fs2.{Pure, Stream}
 import js7.base.catsutils.IArrayExtensions.mapOrKeep
 import js7.base.crypt.Signed
@@ -21,21 +22,20 @@ import scala.util.control.NonFatal
 
 trait BlockingItemUpdater:
 
-  private val nextWorkflowNr = Atomic(1)
+  private val nextItemNr = Atomic(1)
   private val nextVersionId_ = Atomic(1)
   private val testSuiteName = getClass.simpleScalaName
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
   protected def controller: TestController
-  protected def controllerState: ControllerState
 
   protected final def nextPath[I <: InventoryItemPath](implicit I: InventoryItemPath.Companion[I])
   : I =
-    I(testSuiteName + "-" + nextWorkflowNr.getAndIncrement())
-    //I(I.itemTypeName.toUpperCase(Locale.ROOT) + "-" + nextWorkflowNr.getAndIncrement())
+    I(testSuiteName + "-" + nextItemNr.getAndIncrement())
+    //I(I.itemTypeName.toUpperCase(Locale.ROOT) + "-" + nextItemNr.getAndIncrement())
 
   protected final def nextVersionId() =
-    val versionIdSet = controllerState.repo.versionIdSet
+    val versionIdSet = controller.controllerState().repo.versionIdSet
     @tailrec def loop(): VersionId =
       val v = VersionId(nextVersionId_.getAndIncrement().toString)
       if versionIdSet contains v then
@@ -76,9 +76,8 @@ trait BlockingItemUpdater:
       if awaitDeletion then
         for realItem <- realItems do
           if controller.controllerState().keyToItem.contains(realItem.key) then
-            controller.eventWatch
-              .expect[ItemDeleted](_.event.key == realItem.key):
-                deleteItems(realItem.path)
+            controller.eventWatch.expect[ItemDeleted](_.event.key == realItem.key):
+              deleteItems(realItem.path)
             deleted = true
       else
         deleteItems(realItems.map(_.path)*)
@@ -106,24 +105,21 @@ trait BlockingItemUpdater:
       item = (item, v) match
         case (item: VersionedItem, Some(v)) => item.withVersion(v)
         case _ => item
-      val controllerItem = controllerState.keyToItem(item.key)
+      val controllerItem = controller.controllerState().keyToItem(item.key)
       item = item match
         case item: SimpleItem => item.withRevision(controllerItem.itemRevision)
         case o => o
       assert(item == controllerItem)
       item
 
-  protected final def updateItems(items: InventoryItem*)(using IORuntime)
-  : Option[VersionId] =
+  protected final def updateItems(items: InventoryItem*)(using IORuntime): Option[VersionId] =
     val versionId = Lazy(nextVersionId())
     val operations: Stream[Pure, AddOrChangeOperation] = Stream
       .iterable:
-        items.toVector
-          // execute this eagerly to trigger versionId
-          .map:
-            case item: VersionedItem if item.id.versionId.isAnonymous =>
-              item.withVersion(versionId())
-            case o => o
+        // execute this eagerly to trigger versionId
+        items.toVector.mapOrKeep:
+          case item: VersionedItem if item.id.versionId.isAnonymous =>
+            item.withVersion(versionId())
       .map:
         case item: SignableItem => AddOrChangeSigned(sign(item).signedString)
         case item: UnsignedSimpleItem => AddOrChangeSimple(item)

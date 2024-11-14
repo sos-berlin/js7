@@ -288,7 +288,7 @@ object ScalaTime:
       case DAYS         => BigDecimal(duration.length) * (60 * 60 * 24)
 
     def toDecimalString: String =
-      duration.toBigDecimalSeconds.bigDecimal.stripTrailingZeros.toPlainString
+      toBigDecimalSeconds.bigDecimal.stripTrailingZeros.toPlainString
 
     def pretty: String = (duration: Duration).pretty
 

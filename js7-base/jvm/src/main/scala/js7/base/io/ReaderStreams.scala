@@ -6,8 +6,7 @@ import java.io.{InputStream, Reader}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels.newChannel
 import java.nio.channels.{Channels, ReadableByteChannel}
-import js7.base.data.ByteSequence
-import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.fs2utils.Fs2ChunkByteSequence
 import js7.base.fs2utils.StreamExtensions.takeWhileNotNull
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 
@@ -18,9 +17,9 @@ object ReaderStreams:
   /** Returns a Chunk[Byte] immediately after each read operation. */
   def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
   : Stream[IO, Byte] =
-    blockingChannelToByteStream(newChannel(in), bufferSize)
+    channelToByteStream(newChannel(in), bufferSize)
 
-  def blockingChannelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
+  def channelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
   : Stream[IO, Byte] =
     Stream.suspend:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
@@ -29,11 +28,13 @@ object ReaderStreams:
           buffer.clear()
           channel.read(buffer)
         .map:
-          case -1 => null
-          case o if o < 1 => throw new RuntimeException(s"'$channel'.read returned unexpected 0")
+          case -1 =>
+            null
+          case o if o < 1 =>
+            throw new RuntimeException(s"'$channel'.read returned unexpected $o")
           case _ =>
             buffer.flip()
-            ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
+            Fs2ChunkByteSequence.readByteBuffer(buffer)
       .takeWhileNotNull
       .unchunks
 

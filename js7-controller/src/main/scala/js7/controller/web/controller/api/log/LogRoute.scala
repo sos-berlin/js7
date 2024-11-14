@@ -5,10 +5,9 @@ import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
+import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
-import js7.base.time.JavaTimeConverters.*
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.common.files.ByteSeqFileReader
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.common.files.ByteSeqFileReader.fileStream
 import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, passIf}
@@ -27,15 +26,15 @@ trait LogRoute extends ControllerRouteProvider:
 
   private given IORuntime = ioRuntime
 
-  private lazy val pollDuration = config.getDuration("js7.web.server.services.log.poll-interval").toFiniteDuration
+  private lazy val pollDuration =
+    config.finiteDuration("js7.web.server.services.log.poll-interval").orThrow
 
   lazy val logRoute: Route =
-    authorizedUser(ValidUserPermission)(_ =>
-      pathEnd(
-        parameter("snapshot".as[Boolean] ? false) { snapshot =>
+    authorizedUser(ValidUserPermission): _ =>
+      pathEnd:
+        parameter("snapshot".as[Boolean] ? false): snapshot =>
           streamFile(currentLogFile, endless = !snapshot)
           //Fails if files grows while read (Content-Length mismatch?): getFromFile(currentLogFile, contentType)
-        }))
 
   private def streamFile(file: Path, endless: Boolean): Route =
     passIf(isRegularFile(file) && isReadable(file)):

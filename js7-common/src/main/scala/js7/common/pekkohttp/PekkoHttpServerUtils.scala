@@ -192,7 +192,7 @@ object PekkoHttpServerUtils:
     def startsWithPath(prefix: Uri.Path): Boolean =
       (delegate, prefix) match
         case (Slash(a), Slash(b)) => a.startsWithPath(b)
-        case (Segment(aHead, aTail), Segment(bHead, bTail)) => 
+        case (Segment(aHead, aTail), Segment(bHead, bTail)) =>
           aHead == bHead && aTail.startsWithPath(bTail)
         case _ => prefix.isEmpty
 
@@ -290,10 +290,8 @@ object PekkoHttpServerUtils:
 
       case Some(correlId) =>
         complete:
-          import js7.base.log.CanBindCorrelId.future
-          correlId.bind {
+          correlId.bindFuture:
             io.unsafeToFuture()
-          } (future)
 
   val extractJs7RequestId: Directive1[Long] =
     new Directive1[Long]:

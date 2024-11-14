@@ -9,6 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
+import scala.concurrent.Future
 
 /** Correlation ID. */
 sealed trait CorrelId extends GenericString:
@@ -29,6 +30,9 @@ sealed trait CorrelId extends GenericString:
 
   /** ASCII encoding is required for HTTP header values. */
   def toAscii: String
+
+  def bindFuture[F[x] <: Future[x], R](body: => F[R]): F[R] =
+    bind(body)(using CanBindCorrelId.future[F, R])
 
   def bind[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(this)(body)

@@ -354,25 +354,9 @@ object ScalaUtils:
               last match
                 case Empty => throw new NoSuchElementException
                 case a: A @unchecked => a
-      /** Usable for logging a chunk of lines with a long bracket. */
-      def foreachWithBracket(bracket: MultipleLinesBracket)(body: (A, Char) => Unit): Unit =
-        if iterator.hasNext then
-          val a = iterator.next()
-          if iterator.hasNext then
-            body(a, bracket.first)
-          else
-            body(a, bracket.single)
-            return
-
-          while true do
-            val a = iterator.next()
-            if iterator.hasNext then
-              body(a, bracket.middle)
-            else
-              body(a, bracket.last)
-              return
 
     extension [A](iterableOnce: IterableOnce[A])
+
       def repeatLast: LazyList[A] =
         iterableOnce match
           case seq: IndexedSeq[A] => seq ++: LazyList.continually(seq.last)
@@ -393,6 +377,23 @@ object ScalaUtils:
             case Right(o) => s = o
 
         if left != null then Left(left) else Right(s)
+
+
+      /** Usable for logging a chunk of lines with a long bracket. */
+      def foreachWithBracket(bracket: MultipleLinesBracket)(body: (A, Char) => Unit): Unit =
+        val iterator = iterableOnce.iterator
+        if iterator.hasNext then
+          var a = iterator.next()
+          if !iterator.hasNext then
+            body(a, bracket.single)
+          else
+            body(a, bracket.first)
+            a = iterator.next()
+            while iterator.hasNext do
+              body(a, bracket.middle)
+              a = iterator.next()
+            body(a, bracket.last)
+
 
     implicit final class RichIterables[A](private val iterables: IterableOnce[IterableOnce[A]])
     extends AnyVal:

@@ -1,7 +1,7 @@
 package js7.common.pekkohttp
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
@@ -53,14 +53,12 @@ object StandardDirectives:
     given ExecutionContext = ioRuntime.compute
     ctx => routeIO.unsafeToFuture().flatMap(route => route(ctx))
 
-  //def routeFuture(routeFuture: Future[Route])(using ioRuntime: IORuntime): Route =
-  //  ctx => routeFuture.flatMap(_(ctx))
-
   private val removeEtag: Directive0 =
-    mapResponse(r => r.withHeaders(r.headers filter {
-      case _: ETag => false
-      case _ => true
-    }))
+    mapResponse: response =>
+      response.withHeaders:
+        response.headers.filter:
+          case _: ETag => false
+          case _ => true
 
   val immutableResource: Directive0 =
     respondWithHeader(`Cache-Control`(`public`, `max-age`(365*24*3600), `immutableDirective`)) &

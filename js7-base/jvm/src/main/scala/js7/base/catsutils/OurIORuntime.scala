@@ -158,9 +158,8 @@ object OurIORuntime:
             OurIORuntime.reportFailure(t)
 
   private def reportFailure(throwable: Throwable): Unit =
-    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
-      currentThread.getName
-    }': ${throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName
+      }': ${throwable.toStringWithCauses}"
 
     throwable match
       //case _: pekko.stream.StreamTcpException | _: org.apache.pekko.http.scaladsl.model.EntityStreamException =>

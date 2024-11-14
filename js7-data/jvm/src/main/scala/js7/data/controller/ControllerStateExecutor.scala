@@ -7,6 +7,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
@@ -33,7 +34,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
-import scala.collection.immutable.ArraySeq
+import scala.collection.immutable.{ArraySeq, VectorBuilder}
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 
@@ -244,7 +245,7 @@ final case class ControllerStateExecutor private(
         val detachWorkflows: Seq[KeyedEvent[ItemDetachable]] =
           detachWorkflowCandidates
             .view
-            .filter(controllerState.keyToItem.keySet.contains)
+            .filter(controllerState.keyToItem.contains)
             .filter(controllerState.isObsoleteItem)
             .flatMap(workflowId =>
               controllerState.itemToAgentToAttachedState
@@ -495,29 +496,38 @@ final case class ControllerStateExecutor private(
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
-    val _keyedEvents = Vector.newBuilder[KeyedEvent[OrderCoreEvent]]
+    val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent]]
 
     @tailrec def loop(): Unit =
       queue.removeHeadOption() match
+        case None =>
         case Some(orderId) =>
           if controllerState.idToOrder contains orderId then
-            val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
-            for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
-              logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
-            controllerState.applyEvents(keyedEvents) match
-              case Left(problem) =>
-                logger.error(s"$orderId: $problem")  // Should not happen
-              case Right(state) =>
-                controllerState = state
-                _keyedEvents ++= keyedEvents
-                queue ++= keyedEvents.view
-                  .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
-                  .toSeq.distinct
+            val keyedEvents = OrderEventSource(controllerState).nextEvents(orderId)
+            if keyedEvents.nonEmpty then
+              for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
+                logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
+              controllerState.applyEvents(keyedEvents) match
+                case Left(problem) =>
+                  logger.error(s"$orderId: $problem")  // Should not happen
+                case Right(state) =>
+                  controllerState = state
+                  _keyedEvents ++= keyedEvents
+                  queue ++= keyedEvents.view
+                    .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
+                    .toSeq.distinct
+                  //<editor-fold desc="if isTest ...">
+                  if isTest && _keyedEvents.size >= 1_000_000 then
+                    for (ke, i) <- _keyedEvents.result().view.take(1000).zipWithIndex do
+                      logger.error(s"$i: $ke")
+                    throw new AssertionError(
+                      s"🔥 ${_keyedEvents.size} events generated, probably a loop")
+                  end if
+                  //</editor-fold>
           loop()
-        case None =>
 
     loop()
-    new ControllerStateExecutor(
+    ControllerStateExecutor(
       /*optimizeKeyedEvents*/(_keyedEvents.result()),
       controllerState)
 

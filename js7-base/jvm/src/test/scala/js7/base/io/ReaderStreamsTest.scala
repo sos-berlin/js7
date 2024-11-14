@@ -31,13 +31,15 @@ final class ReaderStreamsTest extends OurAsyncTestSuite:
       out.close()
       assert(buffer == chunks)
 
-    (for
-      out <- Resource.fromAutoCloseable(IO(new PipedOutputStream))
-      in <- Resource.fromAutoCloseable(IO(new PipedInputStream(out)))
-    yield (out, in))
-      .use: (out, in) =>
-        IO.both(program(in), test(out))
-          .map(_._2)
+    locally:
+      for
+        out <- Resource.fromAutoCloseable(IO(new PipedOutputStream))
+        in <- Resource.fromAutoCloseable(IO(new PipedInputStream(out)))
+      yield
+        (out, in)
+    .use: (out, in) =>
+      IO.both(program(in), test(out))
+        .map(_._2)
 
   "readerToCharStream" in :
     val buffer = mutable.Buffer[String]()
@@ -51,18 +53,21 @@ final class ReaderStreamsTest extends OurAsyncTestSuite:
 
     val chunks = List("EINS", "ZWEI", "DREI")
 
-    def test(writer: Writer) = IO:
-      for (chunk, i) <- chunks.zipWithIndex yield
-        writer.write(chunk)
-        writer.flush()
-        awaitAndAssert(buffer.size == i + 1 && buffer.last == chunk)
-      writer.close()
-      assert(buffer == chunks)
+    def test(writer: Writer) =
+      IO:
+        for (chunk, i) <- chunks.zipWithIndex yield
+          writer.write(chunk)
+          writer.flush()
+          awaitAndAssert(buffer.size == i + 1 && buffer.last == chunk)
+        writer.close()
+        assert(buffer == chunks)
 
-    (for
-      w <- Resource.fromAutoCloseable(IO(new PipedWriter))
-      r <- Resource.fromAutoCloseable(IO(new PipedReader(w)))
-    yield (w, r))
-      .use: (writer, reader) =>
-        IO.both(program(reader), test(writer))
-          .map(_._2)
+    locally:
+      for
+        w <- Resource.fromAutoCloseable(IO(new PipedWriter))
+        r <- Resource.fromAutoCloseable(IO(new PipedReader(w)))
+      yield
+        (w, r)
+    .use: (writer, reader) =>
+      IO.both(program(reader), test(writer))
+        .map(_._2)
