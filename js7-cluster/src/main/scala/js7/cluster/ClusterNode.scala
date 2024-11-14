@@ -332,19 +332,20 @@ object ClusterNode:
           ((ownId == clusterState.activeId || ownId == clusterState.passiveId) !! Problem.pure(
             s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
 
-    for _ <- checked yield
-      val shuttingDown = Deferred.unsafe[IO, Unit]
+    checked.map: _ =>
       for
+        shuttingDown <- Resource.eval(Deferred[IO, Unit])
         clusterWatchCounterpart <-
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, shuttingDown,
             testEventBus)
         common <- ClusterCommon.
           resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
-          licenseChecker, testEventBus)
+            licenseChecker, testEventBus)
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
           eventIdGenerator, shuttingDown,
           testEventBus)
-      yield clusterNode
+      yield
+        clusterNode
 
   private def resource[S <: ClusterableState[S]: Tag](
     recovered: Recovered[S],

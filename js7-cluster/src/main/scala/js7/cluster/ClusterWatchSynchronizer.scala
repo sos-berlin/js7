@@ -118,8 +118,10 @@ private final class ClusterWatchSynchronizer(
         io.flatTap: ioResult =>
           endNestedSuspension:
             getClusterState.flatMap:
-              case clusterState: HasNodes if clusterState.activeId == ownId
-                && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
+              case clusterState: HasNodes
+                if clusterState.activeId == ownId
+                && ioResult != Left(ClusterPassiveLostWhileFailedOverProblem)
+                && ioResult != Left(ShuttingDownProblem) =>
                 continueHeartbeating(
                   clusterState,
                   registerClusterWatchId.orThrow,

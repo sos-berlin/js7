@@ -432,8 +432,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
             case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
               IO.unit
             case tried =>
-              IO.unlessA(stopAcknowledgingRequested):
-                // Completes only when not cancelled and then it is a failure
+              IO.unlessA(stopAcknowledgingRequested | stopRequested):
+                // Completes only when not cancelled, and then it is a failure
                 fetchingAcksTerminatedUnexpectedlyPromise.complete(tried).void
           .void
           .start
@@ -496,10 +496,15 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
           IO.pure(o)
       .materialize.flatTap(tried => IO { tried match
         case Success(Right(Completed)) =>
-          if !stopAcknowledgingRequested then
+          if !stopAcknowledgingRequested && !stopRequested then
             logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
+
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
+
+        case Success(Left(problem @ ShuttingDownProblem)) =>
+          logger.debug(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
+
         case Success(Left(problem)) =>
           logger.error(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
 

@@ -120,12 +120,6 @@ private[cluster] final class ClusterCommon private(
       activationInhibitor.tryToActivate:
         activate(clusterState, event):
           body
-      .flatMap:
-        case Left(problem @ ShuttingDownProblem) =>
-          IO:
-            logger.warn(s"Activation not allowed due to $problem")
-            Right(false)
-        case o => IO.pure(o)
 
   private def activate(
     clusterState: ClusterState.HasNodes,
