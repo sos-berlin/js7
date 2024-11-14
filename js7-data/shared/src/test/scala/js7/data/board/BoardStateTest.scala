@@ -11,6 +11,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
+import js7.data.plan.{PlanId, PlanItemId, PlanKey}
 import js7.data.value.expression.ExpressionParser.expr
 import scala.collection.View
 
@@ -59,87 +60,168 @@ final class BoardStateTest extends OurAsyncTestSuite:
               "endOfLife": 123000
             }"""))
 
-    lazy val boardState = BoardState(
-      GlobalBoard(
-        boardPath,
-        postOrderToNoticeId =
-          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-        expectOrderToNoticeId =
-          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-        endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
-      idToNotice = Map(
-        NoticeId("NOTICE-1") -> NoticePlace(
-          NoticeId("NOTICE-1"),
-          isInConsumption = true),
-        NoticeId("NOTICE-2") -> NoticePlace(
-          NoticeId("NOTICE-2"),
-          Some(Notice(NoticeId("NOTICE-2"), boardPath,
-            endOfLife = Timestamp.ofEpochSecond(123).some)),
-          expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
-          consumptionCount = 7)),
-      orderToConsumptionStack = Map(
-        OrderId("A-ORDER") -> List(
-          NoticeId("NOTICE-3"),
-          NoticeId("NOTICE-2"),
-          NoticeId("NOTICE-1"))))
 
-    "toSnapshotStream JSON" in:
-      boardState.toSnapshotStream
-        .map(_
-          .asJson(ControllerState.snapshotObjectJsonCodec)
-          .printWith(Printer.noSpaces.copy(dropNullValues = true)))
-        .map(s => io.circe.parser.parse(s).orThrow)
-        .compile.toVector
-        .map(snapshots =>
-          assert(snapshots == List(
-            json"""{
-              "TYPE": "GlobalBoard",
-              "path": "BOARD",
-              "postOrderToNoticeId":
-                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-              "expectOrderToNoticeId":
-                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-              "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
-            }""", json"""{
-              "TYPE": "Notice",
-              "id": "NOTICE-2",
-              "boardPath": "BOARD",
-              "endOfLife": 123000
-            }""", json"""{
-              "TYPE": "NoticePlace",
-              "boardPath": "BOARD",
-              "noticeId": "NOTICE-1",
-              "isInConsumption": true,
-              "consumptionCount": 0
-            }""", json"""{
-              "TYPE": "NoticePlace",
-              "boardPath": "BOARD",
-              "noticeId": "NOTICE-2",
-              "isInConsumption": false,
-              "consumptionCount": 7
-            }""", json"""{
-              "TYPE": "NoticeConsumption",
-              "orderId": "A-ORDER",
-              "boardPath": "BOARD",
-              "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
-            }""")))
+    "for GlobalBoard" - {
+      lazy val boardState = BoardState(
+        GlobalBoard(
+          boardPath,
+          postOrderToNoticeId =
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+          expectOrderToNoticeId =
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+          endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+        idToNotice = Map(
+          NoticeId("NOTICE-1") -> NoticePlace(
+            NoticeId("NOTICE-1"),
+            isInConsumption = true),
+          NoticeId("NOTICE-2") -> NoticePlace(
+            NoticeId("NOTICE-2"),
+            Some(Notice(NoticeId("NOTICE-2"), boardPath,
+              endOfLife = Timestamp.ofEpochSecond(123).some)),
+            expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
+            consumptionCount = 7)),
+        orderToConsumptionStack = Map(
+          OrderId("A-ORDER") -> List(
+            NoticeId("NOTICE-3"),
+            NoticeId("NOTICE-2"),
+            NoticeId("NOTICE-1"))))
 
-    "toSnapshotStream and recover" in:
-      import scala.language.unsafeNulls
+      "toSnapshotStream JSON" in:
+        boardState.toSnapshotStream
+          .map(_
+            .asJson(ControllerState.snapshotObjectJsonCodec)
+            .printWith(Printer.noSpaces.copy(dropNullValues = true)))
+          .map(s => io.circe.parser.parse(s).orThrow)
+          .compile.toVector
+          .map(snapshots =>
+            assert(snapshots == List(
+              json"""{
+                "TYPE": "GlobalBoard",
+                "path": "BOARD",
+                "postOrderToNoticeId":
+                  "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                "expectOrderToNoticeId":
+                  "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+              }""", json"""{
+                "TYPE": "Notice",
+                "id": "NOTICE-2",
+                "boardPath": "BOARD",
+                "endOfLife": 123000
+              }""", json"""{
+                "TYPE": "NoticePlace",
+                "boardPath": "BOARD",
+                "noticeId": "NOTICE-1",
+                "isInConsumption": true,
+                "consumptionCount": 0
+              }""", json"""{
+                "TYPE": "NoticePlace",
+                "boardPath": "BOARD",
+                "noticeId": "NOTICE-2",
+                "isInConsumption": false,
+                "consumptionCount": 7
+              }""", json"""{
+                "TYPE": "NoticeConsumption",
+                "orderId": "A-ORDER",
+                "boardPath": "BOARD",
+                "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
+              }""")))
 
-      var recovered: BoardState = null
-      boardState.toSnapshotStream
-        .map(o =>
-          reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
-        .map:
-          case board: GlobalBoard =>
-            recovered = BoardState(board)
-          case snapshot: NoticeSnapshot =>
-            recovered = recovered.recover(snapshot).orThrow
-        .compile
-        .drain
-        .map: _ =>
-          assert(recovered == boardState)
+      "toSnapshotStream and recover" in:
+        import scala.language.unsafeNulls
+
+        var recovered: BoardState = null
+        boardState.toSnapshotStream
+          .map(o =>
+            reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
+          .map:
+            case board: GlobalBoard =>
+              recovered = BoardState(board)
+            case snapshot: NoticeSnapshot =>
+              recovered = recovered.recover(snapshot).orThrow
+          .compile
+          .drain
+          .map: _ =>
+            assert(recovered == boardState)
+    }
+
+    "for PlannableBoard" - {
+      val planId = PlanId(PlanItemId("DailyPlan"), PlanKey("2024-11-08"))
+      lazy val boardState = BoardState(
+        PlannableBoard(boardPath),
+        idToNotice = Map(
+          NoticeId.planned(planId).orThrow -> NoticePlace(
+            NoticeId.planned(planId).orThrow,
+            isInConsumption = true),
+          NoticeId(NoticeKey("NOTICE-2"), planId) -> NoticePlace(
+            NoticeId(NoticeKey("NOTICE-2"), planId),
+            Some(Notice(NoticeId(NoticeKey("NOTICE-2"), planId), boardPath,
+              endOfLife = Timestamp.ofEpochSecond(123).some)),
+            expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
+            consumptionCount = 7)),
+        orderToConsumptionStack = Map(
+          OrderId("A-ORDER") -> List(
+            NoticeId.planned(planId).orThrow,
+            NoticeId(NoticeKey("NOTICE-2"), planId),
+            NoticeId.planned(planId).orThrow)))
+
+      "toSnapshotStream JSON" in:
+        boardState.toSnapshotStream
+          .map(_
+            .asJson(ControllerState.snapshotObjectJsonCodec)
+            .printWith(Printer.noSpaces.copy(dropNullValues = true)))
+          .map(s => io.circe.parser.parse(s).orThrow)
+          .compile.toVector
+          .map(snapshots =>
+            assert(snapshots == List(
+              json"""{
+                "TYPE": "PlannableBoard",
+                "path": "BOARD"
+              }""", json"""{
+                "TYPE": "Notice",
+                "id": [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+                "boardPath": "BOARD",
+                "endOfLife": 123000
+              }""", json"""{
+                "TYPE": "NoticePlace",
+                "boardPath": "BOARD",
+                "noticeId": [ "DailyPlan", "2024-11-08" ],
+                "isInConsumption": true,
+                "consumptionCount": 0
+              }""", json"""{
+                "TYPE": "NoticePlace",
+                "boardPath": "BOARD",
+                "noticeId": [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+                "isInConsumption": false,
+                "consumptionCount": 7
+              }""", json"""{
+                "TYPE": "NoticeConsumption",
+                "orderId": "A-ORDER",
+                "boardPath": "BOARD",
+                "noticeIdStack": [
+                  [ "DailyPlan", "2024-11-08" ],
+                  [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+                  [ "DailyPlan", "2024-11-08" ]
+                ]
+              }""")))
+
+      "toSnapshotStream and recover" in:
+        import scala.language.unsafeNulls
+
+        var recovered: BoardState = null
+        boardState.toSnapshotStream
+          .map(o =>
+            reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
+          .map:
+            case board: PlannableBoard =>
+              recovered = BoardState(board)
+            case snapshot: NoticeSnapshot =>
+              recovered = recovered.recover(snapshot).orThrow
+          .compile
+          .drain
+          .map: _ =>
+            assert(recovered == boardState)
+    }
   }
 
   "addNoticeV2_3 (1)" in:

@@ -11,6 +11,8 @@ extends NoticeSnapshot:
   def toExpected: OrderNoticesExpected.Expected =
     OrderNoticesExpected.Expected(boardPath, id)
 
+  override def toString = s"Notice($boardPath $id${endOfLife.fold("")(o => s" $o")})"
+
 
 object Notice:
   implicit val jsonCodec: Codec.AsObject[Notice] = deriveCodec

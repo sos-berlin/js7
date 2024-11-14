@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
-import js7.data.item.{ItemRevision, UnsignedItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.item.{ItemRevision, UnsignedItemPath}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
@@ -18,7 +18,8 @@ final case class GlobalBoard(
   expectOrderToNoticeId: Expression,
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem:
+extends
+  BoardItem:
 
   protected type Self = GlobalBoard
   val companion: GlobalBoard.type = GlobalBoard
@@ -29,14 +30,25 @@ extends UnsignedSimpleItem:
   def rename(path: BoardPath): GlobalBoard =
     copy(path = path)
 
-  def toInitialItemState: BoardState =
-    BoardState(this)
-
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for
-      string <- postOrderToNoticeId.evalAsString(scope)
-      notice <- toNotice(NoticeId(string))(scope)
-    yield notice
+      noticeKey <- postOrderToNoticeId.evalAsString(scope)
+      noticeId <- NoticeId.global(noticeKey)
+      notice <- toNotice(noticeId)(scope)
+    yield
+      notice
+
+  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
+  : Checked[Notice] =
+    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_)) yield
+      Notice(noticeId, path, Some(endOfLife))
+
+  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
+    for
+      noticeKey <- expectOrderToNoticeId.evalAsString(scope)
+      noticeId <- NoticeId.global(noticeKey)
+    yield
+      noticeId
 
   private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
     endOfLife
@@ -44,23 +56,10 @@ extends UnsignedSimpleItem:
       .flatMap(_.asLongIgnoreFraction)
       .map(Timestamp.ofEpochMilli)
 
-  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    for
-      string <- expectOrderToNoticeId.evalAsString(scope)
-      noticeId <- NoticeId.checked(string)
-    yield noticeId
 
-  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
-  : Checked[Notice] =
-    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_))
-      yield Notice(noticeId, path, Some(endOfLife))
+object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
 
-
-object GlobalBoard extends UnsignedSimpleItem.Companion[GlobalBoard]:
   val cls: Class[GlobalBoard] = classOf[GlobalBoard]
-
-  type Key = BoardPath
-  def Key: UnsignedSimpleItemPath.Companion[BoardPath] = BoardPath
 
   override type Path = BoardPath
   override val Path: UnsignedItemPath.Companion[BoardPath] = BoardPath

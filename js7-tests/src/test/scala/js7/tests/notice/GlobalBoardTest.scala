@@ -1,6 +1,6 @@
 package js7.tests.notice
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -57,9 +57,7 @@ final class GlobalBoardTest
     expecting01Workflow, expecting02Workflow,
     postingAgentWorkflow, expectingAgentWorkflow)
 
-  private val clock =
-    given Scheduler = ioRuntime.scheduler
-    TestAlarmClock(startTimestamp)
+  private val clock = TestAlarmClock(startTimestamp)
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
@@ -507,7 +505,7 @@ object GlobalBoardTest:
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
   private val boards = for (lifetime, i) <- lifeTimes.zipWithIndex yield
-    GlobalBoard.joc(BoardPath(s"BOARD-$i"), lifetime)
+    GlobalBoard.joc(BoardPath(s"GLOBAL-BOARD-$i"), lifetime)
 
   private val Seq(board0, board1, board2) = boards
 

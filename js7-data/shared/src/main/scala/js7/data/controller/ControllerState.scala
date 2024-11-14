@@ -18,7 +18,7 @@ import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -39,6 +39,7 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
+import js7.data.plan.{PlanItem, PlanItemId, PlanKey}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -109,6 +110,7 @@ extends SignedItemContainer,
       Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
+      Stream.iterable(keyTo(PlanItem).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotStream),
@@ -206,6 +208,7 @@ extends SignedItemContainer,
 
                 case item: UnsignedSimpleItem =>
                   for
+                    _ <- checkChangedItem(item)
                     itemState <- keyToUnsignedItemState_.checked(item.path)
                     updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
                   yield
@@ -268,15 +271,12 @@ extends SignedItemContainer,
                   Right(updated.copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
 
-                case key: UnsignedItemKey =>
-                  key match
-                    case _: AgentPath | _: SubagentId | _: SubagentBundleId |
-                         _: LockPath | _: BoardPath | _: CalendarPath |
-                         _: WorkflowPathControlPath | WorkflowControlId.as(_) =>
-                      Right(updated.copy(
-                        keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
-                    case _ =>
-                      Left(Problem(s"A '${ itemKey.companion.itemTypeName }' is not deletable"))
+                case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
+                            _: LockPath |
+                            _: CalendarPath | _: BoardPath | _: PlanItemId |
+                            _: WorkflowPathControlPath | WorkflowControlId.as(_)) =>
+                  Right(updated.copy(
+                    keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
@@ -370,9 +370,6 @@ extends SignedItemContainer,
   : MapView[I.Key, Set[AgentPath]] =
     filteredItemToIgnorantAgents[I.Key](_.companion eq I.Key)
 
-  def anyItemToIgnorantAgents: MapView[InventoryItemKey, Set[AgentPath]] =
-    filteredItemToIgnorantAgents[InventoryItemKey](_ => true)
-
   /** The Agents for each InventoryItemKey which have not attached the current Item. */
   private def filteredItemToIgnorantAgents[K <: InventoryItemKey](filter_ : InventoryItemKey => Boolean)
   : MapView[K, Set[AgentPath]] =
@@ -417,6 +414,28 @@ extends SignedItemContainer,
       .flatMap(_.ifState[Order.ExpectingNotices])
       .toVector
       .flatMap(_.state.expected)
+
+  /** Returns Checked unit iff the denoted PlanItem is unused. */
+  def checkUnusedPlanItem(planItemId: PlanItemId): Checked[Unit] =
+    planKeyToOrdersFor(planItemId).flatMap: planKeyToOrders =>
+      planKeyToOrders.isEmpty !! Problem:
+        s"$planItemId is in use by ${
+          planKeyToOrders.toSeq.map: (planKey, orders) =>
+            s"$planKey (${orders.length} orders)"
+          .mkString(", ")
+        }"
+
+  private def planKeyToOrdersFor(planItemId: PlanItemId)
+  : Checked[Map[PlanKey, Seq[Order[Order.State]]]] =
+    keyToItem(PlanItem).checked(planItemId).flatMap: planItem =>
+      orders.view.flatMap: order =>
+        noticeScope(order).traverse: scope =>
+          planItem.evalOrderToPlanId(scope)
+            .map(_.map(_.planKey -> order))
+      .map(_.flatten)
+      .combineProblems
+      .map: plansAndOrders =>
+        plansAndOrders.groupMap(_._1)(_._2)
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
@@ -739,7 +758,9 @@ extends ClusterableState.Companion[ControllerState],
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
-    AgentRef, SubagentItem, SubagentBundle, Lock, GlobalBoard, Calendar, FileWatch, JobResource,
+    AgentRef, SubagentItem, SubagentBundle, Lock,
+    GlobalBoard, PlanItem, PlannableBoard,
+    Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
@@ -754,6 +775,8 @@ extends ClusterableState.Companion[ControllerState],
       SubagentBundle.subtype,
       Subtype[LockState],
       GlobalBoard.subtype,
+      PlannableBoard.subtype,
+      PlanItem.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,

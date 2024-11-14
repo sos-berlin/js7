@@ -39,6 +39,9 @@ sealed trait Value:
   def toStringValue: Checked[StringValue] =
     as[StringValue]
 
+  def missingToNone: Option[Value] =
+    Some(this)
+
   def missingToEmptyString: Value = this
 
   final def maybe: Option[Value] =
@@ -420,6 +423,9 @@ case object MissingValue extends Value, ValueType.Simple:
   val valueType: ValueType = MissingValue
 
   val name = "Missing"
+
+  override def missingToNone: None.type =
+    None
 
   override def missingToEmptyString: Value =
     StringValue.empty

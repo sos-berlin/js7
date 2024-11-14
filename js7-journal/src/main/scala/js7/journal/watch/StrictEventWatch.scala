@@ -52,8 +52,9 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     underlying.whenKeyedEvent(request, key, predicate)
 
   @TestOnly
-  def resetLastWatchedEventId(): Unit =
+  def resetLastWatchedEventId(): EventId =
     _lastWatchedEventId = lastAddedEventId
+    _lastWatchedEventId
 
   /** TEST ONLY - Blocking. */
   @TestOnly

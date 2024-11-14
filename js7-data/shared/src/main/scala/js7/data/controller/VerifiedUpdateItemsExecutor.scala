@@ -15,6 +15,7 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
+import js7.data.plan.PlanItemId
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
@@ -96,13 +97,15 @@ object VerifiedUpdateItemsExecutor:
           simple.unsignedSimpleItems
             .traverse:
               unsignedSimpleItemToEvent(_, controllerState)
-            .map: unsignedEvents =>
+            .traverse: unsignedEvents =>
               // Check again, is deletedAgents necessary ???
               val deletedAgents = simple.delete.view.collect { case a: AgentPath => a }.toSet
-              simple.delete.view
-                .flatMap:
+              simple.delete
+                .traverse:
                   simpleItemDeletionEvents(_, deletedAgents, controllerState)
-                .view ++ signedEvents ++ unsignedEvents
+                .map: events =>
+                  events.flatten ++ signedEvents ++ unsignedEvents
+          .flatten
           .map(_.view.map(NoKey <-: _))
 
     def toDerivedWorkflowPathControlEvents(controllerState: ControllerState)
@@ -184,16 +187,23 @@ object VerifiedUpdateItemsExecutor:
       path: SimpleItemPath,
       isDeleted: Set[AgentPath],
       controllerState: ControllerState)
-    : View[BasicItemEvent.ForClient] =
+    : Checked[View[BasicItemEvent.ForClient]] =
       path match
         case path: InventoryItemPath.AttachableToAgent
           if controllerState.itemToAgentToAttachedState.contains(path)
             && !isAttachedToDeletedAgentsOnly(path, isDeleted, controllerState) =>
-          (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
-            controllerState.detach(path)
+          Right:
+            (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
+              controllerState.detach(path)
+
+        case planItemId: PlanItemId =>
+          controllerState.checkUnusedPlanItem(planItemId).rightAs:
+            View.Single:
+              ItemDeleted(path)
 
         case _ =>
-          new View.Single(ItemDeleted(path))
+          Right(View.Single:
+            ItemDeleted(path))
 
     // If the deleted Item (a SubagentItem) is attached only to deleted Agents,
     // then we delete the Item without detaching.

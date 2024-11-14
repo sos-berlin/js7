@@ -69,10 +69,12 @@ object ItemContainer:
       InventoryItemEvent.jsonCodec(using this)
 
     implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
-      InventoryItemKey.jsonCodec(inventoryItems.map(_.Key))
+      // distinct, because GlobalBoard and PlannableBoard have BoardPath as Key
+      InventoryItemKey.jsonCodec(inventoryItems.map(_.Key).distinct)
 
     implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemPath] =
-      SimpleItemPath.jsonCodec(simpleItems.map(_.Key))
+      // distinct, because GlobalBoard and PlannableBoard have BoardPath as Key
+      SimpleItemPath.jsonCodec(simpleItems.map(_.Key).distinct)
 
     implicit final lazy val unsignedSimpleItemJsonCodec: TypedJsonCodec[UnsignedSimpleItem] =
       TypedJsonCodec[UnsignedSimpleItem](unsignedSimpleItems.map(_.subtype)*)

@@ -7,15 +7,16 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardState}
+import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeId}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
-import js7.data.order.Order.{FailedInFork, Processing}
+import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
 import js7.data.order.{Order, OrderId}
+import js7.data.plan.{PlanId, PlanItem}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -73,6 +74,27 @@ trait StateView extends ItemContainer:
       .filter { case (_, v) => v.item.companion eq A }
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
+
+  def pathToBoardItem(boardPath: BoardPath): Checked[BoardItem] =
+    // Because BoardItem is a trait, we don't have a BoardItem.Companion.
+    // So to get a BoardItem, we go over BoardState
+    keyTo(BoardState).checked(boardPath).map(_.board)
+
+  /** @param orderId only for error message
+    * @param orderScope is expected to contain Order information.*/
+  def orderToPlannableBoardNoticeId(orderId: OrderId, orderScope: Scope): Checked[NoticeId] =
+    orderToPlanId(orderId, orderScope).flatMap(NoticeId.planned)
+
+  private def orderToPlanId(orderId: OrderId, orderScope: Scope): Checked[PlanId] =
+    keyToItem(PlanItem).values.flatMap:
+      _.evalOrderToPlanId(orderScope)
+    .combineProblems
+    .flatMap: planIds =>
+      planIds.length match
+        case 0 => Right(PlanId.Global)
+        case 1 => Right(planIds.head)
+        case _ => Left(Problem:
+          s"Multiple Plans match $orderId: ${planIds.map(_.planItemId).mkString(" ")}")
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq
@@ -171,7 +193,11 @@ trait StateView extends ItemContainer:
       .get(WorkflowPathControlPath(workflowPath))
       .exists(_.item.suspended)
 
-  /** A pure (stable, repeatable) Scope for the order. */
+  /** The same Scope over the Order's whole lifetime. */
+  final def toFreshOrderScope(order: Order[Order.State]): Checked[Scope] =
+    toOrderScopes(order).map(_.freshOrderScope)
+
+  /** A pure (stable, repeatable) Scope. */
   final def toOrderScope(order: Order[Order.State]): Checked[Scope] =
     toOrderScopes(order).map(_.pureOrderScope)
 
@@ -183,6 +209,9 @@ trait StateView extends ItemContainer:
         nowScope |+|
         JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
+
+  final def noticeScope(order: Order[Order.State]): Checked[Scope] =
+    toOrderScopes(order).map(_.pureOrderScope)
 
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for w <- idToWorkflow.checked(order.workflowId) yield

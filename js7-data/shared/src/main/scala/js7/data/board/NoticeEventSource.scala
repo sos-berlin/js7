@@ -11,7 +11,7 @@ import js7.data.board.NoticeEventSource.*
 import js7.data.controller.ControllerCommand
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent}
+import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.state.StateView
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction
@@ -22,10 +22,21 @@ final class NoticeEventSource(clock: WallClock):
   : Checked[List[KeyedEvent[OrderNoticeEvent | OrderMoved]]] =
     for
       boardStates <- boardPaths.traverse(state.keyTo(BoardState).checked)
-      orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
       fatNotices <- boardStates.traverse: boardState =>
-        boardState.board.postingOrderToNotice(orderScope)
-          .map(FatNotice(_, boardState))
+        boardState.board.match
+          case board: GlobalBoard =>
+            // A big, unpure Scope ???
+            state.toImpureOrderExecutingScope(order, clock.now()).flatMap: scope =>
+              board.postingOrderToNotice(scope)
+
+          case board: PlannableBoard =>
+            for
+              scope <- state.toFreshOrderScope(order)
+              noticeId <- state.orderToPlannableBoardNoticeId(order.id, scope)
+            yield
+              Notice(noticeId, board.path, endOfLife = None)
+        .map:
+          FatNotice(_, boardState)
       postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
       expectingOrderEvents <- toExpectingOrderEvents(fatNotices, state)
     yield
@@ -34,14 +45,14 @@ final class NoticeEventSource(clock: WallClock):
   def executePostNoticeCommand(postNotice: ControllerCommand.PostNotice, state: StateView)
   : Checked[Seq[KeyedEvent[OrderNoticeEvent | OrderMoved | NoticeEvent]]] =
     val ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) = postNotice
-    val scope = NowScope(clock.now())
+    val scope = NowScope(clock.now()) // TODO Should be pure ?
     for
       boardState <- state.keyTo(BoardState).checked(boardPath)
       notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
       _ <- boardState.addNotice(notice) // Check
       expectingOrderEvents <-
         if notice.endOfLife.exists(_ <= clock.now()) then
-          logger.debug(s"Delete $notice immediately because endOfLife is reached")
+          logger.debug(s"Delete $notice immediately because endOfLife has been reached")
           Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
         else
           postedNoticeToExpectingOrderEvents(boardState, notice, state)

@@ -7,12 +7,11 @@ import js7.base.problem.Problem
 import js7.data.board.{BoardPath, GlobalBoard}
 import js7.data.item.ItemRevision
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.value.JExpression
 import scala.jdk.OptionConverters.*
 
 final case class JGlobalBoard(asScala: GlobalBoard)
-extends JJsonable[JGlobalBoard], JUnsignedSimpleItem:
+extends JJsonable[JGlobalBoard], JBoardItem:
 
   type AsScala = GlobalBoard
   protected def companion = JGlobalBoard

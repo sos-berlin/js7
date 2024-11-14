@@ -155,7 +155,7 @@ final class ConsumeNoticesTest
     withTemporaryItem(workflow) { workflow =>
       val eventId = eventWatch.lastAddedEventId
       val noticeId = NoticeId("2022-10-24")
-      val orderId = OrderId(s"#${noticeId.string}#")
+      val orderId = OrderId(s"#${noticeId.noticeKey.string}#")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
 

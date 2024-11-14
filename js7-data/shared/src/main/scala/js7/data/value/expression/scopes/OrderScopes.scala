@@ -27,7 +27,7 @@ trait OrderScopes:
   protected val controllerId: ControllerId
 
   /** The same Scope over the Order's whole lifetime. */
-  private lazy val freshOrderScope: Scope =
+  lazy val freshOrderScope: Scope =
     // workflow.path denotes the initial Workflow (not the current one in case of nested workflow) !!!
     OrderScopes.freshOrderScope(order.id, workflow.path, order.scheduledFor, controllerId)
 

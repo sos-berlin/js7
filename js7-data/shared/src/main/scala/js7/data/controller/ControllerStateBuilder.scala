@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeSnapshot}
+import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeSnapshot}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -246,7 +246,8 @@ extends SnapshotableStateBuilder[ControllerState],
                   case orderWatch: OrderWatch =>
                     ow.changeOrderWatch(orderWatch).orThrow
 
-                  case board: GlobalBoard =>
+                  case board: BoardItem =>
+                    checkChangedItem(item).orThrow
                     _keyToUnsignedItemState.update(
                       board.path,
                       keyTo(BoardState)

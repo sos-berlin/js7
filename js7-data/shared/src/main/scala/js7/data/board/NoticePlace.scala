@@ -66,7 +66,8 @@ extends Big:
 
 
 object NoticePlace:
-  final case class Snapshot(
+
+  private[board] final case class Snapshot(
     boardPath: BoardPath,
     noticeId: NoticeId,
     isInConsumption: Boolean,

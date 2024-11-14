@@ -15,7 +15,7 @@ import js7.data.order.{Order, OrderId}
 import scala.collection.View
 
 final case class BoardState(
-  board: GlobalBoard,
+  board: BoardItem,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
   orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
 extends UnsignedSimpleItemState:
@@ -23,10 +23,10 @@ extends UnsignedSimpleItemState:
   protected type Self = BoardState
   val companion: BoardState.type = BoardState
 
-  val item: GlobalBoard = board
+  val item: BoardItem = board
   def path: BoardPath = item.path
 
-  def updateItem(item: GlobalBoard): Checked[BoardState] =
+  def updateItem(item: BoardItem): Checked[BoardState] =
     Right(copy(board = item))
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
@@ -152,7 +152,7 @@ extends UnsignedSimpleItemState:
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
   type Key = BoardPath
-  type Item = GlobalBoard
+  type Item = BoardItem
   override type ItemState = BoardState
 
   final case class NoticeConsumptionSnapshot(
@@ -160,5 +160,6 @@ object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
     orderId: OrderId,
     noticeIdStack: List[NoticeId])
   extends NoticeSnapshot
+
   object NoticeConsumptionSnapshot:
     val subtype: Subtype[NoticeConsumptionSnapshot] = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")
