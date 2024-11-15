@@ -39,30 +39,30 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
   (implicit ioRuntime: IORuntime):
 
   def run(): IO[Unit] =
-    Pekkos.actorSystemResource("TestControllerProxy")
-      .use { implicit actorSystem =>
-        val apiResource = PekkoHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
-        val proxyEventBus = new StandardEventBus[ProxyEvent]
-        val eventBus = new JournaledStateEventBus[ControllerState]
-        var currentState: ControllerState | Null = null
-        eventBus.subscribe[Event] { e => currentState = e.state }
-        val api = new ControllerApi(apiResource map Nel.one)
-        api.startProxy(proxyEventBus, eventBus).flatMap: proxy =>
-          PekkoWebServer
-            .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState.nn)))
-            .use: _ =>
-              ().tailRecM: _ =>
-                IO:
-                  println:
-                    Try(currentState.nn).map(controllerState =>
-                      EventId.toTimestamp(controllerState.eventId).show + " " +
-                        controllerState.idToOrder.size + " orders: " +
-                        controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
-                    ).fold(identity, identity)
-                  Left(())
-                .andWait(1.s)
-        .guarantee(api.stop)
-      }
+    Pekkos.actorSystemResource("TestControllerProxy").use { implicit actorSystem =>
+      val apiResource = PekkoHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
+      val proxyEventBus = new StandardEventBus[ProxyEvent]
+      val eventBus = new JournaledStateEventBus[ControllerState]
+      var currentState: ControllerState | Null = null
+      eventBus.subscribe[Event]: e =>
+        currentState = e.state
+      val api = new ControllerApi(apiResource map Nel.one)
+      api.startProxy(proxyEventBus, eventBus).flatMap: proxy =>
+        PekkoWebServer
+          .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState.nn)))
+          .use: _ =>
+            ().tailRecM: _ =>
+              IO:
+                println:
+                  Try(currentState.nn).map: controllerState =>
+                    EventId.toTimestamp(controllerState.eventId).show + " " +
+                      controllerState.idToOrder.size + " orders: " +
+                      controllerState.idToOrder.keys.take(5).map(_.string).mkString(", ")
+                  .fold(identity, identity)
+                Left(())
+              .andWait(1.s)
+      .guarantee(api.stop)
+    }
 
 
 object TestControllerProxy:
@@ -74,20 +74,20 @@ object TestControllerProxy:
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.prettyVersion}")
     Logger.initialize("JS7 TestControllerProxy")
-    CommandLineArguments.parse(args.toSeq) { arguments =>
+    CommandLineArguments.parse(args.toSeq): arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")
       val httpPort = arguments.as[Int]("--http-port=")
       new TestControllerProxy(controllerUri, httpPort = httpPort)
         .run()
         .unsafeRunSync()
-    }
 
   private def webServiceRoute(snapshot: IO[ControllerState])(using IORuntime) =
     pathSegments("proxy/api/snapshot"):
       pathSingleSlash:
         get:
           completeWithStream(`application/x-ndjson`):
-            fs2.Stream.eval(snapshot).flatMap: controllerState =>
+            Stream.eval(snapshot).flatMap: controllerState =>
               given TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
               controllerState.toSnapshotStream
-                .mapParallelBatch()(_.asJson.toByteArray.toByteString)
+                .mapParallelBatch():
+                  _.asJson.toByteArray.toByteString

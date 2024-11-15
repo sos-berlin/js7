@@ -65,13 +65,13 @@ trait StateView extends ItemContainer:
   final def keyTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
   : MapView[A.Key, A] =
     keyToUnsignedItemState
-      .filter { case (_, v) => v.companion eq A }
+      .filter((_, v) => v.companion eq A)
       .asInstanceOf[MapView[A.Key, A]]
 
   final def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
   : MapView[A.Path, A] =
     keyToUnsignedItemState
-      .filter { case (_, v) => v.item.companion eq A }
+      .filter((_, v) => v.item.companion eq A)
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
@@ -113,11 +113,11 @@ trait StateView extends ItemContainer:
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
-    instruction_[NoticeInstruction](workflowPosition)
-      .flatMap(_.referencedBoardPaths.toSeq match {
+    instruction_[NoticeInstruction](workflowPosition).flatMap:
+      _.referencedBoardPaths.toSeq match
         case Seq(boardPath) => Right(boardPath)
-        case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
-      })
+        case _ => Left(Problem.pure:
+          "Legacy orderIdToBoardState, but instruction has multiple BoardPaths")
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =
     order.isProcessable &&
@@ -140,7 +140,8 @@ trait StateView extends ItemContainer:
     for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       job <- workflow.checkedWorkflowJob(workflowPosition.position)
-    yield job
+    yield
+      job
 
   private def keyToJob(jobKey: JobKey): Checked[WorkflowJob] =
     idToWorkflow.checked(jobKey.workflowId)
@@ -175,7 +176,8 @@ trait StateView extends ItemContainer:
     for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       labeled <- workflow.labeledInstruction(workflowPosition.position)
-    yield labeled.maybeLabel
+    yield
+      labeled.maybeLabel
 
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
     lazy val endReached = order.state == Order.Ready &&
@@ -205,8 +207,7 @@ trait StateView extends ItemContainer:
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
     for orderScopes <- toOrderScopes(order) yield
       val nowScope = NowScope(now)
-      orderScopes.pureOrderScope |+|
-        nowScope |+|
+      orderScopes.pureOrderScope |+| nowScope |+|
         JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
 
@@ -214,19 +215,17 @@ trait StateView extends ItemContainer:
     toOrderScopes(order).map(_.pureOrderScope)
 
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
-    for w <- idToWorkflow.checked(order.workflowId) yield
-      OrderScopes(order, w, controllerId)
+    idToWorkflow.checked(order.workflowId).map:
+      OrderScopes(order, _, controllerId)
 
   final def foreachLockDemand[A](demands: Seq[LockDemand])(op: (LockState, Option[Int]) => Checked[A])
   : Checked[Seq[A]] =
-    demands
-      .traverse(demand => keyTo(LockState)
-        .checked(demand.lockPath)
-        .flatMap(op(_, demand.count)))
+    demands.traverse: demand =>
+      keyTo(LockState).checked(demand.lockPath)
+        .flatMap(op(_, demand.count))
 
   final def foreachLock[A](lockPaths: Seq[LockPath])(op: LockState => Checked[A])
   : Checked[Seq[A]] =
-    lockPaths
-      .traverse(lockPath => keyTo(LockState)
-        .checked(lockPath)
-        .flatMap(op))
+    lockPaths.traverse: lockPath =>
+      keyTo(LockState).checked(lockPath)
+        .flatMap(op)

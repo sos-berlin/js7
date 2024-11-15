@@ -152,7 +152,7 @@ extends SignedItemContainer,
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
                     .convertFromV2_1
-                    .flatMap { case (agentRef, maybeSubagentItem) =>
+                    .flatMap: (agentRef, maybeSubagentItem) =>
                       for
                         pathToItemState <-
                           keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
@@ -163,7 +163,6 @@ extends SignedItemContainer,
                               .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                       yield copy(
                         keyToUnsignedItemState_ = pathToItemState)
-                    }
 
                 case orderWatch: OrderWatch =>
                   ow.addOrderWatch(orderWatch.toInitialItemState)
@@ -177,11 +176,11 @@ extends SignedItemContainer,
                 case changedAgentRef: AgentRef =>
                   changedAgentRef
                     .convertFromV2_1
-                    .flatMap { case (agentRef, maybeSubagentItem) =>
+                    .flatMap: (agentRef, maybeSubagentItem) =>
                       def checkIsExtending(a: AgentRef, b: AgentRef) =
                         (a.directors == b.directors
                           || a.directors.length == 1 && b.directors.length == 2
-                          && a.directors(0) == b.directors(0)
+                          && a.directors.head == b.directors.head
                         ) !! Problem.pure("Agent Directors cannot not be changed")
 
                       for
@@ -192,16 +191,15 @@ extends SignedItemContainer,
                         copy(
                           keyToUnsignedItemState_ = keyToUnsignedItemState_
                             .updated(agentRef.path, updatedAgentRef)
-                            .pipeMaybe(maybeSubagentItem)((pathToItemState, changedSubagentItem) =>
+                            .pipeMaybe(maybeSubagentItem): (pathToItemState, changedSubagentItem) =>
                               // COMPATIBLE with v2.2.2
                               keyTo(SubagentItemState)
                                 .get(changedSubagentItem.id)
-                                .fold(pathToItemState)(subagentItemState =>
+                                .fold(pathToItemState): subagentItemState =>
                                   pathToItemState.updated(changedSubagentItem.id,
                                     subagentItemState.copy(
                                       subagentItem = subagentItemState.item
-                                        .updateUri(changedSubagentItem.uri))))))
-                    }
+                                        .updateUri(changedSubagentItem.uri))))
 
                 case orderWatch: OrderWatch =>
                   ow.changeOrderWatch(orderWatch)
@@ -241,12 +239,13 @@ extends SignedItemContainer,
 
             case UnsignedItemChanged(item: VersionedControl) =>
               Right(copy(
-                keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
+                keyToUnsignedItemState_ = keyToUnsignedItemState_
+                  .updated(item.key, item.toInitialItemState)))
 
         case event: BasicItemEvent.ForClient =>
           event match
             case event: ItemAttachedStateEvent =>
-              for o <- agentAttachments.applyEvent(event) yield
+              agentAttachments.applyEvent(event).map: o =>
                 copy(agentAttachments = o)
 
             case ItemDeletionMarked(itemKey) =>
@@ -260,7 +259,7 @@ extends SignedItemContainer,
 
               itemKey match
                 case WorkflowId.as(workflowId) =>
-                  for repo <- repo.deleteItem(workflowId) yield
+                  repo.deleteItem(workflowId).map: repo =>
                     updated.copy(
                       repo = repo)
 
@@ -282,7 +281,7 @@ extends SignedItemContainer,
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
 
     case KeyedEvent(_: NoKey, event: VersionedEvent) =>
-      for o <- repo.applyEvent(event) yield
+      repo.applyEvent(event).map: o =>
         copy(repo = o)
 
     case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
@@ -295,9 +294,9 @@ extends SignedItemContainer,
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match
         case event: OrderTransferred =>
-          for updated <- applyOrderEvent(orderId, event) yield
-            updated
-              .copy(workflowToOrders = workflowToOrders
+          applyOrderEvent(orderId, event).map: updated =>
+            updated.copy(
+              workflowToOrders = workflowToOrders
                 .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
 
         case _ =>
@@ -347,11 +346,9 @@ extends SignedItemContainer,
         pathToWorkflowPathControl.get(key).map(attachableToAgents)
 
       def iterator: Iterator[(WorkflowPathControlPath, Set[AgentPath])] =
-        pathToWorkflowPathControl.iterator
-          .flatMap { case (k, v) =>
-            val agents = attachableToAgents(v)
-            agents.nonEmpty ? (k -> agents)
-          }
+        pathToWorkflowPathControl.iterator.flatMap: (k, v) =>
+          val agents = attachableToAgents(v)
+          agents.nonEmpty ? (k -> agents)
 
       override def values: Iterable[Set[AgentPath]] =
         pathToWorkflowPathControl.values.view.map(attachableToAgents)
@@ -360,9 +357,8 @@ extends SignedItemContainer,
         itemToAgentToAttachedState
           .get(workflowPathControl.path)
           .view
-          .flatMap(_.collect {
-            case (agentPath, Attachable) => agentPath
-          })
+          .flatMap(_.collect:
+            case (agentPath, Attachable) => agentPath)
           .toSet
 
   /** The Agents for each InventoryItemKey which have not attached the current Item. */
@@ -395,19 +391,17 @@ extends SignedItemContainer,
     val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId).flatMap: expected =>
       pathToBoardState.get(expected.boardPath)
-          .flatMap(_
-            .idToNotice.get(expected.noticeId)
-            .flatMap(_.notice))
+        .flatMap(_
+          .idToNotice.get(expected.noticeId)
+          .flatMap(_.notice))
 
   def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId)
-      .filter(expected =>
-        pathToBoardState
-          .get(expected.boardPath)
-          .forall(boardState => !boardState
-            .idToNotice.get(expected.noticeId)
-            .exists(_.notice.isDefined)))
+      .filter: expected =>
+        pathToBoardState.get(expected.boardPath)
+          .forall: boardState =>
+            !boardState.idToNotice.get(expected.noticeId).exists(_.notice.isDefined)
 
   private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     idToOrder.get(orderId)
@@ -441,8 +435,8 @@ extends SignedItemContainer,
 
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState],
-    remove: Iterable[OrderWatchPath]
-  ): Checked[ControllerState] =
+    remove: Iterable[OrderWatchPath])
+  : Checked[ControllerState] =
     update(
       addItemStates = orderWatchStates,
       removeItemStates = remove)
@@ -486,7 +480,8 @@ extends SignedItemContainer,
     for
       _ <- idToOrder.checkNoDuplicate(order.id)
       updated <- continueAddOrder(order)
-    yield updated
+    yield
+      updated
 
   private def continueAddOrder(order: Order[Order.State]): Checked[ControllerState] =
     ow.onOrderAdded(order).map: updated =>
@@ -499,29 +494,29 @@ extends SignedItemContainer,
     for
       order <- idToOrder.checked(orderId)
       workflow <- repo.idTo(Workflow)(order.workflowId)
-    yield order.namedValues(workflow)
+    yield
+      order.namedValues(workflow)
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys
-      .flatMap(itemKey =>
+      .flatMap: itemKey =>
         keyToItem.checked(itemKey)
           .flatTraverse(_
             .referencedItemPaths
             .map(path => referencedItemExists(path) !!
               MissingReferencedItemProblem(itemKey, referencedItemKey = path))
-            .toVector))
+            .toVector)
       .combineProblems
       .map(_.combineAll)
 
   private def referencedItemExists(path: InventoryItemPath) =
     pathToItem.contains(path) ||
-      (path match {
+      (path match
         case id: SubagentBundleId =>
           // A SubagentId may be given instead of a SubagentBundleId.
           // SubagentKeeper handles this.
           pathToItem.contains(id.toSubagentId)
-        case _ => false
-      })
+        case _ => false)
 
 
   private[controller] def checkRemovedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
@@ -579,7 +574,7 @@ extends SignedItemContainer,
       .getOrElse(itemKey, Map.empty)
       .view
       .flatMap:
-        case (agentPath, notDetached) => toDetachEvent(itemKey, agentPath, notDetached)
+        (agentPath, notDetached) => toDetachEvent(itemKey, agentPath, notDetached)
 
   private def toDetachEvent(itemKey: InventoryItemKey, agentPath: AgentPath, notDetached: NotDetached)
   : Option[ItemDetachable] =
@@ -620,12 +615,13 @@ extends SignedItemContainer,
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
   def agentToUris(agentPath: AgentPath): Nel[Uri] =
-    Nel.fromListUnsafe(
+    Nel.fromListUnsafe:
       for
         agentRef <- keyToItem(AgentRef).get(agentPath).toList
         director <- agentRef.directors
         subagent <- keyToItem(SubagentItem).get(director).toList
-      yield subagent.uri)
+      yield
+        subagent.uri
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =

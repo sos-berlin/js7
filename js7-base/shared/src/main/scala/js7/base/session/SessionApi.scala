@@ -32,8 +32,7 @@ trait SessionApi:
   def clearSession(): Unit
 
   // overrideable
-  def retryIfSessionLost[A](body: IO[A])
-  : IO[A] =
+  def retryIfSessionLost[A](body: IO[A]): IO[A] =
     body
 
   // overrideable
@@ -43,15 +42,14 @@ trait SessionApi:
     body
 
   final def tryLogout: IO[Completed] =
-    logger.traceIO(s"$toString: tryLogout")(
-      tryLogoutLock.lock(
+    logger.traceIO(s"$toString: tryLogout"):
+      tryLogoutLock.lock:
         logout()
           .timeout(tryLogoutTimeout)
-          .handleError { t =>
+          .handleError: t =>
             logger.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
             clearSession()
             Completed
-          }))
 
   private[SessionApi] final def onErrorTryAgain(throwable: Throwable): IO[Boolean] =
     SessionApi.onErrorTryAgain(toString, throwable)
@@ -93,36 +91,34 @@ object SessionApi:
       onError: Throwable => IO[Boolean] = this.onErrorTryAgain,
       onlyIfNotLoggedIn: Boolean = false)
     : IO[Completed] =
-      IO.defer(
+      IO.defer:
         if onlyIfNotLoggedIn && hasSession then
           IO.completed
-        else {
+        else
           val sym = new BlockingSymbol
           login_(userAndPassword)
-            .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            .onErrorRestartLoop(()): (throwable, _, retry) =>
               val isTemporary = isTemporaryUnreachable(throwable)
-              onError(throwable).flatMap(continue =>
+              onError(throwable).flatMap: continue =>
                 if continue/*normally true*/ && delays.hasNext && isTemporary then
-                  val prefix = isTemporary ?? {
+                  val prefix = isTemporary ?? locally:
                     sym.onWarn()
                     s"$sym "
-                  }
                   warn(s"$prefix$self", throwable)
                   retry(()).delayBy(delays.next())
                 else
-                  IO.raiseError(throwable))
-            }
-            .guaranteeCase {
-              case Outcome.Succeeded(_) => IO(
-                logger.log(sym.relievedLogLevel, s"🟢 $self logged-in"))
-              case Outcome.Canceled() => IO(
-                logger.log(sym.relievedLogLevel, s"◼️ $self Canceled"))
+                  IO.raiseError(throwable)
+            .guaranteeCase:
+              case Outcome.Succeeded(_) => IO:
+                logger.log(sym.relievedLogLevel, s"🟢 $self logged-in")
+              case Outcome.Canceled() => IO:
+                logger.log(sym.relievedLogLevel, s"◼️ $self Canceled")
               case _ => IO.unit
-            }
-        })
+
 
   trait HasUserAndPassword extends LoginUntilReachable:
     self =>
+
     protected def userAndPassword: Option[UserAndPassword]
 
     protected val loginDelays: () => Iterator[FiniteDuration] =
@@ -158,36 +154,33 @@ object SessionApi:
         val delays = loginDelays()
         val sym = new BlockingSymbol
         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
-          .flatMap((_: Completed) =>
-            body.onErrorRestartLoop(()) { (throwable, _, retry) =>
-              throwable
-                .match {
-                  case HttpException.HasProblem(problem)
-                    if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                    // Do not call onError on this minor problem
-                    logger.debug(s"⟲ $toString: $problem")
-                    loginUntilReachable(delays, onError = onError)
+          .flatMap: (_: Completed) =>
+            body.onErrorRestartLoop(()): (throwable, _, retry) =>
+              throwable.match
+                case HttpException.HasProblem(problem)
+                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                  // Do not call onError on this minor problem
+                  logger.debug(s"⟲ $toString: $problem")
+                  loginUntilReachable(delays, onError = onError)
 
-                  case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
-                    onError(e).flatMap(continue =>
+                case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
+                  onError(e).flatMap: continue =>
                     if continue then
                       sym.onWarn()
                       warn(s"$sym $toString", e)
                       loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
                     else
-                      IO.raiseError(e))
+                      IO.raiseError(e)
 
-                  case _ =>
-                    IO.raiseError(throwable)
-                }
-                .*>(IO.sleep(delays.next()))
-                .*>(retry(()))
-            })
+                case _ =>
+                  IO.raiseError(throwable)
+              .*>(IO.sleep(delays.next()))
+              .*>(retry(()))
           .guaranteeCase:
-            case Outcome.Succeeded(_) => IO(
-              if sym.used then logger.info(s"🟢 $self reached"))
-            case Outcome.Canceled() => IO(
-              if sym.used then logger.info(s"◼️ $self Canceled"))
+            case Outcome.Succeeded(_) => IO:
+              if sym.used then logger.info(s"🟢 $self reached")
+            case Outcome.Canceled() => IO:
+              if sym.used then logger.info(s"◼️ $self Canceled")
             case _ => IO.unit
 
     final def login(onlyIfNotLoggedIn: Boolean = false): IO[Completed] =
