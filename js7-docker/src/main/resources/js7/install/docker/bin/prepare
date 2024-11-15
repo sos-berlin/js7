@@ -25,7 +25,8 @@ if [ -z "${TZ:-}" ]; then
     TZ=$(cat /etc/timezone)
     echo "TZ=${TZ-UTC}"
   elif [ -d /usr/share/zoneinfo ]; then
-    TZ=$(realpath --relative-to /usr/share/zoneinfo /etc/localtime)
+    TZ=$(realpath /etc/localtime)
+    TZ=${TZ#/usr/share/zoneinfo/}
     echo "TZ=${TZ-UTC}"
   elif [ -L /etc/localtime ]; then
     # Works for Europe/Stockholm but not for UTC
