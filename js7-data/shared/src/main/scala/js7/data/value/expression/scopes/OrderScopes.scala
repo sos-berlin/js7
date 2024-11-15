@@ -10,25 +10,31 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.expression.Scope.evalLazilyExpressions
-import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import js7.data.workflow.{Workflow, WorkflowPath}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.MapView
 
 /** Provide some Scopes for an Order in any state. */
 trait OrderScopes:
+
   protected val order: Order[Order.State]
   protected val workflow: Workflow
   protected val controllerId: ControllerId
 
+  /** The same Scope over the Order's whole lifetime. */
+  private lazy val freshOrderScope: Scope =
+    // workflow.path denotes the initial Workflow (not the current one in case of nested workflow) !!!
+    OrderScopes.freshOrderScope(order.id, workflow.path, order.scheduledFor, controllerId)
+
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
 
-  private def symbolScope =
+  private lazy val symbolScope =
     ArgumentlessFunctionScope:
       case "tryCount" => Right(NumberValue:
         order.workflowPosition.position.tryCount)
@@ -45,9 +51,12 @@ trait OrderScopes:
       case "timedOut" => Right(BooleanValue:
         order.hasTimedOut)
 
-
-  private def js7VariablesScope =
-    minimalJs7VariablesScope(order.id, order.workflowPath, controllerId) |+|
+  // MUST BE A PURE FUNCTION!
+  /** For `Order[Order.State]`, without order variables. */
+  final lazy val variablelessOrderScope: Scope =
+    combine(
+      freshOrderScope,
+      symbolScope,
       NamedValueScope:
         case "js7Label" => Right(StringValue:
           instructionLabel.fold("")(_.string))
@@ -59,23 +68,16 @@ trait OrderScopes:
         case "js7TryCount" =>
           symbolScope.evalFunctionCall(FunctionCall("tryCount"))(using Scope.empty).get
         case "js7MaxTries" =>
-          symbolScope.evalFunctionCall(FunctionCall("maxTries"))(using Scope.empty).get
-
-  // MUST BE A PURE FUNCTION!
-  /** For `Order[Order.State]`, without order variables. */
-  final lazy val variablelessOrderScope: Scope =
-    combine(
-      symbolScope,
-      js7VariablesScope,
-      scheduledScope(order.scheduledFor),
+          symbolScope.evalFunctionCall(FunctionCall("maxTries"))(using Scope.empty).get,
       EnvScope)
 
   /** For `Order[Order.State]`. */
-  final lazy val pureOrderScope =
+  final lazy val pureOrderScope: Scope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
 
 
 object OrderScopes:
+
   def apply(order: Order[Order.State], workflow: Workflow, controllerId: ControllerId)
   : OrderScopes =
     val (o, w, id) = (order, workflow, controllerId)
@@ -85,6 +87,7 @@ object OrderScopes:
       protected val controllerId = id
 
   /** For calculating Workflow.orderVariables. */
+  @TestOnly // ???
   def workflowOrderVariablesScope(
     freshOrder: FreshOrder,
     controllerId: ControllerId,
@@ -92,8 +95,7 @@ object OrderScopes:
     nowScope: Scope)
   : Scope =
     val nestedScope = combine(
-      scheduledScope(freshOrder.scheduledFor),
-      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+      freshOrderScope(freshOrder.id, freshOrder.workflowPath, freshOrder.scheduledFor, controllerId),
       EnvScope,
       nowScope)
     combine(
@@ -101,20 +103,21 @@ object OrderScopes:
       NamedValueScope.simple(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
 
-  def minimalJs7VariablesScope(
-    orderId: OrderId,
-    workflowPath: WorkflowPath,
-    controllerId: ControllerId): Scope
-  = NamedValueScope.simple:
-    case "js7OrderId" => StringValue(orderId.string)
-    case "js7WorkflowPath" => StringValue(workflowPath.string)
-    case "js7ControllerId" => StringValue(controllerId.string)
+  def freshOrderScope(
+    orderId: OrderId, workflowPath: WorkflowPath, scheduledFor: Option[Timestamp],
+    controllerId: ControllerId)
+  : Scope =
+    NamedValueScope.simple:
+      case "js7OrderId" => StringValue(orderId.string)
+      case "js7WorkflowPath" => StringValue(workflowPath.string)
+      case "js7ControllerId" => StringValue(controllerId.string)
+    |+|
+      TimestampScope("scheduledOrEmpty", scheduledFor)
 
-  def scheduledScope(scheduledFor: Option[Timestamp]): Scope =
-    TimestampScope("scheduledOrEmpty", scheduledFor)
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */
 trait ProcessingOrderScopes extends OrderScopes:
+
   protected val order: Order[Order.Processing]
   protected val jobKey: JobKey
   protected val workflowJob: WorkflowJob

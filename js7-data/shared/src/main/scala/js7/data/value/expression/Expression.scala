@@ -20,6 +20,7 @@ import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{BooleanValue, FunctionValue, GoodValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter, ValueType}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
+import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 
@@ -75,10 +76,13 @@ sealed trait Expression extends HasPrecedence:
 object Expression:
   private val logger = Logger[this.type]
 
-  implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
-  implicit val jsonDecoder: Decoder[Expression] =
-    c => c.as[String]
-      .flatMap(parseExpression(_).toDecoderResult(c.history))
+  @TestOnly
+  val LastReturnCode: NamedValue = NamedValue("returnCode")
+
+  given jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
+  given jsonDecoder: Decoder[Expression] = c =>
+    c.as[String].flatMap:
+      parseExpression(_).toDecoderResult(c.history)
 
 
   sealed transparent trait IsPureIfSubexpressionsArePure extends Expression:
@@ -665,8 +669,6 @@ object Expression:
         sb.append(':')
         appendIdentifier(sb, nam)
     }
-
-  val LastReturnCode: NamedValue = NamedValue("returnCode")
 
 
   final case class StripMargin(a: Expression)

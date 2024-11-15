@@ -26,7 +26,7 @@ extends EventInstructionExecutor:
         .fold_(
           Checked(None),
           expr => state
-            .toPureOrderScope(order)
+            .toOrderScope(order)
             .flatMap(expr.evalAsString(_))
             .flatMap(SubagentBundleId.checked(_))
             .flatMap(subagentBundleId => state

@@ -169,16 +169,16 @@ trait StateView extends ItemContainer:
       .get(WorkflowPathControlPath(workflowPath))
       .exists(_.item.suspended)
 
-  /** A pure (stable, repeatable) Scope. */
-  final def toPureOrderScope(order: Order[Order.State]): Checked[Scope] =
-    for orderScopes <- toOrderScopes(order) yield
-      orderScopes.pureOrderScope
+  /** A pure (stable, repeatable) Scope for the order. */
+  final def toOrderScope(order: Order[Order.State]): Checked[Scope] =
+    toOrderScopes(order).map(_.pureOrderScope)
 
   /** An impure (unstable, non-repeatable) Scope. */
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
     for orderScopes <- toOrderScopes(order) yield
       val nowScope = NowScope(now)
-      orderScopes.pureOrderScope |+| nowScope |+|
+      orderScopes.pureOrderScope |+|
+        nowScope |+|
         JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
 

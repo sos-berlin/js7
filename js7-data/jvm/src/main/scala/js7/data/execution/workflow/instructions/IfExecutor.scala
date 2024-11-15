@@ -28,7 +28,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   def nextMove(instruction: If, order: Order[Order.State], state: StateView) =
     // order may be predicted and different from actual idToOrder(order.id)
     for
-      scope <- state.toPureOrderScope(order)
+      scope <- state.toOrderScope(order)
       branchId <-
         instruction.ifThens.view
           .scanLeft(Checked(false) -> 0):

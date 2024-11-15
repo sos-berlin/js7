@@ -54,8 +54,7 @@ extends ProcessingOrderScopes:
       .map(_.toMap)
 
   lazy val scope: Scope =
-    processingOrderScope |+|
-      NamedValueScope(nameToLazyDefaultArgument)
+    processingOrderScope |+| NamedValueScope(nameToLazyDefaultArgument)
 
 
 object ProcessOrder:

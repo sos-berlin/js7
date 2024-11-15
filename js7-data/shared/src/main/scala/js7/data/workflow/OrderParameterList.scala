@@ -16,7 +16,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.FreshOrder
 import js7.data.value.expression.Scope.evalLazilyExpressions
-import js7.data.value.expression.scopes.OrderScopes.{minimalJs7VariablesScope, scheduledScope}
+import js7.data.value.expression.scopes.OrderScopes.freshOrderScope
 import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NamedValueScope}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{AnyValue, ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
@@ -39,23 +39,6 @@ final case class OrderParameterList(
       nameToParameter ++ other.nameToParameter,
       allowUndeclared = allowUndeclared && other.allowUndeclared)
 
-  //def workflowOrderVariablesScope(
-  //  freshOrder: FreshOrder,
-  //  controllerId: ControllerId,
-  //  pathToJobResource: PartialFunction[JobResourcePath, JobResource],
-  //  nowScope: Scope)
-  //: Scope = {
-  //  val nestedScope = combine(
-  //    scheduledScope(freshOrder.scheduledFor),
-  //    minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
-  //    EnvScope,
-  //    nowScope)
-  //  combine(
-  //    nestedScope,
-  //    NamedValueScope(freshOrder.arguments),
-  //    JobResourceScope(pathToJobResource, useScope = nestedScope))
-  //}
-
   def prepareOrderArguments(
     freshOrder: FreshOrder,
     controllerId: ControllerId,
@@ -63,8 +46,7 @@ final case class OrderParameterList(
     nowScope: Scope)
   : Checked[NamedValues] =
     val nestedScope = combine(
-      scheduledScope(freshOrder.scheduledFor),
-      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+      freshOrderScope(freshOrder.id, freshOrder.workflowPath, freshOrder.scheduledFor, controllerId),
       EnvScope,
       nowScope)
     prepareOrderArguments2(

@@ -76,7 +76,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
   private def checkSubagentBundle(order: Order[IsFreshOrReady], state: StateView): Checked[Unit] =
     for
-      scope <- state.toPureOrderScope(order)
+      scope <- state.toOrderScope(order)
       job <- state.workflowJob(order.workflowPosition)
       maybeSubagentBundleId <- job.subagentBundleId.traverse(_
         .evalAsString(scope)

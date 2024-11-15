@@ -1446,7 +1446,8 @@ object OrderEventSourceTest:
     def step(): Seq[OrderEvent] =
       process.step(orderId).map(_.event)
 
-    def update(event: OrderEvent) = process.update(orderId <-: event)
+    def update(event: OrderEvent) =
+      process.update(orderId <-: event)
 
   final class Process(workflow: Workflow):
     val idToWorkflow = Map(workflow.id -> workflow)
@@ -1528,7 +1529,7 @@ object OrderEventSourceTest:
               case FollowUp.Delete(deleteOrderId) =>
                 idToOrder -= deleteOrderId
 
-              case o => sys.error(o.toString)
+              case o => sys.error(s"$keyedEvent ~~> $o")
 
   private def newWorkflowEventSource(
     workflow: Workflow,

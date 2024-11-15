@@ -29,7 +29,7 @@ extends EventInstructionExecutor:
             .traverse(state.keyTo(BoardState).checked)
             .flatMap: boardStates =>
               for
-                scope <- state.toPureOrderScope(order)
+                scope <- state.toOrderScope(order)
                 expected <- boardStates.traverse(boardState =>
                   boardState.board
                     .expectingOrderToNoticeId(scope)
