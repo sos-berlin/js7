@@ -19,6 +19,9 @@ enum LogLevel(private val name: String):
 object LogLevel:
   given Ordering[LogLevel] = Ordering.by(_.ordinal)
 
+  val MinValue = Trace
+  val MaxValue = None
+
   /** The usual Ordinal invariants are not valid here:
    * <ul>
    * <li>pred(succ(level)) == level, not for LogLevel.Error

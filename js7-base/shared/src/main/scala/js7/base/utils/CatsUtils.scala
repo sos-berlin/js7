@@ -61,21 +61,18 @@ object CatsUtils:
           IO(logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
 
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
-        logWhenItTakesLonger2("in", "continues", enclosing.value)
+        Worry.Default.logWhenItTakesLonger:
+          underlying
 
-      def logWhenItTakesLonger(what: => String, worry: Worry = Worry.Default)
-      : IO[A] =
-        logWhenItTakesLonger2("for", "completed", what, worry)
-
-      private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String,
-        worry: Worry = Worry.Default)
-      : IO[A] =
-        worry.logWhenItTakesLonger(preposition, completed, what, underlying)
+      def logWhenItTakesLonger(what: => String, worry: Worry = Worry.Default): IO[A] =
+        worry.logWhenItTakesLonger(what):
+          underlying
 
       def logWhenItTakesLonger(worry: Worry)(
         onDelayedOrCompleted: (Option[OutcomeIO[A]], FiniteDuration, LogLevel, String) => IO[String])
       : IO[A] =
-        worry.logWhenItTakesLonger(underlying)(onDelayedOrCompleted)
+        worry.logWhenItTakesLonger_(underlying):
+          onDelayedOrCompleted
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       @deprecated("Use whenItTakesLongerThan", "v2.7")

@@ -10,11 +10,14 @@ import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.Worry.*
 import scala.concurrent.duration.FiniteDuration
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 /** When start to worry about an operation lasting too long. */
 final case class Worry(
   durations: Seq[FiniteDuration] = DefaultWorryDurations,
   infoLevel: FiniteDuration = InfoWorryDuration,
-  orangeLevel: FiniteDuration = InfoWorryDuration):
+  orangeLevel: FiniteDuration = InfoWorryDuration,
+  maxLogLevel: LogLevel = LogLevel.MaxValue):
 
   def logLevel(elapsed: FiniteDuration): LogLevel =
     if elapsed < infoLevel then
@@ -25,9 +28,17 @@ final case class Worry(
   def symbol(elapsed: FiniteDuration): String =
     if elapsed < orangeLevel then "🟡" else "🟠"
 
-  def logWhenItTakesLonger[A](preposition: String, completed: String, what: => String, io: IO[A])
+  def logWhenItTakesLonger[A](what: => String)(io: IO[A]): IO[A] =
+    logWhenItTakesLonger("for", "completed", what):
+      io
+
+  def logWhenItTakesLonger[A](io: IO[A])(using enclosing: sourcecode.Enclosing): IO[A] =
+    logWhenItTakesLonger("in", "continues", enclosing.value):
+      io
+
+  def logWhenItTakesLonger[A](preposition: String, completed: String, what: => String)(io: IO[A])
   : IO[A] =
-    logWhenItTakesLonger(io):
+    logWhenItTakesLonger_(io, maxLogLevel = maxLogLevel):
       case (None, elapsed, level, sym) => IO.pure:
         s"$sym Still waiting $preposition $what for ${elapsed.pretty}"
       case (Some(Outcome.Succeeded(_)), elapsed, level, sym) => IO.pure:
@@ -37,13 +48,13 @@ final case class Worry(
       case (Some(Outcome.Errored(t)), elapsed, level, sym) => IO.pure:
         s"$sym $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"
 
-  def logWhenItTakesLonger[A](io: IO[A])
+  def logWhenItTakesLonger_[A](io: IO[A], maxLogLevel: LogLevel = LogLevel.MaxValue)
     (onDelayedOrCompleted: (Option[OutcomeIO[A]], FiniteDuration, LogLevel, String) => IO[String])
   : IO[A] =
     CatsDeadline.now.flatMap: since =>
       var level: LogLevel = LogLevel.None
       io.whenItTakesLonger(durations): duration =>
-        level = logLevel(duration)
+        level = logLevel(duration) min maxLogLevel
         onDelayedOrCompleted(None, duration, level, symbol(duration))
           .flatMap: line =>
             IO(logger.log(level, line))

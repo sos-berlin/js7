@@ -14,10 +14,11 @@ import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichJavaClass, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichBoolean, RichJavaClass, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{Atomic, Once, Tests}
+import js7.base.utils.{Atomic, Once, Tests, Worry}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.annotation.unused
 import scala.concurrent.duration.Deadline
@@ -30,6 +31,7 @@ object Logger extends AdHocLogger:
   private val ifNotInitialized = new Once
   private val initLogged = Atomic(false)
   private val ifNotMissingInitializingWarned = new Once
+  private val ioSync: Sync[IO] = summon[Sync[IO]]
 
   Slf4jUtils.initialize()
 
@@ -419,12 +421,16 @@ object Logger extends AdHocLogger:
           logF(logger, logLevel, function + ".acquire", args):
             cancelable:
               resource.allocatedCase
-          .map { case (a, release) =>
+          .map: (a, release) =>
             a ->
               (exitCase =>
                 logF[F, Unit](logger, logLevel, function + ".release", args):
-                  release(exitCase))
-          }
+                  release(exitCase)
+                .pipeIf(F eq ioSync):
+                  _.asInstanceOf[IO[Unit]]
+                    .logWhenItTakesLonger(s"release $function",
+                      Worry.Default.copy(maxLogLevel = logLevel))
+                    .asInstanceOf[F[Unit]])
         //_ <- loggingResource[F](logger, logLevel, function + ".use", args)
       yield
         a

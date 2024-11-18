@@ -15,11 +15,13 @@ final class LogLevelTest extends OurTestSuite:
     val debug: LogLevel = LogLevel.Debug
     val trace: LogLevel = LogLevel.Trace
 
+    assert(LogLevel.MaxValue == none)
     assert(none > error)
     assert(error > warn)
     assert(warn > info)
     assert(info > debug)
     assert(debug > trace)
+    assert(trace == LogLevel.MinValue)
 
   "LogLevel(String)" in:
     assert(LogLevel("none") eq LogLevel.None)
