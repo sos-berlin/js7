@@ -105,7 +105,7 @@ object Service:
       logger.info(s"$serviceName${args.nonEmpty ?? s"($args)"} started")
       body.guaranteeCase:
         case Outcome.Errored(_) => IO.unit // start logs the error
-        case Outcome.Canceled() => IO(logger.info(s"◼️ $serviceName canceled"))
+        case Outcome.Canceled() => IO(logger.info(s"◼️  $serviceName canceled"))
         case Outcome.Succeeded(_) => IO(logger.info(s"$serviceName stopped"))
 
   def restartAfterFailure[Svc <: Service: Tag](

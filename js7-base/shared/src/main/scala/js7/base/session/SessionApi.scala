@@ -72,7 +72,7 @@ object SessionApi:
         if throwable.getStackTrace.nonEmpty
           && throwable.getClass.scalaName != "org.apache.pekko.stream.StreamTcpException"
           && Option(throwable.getCause).forall(_.getClass.scalaName != "org.apache.pekko.stream.StreamTcpException") then
-          logger.debug(s"$myToString: ${throwable.toString}", throwable)
+          logger.debug(s"$myToString: ${throwable.toStringWithCauses}", throwable)
 
   def onErrorTryAgain(myToString: String, throwable: Throwable): IO[Boolean] =
     IO.pure(true)
@@ -112,7 +112,7 @@ object SessionApi:
               case Outcome.Succeeded(_) => IO:
                 logger.log(sym.relievedLogLevel, s"🟢 $self logged-in")
               case Outcome.Canceled() => IO:
-                logger.log(sym.relievedLogLevel, s"◼️ $self Canceled")
+                logger.log(sym.relievedLogLevel, s"◼️  $self Canceled")
               case _ => IO.unit
 
 
@@ -180,7 +180,7 @@ object SessionApi:
             case Outcome.Succeeded(_) => IO:
               if sym.used then logger.info(s"🟢 $self reached")
             case Outcome.Canceled() => IO:
-              if sym.used then logger.info(s"◼️ $self Canceled")
+              if sym.used then logger.info(s"◼️  $self Canceled")
             case _ => IO.unit
 
     final def login(onlyIfNotLoggedIn: Boolean = false): IO[Completed] =

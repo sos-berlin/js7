@@ -102,7 +102,7 @@ private[cluster] final class ClusterCommon private(
                   s"🟢 $name command succeeded after ${since.elapsed.pretty}")
               case Outcome.Canceled() => IO:
                 logger.log(delayer.relievedLogLevel,
-                  s"◼️ $name command canceled after ${since.elapsed.pretty}")
+                  s"◼️  $name command canceled after ${since.elapsed.pretty}")
               case _ => IO.unit
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])

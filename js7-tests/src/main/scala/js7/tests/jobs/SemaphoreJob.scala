@@ -60,7 +60,7 @@ extends InternalJob:
         case (t, _, _) => IO.raiseError(t)
       .guaranteeCase(outcome => IO(outcome match
         case Outcome.Errored(t) => logger.error(s"💥 $semaName $outcome => ${t.toStringWithCauses}")
-        case Outcome.Canceled() => logger.info(s"◼️ $semaName $outcome")
+        case Outcome.Canceled() => logger.info(s"◼️  $semaName $outcome")
         case Outcome.Succeeded(_) => logger.info(s"🟢 $semaName acquired")))
 
 

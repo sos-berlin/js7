@@ -290,7 +290,7 @@ private final class ClusterWatchSynchronizer(
                 clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true))
             .flatMap:
               case Left(()) => IO:
-                logger.trace("◼️ doACheckedHeartbeat canceled due to `stopping`")
+                logger.trace("◼️  doACheckedHeartbeat canceled due to `stopping`")
                 Completed
 
               case Right(Left(problem @ ClusterModuleShuttingDownProblem)) =>

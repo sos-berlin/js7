@@ -130,7 +130,7 @@ final class ProcessDriver(
           case None =>
             IO:
               killedBeforeStart = Some(signal)
-              logger.debug(s"$orderId ◼️ Kill before start")
+              logger.debug(s"$orderId ◼️  Kill before start")
           case Some(pipedProcess) =>
             sendProcessSignal(pipedProcess, signal)
 
