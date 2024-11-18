@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+options=()
+other=()
+
+for arg in "$@"; do :
+  case "$arg" in
+    -*)
+      options+=("$arg")
+      ;;
+    *)
+      other+=("$arg")
+      ;;
+  esac
+done
+
+# DEFAULTS
+if [[ ${#options[@]} -eq 0 ]]; then
+  options=("-gc")
+  if [[ ${#other[@]} -eq 0 ]]; then
+    other=(10000)
+  fi
+fi
+
+pid="$(cat data/state/lock)"
+
+exec jstat "${options[@]}" "$pid" "${other[@]}" |
+  gawk '{
+    print strftime("%Y-%m-%d %H:%M:%S│") $0;
+    fflush()
+  }'
