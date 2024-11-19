@@ -51,7 +51,9 @@ final case class Order[+S <: Order.State](
   forceJobAdmission: Boolean = false,
   stickySubagents: List[StickySubagent] = Nil,
   innerBlock: BranchPath = BranchPath.empty,
-  stopPositions: Set[PositionOrLabel] = Set.empty):
+  stopPositions: Set[PositionOrLabel] = Set.empty)
+extends
+  MinimumOrder:
 
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode: Int = id.hashCode

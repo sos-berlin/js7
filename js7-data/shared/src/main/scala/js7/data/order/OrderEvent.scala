@@ -28,10 +28,10 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
-import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.ForkBranchId
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel, WorkflowPosition}
+import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
 import scala.language.implicitConversions
@@ -53,7 +53,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderTerminated extends IsControllerOnly
 
 
-  sealed trait OrderAddedX extends OrderCoreEvent:
+  sealed trait OrderAddedX extends OrderCoreEvent, OrderDetails:
     def workflowId: WorkflowId
     def arguments: NamedValues
     def scheduledFor: Option[Timestamp]
@@ -64,6 +64,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def startPosition: Option[Position]
     def stopPositions: Set[PositionOrLabel]
     def addedOrderId(orderId: OrderId): OrderId
+
+    final def workflowPath: WorkflowPath =
+      workflowId.path
 
 
   final case class OrderAdded(
@@ -78,8 +81,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX:
     workflowId.requireNonAnonymous()
-    def addedOrderId(orderId: OrderId): OrderId = orderId
-    override def toShortString = s"OrderAdded(${workflowId.path})"
+
+    def addedOrderId(orderId: OrderId): OrderId =
+      orderId
+
+    override def toShortString =
+      s"OrderAdded(${workflowId.path})"
 
   object OrderAdded:
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =

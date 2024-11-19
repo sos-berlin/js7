@@ -30,10 +30,8 @@ final class NoticeEventSource(clock: WallClock):
               board.postingOrderToNotice(scope)
 
           case board: PlannableBoard =>
-            for
-              scope <- state.toFreshOrderScope(order)
-              noticeId <- state.orderToPlannableBoardNoticeId(order.id, scope)
-            yield
+            val scope = state.toMinimumOrderScope(order)
+            state.orderToPlannableBoardNoticeId(order.id, scope).map: noticeId =>
               Notice(noticeId, board.path, endOfLife = None)
         .map:
           FatNotice(_, boardState)

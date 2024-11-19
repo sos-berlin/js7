@@ -1,7 +1,7 @@
 package js7.data.order
 
-import cats.syntax.traverse.*
 import cats.instances.option.*
+import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.*
@@ -32,7 +32,9 @@ final case class FreshOrder(
   forceJobAdmission: Boolean = false,
   innerBlock: BranchPath = BranchPath.empty,
   startPosition: Option[PositionOrLabel] = None,
-  stopPositions: Set[PositionOrLabel] = Set.empty):
+  stopPositions: Set[PositionOrLabel] = Set.empty)
+extends
+  MinimumOrder:
 
   workflowPath.requireNonAnonymous()
 

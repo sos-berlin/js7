@@ -2,20 +2,19 @@ package js7.data.value.expression.scopes
 
 import cats.syntax.semigroup.*
 import js7.base.problem.Checked
-import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
-import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.order.{FreshOrder, MinimumOrder, Order, OrderDetails, OrderId}
 import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
-import js7.data.workflow.{Workflow, WorkflowPath}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.MapView
 
@@ -27,9 +26,8 @@ trait OrderScopes:
   protected val controllerId: ControllerId
 
   /** The same Scope over the Order's whole lifetime. */
-  lazy val freshOrderScope: Scope =
-    // workflow.path denotes the initial Workflow (not the current one in case of nested workflow) !!!
-    OrderScopes.freshOrderScope(order.id, workflow.path, order.scheduledFor, controllerId)
+  private lazy val minimumOrderScope: Scope =
+    OrderScopes.minimumOrderScope(order, controllerId)
 
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
@@ -55,7 +53,7 @@ trait OrderScopes:
   /** For `Order[Order.State]`, without order variables. */
   final lazy val variablelessOrderScope: Scope =
     combine(
-      freshOrderScope,
+      minimumOrderScope,
       symbolScope,
       NamedValueScope:
         case "js7Label" => Right(StringValue:
@@ -95,7 +93,7 @@ object OrderScopes:
     nowScope: Scope)
   : Scope =
     val nestedScope = combine(
-      freshOrderScope(freshOrder.id, freshOrder.workflowPath, freshOrder.scheduledFor, controllerId),
+      minimumOrderScope(freshOrder, controllerId),
       EnvScope,
       nowScope)
     combine(
@@ -103,17 +101,18 @@ object OrderScopes:
       NamedValueScope.simple(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
 
-  def freshOrderScope(
-    orderId: OrderId, workflowPath: WorkflowPath, scheduledFor: Option[Timestamp],
-    controllerId: ControllerId)
+  def minimumOrderScope(order: MinimumOrder, controllerId: ControllerId): Scope =
+    minimumOrderScope(order.id, order, controllerId)
+
+  def minimumOrderScope(orderId: OrderId, orderDetails: OrderDetails, controllerId: ControllerId)
   : Scope =
     NamedValueScope.simple:
       case "js7OrderId" => StringValue(orderId.string)
-      case "js7WorkflowPath" => StringValue(workflowPath.string)
       case "js7ControllerId" => StringValue(controllerId.string)
+      // Not sure about workflowPath with future callable Workflows ???
+      case "js7WorkflowPath" => StringValue(orderDetails.workflowPath.string)
     |+|
-      TimestampScope("scheduledOrEmpty", scheduledFor)
-
+      TimestampScope("scheduledOrEmpty", orderDetails.scheduledFor)
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */
 trait ProcessingOrderScopes extends OrderScopes:

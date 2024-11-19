@@ -15,7 +15,7 @@ import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{MinimumOrder, Order, OrderId}
 import js7.data.plan.{PlanId, PlanItem}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
@@ -196,8 +196,8 @@ trait StateView extends ItemContainer:
       .exists(_.item.suspended)
 
   /** The same Scope over the Order's whole lifetime. */
-  final def toFreshOrderScope(order: Order[Order.State]): Checked[Scope] =
-    toOrderScopes(order).map(_.freshOrderScope)
+  final def toMinimumOrderScope(order: MinimumOrder): Scope =
+    OrderScopes.minimumOrderScope(order, controllerId)
 
   /** A pure (stable, repeatable) Scope. */
   final def toOrderScope(order: Order[Order.State]): Checked[Scope] =
