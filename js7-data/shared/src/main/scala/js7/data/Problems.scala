@@ -2,9 +2,10 @@ package js7.data
 
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.RichDuration
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterCommand, ClusterState}
-import js7.data.event.EventId
+import js7.data.event.{Event, EventDrivenState, EventId}
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
 import js7.data.node.NodeId
@@ -158,3 +159,9 @@ object Problems:
       "tornOlder", tornOlder.pretty)
 
   case object OldEventIdProblem extends Problem.ArgumentlessCoded
+
+  final case class EventNotHandledHereProblem(event: Event, here: EventDrivenState.Companion[?, ?])
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map2(
+      "event", event.getClass.simpleScalaName,
+      "here", here.name)

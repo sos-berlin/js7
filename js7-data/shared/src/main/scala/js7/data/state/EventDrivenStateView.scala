@@ -3,11 +3,12 @@ package js7.data.state
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.Problems.EventNotHandledHereProblem
 import js7.data.board.{BoardItem, BoardState}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
@@ -32,14 +33,9 @@ extends EventDrivenState[Self, E], StateView:
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match
-      case orderAdded: OrderAdded =>
-        addOrder(Order.fromOrderAdded(orderId, orderAdded))
-
-      case event: OrderEvent.OrderAttachedToAgent =>
-        if idToOrder isDefinedAt orderId then
-          Left(Problem.pure(s"Duplicate order attached: $orderId"))
-        else
-          update(addOrders = Order.fromOrderAttached(orderId, event) :: Nil)
+      case _: OrderAddedX | _: OrderEvent.OrderAttachedToAgent =>
+        // Event is handled by one of ControllerState and AgentState only
+        Left(EventNotHandledHereProblem(event, companion))
 
       case event: OrderCoreEvent =>
         applyOrderCoreEvent(orderId, event)
@@ -131,9 +127,6 @@ extends EventDrivenState[Self, E], StateView:
                   addOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
 
-        case orderAdded: OrderOrderAdded =>
-          addOrder(Order.fromOrderAdded(orderAdded.orderId, orderAdded))
-
         case OrderExternalVanished =>
           if updatedOrder.externalOrder.isEmpty then
             Left(Problem(s"OrderExternalVanished but $orderId is not linked to an external order"))
@@ -149,16 +142,14 @@ extends EventDrivenState[Self, E], StateView:
           else
             update(removeOrders = orderId :: Nil)
 
+        case event: OrderOrderAdded =>
+          // ControllerState handles this event
+          Left(EventNotHandledHereProblem(event, companion))
+
         case _ =>
           update(addOrders = updatedOrder :: Nil)
     yield
       result
-
-  protected def addOrder(order: Order[Order.State]): Checked[Self] =
-    for
-      _ <- idToOrder.checkNoDuplicate(order.id)
-      self <- update(addOrders = order :: Nil)
-    yield self
 
   private def applyOrderNoticeEvent(
     previousOrder: Order[Order.State],

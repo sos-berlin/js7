@@ -120,6 +120,17 @@ extends SignedItemContainer,
   def withStandards(standards: SnapshotableState.Standards): AgentState =
     copy(standards = standards)
 
+  override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[AgentState] =
+    event match
+      case event: OrderEvent.OrderAttachedToAgent =>
+        if idToOrder isDefinedAt orderId then
+          Left(Problem.pure(s"Duplicate order attached: $orderId"))
+        else
+          update(addOrders = Order.fromOrderAttached(orderId, event) :: Nil)
+
+      case _ =>
+        super.applyOrderEvent(orderId, event)
+
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
     keyedEvent match
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
@@ -285,19 +296,22 @@ extends SignedItemContainer,
     update(addItemStates = fileWatchStates, removeItemStates = remove)
 
   protected def update(
-    orders: Iterable[Order[Order.State]],
-    removeOrders: Iterable[OrderId],
+    addOrders: Iterable[Order[Order.State]] = Nil,
+    removeOrders: Iterable[OrderId] = Nil,
     externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState],
-    removeItemStates: Iterable[UnsignedSimpleItemPath])
+    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
   : Checked[AgentState] =
     if isTest && !addItemStates.forall(o => allowedItemStates(o.companion)) then
       Left(Problem.pure("Unsupported InventoryItemState"))
     else
       Right(copy(
-        idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
+        idToOrder = idToOrder
+          -- removeOrders
+          ++ addOrders.view.map(o => o.id -> o),
         keyToUnsignedItemState_ = keyToUnsignedItemState_
-          -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
+          -- removeItemStates
+          ++ addItemStates.view.map(o => o.path -> o)))
 
   def agentPath: AgentPath =
     meta.agentPath

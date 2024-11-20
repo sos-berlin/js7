@@ -40,7 +40,6 @@ import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{PlanItem, PlanItemId, PlanKey}
-import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -65,7 +64,7 @@ final case class ControllerState(
   idToOrder: Map[OrderId, Order[Order.State]],
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends SignedItemContainer,
-  EventDrivenStateView[ControllerState, Event],
+  ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState]:
 
@@ -292,15 +291,7 @@ extends SignedItemContainer,
         keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-      event match
-        case event: OrderTransferred =>
-          applyOrderEvent(orderId, event).map: updated =>
-            updated.copy(
-              workflowToOrders = workflowToOrders
-                .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
-
-        case _ =>
-          applyOrderEvent(orderId, event)
+      applyOrderEvent(orderId, event)
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for
@@ -336,6 +327,18 @@ extends SignedItemContainer,
       Right(this)
 
     case _ => applyStandardEvent(keyedEvent)
+
+  override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
+  : Checked[ControllerState] =
+    event match
+      case event: OrderTransferred =>
+        super.applyOrderEvent(orderId, event).map: updated =>
+          updated.copy(
+            workflowToOrders = workflowToOrders
+              .transferOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
+
+      case _ =>
+        super.applyOrderEvent(orderId, event)
 
   /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
   def workflowPathControlToIgnorantAgents: MapView[WorkflowPathControlPath, Set[AgentPath]] =
@@ -442,14 +445,14 @@ extends SignedItemContainer,
       removeItemStates = remove)
 
   protected def update(
-    orders: Iterable[Order[Order.State]],
-    removeOrders: Iterable[OrderId],
-    externalVanishedOrders: Iterable[Order[Order.State]],
-    addItemStates: Iterable[UnsignedSimpleItemState],
-    removeItemStates: Iterable[UnsignedSimpleItemPath])
+    addOrders: Iterable[Order[Order.State]] = Nil,
+    removeOrders: Iterable[OrderId] = Nil,
+    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
+    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     for
-      s <- (orders ++ externalVanishedOrders).foldEithers(this):
+      s <- (addOrders ++ externalVanishedOrders).foldEithers(this):
         _.addOrUpdateOrder(_)
       s <- externalVanishedOrders.foldEithers(s):
         _.ow.onOrderExternalVanished(_)

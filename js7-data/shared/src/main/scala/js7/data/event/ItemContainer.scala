@@ -8,6 +8,7 @@ import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, Invento
 import scala.collection.MapView
 
 trait ItemContainer:
+
   def keyToItem: MapView[InventoryItemKey, InventoryItem]
 
   final lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
@@ -15,18 +16,19 @@ trait ItemContainer:
       .filter(_._2.isInstanceOf[SimpleItem])
       .asInstanceOf[MapView[SimpleItemPath, SimpleItem]]
 
-  lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
+  final lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
     keyToItem
       .filter(_._2.isInstanceOf[UnsignedSimpleItem])
       .asInstanceOf[MapView[UnsignedSimpleItemPath, UnsignedSimpleItem]]
 
-  final def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
+  def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
     keyToItem
       .filter(_._2.companion eq I)
       .asInstanceOf[MapView[I.Key, I]]
 
 
 object ItemContainer:
+
   trait Companion[A]:
     implicit final val implicitItemContainer: Companion[A] = this
 

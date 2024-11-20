@@ -21,7 +21,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.state.{OrderEventHandler, TestStateView}
+import js7.data.state.{ControllerTestStateView, OrderEventHandler, TestStateView}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
@@ -1162,8 +1162,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       def testResume(workflow: Workflow, from: Position, to: Position)
       : Checked[List[OrderEvent.OrderActorEvent]] =
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
-        def eventSource = new OrderEventSource(TestStateView.of(
-          isAgent = false,
+        def eventSource = new OrderEventSource(ControllerTestStateView.of(
           orders = Some(Seq(order)),
           workflows = Some(Seq(workflow)),
           itemStates = Seq(LockState(Lock(lockPath)))))
@@ -1174,8 +1173,7 @@ final class OrderEventSourceTest extends OurTestSuite:
   "Failed" in:
     lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
     val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
-    val eventSource = new OrderEventSource(TestStateView.of(
-      isAgent = false,
+    val eventSource = new OrderEventSource(ControllerTestStateView.of(
       orders = Some(Seq(order)),
       workflows = Some(Seq(workflow))))
     assert(eventSource.nextEvents(order.id) == Nil)
@@ -1206,8 +1204,7 @@ final class OrderEventSourceTest extends OurTestSuite:
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
-      new OrderEventSource(TestStateView.of(
-        isAgent = false,
+      new OrderEventSource(ControllerTestStateView.of(
         orders = Some(Seq(order)),
         workflows = Some(Seq(workflow))))
 
@@ -1324,8 +1321,7 @@ final class OrderEventSourceTest extends OurTestSuite:
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
 
-      def eventSource = new OrderEventSource(TestStateView.of(
-        isAgent = false,
+      def eventSource = new OrderEventSource(ControllerTestStateView.of(
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow))))
 
@@ -1380,8 +1376,7 @@ final class OrderEventSourceTest extends OurTestSuite:
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(TestStateView.of(
-        isAgent = false,
+      def liveEventSource = new OrderEventSource(ControllerTestStateView.of(
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow)),
         itemStates = Seq(

@@ -9,7 +9,7 @@ import js7.data.execution.workflow.instructions.TryExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.TestStateView
+import js7.data.state.ControllerTestStateView
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
@@ -25,8 +25,7 @@ import js7.tester.CirceJsonTester.testJson
 final class TryExecutorTest extends OurTestSuite:
 
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = TestStateView.of(
-    isAgent = false,
+  private lazy val stateView = ControllerTestStateView.of(
     orders = Some(Seq(AOrder)))
 
   private lazy val executorService = new InstructionExecutorService(WallClock)

@@ -113,7 +113,8 @@ extends
 
     event match
       case _: OrderAdded | _: OrderAttachedToAgent =>
-        Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
+        Left(Problem:
+          "OrderAdded and OrderAttachedToAgent events are not handled by the Order itself")
 
       case OrderStarted =>
         check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,

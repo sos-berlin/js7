@@ -14,7 +14,7 @@ import js7.data.execution.workflow.instructions.CycleExecutorTest.*
 import js7.data.order.Order.{BetweenCycles, Finished, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
 import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
-import js7.data.state.TestStateView
+import js7.data.state.AgentTestStateView
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, ImplicitEnd, Schedule}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -321,8 +321,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       timeZone = Timezone(zone.getId),
       calendarPath = Some(calendar.path))
 
-    lazy val stateView = new TestStateView(
-      isAgent = true,
+    lazy val stateView = AgentTestStateView(
       idToWorkflow = Map(workflow.id -> workflow),
       keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 
@@ -425,10 +424,8 @@ object CycleExecutorTest:
     CalendarPath("CALENDAR"),
     dateOffset = ScheduleTester.dateOffset)
 
-  final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
-  :
-    private val stateView = new TestStateView(
-      isAgent = true,
+  final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock):
+    private val stateView = AgentTestStateView(
       idToWorkflow = Map(workflow.id -> workflow),
       keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 

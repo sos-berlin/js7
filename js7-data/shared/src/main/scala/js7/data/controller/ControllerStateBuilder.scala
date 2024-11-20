@@ -18,13 +18,13 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.state.EventDrivenStateView
+import js7.data.plan.PlanItem
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -34,7 +34,7 @@ import scala.collection.{MapView, mutable}
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState],
   StandardsBuilder,
-  EventDrivenStateView[ControllerStateBuilder, Event],
+  ControllerStateView[ControllerStateBuilder],
   OrderWatchStateHandler[ControllerStateBuilder]:
 
   protected val S = ControllerState
@@ -80,6 +80,14 @@ extends SnapshotableStateBuilder[ControllerState],
 
   def keyToItem: Nothing =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
+
+  override def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
+    I match
+      case PlanItem =>
+        _keyToUnsignedItemState.view.filterKeys(_.isInstanceOf[PlanItem.Key])
+          .asInstanceOf[MapView[I.Key, I]]
+      case _ =>
+        throw NotImplementedError(s"🔥ControllerStateBuilder#keyToItem[$I] is not implemented")
 
   def pathToJobResource: MapView[JobResourcePath, JobResource] =
     keyToItem(JobResource)
@@ -319,7 +327,7 @@ extends SnapshotableStateBuilder[ControllerState],
           _keyToUnsignedItemState.update(id, keyTo(SubagentItemState)(id).applyEvent(event).orThrow)
 
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        super.applyOrderEvent(orderId, event).orThrow
+        applyOrderEvent(orderId, event).orThrow
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
         ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow

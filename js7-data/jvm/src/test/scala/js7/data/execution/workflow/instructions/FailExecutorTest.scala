@@ -6,7 +6,7 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.FailExecutorTest.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, OrderId, OrderOutcome}
-import js7.data.state.TestStateView
+import js7.data.state.ControllerTestStateView
 import js7.data.workflow.instructions.{Fail, Fork, ForkBranchId}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -20,8 +20,7 @@ final class FailExecutorTest extends OurTestSuite:
 
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 
-  private lazy val stateView = new TestStateView(
-    isAgent = false,
+  private lazy val stateView = new ControllerTestStateView(
     idToOrder = Map(
       TestOrder.id -> TestOrder,
       ForkedOrder.id -> ForkedOrder,

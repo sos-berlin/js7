@@ -10,7 +10,7 @@ import js7.data.execution.workflow.instructions.IfExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}
-import js7.data.state.TestStateView
+import js7.data.state.ControllerTestStateView
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
@@ -28,8 +28,7 @@ import js7.tester.CirceJsonTester.testJson
 final class IfExecutorTest extends OurTestSuite:
 
   private val ifExecutor = IfExecutor(InstructionExecutorService(WallClock))
-  private lazy val stateView = TestStateView.of(
-    isAgent = false,
+  private lazy val stateView = ControllerTestStateView.of(
     orders = Some(Seq(AOrder, BOrder)),
     workflows = Some(Seq(Workflow.of(TestWorkflowId))))
   private lazy val executorService = InstructionExecutorService(WallClock)

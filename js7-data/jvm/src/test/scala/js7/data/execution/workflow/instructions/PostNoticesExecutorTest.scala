@@ -10,7 +10,7 @@ import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, Not
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
-import js7.data.state.TestStateView
+import js7.data.state.ControllerTestStateView
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
@@ -21,8 +21,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
   private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
 
   "PostNotices and ExpectNotices" in:
-    var state = TestStateView.of(
-      isAgent = false,
+    var state = ControllerTestStateView.of(
       orders = Some(Nil),
       workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
       itemStates = boards.map(BoardState(_)))

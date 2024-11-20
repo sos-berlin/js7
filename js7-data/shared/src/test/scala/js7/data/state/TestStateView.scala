@@ -6,7 +6,7 @@ import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerStateView}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
@@ -14,14 +14,19 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.MapView
 
-case class TestStateView(
-  isAgent: Boolean,
-  controllerId: ControllerId = ControllerId("CONTROLLER"),
-  idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
-  idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
-extends EventDrivenStateView[TestStateView, Event]:
-  val companion: TestStateView.type = TestStateView
+trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Self, Event]:
+  this: Self =>
+
+  def isAgent: Boolean
+  def controllerId: ControllerId
+  def idToOrder: Map[OrderId, Order[Order.State]]
+  def idToWorkflow: PartialFunction[WorkflowId, Workflow]
+  def keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState]
+
+  def copyX(
+    idToOrder: Map[OrderId, Order[Order.State]] = idToOrder,
+    keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = keyToUnsignedItemState_)
+  : Self
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match
@@ -55,27 +60,101 @@ extends EventDrivenStateView[TestStateView, Event]:
     externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
-  : Checked[TestStateView] =
+  : Checked[Self] =
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this
-    if removeOrders.nonEmpty then x = x.copy(idToOrder = idToOrder -- removeOrders)
-    if addOrders.nonEmpty then x = x.copy(idToOrder = idToOrder ++ addOrders.map(o => o.id -> o))
+    if removeOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder -- removeOrders)
+    if addOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ addOrders.map(o => o.id -> o))
     // externalVanishedOrders ???
-    if removeItemStates.nonEmpty then x = x.copy(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
-    if addItemStates.nonEmpty then x = x.copy(
+    if removeItemStates.nonEmpty then x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
+    if addItemStates.nonEmpty then x = x.copyX(
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
 
 
-object TestStateView extends EventDrivenState.Companion[TestStateView, Event]:
+object TestStateView:
+
   def of(
     isAgent: Boolean,
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
     itemStates: Iterable[UnsignedSimpleItemState] = Nil)
-  = new TestStateView(
-    isAgent, controllerId,
-    idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
+  : TestStateView[?] =
+    if isAgent then
+      AgentTestStateView.of(controllerId, orders,workflows, itemStates)
+    else
+      ControllerTestStateView.of(controllerId, orders,workflows, itemStates)
+
+
+case class ControllerTestStateView(
+  controllerId: ControllerId = ControllerId("CONTROLLER"),
+  idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
+  idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
+  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
+extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTestStateView]:
+
+  val companion: ControllerTestStateView.type = ControllerTestStateView
+
+  def isAgent = false
+
+  def copyX(
+    idToOrder: Map[OrderId, Order[Order.State]],
+    keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState])
+  : ControllerTestStateView =
+    copy(
+      idToOrder = idToOrder,
+      keyToUnsignedItemState_ = keyToUnsignedItemState_)
+
+  protected def addOrder(order: Order[Order.State]): Checked[ControllerTestStateView] =
+    idToOrder.checkNoDuplicate(order.id).map: _ =>
+      copy(idToOrder = idToOrder.updated(order.id, order))
+
+
+object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView, Event]:
+
+  def of(
+    controllerId: ControllerId = ControllerId("CONTROLLER"),
+    orders: Option[Iterable[Order[Order.State]]] = None,
+    workflows: Option[Iterable[Workflow]] = None,
+    itemStates: Iterable[UnsignedSimpleItemState] = Nil)
+  : ControllerTestStateView =
+    ControllerTestStateView(
+      controllerId,
+      idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
+      idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
+      keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
+
+
+case class AgentTestStateView(
+  controllerId: ControllerId = ControllerId("CONTROLLER"),
+  idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
+  idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
+  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
+extends TestStateView[AgentTestStateView]:
+
+  val companion: AgentTestStateView.type = AgentTestStateView
+
+  def isAgent = true
+
+  def copyX(
+    idToOrder: Map[OrderId, Order[Order.State]],
+    keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState])
+  : AgentTestStateView =
+    copy(
+      idToOrder = idToOrder,
+      keyToUnsignedItemState_ = keyToUnsignedItemState_)
+
+object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView, Event]:
+
+  def of(
+    controllerId: ControllerId = ControllerId("CONTROLLER"),
+    orders: Option[Iterable[Order[Order.State]]] = None,
+    workflows: Option[Iterable[Workflow]] = None,
+    itemStates: Iterable[UnsignedSimpleItemState] = Nil)
+  : AgentTestStateView =
+    AgentTestStateView(
+      controllerId,
+      idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
+      idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
+      keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
