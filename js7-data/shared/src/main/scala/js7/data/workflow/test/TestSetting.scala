@@ -36,4 +36,4 @@ private[js7] object TestSetting:
     OrderId("TEST"),
     SimpleTestWorkflow.id /: Position(0),
     Order.Ready,
-    Map("KEY" -> StringValue("VALUE")))
+    arguments = Map("KEY" -> StringValue("VALUE")))

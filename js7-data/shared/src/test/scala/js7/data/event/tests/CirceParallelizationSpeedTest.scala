@@ -43,7 +43,7 @@ final class CirceParallelizationSpeedTest extends OurAsyncTestSuite:
         OrderId("?"),
         workflowPosition,
         Order.Forked(Vector(Order.Forked.Child("A", OrderId("A")), Order.Forked.Child("B", OrderId("B")))),
-        namedValues,
+        arguments = namedValues,
         historicOutcomes = (1 to 50).map(_ => historicOutcome).toVector)
       logger.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${
         fakeOrder.asJson.toPrettyString.count(_ == '\n')} pretty JSON lines")

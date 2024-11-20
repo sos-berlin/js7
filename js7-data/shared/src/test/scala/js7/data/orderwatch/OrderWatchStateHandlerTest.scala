@@ -258,7 +258,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
       orderId(name),
       workflowId /: Position(0),
       Order.Ready,
-      Map("file" -> StringValue(s"/DIR/$name")),
+      arguments = Map("file" -> StringValue(s"/DIR/$name")),
         externalOrder = Some:
           ExternalOrderLink(aOrderWatch.path, ExternalOrderName(name)))
 

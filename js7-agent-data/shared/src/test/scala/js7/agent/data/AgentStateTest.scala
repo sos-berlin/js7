@@ -386,7 +386,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
-        workflow.id /: Position(0), Order.Ready, Map.empty, None, None, Vector.empty, agentPath))
+        workflow.id /: Position(0), Order.Ready, agentPath = agentPath))
       .orThrow
     agentState = agentState.applyEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow

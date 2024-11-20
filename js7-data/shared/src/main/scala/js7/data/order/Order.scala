@@ -22,6 +22,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
+import js7.data.plan.PlanId
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -39,6 +40,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
+  planId: Option[PlanId] = None,
   scheduledFor: Option[Timestamp] = None,
   externalOrder: Option[ExternalOrderLink] = None,
   historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
@@ -66,6 +68,7 @@ extends
           child.branchId.fold(BranchId.ForkList)(_.toBranchId) % InstructionNr.First),
         Ready,
         arguments ++ child.arguments,
+        planId,
         scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,
@@ -852,6 +855,7 @@ extends
           Right(OrderAttachedToAgent(
             workflowPosition,
             order.state,
+            planId,
             arguments,
             scheduledFor,
             externalOrder,
@@ -938,11 +942,12 @@ extends
 
 object Order:
 
-  def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
+  def fromOrderAdded(id: OrderId, event: OrderAddedX, planId: Option[PlanId]): Order[Fresh] =
     Order(id,
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
       Fresh,
       event.arguments,
+      planId,
       event.scheduledFor,
       event.externalOrderKey.map(ExternalOrderLink.added),
       deleteWhenTerminated = event.deleteWhenTerminated,
@@ -951,7 +956,9 @@ object Order:
       stopPositions = event.stopPositions)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
-    Order(id, event.workflowPosition, event.state, event.arguments,
+    Order(id, event.workflowPosition, event.state,
+      event.arguments,
+      event.planId,
       event.scheduledFor,
       event.externalOrder,
       historicOutcomes = event.historicOutcomes,
@@ -1278,6 +1285,7 @@ object Order:
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "arguments" -> order.arguments.??.asJson,
+      "planId" -> order.planId.asJson,
       "scheduledFor" -> order.scheduledFor.asJson,
       "externalOrder" -> order.externalOrder.asJson,
       "attachedState" -> order.attachedState.asJson,
@@ -1298,6 +1306,7 @@ object Order:
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
+      planId <- cursor.get[Option[PlanId]]("planId")
       scheduledFor <- cursor.get[Option[Timestamp]]("scheduledFor")
       externalOrder <- cursor.get[Option[ExternalOrderLink]]("externalOrder")
         .flatMap:
@@ -1315,7 +1324,8 @@ object Order:
       stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     yield
-      Order(id, workflowPosition, state, arguments, scheduledFor, externalOrder, historicOutcomes,
+      Order(id, workflowPosition, state, arguments, planId, scheduledFor,
+        externalOrder, historicOutcomes,
         attachedState, parent, mark,
         isSuspended = isSuspended,
         isResumed = isResumed,

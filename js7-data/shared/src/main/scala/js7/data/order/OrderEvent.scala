@@ -25,6 +25,7 @@ import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.plan.PlanId
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, Value}
@@ -54,6 +55,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   sealed trait OrderAddedX extends OrderCoreEvent, OrderDetails:
+    def ownOrderId: Option[OrderId]
     def workflowId: WorkflowId
     def arguments: NamedValues
     def scheduledFor: Option[Timestamp]
@@ -63,7 +65,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def innerBlock: BranchPath
     def startPosition: Option[Position]
     def stopPositions: Set[PositionOrLabel]
-    def addedOrderId(orderId: OrderId): OrderId
 
     final def workflowPath: WorkflowPath =
       workflowId.path
@@ -82,8 +83,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderAddedX:
     workflowId.requireNonAnonymous()
 
-    def addedOrderId(orderId: OrderId): OrderId =
-      orderId
+    def ownOrderId: None.type = None
 
     override def toShortString =
       s"OrderAdded(${workflowId.path})"
@@ -129,9 +129,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
+
+    def ownOrderId: Some[OrderId] = Some(orderId)
+
     def scheduledFor: Option[Timestamp] = None
+
     def externalOrderKey: Option[ExternalOrderKey] = None
-    def addedOrderId(o: OrderId): OrderId = orderId
+
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
 
   object OrderOrderAdded:
@@ -165,6 +169,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderAttachedToAgent(
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
+    planId: Option[PlanId] = None,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     externalOrder: Option[ExternalOrderLink] = None,

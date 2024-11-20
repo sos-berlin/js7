@@ -35,8 +35,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                   yield
                     OrderNoticesExpected.Expected(board.path, noticeId)
                 case board: PlannableBoard =>
-                  val scope = state.toMinimumOrderScope(order)
-                  state.orderToPlannableBoardNoticeId(order.id, scope).map: noticeId =>
+                  state.orderToPlannableBoardNoticeId(order).map: noticeId =>
                     OrderNoticesExpected.Expected(board.path, noticeId)
               .map: expected =>
                 instr.tryFulfill(order, expected, state)

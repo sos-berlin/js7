@@ -30,8 +30,7 @@ final class NoticeEventSource(clock: WallClock):
               board.postingOrderToNotice(scope)
 
           case board: PlannableBoard =>
-            val scope = state.toMinimumOrderScope(order)
-            state.orderToPlannableBoardNoticeId(order.id, scope).map: noticeId =>
+            state.orderToPlannableBoardNoticeId(order).map: noticeId =>
               Notice(noticeId, board.path, endOfLife = None)
         .map:
           FatNotice(_, boardState)

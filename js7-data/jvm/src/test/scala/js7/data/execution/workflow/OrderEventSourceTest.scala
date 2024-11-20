@@ -1495,7 +1495,7 @@ object OrderEventSourceTest:
       val KeyedEvent(orderId, event) = keyedEvent
       event match
         case event: OrderAdded =>
-          idToOrder.insert(orderId, Order.fromOrderAdded(orderId, event))
+          idToOrder.insert(orderId, Order.fromOrderAdded(orderId, event, planId = None))
 
         case event: OrderCoreEvent =>
           processEvent(keyedEvent)

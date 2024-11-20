@@ -101,7 +101,7 @@ private object JControllerStateTest:
         OrderId("B-ORDER"),
         (WorkflowPath("B-WORKFLOW") ~ v2) /: Position(0),
         Order.Ready,
-        Map(
+        arguments = Map(
           "key1" -> StringValue("value1"),
           "key2" -> StringValue("value2")),
         deleteWhenTerminated = true)

@@ -389,7 +389,7 @@ object OrderScopesTest:
   private val expectedSchedule = StringValue("2021-06-17 14:00")
 
   private val order = Order(freshOrder.id, workflow.id /: Position(2), Order.Ready,
-    workflow.orderParameterList
+    arguments = workflow.orderParameterList
       .prepareOrderArguments(freshOrder, controllerId, PartialFunction.empty, NowScope())
       .orThrow,
     scheduledFor = freshOrder.scheduledFor,

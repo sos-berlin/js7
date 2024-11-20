@@ -433,8 +433,8 @@ final class OrderTest extends OurTestSuite:
       OrderDeleted,
 
       OrderAttachable(agentPath),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh, Map.empty, None, None, Vector.empty,
-        agentPath, None, None, false, false),
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh, None, Map.empty, None, None,
+        Vector.empty, agentPath, None, None, false, false),
       OrderAttached(agentPath),
 
       OrderStarted,

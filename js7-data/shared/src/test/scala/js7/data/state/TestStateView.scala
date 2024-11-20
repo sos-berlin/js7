@@ -12,7 +12,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, Unsigned
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.collection.MapView
+import scala.collection.{MapView, View}
 
 trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Self, Event]:
   this: Self =>
@@ -20,7 +20,7 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
   def isAgent: Boolean
   def controllerId: ControllerId
   def idToOrder: Map[OrderId, Order[Order.State]]
-  def idToWorkflow: PartialFunction[WorkflowId, Workflow]
+  def idToWorkflow: Map[WorkflowId, Workflow]
   def keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState]
 
   def copyX(
@@ -34,6 +34,10 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
         applyOrderEvent(orderId, event)
 
       case _ => eventNotApplicable(keyedEvent)
+
+  def items: View[InventoryItem] =
+    keyToUnsignedItemState_.values.view.map(_.item) ++
+      idToWorkflow.values
 
   def orders = idToOrder.values
 
@@ -51,8 +55,9 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
           case path: BoardPath => keyToUnsignedItemState.get(path).map(_.item)
           case path: CalendarPath => keyToUnsignedItemState.get(path).map(_.item)
 
-      def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
-        throw new NotImplementedError
+      def iterator = items.map(o => o.key -> o).iterator
+
+      override def values = items
 
   override protected def update(
     addOrders: Iterable[Order[Order.State]],
@@ -90,7 +95,7 @@ object TestStateView:
 case class ControllerTestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
-  idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
+  idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTestStateView]:
 
@@ -129,7 +134,7 @@ object ControllerTestStateView extends EventDrivenState.Companion[ControllerTest
 case class AgentTestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
-  idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
+  idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends TestStateView[AgentTestStateView]:
 

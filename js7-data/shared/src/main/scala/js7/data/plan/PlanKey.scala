@@ -28,6 +28,6 @@ object PlanKey extends GenericString.NonEmpty[PlanKey]:
 
   override def checked(string: String): Checked[PlanKey] =
     if string == Global.string then
-      Left(Problem.pure(s"$Global is a reserved name"))
+      Left(Problem.pure("Invalid PlanKey"))
     else
       super.checked(string)
