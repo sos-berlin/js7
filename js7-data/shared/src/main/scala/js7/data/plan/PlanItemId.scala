@@ -3,6 +3,7 @@ package js7.data.plan
 import js7.base.generic.GenericString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
+import org.jetbrains.annotations.TestOnly
 
 final case class PlanItemId private(string: String)
   extends GenericString, UnsignedSimpleItemPath:
@@ -11,12 +12,19 @@ final case class PlanItemId private(string: String)
 
   val companion: PlanItemId.type = PlanItemId
 
+  def /(planKey: PlanKey): PlanId =
+    PlanId(this, planKey)
 
-object PlanItemId extends
-  GenericString.NonEmpty[PlanItemId],
-  UnsignedSimpleItemPath.Companion[PlanItemId]:
+  @TestOnly
+  def /(planKey: String): PlanId =
+    PlanId(this, PlanKey(planKey))
+
+
+object PlanItemId extends UnsignedSimpleItemPath.Companion[PlanItemId]:
 
   type Item = PlanItem
+
+  override protected val isReserved = Set("Global")
 
   val Global: PlanItemId = new PlanItemId("Global")
 

@@ -58,6 +58,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def ownOrderId: Option[OrderId]
     def workflowId: WorkflowId
     def arguments: NamedValues
+    def planId: Option[PlanId]
     def scheduledFor: Option[Timestamp]
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
@@ -73,6 +74,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderAdded(
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
+    planId: Option[PlanId] = None,
     scheduledFor: Option[Timestamp] = None,
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
@@ -95,6 +97,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "scheduledFor" -> o.scheduledFor.asJson,
         "externalOrderKey" -> o.externalOrderKey.asJson,
         "arguments" -> o.arguments.??.asJson,
+        "planId" -> o.planId.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
@@ -107,14 +110,16 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        planId <- c.get[Option[PlanId]]("planId")
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
-      yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
-        deleteWhenTerminated, forceJobAdmission,
-        innerBlock, startPosition, stopPositions)
+      yield 
+        OrderAdded(workflowId, arguments, planId, scheduledFor, externalOrderKey,
+          deleteWhenTerminated, forceJobAdmission,
+          innerBlock, startPosition, stopPositions)
 
 
   /** Event for the AddOrder instruction. */
@@ -122,6 +127,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     orderId: OrderId,
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
+    planId: Option[PlanId] = None,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
@@ -144,6 +150,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "orderId" -> o.orderId.asJson,
         "workflowId" -> o.workflowId.asJson,
         "arguments" -> o.arguments.??.asJson,
+        "planId" -> o.planId.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
@@ -155,14 +162,16 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         orderId <- c.get[OrderId]("orderId")
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        planId <- c.get[Option[PlanId]]("planId")
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
-      yield OrderOrderAdded(orderId, workflowId, arguments,
-        deleteWhenTerminated, forceJobAdmission,
-        innerBlock, startPosition, stopPositions)
+      yield 
+        OrderOrderAdded(orderId, workflowId, arguments, planId,
+          deleteWhenTerminated, forceJobAdmission,
+          innerBlock, startPosition, stopPositions)
 
 
   /** Agent-only event. */

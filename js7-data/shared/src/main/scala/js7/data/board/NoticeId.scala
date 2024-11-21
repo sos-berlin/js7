@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, Json}
 import javax.annotation.Nonnull
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
-import js7.base.problem.{Checked, ProblemException}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
 import js7.data.plan.{PlanId, PlanItemId, PlanKey}
@@ -16,7 +16,7 @@ import scala.jdk.OptionConverters.*
 final case class NoticeId private(noticeKey: NoticeKey, planId: PlanId):
 
   override def toString =
-    s"NoticeId${noticeKey.nonEmpty ?? s":$noticeKey"}${!planId.isGlobal ?? s"@${planId.shortString}"}"
+    s"NoticeId${noticeKey.nonEmpty ?? s":$noticeKey"}${!planId.isGlobal ?? s":${planId.shortString}"}"
 
 
 object NoticeId:
@@ -37,7 +37,10 @@ object NoticeId:
     checked(noticeKey, PlanId.Global)
 
   def planned(planId: PlanId): Checked[NoticeId] =
-    checked(NoticeKey.empty, planId)
+    if planId.isGlobal then
+      Left(Problem(s"Planned NoticeId for $planId requested"))
+    else
+      checked(NoticeKey.empty, planId)
 
   def checked(noticeKey: NoticeKey, planId: PlanId): Checked[NoticeId] =
     if planId.isGlobal && noticeKey.isEmpty then

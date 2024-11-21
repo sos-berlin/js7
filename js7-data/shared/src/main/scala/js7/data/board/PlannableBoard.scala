@@ -27,9 +27,6 @@ extends
     Right:
       Notice(noticeId, path, endOfLife)
 
-  override def productPrefix: String =
-    "GlobalPlannedBoard"
-
 
 object PlannableBoard extends BoardItem.Companion[PlannableBoard]:
 

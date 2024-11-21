@@ -357,7 +357,7 @@ final class SuspendResumeOrdersTest
         eventWatch.awaitNext[OrderFinished](_.key == order.id)
 
         assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
-          OrderAdded(workflow.id, order.arguments, order.scheduledFor),
+          OrderAdded(workflow.id, order.arguments, scheduledFor = order.scheduledFor),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
@@ -484,7 +484,7 @@ final class SuspendResumeOrdersTest
 
     eventWatch.await[OrderSuspended](_.key == order.id)
       assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-        OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
+        OrderAdded(twoJobsWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
@@ -551,7 +551,7 @@ final class SuspendResumeOrdersTest
       .filter(_.key.string.startsWith("FORK"))
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Seq(
-        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
+        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Vector("🥕" -> OrderId("FORK|🥕"))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
@@ -602,7 +602,7 @@ final class SuspendResumeOrdersTest
     eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(twoJobsWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -643,7 +643,7 @@ final class SuspendResumeOrdersTest
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(twoJobsWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -689,7 +689,7 @@ final class SuspendResumeOrdersTest
     eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(twoJobsWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -760,7 +760,7 @@ final class SuspendResumeOrdersTest
     eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(tryWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(tryWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -830,7 +830,7 @@ final class SuspendResumeOrdersTest
       HistoricOutcome(Position(1), OrderOutcome.failed)))
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
-      OrderAdded(failingWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(failingWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
 
       OrderAttachable(agentPath),
       OrderAttached(agentPath),

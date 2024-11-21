@@ -7,7 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeId}
+import js7.data.board.{BoardPath, BoardState, NoticeId}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -75,15 +75,14 @@ trait StateView extends ItemContainer:
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
-  def pathToBoardItem(boardPath: BoardPath): Checked[BoardItem] =
-    // Because BoardItem is a trait, we don't have a BoardItem.Companion.
-    // So to get a BoardItem, we go over BoardState
-    keyTo(BoardState).checked(boardPath).map(_.board)
+  final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[NoticeId] =
+    planToPlannableBoardNoticeId(order.planId getOrElse PlanId.Global/*rejected*/)
 
-  final def orderToPlannableBoardNoticeId(order: Order[Order.State])
-  : Checked[NoticeId] =
-    order.planId.toRight(Problem.pure("PlannableBoard used but Order is not in a Plan"))
-      .flatMap(NoticeId.planned)
+  final def planToPlannableBoardNoticeId(planId: PlanId): Checked[NoticeId] =
+    if planId.isGlobal then
+      Left(Problem.pure(s"PlannableBoard requested, but Order is not in a plan (or in $planId)"))
+    else
+      NoticeId.planned(planId)
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq

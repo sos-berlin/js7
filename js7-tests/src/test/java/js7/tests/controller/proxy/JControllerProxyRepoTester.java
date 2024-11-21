@@ -94,8 +94,8 @@ final class JControllerProxyRepoTester
 
         JLock lock = JLock.of(LockPath.of("MY-LOCK"), 1);
         JGlobalBoard board = JGlobalBoard.of(BoardPath.of("MY-BOARD"),
-            getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
-            getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            getOrThrow(JExpression.parse("match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            getOrThrow(JExpression.parse("match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
             getOrThrow(JExpression.parse("$js7EpochMilli + 24 * 3600 * 1000")));
         List<JUnsignedSimpleItem> simpleItems = asList(lock, board);
         List<SignedString> signedItemJsons = itemJsons.stream().map(o -> sign(o)).collect(toList());

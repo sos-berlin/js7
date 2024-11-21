@@ -55,11 +55,7 @@ object PlanItem extends
   TrivialItemState.Companion[PlanItem]:
 
   /** A PlanItem for JOC-style OrderIds. */
-  def joc(
-    id: PlanItemId,
-    //startOffset: FiniteDuration = ZeroDuration,
-    /*lifetime: FiniteDuration = ZeroDuration*/)
-  : PlanItem =
+  def joc(id: PlanItemId): PlanItem =
     PlanItem(
       id,
       orderToPlanKey = PlanKey.jocOrderToPlanKey)

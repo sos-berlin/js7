@@ -15,18 +15,18 @@ final class GlobalBoardTest extends OurTestSuite:
         GlobalBoard(
           BoardPath("BOARD"),
           postOrderToNoticeId =
-            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
           expectOrderToNoticeId =
-            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"),
           Some(ItemRevision(7))),
         json"""
           {
             "TYPE": "GlobalBoard",
             "path": "BOARD",
-            "postOrderToNoticeId": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+            "postOrderToNoticeId": "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
             "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000",
-            "expectOrderToNoticeId": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+            "expectOrderToNoticeId": "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
             "itemRevision": 7
           }"""
       )(using TypedJsonCodec[GlobalBoard](GlobalBoard.subtype))

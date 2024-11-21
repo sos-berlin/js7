@@ -24,9 +24,9 @@ JSON-Beispiel, das die NoticeId aus dem Tagesplantag einer OrderId "#yyyy-mm-dd#
 {
   "TYPE": "Board",
   "path": "MY-BOARD",
-  "toNotice": "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')",
+  "toNotice": "match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')",
   "endOfLife": "$js7EpochMilli + 24 * 3600 * 1000",
-  "expectingOrderToNoticeId": "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"
+  "expectingOrderToNoticeId": "match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"
 }
 ```
 

@@ -942,12 +942,12 @@ extends
 
 object Order:
 
-  def fromOrderAdded(id: OrderId, event: OrderAddedX, planId: Option[PlanId]): Order[Fresh] =
+  def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
       Fresh,
       event.arguments,
-      planId,
+      event.planId,
       event.scheduledFor,
       event.externalOrderKey.map(ExternalOrderLink.added),
       deleteWhenTerminated = event.deleteWhenTerminated,

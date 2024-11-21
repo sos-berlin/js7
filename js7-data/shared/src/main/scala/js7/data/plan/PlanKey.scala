@@ -21,7 +21,7 @@ object PlanKey extends GenericString.NonEmpty[PlanKey]:
   val Global: PlanKey = new PlanKey("")
 
   val jocOrderToPlanKey: Expression =
-    expr("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')")
+    expr("match($js7OrderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')")
 
   protected def unchecked(string: String) =
     new PlanKey(string)

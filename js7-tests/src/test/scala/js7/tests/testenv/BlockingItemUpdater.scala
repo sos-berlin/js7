@@ -10,7 +10,6 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, Lazy}
-import js7.data.controller.ControllerState
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, SimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}

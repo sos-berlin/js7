@@ -1,5 +1,6 @@
 package js7.tests.order
 
+import cats.effect.unsafe.IORuntime
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -18,7 +19,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.DeleteOrderWhenTerminatedTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
-import cats.effect.unsafe.IORuntime
 
 final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentForScalaTest:
 
@@ -38,7 +38,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(quickWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -58,7 +58,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(controller.eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(slowWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,

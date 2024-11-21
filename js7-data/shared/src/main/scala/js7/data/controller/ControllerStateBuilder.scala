@@ -271,6 +271,10 @@ extends SnapshotableStateBuilder[ControllerState],
                     _keyToUnsignedItemState(item.path) = keyTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
 
+                  case planItem: PlanItem =>
+                    _keyToUnsignedItemState(planItem.path) = keyTo(PlanItem)(planItem.path)
+                      .updateItem(planItem).orThrow
+
           case UnsignedItemAdded(item: VersionedControl) =>
             _keyToUnsignedItemState.insert(item.key, item.toInitialItemState)
 

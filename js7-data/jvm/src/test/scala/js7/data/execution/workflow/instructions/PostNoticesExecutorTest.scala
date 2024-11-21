@@ -169,11 +169,11 @@ object PostNoticesExecutorTest:
 
   // Posting OrderId matches #yyyy-mm-dd#...
   private def postingOrderToNoticeId(i: Int) = expr(
-    s"""replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1-$i')""")
+    s"""match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1-$i')""")
 
   // Expecting OrderId matches %yyyy-mm-dd%...
   private def expectingOrderToNoticeId(i: Int) = expr(
-    s"""replaceAll($$js7OrderId, '^%([0-9]{4}-[0-9]{2}-[0-9]{2})%.*$$', '$$1-$i')""")
+    s"""match($$js7OrderId, '^%([0-9]{4}-[0-9]{2}-[0-9]{2})%.*$$', '$$1-$i')""")
 
   private val boards = for i <- 0 to 3 yield
     GlobalBoard(

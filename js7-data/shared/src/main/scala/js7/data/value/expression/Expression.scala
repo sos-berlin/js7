@@ -763,6 +763,49 @@ object Expression:
     override def toString = s"replaceAll($string, $pattern, $replacement)"
 
 
+  /** Match returns the replacement of the whole (anchored) string, or fails. */
+  final case class Match(string: Expression, pattern: Expression, replacement: Expression)
+  extends StringExpr, IsPureIfSubexpressionsArePure:
+    def precedence: Int = Precedence.Factor
+    def subexpressions: Iterable[Expression] = View(string, pattern, replacement)
+
+    private val precompiledPattern = precompilePattern(pattern)
+
+    def evalRaw(using scope: Scope): Checked[Value] =
+      for
+        string <- string.eval.flatMap(_.asString)
+        pattern <- precompiledPattern.getOrElse(compilePattern(pattern))
+        replacement <- replacement.eval.flatMap(_.asString)
+        result <- catchExpected[RuntimeException]:
+          val matcher = pattern.matcher(string)
+          if !matcher.matches() then
+            Left(Problem("Does not match"))
+          else
+            Right(StringValue(matcher.replaceFirst(replacement)))
+        result <- result
+      yield
+        result
+
+    override def toString = s"match($string, $pattern, $replacement)"
+
+
+  private def precompilePattern(pattern: Expression): Option[Checked[Pattern]] =
+    pattern.isPure ? locally:
+      compilePattern(pattern)(using Scope.empty)
+        .tap:
+          _.swap.foreach: problem =>
+            logger.warn(s"Expression will fail with: $problem")
+
+  private def compilePattern(pattern: Expression)(using Scope): Checked[Pattern] =
+    pattern.eval.flatMap(_.asString).flatMap: pattern =>
+      try
+        Right(Pattern.compile(pattern))
+      catch case t: PatternSyntaxException =>
+        val i = t.getIndex
+        Left(Problem(s"${t.getDescription} in regular expression pattern: “${
+          pattern.take(i) + "❓" + pattern.drop(i)}”"))
+
+
   final case class Min(a: Expression, b: Expression)
   extends StringExpr, IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.Factor

@@ -37,6 +37,7 @@ final class OrderEventTest extends OurTestSuite:
       OrderAdded(
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
+        Some(PlanId(PlanItemId("DailyPlan"), PlanKey("2024-11-20"))),
         Some(Timestamp("2021-01-01T00:00:00Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
@@ -55,6 +56,7 @@ final class OrderEventTest extends OurTestSuite:
         "arguments": {
           "VAR": "VALUE"
         },
+        "planId": [ "DailyPlan", "2024-11-20" ],
         "externalOrderKey": {
           "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME"

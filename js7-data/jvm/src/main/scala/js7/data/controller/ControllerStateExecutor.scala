@@ -85,6 +85,7 @@ final case class ControllerStateExecutor private(
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
+          planId <- controllerState.minimumOrderToPlanId(freshOrder)
           _ <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition
             .traverse:
@@ -93,7 +94,9 @@ final case class ControllerStateExecutor private(
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
         yield
           Right:
-            freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
+            freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments,
+              externalOrderKey,
+              planId,
               startPosition)
 
   private def checkStartAndStopPositionAndInnerBlock(

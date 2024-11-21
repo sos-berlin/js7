@@ -220,7 +220,8 @@ final class CancelOrdersTest
       .filter(_.key.string.startsWith("FORK"))
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
-        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
+        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments,
+          scheduledFor = order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Vector("🥕" -> OrderId("FORK|🥕"))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
@@ -252,7 +253,7 @@ final class CancelOrdersTest
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
         OrderId("CANCEL-CHILD") <-: OrderAdded(forkJoinIfFailedWorkflow.id, order.arguments,
-          order.scheduledFor),
+          scheduledFor = order.scheduledFor),
         OrderId("CANCEL-CHILD") <-: OrderStarted,
         OrderId("CANCEL-CHILD") <-: OrderForked(Vector(
           "🥕" -> OrderId("CANCEL-CHILD|🥕"))),
@@ -317,7 +318,7 @@ final class CancelOrdersTest
     assert(controllerState.idToOrder(order.id).historicOutcomes.isEmpty)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
-      OrderAdded(promptingWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAdded(promptingWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
       OrderStarted,
       OrderPrompted(StringValue("PROMPT")),
       OrderStateReset,

@@ -14,6 +14,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.plan.PlanId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -42,9 +43,10 @@ extends
     versionId: VersionId,
     preparedArguments: NamedValues,
     externalOrderKey: Option[ExternalOrderKey] = None,
+    planId: Option[PlanId] = None,
     startPosition: Option[Position] = None)
   : KeyedEvent[OrderAdded] =
-    id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, scheduledFor, externalOrderKey,
+    id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, planId, scheduledFor, externalOrderKey,
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
       innerBlock, startPosition, stopPositions)
