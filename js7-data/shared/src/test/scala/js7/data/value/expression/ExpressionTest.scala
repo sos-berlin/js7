@@ -5,15 +5,15 @@ import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
 import js7.data.value.Value.convenience.*
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
+import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.convenience.*
-import js7.data.value.expression.Expression.{Divide, NamedValue, *}
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.{forAll, *}
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
 
 final class ExpressionTest extends OurTestSuite:
@@ -919,6 +919,40 @@ final class ExpressionTest extends OurTestSuite:
     testEval(""" replaceAll("abcdef", "([ae])", missing) """,
       result = Right(MissingValue),
       ReplaceAll("abcdef", "([ae])", MissingConstant))
+  }
+
+  "match" - {
+    testEval(""" match("", "(", "") """,
+      result = Left(Problem("Unclosed group in regular expression pattern: “(❓”")),
+      Match("", "(", ""))
+
+    testEval(""" match("abcdef", "c", 'MATCH') """,
+      result = Left(Problem("Does not match")),
+      Match("abcdef", "c", "MATCH"))
+
+    testEval(""" match("abcdef", "", 'MATCH') """,
+      result = Left(Problem("Does not match")),
+      Match("abcdef", "", "MATCH"))
+
+    testEval(""" match("abcdef", ".*", 'MATCH') """,
+      result = Right(StringValue("MATCH")),
+      Match("abcdef", ".*", "MATCH"))
+
+    testEval(""" match("abcdef", "abcdef", 'MATCH') """,
+      result = Right(StringValue("MATCH")),
+      Match("abcdef", "abcdef", "MATCH"))
+
+    testEval(""" match("abcdef", "ab(cde)f", '»$1«') """,
+      result = Right(StringValue("»cde«")),
+      Match("abcdef", "ab(cde)f", "»$1«"))
+
+    testEval(""" match(missing, ".*", '»$1«') """,
+      result = Right(MissingValue),
+      Match(MissingConstant, ".*", "»$1«"))
+
+    testEval(""" match("abcdef", missing, '»$1«') """,
+      result = Right(MissingValue),
+      Match("abcdef", MissingConstant, "»$1«"))
   }
 
   "impure" - {

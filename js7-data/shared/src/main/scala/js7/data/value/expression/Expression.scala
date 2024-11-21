@@ -23,6 +23,7 @@ import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
+import scala.util.chaining.scalaUtilChainingOps
 
 /**
   * @author Joacim Zschimmer
@@ -747,16 +748,17 @@ object Expression:
     def precedence: Int = Precedence.Factor
     def subexpressions: Iterable[Expression] = View(string, pattern, replacement)
 
+    private val precompiledPattern = precompilePattern(pattern)
+
     def evalRaw(using scope: Scope): Checked[Value] =
       for
         string <- string.eval.flatMap(_.asString)
-        pattern <- pattern.eval.flatMap(_.asString)
-        pattern <- catchExpected[PatternSyntaxException](
-          Pattern.compile(pattern))
+        pattern <- precompiledPattern.getOrElse(compilePattern(pattern))
         replacement <- replacement.eval.flatMap(_.asString)
-        result <- catchExpected[RuntimeException](
-          StringValue(pattern.matcher(string).replaceAll(replacement)))
-      yield result
+        result <- catchExpected[RuntimeException]:
+          StringValue(pattern.matcher(string).replaceAll(replacement))
+      yield
+        result
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"
 
