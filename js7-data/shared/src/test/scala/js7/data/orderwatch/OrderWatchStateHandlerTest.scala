@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.Order.ExternalOrderLink
-import js7.data.order.OrderEvent.{OrderAdded, OrderExternalVanished}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
@@ -31,7 +31,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
   private def state(name: String): Option[ArisedOrHasOrder] =
     state.pathToOrderWatchState(aOrderWatch.path).externalToState.get(ExternalOrderName(name))
 
-  private def applyNextEvents(): Seq[KeyedEvent[OrderAdded | OrderExternalVanished]] =
+  private def applyNextEvents(): Seq[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
     val events = state.ow.nextEvents(toOrderAdded).toSeq
     events foreach:
       case KeyedEvent(orderId, _: OrderAdded) =>
@@ -223,9 +223,11 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
   }
 
   private def toOrderAdded(order: FreshOrder, externalOrderKey: Option[ExternalOrderKey] = None)
-  : Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]] =
+  : Checked[Either[Order[Order.State], OrderAddedEvents]] =
     Right(Right:
-      order.toOrderAdded(v1, order.arguments, externalOrderKey))
+      OrderAddedEvents(
+        order.toOrderAdded(v1, order.arguments, externalOrderKey),
+        Nil))
 
   private def arised(name: String) =
     Arised(orderId(name), NamedValues("file" -> StringValue(s"/DIR/$name")))

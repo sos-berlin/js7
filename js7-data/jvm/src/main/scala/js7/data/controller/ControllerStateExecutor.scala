@@ -11,6 +11,7 @@ import js7.base.utils.Tests.isTest
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
+import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerStateExecutor.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
@@ -23,7 +24,7 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, Simpl
 import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
@@ -50,12 +51,12 @@ final case class ControllerStateExecutor private(
   private lazy val nowScope = NowScope()
 
   def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
-  : Checked[Seq[KeyedEvent[OrderAdded]]] =
+  : Checked[Seq[KeyedEvent[OrderAddedEvent]]] =
     freshOrders.checkUniqueness(_.id) *>
       freshOrders
         .traverse:
           addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-            .map(_.toOption)
+            .map(_.toOption.toList.flatMap(_.toKeyedEvents))
         .map(_.flatten)
 
   /** @return Right(Left(existingOrder)). */
@@ -63,7 +64,7 @@ final case class ControllerStateExecutor private(
     order: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey] = None,
     suppressOrderIdCheckFor: Option[String] = None)
-  : Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]] =
+  : Checked[Either[Order[Order.State], OrderAddedEvents]] =
     locally:
       if suppressOrderIdCheckFor.contains(order.id.string) then
         Checked.unit
@@ -75,7 +76,7 @@ final case class ControllerStateExecutor private(
   private def addOrderWithPrecheckedId(
     freshOrder: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey])
-  : Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]] =
+  : Checked[Either[Order[Order.State], OrderAddedEvents]] =
     controllerState.idToOrder.get(freshOrder.id) match
       case Some(existing) =>
         // Ignore known orders — TODO Fail as duplicate if deleteWhenTerminated ?
@@ -85,19 +86,22 @@ final case class ControllerStateExecutor private(
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-          planId <- controllerState.minimumOrderToPlanId(freshOrder)
-          _ <- workflow.nestedWorkflow(freshOrder.innerBlock)
-          startPosition <- freshOrder.startPosition
-            .traverse:
-              checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
-          _ <- freshOrder.stopPositions.toSeq.traverse(
-            checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
+          maybePlanId <- controllerState.minimumOrderToPlanId(freshOrder)
+          innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
+          startPosition <- freshOrder.startPosition.traverse:
+            checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
+          _ <- freshOrder.stopPositions.toSeq.traverse:
+            checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
+          orderNoticeAnnounced <- maybePlanId.fold(Checked(Nil)):
+            NoticeEventSource.planToNoticeAnnounced(_, innerBlock, controllerState)
+              .map(_.map(freshOrder.id <-: _))
         yield
           Right:
-            freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments,
-              externalOrderKey,
-              planId,
-              startPosition)
+            OrderAddedEvents(
+              freshOrder.toOrderAdded(
+                workflow.id.versionId, preparedArguments, externalOrderKey, maybePlanId,
+                startPosition),
+              orderNoticeAnnounced)
 
   private def checkStartAndStopPositionAndInnerBlock(
     positionOrLabel: PositionOrLabel, workflow: Workflow, innerBlock: BranchPath)
@@ -109,7 +113,8 @@ final case class ControllerStateExecutor private(
       _ <- workflow.checkPosition(position)
       _ <- workflow.isMoveable(innerBlock % 0, position) !! Problem(
         s"Order's startPosition or one of its stopPositions is not reachable: $positionOrLabel")
-    yield position
+    yield
+      position
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] =
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))

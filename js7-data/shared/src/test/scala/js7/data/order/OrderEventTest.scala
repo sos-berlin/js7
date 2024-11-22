@@ -819,6 +819,14 @@ final class OrderEventTest extends OurTestSuite:
         "lockPath": "LOCK"
       }""")
 
+  "OrderNoticeAnnounced" in :
+    testJson[OrderEvent](OrderNoticeAnnounced(BoardPath("BOARD"), NoticeId("NOTICE")),
+      json"""{
+        "TYPE": "OrderNoticeAnnounced",
+        "boardPath": "BOARD",
+        "noticeId": "NOTICE"
+      }""")
+
   "OrderNoticePosted until v2.3" in:
     testJson[OrderEvent](OrderNoticePostedV2_3(NoticeV2_3(
       NoticeId("NOTICE"),

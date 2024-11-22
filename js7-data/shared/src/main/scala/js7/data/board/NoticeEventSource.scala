@@ -10,11 +10,13 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
 import js7.data.controller.ControllerCommand
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.plan.PlanId
 import js7.data.state.StateView
 import js7.data.value.expression.scopes.NowScope
-import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction
+import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.{ExpectOrConsumeNoticesInstruction, PostNotices}
 
 final class NoticeEventSource(clock: WallClock):
 
@@ -62,6 +64,24 @@ object NoticeEventSource:
   private val logger = Logger[this.type]
 
   private final case class FatNotice(notice: Notice, boardState: BoardState)
+
+  /** Returns the OrderNoticeAnnounced events required for an added posting order. */
+  def planToNoticeAnnounced(planId: PlanId, innerBlock: Workflow, state: StateView)
+  : Checked[List[OrderNoticeAnnounced]] =
+    innerBlock.instructions.view.collect:
+      case postNotices: PostNotices =>
+        postNotices.boardPaths.traverse: boardPath =>
+          state.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
+            boardState.board match
+              case _: PlannableBoard =>
+                state.planToPlannableBoardNoticeId(planId).map: noticeId =>
+                  !boardState.isAnnounced(noticeId) thenSome :
+                    OrderNoticeAnnounced(boardPath, noticeId)
+              case _ => Right(None)
+        .map(_.flatten)
+    .toList
+    .sequence
+    .map(_.flatten)
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =

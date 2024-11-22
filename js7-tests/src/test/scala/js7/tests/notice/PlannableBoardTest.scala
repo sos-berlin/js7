@@ -5,15 +5,19 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{BoardPath, BoardPathExpressionParser, PlannableBoard}
-import js7.data.controller.ControllerCommand.CancelOrders
-import js7.data.order.OrderEvent.{OrderAdded, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesExpected, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.board.{BoardPath, BoardPathExpressionParser, Notice, NoticeId, PlannableBoard}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, DeleteOrdersWhenTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanItem, PlanItemId}
+import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, PostNotices}
+import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, PostNotices, Prompt}
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.notice.PlannableBoardTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -37,38 +41,70 @@ final class PlannableBoardTest
   protected def items = Nil
 
   "Two Plans of same PlanItem" in:
-    withItems(
-      (PlanItem.joc(PlanItemId("DailyPlan")), board, postingWorkflow, consumingWorkflow),
+    withItems((
+      PlanItem.joc(PlanItemId("DailyPlan")),
+      board,
+      Workflow(WorkflowPath("POSTING"), Seq(
+        Prompt(expr("'PROMPT'")),
+        PostNotices(Seq(board.path)))),
+      consumingWorkflow),
     ): (dailyPlan, _, postingWorkflow, consumingWorkflow) =>
       eventWatch.resetLastWatchedEventId()
 
-      val aConsumingOrderId = OrderId("#2024-11-07#CONSUME")
-      val aConsumingOrder = FreshOrder(aConsumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
-      assert(controllerState.minimumOrderToPlanId(aConsumingOrder) == Right:
-        Some(dailyPlan.id / "2024-11-07"))
-
-      controller.addOrderBlocking(aConsumingOrder)
-      eventWatch.awaitNext[OrderNoticesExpected](_.key == aConsumingOrderId)
-
-      val bConsumingOrderId = OrderId("#2024-11-08#CONSUME")
-      controller.addOrderBlocking:
-        FreshOrder(bConsumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
-      eventWatch.awaitNext[OrderNoticesExpected](_.key == bConsumingOrderId)
-
+      // Add posting Order to announce a Notice //
       val postingOrderId = OrderId("#2024-11-08#POST")
       controller.addOrderBlocking:
         FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+      eventWatch.awaitNext[OrderPrompted](_.key == postingOrderId)
+
+      locally:
+        // otherConsumingOrderId is in some other Plan //
+        val otherConsumingOrderId = OrderId("#2024-11-07#CONSUME")
+        val otherConsumingOrder = FreshOrder(otherConsumingOrderId, consumingWorkflow.path)
+        controller.addOrderBlocking(otherConsumingOrder)
+        assert(controllerState.minimumOrderToPlanId(otherConsumingOrder) == Right(Some(
+          dailyPlan.id / "2024-11-07")))
+        execCmd(DeleteOrdersWhenTerminated(Set(otherConsumingOrderId)))
+        eventWatch.awaitNext[OrderTerminated](_.key == otherConsumingOrderId)
+
+
+      // Wait for notice, post notice, consume notice //
+      val consumingOrderId = OrderId("#2024-11-08#CONSUME")
+      controller.addOrderBlocking:
+        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+      eventWatch.awaitNext[OrderNoticesExpected](_.key == consumingOrderId)
+
+      execCmd(AnswerOrderPrompt(postingOrderId))
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
-      eventWatch.awaitNext[OrderNoticesConsumed](_.key == bConsumingOrderId)
-      eventWatch.awaitNext[OrderTerminated](_.key == bConsumingOrderId)
+      eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
+      eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
-      assert:
-        controllerState.idToOrder(aConsumingOrderId).state.isInstanceOf[Order.ExpectingNotices]
-      execCmd:
-        CancelOrders(Seq(aConsumingOrderId))
-      eventWatch.awaitNext[OrderTerminated](_.key == aConsumingOrderId)
+      val noticeId = NoticeId.planned(dailyPlan.id / "2024-11-08").orThrow
+
+      assert(eventWatch.eventsByKey[OrderEvent](postingOrderId) == Seq(
+        OrderAdded(postingWorkflow.id, planId = Some(dailyPlan.id / "2024-11-08"), deleteWhenTerminated = true),
+        OrderNoticeAnnounced(board.path, noticeId),
+        OrderStarted,
+        OrderPrompted(StringValue("PROMPT")),
+        OrderPromptAnswered(),
+        OrderMoved(Position(1)),
+        OrderNoticePosted(Notice(noticeId, board.path, endOfLife = None)),
+        OrderMoved(Position(2), None),
+        OrderFinished(),
+        OrderDeleted))
+
+      assert(eventWatch.eventsByKey[OrderEvent](consumingOrderId) == Seq(
+        OrderAdded(consumingWorkflow.id, planId = Some(dailyPlan.id / "2024-11-08"), deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
+        OrderNoticesConsumptionStarted(Vector(OrderNoticesExpected.Expected(board.path, noticeId))),
+        OrderMoved(Position(0) / "consumeNotices" % 1),
+        OrderNoticesConsumed(),
+        OrderFinished(),
+        OrderDeleted))
+
 
   "Two PlanItems" in:
     withItems((
@@ -78,28 +114,30 @@ final class PlannableBoardTest
       PlanItem(
         PlanItemId("WeeklyPlan"),
         expr("match($js7OrderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?")),
-      board, postingWorkflow, consumingWorkflow),
+      board,
+      Workflow(WorkflowPath("POSTING"), Seq(
+        PostNotices(Seq(board.path)))),
+      consumingWorkflow),
     ): (_, weeklyPlan, _, postingWorkflow, consumingWorkflow) =>
       eventWatch.resetLastWatchedEventId()
 
       locally:
-        val consumingOrderId = OrderId("#2024w47#CONSUME")
-        val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
-        assert(controllerState.minimumOrderToPlanId(consumingOrder) == Right:
-          Some(weeklyPlan.id / "2024w47"))
-
-        controller.addOrderBlocking(consumingOrder)
-        eventWatch.awaitNext[OrderAdded](_.key == consumingOrderId)
-        assert(controllerState.idToOrder(consumingOrderId).planId == Some(PlanItemId("WeeklyPlan") / "2024w47"))
-
-        eventWatch.awaitNext[OrderNoticesExpected](_.key == consumingOrderId)
-
         val postingOrderId = OrderId("#2024w47#POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
         eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
         eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
+      locally:
+        val consumingOrderId = OrderId("#2024w47#CONSUME")
+        val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path)
+        assert(controllerState.minimumOrderToPlanId(consumingOrder) ==
+          Right(Some(weeklyPlan.id / "2024w47")))
+
+        controller.addOrderBlocking(consumingOrder)
+        eventWatch.awaitNext[OrderAdded](_.key == consumingOrderId)
+        assert(controllerState.idToOrder(consumingOrderId).planId == Some(PlanItemId("WeeklyPlan") / "2024w47"))
+        execCmd(DeleteOrdersWhenTerminated(consumingOrderId :: Nil))
         eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
         eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
@@ -125,7 +163,9 @@ final class PlannableBoardTest
       PlanItem(
         PlanItemId("BPlan"),
         expr("match($js7OrderId, '.*B.*-#(.+)#.*', '$1') ?")),
-      postingWorkflow, board),
+      Workflow(WorkflowPath("POSTING"), Seq(
+        PostNotices(Seq(board.path)))),
+      board),
     ): (aPlan, bPlan, postingWorkflow, _) =>
       eventWatch.resetLastWatchedEventId()
 
@@ -151,15 +191,29 @@ final class PlannableBoardTest
         assert(controllerState.minimumOrderToPlanId(order) == Right(Some(bPlan.id / "2")))
 
 
+  "ConsumeNotices when no notice is expected" in:
+    withItems(
+      (PlanItem.joc(PlanItemId("DailyPlan")), board, consumingWorkflow)
+    ): (dailyPlan, _, consumingWorkflow) =>
+      eventWatch.resetLastWatchedEventId()
+
+      val consumingOrderId = OrderId("#2024-11-21#CONSUME")
+      controller.addOrderBlocking:
+        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+      eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
+      assert(eventWatch.eventsByKey[OrderEvent](consumingOrderId) == Seq(
+        OrderAdded(consumingWorkflow.id, planId = Some(dailyPlan.id / "2024-11-21"), deleteWhenTerminated = true),
+        OrderStarted,
+        OrderMoved(Position(1)),
+        OrderFinished(),
+        OrderDeleted))
+
+
 object PlannableBoardTest:
 
   private val agentPath = AgentPath("AGENT")
 
   private val board = PlannableBoard(BoardPath("PLANNABLE-BOARD"))
-
-  private val postingWorkflow =
-    Workflow(WorkflowPath("POSTING"), Seq(
-      PostNotices(Seq(board.path))))
 
   private val consumingWorkflow =
     Workflow(WorkflowPath("CONSUMING"), Seq(

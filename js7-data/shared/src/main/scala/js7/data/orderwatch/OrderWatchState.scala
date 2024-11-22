@@ -13,7 +13,7 @@ import js7.base.utils.Tests.isStrict
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.order.OrderEvent.{OrderAdded, OrderExternalVanished}
+import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
@@ -163,14 +163,15 @@ extends UnsignedSimpleItemState:
       case Some(x) =>
         unexpected(s"${orderWatch.path}: unexpected $orderId <-: OrderDeleted for $x")
 
-  def nextEvents(toOrderAdded: ToOrderAdded): View[KeyedEvent[OrderAdded | OrderExternalVanished]] =
+  def nextEvents(toOrderAdded: ToOrderAdded)
+  : View[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
     nextOrderExternalVanishedEvents ++ nextOrderAddedEvents(toOrderAdded)
 
-  private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded): View[KeyedEvent[OrderAdded]] =
+  private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
+  : View[KeyedEvent[OrderAddedEvent]] =
     orderAddedQueue.view.flatMap: externalOrderName =>
-      externalToState
-        .get(externalOrderName)
-        .flatMap: arised =>
+      externalToState.get(externalOrderName)
+        .toList.flatMap: arised =>
           val Arised(orderId, arguments) = arised: @unchecked
           val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
           val externalOrderKey = ExternalOrderKey(id, externalOrderName)
@@ -178,7 +179,7 @@ extends UnsignedSimpleItemState:
             case Left(problem) =>
               // Should not happen
               logger.error(s"${orderWatch.path}: $externalOrderKey: $problem")
-              None
+              Nil
 
             case Right(Left(existingOrder)) =>
               val vanished = existingOrder.externalOrder
@@ -187,10 +188,10 @@ extends UnsignedSimpleItemState:
               if !vanished then
                 logger.error(s"${orderWatch.path}: ${freshOrder.id} already exists${
                   existingOrder.externalOrder.fold("")(o => s" and is linked to $o")}")
-              None
+              Nil
 
-            case Right(Right(added)) =>
-              Some(added)
+            case Right(Right(orderAddedEvents)) =>
+              orderAddedEvents.toKeyedEvents
 
   private def nextOrderExternalVanishedEvents: View[KeyedEvent[OrderExternalVanished]] =
     orderExternalVanishedQueue.view.flatMap: externalOrderName =>
@@ -230,7 +231,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
 
   type ToOrderAdded =
     (FreshOrder, Option[ExternalOrderKey]) =>
-      Checked[Either[Order[Order.State], KeyedEvent[OrderAdded]]]
+      Checked[Either[Order[Order.State], OrderAddedEvents]]
 
   private val logger = Logger[this.type]
 

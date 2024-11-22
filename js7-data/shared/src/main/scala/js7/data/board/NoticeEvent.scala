@@ -16,6 +16,7 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
   /** Notice posts via a PostNotice command (not workflow instruction). */
   final case class NoticePosted(notice: NoticePosted.PostedNotice)
   extends NoticeEvent
+
   object NoticePosted:
     def toKeyedEvent(notice: Notice): KeyedEvent[NoticePosted] =
       notice.boardPath <-: NoticePosted(NoticePosted.PostedNotice(notice.id, notice.endOfLife))
@@ -23,8 +24,10 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
     final case class PostedNotice(id: NoticeId, endOfLife: Option[Timestamp]):
       def toNotice(boardPath: BoardPath): Notice =
         Notice(id, boardPath, endOfLife)
+
     object PostedNotice:
       implicit val jsonCodec: Codec.AsObject[PostedNotice] = deriveCodec
+
 
   final case class NoticeDeleted(noticeId: NoticeId)
   extends NoticeEvent

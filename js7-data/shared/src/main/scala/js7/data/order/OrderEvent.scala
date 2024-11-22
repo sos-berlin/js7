@@ -20,7 +20,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.event.Event
+import js7.data.event.{Event, KeyedEvent}
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
@@ -70,6 +70,15 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     final def workflowPath: WorkflowPath =
       workflowId.path
 
+  type OrderAddedEvent = OrderAdded | OrderNoticeAnnounced
+
+  /** Chunk of events emitted when an Order is added. */
+  final case class OrderAddedEvents(
+    orderAdded: KeyedEvent[OrderAdded],
+    noticeAnnounced: List[KeyedEvent[OrderNoticeAnnounced]]):
+
+    def toKeyedEvents: List[KeyedEvent[OrderAddedEvent]] =
+      (orderAdded :: noticeAnnounced)
 
   final case class OrderAdded(
     workflowId: WorkflowId,
@@ -116,7 +125,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
-      yield 
+      yield
         OrderAdded(workflowId, arguments, planId, scheduledFor, externalOrderKey,
           deleteWhenTerminated, forceJobAdmission,
           innerBlock, startPosition, stopPositions)
@@ -168,7 +177,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
-      yield 
+      yield
         OrderOrderAdded(orderId, workflowId, arguments, planId,
           deleteWhenTerminated, forceJobAdmission,
           innerBlock, startPosition, stopPositions)
@@ -316,6 +325,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
+
+  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeId: NoticeId)
+  extends OrderNoticeEvent
+
+  object OrderNoticeAnnounced:
+    given Codec.AsObject[OrderNoticeAnnounced] = deriveCodec
 
   sealed trait OrderNoticePosted_ extends OrderNoticeEvent
 
@@ -807,6 +822,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       OrderLocksAcquired(LockDemand(e.lockPath, e.count) :: Nil).checked),
     Subtype.decodeCompatible(deriveDecoder[OrderLockReleased])(e =>
       OrderLocksReleased(e.lockPath :: Nil).checked),
+    Subtype(deriveCodec[OrderNoticeAnnounced]),
     Subtype.named1[OrderNoticePosted_](typeName = "OrderNoticePosted", subclasses = Seq(
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),

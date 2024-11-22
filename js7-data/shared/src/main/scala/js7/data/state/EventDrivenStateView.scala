@@ -8,7 +8,7 @@ import js7.data.board.{BoardItem, BoardState}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
@@ -158,6 +158,12 @@ extends EventDrivenState[Self, E], StateView:
     val orderId = previousOrder.id
     event
       .match
+        case OrderNoticeAnnounced(boardPath, noticeId) =>
+          keyTo(BoardState).checked(boardPath)
+            .flatMap:
+              _.announceNotice(noticeId)
+            .map(_ :: Nil)
+
         case OrderNoticePostedV2_3(notice) =>
           orderIdToBoardState(orderId)
             .flatMap: boardState =>
@@ -165,8 +171,7 @@ extends EventDrivenState[Self, E], StateView:
             .map(_ :: Nil)
 
         case OrderNoticePosted(notice) =>
-          keyTo(BoardState)
-            .checked(notice.boardPath)
+          keyTo(BoardState).checked(notice.boardPath)
             .flatMap:
               _.addNotice(notice)
             .map(_ :: Nil)
@@ -179,8 +184,7 @@ extends EventDrivenState[Self, E], StateView:
 
         case OrderNoticesExpected(expectedSeq) =>
           expectedSeq.traverse: expected =>
-            keyTo(BoardState)
-              .checked(expected.boardPath)
+            keyTo(BoardState).checked(expected.boardPath)
               .flatMap:
                 _.addExpectation(expected.noticeId, orderId)
 

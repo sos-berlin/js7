@@ -31,7 +31,8 @@ extends UnsignedSimpleItemState:
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
-  override def toSnapshotStream: Stream[IO, Any/*BoardState | NoticeSnapshot*/] =
+  override def toSnapshotStream
+  : Stream[IO, BoardItem | Notice | NoticePlace.Snapshot | NoticeConsumptionSnapshot] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
     Stream.iterable:
       View(board) ++
@@ -56,6 +57,15 @@ extends UnsignedSimpleItemState:
           idToNotice = idToNotice.updated(snapshot.noticeId,
             idToNotice.getOrElse(snapshot.noticeId, NoticePlace(snapshot.noticeId))
               .withSnapshot(snapshot))))
+
+  def isAnnounced(noticeId: NoticeId): Boolean =
+    idToNotice.get(noticeId).exists(_.isAnnounced)
+
+  def announceNotice(noticeId: NoticeId): Checked[BoardState] =
+    Right:
+      updateNoticePlace:
+        idToNotice.getOrElse(noticeId, NoticePlace(noticeId)).copy(
+          isAnnounced = true)
 
   // COMPATIBLE with v2.3
   def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =

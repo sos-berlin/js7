@@ -1102,12 +1102,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
         Future.successful(Right(false))
 
-      case Right(Right(orderAdded)) =>
-        persistTransactionAndSubsequentEvents(orderAdded :: Nil) { (stamped, updatedState) =>
+      case Right(Right(orderAddedEvents)) =>
+        val events = orderAddedEvents.toKeyedEvents
+        persistTransactionAndSubsequentEvents(events): (stamped, updatedState) =>
           handleEvents(stamped, updatedState)
           Right(true)
-        }
-        .flatMap(o => testAddOrderDelay.unsafeToFuture().map(_ => o))  // test only
+        .flatMap: o =>
+          testAddOrderDelay.unsafeToFuture().map(_ => o) // test only
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
     _controllerState.addOrders(freshOrders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)

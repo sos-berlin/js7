@@ -112,12 +112,14 @@ final class BoardStateTest extends OurAsyncTestSuite:
                 "TYPE": "NoticePlace",
                 "boardPath": "BOARD",
                 "noticeId": "NOTICE-1",
+                "isAnnounced": false,
                 "isInConsumption": true,
                 "consumptionCount": 0
               }""", json"""{
                 "TYPE": "NoticePlace",
                 "boardPath": "BOARD",
                 "noticeId": "NOTICE-2",
+                "isAnnounced": false,
                 "isInConsumption": false,
                 "consumptionCount": 7
               }""", json"""{
@@ -186,12 +188,14 @@ final class BoardStateTest extends OurAsyncTestSuite:
                 "TYPE": "NoticePlace",
                 "boardPath": "BOARD",
                 "noticeId": [ "DailyPlan", "2024-11-08" ],
+                "isAnnounced": false,
                 "isInConsumption": true,
                 "consumptionCount": 0
               }""", json"""{
                 "TYPE": "NoticePlace",
                 "boardPath": "BOARD",
                 "noticeId": [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+                "isAnnounced": false,
                 "isInConsumption": false,
                 "consumptionCount": 7
               }""", json"""{

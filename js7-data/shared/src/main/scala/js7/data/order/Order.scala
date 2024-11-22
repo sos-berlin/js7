@@ -468,6 +468,10 @@ extends
       case e: LegacyOrderLockEvent =>
         Left(EventNotApplicableProblem(id <-: e, this))
 
+      case _: OrderNoticeAnnounced =>
+        check(isDetached && isState[Fresh],
+          this)
+
       case _: OrderNoticePostedV2_3 =>
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           this)

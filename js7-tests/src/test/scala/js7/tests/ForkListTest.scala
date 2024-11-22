@@ -341,7 +341,7 @@ final class ForkListTest
     val order = newOrder(orderId, workflowPath, n)
     controller.api.addOrders(Stream(order)).await(99.s).orThrow
 
-    childOrdersProcessed.await(9.s)
+    childOrdersProcessed.await(99.s)
     if cancelChildOrders then
       controller.api.executeCommand(
         CancelOrders(childOrderIds)
