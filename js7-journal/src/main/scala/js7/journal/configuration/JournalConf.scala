@@ -28,14 +28,14 @@ final case class JournalConf(
 
 object JournalConf:
   private val logger = Logger[this.type]
-  private val checkStateKey = "js7.journal.slow-check-state"
+  private val slowCheckStateKey = "js7.journal.slow-check-state"
 
   def fromConfig(config: Config): JournalConf =
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
-    val slowCheckState = config.getBoolean(checkStateKey)
-    if slowCheckState then logger.info(s"Slowing down due to $checkStateKey = true")
+    val slowCheckState = config.getBoolean(slowCheckStateKey)
+    if slowCheckState then logger.info(s"Slowing down due to $slowCheckStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),

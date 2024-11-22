@@ -1,18 +1,20 @@
 package js7.data.event
 
+import cats.effect.IO
 import cats.implicits.toShow
-import io.circe.{Decoder, Json}
+import fs2.Stream
+import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Decoder, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString}
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowableEither}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
-import cats.effect.IO
-import fs2.Stream
 
 /** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
 trait SnapshotableState[S <: SnapshotableState[S]]
@@ -60,13 +62,18 @@ extends JournaledState[S]:
 
   /** For testing, should be equal to this. */
   final def toRecovered: IO[S] =
-    companion
-      .fromStream(toSnapshotStream)
-      .map(_.withEventId(eventId))
+    given Codec[Any] = companion.snapshotObjectJsonCodec
+    companion.fromStream:
+      Stream.eval(toSnapshotStream.compile.toVector).flatMap(Stream.iterable) // one big Chunk
+        .mapParallelBatch():
+          _.asJson.as[Any].orThrow
+    .map:
+      _.withEventId(eventId)
 
 
 object SnapshotableState:
   private val logger = Logger[this.type]
+
 
   final case class Standards(journalState: JournalState, clusterState: ClusterState):
     def snapshotSize: Int =
@@ -75,15 +82,19 @@ object SnapshotableState:
     def toSnapshotStream: Stream[IO, Any] =
       journalState.toSnapshotStream ++
         clusterState.toSnapshotStream
+
   object Standards:
     val empty: Standards = Standards(JournalState.empty, ClusterState.Empty)
 
-  trait HasSnapshotCodec :
+
+  trait HasSnapshotCodec:
     def snapshotObjectJsonCodec: TypedJsonCodec[Any]
+
 
   trait HasCodec
   extends HasSnapshotCodec, JournaledState.HasEventCodec:
     def name: String // Defined in BasicState.Companion
+
 
   trait Companion[S <: SnapshotableState[S]]
   extends JournaledState.Companion[S], HasCodec:

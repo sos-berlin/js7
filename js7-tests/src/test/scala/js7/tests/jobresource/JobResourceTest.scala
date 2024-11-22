@@ -1,6 +1,9 @@
 package js7.tests.jobresource
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.implicits.*
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.lang.System.lineSeparator as nl
 import java.time.ZoneId
@@ -38,9 +41,6 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobresource.JobResourceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import org.scalatest.Assertions.*
 
 class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -49,10 +49,12 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 10ms
+    js7.journal.slow-check-state = no"""
 
   override protected def agentConfig = config"""
-    js7.job.execution.signed-script-injection-allowed = on"""
+    js7.job.execution.signed-script-injection-allowed = on
+    js7.journal.slow-check-state = no"""
 
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow,
@@ -269,10 +271,10 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
   "toFile" in:
     // Test is slow due to >20MB stdout (many OrderStdoutWritten events)
 
-    val resourceContent = (1 to 1_000_000).view.map(i => s"RESOURCE-$i\n").mkString
+    val resourceContent = (1 to 800_000).view.map(i => s"RESOURCE-$i\n").mkString
     assert(resourceContent.length >= 10_000_000)
 
-    val executableContent = (1 to 1_000_000).view.map(i => s"EXECUTABLE-$i\n").mkString
+    val executableContent = (1 to 700_000).view.map(i => s"EXECUTABLE-$i\n").mkString
     assert(executableContent.length >= 10_000_000)
 
     val myJobResource = JobResource(

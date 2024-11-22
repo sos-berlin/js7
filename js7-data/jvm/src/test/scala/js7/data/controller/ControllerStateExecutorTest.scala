@@ -25,6 +25,7 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLocksAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
@@ -49,6 +50,8 @@ final class ControllerStateExecutorTest extends OurTestSuite:
   private lazy val stdVerifiedUpdateItems = VerifiedUpdateItems(
     VerifiedUpdateItems.Simple(
       Seq(
+        aSubagentItem.withRevision(None),
+        bSubagentItem.withRevision(None),
         aAgentRef.withRevision(None),
         bAgentRef.withRevision(None),
         lock.withRevision(None)),
@@ -64,7 +67,12 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       remove = Nil)))
 
   private lazy val stdItems =
-    Set(aAgentRef, bAgentRef, lock, aJobResource, bJobResource, aWorkflow, bWorkflow)
+    Set(
+      aSubagentItem, aAgentRef,
+      bSubagentItem, bAgentRef,
+      lock,
+      aJobResource, bJobResource,
+      aWorkflow, bWorkflow)
 
   "stdVerifiedUpdateItems" in:
     val executor = new Executor(ControllerState.empty)
@@ -98,14 +106,15 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
+          VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
         )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id)))
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path)),
+          VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path)),
           Some(VerifiedUpdateItems.Versioned(v2, remove = Seq(aWorkflow.path)))
         )) == Right(Seq(
+          NoKey <-: ItemDeleted(aSubagentId),
           NoKey <-: ItemDeleted(aAgentRef.path),
           NoKey <-: VersionAdded(v2),
           NoKey <-: VersionedItemRemoved(aWorkflow.path),
@@ -129,7 +138,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
+          VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
         )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id, "with Order:ORDER")))
 
       executor
@@ -140,8 +149,9 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
+          VerifiedUpdateItems.Simple(delete = Seq(aSubagentId, aAgentRef.path))
         )) == Right(Seq(
+          NoKey <-: ItemDeleted(aSubagentId),
           NoKey <-: ItemDeleted(aAgentRef.path))))
 
     // TODO Don't use ControllerStateTest here
@@ -250,6 +260,8 @@ final class ControllerStateExecutorTest extends OurTestSuite:
           Right(Seq[AnyKeyedEvent](
             NoKey <-: SignedItemAdded(sign(aJobResource)),
             NoKey <-: SignedItemAdded(sign(bJobResource)),
+            NoKey <-: UnsignedSimpleItemAdded(aSubagentItem),
+            NoKey <-: UnsignedSimpleItemAdded(bSubagentItem),
             NoKey <-: UnsignedSimpleItemAdded(aAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(bAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(lock),
@@ -481,9 +493,15 @@ object ControllerStateExecutorTest:
 
   private val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
 
-  private val aAgentRef = AgentRef(AgentPath("A-AGENT"), directors = Nil,
+  private val aSubagentId = SubagentId("A-SUBAGENT")
+  private val bSubagentId = SubagentId("B-SUBAGENT")
+  private val aAgentRef = AgentRef(AgentPath("A-AGENT"), directors = Seq(aSubagentId),
     itemRevision = Some(ItemRevision(0)))
-  private val bAgentRef = AgentRef(AgentPath("B-AGENT"), directors = Nil,
+  private val bAgentRef = AgentRef(AgentPath("B-AGENT"), directors = Seq(bSubagentId),
+    itemRevision = Some(ItemRevision(0)))
+  private val aSubagentItem = SubagentItem(aSubagentId, aAgentRef.path, Uri("http://a.example.com"),
+    itemRevision = Some(ItemRevision(0)))
+  private val bSubagentItem = SubagentItem(bSubagentId, bAgentRef.path, Uri("http://b.example.com"),
     itemRevision = Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(0)))
 

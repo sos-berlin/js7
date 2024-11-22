@@ -622,15 +622,23 @@ extends Actor, Stash, JournalLogging:
 
   private def checkUncommittedState(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Unit =
     if conf.slowCheckState then
-      stampedEvents.foreach(journaledStateBuilder.addEvent)
+      // Check event JSON recoverability via journaledStateBuilder
+      stampedEvents.map: stamped =>
+        // Write and read as JSON
+        import S.keyedEventJsonCodec
+        stamped.asJson.as[Stamped[AnyKeyedEvent]].orThrow
+      .foreach:
+        journaledStateBuilder.addEvent
+
       assertEqualSnapshotState("SnapshotableStateBuilder.result()",
         journaledStateBuilder.result().withEventId(uncommittedState.eventId),
         stampedEvents)
 
-      // Check recoverability
+      // Check snapshot recoverability
       assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSyncX(),
         stampedEvents)
 
+      // Check SnapshotStateBuilder#initializeState
       val builder = S.newBuilder()
       builder.initializeState(None, uncommittedState.eventId, totalEventCount, uncommittedState)
       assertEqualSnapshotState("Builder.initializeState",
