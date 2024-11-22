@@ -4,7 +4,8 @@ import cats.data.{NonEmptyList, NonEmptySeq, NonEmptyVector, Validated}
 import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import cats.{Applicative, Functor}
+import cats.syntax.traverse.*
+import cats.{Applicative, FlatMap, Functor, Traverse}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -142,6 +143,11 @@ object CatsUtils:
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
 
+
+    extension [F[_], A](fa: F[A])
+      def traverseFlat[G[_], B](f: A => G[F[B]])(using Traverse[F], FlatMap[F], Applicative[G])
+      : G[F[B]] =
+        fa.traverse(f).map(_.flatten)
 
     extension [A](nonEmptyList: NonEmptyList[A])
       def view: View[A] = nonEmptyList.toList.view
