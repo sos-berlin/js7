@@ -7,7 +7,7 @@ HOW TO ADD OWN SETTINGS
 1) Create a log4j2.xml like this, for example in our config directory, here with trace logging:
 
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration monitorInterval="10">
+<configuration monitorInterval="10" shutdownHook="disable">
   <loggers>
     <logger level="trace" name="js7">
       <markerFilter marker="Heartbeat" onMatch="DENY" onMismatch="NEUTRAL"/>
