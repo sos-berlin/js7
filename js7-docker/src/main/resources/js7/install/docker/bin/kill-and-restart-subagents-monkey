@@ -15,11 +15,11 @@ killMonkey() {
 }
 
 pids=""
-killMonkey subagent-1-a 1 6 &
+killMonkey subagent-1a 1 6 &
 pids+="$pids $!"
-killMonkey subagent-1-b 6 6 &
+killMonkey subagent-1b 6 6 &
 pids+="$pids $!"
-killMonkey subagent-1-c 6 6 &
+killMonkey subagent-1c 6 6 &
 pids+="$pids $!"
 
 trap "kill -- -$$ >/dev/null || kill $pids" EXIT

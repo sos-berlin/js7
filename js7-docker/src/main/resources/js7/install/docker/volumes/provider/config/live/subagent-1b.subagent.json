@@ -1,0 +1,6 @@
+{
+  "TYPE": "SubagentItem",
+  "id": "subagent-1b",
+  "agentPath": "agent-1",
+  "uri": "https://js7-subagent-1b:4443"
+}

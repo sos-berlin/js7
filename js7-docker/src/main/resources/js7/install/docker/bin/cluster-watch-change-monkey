@@ -8,10 +8,10 @@ docker compose stop
 docker compose start \
  provider\
  cluster-watch\
- subagent-1-a\
- subagent-1-b\
- subagent-1-c\
- subagent-2-a\
+ subagent-1a\
+ subagent-1b\
+ subagent-1c\
+ subagent-2a\
  controller\
  backup-controller
 

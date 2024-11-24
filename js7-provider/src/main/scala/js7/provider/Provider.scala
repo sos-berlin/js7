@@ -217,7 +217,8 @@ object Provider:
     for
       given ActorSystem <- Pekkos.actorSystemResource("Provider", conf.config)
       provider <- resource2(conf)
-    yield provider
+    yield
+      provider
 
   private def resource2(conf: ProviderConfiguration)
     (using ioRuntime: IORuntime, actorSystem: ActorSystem)
