@@ -98,7 +98,7 @@ object ControllerConfiguration:
     commandLineArguments: CommandLineArguments,
     config: Config = ConfigFactory.empty)
   : ControllerConfiguration =
-    val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)
+    val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(commandLineArguments)
     val conf = fromDirectories(
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,

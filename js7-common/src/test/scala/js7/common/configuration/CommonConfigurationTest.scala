@@ -69,7 +69,7 @@ private object CommonConfigurationTest:
     def name = "CommonConfigurationTest"
 
   private def conf(args: String*): TestConf =
-    val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(
+    val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(CommandLineArguments(
       Vector("--config-directory=CONFIG", "--data-directory=DATA") ++ args))
     TestConf(
       configDirectory = common.configDirectory,

@@ -64,19 +64,28 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris, BasicConfigurat
 object CommonConfiguration:
   private val logger = Logger[this.type]
 
-  final case class Common(
+  final case class Common(configDirectory: Path, webServerPorts: Seq[WebServerPort])
+
+  object Common:
+    def fromCommandLineArguments(a: CommandLineArguments): Common =
+      Common(
+        configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
+        webServerPorts =
+          a.seqAs("--http-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
+          a.seqAs("--https-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Https(_)))
+
+  final case class CommonWithData(
     configDirectory: Path,
     dataDirectory: Path,
     webServerPorts: Seq[WebServerPort]):
     val workDirectory: Path = dataDirectory / "work"
     val logDirectory: Path = dataDirectory / "logs"
 
-  object Common:
-    def fromCommandLineArguments(a: CommandLineArguments): Common =
-      Common(
+  object CommonWithData:
+    def fromCommandLineArguments(a: CommandLineArguments): CommonWithData =
+      val common = Common.fromCommandLineArguments(a)
+      CommonWithData(
+        configDirectory = common.configDirectory,
         // Startup code parses --data-directory= too, to allow placing a lock file !!!
-        configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
         dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
-        webServerPorts =
-          a.seqAs("--http-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
-          a.seqAs("--https-port=")(using StringToServerInetSocketAddress).map(WebServerPort.Https(_)))
+        webServerPorts = common.webServerPorts)

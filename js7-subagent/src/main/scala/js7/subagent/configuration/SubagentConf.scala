@@ -130,7 +130,7 @@ object SubagentConf:
     extraConfig: Config = ConfigFactory.empty,
     internalConfig: Config = DefaultConfig)
   : SubagentConf =
-    val common = CommonConfiguration.Common.fromCommandLineArguments(args)
+    val common = CommonConfiguration.CommonWithData.fromCommandLineArguments(args)
     import common.{configDirectory, dataDirectory}
 
     val config = resolvedConfig(configDirectory, dataDirectory,
