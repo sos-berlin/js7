@@ -13,12 +13,19 @@ extends Scope:
 
   override def evalFunctionCall(functionCall: FunctionCall)(using Scope) =
     functionCall match
-      case FunctionCall(name, Nil) => lifted(name)
+      case FunctionCall(name, None | Some(Nil)) => lifted(name)
       case _ => None
 
   override def toString = "ArgumentlessFunctionScope"
 
 
 object ArgumentlessFunctionScope:
+
   def apply(nameToValue: PartialFunction[String, Checked[Value]]): Scope =
     new ArgumentlessFunctionScope(nameToValue)
+
+  def simpleJava(nameToValue: PartialFunction[String, Value.SimpleJava]): Scope =
+    apply:
+      Function.unlift: (k: String) =>
+        nameToValue.lift(k).map: v =>
+          Value.ofSimpleJava(v)

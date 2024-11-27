@@ -91,9 +91,9 @@ object WorkflowDefinedOrderVariablesTest:
       orderPreparation = OrderPreparation(OrderParameterList(
         Seq(
           OrderParameter.Final("ONE", NumericConstant(1)),
-            OrderParameter.Final("PLANT", FunctionCall("jobResourceVariable", Seq(
+            OrderParameter.Final("PLANT", FunctionCall("jobResourceVariable", Some(Seq(
             Argument(NamedValue("jobResource")),
-            Argument(NamedValue("variableName")))))),
+            Argument(NamedValue("variableName"))))))),
         allowUndeclared = true)))
 
   private val objectWorkflow =

@@ -17,8 +17,8 @@ final class JobResourceScope(
 extends Scope:
 
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
-    (implicit fullScope: Scope): Option[Checked[Value]]
-  =
+    (implicit fullScope: Scope)
+  : Option[Checked[Value]] =
     // fullScope is the complete scope, maybe containing order variables,
     // which should not be accessible for a JobResource, to avoid name clash and
     // unexpected depedency to the order.
@@ -32,9 +32,9 @@ extends Scope:
     functionCall match
       case FunctionCall("jobResourceVariable", arguments) =>
         Some(arguments match {
-          case Seq(
+          case Some(Seq(
             Argument(jobResourcePathExpr, None),
-            Argument(variableNameExpr, None)) =>
+            Argument(variableNameExpr, None))) =>
             evalFunctionCall2(jobResourcePathExpr, Some(variableNameExpr))
 
           case _ =>
@@ -43,7 +43,7 @@ extends Scope:
 
       case FunctionCall("jobResourceVariables", arguments) =>
         Some(arguments match {
-          case Seq(Argument(jobResourcePathExpr, None)) =>
+          case Some(Seq(Argument(jobResourcePathExpr, None))) =>
             evalFunctionCall2(jobResourcePathExpr, None)
 
           case _ =>

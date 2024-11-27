@@ -18,13 +18,13 @@ final class PlanItemTest extends OurTestSuite:
     CirceJsonTester.testJson[InventoryItem](
       PlanItem(
         PlanItemId("DailyPlan"),
-        expr("match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1') ?"),
+        expr("match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1') ?"),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "PlanItem",
         "id": "DailyPlan",
         "itemRevision": 1,
-        "orderToPlanKey": "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')?"
+        "orderToPlanKey": "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')?"
       }""")
 
   "orderToPlanKey" in:
@@ -36,5 +36,5 @@ final class PlanItemTest extends OurTestSuite:
 
     val weeklyPlanItem = PlanItem(
       PlanItemId("WeeklyPlan"),
-      expr("match($js7OrderId, '^#([0-9]{4}w[0-9]{2})#.*$', '$1') ?"))
+      expr("match(orderId, '^#([0-9]{4}w[0-9]{2})#.*$', '$1') ?"))
     assert(weeklyPlanItem.orderToPlanKey.eval(scope) == Right(MissingValue))

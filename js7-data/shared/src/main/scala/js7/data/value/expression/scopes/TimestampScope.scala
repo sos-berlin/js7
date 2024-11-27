@@ -4,9 +4,9 @@ import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.Problems.InvalidFunctionArgumentsProblem
-import js7.data.value.{StringValue, Value}
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{StringValue, Value}
 
 final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp])
 extends Scope:
@@ -18,12 +18,12 @@ extends Scope:
       case FunctionCall(`name`, arguments) =>
         // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
         Some(arguments match {
-          case Seq(
+          case Some(Seq(
             Argument(formatExpr, None | Some("format")),
-            Argument(timezoneExpr, None | Some("timezone"))) =>
+            Argument(timezoneExpr, None | Some("timezone")))) =>
             func(formatExpr, timezoneExpr)
 
-          case Seq(Argument(formatExpr, None | Some("format"))) =>
+          case Some(Seq(Argument(formatExpr, None | Some("format")))) =>
             func2(formatExpr, None)
 
           case _ =>

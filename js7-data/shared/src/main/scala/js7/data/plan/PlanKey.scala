@@ -21,7 +21,7 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
   val Global: PlanKey = new PlanKey("")
 
   val jocOrderToPlanKey: Expression =
-    expr("match($js7OrderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")
+    expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")
 
   protected def unchecked(string: String) =
     new PlanKey(string)

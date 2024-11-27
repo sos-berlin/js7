@@ -65,7 +65,7 @@ final class OrderParameterListTest extends OurTestSuite:
           }
         },
         "myControllerId": {
-          "final": "$$js7ControllerId"
+          "final": "controllerId"
         },
         "myScheduledFor": {
           "final": "scheduledOrEmpty('yyyy-MM-dd', 'Antarctica/Troll')"
@@ -221,7 +221,7 @@ final class OrderParameterListTest extends OurTestSuite:
       "myOptionalAny" -> NamedValue("myOptional"),
       "myFinal" -> StringConstant("FINAL VALUE"),
       "myFinal2" -> expr("$myRequired"),
-      "myControllerId" -> expr("$js7ControllerId"),
+      "myControllerId" -> expr("controllerId"),
       "myScheduledFor" -> expr("scheduledOrEmpty('yyyy-MM-dd', 'Antarctica/Troll')"),
       "myResource" -> expr("jobResourceVariable('myJobResource', 'fromRequired')")))
 
@@ -250,7 +250,7 @@ private object OrderParameterListTest:
     OrderParameter.Optional("myOptionalAny", AnyValue, expr("$myOptional")),
     OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
     OrderParameter.Final("myFinal2", expr("$myRequired")),
-    OrderParameter.Final("myControllerId", expr("$js7ControllerId")),
+    OrderParameter.Final("myControllerId", expr("controllerId")),
     OrderParameter.Final("myScheduledFor", expr("scheduledOrEmpty('yyyy-MM-dd', 'Antarctica/Troll')")),
     myResourceParameter,
     myObjectParameter,

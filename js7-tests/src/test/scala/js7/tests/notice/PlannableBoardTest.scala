@@ -119,10 +119,10 @@ final class PlannableBoardTest
     withItems((
       PlanItem(
         PlanItemId("DailyPlan"),
-        expr("match($js7OrderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")),
+        expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")),
       PlanItem(
         PlanItemId("WeeklyPlan"),
-        expr("match($js7OrderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?")),
+        expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?")),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
@@ -169,10 +169,10 @@ final class PlannableBoardTest
     withItems((
       PlanItem(
         PlanItemId("APlan"),
-        expr("match($js7OrderId, '.*A.*-#(.+)#.*', '$1') ?")),
+        expr("match(orderId, '.*A.*-#(.+)#.*', '$1') ?")),
       PlanItem(
         PlanItemId("BPlan"),
-        expr("match($js7OrderId, '.*B.*-#(.+)#.*', '$1') ?")),
+        expr("match(orderId, '.*B.*-#(.+)#.*', '$1') ?")),
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
       board),

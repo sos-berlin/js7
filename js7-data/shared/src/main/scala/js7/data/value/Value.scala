@@ -110,7 +110,20 @@ sealed trait Value:
 
   def convertToString: String
 
+
 object Value:
+  /** Subset of Java type that are usable for `ofAny`.
+    * No recursive type possible here.
+    */
+  type SimpleJava = Value |
+    String |
+    Boolean | java.lang.Boolean |
+    Int | java.lang.Integer |
+    Long | java.lang.Long |
+    BigDecimal | java.math.BigDecimal |
+    Double | java.lang.Double |
+    Throwable
+
   @javaApi
   def of(value: String): StringValue =
     StringValue(value)
@@ -131,11 +144,22 @@ object Value:
   def of(value: Boolean): BooleanValue =
     BooleanValue(value)
 
+  def ofSimpleJava(value: SimpleJava): Checked[Value] =
+    ofAny(value)
+
   def ofAny(value: Any): Checked[Value] =
     catchNonFatalFlatten:
       value match
+        case v: Value => Right(v)
+        case v: String => Right(StringValue(v))
+        case v: Boolean => Right(BooleanValue(v))
         case v: Int => Right(NumberValue(v))
         case v: Long => Right(NumberValue(v))
+        case v: java.lang.Boolean => Right(BooleanValue(v))
+        case v: java.lang.Integer => Right(NumberValue(BigDecimal(v)))
+        case v: java.lang.Long => Right(NumberValue(BigDecimal(v)))
+        case v: BigDecimal => Right(NumberValue(v))
+        case v: java.math.BigDecimal => Right(NumberValue(v))
         case v: Double =>
           if v.isNaN then
             Right(MissingValue)
@@ -143,12 +167,7 @@ object Value:
             case Double.PositiveInfinity => Left(Problem("Double.PositiveInfinity is an invalid value"))
             case Double.NegativeInfinity => Left(Problem("Double.NegativeInfinity is an invalid value"))
             case v: Double => Right(NumberValue(BigDecimal(v)))
-        case v: Boolean => Right(BooleanValue(v))
-        case v: java.lang.Integer => Right(NumberValue(BigDecimal(v)))
-        case v: java.lang.Long => Right(NumberValue(BigDecimal(v)))
         case v: java.lang.Double => Right(NumberValue(BigDecimal(v)))
-        case v: java.lang.Boolean => Right(BooleanValue(v))
-        case v: String => Right(StringValue(v))
         case t: Throwable => Left(Problem(t.toStringWithCauses)) // LiveBeanMapView may return Throwable
         case _ => Left(Problem(s"Unknown type for a Value: ${value.getClass.getName}"))
 
@@ -375,6 +394,7 @@ final case class ListType(elementType: ValueType)
 extends ValueType.Compound:
   def name = "List"
 
+
 /** An object with fields of undeclared type. */
 final case class ObjectValue(nameToValue: Map[String, Value]) extends GoodValue:
   def valueType: ValueType = ObjectValue
@@ -392,8 +412,17 @@ object ObjectValue extends GoodValue.Companion[ObjectValue], ValueType.Compound:
   val name = "Object"
   val empty: ObjectValue = ObjectValue(Map.empty)
 
-  @javaApi @Nonnull def of(@Nonnull nameToValue: java.util.Map[String, Value]): ObjectValue =
+  @javaApi @Nonnull
+  def of(@Nonnull nameToValue: java.util.Map[String, Value]): ObjectValue =
     ObjectValue(nameToValue.asScala.toMap)
+
+  @throws
+  def unsafeSimpleJava(nameToValue: (String, Value.SimpleJava)*): ObjectValue =
+    apply:
+      nameToValue.view.map: (k, v) =>
+        k -> Value.ofSimpleJava(v).orThrow
+      .toMap
+
 
 final case class ObjectType(nameToType: Map[String, ValueType])
 extends ValueType.Compound:

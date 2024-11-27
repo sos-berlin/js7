@@ -21,7 +21,7 @@ object Problems:
   final case class InvalidFunctionArgumentsProblem(call: FunctionCall) extends Problem.Coded:
     def arguments: Map[String, String] = Map(
       "function" -> call.name,
-      "arguments" -> call.arguments.mkString(", "))
+      "arguments" -> call.arguments.toList.flatten.mkString(", "))
 
   final case class EvaluationFailedProblem(name: String, expression: Expression, problem: Problem)
   extends Problem.Coded:

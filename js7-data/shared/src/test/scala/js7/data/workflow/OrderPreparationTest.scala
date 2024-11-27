@@ -60,7 +60,7 @@ final class OrderPreparationTest extends OurTestSuite:
             }
           },
           "myControllerId": {
-            "final": "$$js7ControllerId"
+            "final": "controllerId"
           },
           "myScheduledFor": {
             "final": "scheduledOrEmpty('yyyy-MM-dd', 'Antarctica/Troll')"

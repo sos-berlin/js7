@@ -21,7 +21,8 @@ object ExpressionParser:
     "argument", "false", "else", "error", "in", "if",
     "matches", "missing", "then", "true", "variable")
 
-  val knownSymbols = Set("maxTries", "timedOut", "tryCount")
+  val knownSymbols = Set("controllerId", "job", "maxTries", "label", "orderId",
+    "timedOut", "tryCount", "workflowPath", "workflowPosition")
 
   //private val knownFunctions = Set(
   //  "env", "impure", "jobResourceVariable", "jobResourceVariables",
@@ -220,10 +221,10 @@ object ExpressionParser:
       case (name, Some(arguments)) =>
         pure(FunctionCall(
           name,
-          arguments.map((maybeName, expr) => Argument(expr, maybeName))))
+          Some(arguments.map((maybeName, expr) => Argument(expr, maybeName)))))
       case (name, None) =>  // "()" is optional
         if knownSymbols(name) then
-          pure(FunctionCall(name))
+          pure(FunctionCall(name, arguments = None))
         else if isKeyword(name) then
           failWith(s"Unexpected '$name' keyword, maybe parentheses around it are missing?")
         else

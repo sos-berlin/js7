@@ -254,19 +254,20 @@ final class ExpressionParserTest extends OurTestSuite:
       StringConstant("A.*")))
 
   "FunctionCall" - {
-    testExpression("myFunction()", FunctionCall("myFunction"))
-    testExpression("myFunction(1)", FunctionCall("myFunction", Seq(Argument(NumericConstant(1)))))
+    testExpression("orderId", FunctionCall("orderId", None))
+    testExpression("myFunction()", FunctionCall("myFunction", Some(Nil)))
+    testExpression("myFunction(1)", FunctionCall("myFunction", Some(Seq(Argument(NumericConstant(1))))))
     testExpression("myFunction(named=1, 'STRING')",
       FunctionCall(
         "myFunction",
-        Seq(
+        Some(Seq(
           Argument(NumericConstant(1), Some("named")),
-          Argument(StringConstant("STRING")))))
+          Argument(StringConstant("STRING"))))))
     testExpression("myFunction(nested())",
       FunctionCall(
         "myFunction",
-        Seq(
-          Argument(FunctionCall("nested")))))
+        Some(Seq(
+          Argument(FunctionCall("nested", Some(Nil)))))))
   }
 
   "Unknown numeric function" in:

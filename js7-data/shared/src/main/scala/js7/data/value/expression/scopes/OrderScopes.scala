@@ -7,7 +7,6 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, MinimumOrder, Order, OrderDetails, OrderId}
-import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
@@ -49,6 +48,12 @@ trait OrderScopes:
       case "timedOut" => Right(BooleanValue:
         order.hasTimedOut)
 
+      case "label" => Right(StringValue:
+        instructionLabel.fold("")(_.string))
+
+      case "workflowPosition" => Right(StringValue:
+        order.workflowPosition.toString)
+
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
   final lazy val variablelessOrderScope: Scope =
@@ -56,17 +61,10 @@ trait OrderScopes:
       minimumOrderScope,
       symbolScope,
       NamedValueScope:
-        case "js7Label" => Right(StringValue:
-          instructionLabel.fold("")(_.string))
-
-        case "js7WorkflowPosition" => Right(StringValue:
-          order.workflowPosition.toString)
-
-        // $js7TryCount and $js7MaxTries, until we have decided which to choose
-        case "js7TryCount" =>
-          symbolScope.evalFunctionCall(FunctionCall("tryCount"))(using Scope.empty).get
-        case "js7MaxTries" =>
-          symbolScope.evalFunctionCall(FunctionCall("maxTries"))(using Scope.empty).get,
+        case "js7Label" => symbolScope.symbol("label").get
+        case "js7WorkflowPosition" => symbolScope.symbol("workflowPosition").get
+        case "js7TryCount" => symbolScope.symbol("tryCount").get
+        case "js7MaxTries" => symbolScope.symbol("maxTries").get,
       EnvScope)
 
   /** For `Order[Order.State]`. */
@@ -106,13 +104,18 @@ object OrderScopes:
 
   def minimumOrderScope(orderId: OrderId, orderDetails: OrderDetails, controllerId: ControllerId)
   : Scope =
-    NamedValueScope.simple:
-      case "js7OrderId" => StringValue(orderId.string)
-      case "js7ControllerId" => StringValue(controllerId.string)
+    val symbolScope = ArgumentlessFunctionScope.simpleJava:
+      case "orderId" => orderId.string
+      case "controllerId" => controllerId.string
       // Not sure about workflowPath with future callable Workflows ???
-      case "js7WorkflowPath" => StringValue(orderDetails.workflowPath.string)
-    |+|
-      TimestampScope("scheduledOrEmpty", orderDetails.scheduledFor)
+      case "workflowPath" => orderDetails.workflowPath.string
+    combine(
+      symbolScope,
+      NamedValueScope:
+        case "js7OrderId" => symbolScope.symbol("orderId").get
+        case "js7ControllerId" => symbolScope.symbol("controllerId").get
+        case "js7WorkflowPath" => symbolScope.symbol("workflowPath").get,
+      TimestampScope("scheduledOrEmpty", orderDetails.scheduledFor))
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */
 trait ProcessingOrderScopes extends OrderScopes:
@@ -134,17 +137,17 @@ trait ProcessingOrderScopes extends OrderScopes:
   final lazy val jobExecutionCount: Int =
     1 + order.historicJobExecutionCount(jobKey, workflow)
 
-  private lazy val js7JobVariablesScope = NamedValueScope.simple:
-    case "js7JobName" => StringValue(simpleJobName) // Legacy
-    case "js7JobExecutionCount" => NumberValue(jobExecutionCount)
-    case "js7Job" => ObjectValue(Map(
-      "name" -> StringValue(simpleJobName),
+  private lazy val js7JobVariablesScope = NamedValueScope.simpleJava:
+    case "js7JobName" => simpleJobName // Legacy
+    case "js7JobExecutionCount" => jobExecutionCount
+    case "js7Job" => ObjectValue.unsafeSimpleJava(
+      "name" -> simpleJobName,
       "sigkillDelayMillis" ->
         workflowJob.sigkillDelay.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
       "timeoutMillis" ->
         workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
-      "processLimit" -> NumberValue(workflowJob.processLimit),
-      "executionCount" -> NumberValue(jobExecutionCount)))
+      "processLimit" -> workflowJob.processLimit,
+      "executionCount" -> jobExecutionCount)
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources =

@@ -416,12 +416,12 @@ object JobResourceTest:
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SOS"),
     env = Map(
-      "JS7_ORDER_ID"          -> expr("$js7OrderId"),
-      "JS7_WORKFLOW_NAME"     -> expr("$js7WorkflowPath"),
-      "JS7_WORKFLOW_POSITION" -> expr("$js7WorkflowPosition"),
-      "JS7_LABEL"             -> expr("$js7Label"),
+      "JS7_ORDER_ID"          -> expr("orderId"),
+      "JS7_WORKFLOW_NAME"     -> expr("workflowPath"),
+      "JS7_WORKFLOW_POSITION" -> expr("workflowPosition"),
+      "JS7_LABEL"             -> expr("label"),
       "JS7_JOB_NAME"          -> expr("$js7JobName"),
-      "JS7_CONTROLLER_ID"     -> expr("$js7ControllerId"),
+      "JS7_CONTROLLER_ID"     -> expr("controllerId"),
       "JS7_SCHEDULED_DATE"    -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
       "JS7_SCHEDULED_YEAR"    -> expr("scheduledOrEmpty(format='yyyy')"),
       "JS7_SCHEDULED_MONTH"   -> expr("scheduledOrEmpty(format='MM')"),

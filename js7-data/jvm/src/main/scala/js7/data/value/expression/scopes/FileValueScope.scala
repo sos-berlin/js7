@@ -18,13 +18,13 @@ extends Scope, AutoCloseable:
     functionCall match
       case FunctionCall(`functionName`, arguments) =>
         Some(arguments match {
-          case Seq(
-            Argument(contentExpr, None | Some("content"))) =>
+          case Some(Seq(
+            Argument(contentExpr, None | Some("content")))) =>
             toFile(contentExpr, None)
 
-          case Seq(
+          case Some(Seq(
             Argument(contentExpr, None | Some("content")),
-            Argument(filenameExpr, None | Some("filename"))) =>
+            Argument(filenameExpr, None | Some("filename")))) =>
             toFile(contentExpr, Some(filenameExpr))
 
           case _ =>

@@ -39,7 +39,7 @@ final class WindowsLogonTest extends OurTestSuite, ControllerAgentForScalaTest:
             |set
             |""".stripMargin,
           env = Map(
-            "ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant(PathEnvName))))),
+            "ORIGINAL_PATH" -> FunctionCall("env", Some(Seq(Argument(StringConstant(PathEnvName)))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
 
   if isWindows then

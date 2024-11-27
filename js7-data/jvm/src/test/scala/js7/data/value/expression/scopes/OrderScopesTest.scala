@@ -42,10 +42,15 @@ final class OrderScopesTest extends OurTestSuite:
       assert(scope.parseAndEval("tryCount") == Right(NumberValue(0)))
       assert(scope.parseAndEval("$js7TryCount") == Right(NumberValue(0)))
 
+      assert(scope.parseAndEval("controllerId") == Right(StringValue("CONTROLLER")))
       assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
+      assert(scope.parseAndEval("orderId") == Right(StringValue("ORDER")))
       assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("workflowPosition") == Right(StringValue("WORKFLOW~VERSION:2")))
       assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:2")))
+      assert(scope.parseAndEval("workflowPath") == Right(StringValue("WORKFLOW")))
       assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
 
       assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
@@ -89,17 +94,20 @@ final class OrderScopesTest extends OurTestSuite:
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat)") == Left(
         Problem("No such named value: dateTimeFormat")))
 
+      assert(scope.parseAndEval("controllerId") == Right(StringValue("CONTROLLER")))
       assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
+      assert(scope.parseAndEval("orderId") == Right(StringValue("ORDER")))
       assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("workflowPath") == Right(StringValue("WORKFLOW")))
       assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("workflowPosition") == Right(StringValue("WORKFLOW~VERSION:2")))
       assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:2")))
+      assert(scope.parseAndEval("label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
 
       assert(scope.parseAndEval("$VARIABLE") == Left(Problem("No such named value: VARIABLE")))
       assert(scope.parseAndEval("$SELF") == Left(Problem("No such named value: SELF")))
 
-      assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
-      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
       assert(scope.parseAndEval("$js7EpochMilli") == Right(
         NumberValue(orderScopes.nowScope.now.toEpochMilli)))
 

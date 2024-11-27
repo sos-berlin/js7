@@ -14,10 +14,10 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope:
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope)
   : Option[Checked[Value]] =
     functionCall match
-      case FunctionCall("subagentIds", Nil) =>
+      case FunctionCall("subagentIds", None | Some(Nil)) =>
         Some(subagentIds(state, None))
 
-      case FunctionCall("subagentIds", Seq(Argument(arg, None))) =>
+      case FunctionCall("subagentIds", Some(Seq(Argument(arg, None)))) =>
         Some(
           arg.evalAsString
             .flatMap(idString =>

@@ -29,6 +29,15 @@ object NamedValueScope:
   /**
    * @param nameToValue: Value is expected to be constant.
    */
+  def simpleJava(nameToValue: PartialFunction[String, Value.SimpleJava]): Scope =
+    apply:
+      Function.unlift: (k: String) =>
+        nameToValue.lift(k).map:
+          Value.ofSimpleJava
+
+  /**
+   * @param nameToValue: Value is expected to be constant.
+   */
   def apply(nameToValue: MapView[String, Value]): Scope =
     apply:
       nameToValue.view.mapValues(Right(_))

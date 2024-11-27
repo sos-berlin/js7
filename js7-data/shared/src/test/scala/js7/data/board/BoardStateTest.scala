@@ -26,9 +26,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
         GlobalBoard(
           boardPath,
           postOrderToNoticeId =
-            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
           expectOrderToNoticeId =
-            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
         idToNotice = Map(
           NoticeId("NOTICE") -> NoticePlace(
@@ -49,9 +49,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
               "TYPE": "GlobalBoard",
               "path": "BOARD",
               "postOrderToNoticeId":
-                "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
               "expectOrderToNoticeId":
-                "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
               "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
             }""",
             json"""{
@@ -67,9 +67,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
         GlobalBoard(
           boardPath,
           postOrderToNoticeId =
-            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')?"""),
           expectOrderToNoticeId =
-            expr("""match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+            expr("""match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')?"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
         idToNotice = Map(
           NoticeId("NOTICE-1") -> NoticePlace(
@@ -100,9 +100,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
                 "TYPE": "GlobalBoard",
                 "path": "BOARD",
                 "postOrderToNoticeId":
-                  "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                  "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')?",
                 "expectOrderToNoticeId":
-                  "match($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+                  "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')?",
                 "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
               }""", json"""{
                 "TYPE": "Notice",

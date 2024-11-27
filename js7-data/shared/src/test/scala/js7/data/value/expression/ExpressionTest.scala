@@ -67,7 +67,7 @@ final class ExpressionTest extends OurTestSuite:
 
       override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
         functionCall match
-          case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
+          case FunctionCall("myFunction", Some(Seq(Argument(expr, None)))) =>
             Some(
               for
                 value <- expr.eval
@@ -858,7 +858,7 @@ final class ExpressionTest extends OurTestSuite:
   "function call" - {
     testEval(""" myFunction(7) """,
       result = Right(21),
-      FunctionCall("myFunction", Seq(Argument(7))))
+      FunctionCall("myFunction", Some(Seq(Argument(7)))))
   }
 
   "objectExpression" in:
@@ -887,21 +887,21 @@ final class ExpressionTest extends OurTestSuite:
   }
 
   "timedOut" in:
-    assert(parseExpression("timedOut") == Right(FunctionCall("timedOut")))
-    assert(parseExpression("timedOut()") == Right(FunctionCall("timedOut")))
+    assert(parseExpression("timedOut") == Right(FunctionCall("timedOut", None)))
+    assert(parseExpression("timedOut()") == Right(FunctionCall("timedOut", Some(Nil))))
 
   "tryCount" in:
-    assert(parseExpression("tryCount") == Right(FunctionCall("tryCount")))
-    assert(parseExpression("tryCount()") == Right(FunctionCall("tryCount")))
+    assert(parseExpression("tryCount") == Right(FunctionCall("tryCount", None)))
+    assert(parseExpression("tryCount()") == Right(FunctionCall("tryCount", Some(Nil))))
 
   "maxTries" in:
-    assert(parseExpression("maxTries") == Right(FunctionCall("maxTries")))
-    assert(parseExpression("maxTries()") == Right(FunctionCall("maxTries")))
+    assert(parseExpression("maxTries") == Right(FunctionCall("maxTries", None)))
+    assert(parseExpression("maxTries()") == Right(FunctionCall("maxTries", Some(Nil))))
 
   "Unknown symbol" in:
     assert(parseExpression("UNKNOWN") == Left(Problem:
       "Error in expression: Parsing failed at position 8 “UNKNOWN❓” · Unknown symbol: UNKNOWN"))
-    assert(parseExpression("UNKNOWN()") == Right(FunctionCall("UNKNOWN")))
+    assert(parseExpression("UNKNOWN()") == Right(FunctionCall("UNKNOWN", Some(Nil))))
 
   "replaceAll" - {
     testEval(""" replaceAll("abcdef", "([ae])", '»$1«') """,

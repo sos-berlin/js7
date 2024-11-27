@@ -634,7 +634,7 @@ object Expression:
   //  override def toString = name
 
 
-  final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)
+  final case class FunctionCall(name: String, arguments: Option[Seq[Argument]])
   extends IsImpure:
     protected def precedence = Precedence.Factor
     def subexpressions: Iterable[Expression] = Nil
@@ -643,7 +643,7 @@ object Expression:
       scope.evalFunctionCall(this)
         .getOrElse(Left(Problem(s"Unknown function: $name")))
 
-    override def toString = s"$name(${arguments.mkString(", ")})"
+    override def toString = s"$name${arguments.fold("")(a => s"(${a.mkString(", ")})")}"
 
 
   final case class Argument(expression: Expression, maybeName: Option[String] = None):

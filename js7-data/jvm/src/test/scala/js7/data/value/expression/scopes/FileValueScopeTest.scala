@@ -136,7 +136,7 @@ final class FileValueScopeTest extends OurTestSuite:
       assert(dir.directoryContents.isEmpty)
 
   private def toFile(fileValueScope: FileValueScope, args: Seq[String]): Checked[Path] =
-    Expression.FunctionCall(functionName, args.map(a => Argument(StringConstant(a))))
+    Expression.FunctionCall(functionName, Some(args.map(a => Argument(StringConstant(a)))))
       .evalAsString(fileValueScope)
       .map(Paths.get(_))
 

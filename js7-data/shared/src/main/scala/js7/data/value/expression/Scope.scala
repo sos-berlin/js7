@@ -34,6 +34,9 @@ trait Scope:
       case _ =>
         None
 
+  final def symbol(name: String): Option[Checked[Value]] =
+    evalFunctionCall(FunctionCall(name, arguments = None))(using Scope.empty)
+
   def evalFunctionCall(functionCall: FunctionCall)(implicit @unused fullScope: Scope)
   : Option[Checked[Value]] =
     None

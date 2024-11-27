@@ -25,7 +25,7 @@ final class JobResourceTest extends OurTestSuite:
           "NAME" -> StringConstant("VALUE"),
           "MYPATH" -> Concat(
             StringConstant("/bin:"),
-            FunctionCall("env", Seq(Argument(StringConstant("PATH")))))),
+            FunctionCall("env", Some(Seq(Argument(StringConstant("PATH"))))))),
         Some(ItemRevision(1))),
       json"""{
         "path": "JOB-RESOURCE",

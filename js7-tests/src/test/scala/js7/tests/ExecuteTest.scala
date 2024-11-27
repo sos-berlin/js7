@@ -317,16 +317,16 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
 
   "Special $js7 variables; the ?-operators" - {
     val nameToExpression = Map(
-      "ORDER_ID"            -> expr("$js7OrderId"),
-      "WORKFLOW_NAME"       -> expr("$js7WorkflowPath"),
-      "WORKFLOW_POSITION"   -> expr("$js7WorkflowPosition"),
-      "LABEL"               -> expr("$js7Label"),
+      "ORDER_ID"            -> expr("orderId"),
+      "WORKFLOW_NAME"       -> expr("workflowPath"),
+      "WORKFLOW_POSITION"   -> expr("workflowPosition"),
+      "LABEL"               -> expr("label"),
       "JOB_NAME"            -> expr("$js7JobName"),
       "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis ? "" """),
       // JOB_SIGKILL_DELAY will be unset because sigkillDelayMillis returns MissingValue
       "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis"""),
       "JOB_EXECUTION_COUNT" -> expr("$js7JobExecutionCount"),
-      "CONTROLLER_ID"       -> expr("$js7ControllerId"),
+      "CONTROLLER_ID"       -> expr("controllerId"),
       "SCHEDULED_DATE"      -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
       "JOBSTART_DATE"       -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
       "JOB_RESOURCE_VARIABLE" -> expr("JobResource:JOB-RESOURCE:VARIABLE"))
