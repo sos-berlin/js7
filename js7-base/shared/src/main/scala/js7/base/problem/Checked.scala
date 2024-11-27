@@ -40,7 +40,7 @@ object Checked:
 
   def apply[A](a: A): Checked[A] = Right(a)
 
-  def fromOption[A](a: Option[A], problem: Problem): Checked[A] =
+  def fromOption[A](a: Option[A], problem: => Problem): Checked[A] =
     a match
       case None => Left(problem)
       case Some(o) => Right(o)
