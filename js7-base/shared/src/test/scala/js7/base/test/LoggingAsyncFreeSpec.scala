@@ -31,12 +31,11 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec with TestLogging:
 
   protected def suppressTestCorrelId = false
 
-  // inline for proper source.Position
-  protected implicit inline def implicitToFreeSpecStringWrapper(name: String)(using Position)
+  protected implicit final def implicitToFreeSpecStringWrapper(name: String)(using pos: Position)
   : LoggingFreeSpecStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString] =
     testAdder.toStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString](
       name,
-      toUnified(convertToFreeSpecStringWrapper(name)),
+      toUnified(new FreeSpecStringWrapper(name, pos)),
       (ctx, testBody) =>
         run(name):
           for

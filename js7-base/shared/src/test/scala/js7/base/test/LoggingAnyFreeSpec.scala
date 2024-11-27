@@ -21,9 +21,9 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec, TestLogging:
   protected def suppressTestCorrelId = false
 
   // inline for proper source.Position (why?)
-  inline protected implicit final def implicitToFreeSpecStringWrapper(name: String)(using Position)
+  protected implicit final def implicitToFreeSpecStringWrapper(name: String)(using pos: Position)
   : LoggingFreeSpecStringWrapper[Any, Any, ResultOfTaggedAsInvocationOnString] =
-    toFreeSpecStringWrapper(name, convertToFreeSpecStringWrapper(name))
+    toFreeSpecStringWrapper(name, new FreeSpecStringWrapper(name, pos))
 
   private def toFreeSpecStringWrapper(name: String, stringWrapper: FreeSpecStringWrapper)
   : LoggingFreeSpecStringWrapper[Any, Any, ResultOfTaggedAsInvocationOnString] =
