@@ -29,7 +29,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.annotation.tailrec
-import scala.collection.{IndexedSeqView, MapView, View, mutable}
+import scala.collection.{MapView, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -60,8 +60,8 @@ extends
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode: Int = id.hashCode
 
-  def newForkedOrders(event: OrderForked): View[Order[Ready]] =
-    for child <- event.children.view yield
+  def newForkedOrders(event: OrderForked): Vector[Order[Ready]] =
+    event.children.map: child =>
       Order(
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position /
@@ -1207,7 +1207,7 @@ object Order:
 
   final case class Forked(children: Vector[Forked.Child])
   extends IsStarted, IsDetachable, IsTransferableOnlyIfInstructionUnchanged:
-    def childOrderIds: IndexedSeqView[OrderId] = children.view.map(_.orderId)
+    def childOrderIds: Vector[OrderId] = children.map(_.orderId)
 
   object Forked:
     type Child = OrderForked.Child

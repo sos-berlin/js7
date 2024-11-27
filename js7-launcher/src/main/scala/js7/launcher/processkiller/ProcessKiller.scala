@@ -14,7 +14,7 @@ import js7.base.system.OperatingSystem.isUnix
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.isStrict
 import js7.base.utils.{Assertions, Tests}
 import js7.launcher.processkiller.ProcessKiller.*
 import scala.collection.mutable
@@ -92,7 +92,7 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
               .compile.drain
               .productR:
                 IO:
-                  if isTest then assertThat(_sigtermDescendants.forall(_._2.isEmpty))
+                  if isStrict then assertThat(_sigtermDescendants.forall(_._2.isEmpty))
                   _sigtermDescendants = Map.empty
 
   private def killMainProcessOnly(process: P, force: Boolean): IO[Unit] =

@@ -32,8 +32,7 @@ final class OrderEventHandler(idToWorkflow: WorkflowId => Checked[Workflow]):
       case event: OrderForked =>
         Right(previousOrder
           .newForkedOrders(event)
-          .map(FollowUp.AddChild(_))
-          .toVector)
+          .map(FollowUp.AddChild(_)))
 
       case joined: OrderJoined =>
         previousOrder.state match

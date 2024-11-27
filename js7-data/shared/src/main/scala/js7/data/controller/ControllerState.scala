@@ -437,19 +437,19 @@ extends SignedItemContainer,
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
-    orderWatchStates: Iterable[OrderWatchState],
-    remove: Iterable[OrderWatchPath])
+    orderWatchStates: Seq[OrderWatchState],
+    remove: Seq[OrderWatchPath])
   : Checked[ControllerState] =
     update(
       addItemStates = orderWatchStates,
       removeItemStates = remove)
 
-  protected def update(
-    addOrders: Iterable[Order[Order.State]] = Nil,
-    removeOrders: Iterable[OrderId] = Nil,
-    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
+  protected def update_(
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     for
       s <- (addOrders ++ externalVanishedOrders).foldEithers(this):

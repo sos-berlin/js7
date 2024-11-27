@@ -5,7 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.isStrict
 import js7.base.utils.{Assertions, Tests}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderExternalVanished}
@@ -22,8 +22,8 @@ trait OrderWatchStateHandler[Self]:
   protected def isOrderExternalNotVanished(orderId: OrderId): Boolean
 
   protected def updateOrderWatchStates(
-    orderWatchStates: Iterable[OrderWatchState] = Nil,
-    remove: Iterable[OrderWatchPath] = Nil)
+    orderWatchStates: Seq[OrderWatchState] = Nil,
+    remove: Seq[OrderWatchPath] = Nil)
   : Checked[Self]
 
   private def updateOrderWatchState(orderWatchState: OrderWatchState): Checked[Self] =
@@ -66,7 +66,7 @@ trait OrderWatchStateHandler[Self]:
           watchState))
 
     def onOrderExternalVanished(order: Order[Order.State]): Checked[Self] =
-      if isTest then assertThat(order.externalOrder.exists(_.vanished))
+      if isStrict then assertThat(order.externalOrder.exists(_.vanished))
       order.externalOrder.toRight:
         Problem(s"OrderExternalVanished but ${order.id} is not linked to an external order")
       .flatMap: ext =>

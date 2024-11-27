@@ -205,7 +205,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
       val eventSource = new OrderEventSource(state)
       order
         .newForkedOrders(orderForked)
-        .toVector
         .traverse(eventSource.nextAgent)
         .map(_.toSet)
       .map(controllerOrAgents =>

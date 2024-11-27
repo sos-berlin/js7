@@ -14,7 +14,7 @@ import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.isStrict
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
@@ -290,19 +290,19 @@ extends SignedItemContainer,
   protected def pathToFileWatchState = keyTo(FileWatchState)
 
   protected def updateFileWatchStates(
-    fileWatchStates: Iterable[FileWatchState],
-    remove: Iterable[OrderWatchPath])
+    fileWatchStates: Seq[FileWatchState],
+    remove: Seq[OrderWatchPath])
   : Checked[AgentState] =
     update(addItemStates = fileWatchStates, removeItemStates = remove)
 
-  protected def update(
-    addOrders: Iterable[Order[Order.State]] = Nil,
-    removeOrders: Iterable[OrderId] = Nil,
-    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
+  protected def update_(
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[AgentState] =
-    if isTest && !addItemStates.forall(o => allowedItemStates(o.companion)) then
+    if isStrict && !addItemStates.forall(o => allowedItemStates(o.companion)) then
       Left(Problem.pure("Unsupported InventoryItemState"))
     else
       Right(copy(

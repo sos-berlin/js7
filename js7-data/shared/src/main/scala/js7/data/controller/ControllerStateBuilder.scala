@@ -371,17 +371,17 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
-    orderWatchStates: Iterable[OrderWatchState],
-    remove: Iterable[OrderWatchPath])
+    orderWatchStates: Seq[OrderWatchState],
+    remove: Seq[OrderWatchPath])
   : Checked[ControllerStateBuilder] =
     update(addItemStates = orderWatchStates, removeItemStates = remove)
 
-  protected def update(
-    addOrders: Iterable[Order[Order.State]],
-    removeOrders: Iterable[OrderId],
-    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState],
-    removeItemStates: Iterable[UnsignedSimpleItemPath])
+  protected def update_(
+    addOrders: Seq[Order[Order.State]],
+    removeOrders: Seq[OrderId],
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState],
+    removeItemStates: Seq[UnsignedSimpleItemPath])
   : Checked[ControllerStateBuilder] =
     removeOrders.foreach: orderId =>
       _idToOrder.get(orderId).foreach: order =>

@@ -13,8 +13,8 @@ trait FileWatchStateHandler[Self]:
   protected def pathToFileWatchState: MapView[OrderWatchPath, FileWatchState]
 
   protected def updateFileWatchStates(
-    fileWatchStates: Iterable[FileWatchState] = Nil,
-    remove: Iterable[OrderWatchPath] = Nil)
+    fileWatchStates: Seq[FileWatchState] = Nil,
+    remove: Seq[OrderWatchPath] = Nil)
   : Checked[Self]
 
   private def updateFileWatchState(fileWatchState: FileWatchState): Checked[Self] =

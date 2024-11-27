@@ -59,12 +59,12 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
 
       override def values = items
 
-  override protected def update(
-    addOrders: Iterable[Order[Order.State]],
-    removeOrders: Iterable[OrderId],
-    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState],
-    removeItemStates: Iterable[UnsignedSimpleItemPath])
+  protected def update_(
+    addOrders: Seq[Order[Order.State]],
+    removeOrders: Seq[OrderId],
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState],
+    removeItemStates: Seq[UnsignedSimpleItemPath])
   : Checked[Self] =
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this

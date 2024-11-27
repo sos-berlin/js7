@@ -275,8 +275,8 @@ object OrderWatchStateHandlerTest:
     def pathToOrderWatchState = pathToOrderWatchStateMap.view
 
     protected def updateOrderWatchStates(
-      orderWatchStates: Iterable[OrderWatchState],
-      remove: Iterable[OrderWatchPath]) =
+      orderWatchStates: Seq[OrderWatchState],
+      remove: Seq[OrderWatchPath]) =
       Right(copy(
         pathToOrderWatchStateMap -- remove ++ orderWatchStates.map(o => o.path -> o)))
 

@@ -4,7 +4,7 @@ import cats.effect.IO
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.isStrict
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import scala.concurrent.Future
 
@@ -44,7 +44,7 @@ extends JournalingActor[S, E]:
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
 
   private def toKeyedEvent(event: E): KeyedEvent[E] =
-    if isTest then assert(event.keyCompanion eq E)
+    if isStrict then assert(event.keyCompanion eq E)
     key.asInstanceOf[event.keyCompanion.Key] <-: event
 
   protected final def persistTransactionReturnChecked[EE <: E, A](

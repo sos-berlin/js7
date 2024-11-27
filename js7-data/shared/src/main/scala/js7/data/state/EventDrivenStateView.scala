@@ -2,7 +2,9 @@ package js7.data.state
 
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
 import js7.data.board.{BoardItem, BoardState}
 import js7.data.event.{Event, EventDrivenState}
@@ -24,12 +26,42 @@ extends EventDrivenState[Self, E], StateView:
     idToOrder.get(orderId).flatMap(_.externalOrder).exists(o => !o.vanished)
 
   protected def update(
-    addOrders: Iterable[Order[Order.State]] = Nil,
-    removeOrders: Iterable[OrderId] = Nil,
-    externalVanishedOrders: Iterable[Order[Order.State]] = Nil,
-    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+  : Checked[Self] =
+    for
+      _ <- precheckUpdate(addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
+      self <- update_(addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
+    yield
+      self
+
+  // Call only via update() !
+  protected def update_(
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Self]
+
+  private def precheckUpdate(
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+  : Checked[Unit] =
+    if isStrict then
+      for
+        _ <- addOrders.view.map(_.id).concat(removeOrders).checkUniqueness
+        _ <- externalVanishedOrders.checkUniqueness(_.id)
+        _ <- addItemStates.view.map(_.path).concat(removeItemStates).checkUniqueness
+      yield ()
+    else
+      Checked.unit
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match
