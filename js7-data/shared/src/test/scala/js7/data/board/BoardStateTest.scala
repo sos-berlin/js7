@@ -6,6 +6,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.Timestamp
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardStateTest.*
@@ -81,7 +82,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
             expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
-          OrderId("A-ORDER") -> List(
+          OrderId("A-ORDER") -> Nel.of(
             NoticeId("NOTICE-3"),
             NoticeId("NOTICE-2"),
             NoticeId("NOTICE-1"))))
@@ -162,7 +163,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
             expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
-          OrderId("A-ORDER") -> List(
+          OrderId("A-ORDER") -> Nel.of(
             NoticeId.planned(planId).orThrow,
             NoticeId(NoticeKey("NOTICE-2"), planId),
             NoticeId.planned(planId).orThrow)))

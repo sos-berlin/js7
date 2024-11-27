@@ -5,6 +5,7 @@ import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.board.NoticeEvent.NoticeDeleted
@@ -17,7 +18,7 @@ import scala.collection.View
 final case class BoardState(
   board: BoardItem,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
-  orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
+  orderToConsumptionStack: Map[OrderId, Nel[NoticeId]] = Map.empty)
 extends UnsignedSimpleItemState:
 
   protected type Self = BoardState
@@ -97,26 +98,25 @@ extends UnsignedSimpleItemState:
   : Checked[BoardState] =
     // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-    val consumptionStack = orderToConsumptionStack.getOrElse(order.id, Nil)
+    val consumptionStack = orderToConsumptionStack.get(order.id).fold(Nil)(_.toList)
     Right(copy(
       idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(order.id)),
       orderToConsumptionStack = orderToConsumptionStack.updated(order.id,
-        consumption.noticeId :: consumptionStack)))
+        Nel(consumption.noticeId, consumptionStack))))
 
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
     orderToConsumptionStack.checked(orderId)
       .flatMap: consumptions =>
-        val noticeId :: remainingConsumptions = consumptions: @unchecked
+        val Nel(noticeId, remainingConsumptions) = consumptions: @unchecked
         idToNotice.checked(noticeId)
           .map: noticePlace =>
             updateNoticePlace:
               noticePlace.finishConsumption(succeeded)
             .copy(
               orderToConsumptionStack =
-                if remainingConsumptions.isEmpty then
-                  orderToConsumptionStack - orderId
-                else
-                  orderToConsumptionStack.updated(orderId, remainingConsumptions))
+                Nel.fromList(remainingConsumptions) match
+                  case None => orderToConsumptionStack - orderId
+                  case Some(nel) => orderToConsumptionStack.updated(orderId, nel))
 
   def containsNotice(noticeId: NoticeId): Boolean =
     idToNotice.get(noticeId).exists(_.notice.isDefined)
@@ -168,7 +168,7 @@ object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
   final case class NoticeConsumptionSnapshot(
     boardPath: BoardPath,
     orderId: OrderId,
-    noticeIdStack: List[NoticeId])
+    noticeIdStack: Nel[NoticeId])
   extends NoticeSnapshot
 
   object NoticeConsumptionSnapshot:
