@@ -1,17 +1,22 @@
 package js7.data.workflow.instructions
 
-import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.L3
 import js7.data.board.{BoardPath, BoardPathExpression}
-import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
+import js7.data.workflow.instructions.ConsumeNotices.*
+import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
+import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{SkipWhenNoNotice, Wait}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
+  whenNotAnnounced: WhenNotAnnounced = WhenNotAnnounced.Wait,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction:
@@ -31,11 +36,25 @@ extends ExpectOrConsumeNoticesInstruction:
   def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths
 
-  def fulfilledEvents(
+  protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    expected: Vector[OrderNoticesConsumptionStarted.Consumption])
-  : List[OrderNoticesConsumptionStarted] =
-    OrderNoticesConsumptionStarted(expected) :: Nil
+    consumptions: Vector[OrderEvent.OrderNoticesConsumptionStarted.Consumption],
+    exprResult: L3)
+  : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
+    exprResult match
+      case L3.False => Nil
+      case L3.True => OrderNoticesConsumptionStarted(consumptions) :: Nil
+      case L3.Unknown =>
+        whenNotAnnounced match
+          case Wait => Nil
+
+          case SkipWhenNoNotice if consumptions.isEmpty =>
+            OrderNoticesRead
+              :: OrderMoved(order.position.increment, Some(OrderMoved.NoNotice))
+              :: Nil
+
+          case _ =>
+            OrderNoticesConsumptionStarted(consumptions) :: Nil
 
   def withoutBlocks: ConsumeNotices =
     copy(subworkflow = Workflow.empty)
@@ -54,8 +73,15 @@ extends ExpectOrConsumeNoticesInstruction:
 
 
 object ConsumeNotices:
-  implicit val jsonCodec: Codec.AsObject[ConsumeNotices] =
-    ConfiguredCodec.derive(useDefaults = true)
 
   def apply(boardPaths: BoardPathExpression)(instructions: Instruction.Labeled*): ConsumeNotices =
-    ConsumeNotices(boardPaths, Workflow.of(instructions*))
+    new ConsumeNotices(boardPaths, subworkflow = Workflow.of(instructions*))
+
+  def apply(
+    boardPaths: BoardPathExpression,
+    whenNotAnnounced: WhenNotAnnounced)
+    (instructions: Instruction.Labeled*)
+  : ConsumeNotices =
+    new ConsumeNotices(boardPaths, whenNotAnnounced, Workflow.of(instructions*))
+
+  given Codec.AsObject[ConsumeNotices] = ConfiguredCodec.derive(useDefaults = true)

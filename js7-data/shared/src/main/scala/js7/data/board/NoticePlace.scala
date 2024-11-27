@@ -52,6 +52,12 @@ extends Big:
   def removeNotice: NoticePlace =
     copy(notice = None)
 
+  def addExpecting(orderId: OrderId): NoticePlace =
+    copy(expectingOrderIds = expectingOrderIds + orderId)
+
+  def removeExpecting(orderId: OrderId): NoticePlace =
+    copy(expectingOrderIds = expectingOrderIds - orderId)
+
   def startConsumption(orderId: OrderId): NoticePlace =
     copy(
       expectingOrderIds = expectingOrderIds - orderId,

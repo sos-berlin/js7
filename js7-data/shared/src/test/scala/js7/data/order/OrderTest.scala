@@ -476,7 +476,7 @@ final class OrderTest extends OurTestSuite:
 
       OrderNoticeAnnounced(
         BoardPath("BOARD"),
-        NoticeId.planned(PlanItemId("DailyPlan") / "2024-11-22").orThrow),
+        NoticeId.planned(PlanItemId("DailyPlan") / "2024-11-22")),
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(

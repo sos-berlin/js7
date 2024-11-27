@@ -10,6 +10,7 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
 import js7.data.controller.ControllerCommand
 import js7.data.event.KeyedEvent
+import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.PlanId
@@ -104,21 +105,22 @@ object NoticeEventSource:
   : Checked[Vector[KeyedEvent[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]]] =
     for
       expectingOrders <- postedNotices
-        .flatMap(post => post.boardState.expectingOrders(post.notice.id))
+        .flatMap: post =>
+          post.boardState.expectingOrders(post.notice.id)
         .distinct
         .traverse(state.idToOrder.checked)
       events <- expectingOrders
-        .traverse(expectingOrder => state
-          .instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
-          .map(expectingOrder -> _))
+        .traverse: expectingOrder =>
+          state.instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
+            .map(expectingOrder -> _)
         .flatMap:
           _.traverse: (expectingOrder, expectNoticesInstr) =>
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val postedBoards = postedNotices.map(_.boardState.path).toSet
+                val posted = postedNotices.map(o => Expected(o.boardState.path, o.notice.id)).toSet
                 expectNoticesInstr
-                  .tryFulfillExpectingOrder(expectingOrder, state, postedBoards)
+                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, posted)
                   .map(expectingOrder.id <-: _)
           .map(_.flatten)
     yield

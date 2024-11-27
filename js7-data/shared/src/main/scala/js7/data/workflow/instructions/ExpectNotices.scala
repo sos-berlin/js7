@@ -1,16 +1,20 @@
 package js7.data.workflow.instructions
 
-import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
+import io.circe.{Codec, Decoder, Encoder}
+import js7.base.utils.L3
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
-import scala.annotation.unused
+import js7.data.workflow.instructions.ExpectNotices.*
+import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
+import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{DontWait, SkipWhenNoNotice, Wait}
 
 final case class ExpectNotices(
   boardPaths: BoardPathExpression,
+  whenNotAnnounced: WhenNotAnnounced = WhenNotAnnounced.Wait,
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
 
@@ -20,12 +24,30 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
   def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths
 
-  def fulfilledEvents(
+  protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    @unused expected: Vector[OrderNoticesExpected.Expected])
+    expected: Vector[OrderNoticesExpected.Expected],
+    exprResult: L3)
   : List[OrderNoticesRead | OrderMoved] =
-    OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
+    exprResult match
+      case L3.False =>
+        // Notices don't match but are announced
+        Nil
+
+      case L3.True =>
+        // Notices match
+        OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
+
+      case L3.Unknown =>
+        // Notices whether match nor are they announced
+        whenNotAnnounced match
+          case Wait => Nil
+          case DontWait | SkipWhenNoNotice =>
+            OrderNoticesRead
+              :: OrderMoved(order.position.increment, Some(OrderMoved.NoNotice))
+              :: Nil
 
 
 object ExpectNotices:
-  implicit val jsonCodec: Codec.AsObject[ExpectNotices] = ConfiguredCodec.derive(useDefaults = true)
+
+  given Codec.AsObject[ExpectNotices] = ConfiguredCodec.derive(useDefaults = true)

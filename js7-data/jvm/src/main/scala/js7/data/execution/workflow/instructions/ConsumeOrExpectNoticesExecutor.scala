@@ -8,7 +8,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.ifEmpty
 import js7.data.board.{BoardState, GlobalBoard, PlannableBoard}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderNoticesExpected}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 
@@ -34,24 +34,16 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                       scope <- state.toOrderScope(order)
                       noticeId <- board.expectingOrderToNoticeId(scope)
                     yield
-                      Right(OrderNoticesExpected.Expected(board.path, noticeId))
+                      OrderNoticesExpected.Expected(board.path, noticeId)
 
                   case board: PlannableBoard =>
                     state.orderToPlannableBoardNoticeId(order).map: noticeId =>
-                      if boardState.isAnnounced(noticeId) then
-                        Right(OrderNoticesExpected.Expected(board.path, noticeId))
-                      else
-                        Left(OrderMoved(order.position.increment))
-              .map(_.sequence)
-              .map:
-                case Right(expected) =>
-                  instr.tryFulfill(order, expected, state)
-                    .ifEmpty:
-                      OrderNoticesExpected(expected) :: Nil
-                    .map(order.id <-: _)
-                case Left(moved) =>
-                  (order.id <-: moved) :: Nil
-
+                      OrderNoticesExpected.Expected(board.path, noticeId)
+              .map: expectedSeq =>
+                instr.tryFulfill(order, expectedSeq, state.isNoticeAvailable)
+                  .ifEmpty:
+                    OrderNoticesExpected(expectedSeq) :: Nil
+                  .map(order.id <-: _)
       .orElse:
         order.ifState[Order.ExpectingNotices].map: order =>
           if order.state.expected.map(_.boardPath).toSet != instr.referencedBoardPaths then
@@ -59,7 +51,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
               } instruction does not match Order.State: $instr <-> ${order.state}"))
           else
             Right:
-              instr.tryFulfillExpectingOrder(order, state)
+              instr.tryFulfillExpectingOrder(order, state.isNoticeAvailable)
                 .map(order.id <-: _)
       .getOrElse:
         Right(Nil)

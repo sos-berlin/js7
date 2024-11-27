@@ -36,7 +36,7 @@ final class NoticeEndOfLifeTest
   private val consumeWorkflow = Workflow(WorkflowPath("CONSUME-WORKFLOW"), Vector(
     ExpectNotices(BoardPathExpression.ExpectNotice(board.path)),
     ConsumeNotices(BoardPathExpression.ExpectNotice(board.path),
-      Workflow.empty)))
+      subworkflow = Workflow.empty)))
 
   protected val items = Seq(board, postWorkflow, consumeWorkflow)
 

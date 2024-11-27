@@ -95,6 +95,16 @@ object CirceUtils:
                 .toMap
                 .map((k, v) => rename.getOrElse(k, k) -> v)))))
 
+  def enumEncoder[E <: scala.reflect.Enum](values: Array[E]): Encoder[E] =
+    e => Json.fromString(e.toString)
+
+  def enumDecoder[E <: scala.reflect.Enum](valueOf: String => E): Decoder[E] =
+    c => c.as[String].flatMap: string =>
+      try
+        Right(valueOf(string))
+      catch case t: IllegalArgumentException =>
+        Left(DecodingFailure(Option(t.getMessage) getOrElse "Unknown value for enum", c.history))
+
   val CompactPrinter: Printer = Printer.noSpaces.copy(
     dropNullValues = true/*Suppress None*/,
     //reuseWriters = true,  // Remember StringBuilder in thread local

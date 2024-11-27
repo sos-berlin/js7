@@ -5,6 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
+import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardState, NoticeId}
@@ -82,14 +83,21 @@ trait StateView extends ItemContainer:
     if planId.isGlobal then
       Left(Problem.pure(s"PlannableBoard requested, but Order is not in a plan (or in $planId)"))
     else
-      NoticeId.planned(planId)
+      Right(planId.noticeId)
 
-  def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
-    expectedSeq
-      .collect:
-        case x if keyTo(BoardState).get(x.boardPath).exists(_.containsNotice(x.noticeId)) =>
-          x.boardPath
-      .toSet
+  /** @return L3.True: Notice exists<br>
+    *         L3.False: Notice doesn't exist but is announced<br>
+    *         L3.Unknown: Notice doesn't exist nor is it announced
+    */
+  final def isNoticeAvailable(expected: OrderNoticesExpected.Expected): L3 =
+    keyTo(BoardState).get(expected.boardPath).fold(L3.Unknown/*just in case*/): boardState =>
+      boardState.isNoticeAvailable(expected.noticeId)
+
+  final def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
+    expectedSeq.collect:
+      case o if keyTo(BoardState).get(o.boardPath).exists(_.containsNotice(o.noticeId)) =>
+        o.boardPath
+    .toSet
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =

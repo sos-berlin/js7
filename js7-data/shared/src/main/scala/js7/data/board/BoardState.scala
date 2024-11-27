@@ -6,13 +6,13 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
-import js7.data.order.{Order, OrderId}
+import js7.data.order.OrderId
 import scala.collection.View
 
 final case class BoardState(
@@ -82,41 +82,49 @@ extends UnsignedSimpleItemState:
 
   def addExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-    Right(updateNoticePlace(noticePlace.copy(
-      expectingOrderIds = noticePlace.expectingOrderIds + orderId)))
+    Right(updateNoticePlace:
+      noticePlace.addExpecting(orderId))
 
   def removeExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     Right:
       idToNotice.get(noticeId).fold(this) : noticePlace =>
-        updateNoticePlace(noticePlace.copy(
-          expectingOrderIds = noticePlace.expectingOrderIds - orderId))
+        updateNoticePlace:
+          noticePlace.removeExpecting(orderId)
 
-  def addConsumption(
-    noticeId: NoticeId,
-    order: Order[Order.State],
-    consumption: OrderNoticesConsumptionStarted.Consumption)
+  def addConsumption(noticeId: NoticeId, orderId: OrderId)
   : Checked[BoardState] =
     // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-    val consumptionStack = orderToConsumptionStack.get(order.id).fold(Nil)(_.toList)
+    val consumptionStack = orderToConsumptionStack.get(orderId).fold_(Nil, _.toList)
     Right(copy(
-      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(order.id)),
-      orderToConsumptionStack = orderToConsumptionStack.updated(order.id,
-        Nel(consumption.noticeId, consumptionStack))))
+      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(orderId)),
+      orderToConsumptionStack = orderToConsumptionStack.updated(orderId,
+        Nel(noticeId, consumptionStack))))
 
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
-    orderToConsumptionStack.checked(orderId)
-      .flatMap: consumptions =>
-        val Nel(noticeId, remainingConsumptions) = consumptions: @unchecked
-        idToNotice.checked(noticeId)
-          .map: noticePlace =>
-            updateNoticePlace:
-              noticePlace.finishConsumption(succeeded)
-            .copy(
-              orderToConsumptionStack =
-                Nel.fromList(remainingConsumptions) match
-                  case None => orderToConsumptionStack - orderId
-                  case Some(nel) => orderToConsumptionStack.updated(orderId, nel))
+    orderToConsumptionStack.get(orderId).fold(Checked(this)): consumptions =>
+      val Nel(noticeId, remainingConsumptions) = consumptions
+      idToNotice.checked(noticeId)
+        .map: noticePlace =>
+          updateNoticePlace:
+            noticePlace.finishConsumption(succeeded)
+          .copy(
+            orderToConsumptionStack =
+              Nel.fromList(remainingConsumptions) match
+                case None => orderToConsumptionStack - orderId
+                case Some(nel) => orderToConsumptionStack.updated(orderId, nel))
+
+  /** @return L3.True: Notice exists<br>
+    *         L3.False: Notice doesn't exist but is announced<br>
+    *         L3.Unknown: Notice doesn't exist nor is it announced
+    */
+  def isNoticeAvailable(noticeId: NoticeId): L3 =
+    if containsNotice(noticeId) then
+      L3.True
+    else if isAnnounced(noticeId) then
+      L3.False
+    else
+      L3.Unknown
 
   def containsNotice(noticeId: NoticeId): Boolean =
     idToNotice.get(noticeId).exists(_.notice.isDefined)

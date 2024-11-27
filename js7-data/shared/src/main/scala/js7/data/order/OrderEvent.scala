@@ -387,11 +387,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
   extends OrderNoticeEvent:
     def checked: Checked[this.type] =
-      consumptions.checkUniqueness(_.boardPath).>>(
-        if consumptions.isEmpty then
-          Problem.pure("Invalid arguments for OrderNoticesConsumptionStarted")
-        else
-          Right(this))
+      consumptions.checkUniqueness(_.boardPath).rightAs(this)
 
   object OrderNoticesConsumptionStarted:
     implicit val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
@@ -428,10 +424,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   object OrderMoved:
     sealed trait Reason
     case object SkippedDueToWorkflowPathControl extends Reason
+    case object NoNotice extends Reason
     case object NoAdmissionPeriodStart extends Reason
 
     implicit val jsonCodec: TypedJsonCodec[Reason] = TypedJsonCodec(
       Subtype(SkippedDueToWorkflowPathControl),
+      Subtype(NoNotice),
       Subtype(NoAdmissionPeriodStart))
 
 

@@ -54,11 +54,10 @@ final class ConsumeNoticesTest
 
   "A single Order" in:
     // board2 is referenced but not required to have a Notice
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'"),
-          Workflow.of(TestJob.execute(agentPath))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+          TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -90,8 +89,7 @@ final class ConsumeNoticesTest
         Expected(aBoard.path, noticeId),
         Expected(bBoard.path, noticeId))),
       OrderNoticesConsumptionStarted(Vector(
-        Expected(aBoard.path, noticeId),
-        Expected(bBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeId))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -118,7 +116,7 @@ final class ConsumeNoticesTest
         PostNotices(Seq(aBoard.path, myBoard.path)),
         ConsumeNotices(
           boardPathExpr(s"'${aBoard.path.string}' && '${myBoard.path.string}'"),
-          Workflow.empty)))
+          subworkflow = Workflow.empty)))
 
     withTemporaryItem(myBoard) { _ =>
       withTemporaryItem(workflow) { workflow =>
@@ -148,9 +146,8 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(
         PostNotices(Seq(aBoard.path)),
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(Prompt(expr("'PROMPT'"))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          Prompt(expr("'PROMPT'"))))
 
     withTemporaryItem(workflow) { workflow =>
       val eventId = eventWatch.lastAddedEventId
@@ -187,11 +184,10 @@ final class ConsumeNoticesTest
     }
 
   "A single Order waiting for one of two Notices, posting one Notice, then the other" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'"),
-          Workflow.of(TestJob.execute(agentPath))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+          TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -211,11 +207,7 @@ final class ConsumeNoticesTest
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
-
-    // Notice in board2 is isInConsumption despite there was no notice
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).notice.isEmpty)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).consumptionCount == 1)
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).idToNotice.contains(noticeId))
 
     execCmd:
       PostNotice(bBoard.path, noticeId)
@@ -224,7 +216,7 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
     // Notice at board has been deleted:
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
+    assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice.contains(noticeId))
 
     // Notices posted at board2 while ConsumeNotices still exists:
     assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).notice.isDefined)
@@ -236,12 +228,11 @@ final class ConsumeNoticesTest
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderNoticesExpected(Vector(Expected(
-        aBoard.path, noticeId),
-        Expected(bBoard.path, noticeId))),
-      OrderNoticesConsumptionStarted(Vector(
+      OrderNoticesExpected(Vector(
         Expected(aBoard.path, noticeId),
         Expected(bBoard.path, noticeId))),
+      OrderNoticesConsumptionStarted(Vector(
+        Consumption(aBoard.path, noticeId))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -254,11 +245,10 @@ final class ConsumeNoticesTest
       OrderDeleted))
 
   "PostNotice while consuming an earlier notice" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("POST-WHILE-CONSUMING"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(TestJob.execute(agentPath))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -302,11 +292,10 @@ final class ConsumeNoticesTest
       OrderDeleted))
 
   "Two concurrent ConsumeNotices" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-TWO-ORDERS"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(TestJob.execute(agentPath))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -373,20 +362,18 @@ final class ConsumeNoticesTest
       OrderDeleted))
 
   "Nested ConsumeNotcies" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(
         WorkflowPath("CONSUMING-NESTED"),
         Seq(
           ConsumeNotices(
             boardPathExpr(s"'${aBoard.path.string}'"),
-            Workflow.of(
-              ConsumeNotices(
-                boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'"),
-                Workflow.of(
-                  Execute(WorkflowJob.Name("JOB")))),
+            subworkflow = Workflow.of(
+              ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+                Execute(WorkflowJob.Name("JOB")),
               Prompt(expr("'PROMPT'"))))),
         nameToJob = Map(
-          WorkflowJob.Name("JOB") -> TestJob.workflowJob(agentPath))))
+          WorkflowJob.Name("JOB") -> TestJob.workflowJob(agentPath)))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -406,18 +393,13 @@ final class ConsumeNoticesTest
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
-
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).notice.isEmpty)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).consumptionCount == 1)
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).idToNotice.contains(noticeId))
 
     TestJob.continue()
     eventWatch.await[OrderPrompted](_.key == orderId)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
-
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice.get(noticeId).isEmpty)
 
     execCmd:
       AnswerOrderPrompt(orderId)
@@ -433,8 +415,7 @@ final class ConsumeNoticesTest
       OrderNoticesConsumptionStarted(Vector(
         Consumption(aBoard.path, noticeId))),
       OrderNoticesConsumptionStarted(Vector(
-        Expected(aBoard.path, noticeId),
-        Expected(bBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeId))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -451,11 +432,10 @@ final class ConsumeNoticesTest
       OrderDeleted))
 
   "Failing ConsumeNotices block does not consume the Notice" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-FAILING"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(Fail())))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          Fail()))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -495,11 +475,10 @@ final class ConsumeNoticesTest
       OrderDeleted))
 
   "Cancel while consuming a Notice and sticking in Promting" in:
-    val workflow = updateItem(
+    val workflow = updateItem:
       Workflow(WorkflowPath("CANCEL-WHILE-PROMPTING"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(Prompt(expr("'PROMPT'")))))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          Prompt(expr("'PROMPT'"))))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
@@ -540,7 +519,7 @@ final class ConsumeNoticesTest
   "TransferOrders of Order.ExpectingNotice" in:
     val eventId = eventWatch.lastAddedEventId
     testTransferOrders(
-      boardPath => ConsumeNotices(ExpectNotice(boardPath), Workflow.empty),
+      boardPath => ConsumeNotices(ExpectNotice(boardPath), subworkflow = Workflow.empty),
       (board1, board2, workflowId1, workflowId2, orderId, noticeId) =>
         assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
           OrderAdded(workflowId1, deleteWhenTerminated = true),
@@ -568,10 +547,8 @@ final class ConsumeNoticesTest
         PostNotices(Seq(aBoard.path)),
         TryInstruction(
           Workflow.of(
-            ConsumeNotices(
-              boardPathExpr(s"'${aBoard.path.string}'"),
-              Workflow.of(
-                FailingJob.execute(agentPath)))),
+            ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+              FailingJob.execute(agentPath)),
           Workflow.of(
             Retry()),
           retryDelays = Some(Vector(0.s)),
@@ -624,10 +601,8 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("RESUME-INTO-CONSUME-NOTICES"),
       Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(
-            EmptyJob.execute(agentPath)))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          EmptyJob.execute(agentPath)))
 
     withTemporaryItem(workflow) { workflow =>
       execCmd:
@@ -653,11 +628,9 @@ final class ConsumeNoticesTest
       Seq:
         Options(stopOnFailure = true)(
           PostNotices(Seq(aBoard.path)),
-          ConsumeNotices(
-            boardPathExpr(s"'${aBoard.path.string}'"),
-            Workflow.of:
-              If(expr("true")):
-                Fail())))
+          ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+            If(expr("true")):
+              Fail()))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")
@@ -674,11 +647,9 @@ final class ConsumeNoticesTest
       WorkflowPath("CONSUME-NOTICE-IF-FAIL"),
       Seq(
         PostNotices(Seq(aBoard.path)),
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
-          Workflow.of(
-            If(expr("true")):
-              Fail()))))
+        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          If(expr("true")):
+            Fail()))
 
     withTemporaryItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#ConsumeNotices-If-Fail")

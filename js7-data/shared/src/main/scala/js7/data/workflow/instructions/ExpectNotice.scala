@@ -15,4 +15,4 @@ private object ExpectNotice:
     Subtype.decodeCompatible(deriveDecoder[ExpectNotice])(expectNotice =>
       Right(ExpectNotices(
         BoardPathExpression.ExpectNotice(expectNotice.boardPath),
-        expectNotice.sourcePos)))
+        sourcePos = expectNotice.sourcePos)))

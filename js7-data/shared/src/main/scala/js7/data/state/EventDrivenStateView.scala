@@ -221,16 +221,22 @@ extends EventDrivenState[Self, E], StateView:
                 _.addExpectation(expected.noticeId, orderId)
 
         case OrderNoticesRead =>
-          previousOrder.ifState[Order.ExpectingNotices] match
+          previousOrder.ifState[ExpectingNotices] match
             case None => Right(Nil)
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
 
         case OrderNoticesConsumptionStarted(consumptions) =>
-          consumptions.traverse: consumption =>
-            keyTo(BoardState)
-              .checked(consumption.boardPath)
-              .flatMap:
-                _.addConsumption(consumption.noticeId, previousOrder, consumption)
+          val isConsumption = consumptions.toSet
+          val expectedOrConsumptionSeq =
+            previousOrder.ifState[ExpectingNotices].fold_(Vector.empty, _.state.expected)
+              .concat(consumptions).distinct
+          if isStrict then assert(expectedOrConsumptionSeq.areUniqueBy(_.boardPath))
+          expectedOrConsumptionSeq.traverse: exp =>
+            keyTo(BoardState).checked(exp.boardPath).flatMap: boardState =>
+              if isConsumption(exp) then
+                boardState.addConsumption(exp.noticeId, orderId)
+              else
+                boardState.removeExpectation(exp.noticeId, orderId)
 
         case OrderNoticesConsumed(failed) =>
           val consumeNotices: Checked[ConsumeNotices] =
@@ -244,8 +250,8 @@ extends EventDrivenState[Self, E], StateView:
             .traverse(keyTo(BoardState).checked)
             .flatMap(_.traverse:
               _.removeConsumption(previousOrder.id, succeeded = !failed)))
-    .flatMap: o =>
-      update(addItemStates = o)
+      .flatMap: o =>
+        update(addItemStates = o)
 
   private def findInstructionInCallStack[I <: Instruction: ClassTag](
     workflowPosition: WorkflowPosition)

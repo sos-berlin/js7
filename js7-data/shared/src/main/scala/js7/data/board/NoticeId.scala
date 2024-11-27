@@ -5,7 +5,8 @@ import io.circe.{Decoder, Encoder, Json}
 import javax.annotation.Nonnull
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, ProblemException}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
 import js7.data.plan.{PlanId, PlanItemId, PlanKey}
@@ -36,11 +37,9 @@ object NoticeId:
   def global(noticeKey: NoticeKey): Checked[NoticeId] =
     checked(noticeKey, PlanId.Global)
 
-  def planned(planId: PlanId): Checked[NoticeId] =
-    if planId.isGlobal then
-      Left(Problem(s"Planned NoticeId for $planId requested"))
-    else
-      checked(NoticeKey.empty, planId)
+  def planned(planId: PlanId): NoticeId =
+    assertThat(!planId.isGlobal)
+    new NoticeId(NoticeKey.empty, planId)
 
   def checked(noticeKey: NoticeKey, planId: PlanId): Checked[NoticeId] =
     if planId.isGlobal && noticeKey.isEmpty then

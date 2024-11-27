@@ -488,6 +488,15 @@ final class OrderEventTest extends OurTestSuite:
         }
       }""")
 
+    testJson[OrderEvent](OrderMoved(Position(7), Some(OrderMoved.NoNotice)), json"""
+      {
+        "TYPE": "OrderMoved",
+        "to": [ 7 ],
+        "reason": {
+          "TYPE": "NoNotice"
+        }
+      }""")
+
     testJson[OrderEvent](OrderMoved(Position(7), Some(OrderMoved.NoAdmissionPeriodStart)), json"""
       {
         "TYPE": "OrderMoved",
