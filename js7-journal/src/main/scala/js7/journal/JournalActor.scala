@@ -20,9 +20,10 @@ import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.MultipleLinesBracket.Round
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.{MultipleLinesBracket, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -635,8 +636,14 @@ extends Actor, Stash, JournalLogging:
         stampedEvents)
 
       // Check snapshot recoverability
-      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSyncX(),
-        stampedEvents)
+      locally:
+        val recovered = uncommittedState.toRecovered.unsafeRunSyncX()
+        if recovered != uncommittedState then
+          uncommittedState.toSnapshotStream.evalMap: o =>
+            IO(logger.error(s"Snapshot $o"))
+          .compile.drain.unsafeRunSyncX()
+          assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSyncX(),
+            stampedEvents)
 
       // Check SnapshotStateBuilder#initializeState
       val builder = S.newBuilder()
@@ -651,7 +658,8 @@ extends Actor, Stash, JournalLogging:
     if couldBeRecoveredState != uncommittedState then
       var msg = s"$what does not match actual '$S'"
       logger.error(msg)
-      for stamped <- stampedSeq do logger.error(stamped.toString.truncateWithEllipsis(200))
+      stampedSeq.foreachWithBracket(Round): (stamped, bracket) =>
+        logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
       if conf.slowCheckState then
         logger.error(s"couldBeRecoveredState (wrong) = $couldBeRecoveredState")
         logger.error(s"uncommittedState (expected)   = $uncommittedState")

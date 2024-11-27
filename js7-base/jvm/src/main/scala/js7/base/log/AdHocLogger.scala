@@ -15,6 +15,10 @@ transparent trait AdHocLogger:
   inline def error(inline msg: String)(using sourcecode.Enclosing): Unit =
     logger.error(msg)
 
+  inline def error(inline msg: String, inline throwable: Throwable)(using sourcecode.Enclosing)
+  : Unit =
+    logger.error(msg, throwable)
+
   inline def warn(inline msg: String)(using sourcecode.Enclosing): Unit =
     logger.warn(msg)
 
