@@ -32,7 +32,7 @@ object BlockNesting:
       BranchPath.Segment(nr, blockId.toLegacyBranchId)
 
 
-  enum BlockId(val toLegacyBranchId: BranchId):
+  enum BlockId private(val toLegacyBranchId: BranchId):
     case Options extends BlockId(BranchId.Options)
     case Then extends BlockId(BranchId.Then)
     case Else extends BlockId(BranchId.Else)

@@ -7,6 +7,9 @@ import js7.base.time.Timestamp
 import js7.base.utils.Nulls.nonNull
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
+import js7.data.workflow.instructions.ForkBranchId
+import js7.data.workflow.position.BlockNesting.BlockId
+import js7.data.workflow.position.BranchId.ForkPrefix
 import scala.collection.View
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -31,6 +34,17 @@ sealed trait BranchId:
     BranchId.NoMoveBoundary(this) || BranchId.NoMoveBoundaryPrefixes.exists(string.startsWith)
 
   def toCycleState: Checked[CycleState]
+
+  def toBlockIdOrNewBranchId: Checked[Set[BlockId | NewBranchId]] =
+    if !string.contains('+') then
+      BlockId.fromLegacy(this).map(Set(_))
+    else if string.startsWith(ForkPrefix) then
+      Right(Set(
+        BlockId.Fork(ForkBranchId(string.drop(ForkPrefix.length))),
+        NewBranchId.Fork(ForkBranchId(string.drop(ForkPrefix.length))),
+        NewBranchId.ForkList(ForkBranchId(string.drop(ForkPrefix.length)))))
+    else
+      NewBranchId.fromLegacy(this).map(Set(_))
 
 
 object BranchId:
