@@ -608,7 +608,7 @@ final class WorkflowTest extends OurTestSuite:
     assert(TestWorkflow.checkPosition(Position(2) / "fork+🥕" % 3) == Left(Problem("Unknown position 2/fork+🥕:3 in Workflow:TEST~VERSION")))
     assert(TestWorkflow.checkPosition(Position(5)) == Left(Problem("Unknown position 5 in Workflow:TEST~VERSION")))
 
-  "completelyChecked in {" - {
+  "completelyChecked in" - {
     val wrongWorkflow = Workflow(
       WorkflowPath.NoId,
       Vector(
@@ -806,6 +806,27 @@ final class WorkflowTest extends OurTestSuite:
 
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 0))
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Else % 1))
+
+    "if-then-else-if-... is okay" in:
+      val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1.0",
+        If(expr("false")).Then:
+          Workflow.empty
+        .elseIf(expr("false")).Then:
+          Workflow.empty
+        .elseIf(expr("true")).Then:
+          Workflow.empty
+        .Else:
+          Workflow.empty)
+
+      assert:
+        workflow.reachablePositions(Position(0)).toList ==
+          List(
+            Position(0),
+            Position(0) / "then" % 0,
+            Position(0) / "then+1" % 0,
+            Position(0) / "then+2" % 0,
+            Position(0) / "else" % 0,
+            Position(1))
 
     "Different fork branches are not okay" in:
       assert(!TestWorkflow.isMoveable(Position(2), Position(2) / fork("🥕") % 0))
