@@ -27,7 +27,7 @@ sealed trait BranchId:
   final def isIsFailureBoundary: Boolean = isFork
 
   /** An order can not be moved through a move boundary. */
-  final def isNotMoveBoundary: Boolean =
+  final def isNoMoveBoundary: Boolean =
     BranchId.NoMoveBoundary(this) || BranchId.NoMoveBoundaryPrefixes.exists(string.startsWith)
 
   def toCycleState: Checked[CycleState]

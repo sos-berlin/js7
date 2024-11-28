@@ -70,11 +70,9 @@ extends Instruction:
       elseBlock.map(BranchId.Else -> _)
 
   override def toString: String =
-    ifThens.toVector.map(_.toString).mkString(" else ")
-      .concat:
-        elseBlock.fold("")(w => s" else $w")
-      .concat:
-        sourcePosToString
+    ifThens.toVector.mkString(" else ")
+      + elseBlock.fold("")(w => s" else $w")
+      + sourcePosToString
 
 
 object If:

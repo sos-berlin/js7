@@ -433,8 +433,8 @@ extends VersionedItem, TrivialItemState[Workflow]:
   private def isMoveable(from: BranchPath, to: BranchPath): Boolean =
     from == to || {
       val prefix = BranchPath.commonBranchPath(from, to).length
-      from.drop(prefix).forall(_.branchId.isNotMoveBoundary) &&
-        to.drop(prefix).forall(_.branchId.isNotMoveBoundary)
+      from.drop(prefix).forall(_.branchId.isNoMoveBoundary) &&
+        to.drop(prefix).forall(_.branchId.isNoMoveBoundary)
     }
 
   def instruction(position: Position): Instruction =
