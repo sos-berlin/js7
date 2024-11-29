@@ -147,7 +147,7 @@ final class PlannableBoardTest
         eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
         eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
-        assert(controllerState.idToOrder(consumingOrderId).planId ==
+        assert(controllerState.idToOrder(consumingOrderId).maybePlanId ==
           Some(PlanItemId("WeeklyPlan") / "2024w47"))
         execCmd(DeleteOrdersWhenTerminated(consumingOrderId :: Nil))
 

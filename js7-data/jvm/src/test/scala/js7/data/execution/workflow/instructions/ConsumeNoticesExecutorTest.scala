@@ -308,7 +308,7 @@ object ConsumeNoticesExecutorTest:
       whenNotAnnounced = whenNotAnnounced,
       Workflow.empty)
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"), instr)
-    val order = Order(orderId, workflow.id /: Position(0), Order.Ready, planId = Some(planId))
+    val order = Order(orderId, workflow.id /: Position(0), Order.Ready, maybePlanId = Some(planId))
     val controllerState = ControllerTestStateView.of(
       workflows = Some(Seq(workflow)),
       orders = Some(Seq(order)),

@@ -77,7 +77,7 @@ trait StateView extends ItemContainer:
       .asInstanceOf[MapView[A.Path, A]]
 
   final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[NoticeId] =
-    planToPlannableBoardNoticeId(order.planId getOrElse PlanId.Global/*rejected*/)
+    planToPlannableBoardNoticeId(order.maybePlanId getOrElse PlanId.Global/*rejected*/)
 
   final def planToPlannableBoardNoticeId(planId: PlanId): Checked[NoticeId] =
     if planId.isGlobal then
