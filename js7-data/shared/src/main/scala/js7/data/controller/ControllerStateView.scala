@@ -35,4 +35,5 @@ extends EventDrivenStateView[Self, Event]:
         case 0 => Right(None)
         case 1 => Right(Some(planIds.head))
         case n => Left(Problem:
-          s"${order.id} fits $n Plans: ${planIds.mkString(", ")} — An Order must not fit multiple Plans")
+          s"${order.id} fits $n Plans: ${planIds.sorted.mkString(", ")
+          } — An Order must not fit multiple Plans")

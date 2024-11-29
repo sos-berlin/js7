@@ -1034,6 +1034,32 @@ object ScalaUtils:
   def someUnless[A](a: A, none: A): Option[A] =
     if a == none then None else Some(a)
 
+  def orderingBy[A, B1, B2](
+    toB1: A => B1,
+    toB2: A => B2)
+    (using
+      B1: Ordering[B1],
+      B2: Ordering[B2])
+  : Ordering[A] =
+    (a, b) =>
+      B1.compare(toB1(a), toB1(b)) match
+        case 0 => B2.compare(toB2(a), toB2(a))
+        case o => o
+
+  def orderingBy[A, B1, B2, B3](
+    toB1: A => B1,
+    toB2: A => B2,
+    toB3: A => B3)
+    (using
+      B1: Ordering[B1],
+      B2: Ordering[B2],
+      B3: Ordering[B3])
+  : Ordering[A] =
+    (a, b) =>
+      orderingBy(toB1, toB2).compare(a, b) match
+        case 0 => B3.compare(toB3(a), toB3(a))
+        case o => o
+
   /** Simple implementation (for tests), converts the string to an Array[Byte],
     * risking `OutOfMemoryError` for long Strings. */
   def shortStringToInputStream(string: String): InputStream =

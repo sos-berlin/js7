@@ -2,9 +2,11 @@ package js7.data.plan
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
+import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeId
 import js7.data.plan.PlanId.*
+import scala.math.Ordered.orderingToOrdered
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
 final case class PlanId(planTemplateId: PlanTemplateId, planKey: PlanKey):
@@ -25,6 +27,8 @@ final case class PlanId(planTemplateId: PlanTemplateId, planKey: PlanKey):
 object PlanId:
 
   val Global: PlanId = PlanId(PlanTemplateId.Global, PlanKey.Global)
+
+  given Ordering[PlanId] = orderingBy(_.planTemplateId, _.planKey)
 
   given Encoder[PlanId] =
     case PlanId(planTemplateId, planKey) => Json.arr(planTemplateId.asJson, planKey.asJson)
