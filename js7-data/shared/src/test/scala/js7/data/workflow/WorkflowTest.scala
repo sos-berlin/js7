@@ -823,8 +823,8 @@ final class WorkflowTest extends OurTestSuite:
           List(
             Position(0),
             Position(0) / "then" % 0,
-            Position(0) / "then+1" % 0,
             Position(0) / "then+2" % 0,
+            Position(0) / "then+3" % 0,
             Position(0) / "else" % 0,
             Position(1))
 
