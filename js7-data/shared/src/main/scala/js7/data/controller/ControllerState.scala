@@ -39,7 +39,7 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanItem, PlanItemId, PlanKey}
+import js7.data.plan.{PlanKey, PlanTemplate, PlanTemplateId}
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -109,7 +109,7 @@ extends SignedItemContainer,
       Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
-      Stream.iterable(keyTo(PlanItem).values).flatMap(_.toSnapshotStream),
+      Stream.iterable(keyTo(PlanTemplate).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotStream),
@@ -271,7 +271,7 @@ extends SignedItemContainer,
 
                 case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
                             _: LockPath |
-                            _: CalendarPath | _: BoardPath | _: PlanItemId |
+                            _: CalendarPath | _: BoardPath | _: PlanTemplateId |
                             _: WorkflowPathControlPath | WorkflowControlId.as(_)) =>
                   Right(updated.copy(
                     keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
@@ -412,22 +412,22 @@ extends SignedItemContainer,
       .toVector
       .flatMap(_.state.expected)
 
-  /** Returns Checked unit iff the denoted PlanItem is unused. */
-  def checkUnusedPlanItem(planItemId: PlanItemId): Checked[Unit] =
-    planKeyToOrdersFor(planItemId).flatMap: planKeyToOrders =>
+  /** Returns Checked unit iff the denoted PlanTemplate is unused. */
+  def checkUnusedPlanTemplate(planTemplateId: PlanTemplateId): Checked[Unit] =
+    planKeyToOrdersFor(planTemplateId).flatMap: planKeyToOrders =>
       planKeyToOrders.isEmpty !! Problem:
-        s"$planItemId is in use by ${
+        s"$planTemplateId is in use by ${
           planKeyToOrders.toSeq.map: (planKey, orders) =>
             s"$planKey (${orders.length} orders)"
           .mkString(", ")
         }"
 
-  private def planKeyToOrdersFor(planItemId: PlanItemId)
+  private def planKeyToOrdersFor(planTemplateId: PlanTemplateId)
   : Checked[Map[PlanKey, Seq[Order[Order.State]]]] =
-    keyToItem(PlanItem).checked(planItemId).flatMap: planItem =>
+    keyToItem(PlanTemplate).checked(planTemplateId).flatMap: planTemplate =>
       orders.view.flatMap: order =>
         noticeScope(order).traverse: scope =>
-          planItem.evalOrderToPlanId(scope)
+          planTemplate.evalOrderToPlanId(scope)
             .map(_.map(_.planKey -> order))
       .map(_.flatten)
       .combineProblems
@@ -758,7 +758,7 @@ extends ClusterableState.Companion[ControllerState],
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
     AgentRef, SubagentItem, SubagentBundle, Lock,
-    GlobalBoard, PlanItem, PlannableBoard,
+    GlobalBoard, PlanTemplate, PlannableBoard,
     Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
@@ -775,7 +775,7 @@ extends ClusterableState.Companion[ControllerState],
       Subtype[LockState],
       GlobalBoard.subtype,
       PlannableBoard.subtype,
-      PlanItem.subtype,
+      PlanTemplate.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,

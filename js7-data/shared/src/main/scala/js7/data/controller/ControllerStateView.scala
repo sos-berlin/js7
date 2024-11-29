@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.event.Event
 import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanItem}
+import js7.data.plan.{PlanId, PlanTemplate}
 import js7.data.state.EventDrivenStateView
 
 trait ControllerStateView[Self <: ControllerStateView[Self]]
@@ -27,7 +27,7 @@ extends EventDrivenStateView[Self, Event]:
 
   final def minimumOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
     val scope = toMinimumOrderScope(order)
-    keyToItem(PlanItem).values.flatMap:
+    keyToItem(PlanTemplate).values.flatMap:
       _.evalOrderToPlanId(scope)
     .combineProblems
     .flatMap: planIds =>

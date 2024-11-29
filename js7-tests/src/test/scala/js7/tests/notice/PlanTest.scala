@@ -11,7 +11,7 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.{PlanItem, PlanItemId}
+import js7.data.plan.{PlanTemplate, PlanTemplateId}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
@@ -37,11 +37,11 @@ final class PlanTest
 
   protected def items = Nil
 
-  "PlanItem is only deletable if no Order is associated" in:
+  "PlanTemplate is only deletable if no Order is associated" in:
     withItem(Workflow.of(Prompt(expr("'PROMPT'")))): postingWorkflow =>
       eventWatch.resetLastWatchedEventId()
 
-      val planItem = updateItem(PlanItem.joc(PlanItemId("DailyPlan")))
+      val planTemplate = updateItem(PlanTemplate.joc(PlanTemplateId("DailyPlan")))
       val postingOrderId = OrderId("#2024-11-08#POST")
       controller.addOrderBlocking:
         FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
@@ -49,16 +49,16 @@ final class PlanTest
 
       locally:
         val checked = controller.api.updateItems(Stream:
-          ItemOperation.Remove(planItem.path))
+          ItemOperation.Remove(planTemplate.path))
         .await(99.s)
         assert(checked == Left(Problem:
-          "PlanItem:DailyPlan is in use by Plan:2024-11-08 (1 orders)"))
+          "PlanTemplate:DailyPlan is in use by Plan:2024-11-08 (1 orders)"))
 
       execCmd:
         CancelOrders(Seq(postingOrderId))
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
-      deleteItems(planItem.path)
+      deleteItems(planTemplate.path)
 
 
 object PlanTest:

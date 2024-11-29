@@ -5,16 +5,16 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 
-final class PlanItemIdTest extends OurTestSuite:
+final class PlanTemplateIdTest extends OurTestSuite:
 
   "Global is a reserved name" in:
-    assert(PlanItemId.checked("Global") == Left(Problem("PlanItemId:Global is a reserved name")))
+    assert(PlanTemplateId.checked("Global") == Left(Problem("PlanTemplateId:Global is a reserved name")))
 
   "Global is not JSON-serializable" in:
     // Use None instead of "Global"
 
     intercept[IllegalArgumentException]:
-      PlanItemId.Global.asJson
+      PlanTemplateId.Global.asJson
 
-    assert(json""" "Global" """.as[PlanItemId].toChecked ==
-      Left(Problem("JSON DecodingFailure at : PlanItemId:Global is a reserved name")))
+    assert(json""" "Global" """.as[PlanTemplateId].toChecked ==
+      Left(Problem("JSON DecodingFailure at : PlanTemplateId:Global is a reserved name")))

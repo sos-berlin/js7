@@ -14,7 +14,7 @@ import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanItem, PlanItemId}
+import js7.data.plan.{PlanTemplate, PlanTemplateId}
 import js7.data.state.ControllerTestStateView
 import js7.data.workflow.instructions.ConsumeNotices
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced
@@ -291,7 +291,7 @@ object ConsumeNoticesExecutorTest:
   private val B = BoardPath("B")
   private val C = BoardPath("C")
   private val boardPaths = Seq(A, B, C)
-  private val dailyPlan = PlanItem.joc(PlanItemId("DailyPlan"))
+  private val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
   private val day = "2024-11-25"
   private val planId = dailyPlan.id / day
   private val noticeId = planId.noticeId

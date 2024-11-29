@@ -15,7 +15,7 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
-import js7.data.plan.PlanItemId
+import js7.data.plan.PlanTemplateId
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
@@ -196,8 +196,8 @@ object VerifiedUpdateItemsExecutor:
             (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
               controllerState.detach(path)
 
-        case planItemId: PlanItemId =>
-          controllerState.checkUnusedPlanItem(planItemId).rightAs:
+        case planTemplateId: PlanTemplateId =>
+          controllerState.checkUnusedPlanTemplate(planTemplateId).rightAs:
             View.Single:
               ItemDeleted(path)
 

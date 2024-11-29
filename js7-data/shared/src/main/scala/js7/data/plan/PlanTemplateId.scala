@@ -5,12 +5,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
 import org.jetbrains.annotations.TestOnly
 
-final case class PlanItemId private(string: String)
+final case class PlanTemplateId private(string: String)
   extends GenericString, UnsignedSimpleItemPath:
 
-  protected type Self = PlanItemId
+  protected type Self = PlanTemplateId
 
-  val companion: PlanItemId.type = PlanItemId
+  val companion: PlanTemplateId.type = PlanTemplateId
 
   def /(planKey: PlanKey): PlanId =
     PlanId(this, planKey)
@@ -20,13 +20,13 @@ final case class PlanItemId private(string: String)
     PlanId(this, PlanKey(planKey))
 
 
-object PlanItemId extends UnsignedSimpleItemPath.Companion[PlanItemId]:
+object PlanTemplateId extends UnsignedSimpleItemPath.Companion[PlanTemplateId]:
 
-  type Item = PlanItem
+  type Item = PlanTemplate
 
   override protected val isReserved = Set("Global")
 
-  val Global: PlanItemId = new PlanItemId("Global")
+  val Global: PlanTemplateId = new PlanTemplateId("Global")
 
   protected def unchecked(string: String) =
-    new PlanItemId(string)
+    new PlanTemplateId(string)

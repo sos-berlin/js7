@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
-import js7.data.plan.{PlanId, PlanItemId, PlanKey}
+import js7.data.plan.{PlanId, PlanKey, PlanTemplateId}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.jdk.OptionConverters.*
@@ -60,7 +60,7 @@ object NoticeId:
       o.noticeKey.asJson
     else
       Json.fromValues:
-        View(o.planId.planItemId.asJson, o.planId.planKey.asJson) ++
+        View(o.planId.planTemplateId.asJson, o.planId.planKey.asJson) ++
           o.noticeKey.string.ifNonEmpty.map(_.asJson)
 
   given Decoder[NoticeId] = c =>
@@ -71,10 +71,10 @@ object NoticeId:
         c.as[Vector[String]].flatMap: seq =>
           locally:
             for
-              planItemId <- seq.checked(0).flatMap(PlanItemId.checked)
+              planTemplateId <- seq.checked(0).flatMap(PlanTemplateId.checked)
               planKey <- seq.checked(1).flatMap(PlanKey.checked)
               noticeKey <- seq.get(2).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-              noticeId <- checked(noticeKey, PlanId(planItemId, planKey))
+              noticeId <- checked(noticeKey, PlanId(planTemplateId, planKey))
             yield
               noticeId
           .toDecoderResult(c.history)

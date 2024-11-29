@@ -24,7 +24,7 @@ import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.PlanItem
+import js7.data.plan.PlanTemplate
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -83,8 +83,8 @@ extends SnapshotableStateBuilder[ControllerState],
 
   override def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
     I match
-      case PlanItem =>
-        _keyToUnsignedItemState.view.filterKeys(_.isInstanceOf[PlanItem.Key])
+      case PlanTemplate =>
+        _keyToUnsignedItemState.view.filterKeys(_.isInstanceOf[PlanTemplate.Key])
           .asInstanceOf[MapView[I.Key, I]]
       case _ =>
         throw NotImplementedError(s"🔥ControllerStateBuilder#keyToItem[$I] is not implemented")
@@ -271,9 +271,10 @@ extends SnapshotableStateBuilder[ControllerState],
                     _keyToUnsignedItemState(item.path) = keyTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
 
-                  case planItem: PlanItem =>
-                    _keyToUnsignedItemState(planItem.path) = keyTo(PlanItem)(planItem.path)
-                      .updateItem(planItem).orThrow
+                  case planTemplate: PlanTemplate =>
+                    _keyToUnsignedItemState(planTemplate.path) = 
+                      keyTo(PlanTemplate)(planTemplate.path)
+                        .updateItem(planTemplate).orThrow
 
           case UnsignedItemAdded(item: VersionedControl) =>
             _keyToUnsignedItemState.insert(item.key, item.toInitialItemState)

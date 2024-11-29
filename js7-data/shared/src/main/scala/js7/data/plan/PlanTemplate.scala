@@ -13,23 +13,23 @@ import js7.data.value.expression.{Expression, Scope}
   * #@param startOffset When the plan starts (for example 6h for 06:00 local time)
   * #@param lifetime How long a daily plan is kept after the day is over
   */
-final case class PlanItem(
-  id: PlanItemId,
+final case class PlanTemplate(
+  id: PlanTemplateId,
   orderToPlanKey: Expression,
   itemRevision: Option[ItemRevision] = None)
 extends
-  UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[PlanItem]:
+  UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[PlanTemplate]:
 
-  protected type Self = PlanItem
+  protected type Self = PlanTemplate
 
-  val companion: PlanItem.type = PlanItem
+  val companion: PlanTemplate.type = PlanTemplate
 
-  def path: PlanItemId = id
+  def path: PlanTemplateId = id
 
-  def rename(id: PlanItemId): PlanItem =
+  def rename(id: PlanTemplateId): PlanTemplate =
     copy(id = id)
 
-  def withRevision(revision: Option[ItemRevision]): PlanItem =
+  def withRevision(revision: Option[ItemRevision]): PlanTemplate =
     copy(itemRevision = revision)
 
   /** @param scope is expected to contain the Order Scope.
@@ -49,21 +49,21 @@ extends
           .flatMap(PlanKey.checked)
 
 
-object PlanItem extends
-  UnsignedSimpleItem.Companion[PlanItem],
-  UnsignedSimpleItemState.Companion[PlanItem],
-  TrivialItemState.Companion[PlanItem]:
+object PlanTemplate extends
+  UnsignedSimpleItem.Companion[PlanTemplate],
+  UnsignedSimpleItemState.Companion[PlanTemplate],
+  TrivialItemState.Companion[PlanTemplate]:
 
-  /** A PlanItem for JOC-style OrderIds. */
-  def joc(id: PlanItemId): PlanItem =
-    PlanItem(
+  /** A PlanTemplate for JOC-style OrderIds. */
+  def joc(id: PlanTemplateId): PlanTemplate =
+    PlanTemplate(
       id,
       orderToPlanKey = PlanKey.jocOrderToPlanKey)
 
-  type Key = PlanItemId
+  type Key = PlanTemplateId
 
-  val Key: PlanItemId.type = PlanItemId
-  val Path: PlanItemId.type = PlanItemId
-  val cls: Class[PlanItem] = classOf[PlanItem]
+  val Key: PlanTemplateId.type = PlanTemplateId
+  val Path: PlanTemplateId.type = PlanTemplateId
+  val cls: Class[PlanTemplate] = classOf[PlanTemplate]
 
-  given jsonCodec: Codec.AsObject[PlanItem] = deriveConfiguredCodec
+  given jsonCodec: Codec.AsObject[PlanTemplate] = deriveConfiguredCodec

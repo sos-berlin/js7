@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 
-/** Identifies a Plan of a PlanItem.
+/** Identifies a Plan of a PlanTemplate.
   * @see `PlanId` which identifies a Plan globally.
   */
 

@@ -12,7 +12,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
-import js7.data.plan.{PlanId, PlanItemId, PlanKey}
+import js7.data.plan.{PlanId, PlanKey, PlanTemplateId}
 import js7.data.value.expression.ExpressionParser.expr
 import scala.collection.View
 
@@ -149,7 +149,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
     }
 
     "for PlannableBoard" - {
-      val planId = PlanId(PlanItemId("DailyPlan"), PlanKey("2024-11-08"))
+      val planId = PlanId(PlanTemplateId("DailyPlan"), PlanKey("2024-11-08"))
       lazy val boardState = BoardState(
         PlannableBoard(boardPath),
         idToNotice = Map(

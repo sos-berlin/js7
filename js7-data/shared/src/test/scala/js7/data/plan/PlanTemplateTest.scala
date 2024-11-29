@@ -11,17 +11,17 @@ import js7.data.value.{MissingValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester
 
-final class PlanItemTest extends OurTestSuite:
+final class PlanTemplateTest extends OurTestSuite:
 
   "JSON" in:
     import js7.data.controller.ControllerState.inventoryItemJsonCodec
     CirceJsonTester.testJson[InventoryItem](
-      PlanItem(
-        PlanItemId("DailyPlan"),
+      PlanTemplate(
+        PlanTemplateId("DailyPlan"),
         expr("match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1') ?"),
         Some(ItemRevision(1))),
       json"""{
-        "TYPE": "PlanItem",
+        "TYPE": "PlanTemplate",
         "id": "DailyPlan",
         "itemRevision": 1,
         "orderToPlanKey": "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')?"
@@ -31,10 +31,10 @@ final class PlanItemTest extends OurTestSuite:
     val freshOrder = FreshOrder(OrderId("#2024-11-20#bla"), WorkflowPath("WORKFLOW"))
     val scope = OrderScopes.minimumOrderScope(freshOrder, ControllerId("CONTROLLER"))
 
-    val dailyPlanItem = PlanItem.joc(PlanItemId("DailyPlan"))
-    assert(dailyPlanItem.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))
+    val dailyPlanTemplate = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
+    assert(dailyPlanTemplate.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))
 
-    val weeklyPlanItem = PlanItem(
-      PlanItemId("WeeklyPlan"),
+    val weeklyPlanTemplate = PlanTemplate(
+      PlanTemplateId("WeeklyPlan"),
       expr("match(orderId, '^#([0-9]{4}w[0-9]{2})#.*$', '$1') ?"))
-    assert(weeklyPlanItem.orderToPlanKey.eval(scope) == Right(MissingValue))
+    assert(weeklyPlanTemplate.orderToPlanKey.eval(scope) == Right(MissingValue))

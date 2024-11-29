@@ -17,7 +17,7 @@ import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.OrderEvent.*
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
-import js7.data.plan.{PlanId, PlanItemId, PlanKey}
+import js7.data.plan.{PlanId, PlanKey, PlanTemplateId}
 import js7.data.subagent.{SubagentBundleId, SubagentId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -37,7 +37,7 @@ final class OrderEventTest extends OurTestSuite:
       OrderAdded(
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
-        Some(PlanId(PlanItemId("DailyPlan"), PlanKey("2024-11-20"))),
+        Some(PlanId(PlanTemplateId("DailyPlan"), PlanKey("2024-11-20"))),
         Some(Timestamp("2021-01-01T00:00:00Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
@@ -135,7 +135,7 @@ final class OrderEventTest extends OurTestSuite:
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
-        PlanId(PlanItemId("PLAN"), PlanKey("TODAY")).some,
+        PlanId(PlanTemplateId("PLAN"), PlanKey("TODAY")).some,
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
         Some(ExternalOrderLink(
