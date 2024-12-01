@@ -41,6 +41,9 @@ trait InventoryItem:
 
 
 object InventoryItem:
+
+  given Ordering[InventoryItem] = Ordering.by(_.key)
+
   type Companion_ = Companion[? <: InventoryItem]
 
   trait Companion[A <: InventoryItem]:

@@ -976,6 +976,8 @@ object Order:
       innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
 
+  given Ordering[Order[? <: Order.State]] = Ordering.by(_.id)
+
 
   extension (order: Order[IsDelayingRetry])
     def awokeEventsIfRipe(ts: Timestamp): Checked[List[OrderAwoke | OrderMoved]] =

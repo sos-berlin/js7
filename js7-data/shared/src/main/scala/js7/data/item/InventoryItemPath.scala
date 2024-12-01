@@ -29,8 +29,8 @@ trait InventoryItemPath extends GenericString:
 
 
 object InventoryItemPath:
-  implicit val inventoryItemPathOrdering: Ordering[InventoryItemPath] =
-    GenericString.ordering[InventoryItemPath]
+  
+  given Ordering[InventoryItemPath] = GenericString.ordering
 
   abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]:
     private lazy val itemTypeName_ =

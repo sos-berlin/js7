@@ -1,6 +1,7 @@
 package js7.data.board
 
 import js7.base.annotation.javaApi
+import js7.base.generic.GenericString
 import js7.data.item.UnsignedSimpleItemPath
 
 final case class BoardPath private(string: String) extends UnsignedSimpleItemPath:
@@ -17,3 +18,5 @@ object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]:
   @javaApi
   def of(validName: String): BoardPath =
     apply(validName)
+
+  given Ordering[BoardPath] = GenericString.ordering

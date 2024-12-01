@@ -18,10 +18,9 @@ trait InventoryItemKey:
 
 
 object InventoryItemKey:
-  import InventoryItemPath.inventoryItemPathOrdering
   import VersionId.versionedIdOrdering
 
-  implicit val inventoryItemKeyOrdering: Ordering[InventoryItemKey] =
+  implicit val ordering: Ordering[InventoryItemKey] =
     (a, b) => a.path.compare(b.path) match
       case 0 => a match
         case a: VersionedItemId_ => a.versionId.compare(b.asInstanceOf[VersionedItemId_].versionId)

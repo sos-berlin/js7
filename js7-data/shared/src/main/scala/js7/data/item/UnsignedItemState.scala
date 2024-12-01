@@ -9,6 +9,9 @@ trait UnsignedItemState extends InventoryItemState:
 
 
 object UnsignedItemState:
+
+  given Ordering[UnsignedItemState] = Ordering.by(_.item.key)
+
   trait Companion[A <: UnsignedItemState] extends InventoryItemState.Companion[A]:
     type Path <: UnsignedItemPath
     type Key <: UnsignedItemKey

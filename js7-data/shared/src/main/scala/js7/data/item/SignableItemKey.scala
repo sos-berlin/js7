@@ -10,6 +10,9 @@ trait SignableItemKey extends InventoryItemKey:
 object SignableItemKey:
   type Companion_ = Companion[? <: SignableItemKey]
 
+  given Ordering[SignableItemKey] =
+    InventoryItemKey.ordering.asInstanceOf[Ordering[SignableItemKey]]
+
   trait Companion[A <: SignableItemKey] extends InventoryItemKey.Companion[A]
 
   def jsonCodec(companions: Iterable[SignableItemKey.Companion_]): Codec[SignableItemKey] =
