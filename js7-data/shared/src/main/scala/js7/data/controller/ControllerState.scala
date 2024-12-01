@@ -657,7 +657,7 @@ extends SignedItemContainer,
         path match
           case path: UnsignedSimpleItemPath => keyToUnsignedItemState_.get(path).map(_.item)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
-          case path: VersionedItemPath => repo.pathToVersionedItem(path).toOption
+          case path: VersionedItemPath => repo.pathToVersionedItem(path)
 
       def iterator: Iterator[(InventoryItemPath, InventoryItem)] =
         simpleItems.view.map(item => item.key -> item).iterator ++

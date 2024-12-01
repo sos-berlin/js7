@@ -92,9 +92,9 @@ final case class Repo(
 
   private def toAddedOrChanged(signedItem: Signed[VersionedItem]): Option[VersionedEvent.VersionedItemAddedOrChanged] =
     pathToSigned(signedItem.value.path) match
-      case Right(`signedItem`) => None
-      case Right(_) => Some(VersionedItemChanged(signedItem))
-      case Left(_) => Some(VersionedItemAdded(signedItem))
+      case Some(`signedItem`) => None
+      case Some(_) => Some(VersionedItemChanged(signedItem))
+      case None => Some(VersionedItemAdded(signedItem))
 
   def typedCount[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Int =
     pathToVersionToSignedItems.values.view.flatten.count:
@@ -277,9 +277,11 @@ final case class Repo(
       signed <- versions.head.maybeSignedItem
     yield signed.value.id.asInstanceOf[VersionedItemId[P]]
 
-  def pathToVersionedItem(path: VersionedItemPath): Checked[VersionedItem] =
-    pathToSigned(path)
-      .map(_.value)
+  def pathToVersionedItemChecked(path: VersionedItemPath): Checked[VersionedItem] =
+    pathToSignedChecked(path).map(_.value)
+
+  def pathToVersionedItem(path: VersionedItemPath): Option[VersionedItem] =
+    pathToSigned(path).map(_.value)
 
   def pathToItems[I <: VersionedItem](I: VersionedItem.Companion[I])
   : MapView[I.Path, View[I]] =
@@ -304,9 +306,13 @@ final case class Repo(
   private def pathToSignedChecked(path: VersionedItemPath): Checked[Signed[VersionedItem]] =
     pathToVersionToSignedItems
       .checked(path)
-      .flatMap(_.head
-        .maybeSignedItem
-        .toChecked(VersionedItemRemovedProblem(path)))
+      .flatMap:
+        _.head.maybeSignedItem.toChecked(VersionedItemRemovedProblem(path))
+
+  private def pathToSigned(path: VersionedItemPath): Option[Signed[VersionedItem]] =
+    pathToVersionToSignedItems.get(path)
+      .flatMap:
+        _.head.maybeSignedItem
 
   def anyIdToItem(id: VersionedItemId_): Checked[VersionedItem] =
     anyIdToSigned(id).map(_.value)
