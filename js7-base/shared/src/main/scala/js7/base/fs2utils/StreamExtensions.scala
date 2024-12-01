@@ -12,8 +12,8 @@ import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
 import js7.base.ProvisionalAssumptions
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
-import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.{Atomic, MultipleLinesBracket}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -65,6 +65,14 @@ object StreamExtensions:
 
 
   extension[F[_], O](stream: Stream[F, O])
+    /*inline not usable here, in Scala 3.5.2*/
+    def :+[O1 >: O](o: O1): Stream[F, O1] =
+      stream.appendOne(o)
+
+    /** Like ++, but has same operator priority as `:+`. */
+    inline def :++(inline other: Stream[F, O]): Stream[F, O] =
+      stream.append(other)
+
     /** Like FS2's keepAlive, but adds only a single beat after maxIdle has elapsed. */
     def addAfterIdle[F2[x] >: F[x]: Temporal, B](maxIdle: FiniteDuration, beat: F2[B])
     : Stream[F2, O | B] =
@@ -294,6 +302,15 @@ object StreamExtensions:
             a
           .onFinalizeCase: exitCase =>
             onComplete(startedAt.elapsed, count, exitCase)
+
+    def zipWithBracket(bracket: MultipleLinesBracket | String): Stream[F, (O, Char)] =
+      val brckt = MultipleLinesBracket.normalize(bracket)
+      stream.through:
+        _.zipWithPreviousAndNext.map:
+          case (None, o, Some(_)) => o -> brckt.first
+          case (Some(_), o, Some(_)) => o -> brckt.middle
+          case (Some(_), o, None) => o -> brckt.last
+          case (None, o, None) => o -> brckt.single
 
 
   extension [F[_], O](stream: Stream[F, O | Null])

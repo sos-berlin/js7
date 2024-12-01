@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.fs2utils.StreamExtensions.{mapParallelBatch, zipWithBracket}
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.metering.CallMeter
@@ -20,7 +20,7 @@ import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.MultipleLinesBracket.Round
+import js7.base.utils.MultipleLinesBracket.{Round, Square}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{MultipleLinesBracket, SetOnce}
@@ -656,13 +656,23 @@ extends Actor, Stash, JournalLogging:
     stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
   : Unit =
     if couldBeRecoveredState != uncommittedState then
-      var msg = s"$what does not match actual '$S'"
+      val msg = s"$what does not match actual '$S'"
       logger.error(msg)
       stampedSeq.foreachWithBracket(Round): (stamped, bracket) =>
         logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
       if conf.slowCheckState then
-        logger.error(s"couldBeRecoveredState (wrong) = $couldBeRecoveredState")
-        logger.error(s"uncommittedState (expected)   = $uncommittedState")
+        logger.error(s"WRONG? ${S.newBuilder().getClass.shortClassName} =⏎")
+        couldBeRecoveredState.toStringStream
+          .through(fs2.text.lines)
+          .zipWithBracket(Square).map: (line, br) =>
+            logger.error(s"$br$line")
+          .compile.drain
+        logger.error(s"EXPECTED? $S =⏎")
+        uncommittedState.toStringStream
+          .through(fs2.text.lines)
+          .zipWithBracket(Square).map: (line, br) =>
+            logger.error(s"$br$line")
+          .compile.drain
       // msg may get very big
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)

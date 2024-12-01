@@ -1,7 +1,7 @@
 package js7.data.item
 
 import cats.effect.IO
-import fs2.Stream
+import fs2.{Pure, Stream}
 import js7.base.problem.Checked
 
 trait InventoryItemState:
@@ -15,6 +15,9 @@ trait InventoryItemState:
 
   def toSnapshotStream: Stream[IO, Any] =
     Stream.emit(this)
+
+  def toStringStream: Stream[Pure, String] =
+    Stream.emit(toString)
 
 
 object InventoryItemState:

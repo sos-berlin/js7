@@ -70,6 +70,9 @@ extends JournaledState[S]:
     .map:
       _.withEventId(eventId)
 
+  def toStringStream: Stream[fs2.Pure, String] =
+    Stream.emit(toString)
+
 
 object SnapshotableState:
   private val logger = Logger[this.type]

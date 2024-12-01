@@ -7,12 +7,15 @@ import fs2.Stream
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
+import js7.base.fs2utils.StreamExtensions.{:+, :++}
+import js7.base.fs2utils.StreamUtils.bracketLineStream
 import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
+import js7.base.utils.MultipleLinesBracket.SmallSquare
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
@@ -67,6 +70,24 @@ extends SignedItemContainer,
   ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState]:
+
+  override def toStringStream: Stream[fs2.Pure, String] =
+    def inBrackets[A](name: String)(iterable: Iterable[A]): Stream[fs2.Pure, String] =
+      Stream(name, "=\n") ++
+        bracketLineStream(brackets = SmallSquare)(iterable)
+
+    Stream.emit[fs2.Pure, String]("ControllerState:\n")
+      :+ eventId.toString :+ "\n"
+      :+ standards.toString :+ "\n"
+      :++ inBrackets("keyToUnsignedItemState_"):
+        keyToUnsignedItemState_.values.toVector.sorted
+      :++ inBrackets("repo")(repo.toEvents)
+      :++ inBrackets("pathToSignedSimpleItem"):
+        pathToSignedSimpleItem.values.toVector.sortBy(_.value.key)
+      :+ agentAttachments.toString :+ "\n"
+      :++ inBrackets("deletionMarkedItems")(deletionMarkedItems.toVector.sorted)
+      :++ inBrackets("idToOrder")(idToOrder.values.toVector.sorted)
+      :+ workflowToOrders.toString
 
   def isAgent = false
 
