@@ -102,18 +102,20 @@ object SnapshotableState:
 
     def empty: S
 
-    def fromStream(snapshotObjects: Stream[IO, Any]): IO[S] =
+    def newBuilder(): SnapshotableStateBuilder[S]
+
+    final def fromStream(snapshotObjects: Stream[IO, Any]): IO[S] =
       IO.defer:
         val builder = newBuilder()
-        snapshotObjects
-          .foreach(o => IO:
-            builder.addSnapshotObject(o))
-          .compile.drain
-          .map: _ =>
+        snapshotObjects.chunks.foreach: snapshots =>
+          IO:
+            snapshots.foreach: o =>
+              builder.addSnapshotObject(o)
+        .compile.drain
+        .productR:
+          IO:
             builder.onAllSnapshotsAdded()
             builder.result()
-
-    def newBuilder(): SnapshotableStateBuilder[S]
 
     private lazy val journalDecoder: Decoder[Any] =
       val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
