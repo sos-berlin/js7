@@ -366,7 +366,7 @@ object ScalaUtils:
       //  foldEithers[S, Problem](init)(f)
 
       def foldEithers[S, L](init: S)(f: (S, A) => Either[L, S]): Either[L, S] =
-        var left: L = null.asInstanceOf[L]
+        var left: L | Null = null
         var s = init
         val it = iterableOnce.iterator
 

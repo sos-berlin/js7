@@ -14,7 +14,7 @@ trait StandardsBuilder:
   def clusterState: ClusterState =
     _standards.clusterState
 
-  protected final def addStandardObject(obj: Any): Unit =
+  protected final def addStandardObject(obj: JournalState | ClusterStateSnapshot): Unit =
     obj match
       case o: JournalState =>
         _standards = _standards.copy(journalState = o)

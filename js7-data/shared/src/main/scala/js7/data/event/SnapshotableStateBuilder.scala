@@ -61,9 +61,9 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
           _journalHeader := journalHeader
           _firstEventId = journalHeader.eventId
           _eventId = journalHeader.eventId
-        catch { case NonFatal(t) => throw new RuntimeException(
-          s"Application of JournalHeader failed in record #$recordCount for $S", t)
-        }
+        catch case NonFatal(t) =>
+          throw new RuntimeException(
+            s"Application of JournalHeader failed in record #$recordCount for $S", t)
 
       case SnapshotEventId(eventId) =>
         require(eventId == _firstEventId && eventId == _eventId ||
@@ -74,10 +74,10 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
 
       case _ =>
         try onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNotApplicable)
-        catch { case NonFatal(t) => throw new RuntimeException(
-          s"Application of snapshot object '${obj.getClass.shortClassName}' failed " +
-            s"in record #$recordCount for $S", t)
-        }
+        catch case NonFatal(t) =>
+          throw new RuntimeException(
+            s"Application of snapshot object '${obj.getClass.shortClassName}' failed " +
+              s"in record #$recordCount for $S", t)
 
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
@@ -87,11 +87,9 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     onStateIsAvailable()
 
   private def onStateIsAvailable(): Unit =
-    getStatePromise.success(IO {
-      synchronized {
-        result()
-      }
-    })
+    getStatePromise.success(IO:
+      synchronized:
+        result())
 
   final def addEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
     synchronized:  // synchronize with asynchronous execution of synchronizedStateFuture
@@ -100,26 +98,24 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
         if stamped.eventId <= _eventId then
           throw new IllegalArgumentException(s"EventId is not ascending: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
         try onAddEvent(stamped)
-        catch { case NonFatal(t) =>
+        catch case NonFatal(t) =>
           throw new RuntimeException(s"Event failed: $stamped", t)
-        }
         _eventCount += 1
         if _firstEventId == EventId.BeforeFirst then
           _firstEventId = stamped.eventId
         _eventId = stamped.eventId
-      catch { case NonFatal(t) =>
+      catch case NonFatal(t) =>
         throw new RuntimeException(s"Decoding event failed in record #$recordCount for $S", t)
-      }
 
   def logStatistics(byteCount: Option[Long]): Unit =
     val elapsed = since.elapsed
     if elapsed >= 1.s then
-      logger.debug(
+      logger.debug:
         itemsPerSecondString(elapsed, _snapshotCount + eventCount, "snapshots+events") +
         byteCount.fold("")(byteCount =>
           ", " + perSecondStringOnly(elapsed, byteCount / 1_000_000, "MB", gap = false) +
           " " + toKBGB(byteCount)
-        ) + " read")
+        ) + " read"
     if snapshotCount + eventCount > 0 then
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
       logger.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
