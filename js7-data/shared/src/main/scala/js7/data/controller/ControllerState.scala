@@ -472,46 +472,11 @@ extends SignedItemContainer,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
-    for
-      s <- (addOrders ++ externalVanishedOrders).foldEithers(this):
-        _.addOrUpdateOrder(_)
-      s <- externalVanishedOrders.foldEithers(s):
-        _.ow.onOrderExternalVanished(_)
-      s <-
-        removeOrders.foldEithers(s): (s, orderId) =>
-          s.idToOrder.get(orderId).fold(Checked(s)): order =>
-            order.externalOrder.fold(Checked(s)): ext =>
-              s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
-            .map: s =>
-              s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
-        .map: s =>
-          s.copy(idToOrder = s.idToOrder -- removeOrders)
-      s <- Right(s.copy(
-        keyToUnsignedItemState_ = s.keyToUnsignedItemState_
-          -- removeItemStates
-          ++ addItemStates.view.map(o => o.path -> o)))
-    yield
-      s
-
-  private def addOrUpdateOrder(order: Order[Order.State]): Checked[ControllerState] =
-    if idToOrder contains order.id then
-      Right(copy(
-        idToOrder = idToOrder.updated(order.id, order)))
-    else
-      continueAddOrder(order)
+    ControllerState.update(this,
+      addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
 
   override protected def addOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for
-      _ <- idToOrder.checkNoDuplicate(order.id)
-      updated <- continueAddOrder(order)
-    yield
-      updated
-
-  private def continueAddOrder(order: Order[Order.State]): Checked[ControllerState] =
-    ow.onOrderAdded(order).map: updated =>
-      updated.copy(
-        idToOrder = updated.idToOrder.updated(order.id, order),
-        workflowToOrders = updated.workflowToOrders.addOrder(order))
+    ControllerState.addOrder(this, order)
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -827,6 +792,54 @@ extends ClusterableState.Companion[ControllerState],
   object implicits:
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
+
+  private def update(
+    s: ControllerState,
+    addOrders: Seq[Order[Order.State]] = Nil,
+    removeOrders: Seq[OrderId] = Nil,
+    externalVanishedOrders: Seq[Order[Order.State]] = Nil,
+    addItemStates: Seq[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+  : Checked[ControllerState] =
+    for
+      s <- (addOrders ++ externalVanishedOrders).foldEithers(s)(addOrUpdateOrder)
+      s <- externalVanishedOrders.foldEithers(s):
+        _.ow.onOrderExternalVanished(_)
+      s <-
+        removeOrders.foldEithers(s): (s, orderId) =>
+          s.idToOrder.get(orderId).fold(Checked(s)): order =>
+            order.externalOrder.fold(Checked(s)): ext =>
+              s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
+            .map: s =>
+              s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
+        .map: s =>
+          s.copy(idToOrder = s.idToOrder -- removeOrders)
+      s <- Right(s.copy(
+        keyToUnsignedItemState_ = s.keyToUnsignedItemState_
+          -- removeItemStates
+          ++ addItemStates.view.map(o => o.path -> o)))
+    yield
+      s
+
+  private def addOrUpdateOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
+    if s.idToOrder contains order.id then
+      Right(s.copy(
+        idToOrder = s.idToOrder.updated(order.id, order)))
+    else
+      continueAddOrder(s, order)
+
+  private def addOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
+    for
+      _ <- s.idToOrder.checkNoDuplicate(order.id)
+      updated <- continueAddOrder(s, order)
+    yield
+      updated
+
+  private def continueAddOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
+    s.ow.onOrderAdded(order).map: s =>
+      s.copy(
+        idToOrder = s.idToOrder.updated(order.id, order),
+        workflowToOrders = s.workflowToOrders.addOrder(order))
 
 
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
