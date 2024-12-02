@@ -33,6 +33,7 @@ import js7.data.calendar.Calendar
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.plan.PlanTemplate
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
 import js7.provider.Provider.*
@@ -185,9 +186,12 @@ extends Observing, MainService, Service.StoppableByRequest:
     httpControllerApi
       .retryUntilReachable()(
         httpControllerApi.snapshot())
-      .map(_.items.filter(o =>
-        !o.isInstanceOf[WorkflowPathControl] &&
-          !o.isInstanceOf[WorkflowControl]))
+      .map:
+        _.items.filter:
+          case _: WorkflowPathControl => false
+          case _: WorkflowControl => false
+          case PlanTemplate.Global => false
+          case _ => true
 
   private def readDirectory: IO[Vector[DirectoryReader.Entry]] =
     IO(DirectoryReader.entries(conf.liveDirectory).toVector)

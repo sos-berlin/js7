@@ -25,6 +25,7 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLocksAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.plan.PlanTemplate
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -35,6 +36,7 @@ import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
+import org.scalatest.Assertions.assert
 import scala.collection.View
 
 final class ControllerStateExecutorTest extends OurTestSuite:
@@ -72,7 +74,8 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       bSubagentItem, bAgentRef,
       lock,
       aJobResource, bJobResource,
-      aWorkflow, bWorkflow)
+      aWorkflow, bWorkflow,
+      PlanTemplate.Global)
 
   "stdVerifiedUpdateItems" in:
     val executor = new Executor(ControllerState.empty)

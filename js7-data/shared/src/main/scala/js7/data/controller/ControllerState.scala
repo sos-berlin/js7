@@ -42,13 +42,13 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanKey, PlanTemplate, PlanTemplateId}
+import js7.data.plan.{PlanTemplate, PlanTemplateId, PlanTemplateState}
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import scala.collection.{MapView, View}
+import scala.collection.{MapView, View, immutable}
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -111,7 +111,7 @@ extends SignedItemContainer,
     standards.snapshotSize +
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
-    keyToUnsignedItemState_.size +
+    keyToUnsignedItemState_.size - 1/*PlanTemplate.Global*/+
     keyTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
     keyTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
@@ -130,7 +130,7 @@ extends SignedItemContainer,
       Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
-      Stream.iterable(keyTo(PlanTemplate).values).flatMap(_.toSnapshotStream),
+      Stream.iterable(keyTo(PlanTemplateState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotStream),
@@ -147,7 +147,8 @@ extends SignedItemContainer,
   def withStandards(standards: SnapshotableState.Standards): ControllerState =
     copy(standards = standards)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] = keyedEvent match
+  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
+   keyedEvent match
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(
         controllerId = controllerId,
@@ -292,10 +293,13 @@ extends SignedItemContainer,
 
                 case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
                             _: LockPath |
-                            _: CalendarPath | _: BoardPath | _: PlanTemplateId |
+                            _: CalendarPath | _: BoardPath |
                             _: WorkflowPathControlPath | WorkflowControlId.as(_)) =>
                   Right(updated.copy(
                     keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
+
+                case key: PlanTemplateId =>
+                  update(removeUnsignedSimpleItems = key :: Nil)
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
@@ -433,27 +437,9 @@ extends SignedItemContainer,
       .toVector
       .flatMap(_.state.expected)
 
-  /** Returns Checked unit iff the denoted PlanTemplate is unused. */
+  /** Returns Right(()) iff the denoted PlanTemplate is unused. */
   def checkUnusedPlanTemplate(planTemplateId: PlanTemplateId): Checked[Unit] =
-    planKeyToOrdersFor(planTemplateId).flatMap: planKeyToOrders =>
-      planKeyToOrders.isEmpty !! Problem:
-        s"$planTemplateId is in use by ${
-          planKeyToOrders.toSeq.map: (planKey, orders) =>
-            s"$planKey (${orders.length} orders)"
-          .mkString(", ")
-        }"
-
-  private def planKeyToOrdersFor(planTemplateId: PlanTemplateId)
-  : Checked[Map[PlanKey, Seq[Order[Order.State]]]] =
-    keyToItem(PlanTemplate).checked(planTemplateId).flatMap: planTemplate =>
-      orders.view.flatMap: order =>
-        noticeScope(order).traverse: scope =>
-          planTemplate.evalOrderToPlanId(scope)
-            .map(_.map(_.planKey -> order))
-      .map(_.flatten)
-      .combineProblems
-      .map: plansAndOrders =>
-        plansAndOrders.groupMap(_._1)(_._2)
+    keyTo(PlanTemplateState).checked(planTemplateId).flatMap(_.checkUnused)
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
@@ -474,9 +460,6 @@ extends SignedItemContainer,
   : Checked[ControllerState] =
     ControllerState.update(this,
       addOrders, removeOrders, externalVanishedOrders, addItemStates, removeUnsignedSimpleItems)
-
-  override protected def addOrder(order: Order[Order.State]): Checked[ControllerState] =
-    ControllerState.addOrder(this, order)
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -700,9 +683,19 @@ extends SignedItemContainer,
   def orders: Iterable[Order[Order.State]] =
     idToOrder.values
 
-  def finish: ControllerState =
+  def finish: Checked[ControllerState] =
     copy(
-      workflowToOrders = calculateWorkflowToOrders)
+      keyToUnsignedItemState_ = keyToUnsignedItemState_
+        .updated(PlanTemplateId.Global, PlanTemplateState.Global)
+    ).finishRecovery2
+
+  private def finishRecovery2: Checked[ControllerState] =
+    PlanTemplateState.recoverOrderPlans(orders, keyToItem(PlanTemplate).checked)
+      .map: planTemplateStates =>
+        copy(
+          workflowToOrders = calculateWorkflowToOrders,
+          keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
+            planTemplateStates.map(o => o.id -> o))
 
   private def calculateWorkflowToOrders: WorkflowToOrders =
     ControllerState.WorkflowToOrders(idToOrder
@@ -714,8 +707,9 @@ extends SignedItemContainer,
       .mapValues(_.toSet)
       .toMap)
 
-  override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
-    s"Repo(${repo.currentVersionSize} objects, ...))"
+  /** See also toStringStream! */
+  override def toString = s"ControllerState(${EventId.toString(eventId)} ${
+    idToOrder.size} orders, Repo(${repo.currentVersionSize} objects, ...)"
 
 
 object ControllerState
@@ -736,7 +730,8 @@ extends ClusterableState.Companion[ControllerState],
     Map.empty,
     WorkflowToOrders(Map.empty))
 
-  val empty: ControllerState = Undefined
+  val empty: ControllerState =
+    Undefined.finish.orThrow
 
   def newBuilder() = new ControllerStateBuilder
 
@@ -800,18 +795,10 @@ extends ClusterableState.Companion[ControllerState],
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     for
-      s <- (addOrders ++ externalVanishedOrders).foldEithers(s)(addOrUpdateOrder)
+      s <- addOrUpdateOrders(s, addOrders ++ externalVanishedOrders)
       s <- externalVanishedOrders.foldEithers(s):
         _.ow.onOrderExternalVanished(_)
-      s <-
-        removeOrders.foldEithers(s): (s, orderId) =>
-          s.idToOrder.get(orderId).fold(Checked(s)): order =>
-            order.externalOrder.fold(Checked(s)): ext =>
-              s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
-            .map: s =>
-              s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
-        .map: s =>
-          s.copy(idToOrder = s.idToOrder -- removeOrders)
+      s <- removeOrders_(s, removeOrders)
       s <- Right(s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_
           -- removeUnsignedSimpleItems
@@ -819,26 +806,54 @@ extends ClusterableState.Companion[ControllerState],
     yield
       s
 
-  private def addOrUpdateOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
+  private def addOrUpdateOrders(s: ControllerState, orders: Seq[Order[Order.State]])
+  : Checked[ControllerState] =
+    if orders.isEmpty then
+      Right(s)
+    else
+      val newOrders = orders.filterNot(o => s.idToOrder.contains(o.id))
+      for
+        s <- orders.foldEithers(s)(addOrUpdateOrder_)
+        updatedPlanTemplateStates <- PlanTemplateState.addOrders(
+          newOrders,
+          s.keyTo(PlanTemplateState).checked)
+      yield
+        s.copy(
+          keyToUnsignedItemState_ = s.keyToUnsignedItemState_
+            ++ updatedPlanTemplateStates.map(o => o.id -> o))
+
+  private def addOrUpdateOrder_(s: ControllerState, order: Order[Order.State])
+  : Checked[ControllerState] =
     if s.idToOrder contains order.id then
       Right(s.copy(
         idToOrder = s.idToOrder.updated(order.id, order)))
     else
-      continueAddOrder(s, order)
+      s.ow.onOrderAdded(order).map: s =>
+        s.copy(
+          idToOrder = s.idToOrder.updated(order.id, order),
+          workflowToOrders = s.workflowToOrders.addOrder(order))
 
-  private def addOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
-    for
-      _ <- s.idToOrder.checkNoDuplicate(order.id)
-      updated <- continueAddOrder(s, order)
-    yield
-      updated
-
-  private def continueAddOrder(s: ControllerState, order: Order[Order.State]): Checked[ControllerState] =
-    s.ow.onOrderAdded(order).map: s =>
-      s.copy(
-        idToOrder = s.idToOrder.updated(order.id, order),
-        workflowToOrders = s.workflowToOrders.addOrder(order))
-
+  private def removeOrders_(s: ControllerState, orderIds: Seq[OrderId]): Checked[ControllerState] =
+    if orderIds.isEmpty then
+      Right(s)
+    else
+      val removedOrders = orderIds.flatMap(s.idToOrder.get)
+      orderIds.foldEithers(s): (s, orderId) =>
+        s.idToOrder.get(orderId).fold(Checked(s)): order =>
+          order.externalOrder.fold(Checked(s)): ext =>
+            s.ow.onOrderDeleted(ext.externalOrderKey, orderId)
+          .map: s =>
+            s.copy(workflowToOrders = s.workflowToOrders.removeOrder(order))
+      .map: s =>
+        s.copy(idToOrder = s.idToOrder -- orderIds)
+      .flatMap: s =>
+        PlanTemplateState
+          .removeOrders(removedOrders, s.keyTo(PlanTemplateState).checked)
+          .map: updatedPlanItemStates =>
+            s.copy(
+              idToOrder = s.idToOrder -- orderIds,
+              keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
+                updatedPlanItemStates.map(o => o.id -> o))
 
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
     def transferOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =
@@ -858,3 +873,7 @@ extends ClusterableState.Companion[ControllerState],
         copy(workflowIdToOrders - order.workflowId)
       else
         copy(workflowIdToOrders.updated(order.workflowId, orderIds))
+
+    override def toString =
+      s"WorkflowToOrders(${workflowIdToOrders.toVector.sortBy(_._1)
+        .map((k, v) => s"$k -> ${v.toVector.sorted.mkString(" ")}")}"

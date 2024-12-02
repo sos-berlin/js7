@@ -52,7 +52,7 @@ final class PlanTest
           ItemOperation.Remove(planTemplate.path))
         .await(99.s)
         assert(checked == Left(Problem:
-          "PlanTemplate:DailyPlan is in use by Plan:2024-11-08 (1 orders)"))
+          "PlanTemplate:DailyPlan is in use by Plan:2024-11-08 with Order:#2024-11-08#POST"))
 
       execCmd:
         CancelOrders(Seq(postingOrderId))

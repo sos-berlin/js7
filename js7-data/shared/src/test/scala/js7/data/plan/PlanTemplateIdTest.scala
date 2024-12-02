@@ -2,7 +2,7 @@ package js7.data.plan
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
-import js7.base.problem.Problem
+import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurTestSuite
 
 final class PlanTemplateIdTest extends OurTestSuite:
@@ -18,3 +18,10 @@ final class PlanTemplateIdTest extends OurTestSuite:
 
     assert(json""" "Global" """.as[PlanTemplateId].toChecked ==
       Left(Problem("JSON DecodingFailure at : PlanTemplateId:Global is a reserved name")))
+
+  "Global is a reserved word" in:
+    assert(PlanTemplateId.checked("Global") ==
+      Left(Problem("PlanTemplateId:Global is a reserved name")))
+
+    intercept[ProblemException]:
+      PlanTemplateId("Global")

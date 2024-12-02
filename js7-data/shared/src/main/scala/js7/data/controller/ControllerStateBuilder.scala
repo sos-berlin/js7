@@ -18,13 +18,13 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, UnsignedVersionedItemId, VersionedControl, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.PlanTemplate
+import js7.data.plan.{PlanTemplate, PlanTemplateState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -79,15 +79,7 @@ extends SnapshotableStateBuilder[ControllerState],
     _idToOrder.values
 
   def keyToItem: Nothing =
-    throw new NotImplementedError("ControllerStateBuilder.keyToItem")
-
-  override def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
-    I match
-      case PlanTemplate =>
-        _keyToUnsignedItemState.view.filterKeys(_.isInstanceOf[PlanTemplate.Key])
-          .asInstanceOf[MapView[I.Key, I]]
-      case _ =>
-        throw NotImplementedError(s"🔥ControllerStateBuilder#keyToItem[$I] is not implemented")
+    throw new NotImplementedError("🔥ControllerStateBuilder.keyToItem")
 
   def pathToJobResource: MapView[JobResourcePath, JobResource] =
     keyToItem(JobResource)
@@ -273,7 +265,7 @@ extends SnapshotableStateBuilder[ControllerState],
 
                   case planTemplate: PlanTemplate =>
                     _keyToUnsignedItemState(planTemplate.path) =
-                      keyTo(PlanTemplate)(planTemplate.path)
+                      keyTo(PlanTemplateState)(planTemplate.path)
                         .updateItem(planTemplate).orThrow
 
           case UnsignedItemAdded(item: VersionedControl) =>
@@ -317,7 +309,10 @@ extends SnapshotableStateBuilder[ControllerState],
                   case path: OrderWatchPath =>
                     ow.removeOrderWatch(path).orThrow
 
-                  case itemKey: UnsignedItemKey =>
+                  case itemKey: UnsignedSimpleItemPath =>
+                    update(removeUnsignedSimpleItems = itemKey :: Nil).orThrow
+
+                  case itemKey: UnsignedVersionedItemId[?] =>
                     _keyToUnsignedItemState -= itemKey
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
@@ -359,11 +354,6 @@ extends SnapshotableStateBuilder[ControllerState],
 
       case _ => eventNotApplicable(keyedEvent).orThrow
 
-  override protected def addOrder(order: Order[Order.State]) =
-    _idToOrder.insert(order.id, order)
-    ow.onOrderAdded(order).orThrow
-    Right(this)
-
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match
       case jobResource: JobResource =>
@@ -375,7 +365,9 @@ extends SnapshotableStateBuilder[ControllerState],
     orderWatchStates: Seq[OrderWatchState],
     remove: Seq[OrderWatchPath])
   : Checked[ControllerStateBuilder] =
-    update(addItemStates = orderWatchStates, removeUnsignedSimpleItems = remove)
+    update(
+      addItemStates = orderWatchStates,
+      removeUnsignedSimpleItems = remove)
 
   protected def update_(
     addOrders: Seq[Order[Order.State]],
@@ -391,6 +383,11 @@ extends SnapshotableStateBuilder[ControllerState],
 
     externalVanishedOrders.foreach: order =>
       ow.onOrderExternalVanished(order).orThrow
+
+    addOrders
+      .filterNot(o => _idToOrder.contains(o.id))
+      .foreach: newOrder =>
+        ow.onOrderAdded(newOrder).orThrow
 
     _idToOrder ++= externalVanishedOrders.map(o => o.id -> o)
     _idToOrder --= removeOrders
@@ -411,7 +408,7 @@ extends SnapshotableStateBuilder[ControllerState],
       agentAttachments,
       deletionMarkedItems.toSet,
       _idToOrder.toMap
-    ).finish
+    ).finish.orThrow
 
 
 object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder, Event]

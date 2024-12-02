@@ -76,6 +76,9 @@ extends
         stickySubagents = stickySubagents,
         forceJobAdmission = forceJobAdmission)
 
+  def planId: PlanId =
+    maybePlanId getOrElse PlanId.Global
+
   def workflowId: WorkflowId =
     workflowPosition.workflowId
 
