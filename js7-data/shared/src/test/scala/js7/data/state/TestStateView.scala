@@ -64,15 +64,15 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
     removeOrders: Seq[OrderId],
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState],
-    removeItemStates: Seq[UnsignedSimpleItemPath])
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath])
   : Checked[Self] =
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this
     if removeOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder -- removeOrders)
     if addOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ addOrders.map(o => o.id -> o))
     // externalVanishedOrders ???
-    if removeItemStates.nonEmpty then
-      x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
+    if removeUnsignedSimpleItems.nonEmpty then
+      x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeUnsignedSimpleItems)
     if addItemStates.nonEmpty then x = x.copyX(
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)

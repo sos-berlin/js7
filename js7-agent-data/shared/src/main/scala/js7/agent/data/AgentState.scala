@@ -293,14 +293,16 @@ extends SignedItemContainer,
     fileWatchStates: Seq[FileWatchState],
     remove: Seq[OrderWatchPath])
   : Checked[AgentState] =
-    update(addItemStates = fileWatchStates, removeItemStates = remove)
+    update(
+      addItemStates = fileWatchStates, 
+      removeUnsignedSimpleItems = remove)
 
   protected def update_(
     addOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[AgentState] =
     if isStrict && !addItemStates.forall(o => allowedItemStates(o.companion)) then
       Left(Problem.pure("Unsupported InventoryItemState"))
@@ -310,7 +312,7 @@ extends SignedItemContainer,
           -- removeOrders
           ++ addOrders.view.map(o => o.id -> o),
         keyToUnsignedItemState_ = keyToUnsignedItemState_
-          -- removeItemStates
+          -- removeUnsignedSimpleItems
           ++ addItemStates.view.map(o => o.path -> o)))
 
   def agentPath: AgentPath =

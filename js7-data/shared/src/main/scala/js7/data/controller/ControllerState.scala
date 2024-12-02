@@ -463,17 +463,17 @@ extends SignedItemContainer,
   : Checked[ControllerState] =
     update(
       addItemStates = orderWatchStates,
-      removeItemStates = remove)
+      removeUnsignedSimpleItems = remove)
 
   protected def update_(
     addOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     ControllerState.update(this,
-      addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
+      addOrders, removeOrders, externalVanishedOrders, addItemStates, removeUnsignedSimpleItems)
 
   override protected def addOrder(order: Order[Order.State]): Checked[ControllerState] =
     ControllerState.addOrder(this, order)
@@ -797,7 +797,7 @@ extends ClusterableState.Companion[ControllerState],
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     for
       s <- (addOrders ++ externalVanishedOrders).foldEithers(s)(addOrUpdateOrder)
@@ -814,7 +814,7 @@ extends ClusterableState.Companion[ControllerState],
           s.copy(idToOrder = s.idToOrder -- removeOrders)
       s <- Right(s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_
-          -- removeItemStates
+          -- removeUnsignedSimpleItems
           ++ addItemStates.view.map(o => o.path -> o)))
     yield
       s

@@ -30,13 +30,13 @@ extends EventDrivenState[Self, E], StateView:
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Self] =
     for
       _ <- precheckUpdate(addOrders, removeOrders, externalVanishedOrders,
-        addItemStates, removeItemStates)
+        addItemStates, removeUnsignedSimpleItems)
       self <- update_(addOrders, removeOrders, externalVanishedOrders,
-        addItemStates, removeItemStates)
+        addItemStates, removeUnsignedSimpleItems)
     yield
       self
 
@@ -46,7 +46,7 @@ extends EventDrivenState[Self, E], StateView:
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Self]
 
   private def precheckUpdate(
@@ -54,13 +54,13 @@ extends EventDrivenState[Self, E], StateView:
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
-    removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Unit] =
     if isStrict then
       for
         _ <- addOrders.view.map(_.id).concat(removeOrders).checkUniqueness
         _ <- externalVanishedOrders.checkUniqueness(_.id)
-        _ <- addItemStates.view.map(_.path).concat(removeItemStates).checkUniqueness
+        _ <- addItemStates.view.map(_.path).concat(removeUnsignedSimpleItems).checkUniqueness
       yield ()
     else
       Checked.unit

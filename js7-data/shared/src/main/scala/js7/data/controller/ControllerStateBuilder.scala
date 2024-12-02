@@ -272,7 +272,7 @@ extends SnapshotableStateBuilder[ControllerState],
                       .updateItem(item).orThrow
 
                   case planTemplate: PlanTemplate =>
-                    _keyToUnsignedItemState(planTemplate.path) = 
+                    _keyToUnsignedItemState(planTemplate.path) =
                       keyTo(PlanTemplate)(planTemplate.path)
                         .updateItem(planTemplate).orThrow
 
@@ -375,14 +375,14 @@ extends SnapshotableStateBuilder[ControllerState],
     orderWatchStates: Seq[OrderWatchState],
     remove: Seq[OrderWatchPath])
   : Checked[ControllerStateBuilder] =
-    update(addItemStates = orderWatchStates, removeItemStates = remove)
+    update(addItemStates = orderWatchStates, removeUnsignedSimpleItems = remove)
 
   protected def update_(
     addOrders: Seq[Order[Order.State]],
     removeOrders: Seq[OrderId],
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState],
-    removeItemStates: Seq[UnsignedSimpleItemPath])
+    removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath])
   : Checked[ControllerStateBuilder] =
     removeOrders.foreach: orderId =>
       _idToOrder.get(orderId).foreach: order =>
@@ -396,7 +396,7 @@ extends SnapshotableStateBuilder[ControllerState],
     _idToOrder --= removeOrders
     _idToOrder ++= addOrders.map(o => o.id -> o)
 
-    _keyToUnsignedItemState --= removeItemStates
+    _keyToUnsignedItemState --= removeUnsignedSimpleItems
     _keyToUnsignedItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)
 
