@@ -517,8 +517,7 @@ extends SignedItemContainer,
 
   private def checkVersionedItemIsDeletable(path: VersionedItemPath): Checked[Unit] =
     referencingItemKeys(path)
-      .toVector
-      .sortBy(_.path)
+      .toVector.sorted
       .map:
         itemIsStillReferencedProblem(path, _)
       .reduceLeftOption(Problem.combine)
@@ -537,8 +536,7 @@ extends SignedItemContainer,
       .filter:
         case path: SimpleItemPath => !otherDeleted.contains(path)
         case _ => true
-      .toVector
-      .sortBy(_.path)
+      .toVector.sorted
       .map: itemKey =>
         itemIsStillReferencedProblem(path, itemKey)
       .reduceLeftOption(Problem.combine)

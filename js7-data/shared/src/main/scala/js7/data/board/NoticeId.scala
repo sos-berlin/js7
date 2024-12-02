@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
 import js7.data.plan.{PlanId, PlanKey, PlanTemplateId}
@@ -54,6 +55,8 @@ object NoticeId:
   @Nonnull
   def of(planId: PlanId, noticeKey: String): NoticeId =
     checked(NoticeKey(noticeKey), planId).orThrow
+
+  given Ordering[NoticeId] = orderingBy(_.planId, _.noticeKey)
 
   given Encoder[NoticeId] = o =>
     if o.planId.isGlobal then

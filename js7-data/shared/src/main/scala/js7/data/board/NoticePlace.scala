@@ -79,6 +79,8 @@ extends Big:
 
 object NoticePlace:
 
+  given Ordering[NoticePlace] = Ordering.by(_.noticeId)
+
   private[board] final case class Snapshot(
     boardPath: BoardPath,
     noticeId: NoticeId,

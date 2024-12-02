@@ -11,3 +11,5 @@ object NoticeKey extends GenericString.NonEmpty[NoticeKey]:
 
   protected def unchecked(string: String) =
     new NoticeKey(string)
+
+  given Ordering[NoticeKey] = GenericString.ordering
