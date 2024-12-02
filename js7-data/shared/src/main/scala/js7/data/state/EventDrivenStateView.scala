@@ -33,8 +33,10 @@ extends EventDrivenState[Self, E], StateView:
     removeItemStates: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Self] =
     for
-      _ <- precheckUpdate(addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
-      self <- update_(addOrders, removeOrders, externalVanishedOrders, addItemStates, removeItemStates)
+      _ <- precheckUpdate(addOrders, removeOrders, externalVanishedOrders,
+        addItemStates, removeItemStates)
+      self <- update_(addOrders, removeOrders, externalVanishedOrders,
+        addItemStates, removeItemStates)
     yield
       self
 
@@ -234,7 +236,7 @@ extends EventDrivenState[Self, E], StateView:
           expectedOrConsumptionSeq.traverse: exp =>
             keyTo(BoardState).checked(exp.boardPath).flatMap: boardState =>
               if isConsumption(exp) then
-                boardState.addConsumption(exp.noticeId, orderId)
+                boardState.startConsumption(exp.noticeId, orderId)
               else
                 boardState.removeExpectation(exp.noticeId, orderId)
 
@@ -249,7 +251,7 @@ extends EventDrivenState[Self, E], StateView:
             .referencedBoardPaths.toSeq
             .traverse(keyTo(BoardState).checked)
             .flatMap(_.traverse:
-              _.removeConsumption(previousOrder.id, succeeded = !failed)))
+              _.finishConsumption(previousOrder.id, succeeded = !failed)))
       .flatMap: o =>
         update(addItemStates = o)
 

@@ -1,5 +1,6 @@
 package js7.data.event
 
+import cats.effect.IO
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
@@ -13,7 +14,6 @@ import js7.base.utils.StackTraces.*
 import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.SnapshotableStateBuilder.*
-import cats.effect.IO
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal

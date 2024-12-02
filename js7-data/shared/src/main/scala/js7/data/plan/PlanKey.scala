@@ -6,6 +6,8 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 
 /** Identifies a Plan of a PlanTemplate.
+  * <p>
+  *   For a DailyPlan, PlanKey is the date "2024-11-27" of the DailyPlan.
   * @see `PlanId` which identifies a Plan globally.
   */
 

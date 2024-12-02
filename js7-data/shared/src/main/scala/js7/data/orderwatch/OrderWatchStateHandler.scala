@@ -62,8 +62,7 @@ trait OrderWatchStateHandler[Self]:
       pathToOrderWatchState
         .checked(orderWatchPath)
         .flatMap(_.onOrderAdded(externalOrderKey.name, orderId))
-        .flatMap(watchState => updateOrderWatchState(
-          watchState))
+        .flatMap(updateOrderWatchState)
 
     def onOrderExternalVanished(order: Order[Order.State]): Checked[Self] =
       if isStrict then assertThat(order.externalOrder.exists(_.vanished))

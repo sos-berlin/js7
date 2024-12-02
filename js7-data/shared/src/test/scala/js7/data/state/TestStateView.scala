@@ -71,7 +71,8 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
     if removeOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder -- removeOrders)
     if addOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ addOrders.map(o => o.id -> o))
     // externalVanishedOrders ???
-    if removeItemStates.nonEmpty then x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
+    if removeItemStates.nonEmpty then
+      x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
     if addItemStates.nonEmpty then x = x.copyX(
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)

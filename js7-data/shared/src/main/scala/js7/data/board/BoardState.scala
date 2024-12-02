@@ -91,8 +91,7 @@ extends UnsignedSimpleItemState:
         updateNoticePlace:
           noticePlace.removeExpecting(orderId)
 
-  def addConsumption(noticeId: NoticeId, orderId: OrderId)
-  : Checked[BoardState] =
+  def startConsumption(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
     val consumptionStack = orderToConsumptionStack.get(orderId).fold_(Nil, _.toList)
@@ -101,7 +100,7 @@ extends UnsignedSimpleItemState:
       orderToConsumptionStack = orderToConsumptionStack.updated(orderId,
         Nel(noticeId, consumptionStack))))
 
-  def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
+  def finishConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
     orderToConsumptionStack.get(orderId).fold(Checked(this)): consumptions =>
       val Nel(noticeId, remainingConsumptions) = consumptions
       idToNotice.checked(noticeId)
