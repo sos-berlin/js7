@@ -105,7 +105,9 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
           _firstEventId = stamped.eventId
         _eventId = stamped.eventId
       catch case NonFatal(t) =>
-        throw new RuntimeException(s"Decoding event failed in record #$recordCount for $S", t)
+        throw new RuntimeException(
+          s"${stamped.value.event.getClass.simpleScalaName} event failed in record #$recordCount for $S",
+          t)
 
   def logStatistics(byteCount: Option[Long]): Unit =
     val elapsed = since.elapsed

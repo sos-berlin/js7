@@ -449,7 +449,7 @@ object ScalaUtils:
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: MapOps[K, V, ?, ?])
     extends AnyVal:
-      def checked(key: K)(implicit K: Tag[K]): Checked[V] =
+      def checked(key: K)(using K: Tag[K], x: sourcecode.FileName, y: sourcecode.Line): Checked[V] =
         rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
