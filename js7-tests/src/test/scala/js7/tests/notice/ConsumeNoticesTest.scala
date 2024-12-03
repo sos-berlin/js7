@@ -118,29 +118,26 @@ final class ConsumeNoticesTest
           boardPathExpr(s"'${aBoard.path.string}' && '${myBoard.path.string}'"),
           subworkflow = Workflow.empty)))
 
-    withTemporaryItem(myBoard) { _ =>
-      withTemporaryItem(workflow) { workflow =>
-        val orderId = OrderId("#2022-10-23#X")
-        val events = controller.runOrder(
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        val endOfLife = Timestamp.Epoch
-        assert(events.map(_.value).map {
-          case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
-          case o => o
-        } == Seq(
-          OrderAdded(workflow.id, deleteWhenTerminated = true),
-          OrderStarted,
-          OrderNoticePosted(Notice(NoticeId("2022-10-23"), aBoard.path, endOfLife.some)),
-          OrderNoticePosted(Notice(NoticeId("2022-10-23-X"), myBoard.path, endOfLife.some)),
-          OrderMoved(Position(1)),
-          OrderNoticesConsumptionStarted(Vector(
-            Consumption(aBoard.path, NoticeId("2022-10-23")),
-            Consumption(myBoard.path, NoticeId("2022-10-23-X")))),
-          OrderNoticesConsumed(false),
-          OrderFinished(),
-          OrderDeleted))
-      }
-    }
+    withItems((myBoard, workflow)): (_, workflow) =>
+      val orderId = OrderId("#2022-10-23#X")
+      val events = controller.runOrder(
+        FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      val endOfLife = Timestamp.Epoch
+      assert(events.map(_.value).map {
+        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
+        case o => o
+      } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticePosted(Notice(NoticeId("2022-10-23"), aBoard.path, endOfLife.some)),
+        OrderNoticePosted(Notice(NoticeId("2022-10-23-X"), myBoard.path, endOfLife.some)),
+        OrderMoved(Position(1)),
+        OrderNoticesConsumptionStarted(Vector(
+          Consumption(aBoard.path, NoticeId("2022-10-23")),
+          Consumption(myBoard.path, NoticeId("2022-10-23-X")))),
+        OrderNoticesConsumed(false),
+        OrderFinished(),
+        OrderDeleted))
 
   "ConsumeNotices with interfering DeleteNotice command" in:
     val workflow = Workflow(
@@ -149,7 +146,7 @@ final class ConsumeNoticesTest
         ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
           Prompt(expr("'PROMPT'"))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       val eventId = eventWatch.lastAddedEventId
       val noticeId = NoticeId("2022-10-24")
       val orderId = OrderId(s"#${noticeId.noticeKey.string}#")
@@ -181,7 +178,6 @@ final class ConsumeNoticesTest
         OrderNoticesConsumed(false),
         OrderFinished(),
         OrderDeleted))
-    }
 
   "A single Order waiting for one of two Notices, posting one Notice, then the other" in:
     val workflow = updateItem:
@@ -554,7 +550,7 @@ final class ConsumeNoticesTest
           retryDelays = Some(Vector(0.s)),
           maxTries = Some(2))))
 
-    withTemporaryItem(workflow, awaitDeletion = true) { workflow =>
+    withItem(workflow, awaitDeletion = true): workflow =>
       val orderId = OrderId("#2022-10-25#")
       val events = controller.runOrder:
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
@@ -595,7 +591,6 @@ final class ConsumeNoticesTest
         OrderFailed(Position(1) / "try+1" % 0)))
       execCmd:
         CancelOrders(Seq(orderId))
-    }
 
   "ResumeOrder into ConsumeNotices block is rejected (JS-2121)" in:
     val workflow = Workflow(
@@ -604,7 +599,7 @@ final class ConsumeNoticesTest
         ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
           EmptyJob.execute(agentPath)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow): workflow =>
       execCmd:
         ControlWorkflow(workflow.id, addBreakpoints = Set(Position(0)))
 
@@ -620,7 +615,6 @@ final class ConsumeNoticesTest
 
       execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderDeleted](_.key == orderId)
-    }
 
   "JS-2124 FIX 'ConsumeNotices' Instruction is expected at position, with Options" in:
     val workflow = Workflow(
@@ -632,7 +626,7 @@ final class ConsumeNoticesTest
             If(expr("true")):
               Fail()))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#Options-ConsumeNotices-If-Fail")
       controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -651,7 +645,7 @@ final class ConsumeNoticesTest
           If(expr("true")):
             Fail()))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("#2024-03-20#ConsumeNotices-If-Fail")
       controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
