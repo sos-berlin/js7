@@ -17,14 +17,14 @@ import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
 import js7.data.order.{MinimumOrder, Order, OrderDetails, OrderId}
-import js7.data.plan.PlanId
+import js7.data.plan.{PlanId, PlanTemplateId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import scala.collection.MapView
+import scala.collection.{MapView, View}
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
@@ -77,11 +77,11 @@ trait StateView extends ItemContainer:
       .asInstanceOf[MapView[A.Path, A]]
 
   final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[NoticeId] =
-    planToPlannableBoardNoticeId(order.maybePlanId getOrElse PlanId.Global/*rejected*/)
+    planToPlannableBoardNoticeId(order.planId)
 
   final def planToPlannableBoardNoticeId(planId: PlanId): Checked[NoticeId] =
     if planId.isGlobal then
-      Left(Problem.pure(s"PlannableBoard requested, but Order is not in a plan (or in $planId)"))
+      Left(Problem.pure(s"PlannableBoard requested, but Order is not in a Plan (or in $planId)"))
     else
       Right(planId.noticeId)
 
@@ -114,6 +114,12 @@ trait StateView extends ItemContainer:
         case Seq(boardPath) => Right(boardPath)
         case _ => Left(Problem.pure:
           "Legacy orderIdToBoardState, but instruction has multiple BoardPaths")
+
+  final def removeNoticeKeysForPlanTemplate(planTemplateId: PlanTemplateId)
+  : View[(BoardPath, BoardState)] =
+    keyTo(BoardState).values.view.flatMap: boardState =>
+      boardState.removeNoticeKeysForPlanTemplate(planTemplateId)
+        .map(o => o.path -> o)
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =
     order.isProcessable &&

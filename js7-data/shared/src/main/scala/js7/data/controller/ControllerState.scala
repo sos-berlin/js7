@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import fs2.Stream
+import js7.base.annotation.slow
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -17,11 +18,12 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.MultipleLinesBracket.SmallSquare
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StandardMapView
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -42,7 +44,7 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId, PlanTemplateState}
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -441,6 +443,52 @@ extends SignedItemContainer,
   def checkUnusedPlanTemplate(planTemplateId: PlanTemplateId): Checked[Unit] =
     keyTo(PlanTemplateState).checked(planTemplateId).flatMap(_.checkUnused)
 
+  @slow
+  def slowPlanTemplateToPlan: MapView[PlanTemplateId, Map[PlanKey, Plan]] =
+    new StandardMapView[PlanTemplateId, Map[PlanKey, Plan]]:
+      override def keySet = keyTo(PlanTemplateState).keySet
+
+      def get(planTemplateId: PlanTemplateId) =
+        keyTo(PlanTemplateState).get(planTemplateId).map: planTemplateState =>
+          val toPlan0 = toPlanContainingNoticeKeys(planTemplateState)
+          toPlan0 ++ // Add the Plans which do not have a NoticeKey
+            planTemplateState.toOrderPlan.view.collect:
+              case (planKey, plan) if !toPlan0.contains(planKey) =>
+                planKey -> Plan.fromPlan(plan)
+
+  @slow
+  private def toPlanContainingNoticeKeys(planTemplateState: PlanTemplateState): Map[PlanKey, Plan]  =
+    val planTemplateId = planTemplateState.id
+    keyTo(BoardState).values.view.flatMap: boardState =>
+      boardState.idToNotice.keys.view.collect:
+        case NoticeId(noticeKey, PlanId(`planTemplateId`, planKey)) =>
+          planKey -> (boardState.path, noticeKey)
+    .toVector
+    .groupMap(_._1)(_._2)
+    .map: (planKey, boardToNotice) =>
+      planKey -> Plan(
+        planId = planTemplateId / planKey,
+        orderIds = planTemplateState.toOrderPlan.get(planKey).fold(Set.empty)(_.orderIds),
+        boardToNotices = boardToNotice.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
+
+  @slow
+  def slowPlanTemplateToPlanToBoardToNoticeKey
+  : Map[PlanTemplateId, Map[PlanKey, Map[BoardPath, Set[NoticeKey]]]] =
+    keyTo(PlanTemplateState).keys.map(_ -> Map.empty).toMap ++ /* Keep PlanTemplates without a Plan*/
+      keyTo(BoardState).values.flatMap: boardState =>
+        boardState.idToNotice.keys.view.collect:
+          case NoticeId(noticeKey, PlanId(planTemplateId, planKey)) =>
+            planTemplateId -> (planKey -> (boardState.path, noticeKey))
+        .toVector
+      .groupMap(_._1)(_._2)
+      .view.mapValues:
+        _.groupMap(_._1)(_._2)
+          .view.mapValues:
+            _.groupMap(_._1)(_._2)
+              .view.mapValues(_.toSet).toMap
+          .toMap
+      .toMap
+
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
@@ -561,7 +609,7 @@ extends SignedItemContainer,
   private def referencingItemKeys(path: InventoryItemPath): View[InventoryItemKey] =
     pathToReferencingItemKeys.get(path).view.flatten
 
-  // Slow ???
+  @slow
   private[controller] lazy val pathToReferencingItemKeys: Map[InventoryItemPath, Seq[InventoryItemKey]] =
     items
       .flatMap(item => item.referencedItemPaths.map(item.key -> _))
@@ -579,7 +627,7 @@ extends SignedItemContainer,
       case WorkflowId.as(workflowId) => isWorkflowUsedByOrders(workflowId)
       case _ => true
 
-  // Slow ???
+  @slow
   private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
     idToOrder.valuesIterator.map(_.workflowId).toSet
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
@@ -690,7 +738,8 @@ extends SignedItemContainer,
     ).finishRecovery2
 
   private def finishRecovery2: Checked[ControllerState] =
-    PlanTemplateState.recoverOrderPlans(orders, keyToItem(PlanTemplate).checked)
+    PlanTemplateState
+      .recoverOrderPlans(orders, keyToItem(PlanTemplate).checked)
       .map: planTemplateStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
@@ -799,6 +848,7 @@ extends ClusterableState.Companion[ControllerState],
       s <- externalVanishedOrders.foldEithers(s):
         _.ow.onOrderExternalVanished(_)
       s <- removeOrders_(s, removeOrders)
+      s <- Right(onRemoveItemStates(s, removeUnsignedSimpleItems))
       s <- Right(s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_
           -- removeUnsignedSimpleItems
@@ -854,6 +904,15 @@ extends ClusterableState.Companion[ControllerState],
               idToOrder = s.idToOrder -- orderIds,
               keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
                 updatedPlanItemStates.map(o => o.id -> o))
+
+  private def onRemoveItemStates(s: ControllerState, paths: Seq[UnsignedSimpleItemPath])
+  : ControllerState =
+    paths.collect:
+      case id: PlanTemplateId => id
+    .foldLeft(s): (s, planTemplateId) =>
+      s.copy(
+        keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
+          s.removeNoticeKeysForPlanTemplate(planTemplateId))
 
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
     def transferOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =

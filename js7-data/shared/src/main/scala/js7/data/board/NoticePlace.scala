@@ -22,6 +22,13 @@ final case class NoticePlace(
   consumptionCount: Int = 0)
 extends Big:
 
+  override def toString =
+    s"NoticePlace(${notice getOrElse noticeId
+    }${isAnnounced ?? " isAnnounced"
+    }${isInConsumption ?? " isInConsumption"
+    }${(consumptionCount != 0) ?? s" consumptionCount=$consumptionCount"
+    }${expectingOrderIds.nonEmpty ?? s"expectingOrderIds=${expectingOrderIds.toVector.sorted.mkString(" ")}"})"
+
   def checked: Checked[this.type] =
     (notice.forall(_.id == noticeId) !!
       Problem(s"NoticePlace($noticeId) with different NoticeIds")
@@ -34,6 +41,9 @@ extends Big:
       !isInConsumption &&
       consumptionCount == 0
 
+  def isInUse: Boolean =
+    expectingOrderIds.nonEmpty || isInConsumption || consumptionCount != 0
+
   def toSnapshot(boardPath: BoardPath): Option[Snapshot] =
     (isAnnounced || isInConsumption || consumptionCount != 0) ?
       Snapshot(boardPath, noticeId, isAnnounced, isInConsumption, consumptionCount)
@@ -43,6 +53,9 @@ extends Big:
       isAnnounced = snapshot.isAnnounced,
       isInConsumption = snapshot.isInConsumption,
       consumptionCount = snapshot.consumptionCount)
+
+  def announce: NoticePlace =
+    copy(isAnnounced = true)
 
   def post(notice: Notice): NoticePlace =
     copy(
