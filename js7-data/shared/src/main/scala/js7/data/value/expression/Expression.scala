@@ -499,6 +499,13 @@ object Expression:
 
     override def toString: String = booleanValue.toString
 
+  object BooleanConstant:
+    val False: BooleanConstant = new BooleanConstant(false)
+    val True: BooleanConstant = new BooleanConstant(true)
+
+    def apply(booleanValue: Boolean): BooleanConstant =
+      if booleanValue then True else False
+
 
   final case class NumericConstant(number: BigDecimal)
   extends NumericExpr, Constant:

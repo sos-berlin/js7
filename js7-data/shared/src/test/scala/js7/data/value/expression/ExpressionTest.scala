@@ -6,6 +6,7 @@ import js7.data.job.JobResourcePath
 import js7.data.value.Value.convenience.*
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.Expression.BooleanConstant.{False, True}
 import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NamedValueScope
@@ -1249,11 +1250,11 @@ final class ExpressionTest extends OurTestSuite:
       result = Right(3),
       Add(
         NumericConstant(1),
-        IfThenElse(BooleanConstant(true), NumericConstant(2), NumericConstant(3))))
+        IfThenElse(True, NumericConstant(2), NumericConstant(3))))
 
     testEval(""" if true then 1 else 2 """,
       result = Right(1),
-      IfThenElse(BooleanConstant(true), NumericConstant(1), NumericConstant(2)))
+      IfThenElse(True, NumericConstant(1), NumericConstant(2)))
 
     testEval(
        """if false then
@@ -1268,13 +1269,13 @@ final class ExpressionTest extends OurTestSuite:
          |else
          |  5 + 6 """.stripMargin,
       result = Right(11),
-      IfThenElse(BooleanConstant(false),
-        IfThenElse(BooleanConstant(false),
+      IfThenElse(False,
+        IfThenElse(False,
           NumericConstant(1),
           NumericConstant(2)),
-        IfThenElse(BooleanConstant(false),
+        IfThenElse(False,
           NumericConstant(3),
-          IfThenElse(BooleanConstant(false),
+          IfThenElse(False,
             NumericConstant(4),
             Add(NumericConstant(5), NumericConstant(6))))))
   }

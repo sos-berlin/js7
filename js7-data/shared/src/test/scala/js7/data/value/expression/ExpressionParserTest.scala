@@ -3,6 +3,7 @@ package js7.data.value.expression
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.Expression.BooleanConstant.True
 import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -227,7 +228,7 @@ final class ExpressionParserTest extends OurTestSuite:
               NamedValue("result"),
               StringConstant("1")))),
         And(
-          BooleanConstant(true),
+          True,
           GreaterThan(
             LastReturnCode,
             NumericConstant(0)))))
