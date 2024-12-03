@@ -50,6 +50,7 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState,
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View, immutable}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -471,7 +472,7 @@ extends SignedItemContainer,
         orderIds = planTemplateState.toOrderPlan.get(planKey).fold(Set.empty)(_.orderIds),
         boardToNotices = boardToNotice.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
 
-  @slow
+  @TestOnly
   def slowPlanTemplateToPlanToBoardToNoticeKey
   : Map[PlanTemplateId, Map[PlanKey, Map[BoardPath, Set[NoticeKey]]]] =
     keyTo(PlanTemplateState).keys.map(_ -> Map.empty).toMap ++ /* Keep PlanTemplates without a Plan*/

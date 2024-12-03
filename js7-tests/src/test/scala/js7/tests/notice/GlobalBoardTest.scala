@@ -26,6 +26,7 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanTemplateId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
@@ -81,7 +82,8 @@ final class GlobalBoardTest
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)).toSet ==
         Set(notice0.toExpected, notice1.toExpected))
 
-      controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-1-2"), posting12Workflow.path))
+      val posting12OrderId = OrderId(s"#$qualifier#POSTING-1-2")
+      controller.runOrder(FreshOrder(posting12OrderId, posting12Workflow.path))
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.toExpected))
@@ -100,7 +102,20 @@ final class GlobalBoardTest
           Map(
             notice2.id -> NoticePlace(notice2.id, Some(notice2))))))
 
-      controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-0"), posting0Workflow.path))
+      val posting0OrderId = OrderId(s"#$qualifier#POSTING-0")
+      controller.runOrder(FreshOrder(posting0OrderId, posting0Workflow.path))
+
+      // Look at the Global Plan //
+      assert:
+        controllerState.slowPlanTemplateToPlan(PlanTemplateId.Global) ==
+          Map:
+            PlanKey.Global -> Plan(
+              PlanId.Global,
+              orderIds = Set(posting0OrderId, posting12OrderId) ++ expecting01OrderIds,
+              Map(
+                board0.path -> Set(notice0.id.noticeKey),
+                board1.path -> Set(notice1.id.noticeKey),
+                board2.path -> Set(notice2.id.noticeKey)))
 
       for orderId <- expecting01OrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)
