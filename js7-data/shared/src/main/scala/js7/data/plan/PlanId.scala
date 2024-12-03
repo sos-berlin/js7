@@ -6,7 +6,6 @@ import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeId
 import js7.data.plan.PlanId.*
-import scala.math.Ordered.orderingToOrdered
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
 final case class PlanId(planTemplateId: PlanTemplateId, planKey: PlanKey):

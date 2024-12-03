@@ -1,5 +1,6 @@
 package js7.agent.web
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Resource}
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -21,10 +22,8 @@ import js7.data.controller.ControllerRunId
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import js7.subagent.SubagentSession
-import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.decodeRequest
-import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer

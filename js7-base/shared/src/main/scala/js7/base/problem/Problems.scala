@@ -1,9 +1,7 @@
 package js7.base.problem
 
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.utils.Tests.isTest
-import scala.collection.immutable.Map.Map2
 import js7.base.log.Logger
+import scala.collection.immutable.Map.Map2
 
 object Problems:
 

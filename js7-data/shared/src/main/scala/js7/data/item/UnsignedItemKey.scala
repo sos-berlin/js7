@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.InventoryItemKey.{Companion, ordering}
+import js7.data.item.InventoryItemKey.Companion
 
 trait UnsignedItemKey extends InventoryItemKey:
   protected type Self <: UnsignedItemKey

@@ -9,7 +9,6 @@ import js7.base.monixlike.MonixLikeExtensionsTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import scala.concurrent.TimeoutException
 
 final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
 

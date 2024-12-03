@@ -19,7 +19,6 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
 final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterAll:

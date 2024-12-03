@@ -3,7 +3,6 @@ package js7.base.utils
 import cats.effect.{Deferred, IO, Outcome, Resource}
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic.extensions.*
 
 final class MutableAllocatedTest extends OurAsyncTestSuite:

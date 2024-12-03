@@ -9,7 +9,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.collection.immutable.ArraySeq
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /** Some examples for FS2. */

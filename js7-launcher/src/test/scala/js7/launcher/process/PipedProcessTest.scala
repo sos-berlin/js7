@@ -20,7 +20,6 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.{StdObservers, StdObserversForTest}
-import scala.concurrent.Future
 
 // See also CancelOrdersTest
 /**

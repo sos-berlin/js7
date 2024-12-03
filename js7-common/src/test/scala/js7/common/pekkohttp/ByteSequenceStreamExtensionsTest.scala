@@ -3,7 +3,6 @@ package js7.common.pekkohttp
 import fs2.Stream
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.util.ByteString

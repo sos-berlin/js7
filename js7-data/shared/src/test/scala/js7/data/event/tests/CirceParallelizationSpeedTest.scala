@@ -16,7 +16,6 @@ import js7.base.monixlike.MonixLikeExtensions.toListL
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
-import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.data.event.tests.CirceParallelizationSpeedTest.*
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderOutcome}

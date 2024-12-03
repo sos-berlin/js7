@@ -128,7 +128,6 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
   private def updatedTemplateStates(
     orders: Iterable[Order[Order.State]],
     toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
-    (using enc: sourcecode.Enclosing)
   : Checked[Seq[(PlanTemplateState, Map[PlanKey, Set[OrderId]])]] =
     if orders.isEmpty then
       Right(Nil)

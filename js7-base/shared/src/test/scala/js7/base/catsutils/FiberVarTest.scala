@@ -5,7 +5,6 @@ import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import org.scalatest.Assertion
 
 final class FiberVarTest extends OurAsyncTestSuite:

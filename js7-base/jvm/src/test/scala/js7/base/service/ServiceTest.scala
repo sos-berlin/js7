@@ -8,8 +8,6 @@ import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.Tests.isIntelliJIdea
-import org.scalatest.Assertion
-import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 
 final class ServiceTest extends OurAsyncTestSuite:

@@ -8,7 +8,6 @@ import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurAsyncTestSuite
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.CatsUtils.syntax.traverseFlat
 
