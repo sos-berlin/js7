@@ -59,7 +59,7 @@ object ExpressionParser:
   private val functionDefinition: Parser[ExprFunction] =
     (parameterList.backtrack ~ ((w ~ symbol("=>") ~ w) *> expression))
       .map: (names, expression) =>
-        ExprFunction(names.map(VariableDeclaration(_)), expression)
+        ExprFunction(names*)(expression)
 
   private val functionExpr: Parser[FunctionExpr] =
     functionDefinition.map(FunctionExpr(_))

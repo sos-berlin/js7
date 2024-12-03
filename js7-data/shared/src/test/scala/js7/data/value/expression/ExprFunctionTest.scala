@@ -4,53 +4,61 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
+import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.Expression.{Add, Divide, FunctionExpr, MissingConstant, Multiply, NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{parseExpressionOrFunction, parseFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{FunctionValue, MissingValue, NumberValue, StringValue, Value}
 import org.scalactic.source
-import Expression.convenience.*
 
 final class ExprFunctionTest extends OurTestSuite:
 
   testEval("() => 1", Scope.empty,
     args = Nil,
     result = Right(NumberValue(1)),
-    Right(ExprFunction(Nil, NumericConstant(1))))
+    Right:
+      ExprFunction():
+        NumericConstant(1))
 
   testEval("(a) => $a + 1", Scope.empty,
     args = Seq(NumberValue(2)),
     result = Right(NumberValue(3)),
-    Right(ExprFunction(Seq(VariableDeclaration("a")), Add(NamedValue("a"), NumericConstant(1)))))
+    Right:
+      ExprFunction("a"):
+        Add(NamedValue("a"), NumericConstant(1)))
 
   testEval("(a, b) => $a + 2 * $b", Scope.empty,
     args = Seq(NumberValue(10), NumberValue(3)),
     result = Right(NumberValue(10 + 2 * 3)),
-    Right(ExprFunction(
-      Seq(
-        VariableDeclaration("a"),
-        VariableDeclaration("b")),
-      Add(
-        NamedValue("a"),
-        Multiply(
-          NumericConstant(2),
-          NamedValue("b"))))))
+    Right:
+      ExprFunction("a", "b"):
+        Add(
+          NamedValue("a"),
+          Multiply(
+            NumericConstant(2),
+            NamedValue("b"))))
 
   testEval("(a) => $a + missing", Scope.empty,
     args = Seq(NumberValue(2)),
     result = Right(MissingValue),
-    Right(ExprFunction(Seq(VariableDeclaration("a")), Add(NamedValue("a"), MissingConstant))))
+    Right:
+      ExprFunction("a"):
+        Add(NamedValue("a"), MissingConstant))
 
   testEval("() => 1/0", Scope.empty,
     args = Nil,
     result = Left(Problem("ArithmeticException: Division by zero")),
-    Right(ExprFunction(Nil, Divide(1, 0))))
+    Right:
+      ExprFunction():
+        Divide(1, 0))
 
   testEval("() => $nameFromContext",
     scope = NamedValueScope("nameFromContext" -> NumberValue(7)),
     args = Nil,
     result = Right(NumberValue(7)),
-    Right(ExprFunction(Nil, NamedValue("nameFromContext"))))
+    Right:
+      ExprFunction():
+        NamedValue("nameFromContext"))
 
   private def testEval(
     exprString: String,
@@ -69,7 +77,7 @@ final class ExprFunctionTest extends OurTestSuite:
 
   "FunctionExpr and FunctionValue" - {
     "() => 7" in:
-      val fun: ExprFunction = ExprFunction(Nil, NumericConstant(7))
+      val fun: ExprFunction = ExprFunction()(NumericConstant(7))
       val expr = parseExpressionOrFunction("() => 7").orThrow
       assert(expr == FunctionExpr(fun))
       implicit val scope = Scope.empty
@@ -80,9 +88,10 @@ final class ExprFunctionTest extends OurTestSuite:
 
     "(x) => x + 7" in:
       val expr = parseExpressionOrFunction("(x) => $x + 7").orThrow
-      assert(expr == FunctionExpr(ExprFunction(
-        Seq(VariableDeclaration("x")),
-        Add(NamedValue("x"), NumericConstant(7)))))
+      assert(expr ==
+        FunctionExpr:
+          ExprFunction("x"):
+            Add(NamedValue("x"), NumericConstant(7)))
       implicit val scope = Scope.empty
       assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(NumberValue(10) :: Nil) ==
         Right(NumberValue(17)))
