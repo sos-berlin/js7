@@ -601,8 +601,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(MissingValue),
         LessOrEqual(MissingConstant, 1))
 
+      testEval(""" "A" <= "B" """,
+        result = Right(true),
+        LessOrEqual("A", "B"))
+
       "LessOrEqual" in:
         forAll((a: Int, b: Int) => assert(
+          LessOrEqual(a, b).eval == Right(BooleanValue(a <= b))))
+        forAll((a: String, b: String) => assert(
           LessOrEqual(a, b).eval == Right(BooleanValue(a <= b))))
     }
 
@@ -619,8 +625,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(true),
         Equal(Multiply(LastReturnCode, 3), 3))
 
+      testEval(""" "A" < "B" """,
+        result = Right(true),
+        LessThan("A", "B"))
+
       "LessThan" in:
         forAll((a: Int, b: Int) => assert(
+          LessThan(a, b).eval == Right(BooleanValue(a < b))))
+        forAll((a: String, b: String) => assert(
           LessThan(a, b).eval == Right(BooleanValue(a < b))))
     }
 
@@ -633,8 +645,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(MissingValue),
         GreaterOrEqual(MissingConstant, 1))
 
+      testEval(""" "A" >= "B" """,
+        result = Right(false),
+        GreaterOrEqual("A", "B"))
+
       "GreaterOrEqual" in:
         forAll((a: Int, b: Int) => assert(
+          GreaterOrEqual(a, b).eval == Right(BooleanValue(a >= b))))
+        forAll((a: String, b: String) => assert(
           GreaterOrEqual(a, b).eval == Right(BooleanValue(a >= b))))
     }
 
@@ -647,8 +665,14 @@ final class ExpressionTest extends OurTestSuite:
         result = Right(MissingValue),
         GreaterThan(MissingConstant, 1))
 
+      testEval(""" "A" > "B" """,
+        result = Right(false),
+        GreaterThan("A", "B"))
+
       "GreaterThan" in:
         forAll((a: Int, b: Int) => assert(
+          GreaterThan(a, b).eval == Right(BooleanValue(a > b))))
+        forAll((a: String, b: String) => assert(
           GreaterThan(a, b).eval == Right(BooleanValue(a > b))))
     }
 

@@ -23,6 +23,7 @@ import js7.data.workflow.position.Label
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
+import scala.math.Ordered.orderingToOrdered
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -209,49 +210,50 @@ object Expression:
     override def toString: String = makeString(a, "!=", b)
 
 
-  final case class LessOrEqual(a: Expression, b: Expression)
+  sealed trait IsComparable(
+    compareNumbers: (NumberValue, NumberValue) => Boolean,
+    compareStrings: (StringValue, StringValue) => Boolean,
+    repr: String)
   extends BooleanExpr, IsPureIfSubexpressionsArePure:
+    val a, b: Expression
+
     def precedence: Int = Precedence.Comparison
     def subexpressions: Iterable[Expression] = View(a, b)
 
     protected def evalRaw(using scope: Scope) =
-      for a <- a.evalAsNumber; b <- b.evalAsNumber yield
-        BooleanValue(a <= b)
+      for
+        a <- a.eval
+        b <- b.eval
+        result <- (a, b) match
+          case (a: NumberValue, b: NumberValue) =>
+            Right(BooleanValue(compareNumbers(a, b)))
+          case (a: StringValue, b: StringValue) =>
+            Right(BooleanValue(compareStrings(a, b)))
+          case (a, b) =>
+            if a == MissingValue || b == MissingValue then
+              Right(MissingValue)
+            else
+              Left(Problem(s"${a.valueType} and ${b.valueType} are not comparable"))
+      yield
+        result
 
-    override def toString: String = makeString(a, "<=", b)
+    override def toString: String = makeString(a, repr, b)
+
+
+  final case class LessOrEqual(a: Expression, b: Expression)
+    extends IsComparable(_ <= _, _ <= _, "<=")
 
 
   final case class GreaterOrEqual(a: Expression, b: Expression)
-  extends BooleanExpr, IsPureIfSubexpressionsArePure:
-    def precedence: Int = Precedence.Comparison
-    def subexpressions: Iterable[Expression] = View(a, b)
-
-    protected def evalRaw(using scope: Scope) =
-      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a >= b)
-
-    override def toString = makeString(a, ">=", b)
+    extends IsComparable(_ >= _, _ >= _, ">=")
 
 
   final case class LessThan(a: Expression, b: Expression)
-  extends BooleanExpr, IsPureIfSubexpressionsArePure:
-    def precedence: Int = Precedence.Comparison
-    def subexpressions: Iterable[Expression] = View(a, b)
-
-    protected def evalRaw(using scope: Scope) =
-      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a < b)
-
-    override def toString: String = makeString(a, "<", b)
+    extends IsComparable(_ < _, _ < _, "<")
 
 
   final case class GreaterThan(a: Expression, b: Expression)
-  extends BooleanExpr, IsPureIfSubexpressionsArePure:
-    def precedence: Int = Precedence.Comparison
-    def subexpressions: Iterable[Expression] = View(a, b)
-
-    protected def evalRaw(using scope: Scope) =
-      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a > b)
-
-    override def toString: String = makeString(a, ">", b)
+    extends IsComparable(_ > _, _ > _, ">")
 
 
   final case class Concat(a: Expression, b: Expression)

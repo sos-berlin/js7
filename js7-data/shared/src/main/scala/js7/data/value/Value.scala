@@ -242,6 +242,9 @@ object AnyValue extends ValueType:
   override infix def is(t: ValueType): Boolean =
     true
 
+
+/** Any value except the MissingValue is a GoodValue.
+  */
 sealed trait GoodValue extends Value
 object GoodValue:
   trait Companion[V <: GoodValue] extends Value.Companion[V]:
@@ -252,6 +255,9 @@ object GoodValue:
     new Companion[GoodValue]:
       val name = "GoodValue"
 
+
+/** StringValue
+  */
 final case class StringValue(string: String) extends GoodValue:
   requireNonNull(string)
 
@@ -283,6 +289,11 @@ object StringValue extends GoodValue.Companion[StringValue], ValueType.Simple:
   @javaApi def of(value: String): StringValue =
     StringValue(value)
 
+  given Ordering[StringValue] = Ordering.by(_.string)
+
+
+/** NumberValue for any numeric value.
+  */
 final case class NumberValue(number: BigDecimal) extends GoodValue:
   def valueType: ValueType = NumberValue
 
@@ -340,6 +351,8 @@ object NumberValue extends GoodValue.Companion[NumberValue], ValueType.Simple:
   given Decoder[NumberValue] = summon[Decoder[BigDecimal]].map(NumberValue(_))
 
 
+/** BooleanValue.
+  */
 final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   def valueType: ValueType = BooleanValue
 
@@ -358,7 +371,6 @@ final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   override def toString =
     convertToString
 
-
 object BooleanValue extends GoodValue.Companion[BooleanValue], ValueType.Simple:
   val name = "Boolean"
   val True: BooleanValue = BooleanValue(true)
@@ -366,6 +378,9 @@ object BooleanValue extends GoodValue.Companion[BooleanValue], ValueType.Simple:
 
   @javaApi def of(value: Boolean): BooleanValue = BooleanValue(value)
 
+
+/** A list of values of undeclared type.
+  */
 final case class ListValue private(elements: Vector[Value]) extends GoodValue:
   def valueType: ValueType = ListValue
 
@@ -376,7 +391,6 @@ final case class ListValue private(elements: Vector[Value]) extends GoodValue:
 
   override def toString: String = convertToString
 
-/** A list of values of undeclared type. */
 object ListValue extends GoodValue.Companion[ListValue], ValueType.Compound:
   val name = "List"
   val empty: ListValue = ListValue(Vector.empty)
@@ -395,7 +409,8 @@ extends ValueType.Compound:
   def name = "List"
 
 
-/** An object with fields of undeclared type. */
+/** An object with fields of undeclared type.
+  */
 final case class ObjectValue(nameToValue: Map[String, Value]) extends GoodValue:
   def valueType: ValueType = ObjectValue
 
@@ -465,6 +480,7 @@ case object MissingValue extends Value, ValueType.Simple:
   override val convertToString = ""
 
   override val toString = "missing"
+
 
 sealed trait ValueType:
   def name: String
