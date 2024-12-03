@@ -900,11 +900,11 @@ extends ClusterableState.Companion[ControllerState],
       .flatMap: s =>
         PlanTemplateState
           .removeOrders(removedOrders, s.keyTo(PlanTemplateState).checked)
-          .map: updatedPlanItemStates =>
+          .map: updatedPlanTemplateStates =>
             s.copy(
               idToOrder = s.idToOrder -- orderIds,
               keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
-                updatedPlanItemStates.map(o => o.id -> o))
+                updatedPlanTemplateStates.map(o => o.id -> o))
 
   private def onRemoveItemStates(s: ControllerState, paths: Seq[UnsignedSimpleItemPath])
   : ControllerState =

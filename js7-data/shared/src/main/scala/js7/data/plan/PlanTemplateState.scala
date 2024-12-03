@@ -140,5 +140,5 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
         .mapValues:
           _.groupMap(_._1)(_._2)
         .toVector
-        .traverse: (planItemId, v) =>
-          toPlanTemplateState(planItemId).map(_ -> v)
+        .traverse: (planTemplateId, v) =>
+          toPlanTemplateState(planTemplateId).map(_ -> v)

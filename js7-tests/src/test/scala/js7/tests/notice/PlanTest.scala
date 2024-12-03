@@ -145,7 +145,7 @@ final class PlanTest
           noticeId -> NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None)))))
         assert(controllerState.keyTo(BoardState)(aBoard.path).orderToConsumptionStack == Map.empty)
 
-        // When PlanItem has been deleted, its NoticePlaces are deleted, too //
+        // When PlanTemplate has been deleted, its NoticePlaces are deleted, too //
 
         assert(controllerState.slowPlanTemplateToPlanToBoardToNoticeKey == Map(
           PlanTemplateId.Global -> Map.empty,
