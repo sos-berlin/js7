@@ -82,7 +82,7 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
       endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
   private val sosOrderToNotice =
-    expr("""match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
+    expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')""")
 
   /** A GlobalBoard for JOC-style OrderIds. */
   def joc(boardPath: BoardPath, lifetime: FiniteDuration = 24.h): GlobalBoard =

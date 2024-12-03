@@ -103,7 +103,7 @@ final class ConsumeNoticesTest
 
   "Simple test with two boards" in:
     val orderIdToNoticeId = expr(
-      """match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#(.*)$', '$1-$2')""")
+      """match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#(.*)', '$1-$2')""")
 
     val myBoard = GlobalBoard(
       BoardPath("MY-BOARD"),

@@ -45,9 +45,9 @@ public class JGlobalBoardTester
     private static final JGlobalBoard board = JGlobalBoard.of(
         JControllerProxyTest.boardPath(),
         getOrThrow(JExpression.parse(
-            "match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            "match($js7OrderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', \"\\$1\")")),
         getOrThrow(JExpression.parse(
-            "match($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            "match($js7OrderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', \"\\$1\")")),
         getOrThrow(JExpression.parse(
             "$js7EpochMilli + 24 * 3600 * 1000")));
 
