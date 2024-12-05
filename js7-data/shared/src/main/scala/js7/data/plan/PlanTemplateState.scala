@@ -5,6 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
+import scala.collection.immutable.Map.Map1
 import scala.collection.{View, immutable}
 
 final case class PlanTemplateState(
@@ -45,6 +46,12 @@ extends UnsignedSimpleItemState:
 
   def updateItem(item: PlanTemplate): Checked[PlanTemplateState] =
     Left(Problem("Update of PlanTemplate is still not supported"))
+
+  def addOrder(planKey: PlanKey, orderId: OrderId): PlanTemplateState =
+    addOrders(Map1(planKey, Set(orderId)))
+
+  def removeOrder(planKey: PlanKey, orderId: OrderId): PlanTemplateState =
+    removeOrders(Map1(planKey, Set(orderId)))
 
   private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]]): PlanTemplateState =
     val updatedPlans = updateOrdersInPlans(planToOrders, _.addOrders(_))

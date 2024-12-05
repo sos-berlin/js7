@@ -2,6 +2,7 @@ package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.Problems.OrderCannotAttachedToPlanProblem
 import js7.data.event.EventDrivenState.*
 import scala.util.boundary
 
@@ -19,8 +20,12 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
     boundary:
       for stamped <- stampedEvents.iterator do
         state.applyEvent(stamped.value) match
-          case Left(o) =>
-            problem = o.withPrefix(s"Event '$stamped' cannot be applied to '${companion.name}':")
+          case Left(prblm) =>
+            problem = prblm match
+              case OrderCannotAttachedToPlanProblem(orderId) if stamped.value.key ==
+                orderId => prblm
+              case _ =>
+                prblm.withPrefix(s"Event '$stamped' cannot be applied to '${companion.name}':")
             boundary.break()
           case Right(s) =>
             state = s
@@ -34,13 +39,26 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
     boundary:
       for keyedEvent <- keyedEvents.iterator do
         state.applyEvent(keyedEvent) match
-          case Left(o) =>
-            problem = o.withPrefix(s"Event '$keyedEvent' cannot be applied to '${companion.name}':")
+          case Left(prblm) =>
+            problem = adaptProblem(prblm, keyedEvent)
             boundary.break()
           case Right(s) =>
             state = s
 
     problem.toLeftOr(state)
+
+  private def adaptProblem(
+    prblm: Problem,
+    keyedEventOrStamped: KeyedEvent[?] | Stamped[KeyedEvent[?]])
+  : Problem =
+    val keyedEvent = keyedEventOrStamped match
+      case stamped: Stamped[KeyedEvent[?]] => stamped.value
+      case ke: KeyedEvent[?] => ke
+    prblm match
+      case OrderCannotAttachedToPlanProblem(orderId) if keyedEvent.key ==
+        orderId => prblm
+      case _ =>
+        prblm.withPrefix(s"Event '$keyedEventOrStamped' cannot be applied to '${companion.name}':")
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))

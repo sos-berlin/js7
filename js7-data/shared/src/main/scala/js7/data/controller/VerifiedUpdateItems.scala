@@ -9,10 +9,10 @@ import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{InventoryItemKey, ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.plan.PlanTemplate
 import scala.collection.View
 
 final case class VerifiedUpdateItems private[controller](
@@ -22,16 +22,13 @@ final case class VerifiedUpdateItems private[controller](
   def itemCount: Int =
     simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
 
-  def versionedPaths: View[VersionedItemPath] =
-    maybeVersioned.view.flatMap(_.paths)
-
   def addOrChangeKeys: View[InventoryItemKey] =
     simple.unsignedSimpleItems.view.map(_.key) ++
       simple.verifiedSimpleItems.view.map(_.item.key) ++
       maybeVersioned.view.flatMap(_.verifiedItems.view.map(_.item.id))
 
-  def addedOrChangedAgentPaths: View[AgentPath] =
-    simple.unsignedSimpleItems.view.collect { case o: AgentRef => o.path }
+  def hasPlanTemplate: Boolean =
+    simple.unsignedSimpleItems.exists(_.isInstanceOf[PlanTemplate])
 
 
 object VerifiedUpdateItems:

@@ -24,7 +24,7 @@ import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.{PlanId, PlanTemplate, PlanTemplateId, PlanTemplateState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -360,6 +360,12 @@ extends SnapshotableStateBuilder[ControllerState],
         pathToSignedSimpleItem.insert(jobResource.path, Signed(jobResource, added.signedString))
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
+
+  protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
+  : Checked[ControllerStateBuilder] =
+    // Do nothing here.
+    // PlanTemplateState.toOrderPlan will be updated when ControllerStateBuilder finishes.
+    Right(this)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],

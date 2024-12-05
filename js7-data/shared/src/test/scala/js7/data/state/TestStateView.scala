@@ -11,6 +11,7 @@ import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.plan.PlanId
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
@@ -115,6 +116,10 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
   protected def addOrder(order: Order[Order.State]): Checked[ControllerTestStateView] =
     idToOrder.checkNoDuplicate(order.id).map: _ =>
       copy(idToOrder = idToOrder.updated(order.id, order))
+
+  protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
+  : Checked[ControllerTestStateView] =
+    Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView, Event]:

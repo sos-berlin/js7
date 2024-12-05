@@ -1,4 +1,4 @@
-package js7.tests.notice
+package js7.tests.plan
 
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -7,19 +7,22 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.data.Problems.OrderCannotAttachedToPlanProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
-import js7.data.order.OrderEvent.{OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.{Plan, PlanKey, PlanTemplate, PlanTemplateId}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId}
+import js7.data.value.Value.convenience.*
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.notice.PlanTest.*
+import js7.tests.jobs.SemaphoreJob
+import js7.tests.plan.PlanTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.language.implicitConversions
 
@@ -30,7 +33,7 @@ final class PlanTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 1ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
     """
 
   override protected def agentConfig = config"""
@@ -41,7 +44,104 @@ final class PlanTest
 
   protected def items = Nil
 
-  "Deletion of a PlanTemplate" - {
+  "When a PlanTemplates is added, matching planless Orders are attached to the new Plans" in :
+    eventWatch.resetLastWatchedEventId()
+    val day = "2024-12-03"
+    val orderId = OrderId(s"#$day#")
+
+    withItem(Workflow.of(Prompt(expr("'PROMPT'")))): workflow =>
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+      assert(controllerState.idToOrder(orderId).planId == PlanId.Global)
+
+      withItem(PlanTemplate.joc(PlanTemplateId("DailyPlan"))): dailyPlan =>
+        val planId = dailyPlan.id / day
+
+        // Order is attached to our DailyPlan //
+        assert(controllerState.idToOrder(orderId).planId == planId)
+
+        execCmd:
+          CancelOrders(Seq(orderId))
+        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderStarted,
+          OrderPrompted("PROMPT"),
+          OrderPlanAttached(planId),
+          OrderStateReset,
+          OrderCancelled,
+          OrderDeleted))
+
+  "Adding a PlanTemplates is rejected when a planless Order is attached to an Agent" in:
+    // It's recommended to SuspendOrders(resetState) all Orders before
+    // adding or changing a PlanTemplate.
+
+    eventWatch.resetLastWatchedEventId()
+    val orderId = OrderId(s"#2024-12-04#")
+    val workflow = Workflow.of(ASemaphoreJob.execute(agentPath))
+
+    withItem(workflow): workflow =>
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderAttached](_.key == orderId)
+
+      val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
+      val checked = controller.api.updateItems(fs2.Stream:
+          ItemOperation.AddOrChangeSimple(dailyPlan))
+        .await(99.s)
+      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
+      ASemaphoreJob.continue()
+      eventWatch.awaitNext[OrderFinished](_.key == orderId)
+
+  "Adding a PlanTemplates is rejected when a planless Orders is expecting a global Notice" in :
+    // It's recommended to SuspendOrders(resetState) all Orders before
+    // adding or changing a PlanTemplate.
+
+    eventWatch.resetLastWatchedEventId()
+    val orderId = OrderId(s"#2024-12-05#")
+    val board = GlobalBoard.joc(BoardPath("BOARD"))
+    val workflow = Workflow.of:
+      ConsumeNotices(board.path):
+        Prompt(expr("'PROMPT'"))
+
+    withItems((workflow, board)): (workflow, board) =>
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
+
+      val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
+      val checked = controller.api.updateItems(fs2.Stream:
+          ItemOperation.AddOrChangeSimple(dailyPlan))
+        .await(99.s)
+      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
+      execCmd(CancelOrders(Seq(orderId)))
+      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+  "Update a PlanTemplate is still not possible" in:
+    eventWatch.resetLastWatchedEventId()
+    val orderId = OrderId(s"#2024-12-06#")
+    val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
+    val board = GlobalBoard.joc(BoardPath("BOARD"))
+    val workflow = Workflow.of:
+      ConsumeNotices(board.path):
+        Prompt(expr("'PROMPT'"))
+
+    withItems((dailyPlan, workflow, board)): (dailyPlan, workflow, board) =>
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
+
+      val changedDailyPlan = dailyPlan.copy(
+        orderToPlanKey = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"),
+        itemRevision = None)
+      val checked = controller.api.updateItems(fs2.Stream:
+          ItemOperation.AddOrChangeSimple(changedDailyPlan))
+        .await(99.s)
+      assert(checked == Left(Problem("Event 'UnsignedSimpleItemChanged(PlanTemplate(PlanTemplate:DailyPlan,match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1')?,Some(ItemRevision(1))))' cannot be applied to 'ControllerState': Update of PlanTemplate is still not supported")))
+      execCmd(CancelOrders(Seq(orderId)))
+      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+
+    pending
+
+  "Delete a PlanTemplate" - {
     def tryDeletePlan(planTemplateId: PlanTemplateId): Checked[Unit] =
       controller.api.updateItems(Stream:
         ItemOperation.Remove(planTemplateId))
@@ -68,7 +168,7 @@ final class PlanTest
         deleteItems(planTemplate.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planTemplate.path)
 
-    "When a PlanTemplate is being deleted, all its Boards are deleted (emptied)" in:
+    "When a PlanTemplate is being deleted, all its PlannedBoards and NoticeIds are deleted" in:
       val day = "2024-11-27"
       val aBoard = PlannableBoard(BoardPath("A-BOARD"))
       val bBoard = PlannableBoard(BoardPath("B-BOARD"))
@@ -165,3 +265,6 @@ final class PlanTest
 object PlanTest:
 
   private val agentPath = AgentPath("AGENT")
+
+  private final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
+  private object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

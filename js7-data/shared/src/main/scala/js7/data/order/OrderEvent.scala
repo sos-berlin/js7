@@ -767,6 +767,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderActorEvent
 
 
+  final case class OrderPlanAttached(planId: PlanId)
+  extends OrderActorEvent
+
+
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],
@@ -836,4 +840,5 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderCyclingPrepared]),
     Subtype(OrderCycleStarted),
     Subtype(deriveCodec[OrderCycleFinished]),
-    Subtype(deriveCodec[OrderTransferred]))
+    Subtype(deriveCodec[OrderTransferred]),
+    Subtype(deriveCodec[OrderPlanAttached]))

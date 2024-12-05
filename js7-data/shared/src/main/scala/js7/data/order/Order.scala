@@ -1,5 +1,6 @@
 package js7.data.order
 
+import cats.syntax.option.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
@@ -13,7 +14,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
-import js7.data.Problems.GoOrderInapplicableProblem
+import js7.data.Problems.{GoOrderInapplicableProblem, OrderCannotAttachedToPlanProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
@@ -579,6 +580,19 @@ extends
           Right(copy(workflowPosition = workflowPosition))
         else
           inapplicable
+
+      case OrderPlanAttached(planId) =>
+        val ok = isDetached
+          && !isState[ExpectingNotices]
+          && !isState[ExpectingNotice]
+          && position.branchPath.forall(_.branchId != BranchId.ConsumeNotices)
+          && this.planId.isGlobal
+          && !planId.isGlobal
+        if !ok then
+          Left(OrderCannotAttachedToPlanProblem(id))
+        else
+          Right(copy(
+            maybePlanId = planId.some))
 
   /** An Order being transferred back to Controller, should fail after failure. */
   def shouldFail: Boolean =
@@ -1246,7 +1260,6 @@ object Order:
     def go(order: Order[BetweenCycles]) =
       Right:
         OrderGoes :: OrderCycleStarted :: Nil
-
 
   type Failed = Failed.type
   case object Failed extends IsStarted, IsFailed, IsTransferable

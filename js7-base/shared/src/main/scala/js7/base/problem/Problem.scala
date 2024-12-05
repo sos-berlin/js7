@@ -228,6 +228,7 @@ object Problem extends Semigroup[Problem]:
   def combined(problems: immutable.Iterable[String]): Combined =
     Combined(problems.map(o => new Lazy(o)))
 
+  // TODO Limit Combined to a small number of Problems (10?) to avoid OutOfMemoryError
   final case class Combined(problems: immutable.Iterable[Problem]) extends Problem:
     require(problems.nonEmpty)
 

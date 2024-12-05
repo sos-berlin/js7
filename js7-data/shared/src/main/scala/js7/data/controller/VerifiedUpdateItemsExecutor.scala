@@ -15,6 +15,8 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
+import js7.data.order.OrderEvent
+import js7.data.order.OrderEvent.OrderPlanAttached
 import js7.data.plan.PlanTemplateId
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
@@ -42,8 +44,8 @@ object VerifiedUpdateItemsExecutor:
     verifiedUpdateItems: VerifiedUpdateItems,
     controllerState: ControllerState,
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
-  : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
-    def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
+  : Checked[Seq[KeyedEvent[NoKeyEvent | OrderPlanAttached]]] =
+    def result: Checked[Seq[KeyedEvent[NoKeyEvent | OrderPlanAttached]]] =
       (for
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyEvents(versionedEvents)
@@ -64,11 +66,15 @@ object VerifiedUpdateItemsExecutor:
         derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
         updatedState <- updatedState.applyEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
-      yield simpleItemEvents
-        .concat(versionedEvents)
-        .concat(derivedWorkflowPathControlEvents)
-        .concat(derivedWorkflowControlEvents)
-        .toVector
+        (orderPlanAttached, updatedState) <-
+          attachPlanlessOrdersPlanTemplates(updatedState, verifiedUpdateItems)
+      yield
+        simpleItemEvents
+          .concat(versionedEvents)
+          .concat(derivedWorkflowPathControlEvents)
+          .concat(derivedWorkflowControlEvents)
+          .concat(orderPlanAttached)
+          .toVector
       ).left.map:
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
           logger.debug(prblm.toString)
@@ -182,6 +188,26 @@ object VerifiedUpdateItemsExecutor:
                   UnsignedSimpleItemChanged:
                     item.withRevision:
                       existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next).some
+
+    def attachPlanlessOrdersPlanTemplates(
+      controllerState: ControllerState,
+      verifiedUpdateItems: VerifiedUpdateItems)
+    : Checked[(Vector[KeyedEvent[OrderPlanAttached]], ControllerState)] =
+      if !verifiedUpdateItems.hasPlanTemplate then
+        Right(Vector.empty -> controllerState)
+      else
+        controllerState.orders.view
+          .filter(_.maybePlanId.isEmpty)
+          .toVector
+          .traverse: order =>
+            controllerState.minimumOrderToPlanId(order).map: maybePlanId =>
+              maybePlanId.map: planId =>
+                // The Order will check whether the event is applicable
+                order.id <-: OrderPlanAttached(planId)
+          .map(_.flatten)
+          .flatMap: events =>
+            controllerState.applyEvents(events)
+              .map(events -> _)
 
     def simpleItemDeletionEvents(
       path: SimpleItemPath,

@@ -500,6 +500,19 @@ extends SignedItemContainer,
       addItemStates = orderWatchStates,
       removeUnsignedSimpleItems = remove)
 
+  protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId): Checked[ControllerState] =
+    // Move Order from GlobalPlan's to PlanId's PlanTemplateState
+    for
+      planTemplateState <- keyTo(PlanTemplateState).checked(planId.planTemplateId)
+      global <- keyTo(PlanTemplateState).checked(PlanTemplateId.Global)
+      s <- update(
+        addItemStates =
+          global.removeOrder(PlanKey.Global, orderId) ::
+          planTemplateState.addOrder(planId.planKey, orderId) ::
+            Nil)
+    yield
+      s
+
   protected def update_(
     addOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,

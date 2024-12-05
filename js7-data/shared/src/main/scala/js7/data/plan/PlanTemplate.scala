@@ -8,7 +8,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanTemplate.Global
 import js7.data.value.expression.Expression.MissingConstant
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
+import org.jetbrains.annotations.TestOnly
 
 /** Item for (daily) plans.
   *
@@ -70,11 +72,18 @@ object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
       // orderToPlanKey must not match, despite Global is used as the fallback PlanTemplate
       orderToPlanKey = MissingConstant)
 
-  /** A PlanTemplate for JOC-style OrderIds. */
+  /** A PlanTemplate for JOC-style daily plan OrderIds. */
   def joc(id: PlanTemplateId): PlanTemplate =
     PlanTemplate(
       id,
       orderToPlanKey = PlanKey.jocOrderToPlanKey)
+
+  /** A PlanTemplate for weekly Plan Orders "#YYYYwWW#...". */
+  @TestOnly
+  def weekly(id: PlanTemplateId): PlanTemplate =
+    PlanTemplate(
+      id,
+      orderToPlanKey = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"))
 
   type Key = PlanTemplateId
 
