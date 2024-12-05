@@ -8,7 +8,8 @@ import org.jetbrains.annotations.TestOnly
 object VirtualThreads:
 
   private val logger = Logger[this.type]
-  private var hasVirtualThreads = Runtime.version.feature >= 19
+  private var hasVirtualThreads =
+    Runtime.version.feature >= 19 && !sys.props.contains("js7.noVirtualThread")
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
