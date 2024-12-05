@@ -14,15 +14,17 @@ import js7.base.log.Logger
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.crashpidfile.IndexedRecordSetImpl.*
+import js7.launcher.crashpidfile.WriteBasedIndexedRecordSet.*
 import scala.collection.mutable
 
-/** A mutable Set[A], stored in an indexed thing, reusing the freed entries. */
-trait IndexedRecordSetImpl[A] private extends IndexedRecordSet[A]:
-
-  protected def writeAtIndex(index: Int, aOrDelete: A | Delete): IO[Unit]
-
-  protected def label: String
+/** A mutable Set[A], stored in an indexed writable thing, reusing the freed entries.
+  *
+  * @param writeAtIndex Writes or deletes an `A` in the writeable thing.
+  */
+private final class WriteBasedIndexedRecordSet[A](
+  label: String,
+  writeAtIndex: (Int, A | Delete) => IO[Unit])
+extends IndexedRecordSet[A]:
 
   private val lock = AsyncLock()
   private val aToIndex = mutable.Map.empty[A, Integer]
@@ -72,16 +74,16 @@ trait IndexedRecordSetImpl[A] private extends IndexedRecordSet[A]:
 
 
   override def toString =
-    "IndexedRecordSetImpl" + (label.nonEmpty ?? s":$label")
+    "WriteBasedIndexedRecordSet" + (label.nonEmpty ?? s":$label")
 
 
-private object IndexedRecordSetImpl:
+object WriteBasedIndexedRecordSet:
 
   private val logger = Logger[this.type]
 
   final case class Delete(truncate: Option[Int])
 
-  /** Creates an IndexedRecordSetImpl based on a fixed length text record file.
+  /** Creates an WriteBasedIndexedRecordSet based on a fixed length text record file.
    * <ul>
    * <li>The service terminates each record with a '\n' character.
    * <li> Deleted record consists of stringByteSize spaces and a '\n' character.
@@ -93,7 +95,7 @@ private object IndexedRecordSetImpl:
    */
   def textFile[A](path: Path, stringByteSize: Int, label: String = "")
     (writeBuffer: (ByteBuffer, A) => Unit)
-  : ResourceIO[IndexedRecordSetImpl[A]] =
+  : ResourceIO[WriteBasedIndexedRecordSet[A]] =
     Resource.defer:
       val emptyLine = (" " * stringByteSize + '\n').getBytes(US_ASCII)
       file[A](path, stringByteSize + 1, label = label):
@@ -105,26 +107,24 @@ private object IndexedRecordSetImpl:
           val written = buf.position - pos0
           buf.put(emptyLine, written, emptyLine.length - written)
 
-  /** Creates an IndexedRecordSetImpl based on a fixed length record file.
+  /** Creates an WriteBasedIndexedRecordSet based on a fixed length record file.
    * @param recordSize The fixed number of bytes of each record.
    * @param writeBuffer Fills a ByteBuffer with exactly recordSize bytes.
    * @param label For logging.
    */
   def file[A](file: Path, recordSize: Int, byteOrder: ByteOrder = BIG_ENDIAN, label: String = "")
     (writeBuffer: (ByteBuffer, A | Delete) => Unit)
-  : ResourceIO[IndexedRecordSetImpl[A]] =
+  : ResourceIO[WriteBasedIndexedRecordSet[A]] =
     for
       channel <- fileChannelResource(file)
       service <- Resource.defer:
         channel.truncate(0)
         val myLabel = if label.nonEmpty then label else file.toString
         Resource.eval(IO:
-          new IndexedRecordSetImpl[A]:
-            val label = myLabel
-
-            private val byteBuffer = ByteBuffer.wrap(new Array(recordSize)).order(byteOrder)
-
-            protected def writeAtIndex(index: Int, aOrDelete: A | Delete) =
+          val byteBuffer = ByteBuffer.wrap(new Array(recordSize)).order(byteOrder)
+          new WriteBasedIndexedRecordSet[A](
+            label = myLabel,
+            writeAtIndex = (index, aOrDelete) =>
               IO.defer:
                 byteBuffer.clear()
                 writeBuffer(byteBuffer, aOrDelete)
@@ -138,7 +138,7 @@ private object IndexedRecordSetImpl:
                     case Delete(Some(truncate)) =>
                       channel.truncate(truncate * recordSize)
                     case _ =>
-                  ())
+                  ()))
     yield
       service
 

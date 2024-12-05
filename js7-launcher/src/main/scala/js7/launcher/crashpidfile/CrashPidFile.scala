@@ -6,7 +6,7 @@ import java.nio.ByteOrder.BIG_ENDIAN
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Pid
-import js7.launcher.crashpidfile.IndexedRecordSetImpl.Delete
+import js7.launcher.crashpidfile.WriteBasedIndexedRecordSet.Delete
 
 type CrashPidFile = IndexedRecordSet[Pid]
 

@@ -13,10 +13,9 @@ final class IndexedRecordSetTest extends OurAsyncTestSuite:
   "textFile" in:
     temporaryFileResource[IO]()
       .flatMap: file =>
-        IndexedRecordSet
-          .textFile(file, Long.MinValue.toString.length): (buf, value) =>
-            buf.put(value.toString.getBytes(UTF_8))
-          .map(file -> _)
+        IndexedRecordSet.textFile(file, Long.MinValue.toString.length): (buf, value) =>
+          buf.put(value.toString.getBytes(UTF_8))
+        .map(file -> _)
       .use: (file, set) =>
         def add(i: Long) = set.register(i).allocated.map(_._2)
         for

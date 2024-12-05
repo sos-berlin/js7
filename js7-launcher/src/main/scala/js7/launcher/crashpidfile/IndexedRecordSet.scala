@@ -7,25 +7,20 @@ import java.nio.file.Path
 
 trait IndexedRecordSet[A]:
 
+  /** Adds and removes  an A. */
   def register(a: A): ResourceIO[Unit]
 
+  /** Explicit removal, in case of auto-removal via `register` is not enough. */
   def remove(a: A): IO[Unit]
 
 
 object IndexedRecordSet:
 
-  export IndexedRecordSetImpl.file
-
-  // TODO Use export
-  // Because Scala 3.3.3 export looses the default argument:
-  def textFile[A](path: Path, stringByteSize: Int, label: String = "")
-    (writeBuffer: (ByteBuffer, A) => Unit)
-  : ResourceIO[IndexedRecordSetImpl[A]] =
-    IndexedRecordSetImpl.textFile(path, stringByteSize, label)(writeBuffer)
-
+  export WriteBasedIndexedRecordSet.{file, textFile}
 
   def dummy[A]: Dummy[A] =
     Dummy.asInstanceOf[Dummy[A]]
+
 
   trait Dummy[A] extends IndexedRecordSet[A]:
     final def register(a: A): ResourceIO[Unit] =
