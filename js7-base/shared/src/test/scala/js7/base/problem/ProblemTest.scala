@@ -244,7 +244,7 @@ final class ProblemTest extends OurTestSuite:
 
   "sequence" in:
     val listOfChecked = List(Right(1), Left(Problem("FIRST")), Right(2), Left(Problem("MORE")))
-    assert(listOfChecked.sequence == List(Left(Problem("FIRST"))))
+    assert(listOfChecked.sequence == Left(Problem("FIRST")))
 
   "traverse" in:
     def f(i: Int) = if i % 2 != 0 then Left(Problem(s"$i is not even")) else Right(100 * i)
