@@ -79,7 +79,7 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy",
-      "-J-Xmx50m",
+      "-J-Xmx200m",
       #"--cluster-watch-id=PROXY",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]
@@ -100,7 +100,7 @@ services:
     command: [
       "js7-proxy",
       "--arg0=js7-proxy-b",
-      "-J-Xmx50m",
+      "-J-Xmx200m",
       #"--cluster-watch-id=PROXY-B",
       "--cluster-node-uri=https://js7-controller:4443",
       "--cluster-node-uri=https://js7-backup-controller:4443" ]

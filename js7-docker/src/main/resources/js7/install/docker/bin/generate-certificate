@@ -142,7 +142,7 @@ if $install; then
     echo "$dir/https-keystore.p12"
     [ -d "$dir" ] || mkdir "$dir"
 
-    cp -p "https/$host.p12" "$dir/https-keystore.p12"
+    cp -p "https/js7-$host.p12" "$dir/https-keystore.p12"
     cp -p "https/CA.crt" "$dir/"
   done
 fi
