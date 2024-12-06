@@ -10,6 +10,7 @@ import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data.plan.PlanId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
 import scala.collection.immutable.Map.{Map1, Map2, Map3}
@@ -48,9 +49,19 @@ object Problems:
     def arguments: Map[String, String] = Map(
       "orderId" -> orderId.string)
 
-  final case class OrderCannotAttachedToPlanProblem(orderId: OrderId) extends Problem.Coded:
+  trait KeyedEventProblem extends Problem.Coded:
+    def key: Any
+
+  final case class OrderCannotAttachedToPlanProblem(orderId: OrderId) extends KeyedEventProblem:
+    def key: OrderId = orderId
     def arguments: Map[String, String] = Map1(
       "orderId", orderId.string)
+
+  final case class OrderWouldNotMatchChangedPlanTemplateProblem(orderId: OrderId, planId: PlanId)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map2(
+      "orderId", orderId.string,
+      "planId", planId.toString)
 
   final case class MissingReferencedItemProblem(
     itemKey: InventoryItemKey,

@@ -2,7 +2,7 @@ package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.OrderCannotAttachedToPlanProblem
+import js7.data.Problems.{KeyedEventProblem, OrderCannotAttachedToPlanProblem}
 import js7.data.event.EventDrivenState.*
 import scala.util.boundary
 
@@ -55,8 +55,9 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
       case stamped: Stamped[KeyedEvent[?]] => stamped.value
       case ke: KeyedEvent[?] => ke
     prblm match
-      case OrderCannotAttachedToPlanProblem(orderId) if keyedEvent.key ==
-        orderId => prblm
+      case prblm: KeyedEventProblem if prblm.key == keyedEvent.key =>
+        prblm
+
       case _ =>
         prblm.withPrefix(s"Event '$keyedEventOrStamped' cannot be applied to '${companion.name}':")
 

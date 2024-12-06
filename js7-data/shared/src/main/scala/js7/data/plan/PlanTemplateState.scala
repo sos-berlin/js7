@@ -9,7 +9,7 @@ import scala.collection.immutable.Map.Map1
 import scala.collection.{View, immutable}
 
 final case class PlanTemplateState(
-  planTemplate: PlanTemplate,
+  item: PlanTemplate,
   toOrderPlan: Map[PlanKey, OrderPlan])
 extends UnsignedSimpleItemState:
 
@@ -17,8 +17,8 @@ extends UnsignedSimpleItemState:
 
   val companion: PlanTemplateState.type = PlanTemplateState
 
-  val item: PlanTemplate =
-    planTemplate
+  def planTemplate: PlanTemplate =
+    item
 
   def path: PlanTemplateId =
     planTemplate.id
@@ -36,16 +36,18 @@ extends UnsignedSimpleItemState:
       Problem:
         s"$id is in use by ${
           usedPlans.toVector.sorted.map: plan =>
-            import plan.{orderIds, planId}
-            if orderIds.size == 1 then
-              s"${planId.planKey} with ${orderIds.head}"
+            if plan.orderIds.size == 1 then
+              s"${plan.planId.planKey} with ${plan.orderIds.head}"
             else
-              s"${planId.planKey} with ${orderIds.size} orders"
+              s"${plan.planId.planKey} with ${plan.orderIds.size} orders"
           .mkString(", ")
         }"
 
+  def orderIds: View[OrderId] =
+    toOrderPlan.values.view.flatMap(_.orderIds)
+
   def updateItem(item: PlanTemplate): Checked[PlanTemplateState] =
-    Left(Problem("Update of PlanTemplate is still not supported"))
+    Right(copy(item = item))
 
   def addOrder(planKey: PlanKey, orderId: OrderId): PlanTemplateState =
     addOrders(Map1(planKey, Set(orderId)))

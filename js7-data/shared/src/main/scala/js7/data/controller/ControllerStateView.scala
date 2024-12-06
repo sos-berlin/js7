@@ -4,7 +4,7 @@ import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.Event
-import js7.data.order.OrderEvent.{OrderAddedX, OrderPlanAttached}
+import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanTemplate}
 import js7.data.state.EventDrivenStateView
@@ -12,8 +12,6 @@ import js7.data.state.EventDrivenStateView
 trait ControllerStateView[Self <: ControllerStateView[Self]]
 extends EventDrivenStateView[Self, Event]:
   this: Self =>
-
-  protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId): Checked[Self]
 
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match
@@ -23,21 +21,15 @@ extends EventDrivenStateView[Self, Event]:
           update(addOrders =
             Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil)
 
-      case OrderPlanAttached(planId) =>
-        for
-          self <- super.applyOrderEvent(orderId, event)
-          self <- self.onOrderPlanAttached(orderId, planId)
-        yield
-          self
-
       case _ =>
         super.applyOrderEvent(orderId, event)
 
-  final def minimumOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
-    val scope = toMinimumOrderScope(order)
-    keyToItem(PlanTemplate).values.flatMap:
+  final def evalOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
+    val scope = toPlanOrderScope(order)
+    keyToItem(PlanTemplate).values.toVector.map:
       _.evalOrderToPlanId(scope)
     .combineProblems
+    .map(_.flatten)
     .flatMap: planIds =>
       planIds.length match
         case 0 => Right(None)

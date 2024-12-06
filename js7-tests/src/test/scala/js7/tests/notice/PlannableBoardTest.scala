@@ -64,7 +64,7 @@ final class PlannableBoardTest
       locally:
         val otherConsumingOrder = FreshOrder(otherConsumingOrderId, consumingWorkflow.path)
         controller.addOrderBlocking(otherConsumingOrder)
-        assert(controllerState.minimumOrderToPlanId(otherConsumingOrder) == Right(Some(
+        assert(controllerState.evalOrderToPlanId(otherConsumingOrder) == Right(Some(
           dailyPlan.id / day0)))
         execCmd(DeleteOrdersWhenTerminated(Set(otherConsumingOrderId)))
         eventWatch.awaitNext[OrderNoticesExpected](_.key == otherConsumingOrderId)
@@ -139,7 +139,7 @@ final class PlannableBoardTest
       locally:
         val consumingOrderId = OrderId("#2024w47#CONSUME")
         val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path)
-        assert(controllerState.minimumOrderToPlanId(consumingOrder) ==
+        assert(controllerState.evalOrderToPlanId(consumingOrder) ==
           Right(Some(weeklyPlan.id / "2024w47")))
 
         controller.addOrderBlocking(consumingOrder)
@@ -180,11 +180,11 @@ final class PlannableBoardTest
       eventWatch.resetLastWatchedEventId()
       locally: // No Plan fits --> Global Plan //
         val order = FreshOrder(OrderId("X-#2#"), WorkflowPath("WORKFLOW"))
-        assert(controllerState.minimumOrderToPlanId(order) == Right(None))
+        assert(controllerState.evalOrderToPlanId(order) == Right(None))
 
       locally: // Two Plans fit, Order is rejected //
         val order = FreshOrder(OrderId("AB-#1#"), postingWorkflow.path)
-        assert(controllerState.minimumOrderToPlanId(order) == Left(Problem:
+        assert(controllerState.evalOrderToPlanId(order) == Left(Problem:
           "Order:AB-#1# fits 2 Plans: Plan:APlan/1, Plan:BPlan/1 — An Order must not fit multiple Plans"))
 
         val checked = controller.api.addOrder(order).await(99.s)
@@ -193,11 +193,11 @@ final class PlannableBoardTest
 
       locally: // APlan fits //
         val order = FreshOrder(OrderId("A-#1#"), WorkflowPath("WORKFLOW"))
-        assert(controllerState.minimumOrderToPlanId(order) == Right(Some(aPlan.id / "1")))
+        assert(controllerState.evalOrderToPlanId(order) == Right(Some(aPlan.id / "1")))
 
       locally: // BPlan fits //
         val order = FreshOrder(OrderId("B-#2#"), WorkflowPath("WORKFLOW"))
-        assert(controllerState.minimumOrderToPlanId(order) == Right(Some(bPlan.id / "2")))
+        assert(controllerState.evalOrderToPlanId(order) == Right(Some(bPlan.id / "2")))
 
   "Announced Notices" - {
     // Each test will announce a Notice at bBoard

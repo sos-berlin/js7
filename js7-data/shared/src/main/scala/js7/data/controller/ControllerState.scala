@@ -41,7 +41,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, Inventor
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
-import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId, PlanTemplateState}
@@ -359,6 +359,20 @@ extends SignedItemContainer,
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
   : Checked[ControllerState] =
     event match
+      case OrderPlanAttached(planId) =>
+        for
+          self <- super.applyOrderEvent(orderId, event)
+          // Move Order from GlobalPlan's to PlanId's PlanTemplateState
+          planTemplateState <- self.keyTo(PlanTemplateState).checked(planId.planTemplateId)
+          global <- self.keyTo(PlanTemplateState).checked(PlanTemplateId.Global)
+          self <- self.update(
+            addItemStates =
+              global.removeOrder(PlanKey.Global, orderId)
+                :: planTemplateState.addOrder(planId.planKey, orderId)
+                :: Nil)
+        yield
+          self
+
       case event: OrderTransferred =>
         super.applyOrderEvent(orderId, event).map: updated =>
           updated.copy(
@@ -499,19 +513,6 @@ extends SignedItemContainer,
     update(
       addItemStates = orderWatchStates,
       removeUnsignedSimpleItems = remove)
-
-  protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId): Checked[ControllerState] =
-    // Move Order from GlobalPlan's to PlanId's PlanTemplateState
-    for
-      planTemplateState <- keyTo(PlanTemplateState).checked(planId.planTemplateId)
-      global <- keyTo(PlanTemplateState).checked(PlanTemplateId.Global)
-      s <- update(
-        addItemStates =
-          global.removeOrder(PlanKey.Global, orderId) ::
-          planTemplateState.addOrder(planId.planKey, orderId) ::
-            Nil)
-    yield
-      s
 
   protected def update_(
     addOrders: Seq[Order[Order.State]] = Nil,

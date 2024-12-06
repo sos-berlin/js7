@@ -44,19 +44,17 @@ extends UnsignedSimpleItem:
 
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `orderToPlanKey` expression evaluates to MissingValue (no match). */
-  def evalOrderToPlanId(scope: Scope): Option[Checked[PlanId]] =
+  def evalOrderToPlanId(scope: Scope): Checked[Option[PlanId]] =
     evalOrderToPlanKey(scope)
-      .map(_.map:
-        PlanId(id, _))
+      .map(_.map(PlanId(id, _)))
 
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `orderToPlanKey` expression evaluates to MissingValue (no match). */
-  private def evalOrderToPlanKey(scope: Scope): Option[Checked[PlanKey]] =
-    orderToPlanKey.eval(using scope)
-      .traverse(_.missingToNone)
-      .map:
-        _.flatMap(_.toStringValueString)
-          .flatMap(PlanKey.checked)
+  private def evalOrderToPlanKey(scope: Scope): Checked[Option[PlanKey]] =
+    orderToPlanKey.eval(using scope).flatMap:
+      _.missingToNone.traverse:
+        _.toStringValueString.flatMap(PlanKey.checked)
+
 
   def toInitialItemState: PlanTemplateState =
     PlanTemplateState(this, toOrderPlan = Map.empty)

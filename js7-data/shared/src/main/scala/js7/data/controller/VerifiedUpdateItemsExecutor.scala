@@ -1,11 +1,14 @@
 package js7.data.controller
 
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.syntax.sequence
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
+import js7.data.Problems.OrderWouldNotMatchChangedPlanTemplateProblem
 import js7.data.agent.AgentPath
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
@@ -17,7 +20,7 @@ import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
 import js7.data.order.OrderEvent
 import js7.data.order.OrderEvent.OrderPlanAttached
-import js7.data.plan.PlanTemplateId
+import js7.data.plan.{PlanTemplate, PlanTemplateId, PlanTemplateState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
@@ -184,10 +187,31 @@ object VerifiedUpdateItemsExecutor:
               if controllerState.deletionMarkedItems.contains(item.key) then
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
-                Right:
+                item.match
+                  case item: PlanTemplate =>
+                    controllerState.keyTo(PlanTemplateState).checked(item.id)
+                      .flatMap: planTemplateState =>
+                        checkOrdersMatchStillItsPlan(controllerState, planTemplateState.copy(item = item))
+                  case _ => Checked.unit
+                .map: _ =>
                   UnsignedSimpleItemChanged:
                     item.withRevision:
                       existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next).some
+
+    def checkOrdersMatchStillItsPlan(
+      controllerState: ControllerState,
+      planTemplateState: PlanTemplateState)
+    : Checked[Unit] =
+      planTemplateState.orderIds
+        .map(controllerState.idToOrder.checked)
+        .map:
+          _.flatMap: order =>
+            planTemplateState.item.evalOrderToPlanId(controllerState.toPlanOrderScope(order))
+              .flatMap: planId =>
+                (order.maybePlanId == planId) !!
+                  OrderWouldNotMatchChangedPlanTemplateProblem(order.id, order.planId)
+        .sequence
+        .map(_.combineAll)
 
     def attachPlanlessOrdersPlanTemplates(
       controllerState: ControllerState,
@@ -200,7 +224,7 @@ object VerifiedUpdateItemsExecutor:
           .filter(_.maybePlanId.isEmpty)
           .toVector
           .traverse: order =>
-            controllerState.minimumOrderToPlanId(order).map: maybePlanId =>
+            controllerState.evalOrderToPlanId(order).map: maybePlanId =>
               maybePlanId.map: planId =>
                 // The Order will check whether the event is applicable
                 order.id <-: OrderPlanAttached(planId)

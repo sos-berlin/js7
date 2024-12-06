@@ -7,7 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.Problems.OrderCannotAttachedToPlanProblem
+import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchChangedPlanTemplateProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard}
@@ -116,30 +116,52 @@ final class PlanTest
       execCmd(CancelOrders(Seq(orderId)))
       eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
-  "Update a PlanTemplate is still not possible" in:
+  "Update a PlanTemplate and check existing Orders" in:
     eventWatch.resetLastWatchedEventId()
-    val orderId = OrderId(s"#2024-12-06#")
-    val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
-    val board = GlobalBoard.joc(BoardPath("BOARD"))
+    val templateId = PlanTemplateId("DailyPlan")
+
+    val aPlanTemplate = PlanTemplate.joc(templateId)
+    val aKey = "2024-12-06"
+    val aOrderId = OrderId(s"#$aKey#")
+    val aPlanId = templateId / aKey
+
+    val bKey = "2024w49"
+    val bOrderId = OrderId(s"#$bKey#")
+    val bPlanId = templateId / bKey
     val workflow = Workflow.of:
-      ConsumeNotices(board.path):
-        Prompt(expr("'PROMPT'"))
+      Prompt(expr("'PROMPT'"))
 
-    withItems((dailyPlan, workflow, board)): (dailyPlan, workflow, board) =>
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
+    withItems((aPlanTemplate, workflow)): (aPlanTemplate, workflow) =>
+      // aOrderId is in the plan
+      controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderPrompted](_.key == aOrderId)
 
-      val changedDailyPlan = dailyPlan.copy(
-        orderToPlanKey = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"),
-        itemRevision = None)
+      // aOrderId is not in a plan (that means, in the global plan)
+      controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNext[OrderPrompted](_.key == bOrderId)
+
+      // Change planTemplate such that aOrderId no longer match, but bOrderId match
+      val bPlanTemplate = PlanTemplate.weekly(aPlanTemplate.id)
       val checked = controller.api.updateItems(fs2.Stream:
-          ItemOperation.AddOrChangeSimple(changedDailyPlan))
+          ItemOperation.AddOrChangeSimple(bPlanTemplate))
         .await(99.s)
-      assert(checked == Left(Problem("Event 'UnsignedSimpleItemChanged(PlanTemplate(PlanTemplate:DailyPlan,match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1')?,Some(ItemRevision(1))))' cannot be applied to 'ControllerState': Update of PlanTemplate is still not supported")))
-      execCmd(CancelOrders(Seq(orderId)))
-      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+      assert(checked == Left(OrderWouldNotMatchChangedPlanTemplateProblem(aOrderId, aPlanId)))
 
-    pending
+      // Me must delete aOrderId to change the PlanTemplate
+      execCmd(CancelOrders(Seq(aOrderId)))
+      eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
+
+      updateItem(bPlanTemplate)
+
+      // Now, bOrderId is attached to the updated PlanTemplatae
+      assert(controllerState.idToOrder(bOrderId).planId == bPlanId)
+      assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
+        OrderAdded(workflow.id, planId = None, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderPrompted("PROMPT"),
+        OrderPlanAttached(bPlanId)))
+
+      execCmd(CancelOrders(Seq(bOrderId)))
 
   "Delete a PlanTemplate" - {
     def tryDeletePlan(planTemplateId: PlanTemplateId): Checked[Unit] =
