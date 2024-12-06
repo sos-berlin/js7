@@ -11,7 +11,6 @@ import java.nio.file.Path
 import java.nio.{ByteBuffer, ByteOrder}
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.log.Logger
-import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.crashpidfile.WriteBasedIndexedRecordSet.*
@@ -131,7 +130,7 @@ object WriteBasedIndexedRecordSet:
                 if byteBuffer.position != recordSize then throw AssertionError:
                   s"Unexpected length=${byteBuffer.position}, expected was $recordSize"
                 byteBuffer.flip()
-                interruptibleVirtualThread:
+                IO.blocking:
                   channel.position(index * recordSize)
                   channel.write(byteBuffer)
                   aOrDelete match
