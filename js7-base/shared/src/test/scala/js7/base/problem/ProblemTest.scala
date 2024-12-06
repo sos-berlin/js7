@@ -1,6 +1,7 @@
 package js7.base.problem
 
 import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemTest.*
 import js7.base.test.OurTestSuite
@@ -240,6 +241,15 @@ final class ProblemTest extends OurTestSuite:
     Problem.fromLazyThrowable(new IllegalArgumentException("TEST")) match
       case Problem.IsThrowable(_: IllegalStateException) => fail()
       case _ =>
+
+  "sequence" in:
+    val listOfChecked = List(Right(1), Left(Problem("FIRST")), Right(2), Left(Problem("MORE")))
+    assert(listOfChecked.sequence == List(Left(Problem("FIRST"))))
+
+  "traverse" in:
+    def f(i: Int) = if i % 2 != 0 then Left(Problem(s"$i is not even")) else Right(100 * i)
+    val list = List(1, 2, 3, 4, 5)
+    assert(list.traverse(f) == Left(Problem("1 is not even")))
 
   private def catch_(problem: Problem): String =
     intercept[ProblemException] { throw problem.throwable } .toStringWithCauses

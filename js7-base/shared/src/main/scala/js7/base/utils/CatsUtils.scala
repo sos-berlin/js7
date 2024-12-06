@@ -149,6 +149,28 @@ object CatsUtils:
       : G[F[B]] =
         fa.traverse(f).map(_.flatten)
 
+    extension [L, R](view: View[Either[L, R]])
+      /** A fail-fast specialization of sequence for View: */
+      def sequence: Either[L, Vector[R]] =
+        val builder = Vector.newBuilder[R]
+        val it = view.iterator
+        while it.hasNext do
+          it.next() match
+            case Left(l) => return Left(l)
+            case Right(r) => builder += r
+        Right(builder.result())
+
+    extension [A](view: View[A])
+      /** A fail-fast specialization of traverse for View: */
+      def traverse[L, R](f: A => Either[L, R]): Either[L, Vector[R]] =
+        val builder = Vector.newBuilder[R]
+        val it = view.iterator
+        while it.hasNext do
+          f(it.next()) match
+            case Left(l) => return Left(l)
+            case Right(r) => builder += r
+        Right(builder.result())
+
     extension [A](nonEmptyList: NonEmptyList[A])
       def view: View[A] = nonEmptyList.toList.view
 
