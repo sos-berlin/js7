@@ -31,8 +31,8 @@ final class ForkListTest extends OurTestSuite:
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement)=>$$listElement.number",
-        "childToArguments": "(listElement)=>{myId:$$listElement.number, myString:$$child.string}",
+        "childToId": "(listElement) => $$listElement.number",
+        "childToArguments": "(listElement) => {myId:$$listElement.number, myString:$$child.string}",
         "workflow": {
           "instructions": [
             {
@@ -62,8 +62,8 @@ final class ForkListTest extends OurTestSuite:
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement)=>$$listElement",
-        "childToArguments": "(listElement)=>{myId:$$listElement}",
+        "childToId": "(listElement) => $$listElement",
+        "childToArguments": "(listElement) => {myId:$$listElement}",
         "workflow": {
           "instructions": []
         },
@@ -80,8 +80,8 @@ final class ForkListTest extends OurTestSuite:
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement)=>$$listElement",
-        "childToArguments": "(listElement)=>{myId:$$listElement}",
+        "childToId": "(listElement) => $$listElement",
+        "childToArguments": "(listElement) => {myId:$$listElement}",
         "workflow": {
           "instructions": []
         }

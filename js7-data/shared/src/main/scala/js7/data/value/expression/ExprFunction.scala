@@ -46,23 +46,20 @@ final case class ExprFunction(
 
   def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
     if arguments.sizeIs < minimumArgumentCount
-      || maximumArgumentCount.exists(arguments.sizeIs > _) then
-      Left(Problem(
+      || maximumArgumentCount.exists(arguments.sizeIs > _)
+    then
+      Left(Problem:
         s"Number of arguments=${arguments.size} does not match " +
           "required number of function parameters=" +
           minimumArgumentCount +
           maximumArgumentCount.filter(_ != minimumArgumentCount).fold("")("..." + _) +
-          s" in '$name' function"))
+          s" in '$name' function")
     else
       val argScope = NamedValueScope.simple:
-        parameters
-          .view
-          .zip(arguments)
-          .map { case (p, a) => p.name -> a }
-          .toMap
+        parameters.view.map(_.name).zip(arguments).toMap
       expression.eval(argScope |+| scope)
 
-  override def toString = parameters.mkString("(", ",", ")") + "=>" + expression
+  override def toString = parameters.mkString("(", ",", ")") + " => " + expression
 
 
 object ExprFunction:
