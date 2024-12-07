@@ -23,7 +23,9 @@ import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.plan.PlanTemplateId
 import js7.data.subagent.SubagentId
+import js7.data.value.NamedValues
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import scala.collection.immutable
@@ -196,6 +198,12 @@ object ControllerCommand extends CommonCommand.Companion:
   extends ControllerCommand:
     type Response = Response.Accepted
 
+  final case class ChangePlanTemplate(
+    planTemplateId: PlanTemplateId,
+    namedValues: NamedValues)
+  extends ControllerCommand:
+    type Response = Response.Accepted
+
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
   final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
@@ -271,6 +279,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
     Subtype(deriveConfiguredCodec[TransferOrders]),
+    Subtype(deriveConfiguredCodec[ChangePlanTemplate]),
     Subtype(deriveConfiguredCodec[ControlWorkflowPath]),
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),

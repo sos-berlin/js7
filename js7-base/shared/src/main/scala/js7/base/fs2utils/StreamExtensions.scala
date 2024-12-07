@@ -66,7 +66,7 @@ object StreamExtensions:
 
   extension[F[_], O](stream: Stream[F, O])
     /*inline not usable here, in Scala 3.5.2*/
-    def :+[O1 >: O](o: O1): Stream[F, O1] =
+    def :+[O1 >: O](o: => O1): Stream[F, O1] =
       stream.appendOne(o)
 
     /** Like ++, but has same operator priority as `:+`. */
@@ -195,7 +195,7 @@ object StreamExtensions:
     def prependOne[O1 >: O](o: O1): Stream[F, O1] =
       prepend(Stream.emit[F, O1](o))
 
-    def appendOne[O1 >: O](o: O1): Stream[F, O1] =
+    def appendOne[O1 >: O](o: => O1): Stream[F, O1] =
       stream ++ Stream.emit[F, O1](o)
 
     def fillUpChunks(limit: Int): Stream[F, Chunk[O]] =

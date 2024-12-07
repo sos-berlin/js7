@@ -38,9 +38,15 @@ object NamedValueScope:
   /**
    * @param nameToValue: Value is expected to be constant.
    */
+  def apply(nameToValue: Map[String, Value]): Scope =
+    apply(nameToValue.view)
+
+  /**
+   * @param nameToValue: Value is expected to be constant.
+   */
   def apply(nameToValue: MapView[String, Value]): Scope =
     apply:
-      nameToValue.view.mapValues(Right(_))
+      nameToValue.mapValues(Right(_))
 
   /**
    * @param nameToChecked: Checked[Value] is expected to be constant.
