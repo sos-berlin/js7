@@ -72,7 +72,7 @@ object Dependencies
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk18on" % "1.78.1"
+  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk18on" % "1.79"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "3.0" ::
                             "org.hamcrest" % "hamcrest-library" % "3.0" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::

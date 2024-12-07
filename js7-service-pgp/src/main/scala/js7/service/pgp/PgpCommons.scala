@@ -22,6 +22,7 @@ import org.bouncycastle.openpgp.examples.PubringDump
 import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPUtil}
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -126,6 +127,7 @@ object PgpCommons:
       case HashAlgorithmTags.TIGER_192 => "TIGER"
       case _ => hashAlgorithm.toString
 
+  @nowarn("cat=deprecation")
   private def publicKeyAlgorithmToString(n: Int) =
     n match
       case PublicKeyAlgorithmTags.RSA_GENERAL => "'RSA general'"
@@ -136,7 +138,7 @@ object PgpCommons:
       case PublicKeyAlgorithmTags.DIFFIE_HELLMAN => "Diffie-Hellman"
       case _ =>
         try PubringDump.getAlgorithm(n)
-        catch { case NonFatal(_) => n.toString }
+        catch case NonFatal(_) => n.toString
 
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)

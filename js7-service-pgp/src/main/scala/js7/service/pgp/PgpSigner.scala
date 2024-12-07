@@ -15,6 +15,7 @@ import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
+import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 import scala.util.Random
 
@@ -74,6 +75,7 @@ object PgpSigner extends DocumentSigner.Companion:
     Checked.catchNonFatal(
       new PgpSigner(pgpSecretKey, password))
 
+  @TestOnly
   def forTest(): (PgpSigner, PgpSignatureVerifier) =
     val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
