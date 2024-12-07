@@ -8,9 +8,9 @@ object Dependencies
   val pekkoVersion = "1.1.2"
   val pekkoHttpVersion = "1.1.0"
   val slf4jVersion = "2.0.16"  // See also plugins.sbt
-  val log4jVersion = "2.24.1"  // See also plugins.sbt
+  val log4jVersion = "2.24.2"  // See also plugins.sbt
   val catsVersion = "2.12.0"
-  val catsEffectVersion = "3.5.4"
+  val catsEffectVersion = "3.5.7"
   val catsEffectTestingVersion = catsEffectVersion
   val izumiReflectVersion = "2.3.8"
   //val kittensVersion = "1.2.1"
@@ -19,7 +19,7 @@ object Dependencies
   val circeGenericExtrasVersion = "0.14.3"
   val scalaTestVersion = "3.2.19"
   val scalaTestCheckVersion = "3.2.14.0"
-  val scalaCheckVersion= "1.18.0"
+  val scalaCheckVersion= "1.18.1"
   val sourcecodeVersion = "0.4.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
@@ -47,7 +47,7 @@ object Dependencies
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffectTesting   = List(
     "org.typelevel" %% "cats-effect-testkit" % catsEffectTestingVersion % Test,
-    "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test)
+    "org.typelevel" %% "cats-effect-testing-scalatest" % "1.6.0" % Test)
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
