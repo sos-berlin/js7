@@ -93,12 +93,18 @@ object IOExecutor:
   object env:
     /** Like IO blocking, but executes in a virtual thread. */
     def virtualThread[A](body: => A): IO[A] =
-      environment[IOExecutor].flatMap: iox =>
-        IOExecutor.blocking(body)(using iox)
+      if VirtualThreads.isEnabled then
+        environment[IOExecutor].flatMap: iox =>
+          IOExecutor.blocking(body)(using iox)
+      else
+        IO.blocking(body)
 
     /** Like IO interruptible, but executes in a virtual thread. */
     def interruptibleVirtualThread[A](body: => A): IO[A] =
-      environment[IOExecutor].flatMap: iox =>
-        IOExecutor.interruptible(body)(using iox)
+      if VirtualThreads.isEnabled then
+        environment[IOExecutor].flatMap: iox =>
+          IOExecutor.interruptible(body)(using iox)
+      else
+        IO.interruptible(body)
 
   java17Polyfill()
