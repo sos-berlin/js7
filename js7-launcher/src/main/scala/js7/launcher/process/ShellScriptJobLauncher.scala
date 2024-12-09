@@ -10,6 +10,7 @@ import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.io.file.FileDeleter.{tryDeleteFile, tryDeleteFiles}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem
@@ -43,12 +44,14 @@ extends PathProcessJobLauncher:
           userToFile.get(maybeUserName) match
             case Some(path) => IO.right(path)
             case None =>
-              IO.blocking:
-                writeScriptToFile(
-                  executable.script,
-                  jobLauncherConf.shellScriptTmpDirectory,
-                  jobLauncherConf.systemEncoding,
-                  maybeUserName)
+              Logger.traceIO("### IO.blocking"):
+                IO.blocking:
+                  Logger.traceCall("### writeScriptToFile"):
+                    writeScriptToFile(
+                      executable.script,
+                      jobLauncherConf.shellScriptTmpDirectory,
+                      jobLauncherConf.systemEncoding,
+                      maybeUserName)
               .flatTapT: path =>
                 IO.right:
                   userToFile.update(maybeUserName, path)

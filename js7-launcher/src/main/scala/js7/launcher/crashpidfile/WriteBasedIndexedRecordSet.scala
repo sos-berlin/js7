@@ -11,6 +11,8 @@ import java.nio.file.Path
 import java.nio.{ByteBuffer, ByteOrder}
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.log.Logger
+import js7.base.thread.IOExecutor.env
+import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.crashpidfile.WriteBasedIndexedRecordSet.*
@@ -130,14 +132,18 @@ object WriteBasedIndexedRecordSet:
                 if byteBuffer.position != recordSize then throw AssertionError:
                   s"Unexpected length=${byteBuffer.position}, expected was $recordSize"
                 byteBuffer.flip()
-                IO.blocking:
-                  channel.position(index * recordSize)
-                  channel.write(byteBuffer)
-                  aOrDelete match
-                    case Delete(Some(truncate)) =>
-                      channel.truncate(truncate * recordSize)
-                    case _ =>
-                  ()))
+                Logger.traceIO("### interruptibleVirtualThread"):
+                  interruptibleVirtualThread:
+                    Logger.traceCall("### channel.position"):
+                      channel.position(index * recordSize)
+                    Logger.traceCall("### channel.write"):
+                      channel.write(byteBuffer)
+                      aOrDelete match
+                        case Delete(Some(truncate)) =>
+                          Logger.traceCall("### channel.truncate"):
+                            channel.truncate(truncate * recordSize)
+                        case _ =>
+                      ()))
     yield
       service
 
