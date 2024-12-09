@@ -24,6 +24,7 @@ trait AsyncLock:
 object AsyncLock:
 
   private val logger = Logger[this.type]
+  private val dontUse = sys.props.contains("js7.noAsyncLock")
   private val waitCounter = Atomic(0)
 
   def apply()(using sourcecode.Enclosing): AsyncLock =
@@ -38,7 +39,7 @@ object AsyncLock:
     suppressLog: Boolean = false,
     logMinor: Boolean = false)
   : AsyncLock =
-    if suppressLog then
+    if suppressLog || dontUse then
       new NoLogging(name)
     else
       new WithLogging(name, logWorryDurations, logMinor = logMinor)
