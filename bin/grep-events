@@ -4,6 +4,6 @@ set -euo pipefail
 a=()
 [[ $# = 0 ]] || a+=("$1")
 
-exec egrep --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[@]}" |
+exec egrep --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[*]}" |
   egrep -vw --line-buffered "AgentEventsObserved" |
   sed -l 's/ trace .*Journal - ://'
