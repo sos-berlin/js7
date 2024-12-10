@@ -8,7 +8,7 @@ object VirtualThreads:
 
   private val logger = Logger[this.type]
   private var hasVirtualThreads =
-    Runtime.version.feature >= 19 && !sys.props.contains("js7.noVirtualThread")
+    Runtime.version.feature >= 19 && sys.props.contains("js7.virtualThreads")
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
@@ -49,7 +49,7 @@ object VirtualThreads:
             method.invoke(null, threadFactory).asInstanceOf[ExecutorService]
       catch throwableToNone
 
-  private lazy val newVirtualThreadFactory: Option[ThreadFactory] =
+  private[thread] lazy val newVirtualThreadFactory: Option[ThreadFactory] =
     if !hasVirtualThreads then
       None
     else
