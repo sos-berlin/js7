@@ -64,7 +64,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] =
     val r = await(predicate, after = _lastWatchedEventId, timeout)
-    _lastWatchedEventId = r.last.eventId
+    _lastWatchedEventId = r.head.eventId
     r
 
   /** TEST ONLY - Blocking. */
