@@ -29,7 +29,6 @@ final class ProcessTextFileBusyTest extends OurTestSuite:
   private given IORuntime = ioRuntime
 
   private val n = 1000
-  private val threadCount = 10 * sys.runtime.availableProcessors
 
   "TextFileBusyIOException" in:
     val (expected, exceptions) = List(
@@ -43,15 +42,16 @@ final class ProcessTextFileBusyTest extends OurTestSuite:
       case _ => false
     assert(r == expected)
 
-  s"$n concurrent process starts with freshly written executables on $threadCount threads" in:
+  s"$n concurrent process starts with freshly written executables" in:
     //implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
     val stopwatch = new Stopwatch
-    val (files, processes) = IO
-      .parSequenceN(sys.runtime.availableProcessors):
-        for i <- (0 until n).toVector yield IO.defer:
-          val file = newTemporaryShellFile(s"#$i")
-          file := "exit"
-          new ProcessBuilder(s"$file").startRobustly().map(file -> _)
+    val (files, processes) =
+      IO.parSequenceN(sys.runtime.availableProcessors):
+        (1 to n).toVector.map: i =>
+          IO.defer:
+            val file = newTemporaryShellFile(s"#$i")
+            file := "exit"
+            new ProcessBuilder(s"$file").startRobustly().map(file -> _)
       .await(99.s)
       .unzip
 
