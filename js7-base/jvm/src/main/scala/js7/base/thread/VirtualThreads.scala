@@ -3,7 +3,6 @@ package js7.base.thread
 import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
-import org.jetbrains.annotations.TestOnly
 
 object VirtualThreads:
 
@@ -18,7 +17,6 @@ object VirtualThreads:
     yield
       () => newThreadPerTaskExecutor(factory)
 
-  @TestOnly
   def isEnabled: Boolean =
     maybeNewVirtualThreadPerTaskExecutor.isDefined
 
