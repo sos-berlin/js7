@@ -28,6 +28,8 @@ private transparent trait IOAppWithCpuStarvationCheck extends IOApp:
 object IOAppWithCpuStarvationCheck:
   /** Use only after Logger.initialize! */
   private lazy val logger = Logger[this.type]
+  private val CpuStarvationCheckThresholdDefault = 500.ms
+  private val CpuStarvationCheckIntervalDefault = 1.s
 
   private val starvingLogLevel: LogLevel =
     sys.props.get("js7.cats.effect.cpuStarvationCheckLogLevel").fold(LogLevel.Info)(LogLevel(_))
@@ -39,8 +41,10 @@ object IOAppWithCpuStarvationCheck:
       sys.props.get("js7.cats.effect.cpuStarvationCheckInitialDelay").fold(60.s)(StringAsDuration)
 
   private val cpuStarvationCheckThreshold: FiniteDuration =
-    sys.props.get("js7.cats.effect.cpuStarvationCheckThreshold").fold(100.ms)(StringAsDuration)
+    sys.props.get("js7.cats.effect.cpuStarvationCheckThreshold")
+      .fold(CpuStarvationCheckThresholdDefault)(StringAsDuration)
 
   private val cpuStarvationCheckInterval: FiniteDuration =
-    sys.props.get("js7.cats.effect.cpuStarvationCheckInterval").fold(1.s)(StringAsDuration)
+    sys.props.get("js7.cats.effect.cpuStarvationCheckInterval")
+      .fold(CpuStarvationCheckIntervalDefault)(StringAsDuration)
       .max(cpuStarvationCheckThreshold)
