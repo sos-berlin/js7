@@ -7,6 +7,7 @@ import js7.base.convert.As.StringAsByteCountWithDecimalPrefix
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Tests.isStrict
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
@@ -34,8 +35,8 @@ object JournalConf:
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
-    val slowCheckState = config.getBoolean(slowCheckStateKey)
-    if slowCheckState then logger.info(s"Slowing down due to $slowCheckStateKey = true")
+    val slowCheckState = config.optionAs[Boolean](slowCheckStateKey) getOrElse isStrict
+    if slowCheckState then logger.info(s"🐌 Slowing down due to $slowCheckStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),
