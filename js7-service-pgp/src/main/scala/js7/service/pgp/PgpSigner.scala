@@ -46,9 +46,11 @@ extends DocumentSigner:
     PgpSignature(Base64.getMimeEncoder.encodeToString(signatureBytes))
 
   private def newSignatureGenerator(): PGPSignatureGenerator =
-    val signatureGenerator = new PGPSignatureGenerator(
-      new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
-        .setProvider("BC"))
+    val signatureGenerator =
+      new PGPSignatureGenerator(
+        new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
+          .setProvider("BC"),
+        pgpSecretKey.getPublicKey)
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
     for u <- maybeUserId do
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
