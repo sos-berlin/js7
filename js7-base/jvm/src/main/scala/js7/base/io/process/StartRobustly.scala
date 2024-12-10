@@ -4,8 +4,6 @@ import cats.effect.IO
 import java.io.IOException
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.thread.IOExecutor.env
-import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -28,7 +26,7 @@ object StartRobustly:
     def startRobustly(durations: Iterable[FiniteDuration] = DefaultDurations): IO[Process] =
       IO.defer:
         val durationsIterator = durations.iterator
-        interruptibleVirtualThread:
+        IO.blocking:
           processBuilder.start()
         .onErrorRestartLoop(()):
           case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
