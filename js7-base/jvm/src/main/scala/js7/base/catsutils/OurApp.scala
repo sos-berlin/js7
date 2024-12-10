@@ -3,7 +3,7 @@ package js7.base.catsutils
 import cats.effect.unsafe.IORuntime
 import js7.base.log.{Log4j, Logger}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.base.utils.Tests.isIntelliJIdea
+import js7.base.utils.Tests.isStrict
 
 trait OurApp extends IOAppWithCpuStarvationCheck:
 
@@ -17,4 +17,4 @@ trait OurApp extends IOAppWithCpuStarvationCheck:
     Logger.initialize(productName)
     OurIORuntime.commonIORuntime
 
-  override protected def blockedThreadDetectionEnabled = isIntelliJIdea
+  override protected def blockedThreadDetectionEnabled = isStrict
