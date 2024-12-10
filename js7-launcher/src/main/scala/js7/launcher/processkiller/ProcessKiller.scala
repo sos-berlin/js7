@@ -1,5 +1,6 @@
 package js7.launcher.processkiller
 
+import cats.syntax.traverse.*
 import cats.effect.IO
 import js7.base.catsutils.CatsExtensions.traverseCombine
 import js7.base.catsutils.{Environment, FiberVar}
@@ -119,13 +120,18 @@ private[launcher] trait ProcessKiller[P <: Pid | Js7Process]:
           processes.map: process =>
             // if process isAlive then use its current descendants
             // otherwise use the descendants as before SIGTERM.
-            process -> (
-              if isAlive(process) then
+            val descendants =
+              isAlive(process).thenMaybe:
                 // Use the current descendants of still alive process
-                process.descendants
-              else
+                try Some:
+                  process.descendants
+                catch case e: RuntimeException =>
+                  logger.error(s"Cannot query current descendants of ${process.toPid}: $e")
+                  None
+              .getOrElse:
                 // Use the descendants as before SIGTERM.
-                _sigtermDescendants.get(process.toPid).fold_(Vector.empty, descendantsOf))
+                _sigtermDescendants.get(process.toPid).fold_(Vector.empty, descendantsOf)
+            process -> descendants
 
         val stopPids = processToDescendants.flatMap: (process, descendants) =>
           (isAlive(process) ? process.toPid.number) ++: descendants.map(_.pid)
