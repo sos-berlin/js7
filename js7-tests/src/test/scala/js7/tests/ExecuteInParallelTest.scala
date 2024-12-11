@@ -82,7 +82,7 @@ final class ExecuteInParallelTest
       .await(if isIntelliJIdea then Duration.Inf else 99.s)
 
   private def info_(msg: String): Unit =
-    println(s"ExecuteInParallelTest $msg")
+    note(s"ExecuteInParallelTest $msg")
     logger.info(msg)
 
 
