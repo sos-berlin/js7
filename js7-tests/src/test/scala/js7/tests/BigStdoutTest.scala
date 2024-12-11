@@ -53,7 +53,10 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
              |  # 🌈 is a surrogate — We still not support surrogates, so we take '╳'
              |  # line has about 1000 bytes, no write 1MB
              |  for j in {000..999}; do
-             |    echo "$$i.$$j MB: $$line"
+             |    # Workaround for old bash version (like in MacOS)
+             |    j2="00$$j"
+             |    j2="$${j2:$$(($${#j2} - 3))}"
+             |    echo "$$i.$$j2 MB: $$line"
              |  done
              |done
              |""".stripMargin)))
@@ -76,7 +79,7 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
         .collect:
           case OrderStdoutWritten(string) =>
             eventCount += 1
-            charCount += string.size
+            charCount += string.length
             String(string.toCharArray)
         .through(fs2.text.lines)
         .zipAll(
