@@ -8,7 +8,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.ifEmpty
 import js7.data.board.{BoardState, GlobalBoard, PlannableBoard}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected, OrderNoticesRead}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesExpected}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 
