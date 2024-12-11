@@ -17,6 +17,7 @@ import js7.base.utils.{AsyncLock, Atomic}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTest
 import js7.base.version.Js7Versions.checkNonMatchingVersion
 import js7.base.version.Version
@@ -125,8 +126,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
 
 object HttpSessionApi:
   private val logger = Logger[this.type]
-  private val isPasswordLoggable = isTest &&
-    sys.props.get("js7.test.log-password").fold(false)(StringAsBoolean.apply)
+  private val isPasswordLoggable = isTest && sys.props.asSwitch("js7.test.log-password")
 
   private[session] def logNonMatchingVersion(
     otherVersion: Version,

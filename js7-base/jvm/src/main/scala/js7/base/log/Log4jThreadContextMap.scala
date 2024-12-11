@@ -5,6 +5,7 @@ import js7.base.BuildInfo
 import js7.base.log.Log4jThreadContextMap.*
 import js7.base.system.startup.StartUp
 import js7.base.utils.Lazy
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap
@@ -96,9 +97,7 @@ object Log4jThreadContextMap:
       case lzy: Lazy[String] => lzy.value
 
   private val isDebug: Boolean =
-    sys.props.get("log4j2.debug") match
-      case Some("" | "true") => true
-      case _ => false
+    sys.props.asSwitch("log4j2.debug")
 
   def initialize(name: String): Unit =
     keyToValue.put("js7.serverId", name) // May be overwritten later by a more specific value

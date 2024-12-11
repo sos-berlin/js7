@@ -1,9 +1,10 @@
 package js7.base.utils
 
-import js7.base.convert.As.StringAsBoolean
 import js7.base.log.Logger
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 
 object Tests:
+
   val (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict) =
     val classNames = TestsPlatform.allActiveClasses
 
@@ -15,8 +16,9 @@ object Tests:
     val isScalaTest = hasPackagePrefix(Set("org.scalatest."))
     val isSbt = hasPackagePrefix(Set("xsbt.boot."))
     val isTest = (isScalaTest || isSbt)
-      && !sys.props.get("js7.noTest").fold(false)(StringAsBoolean(_))
-    val isStrict = isTest || sys.props.get("js7.strict").fold(false)(StringAsBoolean(_))
+      && !sys.props.asSwitch("js7.noTest")
+      && !sys.props.contains("test.speed")
+    val isStrict = isTest || sys.props.asSwitch("js7.strict")
 
     (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict)
 

@@ -3,12 +3,13 @@ package js7.base.thread
 import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 
 object VirtualThreads:
 
   private val logger = Logger[this.type]
   private var hasVirtualThreads =
-    Runtime.version.feature >= 19 && sys.props.contains("js7.virtualThreads")
+    Runtime.version.feature >= 19 && sys.props.asSwitch("js7.virtualThreads")
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
     for
