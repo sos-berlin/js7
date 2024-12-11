@@ -4,6 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.BuildInfo
 import js7.base.configutils.Configs
 import js7.base.io.JavaResource
+import js7.base.utils.Tests.isTest
 import scala.jdk.CollectionConverters.*
 
 object Js7Configuration:
@@ -12,11 +13,7 @@ object Js7Configuration:
       "js7.version" -> BuildInfo.version,
       "js7.longVersion" -> BuildInfo.longVersion,
       "js7.prettyVersion" -> BuildInfo.prettyVersion,
-      "js7.test" -> (
-        if sys.props.contains("test.speed") then
-          "off"
-        else
-          sys.props.getOrElse("js7.test", "off")))
+      "js7.test" -> isTest.toString)
     ConfigFactory
       .parseMap(map.asJava)
       .withFallback(

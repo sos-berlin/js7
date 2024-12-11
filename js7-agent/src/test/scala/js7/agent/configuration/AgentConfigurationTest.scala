@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.cluster.ClusterConf
 import js7.common.commandline.CommandLineArguments
 import js7.common.pekkohttp.web.data.WebServerPort
@@ -46,7 +47,7 @@ final class AgentConfigurationTest extends OurTestSuite:
               .orThrow
             clusterConf.copy(
               journalConf = clusterConf.journalConf.copy(
-                slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))))
+                slowCheckState = sys.props.asSwitch("js7.test")))
           },
           name = AgentConfiguration.DefaultName)
       })

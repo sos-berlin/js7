@@ -9,6 +9,7 @@ import js7.base.system.JavaHeapDump.dumpHeapTo
 import js7.base.test.LoggingTestAdder.Result
 import js7.base.thread.VirtualThreads.newMaybeVirtualThread
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
@@ -32,7 +33,7 @@ private object TestResultCollector:
     newMaybeVirtualThread("TestResultCollector-shutdown-hook") {
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
-      if sys.props.contains("js7.dumpHeap") then dumpJavaHeap()
+      if sys.props.asSwitch("js7.dumpHeap") then dumpJavaHeap()
       if false then Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
     })
 

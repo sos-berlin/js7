@@ -17,6 +17,7 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Missing.getOrElse
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.base.utils.Tests.isTestParallel
 import js7.base.utils.{Missing, Tests}
 import scala.concurrent.ExecutionContext
@@ -28,7 +29,7 @@ object OurIORuntime:
   private lazy val logger = Logger[this.type]
 
   val useCommonIORuntime: Boolean =
-    sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed")
+    sys.props.asSwitch("js7.test.commonIORuntime") || sys.props.contains("test.speed")
 
   val commonThreadPrefix = "js7"
 

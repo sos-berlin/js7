@@ -10,6 +10,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.DelayConf
+import js7.base.utils.SystemPropertiesExtensions.asSwitch
 import js7.cluster.ClusterConf
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -50,7 +51,7 @@ final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
         pekkoAskTimeout = 1.h,
         clusterConf = ClusterConf(
           JournalConf.fromConfig(configuration.config)
-            .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
+            .copy(slowCheckState = sys.props.asSwitch("js7.test")),
           NodeId("Primary"), isBackup = false, None,
           RecouplingStreamReaderConf(
             timeout = Some(6500.ms), // Between 3s and 10s
