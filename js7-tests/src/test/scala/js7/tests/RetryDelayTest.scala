@@ -57,7 +57,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
             Retry()),
           retryDelays = Some(Vector(0.s, 1.s, 2.s)),
           maxTries = Some(5))))
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("ORDER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 

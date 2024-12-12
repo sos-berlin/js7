@@ -37,7 +37,7 @@ final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
   "Stop at Controller" in:
     val workflow = Workflow.of(WorkflowPath("CONTROLLER-WORKFLOW"),
       Stop())
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("STOP-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
@@ -63,7 +63,7 @@ final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
       EmptyJob.execute(agentPath),
       Stop())
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("STOP-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)

@@ -572,7 +572,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
 
       val workflow = Workflow.of(
         ParallelInternalJob.execute(agentPath, processLimit = Int.MaxValue))
-      withTemporaryItem(workflow) { workflow =>
+      withItem(workflow) { workflow =>
         val orderIds = for i <- 0 until agentProcessLimit.get yield
           OrderId(s"AGENT-LIMIT-$name-$i")
         val eventId = eventWatch.lastAddedEventId

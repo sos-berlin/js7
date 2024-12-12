@@ -175,7 +175,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
               admissionTimeScheme = Some(sundayAdmissionTimeScheme))))))),
       timeZone = Timezone(timeZone.getId))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       clock := local("2023-06-21T00:00")
 
       val aOrderId = OrderId("♦️")
@@ -207,7 +207,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
 
     val startingWorkflow1 = Workflow(WorkflowPath("forceJobAdmission-1"), Seq(
       AddOrder(StringConstant("FORCED-ORDER-1"), sundayWorkflow.path)))
-    withTemporaryItem(startingWorkflow1) { _ =>
+    withItem(startingWorkflow1) { _ =>
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(OrderId("STARTING-ORDER-1"), startingWorkflow1.path))
         .await(99.s).orThrow
@@ -221,7 +221,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest,
 
     val startingWorkflow2 = Workflow(WorkflowPath("forceJobAdmission-2"), Seq(
       AddOrder(StringConstant("FORCED-ORDER-2"), sundayWorkflow.path, forceJobAdmission = true)))
-    withTemporaryItem(startingWorkflow2) { _ =>
+    withItem(startingWorkflow2) { _ =>
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrder(FreshOrder(OrderId("STARTING-ORDER-2"), startingWorkflow2.path))
         .await(99.s).orThrow

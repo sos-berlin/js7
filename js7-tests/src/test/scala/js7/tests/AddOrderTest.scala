@@ -117,7 +117,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, Bloc
       WorkflowPath("KICK-FRESH"),
       instructions = Seq(EmptyJob.execute(agentPath)))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-02#KICK-FRESH")
       given ZoneId = ZoneId.of("UTC")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,

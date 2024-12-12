@@ -459,7 +459,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                       Workflow.of:
                         Fail()))))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#BREAK")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
@@ -509,7 +509,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                   Break(),
                 Fail())))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#OPTIONS-BREAK")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
@@ -586,7 +586,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
             Cycle(Schedule.continuous(pause = 1.s)):
               Workflow.of:
                 EmptyJob.execute(agentPath)))
-        withTemporaryItem(workflow): workflow =>
+        withItem(workflow): workflow =>
           val orderId = OrderId("#2024-03-25#PLACED-ORDER")
 
           controller.api
@@ -625,7 +625,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
               Workflow.of:
                 Break(),
             EmptyInstruction()))
-        withTemporaryItem(workflow): workflow =>
+        withItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK")
 
           controller.api
@@ -652,7 +652,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
               Workflow.of:
                 If(expr("true")):
                   Break()))
-        withTemporaryItem(workflow): workflow =>
+        withItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-IF")
 
           controller.api
@@ -682,7 +682,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                   Workflow.of(
                     EmptyJob.execute(agentPath),
                     Break())))
-        withTemporaryItem(workflow): workflow =>
+        withItem(workflow): workflow =>
           val orderId = OrderId("#2024-03-25#PLACED-ORDER-INNER-BLOCK-IF-EXECUTE")
 
           controller.api
@@ -720,7 +720,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                     EmptyJob.execute(agentPath),
                     Break()),
                   Workflow.of(Retry()))))
-        withTemporaryItem(workflow): workflow =>
+        withItem(workflow): workflow =>
           val orderId = OrderId("#2024-04-03#PLACED-ORDER-INNER-BLOCK-RETRY-EXECUTE")
 
           controller.api
@@ -759,7 +759,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           Workflow.of(
             EmptyJob.execute(agentPath),
             Stop())))
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("#2023-03-21#BROKEN")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
@@ -822,7 +822,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
                   Workflow.of(Stop()),
                   Workflow.empty)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       locally:
         val orderId = OrderId("#2024-03-20#RESUME-WITH-CHANGED-CYCLE-ARGUMENTS")
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -880,7 +880,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
         Cycle(Schedule.continuous(1.h)):
           Workflow.empty))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-01#GO-CYCLE-AT-CONTROLLER")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
@@ -936,7 +936,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
           Workflow.of:
             EmptyJob.execute(agentPath)))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("#2024-04-17#GO-CYCLE-AT-AGENT")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow

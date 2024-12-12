@@ -114,7 +114,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       nameToJob = Map(
         WorkflowJob.Name("JOB") -> EmptyJob.workflowJob(agentPath)))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       skipInstruction(workflow.path, true, ItemRevision(1))
       val orderId = OrderId("B")
       val events = controller
@@ -150,7 +150,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     eventWatch.resetLastWatchedEventId()
     val workflow = Workflow(WorkflowPath("LAZY"), Seq(
       label @: EmptyJob.execute(agentPath)))
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       skipInstruction(workflow.path, true, ItemRevision(1))
       val orderId = OrderId("LAZY")
       val scheduledFor = clock.now() + 1.s
@@ -196,7 +196,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
       label @: FailingJob.execute(agentPath)))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("JS-2132")
       val events = controller
         .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -255,7 +255,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
             EmptyJob.execute(agentPath),
         EmptyInstruction())
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         skipInstruction(workflow.path)
         val orderId = OrderId("SKIP-FIRST-INSTRUCTION")
         val events = controller
@@ -276,7 +276,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           If(expr("true")):
             EmptyInstruction())
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         skipInstruction(workflow.path)
         val orderId = OrderId("SKIP-AFTER-EXECUTE")
         val events = controller
@@ -305,7 +305,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
                 Prompt(expr("'PROMPT'"))),
         calendarPath = calendar.path.some)
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         eventWatch.resetLastWatchedEventId()
         val orderId = OrderId("#2024-04-10#SKIP-CYCLE")
         controller.addOrderBlocking:
@@ -332,7 +332,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
                 Retry()),
               maxTries = 2.some)))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         eventWatch.resetLastWatchedEventId()
         val orderId = OrderId("SKIP-TRY")
         controller.addOrderBlocking:
@@ -351,7 +351,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       val workflow = Workflow(WorkflowPath("JS-2132-WORKFLOW"), Seq(
         label @: FailingJob.execute(agentPath)))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("JS-2132")
         val events = controller
           .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))

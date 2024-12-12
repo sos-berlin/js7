@@ -74,7 +74,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           Fail()),
         Workflow.empty))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("FAIL-AND-CATCH")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow

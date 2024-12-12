@@ -273,7 +273,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
             Retry()),
           retryDelays = Some(Vector(10.ms)))))
 
-      withTemporaryItem(workflow) { workflow =>
+      withItem(workflow) { workflow =>
         val orderId = OrderId("🟦")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -331,7 +331,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
             Retry()),
           retryDelays = Some(Vector(10.ms)))))
 
-      withTemporaryItem(workflow) { workflow =>
+      withItem(workflow) { workflow =>
         val orderId = OrderId("🟪")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -397,7 +397,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           Retry()),
         retryDelays = Some(Vector(100.s)))))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("RETRY")
       controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
@@ -442,7 +442,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           Workflow.of(
             Retry()))))
 
-      withTemporaryItem(workflow) { workflow =>
+      withItem(workflow) { workflow =>
         val orderId = OrderId(s"🟨$testIndex")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
@@ -484,7 +484,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           Retry()),
         retryDelays = Some(Vector(500.ms/*time-critical !!!*/)))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("🟩")
       var eventId = eventWatch.lastAddedEventId
 
@@ -589,7 +589,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         retryDelays = Some(Vector(1.h)),
         maxTries = Some(2)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("🐞")
       var eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
@@ -648,7 +648,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         retryDelays = Some(Vector(1.h)),
         maxTries = Some(2)))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("🐌")
       var eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))

@@ -60,7 +60,7 @@ final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest
              |  done
              |done
              |""".stripMargin)))
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("BIG-STDOUT")
       val since = Deadline.now
       var eventCount, charCount = 0L

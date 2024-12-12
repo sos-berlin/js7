@@ -64,7 +64,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
       super.afterAll()
 
   "ForkList with subagentIds function at Controller is rejected" in:
-    withTemporaryItem(Workflow(
+    withItem(Workflow(
       WorkflowPath("FORK-LIST-AT-CONTROLLER"),
       Seq(
         ForkList(
@@ -100,7 +100,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
               subagentBundleId = Some(expr("$subagentId")),
               processLimit = 100)),
           agentPath = Some(agentPath))))
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("UNKNOWN")
       val freshOrder = FreshOrder(orderId, workflow.path, Map(
         "arg" -> StringValue("UNKNOWN")))
@@ -131,7 +131,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
               processLimit = 100)),
           agentPath = Some(agentPath))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("SUBAGENT-BUNDLE")
       val localSubagentOrderId = orderId / localSubagentId.string
       val bareSubagentOrderId = orderId / bareSubagentId.string
@@ -184,7 +184,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
               processLimit = 100)),
           agentPath = Some(agentPath))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("ALL-OF-AGENT")
       val localSubagentOrderId = orderId / localSubagentId.string
       val bareSubagentOrderId = orderId / bareSubagentId.string

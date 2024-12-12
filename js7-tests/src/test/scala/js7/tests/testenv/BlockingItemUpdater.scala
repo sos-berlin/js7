@@ -43,15 +43,6 @@ trait BlockingItemUpdater:
         v
     loop()
 
-  // Prefer withItem !!!
-  protected final def withTemporaryItem[I <: InventoryItem, A](
-    item: I,
-    awaitDeletion: Boolean = false)
-    (body: I => A)
-    (using IORuntime)
-  : A =
-    withItem(item, awaitDeletion = awaitDeletion)(body)
-
   protected final def withItem[I <: InventoryItem, A](
     item: I,
     awaitDeletion: Boolean = false)

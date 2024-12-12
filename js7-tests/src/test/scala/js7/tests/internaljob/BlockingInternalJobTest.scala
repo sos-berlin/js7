@@ -49,7 +49,7 @@ final class BlockingInternalJobTest
       Execute(WorkflowJob(
         agentPath,
         InternalExecutable(classOf[ThrowingJob].getName))))
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val orderId = OrderId("THROWING-JOB")
 
       val events = controller.runOrder:
@@ -73,7 +73,7 @@ final class BlockingInternalJobTest
         Execute(WorkflowJob(
           agentPath,
           InternalExecutable(classOf[NonInterruptibleJob].getName))))
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("BLOCKING-JOB")
 
         NonInterruptibleJob.lock.lock()
@@ -97,7 +97,7 @@ final class BlockingInternalJobTest
         Execute(WorkflowJob(
           agentPath,
           InternalExecutable(classOf[ThrowingInterruptibleJob].getName))))
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("THROWING-INTERRUPTIBLE-BLOCKING-JOB")
 
         ThrowingInterruptibleJob.lock.lock()
@@ -134,7 +134,7 @@ final class BlockingInternalJobTest
         Execute(WorkflowJob(
           agentPath,
           InternalExecutable(classOf[InterruptibleJob].getName))))
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val orderId = OrderId("INTERRUPTIBLE-BLOCKING-JOB")
 
         InterruptibleJob.lock.lock()

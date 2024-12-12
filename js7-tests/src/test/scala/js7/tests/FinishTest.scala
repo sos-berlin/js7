@@ -237,7 +237,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
                 "result" -> StringValue("FINISH")))))))))
 
       val orderId = OrderId("🔔")
-      withTemporaryItem(workflow.withId(workflowId.path)) { workflow =>
+      withItem(workflow.withId(workflowId.path)) { workflow =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
         eventWatch.await[OrderFailed](_.key == orderId / "🥕")
         sleep(100.ms)
@@ -304,7 +304,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
     val orderId = OrderId("🟪")
 
-    withTemporaryItem(workflow.withId(workflowId.path)) { workflow =>
+    withItem(workflow.withId(workflowId.path)) { workflow =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
       eventWatch.await[OrderFailed](_.key == orderId / "🥕")
 
@@ -369,7 +369,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   private def runUntil[E <: OrderEvent: ClassTag: Tag](workflow: Workflow, orderId: OrderId)
   : Vector[KeyedEvent[OrderEvent]] =
-    withTemporaryItem(workflow.withId(workflowId.path)) { workflow =>
+    withItem(workflow.withId(workflowId.path)) { workflow =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
       eventWatch.await[E](_.key == orderId)
 

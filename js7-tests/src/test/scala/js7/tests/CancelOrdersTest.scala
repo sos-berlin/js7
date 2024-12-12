@@ -282,7 +282,7 @@ final class CancelOrdersTest
         "🥕" -> Workflow.of(
           EmptyJob.execute(agentPath))),
       EmptyJob.execute(agentPath))
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       // Let the child order suspend
       controller.api
         .executeCommand(
@@ -386,7 +386,7 @@ final class CancelOrdersTest
               |""".stripMargin))),
         EmptyJob.execute(agentPath)))
 
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId(name)
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -858,7 +858,7 @@ final class CancelOrdersTest
         Execute:
           WorkflowJob(agentPath, ShellScriptExecutable(script))))
 
-      withTemporaryItem(workflow): workflow =>
+      withItem(workflow): workflow =>
         val pidRegex = ".*pid=([0-9]+).*".r
         val killedByTrapRegex = "TO BE KILLED BY TRAP pid=([0-9]+).*".r
         val eventId = eventWatch.lastAddedEventId

@@ -66,7 +66,7 @@ final class InternalJobTest
   "One InternalJob.start for multiple InternalJob.toOrderProcess" in:
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(workflowPathIterator.next(), execute_[AddOneJob])
-    withTemporaryItem(workflow): workflow =>
+    withItem(workflow): workflow =>
       directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
       for processNumber <- 1 to 3 do withClue(s"#$processNumber "):
@@ -232,7 +232,7 @@ final class InternalJobTest
     val eventId = eventWatch.lastAddedEventId
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next())
     var workflowId: WorkflowId | Null = null
-    val result = withTemporaryItem(workflow): workflow =>
+    val result = withItem(workflow): workflow =>
       workflowId = workflow.id
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrders:

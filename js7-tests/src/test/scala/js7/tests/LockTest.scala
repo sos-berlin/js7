@@ -900,7 +900,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             retryDelays = Some(Vector(0.s)),
             maxTries = Some(2))))
 
-    withTemporaryItem(workflow) { workflow =>
+    withItem(workflow) { workflow =>
       val orderId = OrderId("RETRY-LOCK")
       val events = controller.runOrder(
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -952,7 +952,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             retryDelays = Some(Vector(1.ms)),
             maxTries = Some(2))))
 
-    withTemporaryItem(workflow, awaitDeletion = true) { workflow =>
+    withItem(workflow, awaitDeletion = true) { workflow =>
       val orderId = OrderId("RETRY-LOCK")
       val events = controller.runOrder(
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -1004,7 +1004,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
             lockedWorkflow = Workflow.of(
               Prompt(expr("'PROMPT'")))))
 
-      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+      withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
 
         val aOrderId = OrderId("LOCK-CONTINUE-QUEUED-A")
@@ -1068,7 +1068,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
               Prompt(expr("'PROMPT'")),
               Fail())))
 
-      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+      withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
 
         val aOrderId = OrderId("LOCK-CONTINUE-QUEUED-A")
@@ -1131,7 +1131,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, Blocking
               lockedWorkflow = Workflow.of(
                 Fail())))
 
-      withTemporaryItem(workflow, awaitDeletion = true): workflow =>
+      withItem(workflow, awaitDeletion = true): workflow =>
         val eventId = eventWatch.lastAddedEventId
 
         val aOrderId = OrderId("STOP-ON-FAILURE-LOCK-A")
