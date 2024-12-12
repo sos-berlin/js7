@@ -1,5 +1,6 @@
 package js7.tests.cluster.agent
 
+import cats.effect.IO
 import js7.agent.data.commands.AgentCommand
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -26,12 +27,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.BecomeAgentClusterTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.IO
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.util.control.NonFatal
 
 final class BecomeAgentClusterTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

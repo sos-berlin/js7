@@ -15,10 +15,10 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotices}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.notice.NoticeEndOfLifeTest.*
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 
 final class NoticeEndOfLifeTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false

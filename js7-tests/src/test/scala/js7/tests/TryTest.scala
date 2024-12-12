@@ -20,11 +20,11 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.TryTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source
 
 final class TryTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

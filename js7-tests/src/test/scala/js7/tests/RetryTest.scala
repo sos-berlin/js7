@@ -30,14 +30,14 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.RetryTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertion
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Random
 
 final class RetryTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

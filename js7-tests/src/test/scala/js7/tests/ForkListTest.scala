@@ -40,13 +40,13 @@ import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
 final class ForkListTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

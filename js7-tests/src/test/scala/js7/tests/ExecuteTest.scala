@@ -36,10 +36,10 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.ExecuteTest.*
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectorEnv}
 import org.scalactic.source
 
-final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
   // TODO Test separate Subagent, too
 
   protected val agentPaths = agentPath :: Nil

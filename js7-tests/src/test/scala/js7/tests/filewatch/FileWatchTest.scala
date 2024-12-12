@@ -39,12 +39,12 @@ import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, 
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.filewatch.FileWatchTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline
 
 final class FileWatchTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Nil // No Workflow, because we add Workflow and FileWatch in same operation

@@ -56,7 +56,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
       .startBareSubagents()
       .await(99.s)
 
-  protected final lazy val controller: TestController =
+  protected final given controller: TestController =
     directoryProvider
       .newController(
         controllerTestWiring,

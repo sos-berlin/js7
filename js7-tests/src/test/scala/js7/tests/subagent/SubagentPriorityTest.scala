@@ -23,10 +23,9 @@ import js7.subagent.Subagent
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.subagent.SubagentPriorityTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class SubagentPriorityTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+final class SubagentPriorityTest extends OurTestSuite, SubagentTester:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

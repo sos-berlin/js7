@@ -34,11 +34,11 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(

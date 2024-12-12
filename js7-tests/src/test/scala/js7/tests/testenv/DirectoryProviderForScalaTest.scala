@@ -88,6 +88,12 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, H
   protected final def toSignedString[A <: SignableItem](item: A): SignedString =
     directoryProvider.toSignedString(item)
 
+  protected final lazy val blockingItemUpdater = new BlockingItemUpdater:
+    def sign[A <: SignableItem](item: A) =
+      DirectoryProviderForScalaTest.this.sign(item)
+
+  export blockingItemUpdater.{deleteItems, nextVersionId, updateItem, updateItems, withItem, withItems}
+
   override def beforeAll() =
     super.beforeAll()
     directoryProvider

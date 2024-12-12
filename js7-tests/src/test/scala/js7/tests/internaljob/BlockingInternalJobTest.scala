@@ -24,11 +24,11 @@ import js7.launcher.forjava.internal.BlockingInternalJob
 import js7.launcher.forjava.internal.BlockingInternalJob.{InterruptibleOrderProcess, OrderProcess, Step}
 import js7.tests.internaljob.BlockingInternalJobTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectoryProvider}
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import scala.concurrent.duration.*
 
 final class BlockingInternalJobTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

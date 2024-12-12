@@ -21,12 +21,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteInParallelTest.*
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source
 import scala.concurrent.duration.{Deadline, Duration}
 
 final class ExecuteInParallelTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

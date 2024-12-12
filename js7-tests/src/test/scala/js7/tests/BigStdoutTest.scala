@@ -18,10 +18,10 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.BigStdoutTest.*
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.duration.Deadline
 
-final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class BigStdoutTest extends OurAsyncTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

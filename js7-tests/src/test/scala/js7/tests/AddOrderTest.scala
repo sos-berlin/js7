@@ -24,10 +24,10 @@ import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
+import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
-final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

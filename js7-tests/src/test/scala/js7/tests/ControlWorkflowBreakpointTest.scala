@@ -31,11 +31,11 @@ import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowBreakpointTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

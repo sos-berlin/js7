@@ -26,11 +26,11 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.cluster.agent.SwitchOverAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectorEnv}
 import scala.util.control.NonFatal
 
 final class SwitchOverAgentClusterTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

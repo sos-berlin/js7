@@ -19,10 +19,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.ResetAgentWhenCancelingTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 
 final class ResetAgentWhenCancelingTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected def controllerConfig =
     config"""

@@ -36,13 +36,13 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
 final class CycleTest extends OurTestSuite
-with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater:
+with ControllerAgentForScalaTest with ScheduleTester:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(

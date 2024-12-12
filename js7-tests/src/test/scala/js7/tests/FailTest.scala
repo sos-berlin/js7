@@ -1,4 +1,5 @@
 package js7.tests
+import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
@@ -13,19 +14,18 @@ import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.instructions.{Fail, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.unsafe.IORuntime
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source
 import scala.reflect.ClassTag
 
 final class FailTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

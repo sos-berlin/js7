@@ -17,9 +17,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.StopTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class StopTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class StopTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

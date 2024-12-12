@@ -23,10 +23,10 @@ import js7.data.value.expression.scopes.EnvScope
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDeletionTest.*
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 
 final class FileWatchDeletionTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil // No Workflow, because we add Workflow and FileWatch in same operation

@@ -21,10 +21,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDisabledTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
-final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
 
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"

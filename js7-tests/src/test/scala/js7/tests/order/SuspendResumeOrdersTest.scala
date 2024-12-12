@@ -43,11 +43,11 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob}
 import js7.tests.order.SuspendResumeOrdersTest.*
+import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 
 final class SuspendResumeOrdersTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

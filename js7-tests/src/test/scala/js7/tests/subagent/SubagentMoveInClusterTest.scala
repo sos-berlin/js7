@@ -21,10 +21,10 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveInClusterTest.*
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectorEnv}
 
 final class SubagentMoveInClusterTest
-  extends OurTestSuite, ControllerAgentForScalaTest /*, SubagentTester*/, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest /*, SubagentTester*/:
 
   override protected val controllerConfig = config"""
     js7.auth.agents.AGENT = "${agentPath.toString}-PASSWORD"

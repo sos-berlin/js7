@@ -21,10 +21,10 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobTimeoutTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.duration.Deadline.now
 
-final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+final class JobTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

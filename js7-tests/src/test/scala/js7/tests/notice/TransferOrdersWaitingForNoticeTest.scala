@@ -11,12 +11,12 @@ import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTerminated, OrderTr
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.Assertion
 import scala.concurrent.duration.*
 
 trait TransferOrdersWaitingForNoticeTest:
-  this: ControllerAgentForScalaTest & BlockingItemUpdater =>
+  this: ControllerAgentForScalaTest =>
 
   protected final def testTransferOrders(
     toNoticeInstr: BoardPath => ExpectNotices | ConsumeNotices,

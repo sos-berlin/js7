@@ -23,11 +23,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FinishTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.reflect.ClassTag
 
 final class FinishTest
-extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

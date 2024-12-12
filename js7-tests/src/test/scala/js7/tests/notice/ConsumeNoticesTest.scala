@@ -31,14 +31,14 @@ import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob}
 import js7.tests.notice.ConsumeNoticesTest.*
+import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
 
 final class ConsumeNoticesTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater, TransferOrdersWaitingForNoticeTest:
+  extends OurTestSuite, ControllerAgentForScalaTest, TransferOrdersWaitingForNoticeTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

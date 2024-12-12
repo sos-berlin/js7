@@ -18,11 +18,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentBundleExprTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class SubagentBundleExprTest
-extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+extends OurTestSuite, SubagentTester:
 
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(

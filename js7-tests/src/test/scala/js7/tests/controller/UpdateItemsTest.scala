@@ -29,8 +29,8 @@ import js7.data.workflow.instructions.{Finish, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*
+import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Promise}
@@ -39,7 +39,7 @@ import scala.concurrent.{ExecutionContext, Promise}
   * @author Joacim Zschimmer
   */
 final class UpdateItemsTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   private given ExecutionContext = executionContext
 

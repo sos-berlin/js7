@@ -37,14 +37,14 @@ import js7.launcher.internal.InternalJob.JobContext
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.internaljob.InternalJobTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
 final class InternalJobTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil

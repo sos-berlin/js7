@@ -26,14 +26,13 @@ trait BlockingItemUpdater:
   private val testSuiteName = getClass.simpleScalaName
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
-  protected def controller: TestController
 
-  protected final def nextPath[I <: InventoryItemPath](implicit I: InventoryItemPath.Companion[I])
+  final def nextPath[I <: InventoryItemPath](implicit I: InventoryItemPath.Companion[I])
   : I =
     I(testSuiteName + "-" + nextItemNr.getAndIncrement())
     //I(I.itemTypeName.toUpperCase(Locale.ROOT) + "-" + nextItemNr.getAndIncrement())
 
-  protected final def nextVersionId() =
+  final def nextVersionId()(using controller: TestController) =
     val versionIdSet = controller.controllerState().repo.versionIdSet
     @tailrec def loop(): VersionId =
       val v = VersionId(nextVersionId_.getAndIncrement().toString)
@@ -43,20 +42,20 @@ trait BlockingItemUpdater:
         v
     loop()
 
-  protected final def withItem[I <: InventoryItem, A](
+  final def withItem[I <: InventoryItem, A](
     item: I,
     awaitDeletion: Boolean = false)
     (body: I => A)
-    (using IORuntime)
+    (using controller: TestController, ioRuntime: IORuntime)
   : A =
     withItems(Tuple1(item), awaitDeletion = awaitDeletion): tuple1 =>
       body(tuple1._1)
 
-  protected final def withItems[T <: Tuple, A](
+  final def withItems[T <: Tuple, A](
     items: T,
     awaitDeletion: Boolean = false)
     (body: T => A)
-    (using IORuntime)
+    (using controller: TestController, ioRuntime: IORuntime)
   : A =
     val realItems = updateItemArray:
       items.toIArray.map(_.asInstanceOf[InventoryItem])
@@ -79,10 +78,14 @@ trait BlockingItemUpdater:
         if t.getSuppressed.isEmpty then logger.error(s"deleteItems => ${t.toStringWithCauses}")
       throw t
 
-  protected final def updateItem[I <: InventoryItem](item: I)(using IORuntime): I =
+  final def updateItem[I <: InventoryItem](item: I)
+    (using controller: TestController, ioRuntime: IORuntime)
+  : I =
     updateItemArray(IArray[InventoryItem](item)).head.asInstanceOf[I]
 
-  private def updateItemArray(items: IArray[InventoryItem])(using IORuntime): IArray[InventoryItem] =
+  private def updateItemArray(items: IArray[InventoryItem])
+    (using controller: TestController, ioRuntime: IORuntime)
+  : IArray[InventoryItem] =
     val namedItems = items.mapOrKeep:
       case workflow: Workflow if workflow.id.isAnonymous =>
         workflow.withId(nextPath[WorkflowPath])
@@ -102,7 +105,9 @@ trait BlockingItemUpdater:
       assert(item == controllerItem)
       item
 
-  protected final def updateItems(items: InventoryItem*)(using IORuntime): Option[VersionId] =
+  final def updateItems(items: InventoryItem*)
+    (using controller: TestController, ioRuntime: IORuntime)
+  : Option[VersionId] =
     val versionId = Lazy(nextVersionId())
     val operations: Stream[Pure, AddOrChangeOperation] = Stream
       .iterable:
@@ -123,7 +128,9 @@ trait BlockingItemUpdater:
 
     versionId.toOption
 
-  protected final def deleteItems(paths: InventoryItemPath*)(using IORuntime): Unit =
+  final def deleteItems(paths: InventoryItemPath*)
+    (using controller: TestController, ioRuntime: IORuntime)
+  : Unit =
     controller.api
       .updateItems:
         Stream

@@ -44,7 +44,7 @@ import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.OptionConverters.*
@@ -53,7 +53,7 @@ import scala.jdk.OptionConverters.*
   * @author Joacim Zschimmer
   */
 final class CancelOrdersTest
-  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  extends OurTestSuite, ControllerAgentForScalaTest:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
