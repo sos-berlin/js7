@@ -88,6 +88,12 @@ addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControll
 addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 //addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
 
+ThisBuild / javacOptions ++= Seq(
+  "-encoding", "UTF-8",
+  "-deprecation",
+  "-Xlint:unchecked",
+  "-Xdiags:verbose")
+
 //Scala 3? ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
@@ -139,9 +145,6 @@ val commonSettings = Seq(
           <organizationUrl>{organizationHomepage.value.get}</organizationUrl>
       </developer>
     </developers>,
-  Compile / javacOptions ++= Seq("-encoding", "UTF-8"),  // This is for javadoc, too
-  Compile / compile / javacOptions ++= Seq(
-    "-deprecation", /*"-Xlint:all", "-Xlint:-serial",*/ "-Xdiags:verbose"),
   dependencyOverrides ++= {
     if (sys.props.contains("evictionWarnings"))
       Nil

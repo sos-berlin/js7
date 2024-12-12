@@ -57,7 +57,7 @@ final class JSubagentTester
 
     private static final JSubagentBundle subagentBundle = JSubagentBundle.of(
         SubagentBundleId.of("SUBAGENT"),
-        new HashMap() {{
+        new HashMap<SubagentId, JExpression>() {{
             put(subagentItem.id(), /*priority=*/JExpression.apply("1"));
         }});
 
