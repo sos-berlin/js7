@@ -4,6 +4,7 @@ import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.L3
+import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
@@ -32,6 +33,13 @@ extends ExpectOrConsumeNoticesInstruction:
     copy(
       subworkflow = subworkflow.copy(
         outer = Some(outer)))
+
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+    if isVisibleForAgent(agentPath, workflow) then
+      copy(
+        subworkflow = subworkflow.reduceForAgent(agentPath))
+    else
+      Gap(sourcePos)  // The agent will never touch this instruction or it subworkflow
 
   def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths

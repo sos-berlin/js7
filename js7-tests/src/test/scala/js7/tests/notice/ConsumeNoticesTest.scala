@@ -11,9 +11,11 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
+import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}
@@ -33,6 +35,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import scala.collection.View
 import scala.concurrent.duration.*
+import scala.language.implicitConversions
 
 final class ConsumeNoticesTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater, TransferOrdersWaitingForNoticeTest:
@@ -46,7 +49,7 @@ final class ConsumeNoticesTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  protected def agentPaths = Seq(agentPath)
+  protected def agentPaths = Seq(agentPath, bAgentPath)
   protected def items = Seq(aBoard, bBoard)
 
   private val qualifiers = for i <- Iterator.from(0) yield
@@ -652,15 +655,64 @@ final class ConsumeNoticesTest
         .await(99.s).orThrow
       eventWatch.await[OrderFailed](_.key == orderId)
 
+  "JS-2186 ConsumeNotices block fails with jobs on different Agents" in:
+    val board = GlobalBoard.joc(BoardPath("BOARD"), lifetime = None)
+    val aJobName = WorkflowJob.Name("A-JOB")
+    val bJobName = WorkflowJob.Name("B-JOB")
+    val workflow = Workflow(
+      WorkflowPath("CONSUMENOTICES"),
+      Seq(
+        PostNotices(board.path :: Nil),
+        ConsumeNotices(board.path)(
+          Execute.Named(aJobName),
+          Execute.Named(bJobName))),
+      nameToJob = Map(
+        aJobName -> WorkflowJob(agentPath, ShellScriptExecutable(":")),
+        bJobName -> WorkflowJob(bAgentPath, ShellScriptExecutable(":"))))
+
+    withItems((board, workflow)): (board, workflow) =>
+      val events = controller.runOrder:
+        FreshOrder(OrderId("#2024-12-11#"), workflow.path, deleteWhenTerminated = true)
+      assert(events.map(_.value) == Vector(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderNoticePosted(Notice(NoticeId("2024-12-11"), board.path, endOfLife = None)),
+        OrderMoved(Position(1)),
+        OrderNoticesConsumptionStarted(Vector:
+          OrderNoticesConsumptionStarted.Consumption(board.path, NoticeId("2024-12-11"))),
+
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(OrderOutcome.succeededRC0),
+        OrderMoved(Position(1) / BranchId.ConsumeNotices % 1),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderAttachable(bAgentPath),
+        OrderAttached(bAgentPath),
+        OrderProcessingStarted(bSubagentId),
+        OrderProcessed(OrderOutcome.succeededRC0),
+        OrderMoved(Position(1) / BranchId.ConsumeNotices % 2),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderNoticesConsumed(),
+        OrderFinished(),
+        OrderDeleted))
+
 
 object ConsumeNoticesTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
+  private val bAgentPath = AgentPath("B-AGENT")
+  private val bSubagentId = toLocalSubagentId(bAgentPath)
+
   // One lifetime per board
   private val lifetime = 1.day
-  private val aBoard = GlobalBoard.joc(BoardPath("A-BOARD"), lifetime)
-  private val bBoard = GlobalBoard.joc(BoardPath("B-BOARD"), lifetime)
+  private val aBoard = GlobalBoard.joc(BoardPath("A-BOARD"), Some(lifetime))
+  private val bBoard = GlobalBoard.joc(BoardPath("B-BOARD"), Some(lifetime))
 
   final class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
