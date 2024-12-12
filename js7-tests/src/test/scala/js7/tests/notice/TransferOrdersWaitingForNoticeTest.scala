@@ -27,8 +27,8 @@ trait TransferOrdersWaitingForNoticeTest:
     val orderId = OrderId(s"#$qualifier#TRANSFER")
     val noticeId = NoticeId(qualifier)
 
-    val board1 = GlobalBoard.joc(BoardPath("TRANSFER-1"), 1.day)
-    val board2 = GlobalBoard.joc(BoardPath("TRANSFER-2"), 1.day)
+    val board1 = GlobalBoard.joc(BoardPath("TRANSFER-1"), Some(1.day))
+    val board2 = GlobalBoard.joc(BoardPath("TRANSFER-2"), Some(1.day))
     val workflow = Workflow(WorkflowPath("TRANSFER"), Seq(
       toNoticeInstr(board1.path)))
 

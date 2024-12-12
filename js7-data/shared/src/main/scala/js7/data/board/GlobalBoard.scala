@@ -1,5 +1,6 @@
 package js7.data.board
 
+import cats.syntax.traverse.*
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -8,6 +9,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
 import js7.data.item.{ItemRevision, UnsignedItemPath}
+import js7.data.value.expression.Expression.MissingConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
@@ -40,8 +42,8 @@ extends
 
   def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice] =
-    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_)) yield
-      Notice(noticeId, path, Some(endOfLife))
+    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(o => Checked(Some(o))) yield
+      Notice(noticeId, path, endOfLife)
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
     for
@@ -50,11 +52,12 @@ extends
     yield
       noticeId
 
-  private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
+  private def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     endOfLife
       .eval(scope)
-      .flatMap(_.asLongIgnoreFraction)
-      .map(Timestamp.ofEpochMilli)
+      .map(_.missingToNone)
+      .flatMap(_.traverse(_.asLongIgnoreFraction))
+      .map(_.map(Timestamp.ofEpochMilli))
 
 
 object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
@@ -85,11 +88,12 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
     expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')""")
 
   /** A GlobalBoard for JOC-style OrderIds. */
-  def joc(boardPath: BoardPath, lifetime: FiniteDuration = 24.h): GlobalBoard =
+  def joc(boardPath: BoardPath, lifetime: Option[FiniteDuration] = Some(24.h)): GlobalBoard =
     GlobalBoard(
       boardPath,
       postOrderToNoticeId = sosOrderToNotice,
       expectOrderToNoticeId = sosOrderToNotice,
-      endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
+      endOfLife = lifetime.fold(MissingConstant):
+        lifetime => expr("$js7EpochMilli + " + lifetime.toMillis))
 
   given jsonCodec: Codec.AsObject[GlobalBoard] = ConfiguredCodec.derive(useDefaults = true)

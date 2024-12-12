@@ -360,7 +360,7 @@ final class GlobalBoardTest
       val noticeId = NoticeId(qualifier)
       val orderId = OrderId(s"#$qualifier#CANCEL-EXPECT")
 
-      val board = GlobalBoard.joc(BoardPath("CANCEL-EXPECT"), 1.h)
+      val board = GlobalBoard.joc(BoardPath("CANCEL-EXPECT"), Some(1.h))
       val workflow = Workflow(WorkflowPath("CANCEL-EXPECT"), Seq(
         ExpectNotices(ExpectNotice(board.path))))
       val Some(versionId) = updateItems(board, workflow): @unchecked
@@ -520,7 +520,7 @@ object GlobalBoardTest:
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
   private val boards = for (lifetime, i) <- lifeTimes.zipWithIndex yield
-    GlobalBoard.joc(BoardPath(s"GLOBAL-BOARD-$i"), lifetime)
+    GlobalBoard.joc(BoardPath(s"GLOBAL-BOARD-$i"), Some(lifetime))
 
   private val Seq(board0, board1, board2) = boards
 
