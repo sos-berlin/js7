@@ -6,7 +6,6 @@ import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
 import js7.agent.configuration.AgentConfigurationTest.*
 import js7.base.configutils.Configs.*
-import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite

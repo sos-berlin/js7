@@ -5,7 +5,6 @@ import cats.syntax.option.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.convert.As.StringAsBoolean
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger

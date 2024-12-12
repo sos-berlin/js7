@@ -5,7 +5,6 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
 import js7.base.configutils.Configs.*
-import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*

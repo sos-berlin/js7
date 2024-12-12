@@ -1,6 +1,5 @@
 package js7.launcher.processkiller
 
-import cats.syntax.traverse.*
 import cats.effect.IO
 import js7.base.catsutils.CatsExtensions.traverseCombine
 import js7.base.catsutils.{Environment, FiberVar}
