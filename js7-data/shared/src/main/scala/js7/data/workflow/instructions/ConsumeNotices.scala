@@ -4,13 +4,13 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.board.BoardPathExpression
+import js7.data.agent.AgentPath
+import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.source.SourcePos
-import js7.data.workflow.{Instruction, Workflow}
 import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.{Instruction, Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -29,7 +29,14 @@ extends ExpectOrConsumeNoticesInstruction
     subworkflow = subworkflow.copy(
       outer = Some(outer)))
 
-  def referencedBoardPaths =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+    if (isVisibleForAgent(agentPath, workflow))
+      copy(
+        subworkflow = subworkflow.reduceForAgent(agentPath))
+    else
+      Gap(sourcePos)  // The agent will never touch this instruction or it subworkflow
+
+  def referencedBoardPaths: Set[BoardPath] =
     boardPaths.boardPaths
 
   def fulfilledEvents(
