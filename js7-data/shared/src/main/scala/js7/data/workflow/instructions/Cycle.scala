@@ -16,7 +16,7 @@ final case class Cycle private(
   cycleWorkflow: Workflow,
   onlyOnePeriod: Boolean = false,
   sourcePos: Option[SourcePos])
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   def withoutSourcePos: Cycle =
     copy(
@@ -32,7 +32,7 @@ extends Instruction:
       cycleWorkflow = cycleWorkflow.copy(
         outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if isVisibleForAgent(agentPath, cycleWorkflow) then
       copy(
         cycleWorkflow = cycleWorkflow.reduceForAgent(agentPath))
@@ -52,7 +52,7 @@ extends Instruction:
     branchId match
       case BranchId.Cycle => Right(cycleWorkflow)
       case BranchId.Named(string) if string.startsWith(BranchId.CyclePrefix) => Right(cycleWorkflow)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
 
 object Cycle:

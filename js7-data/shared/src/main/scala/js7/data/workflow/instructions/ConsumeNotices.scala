@@ -20,7 +20,7 @@ final case class ConsumeNotices(
   whenNotAnnounced: WhenNotAnnounced = WhenNotAnnounced.Wait,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
-extends ExpectOrConsumeNoticesInstruction:
+extends ExpectOrConsumeNoticesInstruction, Instruction.WithInstructionBlock:
 
   def withoutSourcePos: ConsumeNotices =
     copy(sourcePos = None)
@@ -34,7 +34,7 @@ extends ExpectOrConsumeNoticesInstruction:
       subworkflow = subworkflow.copy(
         outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if isVisibleForAgent(agentPath, workflow) then
       copy(
         subworkflow = subworkflow.reduceForAgent(agentPath))

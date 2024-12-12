@@ -23,7 +23,7 @@ final case class TryInstruction(
   retryDelays: Option[IndexedSeq[FiniteDuration]] = None,
   maxTries: Option[Int] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   override def instructionName = "Try"
 
@@ -40,16 +40,16 @@ extends Instruction:
     tryWorkflow = tryWorkflow.withoutSourcePos,
     catchWorkflow = catchWorkflow.withoutSourcePos)
 
-  override def withPositions(position: Position): TryInstruction =
+  def withPositions(position: Position): TryInstruction =
     copy(
       tryWorkflow = tryWorkflow.withPositions(position / BranchId.Try_),
       catchWorkflow = catchWorkflow.withPositions(position / BranchId.Catch_))
 
-  override def adopt(outer: Workflow): TryInstruction = copy(
+  def adopt(outer: Workflow): TryInstruction = copy(
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
       tryWorkflow = tryWorkflow.reduceForAgent(agentPath),
       catchWorkflow = catchWorkflow.reduceForAgent(agentPath))
@@ -59,13 +59,13 @@ extends Instruction:
       tryWorkflow = Workflow.empty,
       catchWorkflow = Workflow.empty)
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case TryBranchId(_) => Right(tryWorkflow)
       case CatchBranchId(_) => Right(catchWorkflow)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Try_ -> tryWorkflow) :: (BranchId.Catch_ -> catchWorkflow) :: Nil
 
   override def toCatchBranchId(branchId: BranchId): Option[BranchId] =

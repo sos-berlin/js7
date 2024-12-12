@@ -34,14 +34,14 @@ extends ForkInstruction:
     sourcePos = None,
     workflow = workflow.withoutSourcePos)
 
-  override def withPositions(position: Position): ForkList =
+  def withPositions(position: Position): ForkList =
     copy(workflow =
       workflow.withPositions(position / BranchId.ForkList))
 
-  override def adopt(outer: Workflow): ForkList = copy(
+  def adopt(outer: Workflow): ForkList = copy(
     workflow = workflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, outer: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, outer: Workflow): Instruction =
     if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, outer) then
       copy(
         workflow = reuseIfEqual(workflow, workflow.reduceForAgent(agentPath)))
@@ -55,12 +55,12 @@ extends ForkInstruction:
   def withoutBlocks: ForkList =
     copy(workflow = Workflow.empty)
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.ForkList => Right(workflow)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     Seq(BranchId.ForkList -> workflow)
 
   override def toString = s"ForkList()$sourcePosToString"

@@ -33,15 +33,15 @@ extends ForkInstruction:
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
 
-  override def withPositions(position: Position): Fork =
+  def withPositions(position: Position): Fork =
     copy(branches =
       branches.map(branch => branch.copy(
         workflow = branch.workflow.withPositions(position / branch.id.toBranchId))))
 
-  override def adopt(outer: Workflow): Fork = copy(
+  def adopt(outer: Workflow): Fork = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, workflow) then
       copy(
         branches = for b <- branches yield
@@ -66,16 +66,16 @@ extends ForkInstruction:
       branches = branches.map(_.copy(
         workflow = Workflow.empty)))
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Named(name) if name.startsWith(BranchId.ForkPrefix) =>
         val id = ForkBranchId(name.drop(BranchId.ForkPrefix.length))
         branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
-          .fold(super.workflow(branchId))(Right.apply)
+          .fold(unknownBlock(branchId))(Right.apply)
       case _ =>
-        super.workflow(branchId)
+        unknownBlock(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     branches.map(b => b.id.toBranchId -> b.workflow)
 
   override def toString =

@@ -16,32 +16,33 @@ final case class StickySubagent(
   subagentBundleIdExpr: Option[Expression] = None,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   def withoutSourcePos: StickySubagent = copy(
     sourcePos = None,
     subworkflow = subworkflow.withoutSourcePos)
 
-  override def withPositions(position: Position): StickySubagent =
+  def withPositions(position: Position): StickySubagent =
     copy(
       subworkflow = subworkflow.withPositions(position / BranchId.StickySubagent))
 
-  override def adopt(outer: Workflow): StickySubagent = copy(
+  def adopt(outer: Workflow): StickySubagent = copy(
     subworkflow = subworkflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
       subworkflow = subworkflow.reduceForAgent(agentPath))
 
   def withoutBlocks: StickySubagent =
     copy(subworkflow = Workflow.empty)
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.StickySubagent => Right(subworkflow)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] = (BranchId.StickySubagent -> subworkflow) :: Nil
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
+    (BranchId.StickySubagent -> subworkflow) :: Nil
 
   override def toString = s"stickySubagent $subworkflow$sourcePosToString"
 

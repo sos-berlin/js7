@@ -25,16 +25,11 @@ trait Instruction:
 
   def withoutSourcePos: Instruction
 
-  def withPositions(position: Position): Instruction =
-    if branchWorkflows.nonEmpty then throw new AssertionError(
-      s"$instructionName.withPositions is not implemented")
-    this
+  def withPositions(position: Position): Instruction
 
-  def adopt(workflow: Workflow): Instruction =
-    this
+  def adopt(workflow: Workflow): Instruction
 
-  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
-    this
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction
 
   def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
     workflows.exists(_.isVisibleForAgent(agentPath))
@@ -44,8 +39,11 @@ trait Instruction:
   def branchWorkflows: Seq[(BranchId, Workflow)]
 
   // The instruction blocks of the instruction
-  def workflows: Seq[Workflow] =
-    branchWorkflows.map(_._2)
+  def workflows: Seq[Workflow]
+
+  protected final def unknownBlock(branchId: BranchId): Checked[Workflow] =
+    Left(Problem:
+      s"Instruction '$instructionName' does not have an instruction block '$branchId'")
 
   final def flattenedWorkflows(parent: Position): View[(BranchPath, Workflow)] =
     branchWorkflows.view
@@ -55,8 +53,7 @@ trait Instruction:
     branchWorkflows.view
       .flatMap { case (branchId, workflow) => workflow.flattenedInstructions(parent / branchId) }
 
-  def workflow(branchId: BranchId): Checked[Workflow] =
-    Problem(s"Instruction '$instructionName' does not have a nested workflow for branch '$branchId'")
+  def workflow(branchId: BranchId): Checked[Workflow]
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] =
     None
@@ -82,8 +79,10 @@ trait Instruction:
 
 
 object Instruction:
+
   object `@:`:
-    def unapply(labeled: Labeled): Some[(Option[Label], Instruction)] = Some((labeled.maybeLabel, labeled.instruction))
+    def unapply(labeled: Labeled): Some[(Option[Label], Instruction)] =
+      Some(labeled.maybeLabel -> labeled.instruction)
 
   implicit def toLabeled(instruction: Instruction): Labeled =
     Labeled(None, instruction)
@@ -101,6 +100,7 @@ object Instruction:
       copy(
         maybePosition = Some(position),
         instruction = instruction.withPositions(position))
+
   object Labeled:
     implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] =
       case Labeled(None, instruction, None) =>
@@ -125,12 +125,36 @@ object Instruction:
             rightNode
       yield Labeled(labels, instruction)
 
-  trait IsOrderBoundary extends Instruction
 
   /** Instruction has no own instruction block (is not nesting). */
   trait NoInstructionBlock extends Instruction:
+
+    final def withPositions(position: Position): Instruction =
+      this
+
     final def withoutBlocks: NoInstructionBlock =
       this
 
     final def branchWorkflows: Seq[(BranchId, Workflow)] =
       Nil
+
+    final def workflows: Seq[Workflow] =
+      Nil
+
+    final def workflow(branchId: BranchId): Checked[Workflow] =
+      unknownBlock(branchId)
+
+    final def adopt(workflow: Workflow): Instruction =
+      this
+
+    def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+      this
+
+
+  trait WithInstructionBlock extends Instruction:
+
+    def workflows: Seq[Workflow] =
+      branchWorkflows.map(_._2)
+
+
+  trait IsOrderBoundary extends WithInstructionBlock

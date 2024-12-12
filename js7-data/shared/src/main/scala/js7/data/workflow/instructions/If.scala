@@ -21,7 +21,7 @@ final case class If(
   ifThens: NonEmptyVector[IfThen],
   elseBlock: Option[Workflow] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   def withoutSourcePos: If = copy(
     sourcePos = None,
@@ -29,20 +29,20 @@ extends Instruction:
       thenBlock = ifThen.thenBlock.withoutSourcePos)),
     elseBlock = elseBlock.map(_.withoutSourcePos))
 
-  override def withPositions(position: Position): If =
+  def withPositions(position: Position): If =
     copy(
       ifThens = ifThens.map(ifThen => ifThen.copy(
         thenBlock = ifThen.thenBlock.withPositions(position / BranchId.Then))),
       elseBlock = elseBlock.map(_.withPositions(position / BranchId.Else)))
 
-  override def adopt(outer: Workflow): If = copy(
+  def adopt(outer: Workflow): If = copy(
     ifThens = ifThens.map(ifThen => ifThen.copy(
       thenBlock = ifThen.thenBlock.copy(
         outer = Some(outer)))),
     elseBlock = elseBlock.map(_.copy(
       outer = Some(outer))))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
       ifThens = ifThens.map(ifThen => ifThen.copy(
         thenBlock = ifThen.thenBlock.reduceForAgent(agentPath))),
@@ -54,16 +54,16 @@ extends Instruction:
         thenBlock = Workflow.empty)),
       elseBlock = elseBlock.map(_ => Workflow.empty))
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     NewBranchId.fromLegacy(branchId).flatMap:
       case newBranchId @ NewBranchId.Then(i) =>
         ifThens.get(i - 1).toRight(Problem(s"This if has no $newBranchId")).map(_.thenBlock)
       case NewBranchId.Else =>
         elseBlock.toChecked(Problem.pure("This If has no 'else' branch"))
       case _ =>
-        super.workflow(branchId)
+        unknownBlock(branchId)
 
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     ifThens.toVector.zipWithIndex.map: (ifThen, i) =>
       BranchId.then_(1 + i) -> ifThen.thenBlock
     .concat:

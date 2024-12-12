@@ -14,29 +14,29 @@ final case class Options(
   stopOnFailure: Option[Boolean],
   block: Workflow,
   sourcePos: Option[SourcePos])
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   def withoutSourcePos: Options =
     copy(sourcePos = None)
 
-  override def withPositions(position: Position): Options =
+  def withPositions(position: Position): Options =
     copy(
       block = block.withPositions(position / BranchId.Options))
 
-  override def adopt(outer: Workflow): Options = copy(
+  def adopt(outer: Workflow): Options = copy(
     block = block.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
       block = block.reduceForAgent(agentPath))
 
   def withoutBlocks: Options =
     copy(block = Workflow.empty)
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Options => Right(block)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
   override def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Options -> block) :: Nil

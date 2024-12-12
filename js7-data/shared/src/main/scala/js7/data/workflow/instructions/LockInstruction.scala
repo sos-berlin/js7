@@ -17,7 +17,7 @@ final case class LockInstruction private(
   demands: List[LockDemand],
   lockedWorkflow: Workflow,
   sourcePos: Option[SourcePos])
-extends Instruction:
+extends Instruction.WithInstructionBlock:
 
   override def instructionName = "Lock"
 
@@ -28,15 +28,15 @@ extends Instruction:
     sourcePos = None,
     lockedWorkflow = lockedWorkflow.withoutSourcePos)
 
-  override def withPositions(position: Position): LockInstruction =
+  def withPositions(position: Position): LockInstruction =
     copy(
       lockedWorkflow = lockedWorkflow.withPositions(position / BranchId.Lock))
 
-  override def adopt(outer: Workflow): LockInstruction = copy(
+  def adopt(outer: Workflow): LockInstruction = copy(
     lockedWorkflow = lockedWorkflow.copy(
       outer = Some(outer)))
 
-  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     if isVisibleForAgent(agentPath, workflow) then
       copy(
         lockedWorkflow = lockedWorkflow.reduceForAgent(agentPath))
@@ -46,15 +46,16 @@ extends Instruction:
   def withoutBlocks: LockInstruction =
     copy(lockedWorkflow = Workflow.empty)
 
-  override def workflows: Seq[Workflow] = lockedWorkflow :: Nil
-
-  override def branchWorkflows: Seq[(BranchId, Workflow)] =
+  def branchWorkflows: Seq[(BranchId, Workflow)] =
     (BranchId.Lock -> lockedWorkflow) :: Nil
 
-  override def workflow(branchId: BranchId): Checked[Workflow] =
+  override def workflows: Seq[Workflow] =
+    lockedWorkflow :: Nil
+
+  def workflow(branchId: BranchId): Checked[Workflow] =
     branchId match
       case BranchId.Lock => Right(lockedWorkflow)
-      case _ => super.workflow(branchId)
+      case _ => unknownBlock(branchId)
 
   def lockPaths: List[LockPath] =
     demands.map(_.lockPath)

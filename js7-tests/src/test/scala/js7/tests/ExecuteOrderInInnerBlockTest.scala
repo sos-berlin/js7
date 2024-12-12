@@ -50,7 +50,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
     assert:
       addOrder(Position(0) / "then") == Left(Problem(
-        "Instruction 'Execute.Anonymous' does not have a nested workflow for branch 'then'"))
+        "Instruction 'Execute.Anonymous' does not have an instruction block 'then'"))
     assert:
       addOrder(forkBranchPath, startPosition = Some(Position(1))) == Left(Problem:
         "Position 1 must be in innerBlock=1/then:0/fork+BRANCH")
