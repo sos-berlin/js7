@@ -113,19 +113,19 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
       OrderCyclingPrepared(cycleState),
 
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=1" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 2))),
 
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=2" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 3))),
 
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderProcessingStarted(subagentId),
       OrderProcessed(OrderOutcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=3" % 1),
@@ -171,7 +171,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       OrderAdded(workflow.id),
       OrderStarted,
       OrderCyclingPrepared(cycleState),
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST FAILURE"))),
       OrderFailed(Position(0) / BranchId.cycle(cycleState) % 0)))
 
@@ -200,7 +200,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
       OrderCyclingPrepared(cycleState),
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderOutcomeAdded(OrderOutcome.Failed(Some("TEST FAILURE"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
@@ -283,7 +283,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       eventWatch
         .allStamped[OrderCycleStarted]
         .collect:
-          case stamped @ Stamped(_, _, KeyedEvent(`orderId`, OrderCycleStarted)) =>
+          case stamped @ Stamped(_, _, KeyedEvent(`orderId`, _: OrderCycleStarted)) =>
             stamped.timestamp
 
     "Winter to summer" in:
@@ -419,21 +419,21 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
     clock.tick()
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 1)
 
     clock.tick(30.minutes - 1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 1)
 
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 2)
 
     clock.tick(1.h - 1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 2)
 
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 3)
 
   "Break" - {
     "Break" in:
@@ -472,7 +472,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
           OrderCyclingPrepared(
             CycleState(end = local("2023-03-22T00:00"), 0, 0, 1, next = Timestamp.Epoch)),
-          OrderCycleStarted,
+          OrderCycleStarted(),
 
           OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0),
           OrderLocksAcquired(List(LockDemand(lock.path))),
@@ -523,7 +523,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
           OrderCyclingPrepared(
             CycleState(end = local("2023-03-22T00:00"), 0, 0, 1, next = Timestamp.Epoch)),
-          OrderCycleStarted,
+          OrderCycleStarted(),
 
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
@@ -784,7 +784,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderStarted,
-          OrderCycleStarted,
+          OrderCycleStarted(),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
@@ -857,7 +857,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
           OrderMoved(Position(0) / Then % 0),
           OrderStarted,
           OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
-          OrderCycleStarted,
+          OrderCycleStarted(),
           OrderMoved(suspendPosition),
           OrderStopped,
           OrderResumed(Some(resumePosition)),
@@ -903,19 +903,19 @@ with ControllerAgentForScalaTest with ScheduleTester:
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h))),
 
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h))),
 
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 4, next = clock.now() + 1.h))),
 
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderCycleFinished(Some(CycleState(cycleEnd, index = 5, next = clock.now() + 1.h))),
 
         OrderStateReset,
@@ -962,7 +962,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         OrderStarted,
         OrderCyclingPrepared(CycleState(cycleEnd, index = 1, next = Timestamp.Epoch)),
 
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
@@ -972,7 +972,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
         OrderGoMarked(cyclePosition),
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 2, next = clock.now() + 1.h)) % 1),
@@ -980,7 +980,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
         OrderGoMarked(cyclePosition),
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 3, next = clock.now() + 1.h)) % 1),
@@ -988,7 +988,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
         OrderGoMarked(cyclePosition),
         OrderGoes,
-        OrderCycleStarted,
+        OrderCycleStarted(),
         OrderProcessingStarted(subagentId),
         OrderProcessed(OrderOutcome.succeeded),
         OrderMoved(cyclePosition / BranchId.cycle(CycleState(cycleEnd, index = 4, next = clock.now() + 1.h)) % 1),

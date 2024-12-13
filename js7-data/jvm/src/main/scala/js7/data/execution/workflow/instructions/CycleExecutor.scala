@@ -51,7 +51,7 @@ extends EventInstructionExecutor:
                 case None =>
                   // cycleState is still valid
                   (cycleState.next <= now).thenList(
-                    order.id <-: OrderCycleStarted)
+                    order.id <-: OrderCycleStarted())
 
                 case Some(maybeRecalculatedCycleState) =>
                   nextCycleStateToEvent(maybeRecalculatedCycleState, order))

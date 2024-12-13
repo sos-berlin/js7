@@ -554,7 +554,7 @@ extends
           copy(
             state = BetweenCycles(Some(cycleState))))
 
-      case OrderCycleStarted =>
+      case OrderCycleStarted() =>
         state match
           case BetweenCycles(Some(cycleState)) =>
             val branchId = BranchId.cycle(
@@ -1259,7 +1259,7 @@ object Order:
 
     def go(order: Order[BetweenCycles]) =
       Right:
-        OrderGoes :: OrderCycleStarted :: Nil
+        OrderGoes :: OrderCycleStarted() :: Nil
 
   type Failed = Failed.type
   case object Failed extends IsStarted, IsFailed, IsTransferable

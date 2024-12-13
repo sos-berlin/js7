@@ -71,7 +71,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
 
     for i <- 1 to 3 do withClue(s"#$i "):
       // Endless empty loop. Caller must detect this (see test below)!
-      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted()))
       assert(stepper.order == stepper.initialOrder.withPosition(
         Position(0) / BranchId.cycle(initialCycleState.copy(index = i)) % 0))
 
@@ -117,7 +117,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
 
     var nextString = ""
     for i <- 1 to 3 do withClue(s"#$i "):
-      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted()))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0) /
           s"cycle+end=${initialCycleState.end.toEpochMilli},i=$i$nextString" % 0)
@@ -177,7 +177,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     val n = 3
     var i = 1
     while i <= n do withClue(s"#$i "):
-      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted()))
       assert(stepper.order == stepper.initialOrder.withPosition(Position(0) /
         s"cycle+end=1633143600000,i=$i,next=${clock.now().toEpochMilli}" % 0))
 
@@ -246,7 +246,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
     for i <- 1 to 3 do withClue(s"#$i "):
-      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted()))
 
       assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
         next = clock.now() + 60.s,
@@ -289,7 +289,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         i += 1
         val events = stepper.step()
         assert(events.nonEmpty)
-        if events.contains(OrderCycleStarted) then
+        if events.exists(_.isInstanceOf[OrderCycleStarted]) then
           builder += clock.now()
 
           // Time to execute the instruction block
@@ -338,15 +338,15 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
 
     "now < next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:44")).toEvents(order, stateView) ==
-        Right(List(order.id <-: OrderCycleStarted)))
+        Right(List(order.id <-: OrderCycleStarted())))
 
     "now == next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:45")).toEvents(order, stateView) ==
-        Right(List(order.id <-: OrderCycleStarted)))
+        Right(List(order.id <-: OrderCycleStarted())))
 
     "now > next => OrderCycleStarted" in:
       assert(executorService(local("2021-10-01T07:46")).toEvents(order, stateView) ==
-        Right(List(order.id <-: OrderCycleStarted)))
+        Right(List(order.id <-: OrderCycleStarted())))
 
     "now >= end => OrderCyclingPrepared to change the scheme" in:
       assert(executorService(local("2021-10-01T08:00")).toEvents(order, stateView) ==
@@ -365,7 +365,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         end  = local("2021-10-02T06:00"),
         index = 1))))
 
-      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted()))
       assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
         next = local("2021-10-01T07:45"),
         end  = local("2021-10-02T06:00"),
@@ -396,7 +396,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       next = local("2022-08-13T08:00"),
       end  = local("2022-08-14T06:00")))))
 
-    assert(stepper.step() == Seq(OrderCycleStarted))
+    assert(stepper.step() == Seq(OrderCycleStarted()))
 
     assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
       index = 2,
@@ -406,7 +406,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     assert(stepper.step().isEmpty)
 
     clock := local("2022-08-13T09:00")
-    assert(stepper.step() == Seq(OrderCycleStarted))
+    assert(stepper.step() == Seq(OrderCycleStarted()))
 
     assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
       index = 3,

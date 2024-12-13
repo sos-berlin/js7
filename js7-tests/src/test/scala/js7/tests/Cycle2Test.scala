@@ -47,7 +47,7 @@ final class Cycle2Test extends OurTestSuite, ControllerAgentForScalaTest, Schedu
       logger.warn("Test does not work when the current hour has changed")
       pending
     else
-      assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+      assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 1)
 
 
 object Cycle2Test:

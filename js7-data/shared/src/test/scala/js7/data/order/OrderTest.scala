@@ -493,7 +493,7 @@ final class OrderTest extends OurTestSuite:
       OrderPromptAnswered(),
 
       OrderCyclingPrepared(cycleState),
-      OrderCycleStarted,
+      OrderCycleStarted(),
       OrderCycleFinished(None),
 
       OrderStickySubagentLeaved,
@@ -694,7 +694,7 @@ final class OrderTest extends OurTestSuite:
         detachingAllowed[BetweenCycles] orElse
         planAttached[BetweenCycles] orElse:
           case (_: OrderCyclingPrepared, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
-          case (OrderCycleStarted      , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderCycleStarted   , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderMoved          , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (OrderCancelled         , _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded   , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]

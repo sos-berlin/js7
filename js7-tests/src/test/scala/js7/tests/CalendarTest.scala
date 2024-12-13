@@ -134,7 +134,7 @@ object CalendarTest:
       next = Timestamp.Epoch,
       index = 1,
       end = local("2021-10-02T00:00"))),
-    OrderCycleStarted,
+    OrderCycleStarted(),
     OrderAttachable(agentPath),
     OrderAttached(agentPath),
     OrderProcessingStarted(subagentId),
