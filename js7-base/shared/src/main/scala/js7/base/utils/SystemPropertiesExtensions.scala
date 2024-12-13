@@ -6,8 +6,8 @@ import scala.sys.SystemProperties
 object SystemPropertiesExtensions:
 
   extension (properties: SystemProperties)
-    def asSwitch(key: String): Boolean =
+    def asSwitch(key: String, ifMissing: Boolean = false): Boolean =
       properties.get(key) match
-        case None => false
+        case None => ifMissing
         case Some("") => true
         case Some(string) => StringAsBoolean(string)

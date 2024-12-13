@@ -2,8 +2,12 @@
 set -euo pipefail
 
 a=()
-[[ $# = 0 ]] || a+=("$1")
+if [[ $# -ge 1 ]]; then
+  a+=("$1")
+elif [[ -t 0 ]]; then
+  a+=(logs/test.log)
+fi
 
-exec egrep --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[*]}" |
+exec egrep --line-buffered -- " ###| ERROR | WARN  | TEST - |-Controller-.* - :" "${a[@]}" |
   egrep -vw --line-buffered "AgentEventsObserved" |
   sed -l 's/ trace .*Journal - ://'

@@ -5,7 +5,7 @@ import js7.base.utils.SystemPropertiesExtensions.asSwitch
 object LoggingEscapeCodes:
 
   val isColorAllowed: Boolean =
-    sys.props.asSwitch("js7.log.colored")
+    sys.props.asSwitch("js7.log.colored", ifMissing = true)
 
   /** Reset color and mode. */
   val resetColor: String = if !isColorAllowed then "" else AnsiEscapeCodes.resetColor
