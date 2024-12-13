@@ -31,12 +31,27 @@ object Schedule:
       AdmissionTimeScheme.always,
       Ticking(interval))))
 
+
+  final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat)
+
+  object Scheme:
+    given Codec.AsObject[Scheme] = deriveCodec[Scheme]
+
+
   sealed trait Repeat
+
+  object Repeat:
+    given TypedJsonCodec[Repeat] = TypedJsonCodec(
+      Subtype[Periodic],
+      Subtype[Ticking],
+      Subtype[Continuous])
+
 
   final case class Periodic(period: FiniteDuration, offsets: Seq[FiniteDuration])
   extends Repeat:
     override def toString: String = "period=" + period +
       " offsets=" + offsets.map(_.pretty).mkString("(", ", ", ")")
+
   object Periodic:
     def checked(period: FiniteDuration, offsets: Seq[FiniteDuration]): Checked[Periodic] =
       if period.isPositive
@@ -46,17 +61,21 @@ object Schedule:
       else
         Left(Problem.pure("Invalid Periodic arguments"))
 
-    implicit val jsonEncoder: Encoder.AsObject[Periodic] = deriveEncoder
-    implicit val jsonDecoder: Decoder[Periodic] =
+    given Encoder.AsObject[Periodic] = deriveEncoder
+    given Decoder[Periodic] =
       c => for
         period <- c.get[FiniteDuration]("period")
         offsets <- c.get[Vector[FiniteDuration]]("offsets")
         _ <- checked(period, offsets).toDecoderResult(c.history)
       yield Periodic(period, offsets.sorted)
 
+
+  /** Ticking with fixed interval such that following start times can be calculated ahead.
+    */
   final case class Ticking(interval: FiniteDuration)
   extends Repeat:
     override def toString = s"Ticking(${interval.pretty})"
+
   object Ticking:
     def checked(interval: FiniteDuration): Checked[Ticking] =
       if !interval.isPositive then
@@ -64,13 +83,17 @@ object Schedule:
       else
         Right(Ticking(interval))
 
-    implicit val jsonEncoder: Encoder.AsObject[Ticking] = deriveEncoder
-    implicit val jsonDecoder: Decoder[Ticking] =
-      c => for
+    given Encoder.AsObject[Ticking] = deriveEncoder
+    given Decoder[Ticking] = c =>
+      for
         interval <- c.get[FiniteDuration]("interval")
         ticking <- checked(interval).toDecoderResult(c.history)
-      yield ticking
+      yield
+        ticking
 
+
+  /** Continuous with a pause between each cycle.
+    */
   final case class Continuous(
     pause: FiniteDuration,
     limit: Option[Int] = None)
@@ -80,6 +103,7 @@ object Schedule:
         Some("pause=" + pause.pretty),
         limit.map("limit=" + _)
       ).mkString("Continuous(", " ", ")")
+
   object Continuous:
     def checked(
       pause: FiniteDuration = Duration.Zero,
@@ -92,24 +116,16 @@ object Schedule:
       else
         Right(Continuous(pause, limit))
 
-    implicit val jsonEncoder: Encoder.AsObject[Continuous] = deriveEncoder
-    implicit val jsonDecoder: Decoder[Continuous] =
-      c => for
+    given Encoder.AsObject[Continuous] = deriveEncoder
+    given Decoder[Continuous] = c =>
+      for
         pause <- c.get[FiniteDuration]("pause")
         limit <- c.get[Option[Int]]("limit")
         continuous <- checked(pause, limit).toDecoderResult(c.history)
-      yield continuous
+      yield
+        continuous
 
-  object Repeat:
-    implicit val jsonCodec: TypedJsonCodec[Repeat] = TypedJsonCodec(
-      Subtype[Periodic],
-      Subtype[Ticking],
-      Subtype[Continuous])
 
-  final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat)
-  object Scheme:
-    implicit val jsonCodec: Codec.AsObject[Scheme] = deriveCodec[Scheme]
-
-  implicit val jsonCodec: Codec.AsObject[Schedule] = deriveCodec[Schedule]
+  given Codec.AsObject[Schedule] = deriveCodec[Schedule]
 
   intelliJuseImport(FiniteDurationJsonDecoder)

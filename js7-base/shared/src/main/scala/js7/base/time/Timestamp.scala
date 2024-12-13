@@ -51,9 +51,9 @@ trait Timestamp extends Ordered[Timestamp]:
   def -(o: Timestamp): FiniteDuration =
     new FiniteDuration(subtractSaturating(toEpochMilli, o.toEpochMilli), MILLISECONDS)
 
-  final def min(o: Timestamp): Timestamp = if this < o then this else o
+  infix final def min(o: Timestamp): Timestamp = if this < o then this else o
 
-  final def max(o: Timestamp): Timestamp = if this > o then this else o
+  infix final def max(o: Timestamp): Timestamp = if this > o then this else o
 
   final def roundToNextSecond: Timestamp = copy((toEpochMilli + 999)/ 1000 * 1000)
 

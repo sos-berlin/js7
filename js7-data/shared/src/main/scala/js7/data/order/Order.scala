@@ -1091,7 +1091,7 @@ object Order:
     type Self <: State
 
     def go(order: Order[Self])
-    : Checked[List[OrderGoes | OrderStarted |OrderCycleStarted | OrderAwoke | OrderMoved]]
+    : Checked[List[OrderGoes | OrderStarted | OrderCycleStarted | OrderAwoke | OrderMoved]]
 
 
   sealed trait IsResettable extends State:

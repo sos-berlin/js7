@@ -1,5 +1,6 @@
 package js7.data_for_java.schedule
 
+import io.circe.{Decoder, Encoder}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.workflow.instructions.Schedule
@@ -18,5 +19,5 @@ object JSchedule extends JJsonable.Companion[JSchedule]:
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JSchedule] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = Schedule.jsonCodec
-  protected def jsonDecoder = Schedule.jsonCodec
+  protected def jsonEncoder = summon[Encoder[Schedule]]
+  protected def jsonDecoder = summon[Decoder[Schedule]]
