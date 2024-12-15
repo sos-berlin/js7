@@ -31,12 +31,14 @@ extends EventInstructionExecutor:
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         yield
-          val cycleState = calculator.nextCycleState(now, CycleState(
-            next = timeInterval.start,
-            end = timeInterval.end,
-            schemeIndex = -1,
-            periodIndex = -1,
-            index = 0))
+          val cycleState = calculator.nextCycleState(
+            CycleState(
+              next = timeInterval.start,
+              end = timeInterval.end,
+              schemeIndex = -1,
+              periodIndex = -1,
+              index = 0),
+            now)
           nextCycleStateToEvent(cycleState, order))
       .orElse(order.ifState[BetweenCycles].map: order =>
         order.state.cycleState match
@@ -74,7 +76,7 @@ extends EventInstructionExecutor:
       cycleState <- branchId.toCycleState
     yield
       order.id <-: OrderCycleFinished(
-        calculator.nextCycleState(clock.now(), cycleState))
+        calculator.nextCycleState(cycleState, clock.now()))
 
     checkedKeyedEvent.map(_ :: Nil)
 

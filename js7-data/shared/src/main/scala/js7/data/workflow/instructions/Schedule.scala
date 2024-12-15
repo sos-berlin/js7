@@ -70,7 +70,7 @@ object Schedule:
       yield Periodic(period, offsets.sorted)
 
 
-  /** Ticking with fixed interval such that following start times can be calculated ahead.
+  /** Ticking with fixed interval such that start times can be calculated ahead.
     */
   final case class Ticking(interval: FiniteDuration)
   extends Repeat:

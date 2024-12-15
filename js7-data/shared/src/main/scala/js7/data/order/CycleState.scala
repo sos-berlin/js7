@@ -21,6 +21,9 @@ final case class CycleState(
   index: Int,
   next: Timestamp):
 
+  def isInitial: Boolean =
+    index == 0
+
   override def toString =
     s"CycleState(next=${next.pretty} index=$index schemeIndex=$schemeIndex period=$periodIndex end=$end)"
 

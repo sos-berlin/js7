@@ -366,7 +366,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
       val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
-      val orderId = OrderId(s"#$orderDate#CycleTesterTest")
+      val orderId = OrderId(s"#$orderDate#ScheduleTesterStandardExample")
       logger.debug(s"addOrder $orderId")
       val workflow =
         if onlyOnePeriod then onlyOnePeriodCycleTestExampleWorkflow else cycleTestExampleWorkflow

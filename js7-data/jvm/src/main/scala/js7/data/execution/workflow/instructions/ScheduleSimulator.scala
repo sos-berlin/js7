@@ -39,7 +39,7 @@ trait ScheduleSimulator:
 
         def calculateNext() =
           for scheduled <- _next yield
-            val maybeScheduled = nextCycleState(timestamp, scheduled.cycleState)
+            val maybeScheduled = nextCycleState(scheduled.cycleState, timestamp)
               .map(Scheduled(timestamp, _))
             _next = maybeScheduled
 

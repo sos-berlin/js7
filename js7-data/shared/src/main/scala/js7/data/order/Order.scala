@@ -548,7 +548,7 @@ extends
           this)
 
       case OrderCyclingPrepared(cycleState) =>
-        check((isDetachedOrAttached)
+        check(isDetachedOrAttached
           & (isState[Ready] || isState[BetweenCycles])
           & !isSuspendedOrStopped,
           copy(

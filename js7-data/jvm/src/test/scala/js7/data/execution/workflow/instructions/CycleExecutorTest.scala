@@ -26,7 +26,7 @@ import scala.concurrent.duration.*
 
 final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
 
-  private implicit val zone: ZoneId = CycleExecutorTest.zone
+  private given zoneId: ZoneId = CycleExecutorTest.zone
 
   "Cycle with no Scheme is skipped" in:
     val stepper = new Stepper(
@@ -36,7 +36,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         Seq(
           Cycle(Schedule(Nil)):
             Workflow.empty),
-        timeZone = Timezone(zone.toString),
+        timeZone = Timezone(zoneId.toString),
         calendarPath = Some(calendar.path)),
       WallClock)
 
@@ -58,7 +58,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
             Schedule.Continuous(pause = 0.s, limit = Some(Int.MaxValue)))
           ))):
             Workflow.empty),
-        timeZone = Timezone(zone.getId),
+        timeZone = Timezone(zoneId.getId),
         calendarPath = Some(calendar.path)),
       clock)
 
@@ -103,7 +103,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
               Schedule.Continuous(pause = 60.s)
           )))):
             Workflow.empty),
-        timeZone = Timezone(zone.getId),
+        timeZone = Timezone(zoneId.getId),
         calendarPath = Some(calendar.path)),
       clock)
 
@@ -158,7 +158,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
                 Schedule.Continuous(pause = 1.h))))
           ):
             Workflow.empty),
-        timeZone = Timezone(zone.getId),
+        timeZone = Timezone(zoneId.getId),
         calendarPath = Some(calendar.path)),
       clock)
 
@@ -316,10 +316,10 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
             Ticking(15.minutes)),
           Scheme(
             AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("12:00"), 1.h))),
-            Periodic(1.h, Seq(20.minute)))
+            Periodic(1.h, Seq(20.minutes)))
         ))):
             Workflow.empty),
-      timeZone = Timezone(zone.getId),
+      timeZone = Timezone(zoneId.getId),
       calendarPath = Some(calendar.path))
 
     lazy val stateView = AgentTestStateView(
@@ -372,7 +372,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
         end  = local("2021-10-02T06:00"),
         index = 2)))))
 
-      // Reaching and of AdmissionTimeScheme
+      // Reaching end of AdmissionTimeScheme
       clock := local("2021-10-01T08:00")
       assert(stepper.step() == Seq(OrderCyclingPrepared(CycleState(
         next = local("2021-10-01T12:20"),
@@ -387,7 +387,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       Seq(
         Cycle(Schedule.ticking(1.h)):
           Workflow.empty),
-      timeZone = Timezone(zone.toString),
+      timeZone = Timezone(zoneId.toString),
       calendarPath = Some(calendar.path))
     val clock = TestWallClock(local("2022-08-13T08:10"))
     val stepper = new Stepper(OrderId("#2022-08-13#"), workflow, clock)

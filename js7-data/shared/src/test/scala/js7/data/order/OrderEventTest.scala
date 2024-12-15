@@ -526,12 +526,6 @@ final class OrderEventTest extends OurTestSuite:
         "TYPE": "OrderCycleStarted"
       }""")
 
-    testJson[OrderEvent](OrderCycleStarted(Some(10.s)), json"""
-      {
-        "TYPE": "OrderCycleStarted",
-        "skipped": 10
-      }""")
-
   "OrderCycleFinished" in:
     testJson[OrderEvent](OrderCycleFinished(Some(CycleState.empty)), json"""
       {
