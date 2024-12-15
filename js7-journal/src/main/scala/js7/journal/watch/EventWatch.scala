@@ -81,6 +81,13 @@ trait EventWatch:
   : Vector[Stamped[KeyedEvent[E]]]
 
   @TestOnly
+  def awaitAsync[E <: Event](
+    eventRequest: EventRequest[E],
+    predicate: KeyedEvent[E] => Boolean)
+    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+  : IO[Vector[Stamped[KeyedEvent[E]]]]
+
+  @TestOnly
   def awaitAsync[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,

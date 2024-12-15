@@ -312,26 +312,34 @@ trait RealEventWatch extends EventWatch:
     timeout: FiniteDuration)
     (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : IO[Vector[Stamped[KeyedEvent[E]]]] =
-    lazy val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.shortClassName}]" +
-      s" in ${summon[sourcecode.FileName].value}:${summon[sourcecode.Line].value}"
-    logger.debugIO(label)(
-      when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
-        .map {
-          case EventSeq.NonEmpty(events) =>
-            try events.toVector
-            finally events.close()
+    awaitAsync[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
 
-          case _: EventSeq.Empty =>
-            throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
-              s"(after=$after, timeout=$timeout) timed out")
+  @TestOnly
+  final def awaitAsync[E <: Event](
+    eventRequest: EventRequest[E],
+    predicate: KeyedEvent[E] => Boolean)
+    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+  : IO[Vector[Stamped[KeyedEvent[E]]]] =
+    lazy val label = s"awaitAsync[${
+      eventRequest.eventClasses.view.map(_.shortClassName).toVector.sorted.mkString(" | ")
+      }] in ${summon[sourcecode.FileName].value}:${summon[sourcecode.Line].value}"
+    logger.debugIO(label):
+      import eventRequest.{after, timeout}
+      when[E](eventRequest, predicate).map:
+        case EventSeq.NonEmpty(events) =>
+          try events.toVector
+          finally events.close()
 
-          //? case TearableEventSeq.Torn(tornEventId) =>
-          //?   throw new TornException(after, tornEventId)
+        case _: EventSeq.Empty =>
+          throw new TimeoutException(
+            s"RealEventWatch.await(after=$after, timeout=$timeout) timed out")
 
-          case o =>
-            sys.error(s"$label(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
-        }
-        .logWhenItTakesLonger(label))
+        //? case TearableEventSeq.Torn(tornEventId) =>
+        //?   throw new TornException(after, tornEventId)
+
+        case o => sys.error:
+          s"$label(after=$after,timeout=${timeout.fold("")(_.pretty)}) unexpected EventSeq: $o"
+      .logWhenItTakesLonger(label)
 
 
 object RealEventWatch:
