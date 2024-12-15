@@ -9,6 +9,7 @@ import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfigured
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.*
@@ -554,13 +555,13 @@ extends
           copy(
             state = BetweenCycles(Some(cycleState))))
 
-      case OrderCycleStarted() =>
+      case OrderCycleStarted(maybeSkipped) =>
         state match
           case BetweenCycles(Some(cycleState)) =>
             val branchId = BranchId.cycle(
               cycleState.copy(
-                next = cycleState.next))
-            check((isDetachedOrAttached) & !isSuspendedOrStopped,
+                next = cycleState.next + maybeSkipped.getOrElse(ZeroDuration)))
+            check(isDetachedOrAttached & !isSuspendedOrStopped,
               withPosition(position / branchId % 0)
                 .copy(
                   state = Ready))

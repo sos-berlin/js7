@@ -6,6 +6,7 @@ import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.instructions.ScheduleCalculator.Do
 import js7.data.order.Order.{BetweenCycles, Ready}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
@@ -20,13 +21,13 @@ extends EventInstructionExecutor:
   type Instr = Cycle
   val instructionClass = classOf[Cycle]
 
-  def toEvents(cycle: Cycle, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Cycle, order: Order[Order.State], state: StateView) =
     val now = clock.now()
     start(order)
       .orElse(order.ifState[Ready].map: order =>
         for
           workflow <- state.keyToItem(Workflow).checked(order.workflowId)
-          pair <- toCalendarAndScheduleCalculator(workflow, cycle, state)
+          pair <- toCalendarAndScheduleCalculator(workflow, instr, state)
           (calendar, calculator) = pair
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
@@ -39,35 +40,38 @@ extends EventInstructionExecutor:
               periodIndex = -1,
               index = 0),
             now)
-          nextCycleStateToEvent(cycleState, order))
+          cycleState match
+            case Some(cycleState) =>
+              (order.id <-: OrderCyclingPrepared(cycleState)) :: Nil
+            case None =>
+              endCycling(order))
       .orElse(order.ifState[BetweenCycles].map: order =>
         order.state.cycleState match
           case None =>
-            Right:
-              (order.id <-: OrderMoved(order.position.increment)) :: Nil
+            Right(endCycling(order))
 
           case Some(cycleState) =>
-            toScheduleCalculator(order, cycle, state)
-              .flatMap(_.maybeRecalcCycleState(now, cycleState))
+            toScheduleCalculator(order, instr, state)
+              .flatMap:
+                _.onNextCycleIsDue(cycleState, now)
               .map:
-                case None =>
-                  // cycleState is still valid
-                  (cycleState.next <= now).thenList(
-                    order.id <-: OrderCycleStarted())
+                case Do.KeepWaiting => Nil
 
-                case Some(maybeRecalculatedCycleState) =>
-                  nextCycleStateToEvent(maybeRecalculatedCycleState, order))
+                case Do.StartCycle(skipped) =>
+                  (order.id <-: OrderCycleStarted(skipped)) :: Nil
+
+                case Do.ChangeCycleState(cycleState) =>
+                  (order.id <-: OrderCyclingPrepared(cycleState)) :: Nil
+
+                case Do.EndCycling =>
+                  endCycling(order))
       .getOrElse:
         Right(Nil)
 
-  private def nextCycleStateToEvent(cycleState: Option[CycleState], order: Order[Order.State])
-  : List[KeyedEvent[OrderActorEvent]] =
-    val event = cycleState match
-      case Some(cycleState) => OrderCyclingPrepared(cycleState)
-      case None => OrderMoved(order.position.increment)
-    (order.id <-: event) :: Nil
+  private def endCycling(order: Order[Ready | BetweenCycles]): List[KeyedEvent[OrderMoved]] =
+    (order.id <-: OrderMoved(order.position.increment)) :: Nil
 
-  override def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
+  override def onReturnFromSubworkflow(instr: Cycle, order: Order[Order.State], state: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     val checkedKeyedEvent = for
       calculator <- toScheduleCalculator(order, instr, state)
@@ -105,7 +109,7 @@ extends EventInstructionExecutor:
     order: Order[Order.State],
     calculator: OrderObstacleCalculator) =
     order.state match
-      case Order.BetweenCycles(Some(cycleState: CycleState)) if clock.now() < cycleState.next =>
+      case BetweenCycles(Some(cycleState: CycleState)) if clock.now() < cycleState.next =>
         Right(Set(WaitingForOtherTime(cycleState.next)))
 
       case _ => super.toObstacles(order, calculator)

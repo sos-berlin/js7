@@ -7,6 +7,7 @@ import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TimeInterval, Timestamp}
+import js7.data.execution.workflow.instructions.ScheduleCalculator.Do
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
@@ -121,6 +122,10 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
         "now < first" in:
           val cs = calculator.nextCycleState(initialCycleState, ts"2021-10-01T11:00:00Z").get
           assert(cs == cycleState0.copy(next = ts"2021-10-01T12:00:00Z", index = 1))
+          assert(calculator.onNextCycleIsDue(cs, now = ts"2021-10-01T11:59:59Z") ==
+            Right(Do.KeepWaiting))
+          assert(calculator.onNextCycleIsDue(cs, now = ts"2021-10-01T12:00:00Z") ==
+            Right(Do.StartCycle()))
 
         "now == first" in:
           val cs = calculator.nextCycleState(initialCycleState, ts"2021-10-01T12:00:00Z").get
@@ -182,6 +187,36 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
         "Second AdmissionPeriod (in same second Scheme)" in:
           val cs = calculator.nextCycleState(last, ts"2021-10-01T13:00:00Z").get
           assert(cs == cycleState0.copy(next = ts"2021-10-01T15:07:00Z", periodIndex = 0, index = 1))
+      }
+
+      "onNextCycleIsDue" - {
+        val cs = cycleState0.copy(next = ts"2021-10-01T12:15:00Z", index = 1)
+
+        "Too early OrderCycleStarted" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T12:10:00Z") ==
+            Right(Do.KeepWaiting))
+
+        "Just in time OrderCycleStarted" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T12:15:00Z") ==
+            Right(Do.StartCycle()))
+
+        "Late OrderCycleStarted" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T12:29:59Z") ==
+            Right(Do.StartCycle(None)))
+
+        "Late OrderCycleStarted, missing one tick" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T12:30:00Z") ==
+            Right(Do.StartCycle(skipped = Some(15.minute))))
+
+        "Late OrderCycleStarted, missing five ticks" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T12:45:00Z") ==
+            Right(Do.StartCycle(skipped = Some(2 * 15.minutes))))
+
+        "End of Ticking period" in :
+          assert(calculator.onNextCycleIsDue(cs, ts"2021-10-01T13:00:00Z") ==
+            Right(Do.ChangeCycleState(cs.copy(
+              periodIndex = 0,
+              next = ts"2021-10-01T15:07:00Z"))))
       }
     }
   }

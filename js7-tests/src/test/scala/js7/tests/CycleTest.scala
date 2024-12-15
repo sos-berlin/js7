@@ -490,10 +490,10 @@ with ControllerAgentForScalaTest with ScheduleTester:
         t("05:00:00") -> OrderCycleStarted(),
         t("05:00:00") -> OrderCycleFinished(Some(cycleState(7, next = t("06:00:00")))),
         // delay 2h
-        t("07:00:00") -> OrderCycleStarted(),
+        t("07:00:00") -> OrderCycleStarted(skipped = Some(1.h)),
         t("07:00:00") -> OrderCycleFinished(Some(cycleState(8, next = t("08:00:00")))),
         // delay 3h
-        t("10:00:00") -> OrderCycleStarted(),
+        t("10:00:00") -> OrderCycleStarted(skipped = Some(2.h)),
         t("10:00:00") -> OrderCycleFinished(Some(cycleState(9, next = t("11:00:00"))))))
 
   "Break" - {

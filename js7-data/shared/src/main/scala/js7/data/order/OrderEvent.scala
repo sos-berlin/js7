@@ -2,15 +2,16 @@ package js7.data.order
 
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
-import io.circe
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
+import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
@@ -35,6 +36,7 @@ import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel, Workfl
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
+import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
 /**
@@ -756,8 +758,14 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCycleEvent
 
 
-  final case class OrderCycleStarted()
-  extends OrderCycleEvent
+  /**
+    * @param skipped Only when Ticking ticks have been skipped.
+    *                Must be a multiple of the tick interval,
+    *                will be added to `next`.
+    */
+  final case class OrderCycleStarted(skipped: Option[FiniteDuration] = None)
+  extends OrderCycleEvent:
+    override def toString = s"OrderCycleStarted${skipped.fold("")(o => s"(skipped=${o.pretty})")}"
 
 
   final case class OrderCycleFinished(cycleState: Option[CycleState])

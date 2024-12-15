@@ -5,8 +5,10 @@ import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.{JavaTimestamp, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.execution.workflow.instructions.ScheduleCalculator.*
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
@@ -31,18 +33,31 @@ extends ScheduleSimulator:
           index = if periodChanges then 1 else cycleState.index + 1,
           next = next)
 
-  /**
-   * If it is to late for next in cycleState, then calculate a new CycleState.
-   * @return Right(None) iff `cycleState` is still valid
-   *         Right(Some(None)) iff `Cycle` has been finished
-   */
-  def maybeRecalcCycleState(now: Timestamp, cycleState: CycleState)
-  : Checked[Option[Option[CycleState]]] =
+  /** Call this just before the next scheduled cycle should start.
+    * @return What to do
+    */
+  def onNextCycleIsDue(cycleState: CycleState, now: Timestamp): Checked[Do] =
     for scheme <- schedule.schemes.checked(cycleState.schemeIndex) yield
-      !scheme.admissionTimeScheme.isPermitted(now.max(cycleState.next), zone, dateOffset) ?
-        nextCycleState(cycleState, now)
+      val skipped = scheme.repeat match
+        case Ticking(tickDuration) =>
+          // When at start of a cycle ticks have been missed, we must adjust cycleState.next.
+          val skippedTicks = (now - cycleState.next).toMillis / tickDuration.toMillis
+          (skippedTicks max 0) * tickDuration
+        case _ =>
+          ZeroDuration
+      val next = cycleState.next + skipped
 
-  /** Returns schemeIndex and Timestamp. */
+      if now < next then
+        Do.KeepWaiting
+      else if scheme.admissionTimeScheme.isPermitted(now, zone, dateOffset) then
+        Do.StartCycle(skipped.isPositive ? skipped)
+      else
+        nextCycleState(cycleState, now) match
+          case None => Do.EndCycling
+          case Some(cs) => Do.ChangeCycleState(cs)
+
+  /** @return next (schemeIndex, periodIndex, next: Timestamp, tickingSkipped: FiniteDuration).
+    */
   private def nextCycle(now: Timestamp, cycleState: CycleState): Option[(Int, Int, Timestamp)] =
     schedule.schemes.view.zipWithIndex
       .flatMap: (scheme, schemeIndex) =>
@@ -125,3 +140,10 @@ object ScheduleCalculator:
     onlyOnePeriod: Boolean = false)
   : Checked[ScheduleCalculator] =
     Right(new ScheduleCalculator(schedule, zone, dateOffset, onlyOnePeriod))
+
+
+  enum Do:
+    case KeepWaiting
+    case StartCycle(skipped: Option[FiniteDuration] = None)
+    case ChangeCycleState(cycleState: CycleState)
+    case EndCycling
