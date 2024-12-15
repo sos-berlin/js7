@@ -5,6 +5,7 @@ import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
+import js7.base.time.TimestampForTests.ts
 import org.scalatest.matchers.should.Matchers.*
 
 final class JavaTimeTest extends OurTestSuite:
@@ -177,11 +178,11 @@ final class JavaTimeTest extends OurTestSuite:
   }
 
   "java.util.Date.show" in:
-    assert(Timestamp("2018-11-21T12:34:56Z").toJavaUtilDate.show == "2018-11-21T12:34:56Z")
-    assert(Timestamp("2018-11-21T12:34:56.987Z").toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
+    assert(ts"2018-11-21T12:34:56Z".toJavaUtilDate.show == "2018-11-21T12:34:56Z")
+    assert(ts"2018-11-21T12:34:56.987Z".toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
 
   "Timestamp.fromJavaTime, toJavaUtilDate" in:
-    val timestamp = Timestamp("2018-11-21T12:34:56Z")
+    val timestamp = ts"2018-11-21T12:34:56Z"
     val date = timestamp.toJavaUtilDate
     assert(Timestamp.fromJavaUtilDate(date) == timestamp)
 

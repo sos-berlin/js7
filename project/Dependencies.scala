@@ -24,6 +24,7 @@ object Dependencies
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
   val fs2Version = "3.11.0"
+  val literallyVersion = "1.2.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.5"

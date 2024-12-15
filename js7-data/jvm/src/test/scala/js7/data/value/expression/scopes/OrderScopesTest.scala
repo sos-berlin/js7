@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -260,7 +261,7 @@ final class OrderScopesTest extends OurTestSuite:
       val scope = workflowOrderVariablesScope(freshOrder,
         controllerId,
         Seq(jobResource, simpleJobResource, dotJobResource).toKeyedMap(_.path),
-        nowScope = NowScope(Timestamp("2021-06-21T12:33:44Z")))
+        nowScope = NowScope(ts"2021-06-21T12:33:44Z"))
 
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
@@ -392,7 +393,7 @@ object OrderScopesTest:
       "orderArgument" -> StringValue("ORDER-ARGUMENT"),
       "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
       "timezone" -> StringValue("Europe/Berlin")),
-    scheduledFor = Some(Timestamp("2021-06-17T12:00:00Z")))
+    scheduledFor = Some(ts"2021-06-17T12:00:00Z"))
 
   private val expectedSchedule = StringValue("2021-06-17 14:00")
 

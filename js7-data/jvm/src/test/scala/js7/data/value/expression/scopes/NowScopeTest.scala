@@ -5,11 +5,12 @@ import java.time.format.DateTimeFormatter
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}
 
 final class NowScopeTest extends OurTestSuite:
-  private lazy val nowScope = new NowScope(Timestamp("2021-08-16T12:00:00Z"))
+  private lazy val nowScope = new NowScope(ts"2021-08-16T12:00:00Z")
 
   "Example with now() and $js7EpochSecond" in:
     val checkedValue = nowScope.parseAndEval(

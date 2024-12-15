@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.instructions.RetryExecutorTest.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderRetrying}
@@ -53,7 +54,7 @@ final class RetryExecutorTest extends OurTestSuite:
 
 
 object RetryExecutorTest:
-  private val now = Timestamp("2019-03-08T12:00:00Z")
+  private val now = ts"2019-03-08T12:00:00Z"
   private val orderId = OrderId("ORDER-A")
   private val tryPosition = Position(7)
   private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"

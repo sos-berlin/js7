@@ -5,6 +5,7 @@ import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.system.startup.StartUp
 import js7.base.test.OurTestSuite
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
@@ -33,7 +34,7 @@ final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
       ClusterState.Empty),
     controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
-      Timestamp("2019-05-24T12:00:00Z"),
+      ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")))))
   protected def totalRunningSince = now - 1.hour
 
@@ -48,7 +49,7 @@ final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
       assert(overview.version == BuildInfo.prettyVersion)
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
-      assert(overview.initiallyStartedAt == Some(Timestamp("2019-05-24T12:00:00Z")))
+      assert(overview.initiallyStartedAt == Some(ts"2019-05-24T12:00:00Z"))
       assert(overview.startedAt == StartUp.startedAt)
       assert(overview.totalRunningTime >= 1.hour && overview.totalRunningTime <= 1.hour + 1.minute)
       assert(overview.orderCount == Some(0))

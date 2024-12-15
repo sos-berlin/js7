@@ -2,6 +2,7 @@ package js7.data.controller
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Timestamp, Timezone}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
@@ -13,7 +14,7 @@ final class ControllerMetaStateTest extends OurTestSuite:
     implicit val x = ControllerState.snapshotObjectJsonCodec
     testJson[Any](ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
-      Timestamp("2019-05-24T12:00:00Z"),
+      ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")),
       json"""{
         "TYPE": "ControllerMetaState",
@@ -25,7 +26,7 @@ final class ControllerMetaStateTest extends OurTestSuite:
     // COMPATIBLE with 2.0
     testJsonDecoder[Any](ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
-      Timestamp("2019-05-24T12:00:00Z"),
+      ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")),
       json"""{
         "TYPE": "ControllerMetaState",

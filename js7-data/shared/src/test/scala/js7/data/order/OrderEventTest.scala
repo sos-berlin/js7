@@ -7,6 +7,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
@@ -38,7 +39,7 @@ final class OrderEventTest extends OurTestSuite:
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
         Some(PlanId(PlanTemplateId("DailyPlan"), PlanKey("2024-11-20"))),
-        Some(Timestamp("2021-01-01T00:00:00Z")),
+        Some(ts"2021-01-01T00:00:00Z"),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
@@ -503,6 +504,44 @@ final class OrderEventTest extends OurTestSuite:
         "to": [ 7 ],
         "reason": {
           "TYPE": "NoAdmissionPeriodStart"
+        }
+      }""")
+
+  "OrderCyclingPrepared" in:
+    testJson[OrderEvent](OrderCyclingPrepared(CycleState.empty), json"""
+      {
+        "TYPE": "OrderCyclingPrepared",
+        "cycleState": {
+          "end": 0,
+          "index": 0,
+          "next": 0,
+          "periodIndex": 0,
+          "schemeIndex": 0
+        }
+      }""")
+
+  "OrderCycleStarted" in:
+    testJson[OrderEvent](OrderCycleStarted(), json"""
+      {
+        "TYPE": "OrderCycleStarted"
+      }""")
+
+    testJson[OrderEvent](OrderCycleStarted(Some(10.s)), json"""
+      {
+        "TYPE": "OrderCycleStarted",
+        "skipped": 10
+      }""")
+
+  "OrderCycleFinished" in:
+    testJson[OrderEvent](OrderCycleFinished(Some(CycleState.empty)), json"""
+      {
+        "TYPE": "OrderCycleFinished",
+        "cycleState": {
+          "end": 0,
+          "index": 0,
+          "next": 0,
+          "periodIndex": 0,
+          "schemeIndex": 0
         }
       }""")
 

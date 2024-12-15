@@ -18,6 +18,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
@@ -147,7 +148,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
       controller.api.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
       val orderId = OrderId("ORDER-SOS-SCHEDULED")
-      val scheduledFor = Timestamp("2021-04-26T00:11:22.789Z")
+      val scheduledFor = ts"2021-04-26T00:11:22.789Z"
       controller.api.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
         .await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head

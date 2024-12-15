@@ -1,4 +1,5 @@
 package js7.data.order
+
 import cats.syntax.option.*
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -6,6 +7,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
@@ -272,7 +274,7 @@ final class OrderTest extends OurTestSuite:
           }""")
 
       "DelayingRetry" in:
-        testJson[State](DelayingRetry(Timestamp("2019-03-07T12:00:00Z")),
+        testJson[State](DelayingRetry(ts"2019-03-07T12:00:00Z"),
           json"""{
             "TYPE": "DelayingRetry",
             "until": 1551960000000

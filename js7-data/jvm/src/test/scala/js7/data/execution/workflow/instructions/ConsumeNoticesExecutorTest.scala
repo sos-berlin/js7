@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
@@ -316,7 +317,7 @@ object ConsumeNoticesExecutorTest:
         toBoardState(boardPath, boardToNoticeState.getOrElse(boardPath, Unknown)))
 
     val result = ConsumeNoticesExecutor:
-      InstructionExecutorService(TestWallClock(Timestamp("2024-11-25T12:00:00Z")))
+      InstructionExecutorService(TestWallClock(ts"2024-11-25T12:00:00Z"))
     .toEvents(instr, order, controllerState)
     result.map(_.map:
       case KeyedEvent(`orderId`, event) => event)

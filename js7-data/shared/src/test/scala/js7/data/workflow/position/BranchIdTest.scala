@@ -3,6 +3,7 @@ package js7.data.workflow.position
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.data.order.CycleState
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, cycle, fork, try_}
 
@@ -51,7 +52,7 @@ final class BranchIdTest extends OurTestSuite:
     "scheme" in:
       checkCycle(
         CycleState(
-          end = Timestamp("2021-09-30T00:00:00Z"),
+          end = ts"2021-09-30T00:00:00Z",
           schemeIndex = 3,
           index = 7,
           next = Timestamp.Epoch),
@@ -60,7 +61,7 @@ final class BranchIdTest extends OurTestSuite:
     "index" in:
       checkCycle(
         CycleState(
-          end = Timestamp("2021-09-30T00:00:00Z"),
+          end = ts"2021-09-30T00:00:00Z",
           schemeIndex = 0,
           index = 7,
           next = Timestamp.Epoch),
@@ -69,20 +70,20 @@ final class BranchIdTest extends OurTestSuite:
     "next" in:
       checkCycle(
         CycleState(
-          end = Timestamp("2021-09-30T00:00:00Z"),
+          end = ts"2021-09-30T00:00:00Z",
           schemeIndex = 0,
           index = 7,
-          next = Timestamp("2021-10-04T12:00:00Z")),
+          next = ts"2021-10-04T12:00:00Z"),
         "cycle+end=1632960000000,i=7,next=1633348800000")
 
     "complete" in:
       checkCycle(
         CycleState(
-          end = Timestamp("2021-09-30T00:00:00Z"),
+          end = ts"2021-09-30T00:00:00Z",
           schemeIndex = 1,
           periodIndex = 2,
           index = 3,
-          next = Timestamp("2021-10-04T12:00:00Z")),
+          next = ts"2021-10-04T12:00:00Z"),
         "cycle+end=1632960000000,scheme=1,period=2,i=3,next=1633348800000")
 
     def checkCycle(cycleState: CycleState, branchIdString: String): Unit =

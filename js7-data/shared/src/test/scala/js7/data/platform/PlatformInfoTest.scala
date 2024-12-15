@@ -3,6 +3,7 @@ package js7.data.platform
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.version.Version
 import js7.data.system.JavaInformation
 import js7.tester.CirceJsonTester.testJson
@@ -12,7 +13,7 @@ final class PlatformInfoTest extends OurTestSuite:
   "PlatformInfo" in:
     testJson(
       PlatformInfo(
-        Timestamp("2022-07-08T12:00:00Z"),
+        ts"2022-07-08T12:00:00Z",
         timezone = "Europe/Berlin",
         Version("2.4.0-TEST"),
         hostname = "HOST",

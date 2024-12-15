@@ -7,6 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
@@ -45,7 +46,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       workflowPosition = workflowId /: Position(1)))
 
   "Endless empty loop" in:
-    assert(local("2021-10-01T00:00") == Timestamp("2021-09-30T21:00:00Z"))
+    assert(local("2021-10-01T00:00") == ts"2021-09-30T21:00:00Z")
     val clock = TestWallClock(local("2021-10-01T00:00"))
     val stepper = new Stepper(
       OrderId("#2021-10-01#"),
@@ -204,17 +205,17 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       .copy(state = Order.Ready))
 
   "Mariehamn daylight saving time (to be sure)" in:
-    assert(local("2020-10-25T00:00") == Timestamp("2020-10-24T21:00:00Z"))
-    assert(local("2020-10-25T03:00") == Timestamp("2020-10-25T00:00:00Z"))
-    assert(local("2020-10-25T03:30") == Timestamp("2020-10-25T00:30:00Z"))
-    assert(local("2020-10-25T04:00") == Timestamp("2020-10-25T02:00:00Z"))
-    assert(local("2020-10-25T04:30") == Timestamp("2020-10-25T02:30:00Z"))
-    assert(local("2020-10-26T00:00") == Timestamp("2020-10-25T22:00:00Z"))
+    assert(local("2020-10-25T00:00") == ts"2020-10-24T21:00:00Z")
+    assert(local("2020-10-25T03:00") == ts"2020-10-25T00:00:00Z")
+    assert(local("2020-10-25T03:30") == ts"2020-10-25T00:30:00Z")
+    assert(local("2020-10-25T04:00") == ts"2020-10-25T02:00:00Z")
+    assert(local("2020-10-25T04:30") == ts"2020-10-25T02:30:00Z")
+    assert(local("2020-10-26T00:00") == ts"2020-10-25T22:00:00Z")
     assert(local("2020-10-25T04:00") - local("2020-10-25T03:00") == 2.h)
     assert(local("2020-10-25T04:00") - local("2020-10-25T03:59:59") == 1.h + 1.s)
 
-    assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
-    assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
+    assert(local("2021-03-28T02:59") == ts"2021-03-28T00:59:00Z")
+    assert(local("2021-03-28T04:00") == ts"2021-03-28T01:00:00Z")
     assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
 
   "Daylight saving time change" in:
@@ -232,12 +233,12 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
                 AlwaysPeriod)),
               Periodic(1.h, Seq(0.minute, 30.minute)))))):
             Workflow.empty),
-        timeZone = Timezone(zone.getId),
+        timeZone = Timezone(zoneId.getId),
         calendarPath = Some(calendar.path)),
       clock)
 
     val initialCycleState = CycleState(
-      next = Timestamp("2020-10-24T23:30:00Z"),
+      next = ts"2020-10-24T23:30:00Z",
       end  = local("2020-10-26T00:00"),
       index = 1)
     assert(stepper.step() == Seq(OrderCyclingPrepared(initialCycleState)))

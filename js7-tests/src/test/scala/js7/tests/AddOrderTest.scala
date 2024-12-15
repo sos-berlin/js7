@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
@@ -38,7 +39,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  private lazy val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
+  private lazy val alarmClock = TestAlarmClock(ts"2099-01-01T00:00:00Z")
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(alarmClock))

@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.tester.CirceJsonTester.testJson
 
 final class AdmissionPeriodTest extends OurTestSuite:
@@ -130,7 +131,7 @@ final class AdmissionPeriodTest extends OurTestSuite:
 
     "SpecificDatePeriod" in:
       val epochSeconds = 1664366400
-      assert(epochSeconds == Timestamp("2022-09-28T12:00:00Z").toEpochSecond)
+      assert(epochSeconds == ts"2022-09-28T12:00:00Z".toEpochSecond)
       testJson[AdmissionPeriod](
         SpecificDatePeriod(epochSeconds, 600.s),
         json"""

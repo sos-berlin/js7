@@ -2,13 +2,14 @@ package js7.base.time
 
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import scala.concurrent.duration.*
 
 final class TestAlarmClockTest extends OurTestSuite:
 
-  private val start = Timestamp("2021-01-01T00:00:00Z")
+  private val start = ts"2021-01-01T00:00:00Z"
   private val clockCheckInterval = 1.minute
 
   "scheduleAt, and tick at scheduled time" in:

@@ -2,10 +2,11 @@ package js7.base.time
 
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import scala.concurrent.duration.*
 
 final class TimeIntervalTest extends OurTestSuite:
-  private val timeInterval = TimeInterval(Timestamp("2021-08-23T00:00:00Z"), 1.h)
+  private val timeInterval = TimeInterval(ts"2021-08-23T00:00:00Z", 1.h)
 
   "endsBefore" in:
     assert(!timeInterval.endsBefore(timeInterval.start - 1.ms))

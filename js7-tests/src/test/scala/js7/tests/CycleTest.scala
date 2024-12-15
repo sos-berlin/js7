@@ -14,6 +14,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
@@ -253,7 +254,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
   "Daylight saving time change" - {
     "Mariehamn daylight saving time (to be sure)" in:
-      assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
+      assert(local("2021-03-28T02:59") == ts"2021-03-28T00:59:00Z")
       assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
 

@@ -1,21 +1,27 @@
 package js7.tests.controller.proxy
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
+import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
 import js7.base.auth.Admission
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.StandardEventBus
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -41,11 +47,6 @@ import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest.*
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.monixlike.MonixLikeExtensions.headL
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
@@ -135,7 +136,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
   "addOrders" in:
     val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path,
       Map("A" -> StringValue("*" * 800)),
-      Some(Timestamp("2100-01-01T00:00:00Z")))
+      Some(ts"2100-01-01T00:00:00Z"))
     val n = calculateNumberOf(500_000,
       Stamped(0L,
         bigOrder.toOrderAdded(workflow.id.versionId, bigOrder.arguments): KeyedEvent[OrderEvent]))

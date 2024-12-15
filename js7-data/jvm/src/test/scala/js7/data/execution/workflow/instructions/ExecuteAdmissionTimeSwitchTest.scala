@@ -7,6 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
@@ -16,7 +17,7 @@ import scala.concurrent.duration.*
 final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
 
   "AdmissionTimeScheme.always" in:
-    val now = Timestamp("2021-01-01T12:00:00Z")
+    val now = ts"2021-01-01T12:00:00Z"
     implicit val alarmClock: TestAlarmClock = TestAlarmClock(now)
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
 
@@ -42,8 +43,8 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite:
   "Europe/Mariehamn" - {
     "Daylight saving time" in:
       implicit val zone = mariehamnZoneId
-      assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
-      assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
+      assert(local("2021-03-28T02:59") == ts"2021-03-28T00:59:00Z")
+      assert(local("2021-03-28T04:00") == ts"2021-03-28T01:00:00Z")
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
 
       check(zone)

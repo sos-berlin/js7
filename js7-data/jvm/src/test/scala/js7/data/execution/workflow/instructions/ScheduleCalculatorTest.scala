@@ -5,6 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.order.CycleState
@@ -32,12 +33,12 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
     "Periodic" - {
       val cs = CycleState(
         next = Timestamp.Epoch/*not used*/,
-        end  = Timestamp("2021-10-02T00:00:00Z"),
+        end  = ts"2021-10-02T00:00:00Z",
         index = 0)
 
       "First cycle (OrderCyclingPrepared)" - {
         val initialCycleState = cs.copy(schemeIndex = -1)
-        val first = cs.copy(index = 1, next = Timestamp("2021-10-01T09:05:00Z"))
+        val first = cs.copy(index = 1, next = ts"2021-10-01T09:05:00Z")
 
         "now < first cycle start" in:
           assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), initialCycleState) ==
@@ -54,12 +55,12 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
         "now == second cycle start" in:
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:10:00Z"), initialCycleState) ==
             Some(first.copy(
-              next = Timestamp("2021-10-01T09:10:00Z"))))
+              next = ts"2021-10-01T09:10:00Z")))
 
         "now > second cycle start" in:
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:59:00Z"), initialCycleState) ==
             Some(first.copy(
-              next = Timestamp("2021-10-01T09:10:00Z"))))
+              next = ts"2021-10-01T09:10:00Z")))
 
         "now >> second cycle start" in:
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:05:00Z"), initialCycleState) ==
@@ -67,12 +68,12 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
               next = Timestamp("2021-10-01T10:05:00Z"))))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:06:00Z"), initialCycleState) ==
             Some(first.copy(
-              next = Timestamp("2021-10-01T10:05:00Z"))))
+              next = ts"2021-10-01T10:05:00Z")))
       }
 
       "Next cycle (OrderCycleFinished)" - {
-        val last = cs.copy(index = 1, next = Timestamp("2021-10-01T09:05:00Z"))
-        val next = cs.copy(index = 2, next = Timestamp("2021-10-01T09:10:00Z"))
+        val last = cs.copy(index = 1, next = ts"2021-10-01T09:05:00Z")
+        val next = cs.copy(index = 2, next = ts"2021-10-01T09:10:00Z")
 
         "now < first (only if clock has been manipulated)" in:
           assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), last) == Some(next))
@@ -111,7 +112,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
     "Ticking" - {
       val cs = CycleState(
         next = Timestamp.Epoch/*not used*/,
-        end  = Timestamp("2021-10-02T00:00:00Z"),
+        end  = ts"2021-10-02T00:00:00Z",
         schemeIndex = 1,
         periodIndex = 1,
         index = 0)
@@ -204,9 +205,9 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
         local("2021-03-28T05:00")))  // Local clock has skipped an hour
 
       assert(times == Seq(
-        Timestamp("2021-03-28T01:00:00Z"),
-        Timestamp("2021-03-28T01:30:00Z"),
-        Timestamp("2021-03-28T02:00:00Z")))
+        ts"2021-03-28T01:00:00Z",
+        ts"2021-03-28T01:30:00Z",
+        ts"2021-03-28T02:00:00Z"))
 
     "Summer to winter" in:
       val times = calculator
@@ -221,9 +222,9 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester:
         local("2021-10-31T04:00")))
 
       assert(times == Seq(
-        Timestamp("2021-10-31T00:00:00Z"),
-        Timestamp("2021-10-31T00:30:00Z"),
-        Timestamp("2021-10-31T02:00:00Z")))  // An hour is skipped!!!
+        ts"2021-10-31T00:00:00Z",
+        ts"2021-10-31T00:30:00Z",
+        ts"2021-10-31T02:00:00Z"))  // An hour is skipped!!!
   }
 
   "ScheduleTester standard example" - {

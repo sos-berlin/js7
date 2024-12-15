@@ -344,6 +344,7 @@ lazy val `js7-base` = crossProject(JVMPlatform)
       "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
+      "org.typelevel" %%% "literally" % literallyVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++

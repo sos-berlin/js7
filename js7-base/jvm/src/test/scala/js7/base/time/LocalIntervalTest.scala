@@ -3,6 +3,7 @@ package js7.base.time
 import java.time.{LocalDateTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 
 final class LocalIntervalTest extends OurTestSuite:
   private val localInterval = LocalInterval(LocalDateTime.parse("2021-08-30T01:00"), 2.h)
@@ -19,4 +20,4 @@ final class LocalIntervalTest extends OurTestSuite:
 
   "toTimeInterval" in:
     assert(localInterval.toTimeInterval(ZoneId.of("Europe/Mariehamn")) ==
-      TimeInterval(Timestamp("2021-08-29T22:00:00Z"), 2.h))
+      TimeInterval(ts"2021-08-29T22:00:00Z", 2.h))

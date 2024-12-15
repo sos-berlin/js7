@@ -5,6 +5,7 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
@@ -79,7 +80,7 @@ private object JControllerStateTest:
           clusterWatchId = None))),
     controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
-      Timestamp("2019-05-24T12:00:00Z"),
+      ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")),
     keyToUnsignedItemState_ = Map(AgentPath("AGENT") ->
       AgentRefState(

@@ -1,11 +1,13 @@
 package js7.tests.cluster.controller
 
+import fs2.Stream
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
@@ -15,7 +17,6 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
-import fs2.Stream
 import scala.util.Try
 
 final class SwitchOverControllerClusterTest extends ControllerClusterTester:
@@ -84,7 +85,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester:
     orderId.grouped(1000)
       .map(Stream.iterable)
       .map(_.map(FreshOrder(_, TestWorkflow.path,
-        scheduledFor = Some(Timestamp("3000-01-01T00:00:00Z")))))
+        scheduledFor = Some(ts"3000-01-01T00:00:00Z"))))
       .foreach { orders =>
         controller.api.addOrders(orders).await(timeout).orThrow
       }

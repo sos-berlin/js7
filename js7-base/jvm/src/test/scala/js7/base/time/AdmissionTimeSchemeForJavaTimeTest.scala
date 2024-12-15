@@ -5,6 +5,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 
 final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
@@ -29,12 +30,12 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
   "isPermitted" in:
     // 2023-04-06 is a tuesday
-    assert(!scheme.isPermitted(Timestamp("2023-07-04T00:00:00Z"), zone, dateOffset))
-    assert(!scheme.isPermitted(Timestamp("2023-07-04T05:59:59Z"), zone, dateOffset))
-    assert(scheme.isPermitted(Timestamp("2023-07-04T06:00:00Z"), zone, dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-04T00:00:00Z", zone, dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-04T05:59:59Z", zone, dateOffset))
+    assert(scheme.isPermitted(ts"2023-07-04T06:00:00Z", zone, dateOffset))
 
-    assert(!scheme.isPermitted(Timestamp("2023-07-04T14:59:59Z"), zone, dateOffset))
-    assert(scheme.isPermitted(Timestamp("2023-07-04T15:00:00Z"), zone, dateOffset))
+    assert(!scheme.isPermitted(ts"2023-07-04T14:59:59Z", zone, dateOffset))
+    assert(scheme.isPermitted(ts"2023-07-04T15:00:00Z", zone, dateOffset))
 
   "findLocalInterval" in:
     assert(scheme.findLocalInterval(local("2023-07-04T00:00"), dateOffset) ==
@@ -101,42 +102,42 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
       4 -> LocalInterval(local("2023-07-31T21:00"), 3.h)))
 
   "findTimeInterval" in:
-    assert(scheme.findTimeInterval(Timestamp("2023-07-04T00:00:00Z"), zone, dateOffset) ==
-      Some(TimeInterval(Timestamp("2023-07-04T06:00:00Z"), 2.h)))
-    assert(scheme.findTimeInterval(Timestamp("2023-07-04T06:00:00Z"), zone, dateOffset) ==
-      Some(TimeInterval(Timestamp("2023-07-04T06:00:00Z"), 2.h)))
-    assert(scheme.findTimeInterval(Timestamp("2023-07-04T07:59:59Z"), zone, dateOffset) ==
-      Some(TimeInterval(Timestamp("2023-07-04T06:00:00Z"), 2.h)))
+    assert(scheme.findTimeInterval(ts"2023-07-04T00:00:00Z", zone, dateOffset) ==
+      Some(TimeInterval(ts"2023-07-04T06:00:00Z", 2.h)))
+    assert(scheme.findTimeInterval(ts"2023-07-04T06:00:00Z", zone, dateOffset) ==
+      Some(TimeInterval(ts"2023-07-04T06:00:00Z", 2.h)))
+    assert(scheme.findTimeInterval(ts"2023-07-04T07:59:59Z", zone, dateOffset) ==
+      Some(TimeInterval(ts"2023-07-04T06:00:00Z", 2.h)))
 
-    assert(scheme.findTimeInterval(Timestamp("2023-07-04T08:00:00Z"), zone, dateOffset) ==
-      Some(TimeInterval(Timestamp("2023-07-04T15:00:00Z"), 2.h)))
+    assert(scheme.findTimeInterval(ts"2023-07-04T08:00:00Z", zone, dateOffset) ==
+      Some(TimeInterval(ts"2023-07-04T15:00:00Z", 2.h)))
 
   "findTimeIntervals" in:
     val timeIntervals = scheme.findTimeIntervals(
-      from = Timestamp("2023-07-01T00:00:00Z"),
-      until = Timestamp("2023-08-01T00:00:00Z"),
+      from = ts"2023-07-01T00:00:00Z",
+      until = ts"2023-08-01T00:00:00Z",
       zone, dateOffset)
     assert(timeIntervals.toSeq == Seq(
-       0 -> TimeInterval(Timestamp("2023-07-01T06:00:00Z"), 2.h), // saturday
-       0 -> TimeInterval(Timestamp("2023-07-02T06:00:00Z"), 2.h), // sunday
+       0 -> TimeInterval(ts"2023-07-01T06:00:00Z", 2.h), // saturday
+       0 -> TimeInterval(ts"2023-07-02T06:00:00Z", 2.h), // sunday
 
-       5 -> TimeInterval(Timestamp("2023-07-02T21:00:00Z"), 1.h), // monday
-       0 -> TimeInterval(Timestamp("2023-07-03T06:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-04T06:00:00Z"), 2.h), // tuesday
-       1 -> TimeInterval(Timestamp("2023-07-04T15:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-05T06:00:00Z"), 2.h), // wednesday
-       0 -> TimeInterval(Timestamp("2023-07-06T06:00:00Z"), 2.h), // thursday
-       6 -> TimeInterval(Timestamp("2023-07-06T09:00:00Z"), 1.s),
-       0 -> TimeInterval(Timestamp("2023-07-07T06:00:00Z"), 2.h), // friday
-       0 -> TimeInterval(Timestamp("2023-07-08T06:00:00Z"), 2.h), // saturday
-       0 -> TimeInterval(Timestamp("2023-07-09T06:00:00Z"), 2.h), // sunday
+       5 -> TimeInterval(ts"2023-07-02T21:00:00Z", 1.h), // monday
+       0 -> TimeInterval(ts"2023-07-03T06:00:00Z", 2.h),
+       0 -> TimeInterval(ts"2023-07-04T06:00:00Z", 2.h), // tuesday
+       1 -> TimeInterval(ts"2023-07-04T15:00:00Z", 2.h),
+       0 -> TimeInterval(ts"2023-07-05T06:00:00Z", 2.h), // wednesday
+       0 -> TimeInterval(ts"2023-07-06T06:00:00Z", 2.h), // thursday
+       6 -> TimeInterval(ts"2023-07-06T09:00:00Z", 1.s),
+       0 -> TimeInterval(ts"2023-07-07T06:00:00Z", 2.h), // friday
+       0 -> TimeInterval(ts"2023-07-08T06:00:00Z", 2.h), // saturday
+       0 -> TimeInterval(ts"2023-07-09T06:00:00Z", 2.h), // sunday
 
-       0 -> TimeInterval(Timestamp("2023-07-10T06:00:00Z"), 2.h), // monday
-       2 -> TimeInterval(Timestamp("2023-07-10T16:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-11T06:00:00Z"), 2.h), // tuesday
-       1 -> TimeInterval(Timestamp("2023-07-11T15:00:00Z"), 2.h),
-       0 -> TimeInterval(Timestamp("2023-07-12T06:00:00Z"), 2.h), // wednesday
-       0 -> TimeInterval(Timestamp("2023-07-13T06:00:00Z"), 2.h), // thursday
+       0 -> TimeInterval(ts"2023-07-10T06:00:00Z", 2.h), // monday
+       2 -> TimeInterval(ts"2023-07-10T16:00:00Z", 2.h),
+       0 -> TimeInterval(ts"2023-07-11T06:00:00Z", 2.h), // tuesday
+       1 -> TimeInterval(ts"2023-07-11T15:00:00Z", 2.h),
+       0 -> TimeInterval(ts"2023-07-12T06:00:00Z", 2.h), // wednesday
+       0 -> TimeInterval(ts"2023-07-13T06:00:00Z", 2.h), // thursday
        0 -> TimeInterval(Timestamp("2023-07-14T06:00:00Z"), 2.h), // friday
        0 -> TimeInterval(Timestamp("2023-07-15T06:00:00Z"), 2.h), // saturday
        0 -> TimeInterval(Timestamp("2023-07-16T06:00:00Z"), 2.h), // sunday

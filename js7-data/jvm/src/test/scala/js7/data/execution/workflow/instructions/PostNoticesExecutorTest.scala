@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import cats.syntax.option.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
@@ -158,7 +159,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
 
 object PostNoticesExecutorTest:
-  private val clockTimestamp = Timestamp("2111-01-01T00:00:00Z")
+  private val clockTimestamp = ts"2111-01-01T00:00:00Z"
   private val lifeTime = 24.h
 
   // Each board calculates a different lifetime

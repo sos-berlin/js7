@@ -6,7 +6,9 @@ import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -90,6 +92,12 @@ object Timestamp:
 
   def apply(dateTime: String): Timestamp =
     implementation.parse(dateTime)
+
+  def checked(dateTime: String): Checked[Timestamp] =
+    try
+      Right(parse(dateTime))
+    catch case NonFatal(t) =>
+      Left(Problem(t.toStringWithCauses))
 
   def parse(dateTime: String): Timestamp =
     implementation.parse(dateTime)

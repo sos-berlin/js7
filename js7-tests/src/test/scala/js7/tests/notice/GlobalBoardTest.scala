@@ -9,6 +9,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -33,8 +34,8 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.notice.GlobalBoardTest.*
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.collection.View
 import scala.concurrent.duration.*
 
@@ -515,7 +516,7 @@ object GlobalBoardTest:
 
   // One lifeTime per board
   private val lifeTimes = Seq(1.days, 2.days, 3.days)
-  private val startTimestamp = Timestamp("2222-10-10T00:00:00Z")
+  private val startTimestamp = ts"2222-10-10T00:00:00Z"
   private val endOfLifes = lifeTimes.map(GlobalBoardTest.startTimestamp + _)
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
