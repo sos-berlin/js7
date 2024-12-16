@@ -26,11 +26,11 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStateReset, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCycleEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderGoMarked, OrderGoes, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStateReset, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, Order, OrderEvent, OrderId, OrderObstacle, OrderOutcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
+import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Break, Cycle, EmptyInstruction, Fail, Fork, If, LockInstruction, Options, Retry, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
@@ -401,7 +401,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
     }
   }
 
-  "One first cycle in mid of period (bug JS-2012)" in:
+  "Ticking: One first cycle in mid of period (bug JS-2012)" in:
     // Fixed bug:
     // Cycle executes the block twice, when starting after the first period of the calendar day.
     clock.resetTo(local("2021-10-01T01:30"))
@@ -435,6 +435,66 @@ with ControllerAgentForScalaTest with ScheduleTester:
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_.isInstanceOf[OrderCycleStarted]) == 3)
+
+  "Ticking: Late OrderCycleStart should skip gone cycles (JS-2189)" in:
+    // Fixed bug: Handle a Pause longer than the ticking interval between two cycles,
+    // for example due to restart.
+    eventWatch.resetLastWatchedEventId()
+    clock.resetTo(ts"2024-12-16T00:00:00Z") // 02:00 local time
+    withItem(Workflow(
+      WorkflowPath("ONCE-AN-HOUR"),
+      Seq:
+        Cycle(Schedule(Seq(Scheme(
+          AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.of(2, 0), 11.h + 1.s))),
+          Ticking(1.h)
+        )))):
+          Workflow.empty,
+      timeZone = timezone,
+      calendarPath = Some(calendar.path)
+    )): workflow =>
+      val orderId = OrderId("#2024-12-16#LATE")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path))
+        .await(99.s).orThrow
+
+      for delay <- Seq(0.s, 1.h, 1.h + 1.s, 1.h - 1.s, 2.h - 1.s, 1.s, 2.h, 3.h) do
+        clock.tick(delay)
+        eventWatch.awaitNextKey[OrderCycleFinished](orderId)
+      eventWatch.awaitNextKey[OrderFinished]
+
+      val events = eventWatch.allStamped[OrderCycleEvent].collect:
+        case Stamped(_, ms, KeyedEvent(`orderId`, event: OrderCycleEvent)) =>
+          Timestamp.ofEpochMilli(ms) -> event
+
+      def t(time: String) = Timestamp(s"2024-12-16T${time}Z")
+      def cycleState(index: Int, next: Timestamp) =
+        CycleState(end = ts"2024-12-16T22:00:00Z", index = index, next = next)
+
+      assert(events == Vector(
+        t("00:00:00") -> OrderCyclingPrepared(cycleState(1, next = t("00:00:00"))),
+        // no delay
+        t("00:00:00") -> OrderCycleStarted(),
+        t("00:00:00") -> OrderCycleFinished(Some(cycleState(2, next = t("01:00:00")))),
+        // delay 1h
+        t("01:00:00") -> OrderCycleStarted(),
+        t("01:00:00") -> OrderCycleFinished(Some(cycleState(3, next = t("02:00:00")))),
+        // delay 1h + 1s
+        t("02:00:01") -> OrderCycleStarted(),
+        t("02:00:01") -> OrderCycleFinished(Some(cycleState(4, next = t("03:00:00")))),
+        // delay 1h - 1s
+        t("03:00:00") -> OrderCycleStarted(),
+        t("03:00:00") -> OrderCycleFinished(Some(cycleState(5, next = t("04:00:00")))),
+        // delay 2h - 1s
+        t("04:59:59") -> OrderCycleStarted(),
+        t("04:59:59") -> OrderCycleFinished(Some(cycleState(6, next = t("05:00:00")))),
+        // delay 1s
+        t("05:00:00") -> OrderCycleStarted(),
+        t("05:00:00") -> OrderCycleFinished(Some(cycleState(7, next = t("06:00:00")))),
+        // delay 2h
+        t("07:00:00") -> OrderCycleStarted(),
+        t("07:00:00") -> OrderCycleFinished(Some(cycleState(8, next = t("08:00:00")))),
+        // delay 3h
+        t("10:00:00") -> OrderCycleStarted(),
+        t("10:00:00") -> OrderCycleFinished(Some(cycleState(9, next = t("11:00:00"))))))
 
   "Break" - {
     "Break" in:

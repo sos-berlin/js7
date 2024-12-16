@@ -750,16 +750,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCoreEvent
 
 
+  sealed trait OrderCycleEvent extends OrderActorEvent
+
   final case class OrderCyclingPrepared(cycleState: CycleState)
-  extends OrderActorEvent
+  extends OrderCycleEvent
 
 
   final case class OrderCycleStarted()
-  extends OrderActorEvent
+  extends OrderCycleEvent
 
 
   final case class OrderCycleFinished(cycleState: Option[CycleState])
-  extends OrderActorEvent
+  extends OrderCycleEvent
 
 
   final case class OrderTransferred(workflowPosition: WorkflowPosition)
