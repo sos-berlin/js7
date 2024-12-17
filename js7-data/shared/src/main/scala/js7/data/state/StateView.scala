@@ -208,8 +208,10 @@ trait StateView extends ItemContainer:
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
     for orderScopes <- toOrderScopes(order) yield
       val nowScope = NowScope(now)
-      orderScopes.pureOrderScope |+| nowScope |+|
-        JobResourceScope(keyTo(JobResource),
+      orderScopes.pureOrderScope |+|
+        nowScope |+|
+        JobResourceScope(
+          keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
 
   final def noticeScope(order: Order[Order.State]): Checked[Scope] =

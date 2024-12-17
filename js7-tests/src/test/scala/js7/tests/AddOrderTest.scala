@@ -149,6 +149,27 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
         OrderFinished(),
         OrderDeleted))
 
+  "uniqueOrderId" in:
+    val eventId = eventWatch.resetLastWatchedEventId()
+    withItem(Workflow.empty): emptyWorkflow =>
+      val workflow = Workflow.of:
+        AddOrder(
+          orderId = expr(s""" uniqueOrderId("ADDED-%03d") """),
+          emptyWorkflow.path,
+          deleteWhenTerminated = true)
+
+      withItem(workflow): workflow =>
+        val orderIds = (1 to 3).map(i => OrderId(s"ORDER-$i"))
+        val addedOrderIds = Seq(OrderId("ADDED-001"), OrderId("ADDED-002"), OrderId("ADDED-002"))
+
+        controller.api.addOrders:
+          fs2.Stream.iterable(orderIds).map: orderId =>
+            FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        .await(99.s).orThrow
+
+        for orderId <- orderIds ++ addedOrderIds do
+          eventWatch.awaitKey[OrderFinished](orderId)
+
 
 object AddOrderTest:
   private val agentPath = AgentPath("AGENT")

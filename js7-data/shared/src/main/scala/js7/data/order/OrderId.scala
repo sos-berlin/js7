@@ -68,7 +68,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]:
   private val ChildSeparatorRegex = Regex.quote(ChildSeparator)
   private val ReservedCharacters = Set('|')
 
-  protected def unchecked(string: String) = new OrderId(string)
+  def unchecked(string: String) = new OrderId(string)
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validOrderId: String): OrderId =

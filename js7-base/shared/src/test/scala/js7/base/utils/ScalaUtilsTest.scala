@@ -13,6 +13,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch
+import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
@@ -1011,6 +1012,60 @@ final class ScalaUtilsTest extends OurTestSuite:
   "compilable" in:
     compilable(1 / 0)
 
+  "makeUnique" - {
+    "makeUnique" in:
+      def checkedSet(strings: String*): String => Checked[Boolean] =
+        string => Right(Set(strings*)(string))
+
+      assert(makeUnique("A", _ => true, 1) == Left(Problem("Invalid pattern for makeUnique function")))
+      assert(makeUnique("A", Set("A")) == Left(Problem("Invalid pattern for makeUnique function")))
+      assert(makeUnique("A-%q-Z", Set("A-1-Z", "A-2-Z")) == Left(
+        Problem("makeUnique function: java.util.UnknownFormatConversionException: Conversion = 'q'")))
+
+      assert(makeUnique("A-%d-Z", Set()) == Right("A-1-Z"))
+      assert(makeUnique("A-%d-Z", Set("A-1-Z", "A-2-Z")) == Right("A-3-Z"))
+      assert(makeUnique("A-%s-Z", Set("A-1-Z", "A-2-Z")) == Right("A-3-Z"))
+      assert(makeUnique("A-%02d-Z", Set("A-01-Z", "A-02-Z")) == Right("A-03-Z"))
+
+      locally:
+        val set = mutable.Set.empty[String]
+        for i <- 1 to 100 do
+          set += s"A-$i"
+          assert(makeUnique("A-%d", set) == Right(s"A-${i+1}"))
+        set.clear()
+        for i <- 1 to 100 do
+          set += s"A-$i-Z"
+          assert(makeUnique("A-%d-Z", set) == Right(s"A-${i+1}-Z"))
+
+      locally:
+        val set = (1 to 100).map(i => s"A-$i").toSet
+        for i <- 1 to 100 do
+          assert(makeUnique("A-%d", set - s"A-$i") == Right(s"A-$i"))
+
+      locally:
+        val set = (1 to 100).map(i => s"A-$i-Z").toSet
+        for i <- 1 to 100 do
+          assert(makeUnique("A-%d-Z", set - s"A-$i-Z") == Right(s"A-$i-Z"))
+
+
+    "Speed, optimizable pattern" in:
+      if !sys.props.contains("test.speed") then
+        pending
+      else
+        logger.info:
+          val set = (1 to 100_000).map(i => s"A-$i").toSet
+          measureTime(n = 10, "makeUnique"):
+            makeUnique("A-%d", set)
+
+    "Speed, random pattern" in:
+      if !sys.props.contains("test.speed") then
+        pending
+      else
+        logger.info:
+          val set = (1 to 100_000).map(i => s"A-$i-Z").toSet
+          measureTime(n = 10, "makeUnique"):
+            makeUnique("A-%d-Z", set)
+  }
 
 object ScalaUtilsTest:
 

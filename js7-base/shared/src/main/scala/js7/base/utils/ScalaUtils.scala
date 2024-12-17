@@ -10,6 +10,7 @@ import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
+import java.util.{Formatter, Locale}
 import js7.base.exceptions.PublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -17,15 +18,17 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.Nulls.nullToNone
-import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
 import scala.collection.{AbstractIterator, AbstractMapView, Factory, MapOps, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
+import scala.util.boundary.break
 import scala.util.chaining.*
-import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try, boundary}
 
 object ScalaUtils:
 
@@ -1135,3 +1138,49 @@ object ScalaUtils:
       ""
     else
       iterator.mkString("(", ", ", ")")
+
+  private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+
+  /** @param pattern a `java.util.Formatter` pattern
+    */
+  def makeUnique(pattern: String, existing: collection.Set[String]): Checked[String] =
+    makeUnique(pattern, existing, existing.size)
+
+  /** @param pattern a `java.util.Formatter` pattern
+    */
+  def makeUnique(
+    pattern: String,
+    exists: String => Boolean,
+    estimatedNumberOfExisting: Int)
+  : Checked[String] =
+    if pattern.endsWith("%d") && pattern.lastIndexOf('%', pattern.length - 3) == -1 then
+      // Optimized
+      val prefix = pattern.dropRight(2)
+      Right:
+        findUnique(exists, estimatedNumberOfExisting)(prefix + _)
+    else
+      try
+        boundary:
+          val sb = new java.lang.StringBuilder
+          val formatter = new Formatter(sb, formatLocale)
+          val result =
+            findUnique(exists, estimatedNumberOfExisting): i =>
+              sb.setLength(0)
+              formatter.format(pattern, i)
+              val result = sb.toString
+              if result == pattern then
+                break(Left(Problem("Invalid pattern for makeUnique function")))
+              result
+          Right(result)
+      catch case NonFatal(e) =>
+        Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
+
+  private def findUnique(exists: String => Boolean, estimatedNumberOfExisting: Int)
+    (make: Int => String)
+  : String =
+    var i = 1
+    while true do
+      val s = make(i)
+      if !exists(s) then return s
+      i += 1
+    null.asInstanceOf[String]
