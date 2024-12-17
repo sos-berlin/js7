@@ -112,8 +112,10 @@ final class PekkoWebServerTest extends OurTestSuite with BeforeAndAfterAll
             httpsConnectionContext)
           .await(99.s)
       }
-      assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
-             e.getMessage == "General SSLEngine problem")
+      assert(
+        e.getMessage == "(certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found" ||
+        e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
+        e.getMessage == "General SSLEngine problem")
     }
 
     "Hostname verification accepts localhost" in {
