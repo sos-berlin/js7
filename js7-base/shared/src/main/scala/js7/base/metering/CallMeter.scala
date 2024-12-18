@@ -131,7 +131,9 @@ final class CallMeter(val name: String):
 
 object CallMeter:
 
-  private val logger = Logger[this.type]
+  // logger must be lazy, because CallMeter may be used (initialized) before
+  // logging has been initialized
+  private lazy val logger = Logger[this.type]
   //private val SmallestPeriod = 1.min
   //private val PeriodLengths = Seq(
   //  5,

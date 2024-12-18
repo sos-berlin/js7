@@ -99,6 +99,7 @@ object Logger extends AdHocLogger:
         val prefixArg = prefix.nonEmpty ?? s"(\"$prefix\")"
         val msg =
           s"Log4j will not be properly initialized because Logger$classArg$prefixArg is being created too early"
+        System.err.println(msg)
         ScalaLogger[this.type].error(msg, Exception(msg))
 
   /** Removes '$' from Scala's companion object class. */
