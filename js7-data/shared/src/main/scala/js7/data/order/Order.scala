@@ -22,7 +22,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
-import js7.data.order.OrderEvent.*
+import js7.data.order.OrderEvent.{OrderMoved, *}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.plan.PlanId
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -221,7 +221,7 @@ extends
 
       case OrderAwoke =>
         check(
-          (isState[DelayingRetry] || isState[DelayedAfterError])
+          (isState[Sleeping] || isState[DelayingRetry] || isState[DelayedAfterError])
             && !isSuspendedOrStopped
             && isDetachedOrAttached,
           copy(state = Ready))
@@ -239,8 +239,9 @@ extends
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderMoved(to, _) =>
-        check((isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles])
-          && isDetachedOrAttached,
+        check(
+          (isState[IsFreshOrReady] || isState[Processed] || isState[BetweenCycles] || isState[Sleeping])
+            && isDetachedOrAttached,
           withPosition(to).copy(
             isResumed = false,
             state = if isState[Fresh] then state else Ready))
@@ -576,6 +577,11 @@ extends
               .copy(
                 state = BetweenCycles(cycleState))
 
+      case OrderSleeping(until) =>
+        check(isState[Ready] && isDetachedOrAttached,
+          copy(
+            state = Sleeping(until)))
+
       case OrderTransferred(workflowPosition) =>
         if isDetached then
           Right(copy(workflowPosition = workflowPosition))
@@ -769,6 +775,7 @@ extends
       isState[BetweenCycles]
       || isState[DelayingRetry]
       || isState[DelayedAfterError]
+      || isState[Sleeping]
       || (isState[Fresh] && maybeDelayedUntil.isDefined)
 
   private def isMarkable =
@@ -1077,6 +1084,7 @@ object Order:
       Subtype(Cancelled),
       Subtype(Deleted),
       Subtype(deriveCodec[Prompting]),
+      Subtype(deriveCodec[Sleeping]),
       Subtype(deriveCodec[Broken]))
 
   sealed trait IsDetachable extends State:
@@ -1261,6 +1269,18 @@ object Order:
     def go(order: Order[BetweenCycles]) =
       Right:
         OrderGoes :: OrderCycleStarted() :: Nil
+
+
+  final case class Sleeping(until: Timestamp)
+  extends IsStarted, IsDetachable, IsGoCommandable, IsResettable, IsTransferable:
+    type Self = Sleeping
+
+    override private[Order] def maybeDelayedUntil = Some(until)
+
+    def go(order: Order[Sleeping]): Right[Problem, List[OrderGoes | OrderAwoke | OrderMoved]] =
+      Right:
+        List(OrderGoes, OrderAwoke, OrderMoved(order.position.increment))
+
 
   type Failed = Failed.type
   case object Failed extends IsStarted, IsFailed, IsTransferable

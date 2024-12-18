@@ -772,6 +772,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderCycleEvent
 
 
+  final case class OrderSleeping(until: Timestamp)
+  extends OrderActorEvent
+
+
   final case class OrderTransferred(workflowPosition: WorkflowPosition)
   extends OrderActorEvent
 
@@ -849,5 +853,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     Subtype(deriveCodec[OrderCyclingPrepared]),
     Subtype(deriveCodecWithDefaults[OrderCycleStarted]),
     Subtype(deriveCodec[OrderCycleFinished]),
+    Subtype(deriveCodec[OrderSleeping]),
     Subtype(deriveCodec[OrderTransferred]),
     Subtype(deriveCodec[OrderPlanAttached]))

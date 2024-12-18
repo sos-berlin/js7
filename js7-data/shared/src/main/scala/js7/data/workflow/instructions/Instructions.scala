@@ -31,6 +31,7 @@ object Instructions:
     Subtype[AddOrder],
     Subtype[Options],
     Subtype[Stop],
+    Subtype[Sleep],
     Subtype[BreakOrder],
     Subtype[EmptyInstruction],
     Subtype[Gap])

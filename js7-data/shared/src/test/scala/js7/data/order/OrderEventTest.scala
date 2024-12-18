@@ -1012,6 +1012,14 @@ final class OrderEventTest extends OurTestSuite:
         "TYPE": "OrderPromptAnswered"
       }""")
 
+  "OrderSleeping" in:
+    testJson[OrderEvent](OrderSleeping(ts"2024-12-18T12:00:00Z"),
+      json"""
+      {
+        "TYPE": "OrderSleeping",
+        "until": 1734523200000
+      }""")
+
   "OrderTransferred" in:
     testJson[OrderEvent](OrderTransferred(WorkflowPath("WORKFLOW") ~ "v2" /: Position(7)),
       json"""

@@ -47,19 +47,25 @@ sealed trait Value:
   final def maybe: Option[Value] =
     (this != MissingValue) ? this
 
-  def as[V <: Value](using V: Value.Companion[V]): Checked[V] =
+  final def as[V <: Value](using V: Value.Companion[V]): Checked[V] =
     if valueType is V then
       Right(this.asInstanceOf[V])
     else
       Left(UnexpectedValueTypeProblem(V, this))
 
-  def asMissingOr[V <: Value](using V: Value.Companion[V]): Checked[V | MissingValue] =
+  final def missingTo(value: Value): Value =
+    if this == MissingValue then
+      value
+    else
+      this
+
+  final def asMissingOr[V <: Value](using V: Value.Companion[V]): Checked[V | MissingValue] =
     this match
       case MissingValue => Right(MissingValue)
       case _ => as[V]
 
   /** Similar to as[V], returns MissingValue as None. */
-  def asMaybe[V <: Value](using V: Value.Companion[V]): Checked[Option[V]] =
+  final def asMaybe[V <: Value](using V: Value.Companion[V]): Checked[Option[V]] =
     this match
       case MissingValue => Right(None)
       case _ => as[V].map(Some(_))

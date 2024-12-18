@@ -24,8 +24,8 @@ import js7.subagent.director.SubagentKeeper
 import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import org.apache.pekko.pattern.pipe
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 import scala.language.unsafeNulls
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -105,7 +105,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
   private def processingKilled: Receive =
     receiveEvent orElse receiveCommand orElse receiveTerminate
 
-  private def delayedAfterError: Receive =
+  private def delayed: Receive =
     startable orElse receiveCommand orElse receiveTerminate
 
   private def startable: Receive =
@@ -216,8 +216,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
         case _: Order.Processing        => become("processing")(wrap(processing))
         case _: Order.Processed         => become("processed")(wrap(processed))
         case _: Order.ProcessingKilled  => become("processingKilled")(wrap(processingKilled))
-        case _: Order.DelayingRetry     => become("delayingRetry")(wrap(delayedAfterError))
-        case _: Order.DelayedAfterError => become("delayedAfterError")(wrap(delayedAfterError))
+        case _: Order.DelayingRetry     => become("delayingRetry")(wrap(delayed))
+        case _: Order.DelayedAfterError => become("delayed")(wrap(delayed))
+        case _: Order.Sleeping          => become("sleeping")(wrap(delayed))
         case _: Order.Forked            => become("forked")(wrap(standard))
         case _: Order.BetweenCycles     => become("forked")(wrap(standard))
         case _: Order.Failed            => become("failed")(wrap(standard))

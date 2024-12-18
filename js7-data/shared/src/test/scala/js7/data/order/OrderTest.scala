@@ -16,8 +16,8 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, Stopped, StoppedWhileFresh, WaitingForLock}
-import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, DelayingRetry, Deleted, Detaching, ExpectingNotice, ExpectingNotices, ExternalOrderLink, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, Sleeping, State, Stopped, StoppedWhileFresh, WaitingForLock}
+import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderExternalVanished, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeAnnounced, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderOutcomeAdded, OrderPlanAttached, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderSleeping, OrderStarted, OrderStateReset, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
 import js7.data.orderwatch.{ExternalOrderName, OrderWatchPath}
 import js7.data.plan.PlanTemplateId
 import js7.data.subagent.{SubagentBundleId, SubagentId}
@@ -376,6 +376,13 @@ final class OrderTest extends OurTestSuite:
             }
           }""")
 
+      "Sleeping" in:
+        testJson[State](Sleeping(ts"2024-12-18T12:00:00Z"),
+          json"""{
+            "TYPE": "Sleeping",
+            "until": 1734523200000
+          }""")
+
       "Cancelled" in:
         testJson[State](Cancelled,
           json"""{
@@ -501,6 +508,7 @@ final class OrderTest extends OurTestSuite:
       OrderStickySubagentLeaved,
       OrderStickySubagentEntered(agentPath),
 
+      OrderSleeping(ts"2024-12-18T00:00:00Z"),
       OrderTransferred(workflowId /: Position(0)),
 
       OrderBroken(),
@@ -593,6 +601,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderOrderAdded       , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderStickySubagentEntered, IsSuspended(false), _        , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded     , _                 , _            , _                      ) => _.isInstanceOf[Ready]
+          case (_: OrderSleeping         , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Sleeping]
           case (_: OrderTransferred      , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken])
 

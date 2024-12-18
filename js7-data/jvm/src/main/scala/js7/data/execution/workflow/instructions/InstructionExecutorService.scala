@@ -40,6 +40,7 @@ final class InstructionExecutorService(val clock: WallClock):
       StopExecutor(this),
       BreakOrderExecutor(this),
       CycleExecutor(this),
+      SleepExecutor(this),
       BreakExecutor(this)
     ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 
