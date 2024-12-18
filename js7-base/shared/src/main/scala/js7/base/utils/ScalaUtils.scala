@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.{Formatter, Locale}
 import js7.base.exceptions.PublicException
 import js7.base.log.Logger
+import js7.base.metering.CallMeter
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.Ascii.toPrintableChar
@@ -34,6 +35,8 @@ object ScalaUtils:
 
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
+  private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
+  private lazy val makeUniqueMeter = CallMeter("makeUnique")
   private lazy val logger = Logger[this.type]
 
   object syntax:
@@ -1139,43 +1142,33 @@ object ScalaUtils:
     else
       iterator.mkString("(", ", ", ")")
 
-  private val formatLocale = Locale.getDefault(Locale.Category.FORMAT)
-
   /** @param pattern a `java.util.Formatter` pattern
     */
-  def makeUnique(pattern: String, existing: collection.Set[String]): Checked[String] =
-    makeUnique(pattern, existing, existing.size)
+  def makeUnique(pattern: String, exists: String => Boolean): Checked[String] =
+    makeUniqueMeter:
+      if pattern.endsWith("%d") && pattern.lastIndexOf('%', pattern.length - 3) == -1 then
+        // Optimized
+        val prefix = pattern.dropRight(2)
+        Right:
+          findUnique(exists)(prefix + _)
+      else
+        try
+          boundary:
+            val sb = new java.lang.StringBuilder
+            val formatter = new Formatter(sb, formatLocale)
+            val result =
+              findUnique(exists): i =>
+                sb.setLength(0)
+                formatter.format(pattern, i)
+                val result = sb.toString
+                if result == pattern then
+                  break(Left(Problem("Invalid pattern for makeUnique function")))
+                result
+            Right(result)
+        catch case NonFatal(e) =>
+          Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
 
-  /** @param pattern a `java.util.Formatter` pattern
-    */
-  def makeUnique(
-    pattern: String,
-    exists: String => Boolean,
-    estimatedNumberOfExisting: Int)
-  : Checked[String] =
-    if pattern.endsWith("%d") && pattern.lastIndexOf('%', pattern.length - 3) == -1 then
-      // Optimized
-      val prefix = pattern.dropRight(2)
-      Right:
-        findUnique(exists, estimatedNumberOfExisting)(prefix + _)
-    else
-      try
-        boundary:
-          val sb = new java.lang.StringBuilder
-          val formatter = new Formatter(sb, formatLocale)
-          val result =
-            findUnique(exists, estimatedNumberOfExisting): i =>
-              sb.setLength(0)
-              formatter.format(pattern, i)
-              val result = sb.toString
-              if result == pattern then
-                break(Left(Problem("Invalid pattern for makeUnique function")))
-              result
-          Right(result)
-      catch case NonFatal(e) =>
-        Left(Problem(s"makeUnique function: ${e.toStringWithCauses}"))
-
-  private def findUnique(exists: String => Boolean, estimatedNumberOfExisting: Int)
+  private def findUnique(exists: String => Boolean)
     (make: Int => String)
   : String =
     var i = 1

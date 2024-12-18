@@ -1017,10 +1017,10 @@ final class ScalaUtilsTest extends OurTestSuite:
       def checkedSet(strings: String*): String => Checked[Boolean] =
         string => Right(Set(strings*)(string))
 
-      assert(makeUnique("A", _ => true, 1) == Left(Problem("Invalid pattern for makeUnique function")))
+      assert(makeUnique("A", _ => true) == Left(Problem("Invalid pattern for makeUnique function")))
       assert(makeUnique("A", Set("A")) == Left(Problem("Invalid pattern for makeUnique function")))
-      assert(makeUnique("A-%q-Z", Set("A-1-Z", "A-2-Z")) == Left(
-        Problem("makeUnique function: java.util.UnknownFormatConversionException: Conversion = 'q'")))
+      assert(makeUnique("A-%q-Z", Set("A-1-Z", "A-2-Z")) == Left:
+        Problem("makeUnique function: java.util.UnknownFormatConversionException: Conversion = 'q'"))
 
       assert(makeUnique("A-%d-Z", Set()) == Right("A-1-Z"))
       assert(makeUnique("A-%d-Z", Set("A-1-Z", "A-2-Z")) == Right("A-3-Z"))
