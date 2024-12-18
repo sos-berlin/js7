@@ -400,6 +400,100 @@ final class WorkflowTest extends OurTestSuite:
           }
         }"""))
 
+    "Workflow with multiple then branches and with positions (for JOC GUI)" in:
+      val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1.0",
+        If(expr("false")).Then:
+          Workflow.empty
+        .elseIf(expr("false")).Then:
+          Workflow.empty
+        .elseIf(expr("true")).Then:
+          If(expr("false")).Then:
+            Workflow.empty
+          .Else:
+            Workflow.empty
+        .Else:
+          Workflow.empty)
+
+      assert:
+        normalizeJson(removeJNull(workflow.withPositions(Nil).asJson)) == json"""{
+          "path" : "WORKFLOW",
+          "versionId" : "1.0",
+          "instructions" : [
+            {
+              "TYPE" : "If",
+              "position" : [ 0 ],
+              "ifThens" : [
+                {
+                  "predicate" : "false",
+                  "then" : {
+                    "instructions" : [
+                      {
+                        "TYPE" : "ImplicitEnd",
+                        "position" : [ 0, "then", 0 ]
+                      }
+                    ]
+                  }
+                }, {
+                  "predicate" : "false",
+                  "then" : {
+                    "instructions" : [
+                      {
+                        "TYPE" : "ImplicitEnd",
+                        "position" : [ 0, "then+2", 0 ]
+                      }
+                    ]
+                  }
+                }, {
+                  "predicate" : "true",
+                  "then" : {
+                    "instructions" : [
+                      {
+                        "TYPE" : "If",
+                        "position" : [ 0, "then+3", 0 ],
+                        "ifThens" : [
+                          {
+                            "predicate" : "false",
+                            "then" : {
+                              "instructions" : [
+                                {
+                                  "TYPE" : "ImplicitEnd",
+                                  "position" : [ 0, "then+3", 0, "then", 0 ]
+                                }
+                              ]
+                            }
+                          }
+                        ],
+                        "else" : {
+                          "instructions" : [
+                            {
+                              "TYPE" : "ImplicitEnd",
+                              "position" : [ 0, "then+3", 0, "else", 0 ]
+                            }
+                          ]
+                        }
+                      }, {
+                        "TYPE" : "ImplicitEnd",
+                        "position" : [ 0, "then+3", 1 ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "else" : {
+                "instructions" : [
+                  {
+                    "TYPE" : "ImplicitEnd",
+                    "position" : [ 0, "else", 0 ]
+                  }
+                ]
+              }
+            }, {
+              "TYPE" : "ImplicitEnd",
+              "position" : [ 1 ]
+            }
+          ]
+        }"""
+
     "Workflow with a script" in:
       testJson[Workflow](
         Workflow(

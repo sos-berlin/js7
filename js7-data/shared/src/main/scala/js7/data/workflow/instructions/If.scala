@@ -31,8 +31,9 @@ extends Instruction.WithInstructionBlock:
 
   def withPositions(position: Position): If =
     copy(
-      ifThens = ifThens.map(ifThen => ifThen.copy(
-        thenBlock = ifThen.thenBlock.withPositions(position / BranchId.Then))),
+      ifThens = ifThens.zipWithIndex.map: (ifThen, i) =>
+        ifThen.copy(
+          thenBlock = ifThen.thenBlock.withPositions(position / BranchId.then_(1 + i))),
       elseBlock = elseBlock.map(_.withPositions(position / BranchId.Else)))
 
   def adopt(outer: Workflow): If = copy(

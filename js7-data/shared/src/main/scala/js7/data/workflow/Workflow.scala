@@ -99,12 +99,11 @@ extends VersionedItem, TrivialItemState[Workflow]:
 
   def withPositions(branchPath: BranchPath): Workflow =
     copy(rawLabeledInstructions =
-      rawLabeledInstructions.zipWithIndex map { case (labeled, i) =>
+      rawLabeledInstructions.zipWithIndex.map: (labeled, i) =>
         val position = branchPath % InstructionNr(i)
         labeled.copy(
           maybePosition = Some(position),
-          instruction = labeled.instruction.withPositions(position))
-      })
+          instruction = labeled.instruction.withPositions(position)))
 
   private def checkJobReferences: View[Checked[Unit]] =
     flattenedInstructions
