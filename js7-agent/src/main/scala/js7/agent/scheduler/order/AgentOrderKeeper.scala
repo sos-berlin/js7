@@ -32,8 +32,8 @@ import js7.base.utils.CatsUtils.pureFiberIO
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
-import js7.cluster.{ClusterNode, WorkingClusterNode}
+import js7.base.utils.{DuplicateKeyException, SetOnce}
+import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.Pekkos.{encodeAsActorName, uniqueActorName}
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -62,7 +62,6 @@ import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, Subagent
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
-import js7.journal.state.FileJournal
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
@@ -85,11 +84,10 @@ import scala.util.{Failure, Success, Try}
  */
 final class AgentOrderKeeper(
   forDirector: Subagent.ForDirector,
-  clusterNode: ClusterNode[AgentState],
+  workingClusterNode: WorkingClusterNode[AgentState],
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   changeSubagentAndClusterNode: ItemAttachedToMe => IO[Checked[Unit]],
-  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   shutDownOnce: SetOnce[AgentCommand.ShutDown],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
@@ -103,7 +101,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   private given ExecutionContext = ioRuntime.compute
 
-  private val journal = journalAllocated.allocatedThing
+  private val journal = workingClusterNode.journalAllocated.allocatedThing
   private val (ownAgentPath, localSubagentId, controllerId) =
     val meta = journal.unsafeCurrentState().meta
     val subagentId: SubagentId =
@@ -151,7 +149,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         shutDownCommand = Some(cmd)
         fileWatchManager.stop.unsafeRunAndForget()
         if cmd.isFailOrSwitchover then
-          journalAllocated.release.unsafeRunAndForget()
+          workingClusterNode.journalAllocated.release.unsafeRunAndForget()
           context.stop(self)
         else if cmd.suppressSnapshot then
           snapshotFinished = true
@@ -195,15 +193,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
                 .unsafeRunAndForget()
             if jobRegister.isEmpty && !terminatingJournal then
               IO.whenA(!shutDown.isFailOrSwitchover):
-                clusterNode.workingClusterNode.match
+                workingClusterNode.shutDownThisNode.flatMap:
+                  case Right(Completed) => IO.unit
                   case Left(problem) =>
-                    IO(logger.warn(s"clusterNode.workingClusterNode => $problem"))
-                  case Right(workingClusterNode) =>
-                    workingClusterNode.shutDownThisNode
-                      .flatMap:
-                        case Right(Completed) => IO.unit
-                        case Left(problem) =>
-                          IO(logger.warn(s"workingClusterNode.shutDownThisNode => $problem"))
+                    IO(logger.warn(s"workingClusterNode.shutDownThisNode => $problem"))
               .map: _ =>
                 self ! Internal.AgentShutdown
               .unsafeRunAndForget()
@@ -212,7 +205,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     def finallyShutdown(): Unit =
       persist(AgentShutDown): (_, _) =>
         terminatingJournal = true
-        journalAllocated.release.unsafeRunAndForget()
+        workingClusterNode.journalAllocated.release.unsafeRunAndForget()
 
   import shutdown.shuttingDown
 
@@ -287,8 +280,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         persist(
           AgentReady(
             ZoneId.systemDefault.getId,
-            totalRunningTime =
-              clusterNode.recoveredExtract.totalRunningSince.elapsed.roundUpToNext(1.ms),
+            totalRunningTime = journal.journalHeader.totalRunningTime,
             Some(currentPlatformInfo()))
         ) { (_, _) =>
           self ! Internal.OrdersRecovered(recoveredState)
@@ -921,12 +913,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
       .defer:
         logger.info(s"❗️ $cmd")
         switchingOver = true // Asynchronous !!!
-        IO(clusterNode.workingClusterNode)
-          .flatTapT(_ =>
-            // SubagentKeeper stops the local (surrounding) Subagent,
-            // which lets the Director (RunningAgent) stop
-            subagentKeeper.stop.as(Right(())))
-          .flatMapT(_.switchOver)
+        // SubagentKeeper stops the local (surrounding) Subagent,
+        // which lets the Director (RunningAgent) stop
+        subagentKeeper.stop.as(Right(()))
+          .flatMapT(_ => workingClusterNode.switchOver)
           .flatMapT(_ => IO.right(self ! Internal.ContinueSwitchover))
           .rightAs(AgentCommand.Response.Accepted)
       .unsafeToFuture()

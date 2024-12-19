@@ -1,6 +1,6 @@
 package js7.agent
 
-import org.apache.pekko.actor.{Actor, ActorRef, Props, SupervisorStrategy, Terminated}
+import cats.effect.unsafe.IORuntime
 import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
@@ -8,15 +8,13 @@ import js7.agent.data.AgentState
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.log.Logger
 import js7.base.time.AlarmClock
-import js7.base.utils.{Allocated, SetOnce}
-import js7.cluster.ClusterNode
+import js7.base.utils.SetOnce
+import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
-import js7.journal.state.FileJournal
 import js7.subagent.Subagent
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.actor.{Actor, ActorRef, Props, SupervisorStrategy, Terminated}
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NoStackTrace
 
@@ -26,8 +24,7 @@ import scala.util.control.NoStackTrace
 final class MainActor(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
-  clusterNode: ClusterNode[AgentState],
-  journalAllocated: Allocated[IO, FileJournal[AgentState]],
+  workingClusterNode: WorkingClusterNode[AgentState],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
@@ -47,8 +44,8 @@ extends Actor:
       new AgentActor(
         forDirector,
         failedOverSubagentId,
-        clusterNode,
-        terminationPromise, journalAllocated,
+        workingClusterNode,
+        terminationPromise,
         clock, agentConfiguration)
     },
     "agent"))
