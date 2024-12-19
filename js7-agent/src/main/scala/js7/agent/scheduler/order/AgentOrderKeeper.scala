@@ -283,7 +283,12 @@ extends MainJournalingActor[AgentState, Event], Stash:
             totalRunningTime = journal.journalHeader.totalRunningTime,
             Some(currentPlatformInfo()))
         ) { (_, _) =>
-          self ! Internal.OrdersRecovered(recoveredState)
+          workingClusterNode.afterJournalingStarted
+            .materializeIntoChecked
+            .as:
+              Internal.OrdersRecovered(recoveredState)
+            .unsafeToFuture()
+            .pipeTo(self)
         }
 
     val receive: Receive =
