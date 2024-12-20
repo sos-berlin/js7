@@ -161,6 +161,17 @@ final class ExpressionTest extends OurTestSuite:
     }
   }
 
+  "Multi-line expression" - {
+    testEval("""1
+               | + 2 +
+               | 4
+               | +
+               | 8
+               |""".stripMargin,
+      result = Right(15),
+      Add(Add(Add(1, 2), 4), 8))
+  }
+
   "Multi-line strings" - {
     locally:
       val longString =
