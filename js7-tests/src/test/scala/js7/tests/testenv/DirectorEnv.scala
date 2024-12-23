@@ -9,7 +9,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
-import js7.agent.{RestartableDirector, RunningAgent}
+import js7.agent.{RestartableDirector, RunningAgent, TestAgent}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
@@ -110,6 +110,13 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
       agent <- RunningAgent.restartable(agentConf).evalOn(given_IORuntime.compute)
     yield
       agent
+
+  def testAgentResource: ResourceIO[TestAgent] =
+    for
+      given IORuntime <- ioRuntimeResource
+      testAgent <- TestAgent.resource(agentConf)
+    yield
+      testAgent
 
   private def ioRuntimeResource: ResourceIO[IORuntime] =
     Resource.suspend/*delay access to agentConf*/(IO:

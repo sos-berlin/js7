@@ -1,7 +1,7 @@
 package js7.tests.subagent
 
-import cats.syntax.option.*
 import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import fs2.Stream
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurAsyncTestSuite
@@ -70,7 +70,7 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
         enableOrDisableSubagent(enabled = false)
 
         if restartAgent then
-          agent.stop.await(99.s)
+          agent.stopThis.await(99.s)
 
           agent = directoryProvider.startAgent(agentPath).await(99.s)
 
@@ -82,7 +82,7 @@ final class SubagentStartDisabledTest extends OurAsyncTestSuite with DirectoryPr
         eventWatch.await[OrderFinished](_.key == orderId)
         succeed
       finally
-        agent.stop.await(99.s)
+        agent.stopThis.await(99.s)
     finally
       controller.stop.await(99.s)
 

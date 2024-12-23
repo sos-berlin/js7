@@ -3,7 +3,6 @@ package js7.tests.testenv
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.parallel.*
-import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2.Stream
 import java.nio.file.Files.{createDirectory, createTempDirectory}
@@ -270,27 +269,30 @@ extends HasCloser:
               IO(startForTest(runningController)))
 
   def runAgents[A](
-    agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
+    agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths,
+    suppressSnapshot: Boolean = false)(
     body: Vector[TestAgent] => A)
     (using IORuntime)
   : A =
-    val agents = agentEnvs
+    val agentAllocatedSeq = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
-      .map(_.agentConf)
-      .parTraverse(a => TestAgent.start(a))
+      .map(_.testAgentResource)
+      .parTraverse:
+        _.toAllocated
       .await(99.s)
-
     val result =
-      try body(agents)
+      try body(agentAllocatedSeq.map(_.allocatedThing))
       catch case NonFatal(t) =>
         // Pekko may crash before the caller gets the error so we log the error here
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-        try agents.parTraverse(_.stop).await(99.s)
+        try agentAllocatedSeq.parTraverse(_.release).await(99.s)
         catch case t2: Throwable if t2 ne t =>
           t.addSuppressed(t2)
         throw t
 
-    agents.traverse(_.terminate()).await(99.s)
+    agentAllocatedSeq.parTraverse: allo =>
+      allo.allocatedThing.terminate(suppressSnapshot = suppressSnapshot) *> allo.release
+    .await(99.s)
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)

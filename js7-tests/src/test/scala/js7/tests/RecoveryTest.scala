@@ -1,6 +1,6 @@
 package js7.tests
 
-import cats.syntax.parallel.*
+import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
@@ -28,7 +28,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RecoveryTest.*
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
 import js7.tests.testenv.{DirectoryProvider, TestController}
-import cats.effect.unsafe.IORuntime
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -124,23 +123,12 @@ final class RecoveryTest extends OurTestSuite:
       controller.terminate(suppressSnapshot = true).await(99.s)
     }
 
-  private def runAgents(directoryProvider: DirectoryProvider)
-    (body: IndexedSeq[TestAgent] => Unit)
+  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[TestAgent] => Unit)
   : Unit =
-    val agents = directoryProvider.agentEnvs
-      .map(_.agentConf)
-      .parTraverse(TestAgent.start(_))
-      .await(99.s)
-    try body(agents)
-    catch { case NonFatal(t) =>
-      // TODO Compare DirectorProvider
-      logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
-      try agents.parTraverse(_.terminate()).await(99.s)
-      catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
-      throw t
-    }
-    //logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
-    agents.parTraverse(_.terminate(suppressSnapshot = true)).await(99.s)
+    directoryProvider.runAgents(
+      directoryProvider.agentRefs.map(_.path),
+      suppressSnapshot = true
+    )(body)
 
 private object RecoveryTest:
   private val logger = Logger[this.type]

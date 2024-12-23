@@ -58,22 +58,21 @@ final class SubagentMoveInClusterTest
         .directorEnvResource(
           primarySubagentItem,
           otherSubagentIds = Seq(backupSubagentId, newBackupSubagentItem.id))
-        .flatMap(env => env.directorResource.map(env -> _))
+        .flatMap: env =>
+          env.directorResource.map(env -> _)
 
     lazy val backupDirectorEnvResource: ResourceIO[DirectorEnv] =
-      directoryProvider
-        .directorEnvResource(
-          backupSubagentItem,
-          otherSubagentIds = Seq(primarySubagentId),
-          isClusterBackup = true)
+      directoryProvider.directorEnvResource(
+        backupSubagentItem,
+        otherSubagentIds = Seq(primarySubagentId),
+        isClusterBackup = true)
 
     lazy val newBackupDirectorEnvResource: ResourceIO[DirectorEnv] =
-      directoryProvider
-        .directorEnvResource(
-          newBackupSubagentItem,
-          otherSubagentIds = Seq(primarySubagentId),
-          isClusterBackup = true,
-          suffix = "-NEW")
+      directoryProvider.directorEnvResource(
+        newBackupSubagentItem,
+        otherSubagentIds = Seq(primarySubagentId),
+        isClusterBackup = true,
+        suffix = "-NEW")
 
     updateItems(
       AgentRef(
@@ -89,82 +88,78 @@ final class SubagentMoveInClusterTest
     lazy val newBackupEnv = newBackupDirectorEnvAllocated.allocatedThing
     val aOrderId = OrderId("A-MOVE-SUBAGENT")
 
-    primaryDirectorResource.toAllocated.await(99.s).useSync(99.s) { case (_, primaryDirector) =>
-      val backupDirectorEnvAllocated = backupDirectorEnvResource.toAllocated.await(99.s)
-      val backupEnv = backupDirectorEnvAllocated.allocatedThing
-      val backupDirector = TestAgent(backupEnv.directorResource.toAllocated.await(99.s))
-      var eventId = 0L
-      var directorEventId = 0L
-      primaryDirector.eventWatch.await[ClusterCoupled]()
-      TestSemaphoreJob.continue()
-      controller.runOrder(FreshOrder(OrderId("A-ORDER"), workflow.path))
+    primaryDirectorResource.useSync(99.s): (_, primaryDirector) =>
+      backupDirectorEnvResource.useSync(99.s): backupEnv =>
+        val backupDirector = TestAgent(backupEnv.directorResource.toAllocated.await(99.s))
+        var eventId = 0L
+        var directorEventId = 0L
+        primaryDirector.eventWatch.await[ClusterCoupled]()
+        TestSemaphoreJob.continue()
+        controller.runOrder(FreshOrder(OrderId("A-ORDER"), workflow.path))
 
-      eventId = eventWatch.lastAddedEventId
-      locally:
-        controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
-        val processingStarted = eventWatch
-          .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
-        assert(processingStarted == OrderProcessingStarted(backupSubagentItem.id))
-        eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-        // aOrderId is waiting for semaphore
+        eventId = eventWatch.lastAddedEventId
+        locally:
+          controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+          val processingStarted = eventWatch
+            .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
+          assert(processingStarted == OrderProcessingStarted(backupSubagentItem.id))
+          eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+          // aOrderId is waiting for semaphore
 
-      eventId = eventWatch.lastAddedEventId
-      directorEventId = primaryDirector.eventWatch.lastAddedEventId
-      controller.api.updateUnsignedSimpleItems(Seq(newBackupSubagentItem)).await(99.s).orThrow
-      primaryDirector.eventWatch.await[ClusterPassiveLost](after = directorEventId)
-      primaryDirector.eventWatch.await[ClusterSettingUpdated](after = directorEventId)
+        eventId = eventWatch.lastAddedEventId
+        directorEventId = primaryDirector.eventWatch.lastAddedEventId
+        controller.api.updateUnsignedSimpleItems(Seq(newBackupSubagentItem)).await(99.s).orThrow
+        primaryDirector.eventWatch.await[ClusterPassiveLost](after = directorEventId)
+        primaryDirector.eventWatch.await[ClusterSettingUpdated](after = directorEventId)
 
-      sleep(5.s)
-      // While sleeping, the following message should logged:
-      // A passive cluster node wanted to couple but http://localhost:... does not respond
+        sleep(5.s)
+        // While sleeping, the following message should be logged:
+        // A passive cluster node wanted to couple but http://localhost:... does not respond
 
-      copyDirectoryContent(backupEnv.stateDir, newBackupEnv.stateDir)
+        copyDirectoryContent(backupEnv.stateDir, newBackupEnv.stateDir)
 
-      newBackupDirectorEnvAllocated.useSync(99.s) { newBackupEnv =>
-        newBackupEnv.directorResource.toAllocated.await(99.s).useSync(99.s) { _ =>
-          // Now, both old and new back node are running
+        newBackupDirectorEnvAllocated.useSync(99.s): newBackupEnv =>
+          newBackupEnv.directorResource.useSync(99.s): _ =>
+            // Now, both old and new back node are running
 
-          sleep(5.s)
-          // While sleeping, the following message should logged:
-          // ClusterPrepareCoupling command failed with ... Another passive cluster node wanted to couple
-          (backupDirector.stop).await(99.s)
-          backupEnv.close()
+            sleep(5.s)
+            // While sleeping, the following message should be logged:
+            // ClusterPrepareCoupling command failed with ... Another passive cluster node wanted to couple
+            backupDirector.stopThis.await(99.s)
+            backupEnv.close()
 
-          primaryDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
+            primaryDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
 
-          val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
-          assert(aProcessed.value.event ==
-            OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
+            val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
+            assert(aProcessed.value.event ==
+              OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
 
-          // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
-          TestSemaphoreJob.continue(1) // aOrder still runs on bareSubagent (but it is ignored)
-          TestSemaphoreJob.continue(1)
-          val a2Processed = eventWatch
-            .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
-            .head.value.event
-          assert(a2Processed == OrderProcessed(OrderOutcome.succeeded))
-
-          eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
-
-          locally:
-            // Start another order
-            val bOrderId = OrderId("B-MOVE-SUBAGENT")
+            // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
+            TestSemaphoreJob.continue(1) // aOrder still runs on bareSubagent (but it is ignored)
             TestSemaphoreJob.continue(1)
-            controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
-            val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
+            val a2Processed = eventWatch
+              .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
               .head.value.event
-            assert(bStarted == OrderProcessingStarted(newBackupSubagentItem.id))
+            assert(a2Processed == OrderProcessed(OrderOutcome.succeeded))
 
-            eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
+            eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-            eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
-            val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
-              .head.value.event
-            assert(bProcessed == OrderProcessed(OrderOutcome.succeeded))
-            eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
-        }
-      }
-    }
+            locally:
+              // Start another order
+              val bOrderId = OrderId("B-MOVE-SUBAGENT")
+              TestSemaphoreJob.continue(1)
+              controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+              val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
+                .head.value.event
+              assert(bStarted == OrderProcessingStarted(newBackupSubagentItem.id))
+
+              eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
+
+              eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
+              val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
+                .head.value.event
+              assert(bProcessed == OrderProcessed(OrderOutcome.succeeded))
+              eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
 
 
 object SubagentMoveInClusterTest:

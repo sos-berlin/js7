@@ -17,8 +17,8 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
+import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.useSync
@@ -35,16 +35,31 @@ import scala.util.control.NonFatal
 
 final class TestAgent(
   allocated: Allocated[IO, RunningAgent],
-  terminateProcessesWith: Option[ProcessSignal] = None):
+  terminateProcessesWith: Option[ProcessSignal] = None)
+extends
+  MainService, Service.StoppableByRequest:
+
+  protected type Termination = DirectorTermination
 
   val agent = allocated.allocatedThing
   @volatile private var released = false
 
-  def stop: IO[Unit] =
-    agent.terminate(terminateProcessesWith).void *>
-      logger.traceIO("allocated.release"):
-        allocated.release *> IO:
-          released = true
+  def start: IO[Service.Started] =
+    startService:
+      IO.race(untilStopRequested, untilTerminated) *>
+        stopThis
+
+  def untilTerminated: IO[DirectorTermination] =
+    agent.untilTerminated <*
+      stopThis/*release outer resources*/
+
+  // TODO Make private and use the Service resource mechanism
+  def stopThis: IO[Unit] =
+    agent.terminate(terminateProcessesWith).void
+      .guarantee:
+        logger.traceIO("allocated.release"):
+          allocated.release *> IO:
+            released = true
 
   def killForFailOver: IO[ProgramTermination] =
     terminate(
@@ -64,11 +79,7 @@ final class TestAgent(
         logger.traceIO:
           agent
             .terminate(processSignal, clusterAction, suppressSnapshot)
-            .guarantee(stop)
-
-  def untilTerminated: IO[ProgramTermination] =
-    agent.untilTerminated <*
-      stop/*release outer resources*/
+            .guarantee(stopThis)
 
   /** Use TestAgent once, then stop it. */
   def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(using IORuntime): R =
@@ -123,6 +134,7 @@ object TestAgent:
   : TestAgent =
     new TestAgent(allocated, terminateProcessesWith)
 
+  // TODO Prefer the Service resource mechanism below
   def start(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty,
@@ -148,44 +160,45 @@ object TestAgent:
   : ProgramTermination =
     ServiceMain.blockingRun(timeout = timeout)(
       resource = resource(conf).evalOn(ioRuntime.compute),
-      use = (agent: RunningAgent) =>
-        try
-          val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
-          try body(testAgent)
-          catch { case NonFatal(t) =>
-            logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-            try agent.terminate(terminateProcessesWith).await(99.s)
-            catch case NonFatal(t2) => logger.error(
-              s"agent.terminate while handling an exception: ${t.toStringWithCauses}",
-              t.nullIfNoStackTrace)
-            throw t
-          }
-          agent.terminate(terminateProcessesWith).await(99.s)
+      use = (testAgent: TestAgent) =>
+        try body(testAgent)
         catch case NonFatal(t) =>
-          // Silent deadlock in case of failure?
-          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-          throw t)
+          logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+          try testAgent.terminate(terminateProcessesWith).await(99.s)
+          catch case NonFatal(t2) => logger.error(
+            s"agent.terminate while handling an exception: ${t2.toStringWithCauses}",
+            t2.nullIfNoStackTrace)
+          throw t
+        testAgent.terminate(terminateProcessesWith).await(99.s))
 
-  def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
+  def resource(
+    conf: AgentConfiguration,
+    terminateProcessesWith: Option[ProcessSignal] = None,
+    testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
-  : ResourceIO[RunningAgent] =
+  : ResourceIO[TestAgent] =
     RunningAgent.resource(conf, testWiring)
       .flatMap: agent =>
         Resource.makeCase(
-          acquire = IO.pure(agent))(
+          acquire = IO.pure(new TestAgent(new Allocated(agent, agent.terminate().void))))(
           release = (agent, exitCase) => IO.defer:
             exitCase match
-              case ExitCase.Errored(throwable) =>
-                logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
+              case ExitCase.Errored(t) =>
+                logger.error(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                agent.terminate(terminateProcessesWith)
+                  .void
+                  .handleErrorWith: t =>
+                    IO(logger.error(
+                      s"agent.terminate while handling an exception: ${t.toStringWithCauses}",
+                      t.nullIfNoStackTrace))
               case _ =>
-            // Avoid Akka 2.6 StackTraceError which occurs when
-            // agent.terminate() has not been executed:
-            agent.untilTerminated.void
-              .timeoutTo(3.s, IO.unit)
-              .tapError: t =>
-                IO(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
-
+                agent.terminate(terminateProcessesWith)
+                  .void
+                  .handleErrorWith: t =>
+                    IO(logger.error(
+                      s"💥 agent.terminate: ${t.toStringWithCauses}",
+                      t.nullIfNoStackTrace)))
 
   private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])
   : Resource[F, IORuntime] =
-      OurIORuntime.resource[F](conf.name, conf.config)
+    OurIORuntime.resource[F](conf.name, conf.config)

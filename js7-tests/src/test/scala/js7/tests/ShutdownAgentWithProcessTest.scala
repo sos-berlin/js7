@@ -1,5 +1,6 @@
 package js7.tests
 
+import js7.base.utils.AllocatedForJvm.useSync
 import org.apache.pekko.actor.ActorSystem
 import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
@@ -71,7 +72,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         .await(99.s)
       agent.untilTerminated.await(99.s)
 
-    TestAgent.blockingRun(agentEnv.agentConf) { restartedAgent =>
+    agentEnv.testAgentResource.useSync(99.s): restartedAgent =>
       eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
       assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
@@ -116,7 +117,6 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentFo
         caughtOrderId <-: OrderDetachable,
         caughtOrderId <-: OrderDetached,
         caughtOrderId <-: OrderFinished()))
-    }
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
     keyedEvent match

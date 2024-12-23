@@ -9,7 +9,7 @@ import js7.base.crypt.{DocumentSigner, SignerId}
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked.{Ops, catchNonFatal}
 import js7.base.utils.Labeled
 import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.bcpg.HashAlgorithmTags
@@ -31,7 +31,6 @@ extends DocumentSigner:
   import PgpSigner.*
 
   registerBouncyCastle()
-  //logger.debug(pgpSecretKey.show)
 
   private val pgpPrivateKey = pgpSecretKey.extractPrivateKey(
     new JcePBESecretKeyDecryptorBuilder() //?new JcaPGPDigestCalculatorProviderBuilder()
@@ -79,12 +78,16 @@ object PgpSigner extends DocumentSigner.Companion:
 
   @TestOnly
   def forTest(): (PgpSigner, PgpSignatureVerifier) =
-    val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
-    val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
-    PgpSigner(pgpSecretKey, pgpPassword).orThrow ->
+    forTest(password = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString))
+
+  @TestOnly
+  def forTest(password: SecretString): (PgpSigner, PgpSignatureVerifier) =
+    val secretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), password,
+      keySize = 1024/*fast for test*/)
+    PgpSigner(secretKey, password).orThrow ->
       PgpSignatureVerifier
         .checked(
-          Seq(Labeled(pgpSecretKey.getPublicKey.toArmoredAsciiBytes, "PgpSigner.forTest")),
+          Seq(Labeled(secretKey.getPublicKey.toArmoredAsciiBytes, "PgpSigner.forTest")),
           origin = "PgpSigner")
         .orThrow
 
