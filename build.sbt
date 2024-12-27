@@ -821,6 +821,20 @@ lazy val `js7-tests` = project
       lmaxDisruptor % "test"
   }
 
+lazy val `js7-benchmark` = project
+  .dependsOn(
+    `js7-tests` % "test->test")
+  .enablePlugins(JmhPlugin)
+  .settings(
+    libraryDependencies += "org.openjdk.jmh" % "jmh-core" % "1.37",
+    Jmh / sourceDirectory := (Test / sourceDirectory).value,
+    Jmh / classDirectory := (Test / classDirectory).value,
+    Jmh / dependencyClasspath := (Test / dependencyClasspath).value,
+    // rewire tasks, so that 'bench/Jmh/run' automatically invokes 'bench/Jmh/compile'
+    // (otherwise a clean 'bench/Jmh/run' would fail)
+    Jmh / compile := (Jmh / compile).dependsOn(Test / compile).value,
+    Jmh / run := (Jmh / run).dependsOn(Jmh / compile).evaluated)
+
 def isExcludedJar(path: String) =
   path.startsWith("com.google.code.findbugs.jsr305-") ||
   path.startsWith("org.scalatest.") ||
