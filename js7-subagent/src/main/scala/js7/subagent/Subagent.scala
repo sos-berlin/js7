@@ -282,9 +282,9 @@ object Subagent:
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): ResourceIO[Path] =
     provideFile[IO](conf.workDirectory / "http-uri")
-      .evalTap(file => IO {
-        for uri <- uri do file := s"$uri/subagent"
-      })
+      .evalTap: file =>
+        IO.blocking:
+          for uri <- uri do file := s"$uri/subagent"
 
   final case class ForDirector(
     subagent: Subagent,
