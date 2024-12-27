@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-kill "$@" "$(cat /var/opt/js7/controller/data/state/lock)"
