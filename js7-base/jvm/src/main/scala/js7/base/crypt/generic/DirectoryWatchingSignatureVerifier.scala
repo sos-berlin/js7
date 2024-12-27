@@ -61,9 +61,9 @@ extends SignatureVerifier, Service.StoppableByCancel:
         IO.defer:
           state = State(
             companionToDir
-              .map { case (companion, (directory, directoryState)) =>
-                companion -> toVerifier(companion, directory, directoryState)
-              }
+              .map:
+                case (companion, (directory, directoryState)) =>
+                  companion -> toVerifier(companion, directory, directoryState)
               .toMap)
 
           startService:
@@ -180,15 +180,15 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
       .map: (typeName, v) =>
         checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
           .map(Paths.get(_))
-          .flatMap(directory => SignatureServices
-            .nameToSignatureVerifierCompanion
-            .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-            .flatMap(companion =>
-              if !exists(directory) then
-                Left(Problem.pure(
-                  s"Signature key directory '$directory' for '$typeName' does not exists"))
-              else
-                Right(companion -> directory)))
+          .flatMap: directory =>
+            SignatureServices.nameToSignatureVerifierCompanion
+              .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
+              .flatMap: companion =>
+                if !exists(directory) then
+                  Left(Problem.pure:
+                    s"Signature key directory '$directory' for '$typeName' does not exist")
+                else
+                  Right(companion -> directory)
       .toVector
       .sequence
       .map(_.toMap)

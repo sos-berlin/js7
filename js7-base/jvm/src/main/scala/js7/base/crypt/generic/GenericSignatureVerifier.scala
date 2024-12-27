@@ -47,7 +47,8 @@ extends SignatureVerifier:
         Problem(s"No trusted public key for signature type '${signature.typeName}'"))
       typedSignature <- verifier.companion.genericSignatureToSignature(signature)
       signerIds <- verifier.verify(document, typedSignature)
-    yield signerIds
+    yield
+      signerIds
 
   def isEmpty: Boolean =
     typeToVerifier.isEmpty
@@ -73,40 +74,37 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion:
 
   def checked(config: Config): Checked[GenericSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
-      .map { case (typeName, v) =>
+      .map: (typeName, v) =>
         typeName ->
           checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
             .map(Paths.get(_))
             .flatMap(directory => SignatureServices
               .nameToSignatureVerifierCompanion
               .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-              .flatMap(companion =>
+              .flatMap: companion =>
                 if !exists(directory) then
                   Left(Problem.pure(
-                    s"Signature key directory '$directory' for '$typeName' does not exists"))
-                else {
-                  val files = autoClosing(Files.list(directory))(_
-                    .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
+                    s"Signature key directory '$directory' for '$typeName' does not exist"))
+                else
+                  val files = autoClosing(Files.list(directory)):
+                    _.asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector
                   if files.isEmpty then
-                    logger.warn(
-                      s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
+                    logger.warn(s"No public key files for signature verifier '${companion.typeName
+                      }' in directory '$directory'")
                   companion.checked(
                     files.map(_.labeledByteArray),
-                    origin = directory.toString)
-                }))
-      }
+                    origin = directory.toString))
       .toVector
       .traverse:
         case (_, Left(p)) => Left(p)
         case (k, Right(v)) => Right(v)
-      .flatMap { verifiers =>
+      .flatMap: verifiers =>
         if verifiers.isEmpty then
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else
           logVerifiers(verifiers)
-          Right(
-            new GenericSignatureVerifier(verifiers))
-      }
+          Right:
+            new GenericSignatureVerifier(verifiers)
 
   @deprecated("Not implemented", "")
   def checked(publicKeys: Seq[Labeled[ByteArray]], origin: String) =

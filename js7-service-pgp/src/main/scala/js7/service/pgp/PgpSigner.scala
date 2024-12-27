@@ -36,7 +36,8 @@ extends DocumentSigner:
     new JcePBESecretKeyDecryptorBuilder() //?new JcaPGPDigestCalculatorProviderBuilder()
       .setProvider("BC")
       .build(password.string.toArray))
-  private val maybeUserId: Option[String] = pgpSecretKey.getPublicKey.getUserIDs.asScala.buffered.headOption  // Only the first UserID ?
+  private val maybeUserId: Option[String] =
+    pgpSecretKey.getPublicKey.getUserIDs.asScala.buffered.headOption  // Only the first UserID ?
 
   def sign(message: ByteArray): PgpSignature =
     val signatureGenerator = newSignatureGenerator()
@@ -67,14 +68,14 @@ object PgpSigner extends DocumentSigner.Companion:
   def typeName: String = PgpSignature.TypeName
 
   def checked(privateKey: ByteArray, password: SecretString): Checked[PgpSigner] =
-    Checked.catchNonFatal(
-      new PgpSigner(selectSecretKey(readSecretKeyRingCollection(privateKey)), password))
+    catchNonFatal:
+      new PgpSigner(selectSecretKey(readSecretKeyRingCollection(privateKey)), password)
 
   private val OurHashAlgorithm = HashAlgorithmTags.SHA512
 
   def apply(pgpSecretKey: PGPSecretKey, password: SecretString): Checked[PgpSigner] =
-    Checked.catchNonFatal(
-      new PgpSigner(pgpSecretKey, password))
+    catchNonFatal:
+      new PgpSigner(pgpSecretKey, password)
 
   @TestOnly
   def forTest(): (PgpSigner, PgpSignatureVerifier) =

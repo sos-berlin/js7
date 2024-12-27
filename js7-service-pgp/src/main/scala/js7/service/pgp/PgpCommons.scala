@@ -9,6 +9,7 @@ import cats.syntax.traverse.*
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.Security
+import java.util.Arrays.asList
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
@@ -43,7 +44,7 @@ object PgpCommons:
       " fingerprint=" + fingerPrintAsString(key)
 
   implicit val PGPPublicKeyShow: Show[PGPPublicKey] =
-    Show[PGPPublicKey] { key =>
+    Show[PGPPublicKey]: key =>
       import key.*
       f"PGPPublicKey($getKeyID%08X" +
         " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
@@ -53,20 +54,20 @@ object PgpCommons:
         " isEncryptionKey=" + isEncryptionKey +
         " isMasterKey=" + isMasterKey +
         ")"
-    }
 
   private def fingerPrintAsString(key: PGPPublicKey): String =
     Option(key.getFingerprint).fold(ByteArray.empty)(ByteArray(_)).toHexRaw
 
   implicit val PGPPublicKeyRingShow: Show[PGPPublicKeyRing] =
-    Show(_.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
+    Show:
+      _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")")
 
   implicit val PGPPublicKeyRingCollectionShow: Show[PGPPublicKeyRingCollection] =
-    Show[PGPPublicKeyRingCollection](_
-      .asScala.toVector.mkString_("", ", ", ""))
+    Show[PGPPublicKeyRingCollection]:
+      _.asScala.toVector.mkString_("", ", ", "")
 
   implicit val PGPSecretKeyShow: Show[PGPSecretKey] =
-    Show { key =>
+    Show: key =>
       import key.*
       "PGPSecretKey(" +
         getPublicKey.show +
@@ -74,18 +75,17 @@ object PgpCommons:
         " isSigningKey=" + isSigningKey +
         " isMasterKey=" + isMasterKey +
         ")"
-    }
 
   implicit val PGPSecretKeyRingShow: Show[PGPSecretKeyRing] =
-    Show(o =>
-      "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
+    Show: o =>
+      "PGPSecretKeyRing(" + o.getPublicKey.show + ")"
 
   implicit val PGPSecretKeyRingCollectionShow: Show[PGPSecretKeyRingCollection] =
-    Show(o =>
-      f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
+    Show: o =>
+      f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})"
 
   implicit val PGPSignatureShow: Show[PGPSignature] =
-    Show { sig =>
+    Show: sig =>
       import sig.*
       "PGPSignature(" +
         signatureTypeToString(getSignatureType) +
@@ -95,24 +95,24 @@ object PgpCommons:
         //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
         f" publicKeyID=$getKeyID%08X" +
         ")"
-    }
 
-  private def signatureTypeToString(t: Int) = t match
-    case PGPSignature.BINARY_DOCUMENT          => "binary document"
-    case PGPSignature.CANONICAL_TEXT_DOCUMENT  => "canonical text document"
-    case PGPSignature.STAND_ALONE              => "stand alone"
-    case PGPSignature.DEFAULT_CERTIFICATION    => "default certification"
-    case PGPSignature.NO_CERTIFICATION         => "no certification"
-    case PGPSignature.CASUAL_CERTIFICATION     => "casual certification"
-    case PGPSignature.POSITIVE_CERTIFICATION   => "positive certification"
-    case PGPSignature.SUBKEY_BINDING           => "subkey binding"
-    case PGPSignature.PRIMARYKEY_BINDING       => "primarykey binding"
-    case PGPSignature.DIRECT_KEY               => "direct key"
-    case PGPSignature.KEY_REVOCATION           => "key revocation"
-    case PGPSignature.SUBKEY_REVOCATION        => "subkey revocation"
-    case PGPSignature.CERTIFICATION_REVOCATION => "certification revocation"
-    case PGPSignature.TIMESTAMP                => "timestamp"
-    case _ => t.toString
+  private def signatureTypeToString(t: Int) =
+    t match
+      case PGPSignature.BINARY_DOCUMENT          => "binary document"
+      case PGPSignature.CANONICAL_TEXT_DOCUMENT  => "canonical text document"
+      case PGPSignature.STAND_ALONE              => "stand alone"
+      case PGPSignature.DEFAULT_CERTIFICATION    => "default certification"
+      case PGPSignature.NO_CERTIFICATION         => "no certification"
+      case PGPSignature.CASUAL_CERTIFICATION     => "casual certification"
+      case PGPSignature.POSITIVE_CERTIFICATION   => "positive certification"
+      case PGPSignature.SUBKEY_BINDING           => "subkey binding"
+      case PGPSignature.PRIMARYKEY_BINDING       => "primarykey binding"
+      case PGPSignature.DIRECT_KEY               => "direct key"
+      case PGPSignature.KEY_REVOCATION           => "key revocation"
+      case PGPSignature.SUBKEY_REVOCATION        => "subkey revocation"
+      case PGPSignature.CERTIFICATION_REVOCATION => "certification revocation"
+      case PGPSignature.TIMESTAMP                => "timestamp"
+      case _ => t.toString
 
   private def hashAlgorithmToString(hashAlgorithm: Int) =
     hashAlgorithm match
@@ -147,18 +147,17 @@ object PgpCommons:
   private[pgp] def registerBouncyCastle(): Unit = ()  // Dummy to initialize this object
 
   private def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
-    message.useSync { in =>
+    message.useSync: in =>
       val buffer = new Array[Byte](BufferSize)
       var length = 1
       while length > 0 do
         length = in.read(buffer)
         if length > 0 then
           update(buffer, length)
-    }
 
   def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit =
     val armored = new ArmoredOutputStream(out)
-    new PGPSecretKeyRing(List(secretKey).asJava).encode(armored)
+    new PGPSecretKeyRing(asList(secretKey)).encode(armored)
     armored.close()
 
   def writePublicKeyAsAscii(publicKey: PGPPublicKey, out: OutputStream): Unit =
@@ -175,28 +174,26 @@ object PgpCommons:
   def readPublicKeyRingCollection(keys: Seq[Labeled[ByteArray]])
   : Checked[PGPPublicKeyRingCollection] =
     keys.traverse(toPGPPublicKeyRing)
-      .map(keyRings =>
-        new PGPPublicKeyRingCollection(keyRings.asJava))
+      .map: keyRings =>
+        new PGPPublicKeyRingCollection(keyRings.asJava)
 
   def readOrIgnorePublicKeyRingCollection(keys: Seq[Labeled[ByteArray]])
   : PGPPublicKeyRingCollection =
     new PGPPublicKeyRingCollection(
-      keys
-        .flatMap(key =>
-          toPGPPublicKeyRing(key) match {
-            case Left(problem) =>
-              logger.error(s"Ignoring PGP public key due to: $problem")
-              None
-            case Right(o) => Some(o)
-          })
-        .asJava)
+      keys.flatMap: key =>
+        toPGPPublicKeyRing(key) match
+          case Left(problem) =>
+            logger.error(s"Ignoring PGP public key due to: $problem")
+            None
+          case Right(o) => Some(o)
+      .asJava)
 
   private def toPGPPublicKeyRing(labeledKey: Labeled[ByteArray]): Checked[PGPPublicKeyRing] =
     try
-      Right(
+      Right:
         new PGPPublicKeyRing(
           PGPUtil.getDecoderStream(labeledKey.value.toInputStream),
-            newFingerPrintCalculator()))
+            newFingerPrintCalculator())
     catch
       case NonFatal(t) => Left(Problem.fromThrowable(t).withKey(labeledKey.label))
 

@@ -52,8 +52,8 @@ extends SignatureVerifier:
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match
       // Public key is matched with the only 64-bit long key ID ???
       case null =>
-        logger.debug(
-          s"⛔ $MessageSignedByUnknownProblem, no public key for ${signature.show} publicKeyOrigin=$publicKeyOrigin")
+        logger.debug:
+          s"⛔ $MessageSignedByUnknownProblem, no public key for ${signature.show} publicKeyOrigin=$publicKeyOrigin"
         Left(MessageSignedByUnknownProblem)
       case publicKey =>
         Right(publicKey)
@@ -109,22 +109,24 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion:
         yield pgpSignature
 
   private[pgp] def toMutablePGPSignature(signature: PgpSignature): Checked[PGPSignature] =
-    catchNonFatal(
-      new JcaPGPObjectFactory(PGPUtil.getDecoderStream(new ByteArrayInputStream(signature.string.getBytes(UTF_8))))
-        .nextObject
-    ) .leftMap(_.withPrefix("Invalid PGP signature: "))
-      .flatMap:
-        case o: PGPSignatureList =>
-          if o.size != 1 then
-            Left(Problem(s"Unsupported PGP signature type: exactly one PGPSignature expected, not ${o.size}"))
-          else
-            Right(o.get(0))
+    catchNonFatal:
+      new JcaPGPObjectFactory(
+        PGPUtil.getDecoderStream(new ByteArrayInputStream(signature.string.getBytes(UTF_8)))
+      ).nextObject
+    .leftMap(_.withPrefix("Invalid PGP signature: "))
+    .flatMap:
+      case o: PGPSignatureList =>
+        if o.size != 1 then
+          Left(Problem:
+            s"Unsupported PGP signature type: exactly one PGPSignature expected, not ${o.size}")
+        else
+          Right(o.get(0))
 
-        case null =>
-          Left(Problem("Not a valid PGP signature"))
+      case null =>
+        Left(Problem("Not a valid PGP signature"))
 
-        case o =>
-          logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
-          Left(Problem("Unsupported PGP signature type"))
+      case o =>
+        logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
+        Left(Problem("Unsupported PGP signature type"))
 
   intelliJuseImport(PGPPublicKeyShow)
