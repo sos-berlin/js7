@@ -823,7 +823,9 @@ lazy val `js7-tests` = project
 
 def isExcludedJar(path: String) =
   path.startsWith("com.google.code.findbugs.jsr305-") ||
-  path.startsWith("org.scalatest.")
+  path.startsWith("org.scalatest.") ||
+  path.startsWith("org.typelevel.literally")
+
   //path.startsWith("com.intellij.annotations-") ||  <-- required by TypeTag[RichProcess]
 
 //--------------------------------------------------------------------------------------------------
