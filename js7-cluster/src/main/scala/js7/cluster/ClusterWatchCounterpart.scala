@@ -117,8 +117,10 @@ extends Service.StoppableByRequest:
         val request = toRequest(reqId)
         lock.lock:
           logger.traceIOWithResult("check",
-            s"${isHeartbeat ?? "🩶 "
-            }$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
+            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
+            // macOS `less` displays 🩶 with wrong width
+            result = (a: Checked[ClusterWatchConfirmation]) =>
+              if isHeartbeat && a.isRight then s"💚 $a" else a,
             marker = if isHeartbeat then Logger.Heartbeat else null,
             body =
               check2(
