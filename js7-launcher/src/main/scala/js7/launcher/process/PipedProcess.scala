@@ -168,7 +168,7 @@ object PipedProcess:
   private val killStdoutAndStderrDelay = 500.ms
   private val stdoutAndStderrAbandonAfter = 3.s
   private val StdouterrWorry = Worry(
-    Seq(1.s, 3.s, 6.s) ++ AfterTenSecondsWorryDurations,
+    List(1.s, 3.s, 6.s) ::: AfterTenSecondsWorryDurations,
     infoLevel = 0.s, orangeLevel = 3.s)
 
   private val pumpFiberCount = Atomic(0)

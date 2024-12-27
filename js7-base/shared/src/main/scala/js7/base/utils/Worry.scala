@@ -14,19 +14,33 @@ import scala.math.Ordering.Implicits.infixOrderingOps
 
 /** When start to worry about an operation lasting too long. */
 final case class Worry(
-  durations: Seq[FiniteDuration] = DefaultWorryDurations,
+  durations: List[FiniteDuration] = DefaultWorryDurations,
   infoLevel: FiniteDuration = InfoWorryDuration,
   orangeLevel: FiniteDuration = InfoWorryDuration,
   maxLogLevel: LogLevel = LogLevel.MaxValue):
 
+  private val (debugLevel, myDurations) =
+    val traceAdded = logger.isTraceEnabled && durations.headOption.exists(_ > TraceWorryDuration)
+    if traceAdded then
+      (Some(durations.head), TraceWorryDuration :: durations)
+    else
+      (None, durations)
+
   def logLevel(elapsed: FiniteDuration): LogLevel =
-    if elapsed < infoLevel then
+    if debugLevel.exists(elapsed < _) then
+      LogLevel.Trace
+    else if elapsed < infoLevel then
       LogLevel.Debug
     else
       LogLevel.Info
 
   def symbol(elapsed: FiniteDuration): String =
-    if elapsed < orangeLevel then "🟡" else "🟠"
+    if debugLevel.exists(elapsed < _) then
+      "⚪️"
+    else if elapsed < orangeLevel then
+      "🟡"
+    else
+      "🟠"
 
   def logWhenItTakesLonger[A](what: => String)(io: IO[A]): IO[A] =
     logWhenItTakesLonger("for", "completed", what):
@@ -53,7 +67,7 @@ final case class Worry(
   : IO[A] =
     CatsDeadline.now.flatMap: since =>
       var level: LogLevel = LogLevel.None
-      io.whenItTakesLonger(durations): duration =>
+      io.whenItTakesLonger(myDurations): duration =>
         level = logLevel(duration) min maxLogLevel
         onDelayedOrCompleted(None, duration, level, symbol(duration))
           .flatMap: line =>
@@ -74,11 +88,14 @@ object Worry:
 
   private val logger = Logger[this.type]
 
-  val AfterTenSecondsWorryDurations: Seq[FiniteDuration] =
-    Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
+  val AfterTenSecondsWorryDurations: List[FiniteDuration] =
+    List.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
 
-  val DefaultWorryDurations: Seq[FiniteDuration] =
-    Seq(3.s, 7.s) ++ AfterTenSecondsWorryDurations
+  val DefaultWorryDurations: List[FiniteDuration] =
+    3.s :: 7.s :: AfterTenSecondsWorryDurations
+
+  private val TraceWorryDuration: FiniteDuration =
+    1.s
 
   private val InfoWorryDuration: FiniteDuration =
     30.s
@@ -87,8 +104,8 @@ object Worry:
 
   def adaptDurationsToMinimum(
     minimum: FiniteDuration,
-    worryDurations: Seq[FiniteDuration] = DefaultWorryDurations)
-  : Seq[FiniteDuration] =
+    worryDurations: List[FiniteDuration] = DefaultWorryDurations)
+  : List[FiniteDuration] =
     val dropped = fs2.Stream.iterable(worryDurations)
       .scan(ZeroDuration)(_ + _)
       .drop(1)
