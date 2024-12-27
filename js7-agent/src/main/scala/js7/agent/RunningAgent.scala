@@ -38,15 +38,15 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Atomic, ProgramTermination}
+import js7.base.utils.{Atomic, ProgramTermination}
 import js7.base.web.Uri
-import js7.cluster.ClusterNode
+import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.system.JavaInformations.javaInformation
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
-import js7.data.node.{NodeId, NodeNameToPassword}
+import js7.data.node.NodeNameToPassword
 import js7.data.subagent.SubagentId
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -241,13 +241,11 @@ object RunningAgent:
 
     val actors = mutable.Buffer.empty[ActorRef]
 
-    def startMainActor(
-      failedNodeId: Option[NodeId],
-      journalAllocated: Allocated[IO, FileJournal[AgentState]])
-    : MainActorStarted =
+    def startMainActor(workingClusterNode: WorkingClusterNode[AgentState]): MainActorStarted =
+      val journal = workingClusterNode.journalAllocated.allocatedThing
       val failedOverSubagentId: Option[SubagentId] =
-        for nodeId <- failedNodeId yield
-          journalAllocated.allocatedThing.unsafeCurrentState().meta
+        for nodeId <- workingClusterNode.failedNodeId yield
+          journal.unsafeCurrentState().meta
             .clusterNodeIdToSubagentId(nodeId)
             .orThrow
 
@@ -258,8 +256,8 @@ object RunningAgent:
           val mainActor = new MainActor(
             forDirector,
             failedOverSubagentId,
-            clusterNode,
-            journalAllocated, conf, testWiring.commandHandler,
+            workingClusterNode,
+            conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
             clock)
             (using ioRuntime)
@@ -270,7 +268,7 @@ object RunningAgent:
         "main").taggedWith[MainActor]
 
       actors += actor
-      actor ! MainActor.Input.Start(journalAllocated.allocatedThing.unsafeCurrentState())
+      actor ! MainActor.Input.Start(journal.unsafeCurrentState())
 
       MainActorStarted(
         actor,
@@ -287,16 +285,12 @@ object RunningAgent:
             .flatMapT: workingClusterNode =>
               journalDeferred.complete(workingClusterNode.journalAllocated.allocatedThing)
                 .*>(IO:
-                  startMainActor(
-                    workingClusterNode.failedNodeId,
-                    workingClusterNode.journalAllocated))
+                  startMainActor(workingClusterNode))
                 .map(Right(_))
             //.onErrorRecover { case t: RestartAfterJournalTruncationException =>
             //  logger.info(t.getMessage)
             //  Left(t.termination)
             //}
-
-    @deprecated val whenReady = Promise[Unit] // NOT USED ?
 
     val untilReady: IO[MainActor.Ready] =
       mainActorStarted.flatMap:
@@ -317,8 +311,7 @@ object RunningAgent:
               case Left(_) => Left(ShuttingDownProblem)
               case Right(o) => Right(o)
         .tapError(t => IO:
-          logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
-          whenReady.tryFailure(t))
+          logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t))
 
     val untilMainActorTerminated =
       memoize:
@@ -332,7 +325,6 @@ object RunningAgent:
                     .fromFuture(IO(o.termination))
                     .tapError(t => IO:
                       logger.error(s"MainActor failed with ${t.toStringWithCauses}", t))
-              .tapError(t => IO(whenReady.tryFailure(t)))
           .uncancelable /*a test may use this in `race`, unintentionally canceling this*/
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)

@@ -51,7 +51,7 @@ import scala.util.control.NonFatal
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 ThisBuild / scalaVersion := "3.5.2"
-ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT")
+ThisBuild / usePipelining := version.value.endsWith("-SNAPSHOT") && !isMac/*works only with clean*/
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 lazy val js7Target = {

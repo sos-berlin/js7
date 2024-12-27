@@ -23,9 +23,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, SetOnce}
+import js7.base.utils.SetOnce
 import js7.base.web.Uri
-import js7.cluster.ClusterNode
+import js7.cluster.WorkingClusterNode
 import js7.common.pekkoutils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
@@ -39,7 +39,6 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.state.FileJournal
 import js7.subagent.Subagent
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.{AskTimeoutException, ask}
@@ -52,9 +51,8 @@ import scala.language.unsafeNulls
 private[agent] final class AgentActor(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
-  clusterNode: ClusterNode[AgentState],
+  workingClusterNode: WorkingClusterNode[AgentState],
   terminatePromise: Promise[DirectorTermination],
-  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   clock: AlarmClock,
   agentConf: AgentConfiguration)
   (using ioRuntime: IORuntime)
@@ -64,7 +62,7 @@ extends Actor, Stash, SimpleStateActor:
 
   import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}
-  val journal = journalAllocated.allocatedThing
+  val journal = workingClusterNode.journalAllocated.allocatedThing
   import journal.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -334,11 +332,10 @@ extends Actor, Stash, SimpleStateActor:
               Props {
                 new AgentOrderKeeper(
                   forDirector,
-                  clusterNode,
+                  workingClusterNode,
                   failedOverSubagentId,
                   requireNonNull(recoveredAgentState),
                   changeSubagentAndClusterNode,
-                  journalAllocated,
                   shutDownOnce,
                   clock,
                   agentConf)
@@ -368,10 +365,8 @@ extends Actor, Stash, SimpleStateActor:
                     case clusterState: HasNodes =>
                       (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
                   }
-                  .fold(journal.persistKeyedEvent(event).rightAs(()))(activeNodeId =>
-                    IO(clusterNode.workingClusterNode)
-                      .flatMapT(_
-                        .appointNodes(idToUri, activeNodeId, extraEvent = Some(event))))
+                  .fold(journal.persistKeyedEvent(event).rightAs(())): activeNodeId =>
+                    workingClusterNode.appointNodes(idToUri, activeNodeId, extraEvent = Some(event))
             )))
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */
