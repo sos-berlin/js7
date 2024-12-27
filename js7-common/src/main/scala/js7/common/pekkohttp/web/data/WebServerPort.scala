@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web.data
 
 import cats.syntax.show.*
 import java.net.InetSocketAddress
+import js7.base.web.Uri
 import js7.common.internet.IP.inetSocketAddressShow
 
 /**
@@ -10,6 +11,9 @@ import js7.common.internet.IP.inetSocketAddressShow
 sealed trait WebServerPort:
   def scheme: WebServerBinding.Scheme
   def address: InetSocketAddress
+
+  def uri: Uri =
+    Uri(s"$scheme://${address.show}")
 
   override def toString = s"$scheme://${address.show}"
 

@@ -13,7 +13,7 @@ object JavaMain:
     runMain:
       body(CommandLineArguments(args))
 
-  def runMain(body: => IO[ProgramTermination]): IO[ProgramTermination] =
+  def runMain[A](body: => IO[A]): IO[A] =
     IO.defer:
       initialize()
       body

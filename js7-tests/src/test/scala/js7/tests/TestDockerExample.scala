@@ -1,105 +1,163 @@
 package js7.tests
 
-import cats.effect.{ExitCode, IO, SyncIO}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO, Resource, ResourceIO}
 import cats.syntax.all.*
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.base.catsutils.OurApp
+import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
-import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, deleteDirectoryRecursively, temporaryDirectory}
 import js7.base.log.Log4j
-import js7.base.thread.Futures.implicits.*
-import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingIOResource
-import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.Closer.withCloser
-import js7.base.utils.SideEffect.ImplicitSideEffect
-import js7.base.utils.SyncResource.syntax.RichSyncResource
-import js7.common.utils.JavaShutdownHook
+import js7.common.commandline.CommandLineArguments
+import js7.common.system.startup.JavaMain
+import js7.common.system.startup.JavaMain.runMain
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.OurApp
-import scala.concurrent.duration.*
+import js7.provider.Provider
+import js7.provider.configuration.ProviderConfiguration
+import js7.service.pgp.PgpCommons.{RichPGPPublicKey, toArmoredAsciiBytes}
+import js7.service.pgp.PgpSigner
+import scala.util.chaining.scalaUtilChainingOps
 
-/**
-  * @author Joacim Zschimmer
-  */
 object TestDockerExample extends OurApp:
 
-  private val TestAgentPaths = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
+  private val TestAgentPaths = List(AgentPath("agent-1"), AgentPath("agent-2"))
 
   private given IORuntime = runtime
 
   def run(args: List[String]) =
-    IO:
-      val directory =
-        temporaryDirectory / "TestDockerExample" sideEffect { directory =>
-          println(s"Using directory $directory")
-          if !Files.exists(directory) then
-            createDirectory(directory)
-          else
-            println(s"Deleting $directory")
-            deleteDirectoryContentRecursively(directory)
-        }
-      try run(directory)
-      finally Log4j.shutdown()
-      ExitCode.Success
+    runMain:
+      IO.defer:
+        val directory =
+          (temporaryDirectory / "TestDockerExample").tap: directory =>
+            println(s"Using directory $directory")
+            if !Files.exists(directory) then
+              createDirectory(directory)
+            else
+              println(s"Deleting $directory")
+              deleteDirectoryContentRecursively(directory)
+        run(directory)
+          .guarantee:
+            IO(Log4j.shutdown())
 
-  private def run(directory: Path): Unit =
+  private def run(directory: Path): IO[ExitCode] =
     val env = new TestDockerEnvironment(TestAgentPaths, directory)
+    val (signer, verifiy) = PgpSigner.forTest(SecretString("PGP-PASSWORD"))
 
     def provide(path: String) =
-      val dir = if path.startsWith("controller") then directory else env.agentsDir
+      val dir = if path.startsWith("subagent") then env.agentsDir else directory
       createDirectories((dir / path).getParent)
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
-      if path.contains("/executables/") then setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
+      if path.contains("/executables/") then
+        setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
 
     provide("controller/config/private/private.conf")
-    provide("provider/config/live/მაგალითად.workflow.json")
-    provide("provider/config/order-generators/test.order.xml")
-    provide("agent-a/config/private/private.conf")
-    provide("agent-a/config/executables/test")
-    provide("agent-b-1/config/private/private.conf")
-    provide("agent-b-1/config/executables/exit-7")
-    env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
+    directory / "controller/config/private/private.conf" ++=
+      s"""js7.auth.users {
+         |  Provider {
+         |    password = "plain:Provider PASSWORD"
+         |    permissions = [ UpdateItem ]
+         |  }
+         |}
+      """.stripMargin
 
-    withCloser { implicit closer =>
-      val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
-      val agents = for agentPath <- TestAgentPaths yield
-        val agent = TestAgent
-          .start(AgentConfiguration.forTest(
-            configAndData = env.agentDir(agentPath),
-            name = AgentConfiguration.DefaultName))
-          .flatTap(agent => IO(closer.onClose(agent.stop.await(99.s))))
-          .await(99.s)
-        //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
-        agent
-      JavaShutdownHook.add("TestDockerExample") {
-        print('\n')
-        agents
-          .traverse: agent =>
-            agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM))) *>
-              agent.untilTerminated
-          .await(10.s)
-        Log4j.shutdown()
-      } .closeWithCloser
+    provide("subagent-1a/config/private/private.conf")
+    provide("subagent-1a/config/executables/test")
+    provide("subagent-1b/config/private/private.conf")
+    provide("subagent-1c/config/private/private.conf")
+    provide("subagent-2a/config/private/private.conf")
+    env.controllerDir / "config" / "controller.conf" :=
+      """js7.web.server.auth.loopback-is-public = on
+        |""".stripMargin
+    createDirectory(directory / "controller/config/private/trusted-pgp-keys")
+    directory / "controller/config/private/trusted-pgp-keys" / "pgp.asc" :=
+      signer.pgpSecretKey.getPublicKey.toArmoredAsciiBytes
+    directory / "controller/config/private/private.conf" ++=
+      s"""js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
+         |""".stripMargin
+    for subagent <- Seq("subagent-1a", "subagent-1b", "subagent-1c", "subagent-2a") do
+      createDirectory(env.agentsDir / s"$subagent/config/private/trusted-pgp-keys")
+      env.agentsDir / s"$subagent/config/private/trusted-pgp-keys" / "test.asc" :=
+        signer.pgpSecretKey.getPublicKey.toArmoredAsciiBytes
+      env.agentsDir / s"$subagent/config/private/private.conf" ++=
+        s"""js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
+           |""".stripMargin
 
-      RunningController.ioRuntimeResource[SyncIO](conf).useSync { ioRuntime =>
-        given IORuntime = ioRuntime
-        RunningController.resource(conf)
-          .blockingUse(99.s) { controller =>
-            //??? controller.api.executeCommand(ControllerCommand.ScheduleOrdersEvery(1.minute)).unsafeToFuture().await(99.s).orThrow
-            controller.terminated.await(365 * 24.h)
-        }
-        agents.parTraverse(_.stop).await(60.s)
-      }
-    }
+    val conf = ControllerConfiguration.forTest(
+      configAndData = env.controllerDir,
+      httpPort = Some(4444))
+    val controllerUri = conf.webServerPorts.head.uri
+
+    val providerEnv: ResourceIO[Path] =
+      Resource:
+        IO:
+          val dir = directory / "provider"
+          createDirectory(dir)
+          provide("provider/config/order-generators/test.order.xml")
+          provide("provider/config/live/მაგალითად.workflow.json")
+          provide("provider/config/live/agent-1.agent.json")
+          provide("provider/config/live/agent-2.agent.json")
+          provide("provider/config/live/subagent-1a.subagent.json")
+          provide("provider/config/live/subagent-1b.subagent.json")
+          provide("provider/config/live/subagent-1c.subagent.json")
+          provide("provider/config/live/subagent-2a.subagent.json")
+          createDirectories(dir / "config/private")
+          dir / "config/private/private-pgp-key.asc" := signer.pgpSecretKey.toArmoredAsciiBytes
+          dir / "config/private/private.conf" :=
+            s"""js7.provider.sign-with = PGP
+               |js7.provider.private-signature-keys.PGP {
+               |  key = $${js7.config-directory}"/private/private-pgp-key.asc"
+               |  password = "PGP-PASSWORD"
+               |}
+               |js7.provider.controller.user = "Provider"
+               |js7.provider.controller.password = "Provider PASSWORD"
+               """.stripMargin
+          dir -> IO(deleteDirectoryRecursively(dir))
+
+    val providerResource: ResourceIO[Provider] =
+      for
+        given IORuntime <- RunningController.ioRuntimeResource[IO](conf)
+        _ <- providerEnv
+        provider <- Provider.resource:
+          ProviderConfiguration.fromCommandLine(
+            CommandLineArguments(Seq(
+              s"--config-directory=$directory/provider/config",
+              s"--controller-uri=$controllerUri")),
+            addConfig = config"""
+              js7.provider.add-orders-every = 10s
+              js7.provider.add-orders-earlier = 1s
+              """)
+      yield
+        provider
+
+    val controllerResource: ResourceIO[RunningController] =
+      for
+        given IORuntime <- RunningController.ioRuntimeResource[IO](conf)
+        controller <- RunningController.resource(conf)
+      yield
+        controller
+
+    def subagentResource(agentPath: AgentPath): ResourceIO[TestAgent] =
+      TestAgent.resource(AgentConfiguration.forTest(
+        configAndData = env.agentDir(agentPath),
+        name = agentPath.string))
+
+    val subagentResources: List[ResourceIO[TestAgent]] =
+      TestAgentPaths.map(subagentResource)
+
+    (providerResource :: controllerResource :: subagentResources)
+      .sequence.use: services =>
+        services.parTraverse:
+          _.untilTerminated.map(_.toExitCode)
+      .map:
+        _.find(_ != ExitCode.Success) getOrElse ExitCode.Success
+  end run

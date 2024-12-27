@@ -217,3 +217,9 @@ object PgpCommons:
       val out = new ByteArrayOutputStream()
       writePublicKeyRingCollectionAsAscii(underlying, out)
       new String(out.toByteArray, US_ASCII)
+
+  extension (secretKey: PGPSecretKey)
+    def toArmoredAsciiBytes: ByteArray =
+      val out = new ByteArrayOutputStream()
+      writeSecretKeyAsAscii(secretKey, out)
+      ByteArray.unsafeWrap(out.toByteArray)

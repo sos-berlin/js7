@@ -22,7 +22,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class PgpSigner private(pgpSecretKey: PGPSecretKey, password: SecretString)
+final class PgpSigner private(val pgpSecretKey: PGPSecretKey, password: SecretString)
 extends DocumentSigner:
   protected type MySignature = PgpSignature
 
