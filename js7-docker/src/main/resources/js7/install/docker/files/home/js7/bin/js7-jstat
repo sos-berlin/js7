@@ -27,6 +27,11 @@ pid="$(cat data/state/lock)"
 
 exec jstat "${options[@]}" "$pid" "${other[@]}" |
   gawk '{
-    print strftime("%Y-%m-%d %H:%M:%S│") $0;
-    fflush()
+    if ($3 == "S0U") {
+      used = "S0U+S1U+EU+OU"
+      print "Timestamp          ", $0, "S0U+S1U+EU+OU"
+    } else {
+      print strftime("%Y-%m-%dT%H:%M:%S "), $0, $3 + $5 + $6 + $8
+      fflush()
+    }
   }'
