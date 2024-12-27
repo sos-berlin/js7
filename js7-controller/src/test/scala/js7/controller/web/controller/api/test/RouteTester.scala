@@ -29,7 +29,7 @@ trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
   private given IORuntime = ioRuntime
 
   protected final lazy val gateKeeper = new GateKeeper(
-    WebServerBinding.Http,
+    WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration.fromConfig(
       config"js7.web.server.auth.loopback-is-public = true"
         .withFallback(DefaultConfig),

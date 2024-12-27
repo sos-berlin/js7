@@ -102,7 +102,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute:
     pekko.actor.debug.unhandled = on
     """
 
-  protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
+  protected lazy val gateKeeper = new GateKeeper(WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final lazy val sessionRegister = SessionRegister.forTest(
     SimpleSession.apply, SessionRegister.TestConfig)

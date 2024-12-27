@@ -14,6 +14,7 @@ import js7.common.http.PekkoHttpClient.HttpException
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkoutils.Pekkos
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, ServiceUnavailable, Unauthorized}
 import org.apache.pekko.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
@@ -42,6 +43,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
   """.withFallback(super.testConfig)
 
   protected final lazy val gateKeeper = GateKeeper.forTest(
+    WebServerBinding.localhostHttp(port = 1),
     isPublic = isPublic,
     config = config"""
       js7.auth.users {

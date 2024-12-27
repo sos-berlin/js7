@@ -430,7 +430,7 @@ final class GateKeeperTest extends OurTestSuite, ScalatestRouteTest:
 
   private def newGateKeeper[U <: User: User.Companion ](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false) =
     given ExceptionHandler = null.asInstanceOf[ExceptionHandler]  // Use default ExceptionHandler, see Route.seal
-    new GateKeeper(WebServerBinding.Http, conf, isLoopback = isLoopback)
+    new GateKeeper(WebServerBinding.localhostHttp(port = 1), conf, isLoopback = isLoopback)
 
   /** Error message does not contain a hint. */
   private def assertPlainStatus(statusCode: StatusCode): Unit =

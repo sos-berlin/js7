@@ -66,7 +66,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
               })
 
           protected val gateKeeper = new GateKeeper(
-            WebServerBinding.Http,
+            WebServerBinding.localhostHttp(port = 1),
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
           protected val sessionRegister = SessionRegister.forTest[SubagentSession](

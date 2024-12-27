@@ -42,7 +42,7 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, ScalatestRout
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
   protected lazy val gateKeeper = new GateKeeper(
-    WebServerBinding.Http,
+    WebServerBinding.localhostHttp(port = 1),
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",
       invalidAuthenticationDelay = 100.millis,

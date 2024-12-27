@@ -32,7 +32,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 final class GateKeeper[U <: User](
-  scheme: WebServerBinding.Scheme,
+  binding: WebServerBinding,
   configuration: Configuration[U],
   isLoopback: Boolean = false)
   (implicit
@@ -46,8 +46,10 @@ final class GateKeeper[U <: User](
 
   import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
+  private val logger = Logger.withPrefix[this.type](binding.toString)
+
   private val httpsClientAuthRequired =
-    scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
+    binding.scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
 
@@ -231,11 +233,10 @@ final class GateKeeper[U <: User](
     configuration.invalidAuthenticationDelay
 
   def secureStateString: String =
-    configuration.secureStateString(scheme)
+    configuration.secureStateString(binding.scheme)
 
 
 object GateKeeper:
-  private val logger = Logger[this.type]
 
   def apply[U <: User: User.Companion](
     binding: WebServerBinding,
@@ -245,7 +246,7 @@ object GateKeeper:
       exceptionHandler: ExceptionHandler)
   : GateKeeper[U] =
     new GateKeeper(
-      binding.scheme,
+      binding,
       conf,
       isLoopback = binding.address.getAddress.isLoopbackAddress)
 
@@ -312,11 +313,11 @@ object GateKeeper:
   def unauthorized: StatusCodes.ClientError = // For breakpoint
     Unauthorized
 
-  def forTest(scheme: WebServerBinding.Scheme = WebServerBinding.Http, isPublic: Boolean = false,
+  def forTest(binding: WebServerBinding, isPublic: Boolean = false,
     config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, IORuntime: IORuntime)
   : GateKeeper[SimpleUser] =
     new GateKeeper(
-      scheme = scheme,
+      binding,
       GateKeeper.Configuration.fromConfig(
         config.withFallback(config"""
           js7.web.server.auth {
