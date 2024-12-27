@@ -317,8 +317,7 @@ private final class ClusterWatchSynchronizer(
     clusterWatch
       .checkClusterState(
         clusterState,
-        clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
-        isHeartbeat = true)
+        clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
       .catchIntoChecked
       .flatMapT:
         case None =>

@@ -56,8 +56,7 @@ extends Service.StoppableByRequest:
     startService:
       untilStopRequested
 
-  def checkClusterState(
-    clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean, isHeartbeat: Boolean)
+  def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
@@ -74,7 +73,7 @@ extends Service.StoppableByRequest:
               clusterState.setting.clusterWatchId,
               ClusterWatchCheckState(_, correlId, ownId, clusterState),
               clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed,
-              isHeartbeat = isHeartbeat,
+              isHeartbeat = true,
             ).map(_.map(Some(_)))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
