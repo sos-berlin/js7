@@ -27,23 +27,23 @@ object JournalFiles:
       .toChecked(Problem(s"No journal under '$journalFileBase'"))
 
   def listJournalFiles(journalFileBase: Path): Vector[JournalFile] =
-    listFiles(journalFileBase) { iterator =>
+    listFiles(journalFileBase): iterator =>
       val matcher = new JournalFile.Matcher(journalFileBase.getFileName)
       iterator
-        .flatMap(file => matcher.checkedJournalFile(file).toOption)
-        .toVector.sortBy(_.fileEventId)
-    }
+        .flatMap: file =>
+          matcher.checkedJournalFile(file).toOption
+        .toVector
+        .sortBy(_.fileEventId)
 
   def listGarbageFiles(journalFileBase: Path, untilFileEventId: EventId): Vector[Path] =
     val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
-    listFiles(journalFileBase)(_
-      .filter { file =>
+    listFiles(journalFileBase):
+      _.filter: file =>
         val matcher = pattern.matcher(file.getFileName.toString)
         matcher.matches() &&
           Try(matcher.group(1).toLong < untilFileEventId).getOrElse(false)
-      }
       .toVector
-      .sorted)
+      .sorted
 
   private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] =
     val directory = journalFileBase.getParent
@@ -52,9 +52,8 @@ object JournalFiles:
     else if journalFileBase.getFileName == null then
       Vector.empty
     else
-      autoClosing(Files.list(directory)) { stream =>
+      autoClosing(Files.list(directory)): stream =>
         body(stream.iterator.asScala)
-      }
 
   private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
     try
@@ -64,9 +63,8 @@ object JournalFiles:
         logger.warn("DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN")
         deleteJournal(fileBase)
       Checked.unit
-    catch { case e: IOException =>
+    catch case e: IOException =>
       Left(Problem.pure(e.toStringWithCauses))
-    }
 
   private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
     val matches: String => Boolean = string =>
@@ -78,10 +76,9 @@ object JournalFiles:
       try
         logger.info(s"DELETE JOURNAL FILE $file")
         delete(file)
-      catch { case e: IOException if ignoreFailure =>
+      catch case e: IOException if ignoreFailure =>
         logger.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")
         failed = true
-      }
     if failed then
       logger.warn("Journal files will be deleted at next start")
     else
@@ -118,5 +115,7 @@ object JournalFiles:
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit =
     assertThat(toFile.toString.startsWith(fileBase.toString))
     val symLink = Paths.get(s"$fileBase-journal")  // We preserve the suffix ".journal" for the real journal files
-    Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
-    Try { createSymbolicLink(symLink, toFile.getFileName) }
+    Try:
+      if exists(symLink, NOFOLLOW_LINKS) then delete(symLink)
+    Try:
+      createSymbolicLink(symLink, toFile.getFileName)
