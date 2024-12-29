@@ -5,9 +5,10 @@ import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exists, isDirectory, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
+import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths, StandardCopyOption}
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops.*
 import js7.base.data.{ByteArray, ByteSequence, Writable}
@@ -85,6 +86,9 @@ object FileUtils:
 
       def write(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
+
+      def :=(path: Path): Unit =
+        copy(path, delegate, REPLACE_EXISTING)
 
       def :=[W: Writable](w: W): Unit =
         write(w)

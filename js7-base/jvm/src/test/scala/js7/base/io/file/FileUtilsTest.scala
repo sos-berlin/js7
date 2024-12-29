@@ -77,6 +77,14 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll:
       path.contentString shouldEqual TestString
       new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString
 
+    ":= Path" in:
+      withTemporaryFile: aFile =>
+        aFile := "Tomato"
+        withTemporaryFile: bFile =>
+          bFile := "Potato"
+          aFile := bFile
+          aFile.contentString shouldEqual "Potato"
+
     "++= String" in:
       path ++= "-APPENDED"
       path.contentString shouldEqual TestString + "-APPENDED"
