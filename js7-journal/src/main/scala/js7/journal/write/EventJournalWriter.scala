@@ -10,7 +10,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.*
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.EventJournalWriter.*
 import scala.concurrent.duration.FiniteDuration
@@ -102,6 +102,7 @@ extends JournalWriter(S, after = after, append = !withoutSnapshots),
     PositionAnd(fileLength, lastWrittenEventId)
 
   override def toString = s"EventJournalWriter(${file.getFileName})"
+
 
 private[journal] object EventJournalWriter:
   private val TransactionByteArray = Transaction.asJson.toByteArray

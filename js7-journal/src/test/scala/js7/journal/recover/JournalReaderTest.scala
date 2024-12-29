@@ -17,7 +17,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import js7.journal.JournalActor
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import org.apache.pekko.pattern.ask

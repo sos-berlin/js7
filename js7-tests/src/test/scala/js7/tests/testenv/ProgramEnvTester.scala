@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.journal.files.JournalFiles.*
+import js7.journal.files.JournalFiles.extensions.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalactic.source
 import org.scalatest.Assertions.*

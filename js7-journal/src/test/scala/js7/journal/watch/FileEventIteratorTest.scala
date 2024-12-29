@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalSeparators, Stamped}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.FileEventIteratorTest.*
 import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
 import org.scalatest.matchers.should.Matchers.*

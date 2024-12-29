@@ -6,7 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.{JournalHeaders, Stamped}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.HistoricEventReaderTest.*
 import js7.journal.watch.TestData.{AEvent, BEvent, TestState, journalId}
 import js7.journal.write.EventJournalWriter

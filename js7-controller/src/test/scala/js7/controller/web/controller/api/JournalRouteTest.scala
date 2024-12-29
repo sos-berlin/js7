@@ -34,7 +34,7 @@ import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.*
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}

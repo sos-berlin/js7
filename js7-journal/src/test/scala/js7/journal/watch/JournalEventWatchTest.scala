@@ -30,7 +30,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter

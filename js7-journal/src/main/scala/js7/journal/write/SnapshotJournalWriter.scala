@@ -10,7 +10,7 @@ import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.*
+import js7.journal.files.JournalFiles.extensions.*
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 

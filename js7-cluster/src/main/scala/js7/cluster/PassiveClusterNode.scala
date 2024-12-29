@@ -51,7 +51,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
-import js7.journal.files.JournalFiles.*
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](

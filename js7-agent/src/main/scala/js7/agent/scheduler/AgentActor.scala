@@ -38,7 +38,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.subagent.Subagent
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.{AskTimeoutException, ask}

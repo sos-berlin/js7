@@ -49,7 +49,7 @@ import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveP
 import js7.data.node.NodeNameToPassword
 import js7.data.subagent.SubagentId
 import js7.journal.EventIdGenerator
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.license.LicenseCheckContext

@@ -8,7 +8,7 @@ import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 
 /**
   * @author Joacim Zschimmer

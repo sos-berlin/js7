@@ -37,7 +37,7 @@ import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, Keye
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}

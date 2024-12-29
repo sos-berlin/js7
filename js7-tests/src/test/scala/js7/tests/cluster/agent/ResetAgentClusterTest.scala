@@ -20,7 +20,7 @@ import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.tests.cluster.agent.ResetAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

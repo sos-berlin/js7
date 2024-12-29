@@ -87,30 +87,33 @@ object JournalFiles:
   private[files] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
 
-  implicit final class JournalMetaOps(private val journalLocation: JournalLocation) extends AnyVal:
-    def file(after: EventId): Path =
-      JournalFile.toFile(journalLocation.fileBase, after)
+  object extensions:
+    extension (journalLocation: JournalLocation)
+      def file(after: EventId): Path =
+        JournalFile.toFile(journalLocation.fileBase, after)
 
-    def currentFile: Checked[Path] =
-      JournalFiles.currentFile(journalLocation.fileBase)
+      def currentFile: Checked[Path] =
+        JournalFiles.currentFile(journalLocation.fileBase)
 
-    def listJournalFiles: Vector[JournalFile] =
-      JournalFiles.listJournalFiles(journalLocation.fileBase)
+      def listJournalFiles: Vector[JournalFile] =
+        JournalFiles.listJournalFiles(journalLocation.fileBase)
 
-    def listGarbageFiles(untilFileEventId: EventId): Vector[Path] =
-      JournalFiles.listGarbageFiles(journalLocation.fileBase, untilFileEventId)
+      def listGarbageFiles(untilFileEventId: EventId): Vector[Path] =
+        JournalFiles.listGarbageFiles(journalLocation.fileBase, untilFileEventId)
 
-    def updateSymbolicLink(toFile: Path): Unit =
-      val symLink = Paths.get(s"${journalLocation.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
-      Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
-      Try { createSymbolicLink(symLink, toFile.getFileName) }
+      def updateSymbolicLink(toFile: Path): Unit =
+        val symLink = Paths.get(s"${journalLocation.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
+        Try:
+          if exists(symLink, NOFOLLOW_LINKS) then delete(symLink)
+        Try:
+          createSymbolicLink(symLink, toFile.getFileName)
 
-    def deleteJournalIfMarked(): Checked[Unit] =
-      JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
+      def deleteJournalIfMarked(): Checked[Unit] =
+        JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
 
-    def deleteJournal(ignoreFailure: Boolean = false): Unit =
-      logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
-      JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
+      def deleteJournal(ignoreFailure: Boolean = false): Unit =
+        logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
+        JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
 
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit =
     assertThat(toFile.toString.startsWith(fileBase.toString))

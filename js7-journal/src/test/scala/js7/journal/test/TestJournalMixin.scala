@@ -28,7 +28,7 @@ import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.pekkoutils.{DeadLetterActor, Pekkos}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.event.{Event, JournalId, KeyedEvent}
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.TestJournalMixin.*
 import js7.journal.test.TestState.keyedEventJsonCodec

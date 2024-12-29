@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.event.JournalHeader
 import js7.journal.JournalActor
-import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.test.JournalTest.*
 import org.apache.pekko.pattern.ask
 import org.scalatest.BeforeAndAfterAll
