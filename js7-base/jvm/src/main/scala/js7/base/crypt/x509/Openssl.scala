@@ -147,25 +147,35 @@ final class Openssl(dir: Path):
 
     opensslReq(distinguishedName, privateFile, certFile, ca = false)
 
+    val p12File = dir / s"$name.certificate.p12"
+    runProcess:
+      s"openssl pkcs12 -export" +
+        s" -inkey $privateFile" +
+        s" -in $certFile" +
+        s" -out $p12File" +
+        s" -passout 'pass:$p12Password'"
+
     for privateKey <- PrivateKeyPem.fromPem(privateFile.contentString) yield
-      CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray)
+      CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray, p12File)
 
   private def opensslReq(distinguishedName: String, privateFile: Path, certFile: Path, ca: Boolean) =
-    runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes " +
-      s"-subj '$distinguishedName' " +
-      s"-keyout ${quote(privateFile)} " +
-      s"-out ${quote(certFile)} " +
-      (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}"))
+    runProcess:
+      s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes " +
+        s"-subj '$distinguishedName' " +
+        s"-keyout ${quote(privateFile)} " +
+        s"-out ${quote(certFile)} " +
+        (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}")
 
 
 object Openssl:
   private val logger = Logger[this.type]
 
-  private val useHomebrew = true
+  private val p12Password = "jobscheduler"
+  private val useHomebrew = isMac
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
   lazy val openssl: String =
     val openssl =
-      if useHomebrew && isMac && exists(homebrewOpenssl) then
+      if useHomebrew && exists(homebrewOpenssl) then
         homebrewOpenssl
       else
         Paths.get("openssl")
@@ -176,7 +186,7 @@ object Openssl:
   def assertPemFile(typ: String, file: Path): Unit =
     Pem(typ).fromPem(file.contentString).orThrow
 
-  final case class CertWithPrivateKey(privateKey: ByteArray, certificate: ByteArray):
+  final case class CertWithPrivateKey(privateKey: ByteArray, certificate: ByteArray, p12File: Path):
     lazy val certificatePem: String =
       X509Cert.CertificatePem.toPem(certificate)
 
