@@ -1,16 +1,17 @@
 package js7.base.io
 
-import cats.effect.SyncIO
-import cats.effect.Resource
+import cats.effect.{Resource, SyncIO}
 import java.io.{File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
 import java.util.Properties
 import js7.base.data.{ByteArray, ByteSequence, Writable}
+import js7.base.io.JavaResource.UnknownJavaResourceProblem
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
+import scala.collection.immutable.Map.Map1
 import scala.language.implicitConversions
 
 /**
@@ -23,8 +24,11 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   private lazy val checkedUrl: Checked[URL] =
     classLoader.getResource(path) match
-      case null => Left(Problem(s"Unknown JavaResource '$path'"))
+      case null => Left(UnknownJavaResourceProblem(path))
       case url => Right(url)
+
+  def exists: Boolean =
+    !checkedUrl.left.exists(_.isInstanceOf[UnknownJavaResourceProblem])
 
   def requireExistence(): JavaResource =
     url
@@ -130,3 +134,6 @@ object JavaResource:
     o.asResource
 
   implicit val writable: Writable[JavaResource] = _.writeToStream(_)
+
+  final case class UnknownJavaResourceProblem(path: String) extends Problem.Coded:
+    def arguments = Map1("path", path)

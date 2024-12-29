@@ -50,9 +50,15 @@ object Configs:
       ConfigFactory.empty
 
   def loadResource(resource: JavaResource): Config =
+    loadResourceX(resource, InternalOriginDescription)
+
+  def loadSecretResource(resource: JavaResource): Config =
+    loadResourceX(resource, SecretOriginDescription)
+
+  private def loadResourceX(resource: JavaResource, origin: String): Config =
     logger.trace(s"Reading configuration JavaResource $resource")
     var options = Required.setClassLoader(resource.classLoader)
-    options = options.setOriginDescription(InternalOriginDescription)
+    options = options.setOriginDescription(origin)
     ConfigFactory.parseResourcesAnySyntax(resource.path, options)
 
   def logConfig(config: Config): Unit =
@@ -155,8 +161,8 @@ object Configs:
   implicit val configMonoid: Monoid[Config] =
     new Monoid[Config]:
       val empty = ConfigFactory.empty
-      
-      def combine(a: Config, b: Config) = 
+
+      def combine(a: Config, b: Config) =
         b.withFallback(a)
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal:
