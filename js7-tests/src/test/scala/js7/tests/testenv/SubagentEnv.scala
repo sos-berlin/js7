@@ -14,8 +14,8 @@ import js7.tests.testenv.DirectoryProvider.*
 /** Environment with config and data directories for a Subagent with Agent Director. */
 trait SubagentEnv extends ProgramEnv:
   protected def subagentItem: SubagentItem
-  protected def name: String
   protected def rootDirectory: Path
+  protected def name: String
   protected def mutualHttps: Boolean
   protected def provideHttpsCertificate: Boolean
   protected def provideClientCertificate: Boolean

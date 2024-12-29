@@ -23,8 +23,8 @@ import js7.tests.testenv.DirectoryProvider.*
 /** Environment with config and data directories for a Subagent with Agent Director. */
 final class DirectorEnv(
   val subagentItem: SubagentItem,
-  protected val name: String,
   protected val rootDirectory: Path,
+  protected val name: String,
   protected val verifier: SignatureVerifier = defaultVerifier,
   protected val mutualHttps: Boolean = false,
   protected val provideHttpsCertificate: Boolean = false,

@@ -366,8 +366,8 @@ extends HasCloser:
   : DirectorEnv =
     new DirectorEnv(
       subagentItem = subagentItem,
-      name = subagentName(subagentItem.id, suffix = suffix),
       rootDirectory = directory,
+      name = subagentName(subagentItem.id, suffix = suffix),
       verifier = verifier,
       mutualHttps = agentHttpsMutual,
       provideHttpsCertificate = provideAgentHttpsCertificate,

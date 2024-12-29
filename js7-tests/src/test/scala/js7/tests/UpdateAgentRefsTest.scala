@@ -54,8 +54,8 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     SubagentItem(
       SubagentId(agentPath.string + "-0"), agentPath, disabled = primarySubagentsDisabled,
       uri = Uri(s"http://127.0.0.1:$agentPort1")),
-    "AGENT",
     directoryProvider.directory,
+    name = "AGENT",
     extraConfig = agentConfig)
 
   private lazy val controller = directoryProvider.newController()
