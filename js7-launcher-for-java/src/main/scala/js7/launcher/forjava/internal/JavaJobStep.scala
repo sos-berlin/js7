@@ -21,9 +21,13 @@ trait JavaJobStep extends JavaWrapper:
   @Nonnull
   def asScala: Step
 
-  @Nonnull
-  final lazy val arguments: java.util.Map[String, Value] =
+  // Scala 3.6.2 erases type parameters from lazy val. So we publish via a def-function.
+  private lazy val _arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
+
+  @Nonnull
+  final def arguments: java.util.Map[String, Value] =
+    _arguments
 
   @Nonnull
   final lazy val order: JOrder =

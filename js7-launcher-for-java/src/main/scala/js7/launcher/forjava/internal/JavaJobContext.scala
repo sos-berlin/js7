@@ -15,8 +15,12 @@ trait JavaJobContext extends JavaWrapper:
   lazy val jobKey: JobKey =
     asScala.jobConf.jobKey
 
-  lazy val jobArguments: java.util.Map[String, Value] =
+  // Scala 3.6.2 erases type parameters from lazy val. So we publish via a def-function.
+  private lazy val _jobArguments: java.util.Map[String, Value] =
     asScala.jobArguments.asJava
+
+  def jobArguments: java.util.Map[String, Value] =
+    _jobArguments
 
   def systemEncoding: Charset =
     asScala.systemEncoding
