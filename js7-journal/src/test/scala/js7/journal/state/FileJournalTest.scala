@@ -77,7 +77,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync().isRight)
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
-          "'FileJournalTest.TestState': Duplicate NumberThing: ONE")))
+          "FileJournalTest.TestState: Duplicate NumberThing: ONE")))
       intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() }
 
     "persistEvent" in:

@@ -37,7 +37,7 @@ final class EventDrivenStateTest extends OurTestSuite:
       Left(
         EventNotApplicableProblem(InvalidEvent, TestState("(ADDED)MORE"))
           .withPrefix("Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' " +
-            "cannot be applied to 'EventDrivenStateTest.TestCase':")))
+            "cannot be applied to EventDrivenStateTest.TestCase:")))
 
 
 object EventDrivenStateTest:

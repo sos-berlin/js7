@@ -9,26 +9,25 @@ extends EventDrivenState[S, Event]:
 
   def companion: JournaledState.Companion[S]
 
-  override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
-    if stampedEvents.isEmpty then
-      Right(this)
-    else
-      super.applyStampedEvents(stampedEvents)
-        .map(_.withEventId(stampedEvents.last.eventId))
-
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[S]
-
   def withEventId(eventId: EventId): S
 
   def eventId: EventId
 
+  override final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]])
+  : Checked[S] =
+    if stampedEvents.isEmpty then
+      Right(this)
+    else
+      super.applyStampedEvents(stampedEvents).map:
+        _.withEventId(stampedEvents.last.eventId)
+
 
 object JournaledState:
+
   trait HasEventCodec:
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
 
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S, Event], HasEventCodec:
 
-    implicit final val implicitJournalStateCompanion: Companion[S] =
-      this
+    given Companion[S] = this
