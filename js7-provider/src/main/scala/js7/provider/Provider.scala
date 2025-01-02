@@ -108,8 +108,7 @@ extends Observing, MainService, Service.StoppableByRequest:
   private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
   : IO[Checked[InventoryItemDiff_]] =
     for
-      pair <- IO.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
-      (checkedLocalItemSeq, controllerItems) = pair
+      (checkedLocalItemSeq, controllerItems) <- IO.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
     yield
       checkedLocalItemSeq.map(
         InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))

@@ -27,8 +27,7 @@ extends EventInstructionExecutor:
       .orElse(order.ifState[Ready].map: order =>
         for
           workflow <- state.keyToItem(Workflow).checked(order.workflowId)
-          pair <- toCalendarAndScheduleCalculator(workflow, instr, state)
-          (calendar, calculator) = pair
+          (calendar, calculator) <- toCalendarAndScheduleCalculator(workflow, instr, state)
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         yield

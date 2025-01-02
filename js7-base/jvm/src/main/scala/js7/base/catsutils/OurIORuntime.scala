@@ -91,7 +91,7 @@ object OurIORuntime:
 
     for
       _ <- logAllocation[F](label, threads)
-      pair <-
+      (compute, shutdownCompute) <-
         Resource.eval(F.delay:
           computeExecutor match
             case Some(ec) =>
@@ -102,12 +102,10 @@ object OurIORuntime:
                 threadPrefix = computeLabel,
                 blockerThreadPrefix = computeBlockerLabel,
                 reportFailure = reportFailure))
-      (compute, shutdownCompute) = pair
       _ <- Resource.onFinalize(F.delay(shutdownCompute()))
 
-      pair <- Resource.eval(F.delay:
+      (blockingEC, shutdownBlocking) <- Resource.eval(F.delay:
         IORuntime.createDefaultBlockingExecutionContext(threadPrefix = blockingLabel))
-      (blockingEC, shutdownBlocking) = pair
       _ <- Resource.onFinalize(F.delay(shutdownBlocking()))
 
       ioRuntime <- Resource.pure:
