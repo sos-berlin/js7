@@ -15,9 +15,9 @@ final class EventDrivenStateTest extends OurTestSuite:
 
   "applyKeyedEvents" in:
     val stampedEvents =
-      Stamped(1000L, Timestamp.ofEpochMilli(1), (NoKey <-: Added("("))) ::
-      Stamped(2000L, Timestamp.ofEpochMilli(2), (NoKey <-: Added("ADDED"))) ::
-      Stamped(3000L, Timestamp.ofEpochMilli(3), (NoKey <-: Added(")"))) ::
+      Stamped(1000L, Timestamp.ofEpochMilli(1), NoKey <-: Added("(")) ::
+      Stamped(2000L, Timestamp.ofEpochMilli(2), NoKey <-: Added("ADDED")) ::
+      Stamped(3000L, Timestamp.ofEpochMilli(3), NoKey <-: Added(")")) ::
       Nil
 
     assert(s.applyStampedEvents(stampedEvents) == s.applyKeyedEvents(stampedEvents.map(_.value)))
@@ -29,8 +29,8 @@ final class EventDrivenStateTest extends OurTestSuite:
     assert(s.applyKeyedEvent(InvalidEvent) == Left(EventNotApplicableProblem(InvalidEvent, s)))
 
     val stampedEvents =
-      Stamped(4000L, Timestamp.ofEpochMilli(4), (NoKey <-: Added("MORE"))) ::
-      Stamped(5000L, Timestamp.ofEpochMilli(5), (NoKey <-: InvalidEvent)) ::
+      Stamped(4000L, Timestamp.ofEpochMilli(4), NoKey <-: Added("MORE")) ::
+      Stamped(5000L, Timestamp.ofEpochMilli(5), NoKey <-: InvalidEvent) ::
       Nil
 
     assert(s.applyStampedEvents(stampedEvents) ==
