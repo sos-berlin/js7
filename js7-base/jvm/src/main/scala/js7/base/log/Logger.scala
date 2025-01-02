@@ -42,7 +42,7 @@ object Logger extends AdHocLogger:
   def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, Unit] =
     Resource(F.delay:
       initialize(name) -> F.delay:
-        Log4j.shutdown())
+        shutdown())
 
   def initialize(name: String, suppressInfo: Boolean = false): Unit =
     ifNotInitialized:
@@ -51,6 +51,9 @@ object Logger extends AdHocLogger:
       if !suppressInfo then
         ScalaLogger[this.type].info(StartUp.startUpLine(name))
       Tests.log()
+
+  def shutdown(fast: Boolean = false, suppressLogging: Boolean = false): Unit =
+    Log4j.shutdown(fast = fast, suppressLogging = suppressLogging)
 
   /** Don't initialize but mark as initialized.
    * Use this when logging has been initialized by some outer software (like JOC). */

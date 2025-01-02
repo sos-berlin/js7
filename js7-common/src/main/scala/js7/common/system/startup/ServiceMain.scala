@@ -4,7 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.logConfig
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
 import js7.base.service.{MainService, MainServiceTerminationException}
 import js7.base.system.startup.StartUp
 import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
@@ -68,7 +68,7 @@ object ServiceMain:
               termination.toExitCode
       .guarantee:
         IO.unlessA(suppressLogShutdown)(IO:
-          Log4j.shutdown(suppressLogging = suppressTerminationLogging))
+          Logger.shutdown(suppressLogging = suppressTerminationLogging))
 
   def blockingRun[Svc <: MainService](
     timeout: Duration = Duration.Inf)
