@@ -36,11 +36,13 @@ trait FileWatchStateHandler[Self]:
       pathToFileWatchState.checked(path)
         .flatMap(_ => updateFileWatchStates(remove = path :: Nil))
 
-    def applyEvent(keyedEvent: KeyedEvent[OrderWatchEvent]): Checked[Self] =
+    def applyOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent]): Checked[Self] =
       pathToFileWatchState
         .checked(keyedEvent.key)
-        .flatMap(o => updateFileWatchState(
-          o.applyEvent(keyedEvent.event)))
+        .flatMap:
+          _.applyEvent(keyedEvent.event)
+        .flatMap: o =>
+          updateFileWatchState(o)
 
 
 object FileWatchStateHandler:

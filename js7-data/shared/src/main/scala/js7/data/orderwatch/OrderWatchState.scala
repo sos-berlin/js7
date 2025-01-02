@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.Tests.isStrict
-import js7.data.event.KeyedEvent
+import js7.data.event.{EventDriven, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
@@ -38,7 +38,9 @@ final case class OrderWatchState(
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder] = Map.empty,
   private[orderwatch] val orderAddedQueue: Set[ExternalOrderName] = Set.empty,
   private[orderwatch] val orderExternalVanishedQueue: Set[ExternalOrderName] = Set.empty)
-extends UnsignedSimpleItemState:
+extends
+  UnsignedSimpleItemState with EventDriven[OrderWatchState, OrderWatchEvent]:
+
   protected type Self = OrderWatchState
   val companion: OrderWatchState.type = OrderWatchState
 
@@ -65,7 +67,7 @@ extends UnsignedSimpleItemState:
             externalOrderName
         .toSet)
 
-  def applyOrderWatchEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
+  def applyEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
     event match
       case ExternalOrderArised(externalOrderName, orderId, arguments) =>
         onExternalOrderArised(externalOrderName, orderId, arguments)
@@ -224,7 +226,10 @@ extends UnsignedSimpleItemState:
       orderExternalVanishedQueue.mkString("{", " ", "}")})"
 
 
-object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]:
+object OrderWatchState
+extends UnsignedSimpleItemState.Companion[OrderWatchState]
+with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
+
   type Key = OrderWatchPath
   type Item = OrderWatch
   override type ItemState = OrderWatchState

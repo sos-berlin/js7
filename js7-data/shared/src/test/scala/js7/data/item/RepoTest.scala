@@ -153,7 +153,8 @@ final class RepoTest extends OurTestSuite:
 
         eventBlock = repo.itemsToEventBlock(v1, Nil).orThrow
         assert(eventBlock == repo.NonEmptyEventBlock(v1, Nil, Nil))
-        assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", v1)))
+        assert(repo.applyEvents(eventBlock.events) == Left(Problem:
+          "Event 'VersionAdded(Version:1)' cannot be applied to Repo: DuplicateKey(type=VersionId, key=Version:1)"))
     }
 
     "Other" in:
@@ -187,7 +188,8 @@ final class RepoTest extends OurTestSuite:
           bx2.path -> Seq(Repo.Add(sign(bx2)))),
         Some(signatureVerifier)))
 
-      assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", v2)))
+      assert(repo.applyEvents(eventBlock.events) == Left(Problem:
+        "Event 'VersionAdded(Version:2)' cannot be applied to Repo: DuplicateKey(type=VersionId, key=Version:2)"))
 
       assert(repo.toEvents.toSeq == Seq(
         VersionAdded(v1),

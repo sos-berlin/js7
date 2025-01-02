@@ -189,7 +189,10 @@ extends UnsignedSimpleItemState:
       notice
 
 
-object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
+object BoardState
+extends UnsignedSimpleItemState.Companion[BoardState]/*
+with EventDriven.Companion[BoardState, BoardEvent]*/:
+
   type Key = BoardPath
   type Item = BoardItem
   override type ItemState = BoardState

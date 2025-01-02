@@ -1,10 +1,7 @@
 package js7.journal.state
 
-import cats.effect.unsafe.IORuntime
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import scala.concurrent.ExecutionContext
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -35,8 +32,10 @@ import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -181,8 +180,7 @@ private object FileJournalTest:
 
         case _ => throw new MatchError(event)
 
-  final case class NumberThingCollection(numberThings: Map[NumberKey, NumberThing])
-  :
+  final case class NumberThingCollection(numberThings: Map[NumberKey, NumberThing]):
     def applyEvent: PartialFunction[KeyedEvent[NumberEvent], Checked[NumberThingCollection]] =
       case KeyedEvent(key: NumberKey, event: NumberEvent) =>
         event match

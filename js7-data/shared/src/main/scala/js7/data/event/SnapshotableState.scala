@@ -45,8 +45,9 @@ extends JournaledState[S]:
         Right(this)
 
       case KeyedEvent(_: NoKey, event: JournalEventsReleased) =>
-        Right(withStandards(standards.copy(
-          journalState = journalState.applyEvent(event))))
+        journalState.applyEvent(event).map: o =>
+          withStandards(standards.copy(
+            journalState = o))
 
       case KeyedEvent(NoKey, _: ClusterEvent) =>
         if !isInstanceOf[ClusterableState[?]] then

@@ -20,6 +20,7 @@ import js7.data.agent.AgentPath
 import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
+import js7.data.event.{EventDriven, EventDrivenState}
 import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.{OrderMoved, *}
@@ -57,10 +58,13 @@ final case class Order[+S <: Order.State](
   innerBlock: BranchPath = BranchPath.empty,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 extends
+  EventDriven[Order[Order.State], OrderCoreEvent],
   MinimumOrder:
 
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode: Int = id.hashCode
+
+  def companion: Order.type = Order
 
   def newForkedOrders(event: OrderForked): Vector[Order[Ready]] =
     event.children.map: child =>
@@ -969,7 +973,8 @@ extends
     }${if stickySubagents.isEmpty then "" else s" · sticky=${stickySubagents.mkString}"
     } · $workflowPosition · ${historicOutcomes.size} outcomes: $lastOutcome)"
 
-object Order:
+
+object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,

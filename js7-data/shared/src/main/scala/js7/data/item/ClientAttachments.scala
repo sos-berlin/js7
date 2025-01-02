@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.delegate.DelegateId
+import js7.data.event.EventDriven
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
 import js7.data.item.ClientAttachments.*
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
@@ -17,7 +18,12 @@ import scala.reflect.ClassTag
 
 /** Client side bookkeeping of attachments. */
 final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
-  itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]]):
+  itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]])
+extends
+  EventDriven[ClientAttachments[D], ItemAttachedStateEvent]:
+
+  def companion = ClientAttachments
+    .asInstanceOf[EventDriven.Companion[ClientAttachments[D], ItemAttachedStateEvent]] // ???
 
   def estimatedSnapshotSize: Int =
     itemToDelegateToAttachedState.values.view.map(_.size).sum
@@ -79,7 +85,9 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
           itemToDelegateToAttachedState = itemToDelegateToAttachedState - itemKey)
 
 
-object ClientAttachments:
+object ClientAttachments
+extends EventDriven.Companion[ClientAttachments[?], ItemAttachedStateEvent]:
+
   private val Empty = ClientAttachments[DelegateId](Map.empty)
 
   def empty[D <: DelegateId]: ClientAttachments[D] =

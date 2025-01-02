@@ -346,7 +346,7 @@ extends SnapshotableStateBuilder[ControllerState],
 
       case KeyedEvent(_: NoKey, event: JournalEvent) =>
         _standards = _standards.copy(
-          journalState = _standards.journalState.applyEvent(event))
+          journalState = _standards.journalState.applyEvent(event)/*always Right*/.value)
 
       case KeyedEvent(_: NoKey, event: ClusterEvent) =>
         _standards = _standards.copy(

@@ -10,6 +10,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, UnknownItemPathProblem, VersionedItemRemovedProblem}
+import js7.data.event.EventDriven
 import js7.data.item.Repo.*
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import org.jetbrains.annotations.TestOnly
@@ -26,9 +27,13 @@ final case class Repo(
   versionIdSet: Set[VersionId],
   pathToVersionToSignedItems: Map[VersionedItemPath, List[Version]],
   signatureVerifier: Option[SignatureVerifier],
-  selfTest: Boolean = false):
+  selfTest: Boolean = false)
+extends
+  EventDriven[Repo, VersionedEvent]:
 
   assert(versionIds.nonEmpty || pathToVersionToSignedItems.isEmpty)
+
+  def companion: Repo.type = Repo
 
   /** `signatureVerifier` is not compared - for testing only. */
   override def equals(o: Any): Boolean = o match
@@ -179,13 +184,6 @@ final case class Repo(
 
   private def usedVersions: Set[VersionId] =
     pathToVersionToSignedItems.values.flatMap(_.map(_.versionId)).toSet
-
-  def applyEvents(events: Iterable[VersionedEvent]): Checked[Repo] =
-    var result = Checked(this)
-    val iterator = events.iterator
-    while result.isRight && iterator.hasNext do
-      result = result.flatMap(_.applyEvent(iterator.next()))
-    result
 
   def applyEvent(event: VersionedEvent): Checked[Repo] =
     event match
@@ -460,7 +458,8 @@ final case class Repo(
       addedOrChanged.view.map(_.signed.value).toVector
 
 
-object Repo:
+object Repo extends EventDriven.Companion[Repo, VersionedEvent]:
+
   val empty = new Repo(Nil, Set.empty, Map.empty, None)
 
   def signatureVerifying(signatureVerifier: SignatureVerifier): Repo =

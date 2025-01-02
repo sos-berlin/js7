@@ -10,11 +10,12 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
+import js7.data.event.{EventDriven, EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
 
 sealed trait ClusterState
-extends EventDrivenState[ClusterState, ClusterEvent]:
+extends EventDriven[ClusterState, ClusterEvent]
+with EventDrivenState[ClusterState, ClusterEvent]:
 
   import ClusterState.*
 
@@ -32,7 +33,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
     compilable(keyedEvent.key: NoKey)
     applyEvent(keyedEvent.event)
 
-  def applyEvent(event: ClusterEvent): Checked[ClusterState] =
+  final def applyEvent(event: ClusterEvent): Checked[ClusterState] =
     (this, event) match
       case (Empty, ClusterNodesAppointed(setting)) =>
         Right(NodesAppointed(setting))
@@ -93,8 +94,12 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
 
 
 object ClusterState
-extends EventDrivenState.Companion[ClusterState, ClusterEvent]:
+extends EventDriven.Companion[ClusterState, ClusterEvent]
+with EventDrivenState.Companion[ClusterState, ClusterEvent]:
+
   private type Id = NodeId
+
+  override val name: String = getClass.shortClassName
 
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */

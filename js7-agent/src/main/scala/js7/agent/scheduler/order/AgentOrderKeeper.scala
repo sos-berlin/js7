@@ -270,7 +270,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
           // The controller has to send ReleaseEvents commands to release obsolete journal files.
           persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)):
             case (Stamped(_,_, _ <-: event), journaledState) =>
-              journalState = journalState.applyEvent(event)
+              journalState = journalState.applyEvent(event)/*:Right*/.value
 
         fileWatchManager.start
           .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
@@ -736,8 +736,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
         else
           persist(JournalEventsReleased(userId, after)):
             case (Stamped(_,_, _ <-: event), journaledState) =>
-              journalState = journalState.applyEvent(event)
-              Right(AgentCommand.Response.Accepted)
+              journalState.applyEvent(event).map: o =>
+                journalState = o
+                AgentCommand.Response.Accepted
 
   private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
     for (jobKey, job) <- workflow.keyToJob do

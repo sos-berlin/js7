@@ -49,7 +49,7 @@ trait OrderWatchStateHandler[Self]:
     : Checked[Self] =
       pathToOrderWatchState
         .checked(keyedEvent.key)
-        .flatMap(_.applyOrderWatchEvent(keyedEvent.event))
+        .flatMap(_.applyEvent(keyedEvent.event))
         .flatMap(updateOrderWatchState)
 
     def onOrderAdded(order: Order[Order.State]): Checked[Self] =

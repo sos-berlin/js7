@@ -143,7 +143,7 @@ extends SignedItemContainer,
         Right(this)
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-        fw.applyEvent(orderWatchPath <-: event)
+        fw.applyOrderWatchEvent(orderWatchPath <-: event)
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
         event match

@@ -11,7 +11,7 @@ import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
-import js7.data.event.KeyedEvent
+import js7.data.event.{EventDriven, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
@@ -20,7 +20,8 @@ import scala.collection.{View, mutable}
 final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
-extends UnsignedSimpleItemState:
+extends 
+  UnsignedSimpleItemState with EventDriven[FileWatchState, OrderWatchEvent]:
 
   protected type Self = FileWatchState
   val companion: FileWatchState.type = FileWatchState
@@ -33,22 +34,23 @@ extends UnsignedSimpleItemState:
 
   def id: OrderWatchPath = fileWatch.path
 
-  def applyEvent(event: OrderWatchEvent): FileWatchState =
-    event match
-      case ExternalOrderArised(ExternalOrderName(filename_), _, _) =>
-        val filename = Paths.get(filename_)
-        copy(
-          directoryState =
-            directoryState.copy(
-              fileToEntry = directoryState.fileToEntry +
-                (filename -> DirectoryState.Entry(filename))))
+  def applyEvent(event: OrderWatchEvent): Right[Nothing, FileWatchState] =
+    Right:
+      event match
+        case ExternalOrderArised(ExternalOrderName(filename_), _, _) =>
+          val filename = Paths.get(filename_)
+          copy(
+            directoryState =
+              directoryState.copy(
+                fileToEntry = directoryState.fileToEntry +
+                  (filename -> DirectoryState.Entry(filename))))
 
-      case ExternalOrderVanished(ExternalOrderName(filename_)) =>
-        val filename = Paths.get(filename_)
-        copy(
-          directoryState =
-            directoryState.copy(
-              fileToEntry = directoryState.fileToEntry - filename))
+        case ExternalOrderVanished(ExternalOrderName(filename_)) =>
+          val filename = Paths.get(filename_)
+          copy(
+            directoryState =
+              directoryState.copy(
+                fileToEntry = directoryState.fileToEntry - filename))
 
   def containsPath(path: Path): Boolean =
     directoryState.fileToEntry.contains(path)
@@ -68,7 +70,10 @@ extends UnsignedSimpleItemState:
         .map(entry => EntrySnapshot(id, entry.path))
 
 
-object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
+object FileWatchState
+extends UnsignedSimpleItemState.Companion[FileWatchState]
+with EventDriven.Companion[FileWatchState, OrderWatchEvent]:
+
   type Key = OrderWatchPath
   type Item = FileWatch
   override type ItemState = FileWatchState

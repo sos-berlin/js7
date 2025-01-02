@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.version.Version
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
-import js7.data.event.EventId
+import js7.data.event.{EventDriven, EventId}
 import js7.data.item.{PathRev, UnsignedSimpleItemState}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemState.logger
@@ -23,7 +23,9 @@ final case class SubagentItemState(
   eventId: EventId,
   problem: Option[Problem] = None,
   platformInfo: Option[PlatformInfo])
-extends UnsignedSimpleItemState:
+extends
+  UnsignedSimpleItemState with EventDriven[SubagentItemState, SubagentItemStateEvent]:
+
   protected type Self = SubagentItemState
   val companion: SubagentItemState.type = SubagentItemState
 
@@ -104,7 +106,10 @@ extends UnsignedSimpleItemState:
           problem = None))
 
 
-object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]:
+object SubagentItemState
+extends UnsignedSimpleItemState.Companion[SubagentItemState]
+with EventDriven.Companion[SubagentItemState, SubagentItemStateEvent]:
+
   type Key = SubagentId
   type Item = SubagentItem
   override type ItemState = SubagentItemState

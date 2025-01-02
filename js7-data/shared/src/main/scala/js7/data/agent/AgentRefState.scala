@@ -15,7 +15,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, KeyedEvent}
+import js7.data.event.{EventDriven, EventId, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.node.NodeId
 import js7.data.platform.PlatformInfo
@@ -30,7 +30,8 @@ final case class AgentRefState(
   clusterState: ClusterState,
   nodeToLossNotConfirmedProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
-extends UnsignedSimpleItemState:
+extends
+  UnsignedSimpleItemState with EventDriven[AgentRefState, AgentRefStateEvent]:
 
   protected type Self = AgentRefState
   val companion: AgentRefState.type = AgentRefState
@@ -137,7 +138,10 @@ extends UnsignedSimpleItemState:
           nodeToLossNotConfirmedProblem = Map.empty))
 
 
-object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
+object AgentRefState
+extends UnsignedSimpleItemState.Companion[AgentRefState]
+with EventDriven.Companion[AgentRefState, AgentRefStateEvent]:
+
   type Key = AgentPath
   type Item = AgentRef
   override type ItemState = AgentRefState

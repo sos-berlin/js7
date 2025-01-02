@@ -13,7 +13,5 @@ trait NoKeyEvent extends Event.IsKeyBase[NoKeyEvent]:
 object NoKeyEvent extends Event.CompanionForKey[NoKey, NoKeyEvent]:
   implicit val implicitSelf: NoKeyEvent.type = this
 
-  trait OnlySingleton extends NoKeyEvent
-
   implicit def toKeyedEvent[E <: NoKeyEvent](event: E): KeyedEvent[E] =
     KeyedEvent(event)
