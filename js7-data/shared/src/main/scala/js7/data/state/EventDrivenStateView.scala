@@ -18,8 +18,9 @@ import js7.data.workflow.position.WorkflowPosition
 import scala.reflect.ClassTag
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
-trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
-extends EventDrivenState[Self, E], StateView:
+/** The common part of ControllerState and AgentState. */
+trait EventDrivenStateView[Self <: EventDrivenStateView[Self]]
+extends EventDrivenState[Self, Event], StateView:
   this: Self =>
 
   final def isOrderExternalNotVanished(orderId: OrderId): Boolean =
@@ -278,3 +279,8 @@ extends EventDrivenState[Self, E], StateView:
       .traverse: expected =>
         keyTo(BoardState).checked(expected.boardPath).flatMap:
           _.removeExpectation(expected.noticeId, order.id)
+
+
+object EventDrivenStateView:
+  trait Companion[Self <: EventDrivenStateView[Self]]
+  extends EventDrivenState.Companion[Self, Event]

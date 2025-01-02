@@ -49,7 +49,7 @@ final case class AgentState(
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer,
-  EventDrivenStateView[AgentState, Event],
+  EventDrivenStateView[AgentState],
   SubagentDirectorState[AgentState],
   FileWatchStateHandler[AgentState],
   ClusterableState[AgentState]:
@@ -369,7 +369,10 @@ extends SignedItemContainer,
 
 
 object AgentState
-extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentState]:
+extends
+  EventDrivenStateView.Companion[AgentState],
+  ClusterableState.Companion[AgentState],
+  ItemContainer.Companion[AgentState]:
 
   val empty: AgentState =
     AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,

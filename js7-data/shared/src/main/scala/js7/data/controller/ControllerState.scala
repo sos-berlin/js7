@@ -45,6 +45,7 @@ import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
@@ -71,6 +72,7 @@ final case class ControllerState(
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends
   SignedItemContainer,
+  EventDrivenStateView[ControllerState],
   ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState]:
@@ -778,7 +780,9 @@ extends
 
 
 object ControllerState
-extends ClusterableState.Companion[ControllerState],
+extends
+  EventDrivenStateView.Companion[ControllerState],
+  ClusterableState.Companion[ControllerState],
   ItemContainer.Companion[ControllerState]:
 
   private val logger = Logger[this.type]
