@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import js7.base.crypt.Signed
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -24,7 +25,8 @@ import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanId, PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
+import js7.data.plan.{PlanId, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -157,6 +159,11 @@ extends SnapshotableStateBuilder[ControllerState],
 
     case ItemDeletionMarked(itemKey) =>
       deletionMarkedItems += itemKey
+
+    case snapshot: PlanTemplateState.Snapshot =>
+      val planTemplateState = keyTo(PlanTemplateState)(snapshot.id)
+      _keyToUnsignedItemState(snapshot.id) = planTemplateState.recover(snapshot)
+      Logger.info(s"### ${keyTo(PlanTemplateState)(snapshot.id)}")
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -340,6 +347,11 @@ extends SnapshotableStateBuilder[ControllerState],
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
           _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
+
+      case KeyedEvent(planTemplateId: PlanTemplateId, event: PlanTemplateChanged) =>
+        val planTemplateState = keyTo(PlanTemplateState)(planTemplateId)
+        _keyToUnsignedItemState(planTemplateId) = planTemplateState.copy(
+          namedValues = event.namedValues)
 
       case KeyedEvent(_, _: ControllerShutDown) =>
       case KeyedEvent(_, ControllerTestEvent) =>

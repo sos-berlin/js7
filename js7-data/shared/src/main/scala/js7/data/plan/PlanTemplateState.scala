@@ -1,23 +1,31 @@
 package js7.data.plan
 
 import cats.syntax.traverse.*
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
+import js7.base.circeutils.typed.Subtype
+import js7.base.fs2utils.StreamExtensions.:+
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
+import js7.data.plan.PlanTemplateState.*
+import js7.data.value.NamedValues
+import js7.data.value.expression.scopes.NamedValueScope
 import scala.collection.immutable.Map.Map1
 import scala.collection.{View, immutable}
 
 final case class PlanTemplateState(
   item: PlanTemplate,
+  namedValues: NamedValues,
   toOrderPlan: Map[PlanKey, OrderPlan])
 extends UnsignedSimpleItemState:
 
   protected type Self = PlanTemplateState
 
   val companion: PlanTemplateState.type = PlanTemplateState
+  private lazy val namedValuesScope = NamedValueScope(namedValues)
 
-  def planTemplate: PlanTemplate =
+  inline def planTemplate: PlanTemplate =
     item
 
   def path: PlanTemplateId =
@@ -26,8 +34,17 @@ extends UnsignedSimpleItemState:
   def id: PlanTemplateId =
     planTemplate.id
 
-  override def toSnapshotStream: fs2.Stream[fs2.Pure, PlanTemplate] =
-    item.toSnapshotStream
+  override def toSnapshotStream: fs2.Stream[fs2.Pure, PlanTemplate | Snapshot] =
+    if isGlobal then
+      fs2.Stream.empty
+    else
+      item.toSnapshotStream :+ Snapshot(path, namedValues)
+
+  def recover(snapshot: Snapshot): PlanTemplateState =
+    copy(namedValues = snapshot.namedValues)
+
+  def isGlobal: Boolean =
+    item.isGlobal
 
   /** Returns Right(()) iff this PlanTemplate is unused. */
   def checkUnused: Checked[Unit] =
@@ -42,6 +59,9 @@ extends UnsignedSimpleItemState:
               s"${plan.planId.planKey} with ${plan.orderIds.size} orders"
           .mkString(", ")
         }"
+
+  def isClosed(planKey: PlanKey): Checked[Boolean] =
+    planTemplate.isClosed(planKey, namedValuesScope)
 
   def orderIds: View[OrderId] =
     toOrderPlan.values.view.flatMap(_.orderIds)
@@ -81,11 +101,11 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
   type Item = PlanTemplate
 
   val Global: PlanTemplateState =
-    PlanTemplateState(PlanTemplate.Global, toOrderPlan = Map.empty)
+    PlanTemplateState(PlanTemplate.Global, namedValues = Map.empty, toOrderPlan = Map.empty)
 
   def recoverOrderPlans(
     orders: Iterable[Order[Order.State]],
-    toPlanTemplate: PlanTemplateId => Checked[PlanTemplate])
+    toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
   : Checked[Seq[PlanTemplateState]] =
     val planToOrders: Map[PlanId, Set[OrderId]] =
       orders.iterator
@@ -115,8 +135,8 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
     .view.mapValues(_.toMap)
     .toVector
     .traverse: o =>
-      toPlanTemplate(o._1).map: planTemplate =>
-        PlanTemplateState(planTemplate, toOrderPlan = o._2)
+      toPlanTemplateState(o._1).map: planTemplateState =>
+        planTemplateState.copy(toOrderPlan = o._2)
 
   def addOrders(
     orders: Iterable[Order[Order.State]],
@@ -151,3 +171,9 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
         .toVector
         .traverse: (planTemplateId, v) =>
           toPlanTemplateState(planTemplateId).map(_ -> v)
+
+
+  final case class Snapshot(id: PlanTemplateId, namedValues: NamedValues)
+
+  val subtype: Subtype[Snapshot] =
+    Subtype.named[Snapshot](deriveCodecWithDefaults, "PlanTemplateState")

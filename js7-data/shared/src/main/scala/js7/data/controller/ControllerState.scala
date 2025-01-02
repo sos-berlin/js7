@@ -44,7 +44,8 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
+import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -353,6 +354,13 @@ extends
             o <- o.applyEvent(event)
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
+
+    case KeyedEvent(planTemplateId: PlanTemplateId, event: PlanTemplateChanged) =>
+      keyTo(PlanTemplateState).checked(planTemplateId).map: planTemplateState =>
+        copy(keyToUnsignedItemState_ =
+          keyToUnsignedItemState_.updated(planTemplateId,
+            planTemplateState.copy(
+              namedValues = event.namedValues)))
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
@@ -756,8 +764,7 @@ extends
     ).finishRecovery2
 
   private def finishRecovery2: Checked[ControllerState] =
-    PlanTemplateState
-      .recoverOrderPlans(orders, keyToItem(PlanTemplate).checked)
+    PlanTemplateState.recoverOrderPlans(orders, keyTo(PlanTemplateState).checked)
       .map: planTemplateStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
@@ -824,6 +831,7 @@ extends
       GlobalBoard.subtype,
       PlannableBoard.subtype,
       PlanTemplate.subtype,
+      PlanTemplateState.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,
@@ -847,6 +855,7 @@ extends
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[NoticeEvent],
+      KeyedSubtype[PlanTemplateEvent],
       KeyedSubtype.singleEvent[ServerMeteringEvent])
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")

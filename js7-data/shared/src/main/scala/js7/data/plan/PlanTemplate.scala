@@ -1,15 +1,16 @@
 package js7.data.plan
 
 import cats.syntax.traverse.*
-import io.circe.Codec
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import io.circe.derivation.{ConfiguredDecoder, ConfiguredEncoder}
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
-import js7.data.plan.PlanTemplate.Global
+import js7.data.plan.PlanTemplate.*
 import js7.data.value.expression.Expression.MissingConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.expression.{ExprFunction, Expression, Scope}
+import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
 
 /** Item for (daily) plans.
@@ -20,6 +21,7 @@ import org.jetbrains.annotations.TestOnly
 final case class PlanTemplate(
   id: PlanTemplateId,
   orderToPlanKey: Expression,
+  planIsClosedFunction: Option[ExprFunction] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
 
@@ -32,6 +34,9 @@ extends UnsignedSimpleItem:
   def toSnapshotStream: fs2.Stream[fs2.Pure, PlanTemplate] =
     fs2.Stream.fromOption:
       !isGlobal ? this
+
+  def toInitialItemState: PlanTemplateState =
+    PlanTemplateState(this, namedValues = NamedValues.empty, toOrderPlan = Map.empty)
 
   def isGlobal: Boolean =
     this eq Global
@@ -55,9 +60,12 @@ extends UnsignedSimpleItem:
       _.missingToNone.traverse:
         _.toStringValueString.flatMap(PlanKey.checked)
 
-
-  def toInitialItemState: PlanTemplateState =
-    PlanTemplateState(this, toOrderPlan = Map.empty)
+  private[plan] def isClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
+    planIsClosedFunction
+      .fold_(Right(false), function =>
+        val args = StringValue(planKey.string) :: Nil
+        function.eval(args)(using scope)
+          .flatMap(_.asBoolean))
 
 
 object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
@@ -71,10 +79,11 @@ object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
       orderToPlanKey = MissingConstant)
 
   /** A PlanTemplate for JOC-style daily plan OrderIds. */
-  def joc(id: PlanTemplateId): PlanTemplate =
+  def joc(id: PlanTemplateId, planIsClosedFunction: Option[ExprFunction] = None): PlanTemplate =
     PlanTemplate(
       id,
-      orderToPlanKey = PlanKey.jocOrderToPlanKey)
+      orderToPlanKey = PlanKey.jocOrderToPlanKey,
+      planIsClosedFunction = planIsClosedFunction)
 
   /** A PlanTemplate for weekly Plan Orders "#YYYYwWW#...". */
   @TestOnly
@@ -89,4 +98,6 @@ object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
   val Path: PlanTemplateId.type = PlanTemplateId
   val cls: Class[PlanTemplate] = classOf[PlanTemplate]
 
-  given jsonCodec: Codec.AsObject[PlanTemplate] = deriveConfiguredCodec
+  override given jsonEncoder: Encoder.AsObject[PlanTemplate] = ConfiguredEncoder.derive()
+  override given jsonDecoder: Decoder[PlanTemplate] = ConfiguredDecoder.derive(useDefaults = true)
+  given jsonCodec: Codec.AsObject[PlanTemplate] = Codec.AsObject.from(jsonDecoder, jsonEncoder)
