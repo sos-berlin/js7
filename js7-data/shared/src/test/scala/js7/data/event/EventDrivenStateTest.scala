@@ -26,7 +26,7 @@ final class EventDrivenStateTest extends OurTestSuite:
     assert(s == TestState("(ADDED)"))
 
   "EventNotApplicableProblem" in:
-    assert(s.applyEvent(InvalidEvent) == Left(EventNotApplicableProblem(InvalidEvent, s)))
+    assert(s.applyKeyedEvent(InvalidEvent) == Left(EventNotApplicableProblem(InvalidEvent, s)))
 
     val stampedEvents =
       Stamped(4000L, Timestamp.ofEpochMilli(4), (NoKey <-: Added("MORE"))) ::
@@ -50,7 +50,7 @@ object EventDrivenStateTest:
   extends EventDrivenState[TestState, TestEvent]:
     def companion = TestCase
 
-    def applyEvent(keyedEvent: KeyedEvent[TestEvent]) =
+    def applyKeyedEvent(keyedEvent: KeyedEvent[TestEvent]) =
       keyedEvent match
         case KeyedEvent(NoKey, Added(s)) =>
           Right(copy(string = string + s))

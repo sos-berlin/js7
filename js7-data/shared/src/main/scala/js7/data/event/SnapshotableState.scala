@@ -52,7 +52,7 @@ extends JournaledState[S]:
         if !isInstanceOf[ClusterableState[?]] then
           Left(Problem(s"ClusterEvent but ${getClass.simpleScalaName} is not a ClusterableState"))
         else
-          for o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]])
+          for o <- clusterState.applyKeyedEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]])
             yield withStandards(standards.copy(
               clusterState = o))
 

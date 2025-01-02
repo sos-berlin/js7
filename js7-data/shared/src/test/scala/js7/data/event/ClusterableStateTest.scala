@@ -19,7 +19,7 @@ final class ClusterableStateTest extends OurTestSuite:
   private var s = MyState.empty
 
   "applyStandardEvent and applyKeyedEvents" in:
-    s = s.applyEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
+    s = s.applyKeyedEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
 
     s = s.applyKeyedEvents(
       (NoKey <-: ClusterEvent.ClusterCouplingPrepared(primaryNodeId)) ::
@@ -34,7 +34,7 @@ final class ClusterableStateTest extends OurTestSuite:
 
   "EventNotApplicableProblem" in:
     val invalidEvent = NoKey <-: MyEvent
-    assert(s.applyEvent(invalidEvent) == Left(EventNotApplicableProblem(invalidEvent, s)))
+    assert(s.applyKeyedEvent(invalidEvent) == Left(EventNotApplicableProblem(invalidEvent, s)))
 
 private object ClusterableStateTest:
   private val primaryNodeId = NodeId("PRIMARY")
@@ -59,7 +59,7 @@ private object ClusterableStateTest:
     def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)
 
-    def applyEvent(keyedEvent: KeyedEvent[Event]) =
+    def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
       applyStandardEvent(keyedEvent)
 
     def withEventId(eventId: EventId) = copy(eventId = eventId)

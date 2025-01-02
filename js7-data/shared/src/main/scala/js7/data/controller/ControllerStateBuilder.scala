@@ -173,7 +173,7 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def onAddEvent =
     case Stamped(_, _, keyedEvent) => applyEventMutable(keyedEvent)
 
-  override def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerStateBuilder] =
+  override def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerStateBuilder] =
     applyEventMutable(keyedEvent)
     Right(this)
 

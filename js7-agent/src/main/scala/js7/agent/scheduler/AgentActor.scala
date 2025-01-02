@@ -352,7 +352,7 @@ extends Actor, Stash, SimpleStateActor:
         if !agentState.isDedicated then
           journal.persistKeyedEvent(event).rightAs(())
         else
-          IO.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
+          IO.pure(agentState.applyKeyedEvent(event)).flatMapT(nextAgentState =>
             demandedClusterNodeUris(nextAgentState) match
               case None =>
                 journal.persistKeyedEvent(event).rightAs(())

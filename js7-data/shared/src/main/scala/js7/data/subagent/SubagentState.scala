@@ -27,7 +27,7 @@ extends JournaledState[SubagentState], ItemContainer:
   def withEventId(eventId: EventId): SubagentState =
     copy(eventId = eventId)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[SubagentState] =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[SubagentState] =
     keyedEvent match
       case KeyedEvent(_: NoKey, SubagentItemAttached(workflow: Workflow)) =>
         Right(copy(

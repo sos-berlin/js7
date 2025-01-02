@@ -55,7 +55,7 @@ private object StateRecovererTest
 //
 //  final case class TestState(value: Int) extends SnapshotableState[TestState, Event]
 //  {
-//    def applyEvent(keyedEvent: KeyedEvent[Event]) =
+//    def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
 //      keyedEvent match {
 //        case NoKey <-: Add(number) => Right(copy(value + number))
 //      }

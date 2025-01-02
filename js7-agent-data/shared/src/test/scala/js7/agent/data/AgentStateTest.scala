@@ -178,7 +178,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
       assert(!agentState.isFreshlyDedicated)
 
     "After snapshot" in :
-      val afterSnapshot = AgentState.empty.applyEvent(SnapshotTaken).orThrow
+      val afterSnapshot = AgentState.empty.applyKeyedEvent(SnapshotTaken).orThrow
       assert(!afterSnapshot.isDedicated)
       assert(!afterSnapshot.isFreshlyDedicated)
 
@@ -189,7 +189,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
       ControllerId("C"),
       Some(ControllerRunId(JournalId(Base64UUID.zero))))
     "AgentDedicated" in :
-      val dedicatedState = AgentState.empty.applyEvent(dedicated).orThrow
+      val dedicatedState = AgentState.empty.applyKeyedEvent(dedicated).orThrow
       assert(dedicatedState.isDedicated)
       assert(dedicatedState.isFreshlyDedicated)
   }
@@ -356,7 +356,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
       """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
         "js7.agent.data.AgentState.keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]")))
 
-  "applyEvent" in:
+  "applyKeyedEvent" in:
     val orderId = OrderId("ORDER")
     val childOrderId = OrderId("ORDER") / "BRANCH"
     val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1.0")
@@ -368,27 +368,27 @@ final class AgentStateTest extends OurAsyncTestSuite:
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
       ControllerId("CONTROLLER"),
       Some(ControllerRunId(JournalId(Base64UUID.zero))))
-    agentState = agentState.applyEvent(AgentDedicated(
+    agentState = agentState.applyKeyedEvent(AgentDedicated(
       Seq(subagentItem.id),
       meta.agentPath,
       meta.agentRunId,
       meta.controllerId,
       meta.controllerRunId)).orThrow
-    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
-    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
-    agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
+    agentState = agentState.applyKeyedEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
+    agentState = agentState.applyKeyedEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
+    agentState = agentState.applyKeyedEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
     agentState = agentState
-      .applyEvent(ItemAttachedToMe(WorkflowPathControl(
+      .applyKeyedEvent(ItemAttachedToMe(WorkflowPathControl(
         WorkflowPathControlPath(workflow.path),
         suspended = true,
         itemRevision = Some(ItemRevision(1)))))
       .orThrow
-    agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
-    agentState = agentState.applyEvent(orderId <-:
+    agentState = agentState.applyKeyedEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
+    agentState = agentState.applyKeyedEvent(orderId <-:
       OrderAttachedToAgent(
         workflow.id /: Position(0), Order.Ready, agentPath = agentPath))
       .orThrow
-    agentState = agentState.applyEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
+    agentState = agentState.applyKeyedEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow
     assert(agentState == AgentState(
       EventId.BeforeFirst,

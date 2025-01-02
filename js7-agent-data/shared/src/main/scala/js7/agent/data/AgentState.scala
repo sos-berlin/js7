@@ -131,7 +131,7 @@ extends SignedItemContainer,
       case _ =>
         super.applyOrderEvent(orderId, event)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
     keyedEvent match
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
@@ -294,7 +294,7 @@ extends SignedItemContainer,
     remove: Seq[OrderWatchPath])
   : Checked[AgentState] =
     update(
-      addItemStates = fileWatchStates, 
+      addItemStates = fileWatchStates,
       removeUnsignedSimpleItems = remove)
 
   protected def update_(

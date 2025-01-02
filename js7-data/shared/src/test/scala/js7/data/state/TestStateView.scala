@@ -29,7 +29,7 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
     keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = keyToUnsignedItemState_)
   : Self
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]) =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)

@@ -249,7 +249,7 @@ private object FileJournalTest:
     def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)
 
-    def applyEvent(keyedEvent: KeyedEvent[Event]) =
+    def applyKeyedEvent(keyedEvent: KeyedEvent[Event]) =
       keyedEvent match
         case KeyedEvent(key: NumberKey, event: NumberEvent) =>
           for o <- numberThingCollection.applyEvent(key <-: event) yield

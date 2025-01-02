@@ -17,7 +17,6 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppoin
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, InvalidClusterWatchHeartbeatProblem}
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import org.scalatest.Assertion
@@ -438,7 +437,7 @@ final class ClusterWatchTest extends OurAsyncTestSuite:
           confirmed <- watch.manuallyConfirmNodeLoss(passiveId, "CONFIRMER")
           _ = assert(confirmed == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
-          expectedClusterState = coupled.applyEvent(NoKey <-: event).orThrow.asInstanceOf[HasNodes]
+          expectedClusterState = coupled.applyEvent(event).orThrow.asInstanceOf[HasNodes]
 
           // Event is rejected because Node loss has not yet been confirmed
           response <- watch.processRequest:

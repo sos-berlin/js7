@@ -11,7 +11,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
 
   override def companion: Companion[Self, E]
 
-  def applyEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
+  def applyKeyedEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
 
   def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] =
     var state = this

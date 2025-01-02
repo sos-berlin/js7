@@ -28,11 +28,11 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
 
   def isEmptyOrActive(id: NodeId): Boolean
 
-  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
+  final def applyKeyedEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     compilable(keyedEvent.key: NoKey)
-    applyEvent2(keyedEvent.event)
+    applyEvent(keyedEvent.event)
 
-  private def applyEvent2(event: ClusterEvent): Checked[ClusterState] =
+  def applyEvent(event: ClusterEvent): Checked[ClusterState] =
     (this, event) match
       case (Empty, ClusterNodesAppointed(setting)) =>
         Right(NodesAppointed(setting))

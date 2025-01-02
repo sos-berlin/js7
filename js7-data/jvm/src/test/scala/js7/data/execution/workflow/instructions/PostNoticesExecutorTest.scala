@@ -29,7 +29,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
     // PostNotice board0, board1
     locally:
-      state = state.applyEvent(postingOrderId <-: OrderAdded(postingWorkflow.id)).orThrow
+      state = state.applyKeyedEvent(postingOrderId <-: OrderAdded(postingWorkflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(postingOrderId, state).orThrow
       assert(startedEvents == Seq(postingOrderId <-: OrderStarted))
@@ -52,7 +52,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
     // ExpectNotices
     locally:
-      state = state.applyEvent(expectingOrderId <-: OrderAdded(expecting02or13Workflow.id)).orThrow
+      state = state.applyKeyedEvent(expectingOrderId <-: OrderAdded(expecting02or13Workflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(expectingOrderId, state).orThrow
       assert(startedEvents == Seq(expectingOrderId <-: OrderStarted))
@@ -91,7 +91,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
     // ExpectNotice with a different, never posted NoticeId
     locally:
-      state = state.applyEvent(otherExpectingOrderId <-: OrderAdded(expecting0Workflow.id)).orThrow
+      state = state.applyKeyedEvent(otherExpectingOrderId <-: OrderAdded(expecting0Workflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(startedEvents == Seq(otherExpectingOrderId <-: OrderStarted))

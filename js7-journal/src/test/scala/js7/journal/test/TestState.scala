@@ -25,7 +25,7 @@ extends SnapshotableState[TestState]:
     standards.toSnapshotStream ++
       Stream.iterable(keyToAggregate.values)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
     keyedEvent match
       case KeyedEvent(key: String, event: TestEvent.Added) =>
         assert(!keyToAggregate.contains(key))

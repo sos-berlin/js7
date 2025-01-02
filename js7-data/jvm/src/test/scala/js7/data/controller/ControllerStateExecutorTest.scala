@@ -131,7 +131,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
       val orderId = OrderId("ORDER")
       executor.controllerState = executor.controllerState
-        .applyEvent(orderId <-: OrderAdded(aWorkflow.id))
+        .applyKeyedEvent(orderId <-: OrderAdded(aWorkflow.id))
         .orThrow
 
       executor.executeVerifiedUpdateItems(VerifiedUpdateItems(

@@ -69,7 +69,8 @@ final case class ControllerState(
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
-extends SignedItemContainer,
+extends
+  SignedItemContainer,
   ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState]:
@@ -150,7 +151,7 @@ extends SignedItemContainer,
   def withStandards(standards: SnapshotableState.Standards): ControllerState =
     copy(standards = standards)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
+  def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
    keyedEvent match
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(

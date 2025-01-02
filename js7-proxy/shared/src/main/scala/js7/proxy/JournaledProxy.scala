@@ -133,7 +133,7 @@ object JournaledProxy:
         .scan(seed): (s, stampedEvent) =>
           EventAndState(stampedEvent,
             s.state,
-            s.state.applyEvent(stampedEvent.value)
+            s.state.applyKeyedEvent(stampedEvent.value)
               .orThrow/*TODO Restart*/
               .withEventId(stampedEvent.eventId))
 

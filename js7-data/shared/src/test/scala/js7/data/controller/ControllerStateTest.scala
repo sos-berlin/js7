@@ -402,7 +402,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
     def applyEvent(event: UnsignedSimpleItemEvent): Unit =
       val eventId = eventIds.next()
-      cs = cs.applyEvent(event).orThrow
+      cs = cs.applyKeyedEvent(event).orThrow
       cs = cs.withEventId(eventId)
       builder.addEvent(Stamped(eventId, event))
       assert(builder.result() == cs)

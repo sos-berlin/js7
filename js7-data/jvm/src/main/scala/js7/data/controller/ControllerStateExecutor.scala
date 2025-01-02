@@ -184,7 +184,7 @@ final case class ControllerStateExecutor private(
       val keyedEvent = iterator.next()
       val previous = controllerState
 
-      controllerState.applyEvent(keyedEvent) match
+      controllerState.applyKeyedEvent(keyedEvent) match
         case Left(problem) =>
           checked = Left(problem)
 

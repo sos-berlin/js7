@@ -188,7 +188,7 @@ object SnapshotableStateBuilder:
 
     protected def onAddEvent =
       case stamped =>
-        _state = _state.applyEvent(stamped.value).orThrow
+        _state = _state.applyKeyedEvent(stamped.value).orThrow
         updateEventId(stamped.eventId)
 
     def result(): S =
