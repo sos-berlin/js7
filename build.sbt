@@ -1,4 +1,4 @@
-// WARNING: Run tests only in a secure closed environment (like Docker) !!!
+// WARNING: Run tests only in a secure closed environment (a trusted computer or in Docker), !!!
 // because tests open localhost TCP ports that may allow code injection.
 /**
  * Install sbt from https://www.scala-sbt.org/.
@@ -87,6 +87,8 @@ addCommandAlias("publish-install", "; install/universal:publish; install-docker:
 addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControllerAgent --agents=2 --nodes-per-agent=3 --tasks=3 --job-duration=1.5s --period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal")
 //addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
+
+sourcesInBase := false
 
 ThisBuild / javacOptions ++= Seq(
   "-encoding", "UTF-8",
@@ -826,14 +828,16 @@ lazy val `js7-benchmark` = project
     `js7-tests` % "test->test")
   .enablePlugins(JmhPlugin)
   .settings(
+    // Recommended settings by sbt-jmh
     libraryDependencies += "org.openjdk.jmh" % "jmh-core" % "1.37",
     Jmh / sourceDirectory := (Test / sourceDirectory).value,
     Jmh / classDirectory := (Test / classDirectory).value,
     Jmh / dependencyClasspath := (Test / dependencyClasspath).value,
-    // rewire tasks, so that 'bench/Jmh/run' automatically invokes 'bench/Jmh/compile'
-    // (otherwise a clean 'bench/Jmh/run' would fail)
     Jmh / compile := (Jmh / compile).dependsOn(Test / compile).value,
-    Jmh / run := (Jmh / run).dependsOn(Jmh / compile).evaluated)
+    Jmh / run := (Jmh / run).dependsOn(Jmh / compile).evaluated,
+    // end of recommended setting
+  )
+
 
 def isExcludedJar(path: String) =
   path.startsWith("com.google.code.findbugs.jsr305-") ||
