@@ -12,10 +12,13 @@ trait TestMixin extends TestCatsEffect:
 
   protected final given Monoid[Assertion] = assertionMonoid
 
+  /** Usable to check the type of something. */
+  inline final def expectType[A](inline something: A): Unit = ()
+
 
 object TestMixin:
 
-  /** Only for Succeeded value, not for FixtureContext. */
+  /** Only for Succeeded value, fails for FixtureContext. */
   given assertionMonoid: Monoid[Assertion] =
     new Monoid[Assertion]:
       def empty = Succeeded
