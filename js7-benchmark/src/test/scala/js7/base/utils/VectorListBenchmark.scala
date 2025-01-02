@@ -1,17 +1,17 @@
 package js7.base.utils
 
 import js7.base.utils.VectorListBenchmark.*
-import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Measurement, Mode, Param, Scope, Setup, State, Warmup}
+import js7.benchmark.OurBenchmark
+import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Fork, Measurement, Mode, Param, Setup, Warmup}
 import scala.compiletime.uninitialized
 import scala.jdk.StreamConverters.*
 import scala.util.Random
 
 @BenchmarkMode(Array(Mode.Throughput))
-@State(Scope.Benchmark)
-@Measurement(time = 1, iterations = 5)
 @Warmup(time = 1, iterations = 5)
-@Fork(value = 2)
-class VectorListBenchmark:
+@Measurement(time = 1, iterations = 5)
+@Fork(1)
+class VectorListBenchmark extends OurBenchmark:
 
   @Param(Array("100", "10000", "1000000"))
   private var size: Int = uninitialized

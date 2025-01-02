@@ -826,17 +826,17 @@ lazy val `js7-tests` = project
 lazy val `js7-benchmark` = project
   .dependsOn(
     `js7-tests` % "test->test")
+  .settings(
+    commonSettings,
+    libraryDependencies += "org.openjdk.jmh" % "jmh-core" % "1.37")
   .enablePlugins(JmhPlugin)
   .settings(
     // Recommended settings by sbt-jmh
-    libraryDependencies += "org.openjdk.jmh" % "jmh-core" % "1.37",
     Jmh / sourceDirectory := (Test / sourceDirectory).value,
     Jmh / classDirectory := (Test / classDirectory).value,
     Jmh / dependencyClasspath := (Test / dependencyClasspath).value,
     Jmh / compile := (Jmh / compile).dependsOn(Test / compile).value,
-    Jmh / run := (Jmh / run).dependsOn(Jmh / compile).evaluated,
-    // end of recommended setting
-  )
+    Jmh / run := (Jmh / run).dependsOn(Jmh / compile).evaluated)
 
 
 def isExcludedJar(path: String) =
