@@ -29,6 +29,7 @@ import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
 trait StateView extends ItemContainer:
+
   def isAgent: Boolean
 
   def maybeAgentPath: Option[AgentPath] = None
@@ -39,12 +40,16 @@ trait StateView extends ItemContainer:
 
   def orders: Iterable[Order[Order.State]]
 
+  final def weHave(order: Order[Order.State]) =
+    order.isDetached && !isAgent ||
+      order.isAttached && isAgent
+
   // TODO SLOW!
-  def slowProcessingOrderCount(agentPath: AgentPath): Int =
+  final def slowProcessingOrderCount(agentPath: AgentPath): Int =
     orders.iterator.filter(_.attached.contains(agentPath)).count(_.isState[Processing])
 
   // SLOW !!!
-  def jobToOrderCount(jobKey: JobKey): Int =
+  final def jobToOrderCount(jobKey: JobKey): Int =
     idToWorkflow
       .get(jobKey.workflowId)
       .fold(0)(workflow =>

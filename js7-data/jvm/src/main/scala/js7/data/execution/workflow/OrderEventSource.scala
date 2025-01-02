@@ -38,7 +38,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   (using executorService: InstructionExecutorService):
 
   import executorService.clock
-  import state.{idToWorkflow, isAgent}
+  import state.{idToWorkflow, isAgent, weHave}
 
   // TODO Updates to StateView should be solved immutably. Refactor OrderEventSource?
   private var idToOrder = state.idToOrder
@@ -453,10 +453,6 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         Seq(
           orderId <-: OrderPromptAnswered(),
           orderId <-: OrderMoved(order.position.increment))
-
-  private def weHave(order: Order[Order.State]) =
-    order.isDetached && !isAgent ||
-    order.isAttached && isAgent
 
   def nextAgent(order: Order[Order.State]): Checked[Option[AgentPath]] =
     catchNonFatalFlatten:
