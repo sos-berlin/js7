@@ -1,6 +1,5 @@
 package js7.data.state
 
-import java.util.{Formatter, Locale}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.makeUnique
 import js7.data.order.OrderId

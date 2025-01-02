@@ -1,7 +1,7 @@
 package js7.data.subagent
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.data.item.{InventoryItemPath, ItemRevision, UnsignedItemPath, UnsignedSimpleItem}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.NumericConstant

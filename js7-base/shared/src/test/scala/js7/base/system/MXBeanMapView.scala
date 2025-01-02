@@ -1,6 +1,5 @@
 package js7.base.system
 
-import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory.getPlatformMXBean
 import java.lang.management.PlatformManagedObject
 import js7.base.utils.{Lazy, StandardMapView}
