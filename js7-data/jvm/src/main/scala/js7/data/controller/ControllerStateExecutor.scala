@@ -145,7 +145,7 @@ final case class ControllerStateExecutor private(
     val outcome = OrderOutcome.Disrupted(AgentResetProblem(agentPath))
     for
       orderEvents <- order.forceDetach(outcome).map(_._1).map(_.map(order.id <-: _))
-      detachedState <- controllerState.applyEvents(orderEvents)
+      detachedState <- controllerState.applyKeyedEvents(orderEvents)
       fail <- OrderEventSource(detachedState)
         .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
     yield
@@ -154,12 +154,12 @@ final case class ControllerStateExecutor private(
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[ControllerStateExecutor] =
     for
-      tuple <- applyEvents(keyedEvents)
+      tuple <- applyKeyedEvents(keyedEvents)
       result <- subsequentEvents.tupled(tuple)
     yield
       result
 
-  private def applyEvents(keyedEvents: Iterable[AnyKeyedEvent])
+  private def applyKeyedEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[(
     collection.Set[InventoryItemKey],
     collection.Set[OrderId],
@@ -246,7 +246,7 @@ final case class ControllerStateExecutor private(
       .toVector
 
     controllerState
-      .applyEvents(itemEvents)
+      .applyKeyedEvents(itemEvents)
       .flatMap { controllerState_ =>
         var controllerState = controllerState_
 
@@ -350,7 +350,7 @@ final case class ControllerStateExecutor private(
           deleteItems0 ++ deleteControls1 ++ deleteControls2
 
         controllerState = controllerState
-          .applyEvents(detachWorkflows.view ++ detachWorkflowControls ++ deleteItems)
+          .applyKeyedEvents(detachWorkflows.view ++ detachWorkflowControls ++ deleteItems)
           .orThrow
 
         val eventsAndState = controllerState.nextOrderEvents(touchedOrderIds)
@@ -358,7 +358,7 @@ final case class ControllerStateExecutor private(
         val orderEvents = eventsAndState.keyedEvents
 
         val orderWatchEvents = controllerState.nextOrderWatchOrderEvents
-        controllerState = controllerState.applyEvents(orderWatchEvents)
+        controllerState = controllerState.applyKeyedEvents(orderWatchEvents)
           .orThrow
 
         val subsequentKeyedEvents = Vector.concat(
@@ -515,7 +515,7 @@ final case class ControllerStateExecutor private(
             if keyedEvents.nonEmpty then
               for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do
                 logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
-              controllerState.applyEvents(keyedEvents) match
+            controllerState.applyKeyedEvents(keyedEvents) match
                 case Left(problem) =>
                   logger.error(s"$orderId: $problem")  // Should not happen
                 case Right(state) =>

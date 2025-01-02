@@ -855,7 +855,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                     journal.unsafeCurrentState().resetAgent(agentPath, force = force) match
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(events) =>
-                        journal.unsafeCurrentState().applyEvents(events) match
+                        journal.unsafeCurrentState().applyKeyedEvents(events) match
                           case Left(problem) => Future.successful(Left(problem))
                           case Right(_) =>
                             persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
@@ -1150,24 +1150,24 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
           orderIds += orderId
           orderIds ++= handleOrderEvent(keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
-          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
 
         case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
           itemKeys += event.key
           handleItemEvent(event)
 
         case KeyedEvent(boardPath: BoardPath, NoticePosted(postedNotice)) =>
           notices.deleteSchedule(boardPath, postedNotice.id)
           notices.schedule(boardPath, postedNotice)
-          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
           notices.deleteSchedule(boardPath, noticeId)
-          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
 
         case _ =>
-          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
     _controllerState = updatedState  // Reduce memory usage (they are equal)
     itemKeys foreach proceedWithItem
     proceedWithOrders(orderIds)

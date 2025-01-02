@@ -18,10 +18,10 @@ import js7.data.node.NodeId
 final class ClusterableStateTest extends OurTestSuite:
   private var s = MyState.empty
 
-  "applyStandardEvent and applyEvents" in:
+  "applyStandardEvent and applyKeyedEvents" in:
     s = s.applyEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
 
-    s = s.applyEvents(
+    s = s.applyKeyedEvents(
       (NoKey <-: ClusterEvent.ClusterCouplingPrepared(primaryNodeId)) ::
       (NoKey <-: ClusterEvent.ClusterCoupled(primaryNodeId)) ::
       (NoKey <-: JournalEvent.JournalEventsReleased(UserId("USER"), EventId(333))) ::

@@ -415,7 +415,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
 
 /*
     assert(
-      applyEvents(_controllerState,
+      applyKeyedEvents(_controllerState,
         aOrderId <-: OrderAdded(aWorkflow.id),
         bOrderId <-: OrderAdded(bWorkflow.id),
         cOrderId <-: OrderAdded(cWorkflow.id),
@@ -431,7 +431,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       ) == Right(Nil))
 
     assert(
-      applyEvents(_controllerState,
+      applyKeyedEvents(_controllerState,
         aOrderId <-: OrderDetachable,
         aOrderId <-: OrderDetached,
         bOrderId <-: OrderDetachable
@@ -440,12 +440,12 @@ final class ControllerStateExecutorTest extends OurTestSuite:
         aOrderId <-: OrderFinished)))
 
     assert(
-      applyEvents(_controllerState,
+      applyKeyedEvents(_controllerState,
         aOrderId <-: OrderDeletionMarked)
       == Right(Seq(
         aOrderId <-: OrderDeleted)))
 
-    assert(applyEvents(_controllerState,
+    assert(applyKeyedEvents(_controllerState,
       VersionAdded(v2),
       VersionedItemRemoved(aWorkflow.path),
       VersionedItemRemoved(bWorkflow.path),
@@ -454,16 +454,16 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       NoKey <-: ItemDeleted(cWorkflow.id),
       NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))
 
-    assert(applyEvents(_controllerState,
+    assert(applyKeyedEvents(_controllerState,
       ItemDeletionMarked(aAgentRef.path)
     ) == Right(Nil))
 
-    assert(applyEvents(_controllerState,
+    assert(applyKeyedEvents(_controllerState,
       ItemDeletionMarked(bAgentRef.path))
       == Right(Seq(
         NoKey <-: ItemDetachable(bWorkflow.id, bAgentRef.path))))
 
-    assert(applyEvents(_controllerState,
+    assert(applyKeyedEvents(_controllerState,
       ItemDetached(aWorkflow.id, aAgentRef.path)
     ) == Right(Seq(
       NoKey <-: ItemDeleted(aAgentRef.path))))
@@ -480,7 +480,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
     final case class X(controllerState: ControllerState, keyedEvents: Seq[AnyKeyedEvent] = Nil):
       def doSomething: Checked[X] =
         val keyedEvents = Seq(NoKey <-: VersionAdded(VersionId("TEST")))
-        controllerState.applyEvents(keyedEvents)
+        controllerState.applyKeyedEvents(keyedEvents)
           .map(X(_, keyedEvents))
     val controllerState = ControllerState.empty
     for

@@ -56,7 +56,7 @@ extends MainJournalingActor[S, E]:
         Try(
           for
             keyedEvent <- stateToEvents(state)
-            _ <- state.applyEvents(keyedEvent)
+            _ <- state.applyKeyedEvents(keyedEvent)
           yield keyedEvent
         ) match
           case Failure(t) => promise.failure(t)

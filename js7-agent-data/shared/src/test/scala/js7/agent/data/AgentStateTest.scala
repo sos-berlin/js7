@@ -144,7 +144,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
       Map.empty,
       Map.empty,
       Map.empty
-    ).applyEvents(Seq(
+    ).applyKeyedEvents(Seq(
       JournalEventsReleased(UserId("USER"), 500L),
       AgentDedicated(
         Seq(subagentItem.id),

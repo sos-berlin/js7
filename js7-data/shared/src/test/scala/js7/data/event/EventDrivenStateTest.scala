@@ -13,14 +13,14 @@ import js7.data.event.KeyedEvent.NoKey
 final class EventDrivenStateTest extends OurTestSuite:
   private var s = TestState("")
 
-  "applyEvents" in:
+  "applyKeyedEvents" in:
     val stampedEvents =
       Stamped(1000L, Timestamp.ofEpochMilli(1), (NoKey <-: Added("("))) ::
       Stamped(2000L, Timestamp.ofEpochMilli(2), (NoKey <-: Added("ADDED"))) ::
       Stamped(3000L, Timestamp.ofEpochMilli(3), (NoKey <-: Added(")"))) ::
       Nil
 
-    assert(s.applyStampedEvents(stampedEvents) == s.applyEvents(stampedEvents.map(_.value)))
+    assert(s.applyStampedEvents(stampedEvents) == s.applyKeyedEvents(stampedEvents.map(_.value)))
     s = s.applyStampedEvents(stampedEvents).orThrow
 
     assert(s == TestState("(ADDED)"))

@@ -16,7 +16,6 @@ import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, C
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterWatchRequest
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
@@ -208,7 +207,7 @@ object ClusterWatch:
           case _ =>
             (from == clusterState.activeId) !! clusterWatchInactiveNodeProblem
         .flatMap: _ =>
-          clusterState.applyEvents(maybeEvent.map(NoKey <-: _)) match
+          clusterState.applyEvents(maybeEvent) match
             case Left(problem) =>
               logger.warn(s"$from: $problem")
               Left(ClusterWatchEventMismatchProblem(

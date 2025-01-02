@@ -33,7 +33,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
       val startedEvents = executorService.toEvents(postingOrderId, state).orThrow
       assert(startedEvents == Seq(postingOrderId <-: OrderStarted))
-      state = state.applyEvents(startedEvents).orThrow
+      state = state.applyKeyedEvents(startedEvents).orThrow
 
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
@@ -41,7 +41,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
         postingOrderId <-: OrderNoticePosted(notice1),
         postingOrderId <-: OrderMoved(Position(1))))
 
-      state = state.applyEvents(events).orThrow
+      state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(notice0.id, Some(notice0)))),
@@ -56,7 +56,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
       val startedEvents = executorService.toEvents(expectingOrderId, state).orThrow
       assert(startedEvents == Seq(expectingOrderId <-: OrderStarted))
-      state = state.applyEvents(startedEvents).orThrow
+      state = state.applyKeyedEvents(startedEvents).orThrow
 
       val events = executorService.toEvents(expectingOrderId, state).orThrow
       assert(events == Seq(
@@ -66,7 +66,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
           OrderNoticesExpected.Expected(board1.path, notice1.id),
           OrderNoticesExpected.Expected(board3.path, notice3.id)))))
 
-      state = state.applyEvents(events).orThrow
+      state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
@@ -95,14 +95,14 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
       val startedEvents = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(startedEvents == Seq(otherExpectingOrderId <-: OrderStarted))
-      state = state.applyEvents(startedEvents).orThrow
+      state = state.applyKeyedEvents(startedEvents).orThrow
 
       val events = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(events == Seq(
         otherExpectingOrderId <-: OrderNoticesExpected(Vector(
           OrderNoticesExpected.Expected(board0.path, otherNotice0.id)))))
 
-      state = state.applyEvents(events).orThrow
+      state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
@@ -139,7 +139,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
         expectingOrderId <-: OrderMoved(Position(1)),
       ))
 
-      state = state.applyEvents(events).orThrow
+      state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(

@@ -32,7 +32,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
 
     problem.toLeftOr(state)
 
-  def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
+  def applyKeyedEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     var state = this
     var problem: Problem | Null = null
 
@@ -66,11 +66,13 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
 
 
 object EventDrivenState:
+
   trait Companion[S <: EventDrivenState[S, E], E <: Event] extends BasicState.Companion[S]:
     implicit final val implicitEventDrivenStateCompanion: Companion[S, E] =
       this
 
     override def toString: String = name
+
 
   final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded:
     def arguments: Map[String, String] = Map(

@@ -116,7 +116,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     val v = VersionId("X")
     val workflowId = WorkflowPath("X") ~ v
     val controllerStateWithOrderlessWorkflow = controllerState
-      .applyEvents(Seq(
+      .applyKeyedEvents(Seq(
         VersionAdded(v),
         VersionedItemAdded(itemSigner.sign(Workflow(workflowId, Nil)))))
       .orThrow
@@ -137,7 +137,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     val v = VersionId("x")
     val changedWorkflowId = workflow.path ~ v
     val controllerState = ControllerStateTest.controllerState
-      .applyEvents(Seq(
+      .applyKeyedEvents(Seq(
         VersionAdded(v),
         VersionedItemChanged(itemSigner.sign(workflow.copy(id = changedWorkflowId)))))
       .orThrow

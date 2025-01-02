@@ -100,7 +100,7 @@ extends Journal[S]:
         val state = _state
         (for
           keyedEvents <- stateToEvents(state)
-          updated <- state.applyEvents(keyedEvents)
+          updated <- state.applyKeyedEvents(keyedEvents)
           stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
         yield
           // Limit acq to size to allow more stampedEvents than size.

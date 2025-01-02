@@ -51,23 +51,23 @@ object VerifiedUpdateItemsExecutor:
     def result: Checked[Seq[KeyedEvent[NoKeyEvent | OrderPlanAttached]]] =
       (for
         versionedEvents <- versionedEvents(controllerState)
-        updatedState <- controllerState.applyEvents(versionedEvents)
+        updatedState <- controllerState.applyKeyedEvents(versionedEvents)
         simpleItemEvents <- simpleItemEvents(updatedState)
-        updatedState <- updatedState.applyEvents(simpleItemEvents)
-        updatedState <- updatedState.applyEvents(
+        updatedState <- updatedState.applyKeyedEvents(simpleItemEvents)
+        updatedState <- updatedState.applyKeyedEvents(
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
             .flatMap(deleteRemovedVersionedItem(_, updatedState)))
-        updatedState <- updatedState.applyEvents(
+        updatedState <- updatedState.applyKeyedEvents(
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemChanged) => e.path }
             .flatMap(controllerState.repo.pathToId)
             .filterNot(controllerState.isInUse)
             .map(previousItemId => NoKey <-: ItemDeleted(previousItemId)))
         derivedWorkflowPathControlEvents = toDerivedWorkflowPathControlEvents(updatedState)
-        updatedState <- updatedState.applyEvents(derivedWorkflowPathControlEvents)
+        updatedState <- updatedState.applyKeyedEvents(derivedWorkflowPathControlEvents)
         derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
-        updatedState <- updatedState.applyEvents(derivedWorkflowControlEvents)
+        updatedState <- updatedState.applyKeyedEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
         (orderPlanAttached, updatedState) <-
           attachPlanlessOrdersPlanTemplates(updatedState, verifiedUpdateItems)
@@ -230,7 +230,7 @@ object VerifiedUpdateItemsExecutor:
                 order.id <-: OrderPlanAttached(planId)
           .map(_.flatten)
           .flatMap: events =>
-            controllerState.applyEvents(events)
+            controllerState.applyKeyedEvents(events)
               .map(events -> _)
 
     def simpleItemDeletionEvents(
