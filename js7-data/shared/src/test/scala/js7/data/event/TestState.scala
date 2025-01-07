@@ -16,7 +16,7 @@ extends EventDrivenState[TestState, TestEvent]:
         eventNotApplicable(keyedEvent)
 
 
-object TestCase extends EventDrivenState.Companion[TestState, TestEvent]
+object TestCase extends EventDrivenState.Companion[TestState]
 
 sealed trait TestEvent extends NoKeyEvent
 

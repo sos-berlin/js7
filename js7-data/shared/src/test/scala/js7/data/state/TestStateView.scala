@@ -129,7 +129,7 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
     keyTo(PlanSchemaState).checked(planId.planSchemaId)
 
 
-object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView, Event]:
+object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView]:
 
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),
@@ -169,7 +169,7 @@ extends TestStateView[AgentTestStateView]:
   : Checked[PlanSchemaState] =
     Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 
-object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView, Event]:
+object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView]:
 
   def of(
     controllerId: ControllerId = ControllerId("CONTROLLER"),

@@ -442,4 +442,4 @@ extends SnapshotableStateBuilder[ControllerState],
     ).finish.orThrow
 
 
-object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder, Event]
+object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder]

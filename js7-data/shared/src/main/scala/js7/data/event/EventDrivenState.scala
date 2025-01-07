@@ -10,7 +10,7 @@ import scala.util.boundary
 trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends BasicState[Self]:
   this: Self =>
 
-  override def companion: Companion[Self, E]
+  override def companion: Companion[Self]
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
 
@@ -68,8 +68,8 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
 
 object EventDrivenState:
 
-  trait Companion[S <: EventDrivenState[S, E], E <: Event] extends BasicState.Companion[S]:
-    given Companion[S, E] = this
+  trait Companion[S <: EventDrivenState[S, ?]] extends BasicState.Companion[S]:
+    given Companion[S] = this
 
     override def toString: String = name
 

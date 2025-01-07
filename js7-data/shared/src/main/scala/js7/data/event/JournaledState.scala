@@ -28,6 +28,6 @@ object JournaledState:
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
 
   trait Companion[S <: JournaledState[S]]
-  extends EventDrivenState.Companion[S, Event], HasEventCodec:
+  extends EventDrivenState.Companion[S], HasEventCodec:
 
-    given Companion[S] = this
+    given journalStateCompanion: Companion[S] = this

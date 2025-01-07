@@ -95,7 +95,7 @@ with EventDrivenState[ClusterState, ClusterEvent]:
 
 object ClusterState
 extends EventDriven.Companion[ClusterState, ClusterEvent]
-with EventDrivenState.Companion[ClusterState, ClusterEvent]:
+with EventDrivenState.Companion[ClusterState]:
 
   private type Id = NodeId
 

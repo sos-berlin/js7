@@ -349,4 +349,4 @@ extends EventDrivenState[Self, Event], StateView:
 
 object EventDrivenStateView:
   trait Companion[Self <: EventDrivenStateView[Self]]
-  extends EventDrivenState.Companion[Self, Event]
+  extends EventDrivenState.Companion[Self]

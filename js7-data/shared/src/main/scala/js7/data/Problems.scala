@@ -175,7 +175,7 @@ object Problems:
 
   case object OldEventIdProblem extends Problem.ArgumentlessCoded
 
-  final case class EventNotHandledHereProblem(event: Event, here: EventDrivenState.Companion[?, ?])
+  final case class EventNotHandledHereProblem(event: Event, here: EventDrivenState.Companion[?])
   extends Problem.Coded:
     def arguments: Map[String, String] = Map2(
       "event", event.getClass.simpleScalaName,
