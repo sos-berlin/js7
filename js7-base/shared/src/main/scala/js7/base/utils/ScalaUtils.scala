@@ -591,19 +591,23 @@ object ScalaUtils:
         val b = underlying.applyOrElse(key, checkFallback[B])
         if fallbackOccurred(b) then None else Some(b)
 
-      def checked(key: A)(implicit A: Tag[A]): Checked[B] =
-        underlying.lift(key) match
-          case None => Left(UnknownKeyProblem(A.tag.shortName, key))
-          case Some(a) => Right(a)
+      def checked(key: A)(using A: Tag[A]): Checked[B] =
+        val b = underlying.applyOrElse(key, checkFallback[B])
+        if fallbackOccurred(b) then
+          Left(UnknownKeyProblem(A.tag.shortName, key))
+        else
+          Right(b)
 
       def rightOr(key: A, notFound: => Problem): Checked[B] =
         toChecked(_ => notFound)(key)
 
       private def toChecked(notFound: A => Problem): A => Checked[B] =
-        val lifted = underlying.lift
-        key => lifted(key) match
-          case Some(b) => Right(b)
-          case None => Left(notFound(key))
+        key =>
+          val b = underlying.applyOrElse(key, checkFallback[B])
+          if fallbackOccurred(b) then
+            Left(notFound(key))
+          else
+            Right(b)
 
       def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] =
         if underlying isDefinedAt key then

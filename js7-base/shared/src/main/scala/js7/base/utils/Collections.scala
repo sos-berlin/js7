@@ -135,7 +135,9 @@ object Collections:
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
-        if underlying.sizeIs == underlying.view.map(key).toSet.size then
+        if underlying.sizeIs <= 1
+          || underlying.sizeIs == underlying.view.map(key).toSet.size
+        then
           None
         else
           underlying.groupBy(key).filter(_._2.sizeIs > 1) match
