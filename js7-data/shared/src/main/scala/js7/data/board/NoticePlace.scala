@@ -60,6 +60,7 @@ extends Big:
   def post(notice: Notice): NoticePlace =
     copy(
       notice = Some(notice),
+      isAnnounced = false,
       isInConsumption = false)
 
   def removeNotice: NoticePlace =
@@ -85,7 +86,7 @@ extends Big:
           None
         else
           notice,
-      isAnnounced = isAnnounced && !isLast,
+      //post already did this: isAnnounced = isAnnounced && !isLast,
       isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
 
