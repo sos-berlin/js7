@@ -272,6 +272,19 @@ final class ScalaUtilsTest extends OurTestSuite:
     def double(a: Int) = 2 * a
     assert((3 |> double) == double(3))
 
+  "orderingBy2" - {
+    "orderingBy 2" in:
+      given Ordering[(Int, String)] = orderingBy(_._1, _._2)
+      val ordered = Vector(1 -> "1", 1 -> "2", 2 -> "1", 2 -> "1")
+      for seq <- ordered.permutations.toVector do
+        assert(seq.sorted == ordered)
+
+    "orderingBy 3" in:
+      given Ordering[(Int, String, Int)] = orderingBy(_._1, _._2, _._3)
+      val ordered = for a <- 1 to 2; b <- 1 to 2; c <- 1 to 2 yield (a, b.toString, c)
+      for seq <- ordered.permutations.toVector do assert(seq.sorted == ordered)
+  }
+
   "pipeIf" in:
     assert(3.pipeIf(true)(_ * 7) == 3 * 7)
     assert(3.pipeIf(false)(_ * 7) == 3)
