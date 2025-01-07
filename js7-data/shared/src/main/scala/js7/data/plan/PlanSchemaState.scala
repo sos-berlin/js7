@@ -13,45 +13,45 @@ import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, BoardState, NoticeKey, NoticePlace, PlannedBoard, PlannedBoardId}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
-import js7.data.plan.PlanTemplateState.*
+import js7.data.plan.PlanSchemaState.*
 import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
 import scala.collection.immutable.Map.Map1
 import scala.collection.{View, immutable}
 
-final case class PlanTemplateState(
-  item: PlanTemplate,
+final case class PlanSchemaState(
+  item: PlanSchema,
   namedValues: NamedValues,
   toPlan: Map[PlanKey, Plan])
 extends UnsignedSimpleItemState:
 
-  protected type Self = PlanTemplateState
+  protected type Self = PlanSchemaState
 
-  val companion: PlanTemplateState.type = PlanTemplateState
+  val companion: PlanSchemaState.type = PlanSchemaState
   private lazy val namedValuesScope = NamedValueScope(namedValues)
 
-  inline def planTemplate: PlanTemplate =
+  inline def planSchema: PlanSchema =
     item
 
-  def path: PlanTemplateId =
-    planTemplate.id
+  def path: PlanSchemaId =
+    planSchema.id
 
-  def id: PlanTemplateId =
-    planTemplate.id
+  def id: PlanSchemaId =
+    planSchema.id
 
-  override def toSnapshotStream: fs2.Stream[fs2.Pure, PlanTemplate | Snapshot] =
+  override def toSnapshotStream: fs2.Stream[fs2.Pure, PlanSchema | Snapshot] =
     if isGlobal then
       fs2.Stream.empty
     else
       item.toSnapshotStream :+ Snapshot(path, namedValues)
 
-  def recover(snapshot: Snapshot): PlanTemplateState =
+  def recover(snapshot: Snapshot): PlanSchemaState =
     copy(namedValues = snapshot.namedValues)
 
-  def updateNamedValues(namedValues: NamedValues): Checked[PlanTemplateState] =
+  def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
     copy(namedValues = namedValues).recalculateIsClosedValues
 
-  private def recalculateIsClosedValues: Checked[PlanTemplateState] =
+  private def recalculateIsClosedValues: Checked[PlanSchemaState] =
     toPlan.values.map: plan =>
       calculatePlanIsClosed(plan.id.planKey).map: isClosed =>
         plan.copy(isClosed = isClosed)
@@ -63,7 +63,7 @@ extends UnsignedSimpleItemState:
   def isGlobal: Boolean =
     item.isGlobal
 
-  /** Returns Right(()) iff this PlanTemplate is unused. */
+  /** Returns Right(()) iff this PlanSchema is unused. */
   def checkIsDeletable: Checked[Unit] =
     val usedPlans = toPlan.values.filter(_.hasOrders)
     usedPlans.isEmpty !!
@@ -80,7 +80,7 @@ extends UnsignedSimpleItemState:
   def checkIsOpen(planKey: PlanKey): Checked[Unit] =
     for
       isClosed <- isClosed(planKey)
-      _ <- !isClosed !! PlanIsClosedProblem(planTemplate.id / planKey)
+      _ <- !isClosed !! PlanIsClosedProblem(planSchema.id / planKey)
     yield
       ()
 
@@ -90,28 +90,28 @@ extends UnsignedSimpleItemState:
       case None => calculatePlanIsClosed(planKey)
 
   private def calculatePlanIsClosed(planKey: PlanKey): Checked[Boolean] =
-    planTemplate.isClosed(planKey, namedValuesScope)
+    planSchema.isClosed(planKey, namedValuesScope)
 
   def orderIds: View[OrderId] =
     toPlan.values.view.flatMap(_.orderIds)
 
-  def updateItem(item: PlanTemplate): Checked[PlanTemplateState] =
+  def updateItem(item: PlanSchema): Checked[PlanSchemaState] =
     Right(copy(item = item))
 
-  def addOrder(planKey: PlanKey, orderId: OrderId): Checked[PlanTemplateState] =
+  def addOrder(planKey: PlanKey, orderId: OrderId): Checked[PlanSchemaState] =
     addOrderIds(Map1(planKey, Set(orderId)))
 
-  def removeOrderId(planKey: PlanKey, orderId: OrderId): PlanTemplateState =
+  def removeOrderId(planKey: PlanKey, orderId: OrderId): PlanSchemaState =
     removeOrderIds(Map1(planKey, Set(orderId)))
 
-  private def addOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanTemplateState] =
+  private def addOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanSchemaState] =
     planToOrders.toVector.traverse: (planKey, orderIds) =>
       getOrMakePlan(planKey).map:
         _.addOrders(orderIds)
     .map: plans =>
       copy(toPlan = toPlan ++ plans.toKeyedMap(_.id.planKey))
 
-  private def removeOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): PlanTemplateState =
+  private def removeOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): PlanSchemaState =
     val plans = planToOrders.flatMap: (planKey, orderIds) =>
       toPlan.get(planKey).map: plan =>
         plan.removeOrders(orderIds)
@@ -121,7 +121,7 @@ extends UnsignedSimpleItemState:
       ++ nonEmptyPlans.map(o => o.id.planKey -> o))
 
   def updateNoticePlace(planKey: PlanKey, boardPath: BoardPath, noticePlace: NoticePlace)
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     getOrMakePlan(planKey).map:
       _.updateNoticePlace(boardPath, noticePlace)
     .map: plan =>
@@ -139,13 +139,13 @@ extends UnsignedSimpleItemState:
       Plan(id / planKey, orderIds, plannedBoards, isClosed = isClosed)
 
   def deleteNoticePlace(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
-  : PlanTemplateState =
+  : PlanSchemaState =
     copy(toPlan =
       toPlan.updatedWith(planKey):
         _.flatMap:
           _.deleteNoticePlace(boardPath, noticeKey))
 
-  def deleteBoard(boardPath: BoardPath): PlanTemplateState =
+  def deleteBoard(boardPath: BoardPath): PlanSchemaState =
     copy(toPlan =
       toPlan.values.flatMap: plan =>
         plan.deleteBoard(boardPath)
@@ -159,31 +159,31 @@ extends UnsignedSimpleItemState:
     toPlan.values
 
   override def toStringStream: Stream[Pure, String] =
-    Stream.emit(s"PlanTemplateState($path)") ++
+    Stream.emit(s"PlanSchemaState($path)") ++
       Stream.iterable(namedValues.toVector.sortBy(_._1)).map((k, v) => s"  - $k=$v") ++
         Stream.iterable(toPlan.values.toVector.sorted).flatMap(_.toStringStream).map(o => s"  $o")
 
   override def toString: String =
-    s"PlanTemplateState($path, ${
+    s"PlanSchemaState($path, ${
       namedValues.toVector.sortBy(_._1).view.map((k, v) => s"$k=$v").mkString("{", ", ", "}")
     } ${
       toPlan.values.toVector.sorted.mkString("{", ", ", "}")
     })"
 
 
-object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateState]:
+object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState]:
 
-  type Key = PlanTemplateId
-  type Item = PlanTemplate
+  type Key = PlanSchemaId
+  type Item = PlanSchema
 
-  val Global: PlanTemplateState =
-    PlanTemplateState(PlanTemplate.Global, namedValues = Map.empty, toPlan = Map.empty)
+  val Global: PlanSchemaState =
+    PlanSchemaState(PlanSchema.Global, namedValues = Map.empty, toPlan = Map.empty)
 
   def recoverPlans(
     orders: Iterable[Order[Order.State]],
     boardStates: Iterable[BoardState],
-    toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
-  : Checked[Seq[PlanTemplateState]] =
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+  : Checked[Seq[PlanSchemaState]] =
     val planToOrders: Map[PlanId, Vector[OrderId]] =
       orders.toVector.groupMap(_.planId)(_.id)
 
@@ -198,57 +198,57 @@ object PlanTemplateState extends UnsignedSimpleItemState.Companion[PlanTemplateS
 
     (planToOrders.keySet ++ planToPlannedBoards.keys)
       .toVector
-      .groupBy(_.planTemplateId)
+      .groupBy(_.planSchemaId)
       .toVector
-      .traverse: (planTemplateId, planIds) =>
-        toPlanTemplateState(planTemplateId).flatMap: planTemplateState =>
+      .traverse: (planSchemaId, planIds) =>
+        toPlanSchemaState(planSchemaId).flatMap: planSchemaState =>
           planIds.traverse: planId =>
-            planTemplateState.makePlan(
+            planSchemaState.makePlan(
               planId.planKey,
               orderIds = planToOrders.getOrElse(planId, Set.empty).toSet,
               plannedBoards = planToPlannedBoards.getOrElse(planId, Nil))
           .map: plans =>
-            planTemplateState.copy(
+            planSchemaState.copy(
               toPlan = plans.toKeyedMap(_.id.planKey))
 
   def addOrderIds(
     orders: Iterable[Order[Order.State]],
-    toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
-  : Checked[Seq[PlanTemplateState]] =
-    updatedTemplateStates(orders, toPlanTemplateState)
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+  : Checked[Seq[PlanSchemaState]] =
+    updatedTemplateStates(orders, toPlanSchemaState)
       .flatMap:
-        _.traverse: (planTemplateState, planToOrders) =>
-          planTemplateState.addOrderIds(planToOrders)
+        _.traverse: (planSchemaState, planToOrders) =>
+          planSchemaState.addOrderIds(planToOrders)
 
   def removeOrderIds(
     orders: Iterable[Order[Order.State]],
-    toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
-  : Checked[Seq[PlanTemplateState]] =
-    updatedTemplateStates(orders, toPlanTemplateState)
-      .map(_.map: (planTemplateState, planToOrders) =>
-        planTemplateState.removeOrderIds(planToOrders))
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+  : Checked[Seq[PlanSchemaState]] =
+    updatedTemplateStates(orders, toPlanSchemaState)
+      .map(_.map: (planSchemaState, planToOrders) =>
+        planSchemaState.removeOrderIds(planToOrders))
 
   private def updatedTemplateStates(
     orders: Iterable[Order[Order.State]],
-    toPlanTemplateState: PlanTemplateId => Checked[PlanTemplateState])
-  : Checked[Seq[(PlanTemplateState, Map[PlanKey, Set[OrderId]])]] =
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+  : Checked[Seq[(PlanSchemaState, Map[PlanKey, Set[OrderId]])]] =
     if orders.isEmpty then
       Right(Nil)
     else
       orders.iterator
         .map(o => o.planId -> o.id)
         .to(Set)
-        .groupMap(_._1.planTemplateId): (planId, orderId) =>
+        .groupMap(_._1.planSchemaId): (planId, orderId) =>
           planId.planKey -> orderId
         .view
         .mapValues:
           _.groupMap(_._1)(_._2)
         .toVector
-        .traverse: (planTemplateId, planKeyToOrderIds) =>
-          toPlanTemplateState(planTemplateId).map(_ -> planKeyToOrderIds)
+        .traverse: (planSchemaId, planKeyToOrderIds) =>
+          toPlanSchemaState(planSchemaId).map(_ -> planKeyToOrderIds)
 
 
-  final case class Snapshot(id: PlanTemplateId, namedValues: NamedValues)
+  final case class Snapshot(id: PlanSchemaId, namedValues: NamedValues)
 
   val subtype: Subtype[Snapshot] =
-    Subtype.named[Snapshot](deriveCodecWithDefaults, "PlanTemplateState")
+    Subtype.named[Snapshot](deriveCodecWithDefaults, "PlanSchemaState")

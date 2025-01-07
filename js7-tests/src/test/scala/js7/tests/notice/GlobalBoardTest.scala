@@ -27,7 +27,7 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanTemplateId}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
@@ -108,7 +108,7 @@ final class GlobalBoardTest
 
       // Look at the Global Plan //
       assert:
-        controllerState.templateToKeyToPlan(PlanTemplateId.Global) ==
+        controllerState.templateToKeyToPlan(PlanSchemaId.Global) ==
           Map:
             PlanKey.Global -> Plan(
               PlanId.Global,

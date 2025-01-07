@@ -34,7 +34,7 @@ import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.PlanTemplateId
+import js7.data.plan.PlanSchemaId
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -383,7 +383,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       jobResource.path, calendar.path,
       agentRef.path, subagentItem.id, subagentBundle.id,
       lock.path, board.path, fileWatch.path,
-      PlanTemplateId.Global,
+      PlanSchemaId.Global,
       workflow.id, WorkflowPathControlPath(workflow.path)))
 
   "v2.2 compatiblity" - {

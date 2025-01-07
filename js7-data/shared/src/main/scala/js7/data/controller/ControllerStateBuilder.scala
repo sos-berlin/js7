@@ -24,8 +24,8 @@ import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
-import js7.data.plan.{PlanId, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
+import js7.data.plan.{PlanId, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -159,9 +159,9 @@ extends SnapshotableStateBuilder[ControllerState],
     case ItemDeletionMarked(itemKey) =>
       deletionMarkedItems += itemKey
 
-    case snapshot: PlanTemplateState.Snapshot =>
-      val planTemplateState = keyTo(PlanTemplateState)(snapshot.id)
-      _keyToUnsignedItemState(snapshot.id) = planTemplateState.recover(snapshot)
+    case snapshot: PlanSchemaState.Snapshot =>
+      val planSchemaState = keyTo(PlanSchemaState)(snapshot.id)
+      _keyToUnsignedItemState(snapshot.id) = planSchemaState.recover(snapshot)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -268,10 +268,10 @@ extends SnapshotableStateBuilder[ControllerState],
                     _keyToUnsignedItemState(item.path) = keyTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
 
-                  case planTemplate: PlanTemplate =>
-                    _keyToUnsignedItemState(planTemplate.path) =
-                      keyTo(PlanTemplateState)(planTemplate.path)
-                        .updateItem(planTemplate).orThrow
+                  case planSchema: PlanSchema =>
+                    _keyToUnsignedItemState(planSchema.path) =
+                      keyTo(PlanSchemaState)(planSchema.path)
+                        .updateItem(planSchema).orThrow
 
           case UnsignedItemAdded(item: VersionedControl) =>
             _keyToUnsignedItemState.insert(item.key, item.toInitialItemState)
@@ -346,11 +346,11 @@ extends SnapshotableStateBuilder[ControllerState],
         for boardState <- keyTo(BoardState).get(boardPath) do
           _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
 
-      case KeyedEvent(planTemplateId: PlanTemplateId, event: PlanTemplateChanged) =>
-        val planTemplateState = keyTo(PlanTemplateState)(planTemplateId)
-        _keyToUnsignedItemState(planTemplateId) = planTemplateState.copy(
-          // No need to use planTemplateState.updateNamedValues,
-          // because PlanTemplateState will be computed in result()
+      case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaChanged) =>
+        val planSchemaState = keyTo(PlanSchemaState)(planSchemaId)
+        _keyToUnsignedItemState(planSchemaId) = planSchemaState.copy(
+          // No need to use planSchemaState.updateNamedValues,
+          // because PlanSchemaState will be computed in result()
           namedValues = event.namedValues)
 
       case KeyedEvent(_, _: ControllerShutDown) =>
@@ -376,16 +376,16 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
   : Checked[ControllerStateBuilder] =
     // Do nothing here.
-    // PlanTemplateState.toPlan will be updated when ControllerStateBuilder finishes.
+    // PlanSchemaState.toPlan will be updated when ControllerStateBuilder finishes.
     Right(this)
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
     boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     // Not required for ControllerStateBuilder, so we do nothing here (?)
-    // PlanTemplateStates are updated with ControllerState#finish
-    keyTo(PlanTemplateState).checked(planId.planTemplateId)
+    // PlanSchemaStates are updated with ControllerState#finish
+    keyTo(PlanSchemaState).checked(planId.planSchemaId)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
@@ -420,9 +420,9 @@ extends SnapshotableStateBuilder[ControllerState],
     _idToOrder ++= addOrders.map(o => o.id -> o)
 
     removeUnsignedSimpleItems.collect:
-      case id: PlanTemplateId => id
-    .foreach: planTemplateId =>
-      _keyToUnsignedItemState ++= removeNoticeKeysForPlanTemplate(planTemplateId)
+      case id: PlanSchemaId => id
+    .foreach: planSchemaId =>
+      _keyToUnsignedItemState ++= removeNoticeKeysForPlanSchema(planSchemaId)
 
     _keyToUnsignedItemState --= removeUnsignedSimpleItems
     _keyToUnsignedItemState ++= addItemStates.map(o => o.path -> o)

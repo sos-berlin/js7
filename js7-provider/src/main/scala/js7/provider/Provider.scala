@@ -33,7 +33,7 @@ import js7.data.calendar.Calendar
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
-import js7.data.plan.PlanTemplate
+import js7.data.plan.PlanSchema
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
 import js7.provider.Provider.*
@@ -189,7 +189,7 @@ extends Observing, MainService, Service.StoppableByRequest:
         _.items.filter:
           case _: WorkflowPathControl => false
           case _: WorkflowControl => false
-          case PlanTemplate.Global => false
+          case PlanSchema.Global => false
           case _ => true
 
   private def readDirectory: IO[Vector[DirectoryReader.Entry]] =

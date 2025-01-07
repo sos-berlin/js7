@@ -13,7 +13,7 @@ import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimple
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderExternalVanished, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStateReset, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanTemplateState}
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{ConsumeNotices, LockInstruction}
 import js7.data.workflow.position.WorkflowPosition
@@ -319,7 +319,7 @@ extends EventDrivenState[Self, Event], StateView:
         Checked.unit
 
   private def removeNoticeExpectation(order: Order[ExpectingNotices])
-  : Checked[Seq[BoardState | PlanTemplateState]] =
+  : Checked[Seq[BoardState | PlanSchemaState]] =
     order.state.expected.traverse: expected =>
       for
         boardState <- keyTo(BoardState).checked(expected.boardPath)
@@ -337,14 +337,14 @@ extends EventDrivenState[Self, Event], StateView:
     planId: PlanId,
     boardState: BoardState,
     noticeId: NoticeId)
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     strictly(planId == noticeId.planId)
     updateNoticePlacesInPlan(planId, boardState -> noticeId :: Nil)
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
     boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
-  : Checked[PlanTemplateState]
+  : Checked[PlanSchemaState]
 
 
 object EventDrivenStateView:

@@ -8,7 +8,7 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.syntax.sequence
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
-import js7.data.Problems.OrderWouldNotMatchChangedPlanTemplateProblem
+import js7.data.Problems.OrderWouldNotMatchChangedPlanSchemaProblem
 import js7.data.agent.AgentPath
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
@@ -20,7 +20,7 @@ import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
 import js7.data.order.OrderEvent
 import js7.data.order.OrderEvent.OrderPlanAttached
-import js7.data.plan.{PlanTemplate, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.{PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
@@ -70,7 +70,7 @@ object VerifiedUpdateItemsExecutor:
         updatedState <- updatedState.applyKeyedEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
         (orderPlanAttached, updatedState) <-
-          attachPlanlessOrdersPlanTemplates(updatedState, verifiedUpdateItems)
+          attachPlanlessOrdersPlanSchemas(updatedState, verifiedUpdateItems)
       yield
         simpleItemEvents
           .concat(versionedEvents)
@@ -188,11 +188,11 @@ object VerifiedUpdateItemsExecutor:
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
                 item.match
-                  case item: PlanTemplate =>
-                    controllerState.keyTo(PlanTemplateState).checked(item.id)
-                      .flatMap: planTemplateState =>
+                  case item: PlanSchema =>
+                    controllerState.keyTo(PlanSchemaState).checked(item.id)
+                      .flatMap: planSchemaState =>
                         checkOrdersMatchStillItsPlan(controllerState,
-                          planTemplateState.copy(item = item))
+                          planSchemaState.copy(item = item))
                   case _ => Checked.unit
                 .map: _ =>
                   UnsignedSimpleItemChanged:
@@ -201,24 +201,24 @@ object VerifiedUpdateItemsExecutor:
 
     def checkOrdersMatchStillItsPlan(
       controllerState: ControllerState,
-      planTemplateState: PlanTemplateState)
+      planSchemaState: PlanSchemaState)
     : Checked[Unit] =
-      planTemplateState.orderIds
+      planSchemaState.orderIds
         .map(controllerState.idToOrder.checked)
         .map:
           _.flatMap: order =>
-            planTemplateState.item.evalOrderToPlanId(controllerState.toPlanOrderScope(order))
+            planSchemaState.item.evalOrderToPlanId(controllerState.toPlanOrderScope(order))
               .flatMap: maybePlanId =>
                 (order.maybePlanId == maybePlanId) !!
-                  OrderWouldNotMatchChangedPlanTemplateProblem(order.id, order.planId)
+                  OrderWouldNotMatchChangedPlanSchemaProblem(order.id, order.planId)
         .sequence
         .map(_.combineAll)
 
-    def attachPlanlessOrdersPlanTemplates(
+    def attachPlanlessOrdersPlanSchemas(
       controllerState: ControllerState,
       verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[(Vector[KeyedEvent[OrderPlanAttached]], ControllerState)] =
-      if !verifiedUpdateItems.hasPlanTemplate then
+      if !verifiedUpdateItems.hasPlanSchema then
         Right(Vector.empty -> controllerState)
       else
         controllerState.orders.view
@@ -247,8 +247,8 @@ object VerifiedUpdateItemsExecutor:
             (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
               controllerState.detach(path)
 
-        case planTemplateId: PlanTemplateId =>
-          controllerState.checkPlanTemplateIsDeletable(planTemplateId).rightAs:
+        case planSchemaId: PlanSchemaId =>
+          controllerState.checkPlanSchemaIsDeletable(planSchemaId).rightAs:
             View.Single:
               ItemDeleted(path)
 

@@ -12,19 +12,19 @@ import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
-final class PlanTemplateTest extends OurTestSuite:
+final class PlanSchemaTest extends OurTestSuite:
 
   "JSON" in:
     import js7.data.controller.ControllerState.inventoryItemJsonCodec
 
     testJson[InventoryItem](
-      PlanTemplate(
-        PlanTemplateId("DailyPlan"),
+      PlanSchema(
+        PlanSchemaId("DailyPlan"),
         orderToPlanKey = expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?"),
         planIsClosedFunction = Some(exprFunction("(testPlanKey) => false")),
         Some(ItemRevision(1))),
       json"""{
-        "TYPE": "PlanTemplate",
+        "TYPE": "PlanSchema",
         "id": "DailyPlan",
         "orderToPlanKey": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
         "planIsClosedFunction": "(testPlanKey) => false",
@@ -32,11 +32,11 @@ final class PlanTemplateTest extends OurTestSuite:
       }""")
 
     testJson[InventoryItem](
-      PlanTemplate(
-        PlanTemplateId("DailyPlan"),
+      PlanSchema(
+        PlanSchemaId("DailyPlan"),
         orderToPlanKey = expr("match(orderId, '#(.+)#.*', '$1') ?")),
       json"""{
-        "TYPE": "PlanTemplate",
+        "TYPE": "PlanSchema",
         "id": "DailyPlan",
         "orderToPlanKey": "match(orderId, '#(.+)#.*', '$$1')?"
       }""")
@@ -45,10 +45,10 @@ final class PlanTemplateTest extends OurTestSuite:
     val freshOrder = FreshOrder(OrderId("#2024-11-20#bla"), WorkflowPath("WORKFLOW"))
     val scope = OrderScopes.minimumOrderScope(freshOrder, ControllerId("CONTROLLER"))
 
-    val dailyPlanTemplate = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
-    assert(dailyPlanTemplate.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))
+    val dailyPlanSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+    assert(dailyPlanSchema.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))
 
-    val weeklyPlanTemplate = PlanTemplate(
-      PlanTemplateId("WeeklyPlan"),
+    val weeklyPlanSchema = PlanSchema(
+      PlanSchemaId("WeeklyPlan"),
       expr("match(orderId, '^#([0-9]{4}w[0-9]{2})#.*$', '$1') ?"))
-    assert(weeklyPlanTemplate.orderToPlanKey.eval(scope) == Right(MissingValue))
+    assert(weeklyPlanSchema.orderToPlanKey.eval(scope) == Right(MissingValue))

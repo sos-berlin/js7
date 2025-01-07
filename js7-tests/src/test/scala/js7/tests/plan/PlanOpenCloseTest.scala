@@ -8,10 +8,10 @@ import js7.base.time.ScalaTime.*
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanTemplate}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.plan.{Plan, PlanTemplate, PlanTemplateId}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.Workflow
@@ -60,7 +60,7 @@ final class PlanOpenCloseTest
 
         // Close yesterday's Plan //
         execCmd:
-          ChangePlanTemplate(dailyPlan.id, Map("openingDay" -> today))
+          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
 
         // No Plan
         assert(controllerState.toPlan.isEmpty)
@@ -96,7 +96,7 @@ final class PlanOpenCloseTest
 
         // Close today's Plan //
         execCmd:
-          ChangePlanTemplate(dailyPlan.id, Map("openingDay" -> tomorrow))
+          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> tomorrow))
 
         execCmd:
           AnswerOrderPrompt(aTodaysOrderId)
@@ -140,20 +140,20 @@ final class PlanOpenCloseTest
 
         // Close tomorrow's Plan //
         execCmd:
-          ChangePlanTemplate(dailyPlan.id, Map("openingDay" -> dayAfterTomorrow))
+          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> dayAfterTomorrow))
 
         // Tomorrow's Plan has been deleted
         assert(controllerState.toPlan.isEmpty)
 
     "No order can be added via web service to a closed Plan" in:
       val workflow = Workflow.of(Prompt(expr("'PROMPT'")))
-      withItems((workflow, dailyPlan)): (workflow, planTemplate) =>
+      withItems((workflow, dailyPlan)): (workflow, planSchema) =>
         eventWatch.resetLastWatchedEventId()
 
         val yesterday = "2024-12-02"
         val today = "2024-12-03"
         execCmd:
-          ChangePlanTemplate(planTemplate.id, Map("openingDay" -> today))
+          ChangePlanSchema(planSchema.id, Map("openingDay" -> today))
         val yesterdayOrderId = OrderId(s"#$yesterday#")
         val todayOrderId = OrderId(s"#$today#")
 
@@ -161,7 +161,7 @@ final class PlanOpenCloseTest
           controller.api.addOrder:
             FreshOrder(yesterdayOrderId, workflow.path, deleteWhenTerminated = true)
           .await(99.s)
-            == Left(PlanIsClosedProblem(planTemplate.id / yesterday))
+            == Left(PlanIsClosedProblem(planSchema.id / yesterday))
 
         controller.addOrderBlocking:
           FreshOrder(todayOrderId, workflow.path, deleteWhenTerminated = true)
@@ -183,6 +183,6 @@ final class PlanOpenCloseTest
 object PlanOpenCloseTest:
   private val agentPath = AgentPath("AGENT")
 
-  private val dailyPlan = PlanTemplate.joc(
-    PlanTemplateId("DailyPlan"),
+  private val dailyPlan = PlanSchema.joc(
+    PlanSchemaId("DailyPlan"),
     planIsClosedFunction = Some(exprFunction("(day) => $day < $openingDay")))

@@ -57,7 +57,7 @@ object Problems:
     def arguments: Map[String, String] = Map1(
       "orderId", orderId.string)
 
-  final case class OrderWouldNotMatchChangedPlanTemplateProblem(orderId: OrderId, planId: PlanId)
+  final case class OrderWouldNotMatchChangedPlanSchemaProblem(orderId: OrderId, planId: PlanId)
   extends Problem.Coded:
     def arguments: Map[String, String] = Map2(
       "orderId", orderId.string,

@@ -17,7 +17,7 @@ import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
 import js7.data.order.{MinimumOrder, Order, OrderId}
-import js7.data.plan.{PlanId, PlanTemplateId}
+import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -120,10 +120,10 @@ trait StateView extends ItemContainer:
         case _ => Left(Problem.pure:
           "Legacy orderIdToBoardState, but instruction has multiple BoardPaths")
 
-  final def removeNoticeKeysForPlanTemplate(planTemplateId: PlanTemplateId)
+  final def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId)
   : View[(BoardPath, BoardState)] =
     keyTo(BoardState).values.view.flatMap: boardState =>
-      boardState.removeNoticeKeysForPlanTemplate(planTemplateId)
+      boardState.removeNoticeKeysForPlanSchema(planSchemaId)
         .map(o => o.path -> o)
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =

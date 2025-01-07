@@ -3,18 +3,18 @@ package js7.data.plan
 import js7.base.generic.GenericString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
-import js7.data.plan.PlanTemplateId.Global
+import js7.data.plan.PlanSchemaId.Global
 
 /** A template for Plans-
   *
-  * "Daily", daily plan, is a usual PlanTemplateId.
+  * "Daily", daily plan, is a usual PlanSchemaId.
   */
-final case class PlanTemplateId private(string: String)
+final case class PlanSchemaId private(string: String)
   extends GenericString, UnsignedSimpleItemPath:
 
-  protected type Self = PlanTemplateId
+  protected type Self = PlanSchemaId
 
-  val companion: PlanTemplateId.type = PlanTemplateId
+  val companion: PlanSchemaId.type = PlanSchemaId
 
   def isGlobal: Boolean =
     this == Global
@@ -26,13 +26,13 @@ final case class PlanTemplateId private(string: String)
     PlanId(this, PlanKey(planKey))
 
 
-object PlanTemplateId extends UnsignedSimpleItemPath.Companion[PlanTemplateId]:
+object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
-  type Item = PlanTemplate
+  type Item = PlanSchema
 
   override protected val isReserved = Set("Global")
 
-  val Global: PlanTemplateId = new PlanTemplateId("Global")
+  val Global: PlanSchemaId = new PlanSchemaId("Global")
 
   protected def unchecked(string: String) =
-    new PlanTemplateId(string)
+    new PlanSchemaId(string)

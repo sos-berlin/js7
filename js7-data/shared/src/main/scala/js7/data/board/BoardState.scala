@@ -17,7 +17,7 @@ import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderId
-import js7.data.plan.PlanTemplateId
+import js7.data.plan.PlanSchemaId
 import scala.collection.View
 
 final case class BoardState(
@@ -151,22 +151,22 @@ extends UnsignedSimpleItemState:
       idToNotice.get(noticeId).fold(this): noticePlace =>
         updateNoticePlace(noticePlace.removeNotice)
 
-  /** PlanTemplate must not contain an Order. */
-  def removeNoticeKeysForPlanTemplate(planTemplateId: PlanTemplateId): Option[BoardState] =
-    val which = idToNotice.values.filter(_.noticeId.planId.planTemplateId == planTemplateId)
+  /** PlanSchema must not contain an Order. */
+  def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId): Option[BoardState] =
+    val which = idToNotice.values.filter(_.noticeId.planId.planSchemaId == planSchemaId)
     which.foreachWithBracket(Square): (noticePlace, br) =>
-      logger.trace(s"${br}Remove $planTemplateId: Remove $noticePlace")
-    requireNoNoticePlaceIsInUse(planTemplateId, which)
+      logger.trace(s"${br}Remove $planSchemaId: Remove $noticePlace")
+    requireNoNoticePlaceIsInUse(planSchemaId, which)
     which.nonEmpty ?
       copy(idToNotice = idToNotice -- which.view.map(_.noticeId))
 
   private def requireNoNoticePlaceIsInUse(
-    planTemplateId: PlanTemplateId,
+    planSchemaId: PlanSchemaId,
     noticePlaces: Iterable[NoticePlace])
   : Unit =
     var msg = ""
     noticePlaces.filter(_.isInUse).foreachWithBracket(Square): (noticePlace, br) =>
-      msg = s"Remove $planTemplateId: Internal problem: Removing a being expected or consumed $noticePlace"
+      msg = s"Remove $planSchemaId: Internal problem: Removing a being expected or consumed $noticePlace"
       logger.error(s"${br}$msg")
     if isStrict && msg.nonEmpty then throw new AssertionError(msg)
 

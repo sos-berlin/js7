@@ -16,7 +16,7 @@ import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanTemplate, PlanTemplateId}
+import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{DontWait, SkipWhenNoNotice, Wait}
 import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, ExpectNotices, PostNotices, Prompt}
@@ -46,9 +46,9 @@ final class PlannableBoardTest
 
   protected def items = Nil
 
-  "Two Plans of same PlanTemplate" in:
+  "Two Plans of same PlanSchema" in:
     withItems((
-      PlanTemplate.joc(PlanTemplateId("DailyPlan")),
+      PlanSchema.joc(PlanSchemaId("DailyPlan")),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
@@ -115,13 +115,13 @@ final class PlannableBoardTest
         CancelOrders(Seq(otherConsumingOrderId))
       eventWatch.awaitNext[OrderTerminated](_.key == otherConsumingOrderId)
 
-  "Two PlanTemplates" in:
+  "Two PlanSchemas" in:
     withItems((
-      PlanTemplate(
-        PlanTemplateId("DailyPlan"),
+      PlanSchema(
+        PlanSchemaId("DailyPlan"),
         expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")),
-      PlanTemplate(
-        PlanTemplateId("WeeklyPlan"),
+      PlanSchema(
+        PlanSchemaId("WeeklyPlan"),
         expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?")),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
@@ -148,7 +148,7 @@ final class PlannableBoardTest
         eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
         assert(controllerState.idToOrder(consumingOrderId).maybePlanId ==
-          Some(PlanTemplateId("WeeklyPlan") / "2024w47"))
+          Some(PlanSchemaId("WeeklyPlan") / "2024w47"))
         execCmd(DeleteOrdersWhenTerminated(consumingOrderId :: Nil))
 
       //locally:
@@ -165,13 +165,13 @@ final class PlannableBoardTest
       //  eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
       //  eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
-  "Two PlanTemplates with overlapping OrderId patterns" in:
+  "Two PlanSchemas with overlapping OrderId patterns" in:
     withItems((
-      PlanTemplate(
-        PlanTemplateId("APlan"),
+      PlanSchema(
+        PlanSchemaId("APlan"),
         expr("match(orderId, '.*A.*-#(.+)#.*', '$1') ?")),
-      PlanTemplate(
-        PlanTemplateId("BPlan"),
+      PlanSchema(
+        PlanSchemaId("BPlan"),
         expr("match(orderId, '.*B.*-#(.+)#.*', '$1') ?")),
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
@@ -228,7 +228,7 @@ final class PlannableBoardTest
           ConsumeNotices(boardPathExpr, whenNotAnnounced = Wait):
             EmptyInstruction()))
         withItems(
-          (PlanTemplate.joc(PlanTemplateId("DailyPlan")), board, bBoard, cBoard, workflow)
+          (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#CONSUME")
@@ -271,7 +271,7 @@ final class PlannableBoardTest
           Workflow(WorkflowPath("CONSUMING"), Seq(
             ExpectNotices(boardPathExpr, whenNotAnnounced = Wait)))
         withItems(
-          (PlanTemplate.joc(PlanTemplateId("DailyPlan")), board, bBoard, cBoard, workflow)
+          (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#EXPECT")
@@ -313,7 +313,7 @@ final class PlannableBoardTest
           ConsumeNotices(boardPathExpr, whenNotAnnounced = SkipWhenNoNotice):
             EmptyInstruction()))
       withItems(
-        (PlanTemplate.joc(PlanTemplateId("DailyPlan")), board, bBoard, cBoard, workflow)
+        (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
       ): (dailyPlan, _, _, _, workflow) =>
         val planId = dailyPlan.id / day
         val noticeId = planId.noticeId
@@ -348,7 +348,7 @@ final class PlannableBoardTest
           ConsumeNotices(boardPathExpr, whenNotAnnounced = DontWait):
             EmptyInstruction()))
       withItems(
-        (PlanTemplate.joc(PlanTemplateId("DailyPlan")), board, bBoard, cBoard, workflow)
+        (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
       ): (dailyPlan, _, _, _, workflow) =>
         val planId = dailyPlan.id / day
         val noticeId = planId.noticeId

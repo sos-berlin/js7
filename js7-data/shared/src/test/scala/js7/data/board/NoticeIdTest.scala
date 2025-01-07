@@ -2,7 +2,7 @@ package js7.data.board
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.data.plan.{PlanId, PlanKey, PlanTemplateId}
+import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
@@ -17,7 +17,7 @@ final class NoticeIdTest extends OurTestSuite:
     "NoticeId for PlannedBoard" in:
       testJson[NoticeId](
         NoticeId.planned:
-          PlanId(PlanTemplateId("DALIY-PLAN"), PlanKey("2024-11-08")),
+          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")),
         json"""
           [ "DALIY-PLAN", "2024-11-08"]
         """)
@@ -26,7 +26,7 @@ final class NoticeIdTest extends OurTestSuite:
       testJson[NoticeId](
         NoticeId(
           NoticeKey("NOTICE"),
-          PlanId(PlanTemplateId("DALIY-PLAN"), PlanKey("2024-11-08"))),
+          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08"))),
         json"""
           [ "DALIY-PLAN", "2024-11-08", "NOTICE" ]
         """)

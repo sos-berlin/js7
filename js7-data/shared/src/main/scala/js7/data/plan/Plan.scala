@@ -11,7 +11,7 @@ import scala.collection.View
 
 /** Plan, mirrors OrderIds and NoticeKeys that belong to this PlanId.
   *
-  *  Each pair of PlanTemplateId and PlanKey (usually a day) has its own Plan.
+  *  Each pair of PlanSchemaId and PlanKey (usually a day) has its own Plan.
   *
   *  Plan consists only of duplicated data whose originals are stored in:
   *    Order#planId, BoardState

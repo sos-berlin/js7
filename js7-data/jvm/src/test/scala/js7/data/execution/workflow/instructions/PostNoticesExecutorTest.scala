@@ -11,7 +11,7 @@ import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, Not
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
-import js7.data.plan.PlanTemplateState
+import js7.data.plan.PlanSchemaState
 import js7.data.state.ControllerTestStateView
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
@@ -26,7 +26,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     var state = ControllerTestStateView.of(
       orders = Some(Nil),
       workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
-      itemStates = PlanTemplateState.Global +: boards.map(BoardState(_)))
+      itemStates = PlanSchemaState.Global +: boards.map(BoardState(_)))
 
     // PostNotice board0, board1
     locally:

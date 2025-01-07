@@ -23,7 +23,7 @@ import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.PlanTemplateId
+import js7.data.plan.PlanSchemaId
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.workflow.position.{Label, Position}
@@ -198,8 +198,8 @@ object ControllerCommand extends CommonCommand.Companion:
   extends ControllerCommand:
     type Response = Response.Accepted
 
-  final case class ChangePlanTemplate(
-    planTemplateId: PlanTemplateId,
+  final case class ChangePlanSchema(
+    planSchemaId: PlanSchemaId,
     namedValues: NamedValues)
   extends ControllerCommand:
     type Response = Response.Accepted
@@ -279,7 +279,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
     Subtype(deriveConfiguredCodec[TransferOrders]),
-    Subtype(deriveConfiguredCodec[ChangePlanTemplate]),
+    Subtype(deriveConfiguredCodec[ChangePlanSchema]),
     Subtype(deriveConfiguredCodec[ControlWorkflowPath]),
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),

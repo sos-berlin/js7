@@ -25,7 +25,7 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLocksAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.plan.PlanTemplate
+import js7.data.plan.PlanSchema
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -75,7 +75,7 @@ final class ControllerStateExecutorTest extends OurTestSuite:
       lock,
       aJobResource, bJobResource,
       aWorkflow, bWorkflow,
-      PlanTemplate.Global)
+      PlanSchema.Global)
 
   "stdVerifiedUpdateItems" in:
     val executor = new Executor(ControllerState.empty)

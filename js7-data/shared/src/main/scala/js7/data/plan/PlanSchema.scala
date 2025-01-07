@@ -6,7 +6,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
-import js7.data.plan.PlanTemplate.*
+import js7.data.plan.PlanSchema.*
 import js7.data.value.expression.Expression.MissingConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{ExprFunction, Expression, Scope}
@@ -50,33 +50,33 @@ import org.jetbrains.annotations.TestOnly
   * #@param startOffset When the plan starts (for example 6h for 06:00 local time)
   * #@param lifetime How long a daily plan is kept after the day is over
   */
-final case class PlanTemplate(
-  id: PlanTemplateId,
+final case class PlanSchema(
+  id: PlanSchemaId,
   orderToPlanKey: Expression,
   planIsClosedFunction: Option[ExprFunction] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
 
-  protected type Self = PlanTemplate
+  protected type Self = PlanSchema
 
-  val companion: PlanTemplate.type = PlanTemplate
+  val companion: PlanSchema.type = PlanSchema
 
-  def path: PlanTemplateId = id
+  def path: PlanSchemaId = id
 
-  def toSnapshotStream: fs2.Stream[fs2.Pure, PlanTemplate] =
+  def toSnapshotStream: fs2.Stream[fs2.Pure, PlanSchema] =
     fs2.Stream.fromOption:
       !isGlobal ? this
 
-  def toInitialItemState: PlanTemplateState =
-    PlanTemplateState(this, namedValues = NamedValues.empty, toPlan = Map.empty)
+  def toInitialItemState: PlanSchemaState =
+    PlanSchemaState(this, namedValues = NamedValues.empty, toPlan = Map.empty)
 
   def isGlobal: Boolean =
     this eq Global
 
-  def rename(id: PlanTemplateId): PlanTemplate =
+  def rename(id: PlanSchemaId): PlanSchema =
     copy(id = id)
 
-  def withRevision(revision: Option[ItemRevision]): PlanTemplate =
+  def withRevision(revision: Option[ItemRevision]): PlanSchema =
     copy(itemRevision = revision)
 
   /** @param scope is expected to contain the Order Scope.
@@ -100,37 +100,37 @@ extends UnsignedSimpleItem:
           .flatMap(_.asBoolean))
 
 
-object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
+object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
 
-  type ItemState = PlanTemplateState
+  type ItemState = PlanSchemaState
 
-  val Global: PlanTemplate =
-    PlanTemplate(
-      PlanTemplateId.Global,
-      // orderToPlanKey must not match, despite Global is used as the fallback PlanTemplate
+  val Global: PlanSchema =
+    PlanSchema(
+      PlanSchemaId.Global,
+      // orderToPlanKey must not match, despite Global is used as the fallback PlanSchema
       orderToPlanKey = MissingConstant)
 
-  /** A PlanTemplate for JOC-style daily plan OrderIds. */
+  /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
-  def joc(id: PlanTemplateId, planIsClosedFunction: Option[ExprFunction] = None): PlanTemplate =
-    PlanTemplate(
+  def joc(id: PlanSchemaId, planIsClosedFunction: Option[ExprFunction] = None): PlanSchema =
+    PlanSchema(
       id,
       orderToPlanKey = PlanKey.jocOrderToPlanKey,
       planIsClosedFunction = planIsClosedFunction)
 
-  /** A PlanTemplate for weekly Plan Orders "#YYYYwWW#...". */
+  /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
   @TestOnly
-  def weekly(id: PlanTemplateId): PlanTemplate =
-    PlanTemplate(
+  def weekly(id: PlanSchemaId): PlanSchema =
+    PlanSchema(
       id,
       orderToPlanKey = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"))
 
-  type Key = PlanTemplateId
+  type Key = PlanSchemaId
 
-  val Key: PlanTemplateId.type = PlanTemplateId
-  val Path: PlanTemplateId.type = PlanTemplateId
-  val cls: Class[PlanTemplate] = classOf[PlanTemplate]
+  val Key: PlanSchemaId.type = PlanSchemaId
+  val Path: PlanSchemaId.type = PlanSchemaId
+  val cls: Class[PlanSchema] = classOf[PlanSchema]
 
-  override given jsonEncoder: Encoder.AsObject[PlanTemplate] = ConfiguredEncoder.derive()
-  override given jsonDecoder: Decoder[PlanTemplate] = ConfiguredDecoder.derive(useDefaults = true)
-  given jsonCodec: Codec.AsObject[PlanTemplate] = Codec.AsObject.from(jsonDecoder, jsonEncoder)
+  override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
+  override given jsonDecoder: Decoder[PlanSchema] = ConfiguredDecoder.derive(useDefaults = true)
+  given jsonCodec: Codec.AsObject[PlanSchema] = Codec.AsObject.from(jsonDecoder, jsonEncoder)

@@ -43,8 +43,8 @@ import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
-import js7.data.plan.{PlanKey, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
+import js7.data.plan.{PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -114,7 +114,7 @@ extends
     standards.snapshotSize +
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
-    keyToUnsignedItemState_.size - 1/*PlanTemplate.Global*/+
+    keyToUnsignedItemState_.size - 1/*PlanSchema.Global*/+
     keyTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
     keyTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
@@ -133,7 +133,7 @@ extends
       Stream.iterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(SubagentBundleState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
-      Stream.iterable(keyTo(PlanTemplateState).values).flatMap(_.toSnapshotStream),
+      Stream.iterable(keyTo(PlanSchemaState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
       Stream.iterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotStream),
@@ -298,7 +298,7 @@ extends
                   Right(updated.copy(
                     keyToUnsignedItemState_ =
                       (updated.keyToUnsignedItemState_ - boardPath) ++
-                        deleteBoardInPlanTemplateStates(boardPath).toKeyedMap(_.id)))
+                        deleteBoardInPlanSchemaStates(boardPath).toKeyedMap(_.id)))
 
                 case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
                             _: LockPath |
@@ -307,7 +307,7 @@ extends
                   Right(updated.copy(
                     keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
 
-                case key: PlanTemplateId =>
+                case key: PlanSchemaId =>
                   update(removeUnsignedSimpleItems = key :: Nil)
 
                 case _ =>
@@ -331,22 +331,22 @@ extends
       for
         boardState <- keyTo(BoardState).checked(boardPath)
         boardState <- boardState.addNotice(notice.toNotice(boardPath))
-        planTemplateState <- updateNoticePlaceInPlan(notice.id.planId, boardState, notice.id)
+        planSchemaState <- updateNoticePlaceInPlan(notice.id.planId, boardState, notice.id)
       yield copy(
         keyToUnsignedItemState_ =
           keyToUnsignedItemState_
             .updated(boardState.path, boardState)
-            .updated(planTemplateState.id, planTemplateState))
+            .updated(planSchemaState.id, planSchemaState))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
         boardState <- boardState.removeNotice(noticeId)
-        planTemplateState <- updateNoticePlaceInPlan(noticeId.planId, boardState, noticeId)
+        planSchemaState <- updateNoticePlaceInPlan(noticeId.planId, boardState, noticeId)
       yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           .updated(boardState.path, boardState)
-          .updated(planTemplateState.id, planTemplateState))
+          .updated(planSchemaState.id, planSchemaState))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       ow.onOrderWatchEvent(orderWatchPath <-: event)
@@ -364,13 +364,13 @@ extends
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
 
-    case KeyedEvent(planTemplateId: PlanTemplateId, PlanTemplateChanged(namedValues)) =>
+    case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(namedValues)) =>
       for
-        planTemplateState <- keyTo(PlanTemplateState).checked(planTemplateId)
-        planTemplateState <- planTemplateState.updateNamedValues(namedValues)
+        planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+        planSchemaState <- planSchemaState.updateNamedValues(namedValues)
       yield
         copy(keyToUnsignedItemState_ =
-          keyToUnsignedItemState_.updated(planTemplateId, planTemplateState))
+          keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
@@ -383,14 +383,14 @@ extends
       case OrderPlanAttached(planId) =>
         for
           self <- super.applyOrderEvent(orderId, event)
-          // Move Order from GlobalPlan's to PlanId's PlanTemplateState
-          planTemplateState <- self.keyTo(PlanTemplateState).checked(planId.planTemplateId)
-          global <- self.keyTo(PlanTemplateState).checked(PlanTemplateId.Global)
-          planTemplateState <- planTemplateState.addOrder(planId.planKey, orderId)
+          // Move Order from GlobalPlan's to PlanId's PlanSchemaState
+          planSchemaState <- self.keyTo(PlanSchemaState).checked(planId.planSchemaId)
+          global <- self.keyTo(PlanSchemaState).checked(PlanSchemaId.Global)
+          planSchemaState <- planSchemaState.addOrder(planId.planKey, orderId)
           self <- self.update(
             addItemStates =
               global.removeOrderId(PlanKey.Global, orderId)
-                :: planTemplateState
+                :: planSchemaState
                 :: Nil)
         yield
           self
@@ -720,20 +720,20 @@ extends
   def finish: Checked[ControllerState] =
     copy(
       keyToUnsignedItemState_ = keyToUnsignedItemState_
-        .updated(PlanTemplateId.Global, PlanTemplateState.Global)
+        .updated(PlanSchemaId.Global, PlanSchemaState.Global)
     ).finishRecovery2
 
   private def finishRecovery2: Checked[ControllerState] =
-    PlanTemplateState
+    PlanSchemaState
       .recoverPlans(
         orders,
         boardStates = keyTo(BoardState).values,
-        toPlanTemplateState = keyTo(PlanTemplateState).checked)
-      .map: planTemplateStates =>
+        toPlanSchemaState = keyTo(PlanSchemaState).checked)
+      .map: planSchemaStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
           keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
-            planTemplateStates.toKeyedMap(_.id))
+            planSchemaStates.toKeyedMap(_.id))
 
   private def calculateWorkflowToOrders: WorkflowToOrders =
     ControllerState.WorkflowToOrders(idToOrder
@@ -777,7 +777,7 @@ extends
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
     AgentRef, SubagentItem, SubagentBundle, Lock,
-    GlobalBoard, PlanTemplate, PlannableBoard,
+    GlobalBoard, PlanSchema, PlannableBoard,
     Calendar, FileWatch, JobResource,
     Workflow, WorkflowPathControl, WorkflowControl)
 
@@ -794,8 +794,8 @@ extends
       Subtype[LockState],
       GlobalBoard.subtype,
       PlannableBoard.subtype,
-      PlanTemplate.subtype,
-      PlanTemplateState.subtype,
+      PlanSchema.subtype,
+      PlanSchemaState.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,
@@ -819,7 +819,7 @@ extends
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[NoticeEvent],
-      KeyedSubtype[PlanTemplateEvent],
+      KeyedSubtype[PlanSchemaEvent],
       KeyedSubtype.singleEvent[ServerMeteringEvent])
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")
@@ -857,13 +857,13 @@ extends
       val newOrders = orders.filterNot(o => s.idToOrder.contains(o.id))
       for
         s <- orders.foldEithers(s)(addOrUpdateOrder_)
-        updatedPlanTemplateStates <- PlanTemplateState.addOrderIds(
+        updatedPlanSchemaStates <- PlanSchemaState.addOrderIds(
           newOrders,
-          s.keyTo(PlanTemplateState).checked)
+          s.keyTo(PlanSchemaState).checked)
       yield
         s.copy(
           keyToUnsignedItemState_ = s.keyToUnsignedItemState_
-            ++ updatedPlanTemplateStates.map(o => o.id -> o))
+            ++ updatedPlanSchemaStates.map(o => o.id -> o))
 
   private def addOrUpdateOrder_(s: ControllerState, order: Order[Order.State])
   : Checked[ControllerState] =
@@ -890,22 +890,22 @@ extends
       .map: s =>
         s.copy(idToOrder = s.idToOrder -- orderIds)
       .flatMap: s =>
-        PlanTemplateState
-          .removeOrderIds(removedOrders, s.keyTo(PlanTemplateState).checked)
-          .map: updatedPlanTemplateStates =>
+        PlanSchemaState
+          .removeOrderIds(removedOrders, s.keyTo(PlanSchemaState).checked)
+          .map: updatedPlanSchemaStates =>
             s.copy(
               idToOrder = s.idToOrder -- orderIds,
               keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
-                updatedPlanTemplateStates.toKeyedMap(_.id))
+                updatedPlanSchemaStates.toKeyedMap(_.id))
 
   private def onRemoveItemStates(s: ControllerState, paths: Seq[UnsignedSimpleItemPath])
   : ControllerState =
     paths.collect:
-      case id: PlanTemplateId => id
-    .foldLeft(s): (s, planTemplateId) =>
+      case id: PlanSchemaId => id
+    .foldLeft(s): (s, planSchemaId) =>
       s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
-          s.removeNoticeKeysForPlanTemplate(planTemplateId))
+          s.removeNoticeKeysForPlanSchema(planSchemaId))
 
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
     def transferOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =

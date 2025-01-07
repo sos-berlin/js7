@@ -52,7 +52,7 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeEventSource, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
-import js7.data.controller.ControllerCommand.{ChangePlanTemplate, ControlWorkflow, ControlWorkflowPath, TransferOrders}
+import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerEventColl, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -71,8 +71,8 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemA
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
-import js7.data.plan.PlanTemplateState
+import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
+import js7.data.plan.PlanSchemaState
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
@@ -733,8 +733,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case cmd: ControllerCommand.TransferOrders =>
         executeTransferOrders(cmd)
 
-      case cmd: ControllerCommand.ChangePlanTemplate =>
-        changePlanTemplate(cmd)
+      case cmd: ControllerCommand.ChangePlanSchema =>
+        changePlanSchema(cmd)
 
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
@@ -976,22 +976,22 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             Right(ControllerCommand.Response.Accepted)
           }
 
-  private def changePlanTemplate(cmd: ChangePlanTemplate)
+  private def changePlanSchema(cmd: ChangePlanSchema)
   : Future[Checked[ControllerCommand.Response]] =
-    val planTemplateId = cmd.planTemplateId
-    if planTemplateId.isGlobal then
-      Future.successful(Left(Problem("Global PlanTemplate cannot be changed")))
+    val planSchemaId = cmd.planSchemaId
+    if planSchemaId.isGlobal then
+      Future.successful(Left(Problem("Global PlanSchema cannot be changed")))
     else
       locally:
         val coll = ControllerEventColl(_controllerState)
         for
           coll <- coll.add:
-            planTemplateId <-: PlanTemplateChanged(namedValues = cmd.namedValues)
-          planTemplateState <-
-            coll.aggregate.keyTo(PlanTemplateState).checked(planTemplateId)
+            planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues)
+          planSchemaState <-
+            coll.aggregate.keyTo(PlanSchemaState).checked(planSchemaId)
           eventColl <- coll.add:
-            planTemplateState.planIds.toVector.flatMap: planKey =>
-              coll.aggregate.deleteNoticesOfDeadPlan(planTemplateId / planKey)
+            planSchemaState.planIds.toVector.flatMap: planKey =>
+              coll.aggregate.deleteNoticesOfDeadPlan(planSchemaId / planKey)
         yield
           eventColl.keyedEvents
       match

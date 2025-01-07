@@ -11,7 +11,7 @@ import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanTemplateState}
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
@@ -124,9 +124,9 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
     boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     // DO NOTHING
-    keyTo(PlanTemplateState).checked(planId.planTemplateId)
+    keyTo(PlanSchemaState).checked(planId.planSchemaId)
 
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView, Event]:
@@ -166,7 +166,7 @@ extends TestStateView[AgentTestStateView]:
   protected final def updateNoticePlacesInPlan(
     planId: PlanId,
     boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 
 object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView, Event]:

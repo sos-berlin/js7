@@ -8,7 +8,7 @@ import js7.data.board.{BoardPath, NoticeId, PlannedBoardId}
 import js7.data.plan.PlanId.*
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
-final case class PlanId(planTemplateId: PlanTemplateId, planKey: PlanKey):
+final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
 
   def isGlobal: Boolean =
     this == Global
@@ -23,18 +23,18 @@ final case class PlanId(planTemplateId: PlanTemplateId, planKey: PlanKey):
     s"Plan:$shortString"
 
   def shortString =
-    s"${planTemplateId.string}${planKey.string.nonEmpty ?? s"/${planKey.string}"}"
+    s"${planSchemaId.string}${planKey.string.nonEmpty ?? s"/${planKey.string}"}"
 
 
 object PlanId:
 
-  val Global: PlanId = PlanId(PlanTemplateId.Global, PlanKey.Global)
+  val Global: PlanId = PlanId(PlanSchemaId.Global, PlanKey.Global)
 
-  given Ordering[PlanId] = orderingBy(_.planTemplateId, _.planKey)
+  given Ordering[PlanId] = orderingBy(_.planSchemaId, _.planKey)
 
   given Encoder[PlanId] =
-    case PlanId(planTemplateId, planKey) => Json.arr(planTemplateId.asJson, planKey.asJson)
+    case PlanId(planSchemaId, planKey) => Json.arr(planSchemaId.asJson, planKey.asJson)
 
   given Decoder[PlanId] = c =>
-    c.as[(PlanTemplateId, PlanKey)].map:
+    c.as[(PlanSchemaId, PlanKey)].map:
       PlanId.apply.tupled

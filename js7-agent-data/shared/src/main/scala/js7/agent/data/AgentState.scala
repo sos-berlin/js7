@@ -30,7 +30,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.plan.{PlanId, PlanTemplateState}
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -357,7 +357,7 @@ extends SignedItemContainer,
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
     boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
-  : Checked[PlanTemplateState] =
+  : Checked[PlanSchemaState] =
     Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
