@@ -2,7 +2,7 @@ package js7.base.test
 
 import cats.Monoid
 import js7.base.test.TestMixin.assertionMonoid
-import org.scalatest.{Assertion, Succeeded, Suite}
+import org.scalatest.{Assertion, Informer, Succeeded, Suite}
 
 trait TestMixin extends TestCatsEffect:
   this: Suite =>
@@ -14,6 +14,13 @@ trait TestMixin extends TestCatsEffect:
 
   /** Usable to check the type of something. */
   inline final def expectType[A](inline something: A): Unit = ()
+
+  // Defined in AnyFreeSpecLike and AsyncFreeSpecLike
+  protected def info: Informer
+
+  protected final def missingTest: Unit =
+    info("❌ TEST IS MISSING")
+    pending
 
 
 object TestMixin:

@@ -3,13 +3,15 @@ package js7.journal
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
+import java.io.{File, FileWriter}
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
-import js7.base.fs2utils.StreamExtensions.{mapParallelBatch, zipWithBracket}
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.generic.Completed
+import js7.base.io.NullWriter
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.metering.CallMeter
 import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
@@ -19,11 +21,13 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.MultipleLinesBracket.{Round, Square}
+import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{MultipleLinesBracket, SetOnce}
+import js7.base.utils.Tests.isTest
+import js7.base.utils.{AutoClosing, MultipleLinesBracket, SetOnce, Tests}
 import js7.common.jsonseq.PositionAnd
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -658,23 +662,38 @@ extends Actor, Stash, JournalLogging:
     if couldBeRecoveredState != uncommittedState then
       val msg = s"$what does not match actual '$S'"
       logger.error(msg)
+
       stampedSeq.foreachWithBracket(Round): (stamped, bracket) =>
         logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
       if conf.slowCheckState then
-        logger.error(s"WRONG? ${S.newBuilder().getClass.shortClassName} =⏎")
-        couldBeRecoveredState.toStringStream
-          .through(fs2.text.lines)
-          .zipWithBracket(Square).map: (line, br) =>
-            logger.error(s"$br$line")
-          .compile.drain
-        logger.error(s"EXPECTED? $S =⏎")
-        uncommittedState.toStringStream
-          .through(fs2.text.lines)
-          .zipWithBracket(Square).map: (line, br) =>
-            logger.error(s"$br$line")
-          .compile.drain
-      // msg may get very big
-      logger.info(msg)  // Without colors because msg is already colored
+        autoClosing(
+          if isTest then
+            try
+              val file = new File("logs/snapshot-error.txt").getAbsoluteFile
+              logger.error(s"Diff is also in file://$file") // clickable in IntelliJ
+              new FileWriter(file)
+            catch case NonFatal(_) => NullWriter()
+          else NullWriter()
+        ): errorFile =>
+          def logLine(line: String) =
+            logger.error(line)
+            errorFile.write(line)
+            errorFile.write('\n')
+
+          logLine(s"$what is WRONG? = ⏎")
+          couldBeRecoveredState.toStringStream.through(fs2.text.lines)
+            .zipWithBracket(Square).map: (line, br) =>
+              logLine(s"$br$line")
+            .compile.drain
+          errorFile.write('\n')
+
+          logLine(s"$S is EXPECTED? = ⏎")
+          uncommittedState.toStringStream.through(fs2.text.lines)
+            .zipWithBracket(Square).map: (line, br) =>
+              logLine(s"$br$line")
+            .compile.drain
+        // msg may get very big
+      end if
       throw new AssertionError(msg)
 
 

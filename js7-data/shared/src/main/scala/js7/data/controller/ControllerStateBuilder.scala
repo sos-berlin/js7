@@ -1,7 +1,6 @@
 package js7.data.controller
 
 import js7.base.crypt.Signed
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -163,7 +162,6 @@ extends SnapshotableStateBuilder[ControllerState],
     case snapshot: PlanTemplateState.Snapshot =>
       val planTemplateState = keyTo(PlanTemplateState)(snapshot.id)
       _keyToUnsignedItemState(snapshot.id) = planTemplateState.recover(snapshot)
-      Logger.info(s"### ${keyTo(PlanTemplateState)(snapshot.id)}")
 
     case o: ControllerMetaState =>
       controllerMetaState = o
