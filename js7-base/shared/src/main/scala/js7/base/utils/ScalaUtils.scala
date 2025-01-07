@@ -1171,3 +1171,7 @@ object ScalaUtils:
       if !exists(s) then return s
       i += 1
     null.asInstanceOf[String]
+
+  /** Like a `let a <- expr in body(a)`. */
+  final inline def eval[A, B](inline expr: A)(inline body: A => B): B =
+    body(expr)
