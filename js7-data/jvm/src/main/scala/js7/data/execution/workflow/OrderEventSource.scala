@@ -13,7 +13,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{CancelStartedOrderProblem, GoOrderInapplicableProblem}
 import js7.data.agent.AgentPath
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.controller.ControllerState
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
@@ -29,6 +31,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowPathControlPath}
 import scala.annotation.tailrec
+import scala.collection.View
 import scala.reflect.ClassTag
 
 /**
@@ -43,7 +46,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   // TODO Updates to StateView should be solved immutably. Refactor OrderEventSource?
   private var idToOrder = state.idToOrder
 
-  def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] =
+  def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent | NoticeDeleted]] =
     val order = idToOrder(orderId)
     if !weHave(order) then
       Nil
@@ -232,9 +235,26 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     .getOrElse:
       Nil
 
-  private def tryDelete(order: Order[Order.State]): List[KeyedEvent[OrderDeleted]] =
-    order.tryDelete.toList.map:
-      order.id <-: _
+  def orderDeletedEvent(order: Order[Order.State])
+  : Checked[Seq[KeyedEvent[OrderDeletionMarked | OrderDeleted | NoticeDeleted]]] =
+    val events = tryDelete(order.copy(deleteWhenTerminated = true))
+    if events.nonEmpty then
+      Right(events)
+    else
+      order.markDeletion.map: event =>
+        (order.id <-: event) :: Nil
+
+  private def tryDelete(order: Order[Order.State]): Vector[KeyedEvent[OrderDeleted | NoticeDeleted]] =
+    state match
+      case controllerState: ControllerState =>
+        order.tryDelete.fold(Vector.empty): orderDeleted =>
+          controllerState.applyKeyedEvent(order.id <-: orderDeleted) match
+            case Left(problem) => logger.error(s"tryDelete: ${order.id}: $problem")
+              Vector.empty
+            case Right(controllerState) =>
+              (controllerState.deleteNoticesOfDeadPlan(order.planId) :+ (order.id <-: orderDeleted))
+                .toVector
+      case _ => Vector.empty
 
   private def orderMarkKeyedEvent(order: Order[Order.State])
   : List[KeyedEvent[OrderActorEvent]] =

@@ -9,9 +9,10 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.event.{<-:, KeyedEvent}
+import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSourceTest.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
@@ -1416,7 +1417,7 @@ object OrderEventSourceTest:
 
   private val executeScript = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("executable")))
 
-  private def step(workflow: Workflow, outcome: OrderOutcome): Seq[OrderEvent] =
+  private def step(workflow: Workflow, outcome: OrderOutcome): Seq[OrderEvent | NoticeDeleted] =
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
     process.transferToAgent(TestAgentPath)
@@ -1438,7 +1439,7 @@ object OrderEventSourceTest:
     def jobStep(outcome: OrderOutcome = OrderOutcome.Succeeded(NamedValues.rc(0))) =
       process.jobStep(orderId, outcome)
 
-    def step(): Seq[OrderEvent] =
+    def step(): Seq[OrderEvent | NoticeDeleted] =
       process.step(orderId).map(_.event)
 
     def update(event: OrderEvent) =
@@ -1460,18 +1461,18 @@ object OrderEventSourceTest:
       update(orderId <-: OrderProcessingStarted(subagentId))
       update(orderId <-: OrderProcessed(outcome))
 
-    def run(orderId: OrderId): List[KeyedEvent[OrderEvent]] =
+    def run(orderId: OrderId): List[KeyedEvent[OrderEvent | NoticeDeleted]] =
       step(orderId) match
         case keyedEvents if keyedEvents.nonEmpty =>
           keyedEvents.toList ::: (if idToOrder contains orderId then run(orderId) else Nil)
         case _ => Nil
 
-    def step(orderId: OrderId): Seq[KeyedEvent[OrderEvent]] =
+    def step(orderId: OrderId): Seq[KeyedEvent[OrderEvent | NoticeDeleted]] =
       val keyedEvents = nextEvents(orderId)
       keyedEvents foreach update
       keyedEvents
 
-    private def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderEvent]] =
+    private def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderEvent | NoticeDeleted]] =
       val order = idToOrder(orderId)
       if order.detaching.isRight then
         Seq(order.id <-: OrderDetached)
@@ -1491,31 +1492,30 @@ object OrderEventSourceTest:
           case _ =>
             eventSource(isAgent = order.isAttached).nextEvents(orderId)
 
-    def update(keyedEvent: KeyedEvent[OrderEvent]): Unit =
-      val KeyedEvent(orderId, event) = keyedEvent
-      event match
-        case event: OrderAdded =>
+    def update(keyedEvent: KeyedEvent[OrderEvent | NoticeDeleted]): Unit =
+      keyedEvent match
+        case KeyedEvent(orderId: OrderId, event: OrderAdded) =>
           idToOrder.insert(orderId, Order.fromOrderAdded(orderId, event))
 
-        case event: OrderCoreEvent =>
+        case KeyedEvent(orderId: OrderId, event: OrderCoreEvent) =>
           processEvent(keyedEvent)
           if !event.isInstanceOf[OrderFinished] then
             idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
 
         case _ =>
-          sys.error(s"Unhandled: $event")
+          sys.error(s"Unhandled: $keyedEvent")
 
-    private def processEvent(keyedEvent: KeyedEvent[OrderEvent]): Unit =
+    private def processEvent(keyedEvent: KeyedEvent[OrderEvent | NoticeDeleted]): Unit =
       keyedEvent match
-        case orderId <-: OrderProcessingStarted(_, _, _) =>
+        case KeyedEvent(orderId: OrderId, OrderProcessingStarted(_, _, _)) =>
           inProcess += orderId
 
-        case orderId <-: (_: OrderProcessed) =>
+        case KeyedEvent(orderId: OrderId, _: OrderProcessed) =>
           inProcess -= orderId
 
-        case _ =>
+        case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
           eventHandler
-            .handleEvent(idToOrder(keyedEvent.key), keyedEvent.event)
+            .handleEvent(idToOrder(orderId), event)
             .orThrow
             .foreach:
               case FollowUp.AddChild(derivedOrder) =>

@@ -23,6 +23,8 @@ extends EventDrivenStateView[Self]:
       case _ =>
         super.applyOrderEvent(orderId, event)
 
+  /** @return None for global PlanId.
+    */
   final def evalOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
     val scope = toPlanOrderScope(order)
     keyToItem(PlanTemplate).values.toVector.map:

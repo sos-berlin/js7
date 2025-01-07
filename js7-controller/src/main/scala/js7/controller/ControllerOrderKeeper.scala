@@ -55,7 +55,7 @@ import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ChangePlanTemplate, ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerEventColl, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -68,7 +68,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
@@ -776,9 +776,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               else
                 Right(order)))
           .flatten
-          .map(_
+          .traverse(_
             .filterNot(_.deleteWhenTerminated)
-            .map(orderDeletedEvent))
+            .traverse(orderEventSource.orderDeletedEvent))
+          .flatten
+          .map(_.flatten)
           .traverse(keyedEvents =>
             persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
               .map(_ => ControllerCommand.Response.Accepted))
@@ -942,13 +944,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         // Handled by ControllerCommandExecutor
         Future.failed(new NotImplementedError)
 
-  private def orderDeletedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
-    order.id <-: (
-      if order.isState[Order.IsTerminated] && order.externalOrder.forall(_.vanished) then
-        OrderDeleted
-      else
-        OrderDeletionMarked)
-
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])
     (toEvents: OrderId => Checked[List[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =
@@ -983,14 +978,26 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private def changePlanTemplate(cmd: ChangePlanTemplate)
   : Future[Checked[ControllerCommand.Response]] =
-    if cmd.planTemplateId.isGlobal then
+    val planTemplateId = cmd.planTemplateId
+    if planTemplateId.isGlobal then
       Future.successful(Left(Problem("Global PlanTemplate cannot be changed")))
     else
-      _controllerState.keyTo(PlanTemplateState).checked(cmd.planTemplateId) match
+      locally:
+        val coll = ControllerEventColl(_controllerState)
+        for
+          coll <- coll.add:
+            planTemplateId <-: PlanTemplateChanged(namedValues = cmd.namedValues)
+          planTemplateState <-
+            coll.aggregate.keyTo(PlanTemplateState).checked(planTemplateId)
+          eventColl <- coll.add:
+            planTemplateState.planIds.toVector.flatMap: planKey =>
+              coll.aggregate.deleteNoticesOfDeadPlan(planTemplateId / planKey)
+        yield
+          eventColl.keyedEvents
+      match
         case Left(problem) => Future.successful(Left(problem))
-        case Right(_) =>
-          val keyedEvent = cmd.planTemplateId <-: PlanTemplateChanged(namedValues = cmd.namedValues)
-          persistTransactionAndSubsequentEvents(keyedEvent :: Nil): (stamped, updated) =>
+        case Right(keyedEvents) =>
+          persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
             handleEvents(stamped, updated)
             Right(ControllerCommand.Response.Accepted)
 

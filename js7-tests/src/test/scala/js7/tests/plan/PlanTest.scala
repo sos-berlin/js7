@@ -10,13 +10,13 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchChangedPlanTemplateProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateId, PlanTemplateState}
 import js7.data.value.Value.convenience.*
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
@@ -83,7 +83,7 @@ final class PlanTest
 
     withItem(workflow): workflow =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderAttached](_.key == orderId)
+      eventWatch.awaitNextKey[OrderAttached](orderId)
 
       val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
       val checked = controller.api.updateItems(fs2.Stream:
@@ -91,7 +91,7 @@ final class PlanTest
         .await(99.s)
       assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
       ASemaphoreJob.continue()
-      eventWatch.awaitNext[OrderFinished](_.key == orderId)
+      eventWatch.awaitNextKey[OrderFinished](orderId)
 
   "Adding a PlanTemplates is rejected when a planless Orders is expecting a global Notice" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
@@ -106,7 +106,7 @@ final class PlanTest
 
     withItems((workflow, board)): (workflow, board) =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
+      eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
 
       val dailyPlan = PlanTemplate.joc(PlanTemplateId("DailyPlan"))
       val checked = controller.api.updateItems(fs2.Stream:
@@ -114,7 +114,7 @@ final class PlanTest
         .await(99.s)
       assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
       execCmd(CancelOrders(Seq(orderId)))
-      eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+      eventWatch.awaitNextKey[OrderTerminated](orderId)
 
   "Update a PlanTemplate and check existing Orders" in:
     eventWatch.resetLastWatchedEventId()
@@ -134,11 +134,11 @@ final class PlanTest
     withItems((aPlanTemplate, workflow)): (aPlanTemplate, workflow) =>
       // aOrderId is in the plan
       controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderPrompted](_.key == aOrderId)
+      eventWatch.awaitNextKey[OrderPrompted](aOrderId)
 
       // aOrderId is not in a plan (that means, in the global plan)
       controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderPrompted](_.key == bOrderId)
+      eventWatch.awaitNextKey[OrderPrompted](bOrderId)
 
       // Change planTemplate such that aOrderId no longer match, but bOrderId match
       val bPlanTemplate = PlanTemplate.weekly(aPlanTemplate.id)
@@ -149,7 +149,7 @@ final class PlanTest
 
       // Me must delete aOrderId to change the PlanTemplate
       execCmd(CancelOrders(Seq(aOrderId)))
-      eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
+      eventWatch.awaitNextKey[OrderTerminated](aOrderId)
 
       updateItem(bPlanTemplate)
 
@@ -178,14 +178,14 @@ final class PlanTest
         val postingOrderId = OrderId(s"#$day#POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, workflow.path, deleteWhenTerminated = true)
-        eventWatch.awaitNext[OrderPrompted](_.key == postingOrderId)
+        eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
         assert(tryDeletePlan(planTemplate.path) == Left(Problem:
-          s"PlanTemplate:DailyPlan is in use by Plan:$day with Order:#$day#POST"))
+          s"PlanTemplate:DailyPlan cannot be deleted because it is in use by Plan:$day with Order:#$day#POST"))
 
         execCmd:
           CancelOrders(Seq(postingOrderId))
-        eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
+        eventWatch.awaitNextKey[OrderTerminated](postingOrderId)
 
         deleteItems(planTemplate.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planTemplate.path)
@@ -195,16 +195,15 @@ final class PlanTest
       val aBoard = PlannableBoard(BoardPath("A-BOARD"))
       val bBoard = PlannableBoard(BoardPath("B-BOARD"))
       val cBoard = PlannableBoard(BoardPath("C-BOARD"))
-      withItems((
-        aBoard, bBoard,
-        Workflow.of(
-          Prompt(expr("'PROMPT'")),
-          PostNotices(aBoard.path :: Nil),
-          Prompt(expr("'PROMPT'")),
-          PostNotices(bBoard.path :: Nil)),
-        Workflow.of(
-          ConsumeNotices(aBoard.path):
-            Prompt(expr("'PROMPT'"))))
+      val postingWorkflow = Workflow.of(
+        Prompt(expr("'PROMPT'")),
+        PostNotices(aBoard.path :: Nil),
+        Prompt(expr("'PROMPT'")),
+        PostNotices(bBoard.path :: Nil))
+      val consumingWorkflow = Workflow.of(
+        ConsumeNotices(aBoard.path):
+          Prompt(expr("'PROMPT'")))
+      withItems((aBoard, bBoard, postingWorkflow, consumingWorkflow)
       ): (aBoard, bBoard, postingWorkflow, consumingWorkflow) =>
         eventWatch.resetLastWatchedEventId()
 
@@ -215,72 +214,83 @@ final class PlanTest
         val postingOrderId = OrderId(s"#$day#POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
-        eventWatch.awaitNext[OrderPrompted](_.key == postingOrderId)
+        eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
-        assert(controllerState.slowPlanTemplateToPlan(planTemplate.id)(planKey) ==
+        val noticeId = planId.noticeId
+
+        assert(controllerState.toPlan(planTemplate.id / planKey) ==
           Plan(
             planId,
             Set(postingOrderId),
-            Map(
-              aBoard.path -> Set(NoticeKey.empty),
-              bBoard.path -> Set(NoticeKey.empty))))
+            Seq(
+              PlannedBoard(planId / aBoard.path, Map(
+                NoticeKey.empty -> NoticePlace(noticeId, isAnnounced = true))),
+              PlannedBoard(planId / bBoard.path, Map(
+                NoticeKey.empty -> NoticePlace(noticeId, isAnnounced = true)))),
+            isClosed = false))
 
         val consumingOrderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
           FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
-        eventWatch.awaitNext[OrderNoticesExpected](_.key == consumingOrderId)
+        eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
-        assert(controllerState.slowPlanTemplateToPlan(planTemplate.id)(planKey) ==
+        assert(controllerState.toPlan(planTemplate.id / planKey) ==
           Plan(
             planId,
             Set(postingOrderId, consumingOrderId),
-            Map(
-              aBoard.path -> Set(NoticeKey.empty),
-              bBoard.path -> Set(NoticeKey.empty))))
+            Seq(
+              PlannedBoard(planId / aBoard.path, Seq(
+                NoticePlace(noticeId, expectingOrderIds = Set(consumingOrderId), isAnnounced = true))),
+              PlannedBoard(planId / bBoard.path, Seq(
+                NoticePlace(noticeId,  isAnnounced = true)))),
+            isClosed = false))
 
         assert(tryDeletePlan(planTemplate.path) == Left(Problem:
-          s"PlanTemplate:DailyPlan-2 is in use by Plan:$day with 2 orders"))
+          s"PlanTemplate:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with 2 orders"))
 
         execCmd:
           AnswerOrderPrompt(postingOrderId)
-        eventWatch.awaitNext[OrderNoticesConsumptionStarted](_.key == consumingOrderId)
-        eventWatch.awaitNext[OrderPrompted](_.key == postingOrderId)
-        eventWatch.awaitNext[OrderPrompted](_.key == consumingOrderId)
+        eventWatch.awaitNextKey[OrderNoticesConsumptionStarted](consumingOrderId)
+        eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
+        eventWatch.awaitNextKey[OrderPrompted](consumingOrderId)
 
         assert(tryDeletePlan(planTemplate.path) == Left(Problem:
-          s"PlanTemplate:DailyPlan-2 is in use by Plan:$day with 2 orders"))
+          s"PlanTemplate:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with 2 orders"))
 
         for orderId <- Seq(postingOrderId, consumingOrderId) do
           execCmd(CancelOrders(Seq(orderId)))
-          eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+          eventWatch.awaitNextKey[OrderDeleted](orderId)
 
-        assert(controllerState.slowPlanTemplateToPlan(planTemplate.id)(planKey) ==
+        assert(controllerState.toPlan(planTemplate.id / planKey) ==
           Plan(
             planId,
             orderIds = Set.empty,
-            Map(
-              aBoard.path -> Set(NoticeKey.empty),
-              bBoard.path -> Set(NoticeKey.empty))))
+            Seq(
+              PlannedBoard(planId / aBoard.path, Seq(
+                NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None))))),
+              PlannedBoard(planId / bBoard.path, Seq(
+                NoticePlace(noticeId, isAnnounced = true)))),
+            isClosed = false))
 
-        val noticeId = planId.noticeId
         assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice == Map(
           noticeId -> NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None)))))
         assert(controllerState.keyTo(BoardState)(aBoard.path).orderToConsumptionStack == Map.empty)
 
         // When PlanTemplate has been deleted, its NoticePlaces are deleted, too //
 
-        assert(controllerState.slowPlanTemplateToPlanToBoardToNoticeKey == Map(
-          PlanTemplateId.Global -> Map.empty,
-          planTemplate.id -> Map(
-            planKey -> Map(
-              aBoard.path -> Set(NoticeKey.empty),
-              bBoard.path -> Set(NoticeKey.empty)))))
+        assert(controllerState.keyTo(PlanTemplateState).values.flatMap(_.plans).toSet ==
+          Set(
+            Plan(planId, plannedBoards = Seq(
+              PlannedBoard(planId / aBoard.path, Seq(
+                NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None))))),
+              PlannedBoard(planId / bBoard.path, Seq(
+                NoticePlace(noticeId, isAnnounced = true)))),
+              isClosed = false)))
 
         deleteItems(planTemplate.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planTemplate.path)
 
-        assert(controllerState.slowPlanTemplateToPlanToBoardToNoticeKey == Map(
-          PlanTemplateId.Global -> Map.empty))
+        assert(controllerState.keyTo(PlanTemplateState).values.flatMap(_.plans).isEmpty)
   }
 
 

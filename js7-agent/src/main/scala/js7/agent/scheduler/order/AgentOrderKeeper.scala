@@ -43,17 +43,19 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem
 import js7.data.agent.AgentRef
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
+import js7.data.board.NoticeEvent
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, JournalState, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItem, SignableItem, UnsignedItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order.InapplicableOrderEventProblem
-import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler
@@ -818,8 +820,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
           logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
 
-        val keyedEvents = oes.nextEvents(order.id)
-        val future = keyedEvents
+        val keyedEvents: Seq[KeyedEvent[OrderActorEvent | NoticeDeleted]] =
+          oes.nextEvents(order.id)
+        val (orderKeyedEvents, noticeDeletedEvents) =
+          val (a, b) = keyedEvents.partition(_.event.isInstanceOf[OrderActorEvent])
+          a.map(_.asInstanceOf[KeyedEvent[OrderActorEvent]])->
+            b.map(_.asInstanceOf[KeyedEvent[NoticeDeleted]])
+
+        val future = orderKeyedEvents
           .groupMap(_.key)(_.event)
           .toSeq
           .parTraverse((orderId_ : OrderId, events) =>
@@ -849,6 +857,10 @@ extends MainJournalingActor[AgentState, Event], Stash:
           && !shuttingDown
         then
           onOrderIsProcessable(order)
+
+        if noticeDeletedEvents.nonEmpty then
+          persistMultiple(orderKeyedEvents): (_, agentState) =>
+            ()
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
     journal.unsafeCurrentState()

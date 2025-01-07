@@ -191,7 +191,8 @@ object VerifiedUpdateItemsExecutor:
                   case item: PlanTemplate =>
                     controllerState.keyTo(PlanTemplateState).checked(item.id)
                       .flatMap: planTemplateState =>
-                        checkOrdersMatchStillItsPlan(controllerState, planTemplateState.copy(item = item))
+                        checkOrdersMatchStillItsPlan(controllerState,
+                          planTemplateState.copy(item = item))
                   case _ => Checked.unit
                 .map: _ =>
                   UnsignedSimpleItemChanged:
@@ -207,8 +208,8 @@ object VerifiedUpdateItemsExecutor:
         .map:
           _.flatMap: order =>
             planTemplateState.item.evalOrderToPlanId(controllerState.toPlanOrderScope(order))
-              .flatMap: planId =>
-                (order.maybePlanId == planId) !!
+              .flatMap: maybePlanId =>
+                (order.maybePlanId == maybePlanId) !!
                   OrderWouldNotMatchChangedPlanTemplateProblem(order.id, order.planId)
         .sequence
         .map(_.combineAll)
@@ -247,7 +248,7 @@ object VerifiedUpdateItemsExecutor:
               controllerState.detach(path)
 
         case planTemplateId: PlanTemplateId =>
-          controllerState.checkUnusedPlanTemplate(planTemplateId).rightAs:
+          controllerState.checkPlanTemplateIsDeletable(planTemplateId).rightAs:
             View.Single:
               ItemDeleted(path)
 

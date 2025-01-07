@@ -15,6 +15,38 @@ import org.jetbrains.annotations.TestOnly
 
 /** Item for (daily) plans.
   *
+  * Live states of a Plan
+  *
+  * <dl>
+  *   <dt>Dead or non-existent closed
+  *   <dd>"Dead Plan" is synonymous to "non-existing closed Plan".
+  *   <br>A dead Plan is a closed Plan without Orders (and thus without Notices)
+  *   <p>
+  *     There is no way to add an Order to a dead Plan.
+  *   <p>
+  *     A dead Plan
+  *     <ul>
+  *     <li>has never exist, or
+  *     <li>has been closed and all Orders (and thus Notices) have been deleted.
+  *     </ul>
+  *
+  *   <dt>Closed
+  *   <dd>iff `planIsClosedFunction` returns true for the PlanId.
+  *   <p>
+  *     A closed Plan does not accept external Orders, i.e. Order fed via web service or FileWatch.
+  *     But as long as the closed Plan is not dead (i.e. contains an Order), Orders may be added
+  *     via instruction: AddOrder, Fork, ForkList.
+  *     (For Fork and ForkList, the Plan cannot be dead,
+  *     because the forking Order is in the same Plan).
+  *   <p>
+  *     When the last Order of a closed Plan has been deleted,
+  *     the Engine deletes all Notices of the Plan, too.
+  *     The Plan gets empty and thus non-existent.
+  *     An empty closed Plan is equal to a non-existent closed Plan and called dead.
+  * </dl>
+  *
+  * @param planIsClosedFunction A function expression with a PlanId as argument,
+  *                             returns true when the corresponding Plan is closed.
   * #@param startOffset When the plan starts (for example 6h for 06:00 local time)
   * #@param lifetime How long a daily plan is kept after the day is over
   */
@@ -36,7 +68,7 @@ extends UnsignedSimpleItem:
       !isGlobal ? this
 
   def toInitialItemState: PlanTemplateState =
-    PlanTemplateState(this, namedValues = NamedValues.empty, toOrderPlan = Map.empty)
+    PlanTemplateState(this, namedValues = NamedValues.empty, toPlan = Map.empty)
 
   def isGlobal: Boolean =
     this eq Global
@@ -79,6 +111,7 @@ object PlanTemplate extends UnsignedSimpleItem.Companion[PlanTemplate]:
       orderToPlanKey = MissingConstant)
 
   /** A PlanTemplate for JOC-style daily plan OrderIds. */
+  @TestOnly
   def joc(id: PlanTemplateId, planIsClosedFunction: Option[ExprFunction] = None): PlanTemplate =
     PlanTemplate(
       id,

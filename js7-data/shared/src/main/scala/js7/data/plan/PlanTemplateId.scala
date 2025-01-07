@@ -4,8 +4,11 @@ import js7.base.generic.GenericString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
 import js7.data.plan.PlanTemplateId.Global
-import org.jetbrains.annotations.TestOnly
 
+/** A template for Plans-
+  *
+  * "Daily", daily plan, is a usual PlanTemplateId.
+  */
 final case class PlanTemplateId private(string: String)
   extends GenericString, UnsignedSimpleItemPath:
 
@@ -19,7 +22,6 @@ final case class PlanTemplateId private(string: String)
   def /(planKey: PlanKey): PlanId =
     PlanId(this, planKey)
 
-  @TestOnly
   def /(planKey: String): PlanId =
     PlanId(this, PlanKey(planKey))
 

@@ -11,6 +11,7 @@ import js7.base.utils.Tests.isTest
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerStateExecutor.*
 import js7.data.event.KeyedEvent.NoKey
@@ -88,7 +89,7 @@ final case class ControllerStateExecutor private(
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
           maybePlanId <- controllerState.evalOrderToPlanId(freshOrder)
-          _ <- checkPlanIsOpen(maybePlanId)
+          _ <- checkPlanIsOpen(maybePlanId getOrElse PlanId.Global)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
@@ -105,12 +106,10 @@ final case class ControllerStateExecutor private(
                 startPosition),
               orderNoticeAnnounced)
 
-  private def checkPlanIsOpen(maybePlanId: Option[PlanId]): Checked[Unit] =
-    val planId = maybePlanId getOrElse PlanId.Global
+  private def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
     for
       planTemplateState <- controllerState.keyTo(PlanTemplateState).checked(planId.planTemplateId)
-      planIsClosed <- planTemplateState.isClosed(planId.planKey)
-      _ <- !planIsClosed !! Problem(s"$planId is closed")
+      _ <- planTemplateState.checkIsOpen(planId.planKey)
     yield
       ()
 
@@ -515,7 +514,7 @@ final case class ControllerStateExecutor private(
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
-    val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent]]
+    val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | NoticeDeleted]]
 
     @tailrec def loop(): Unit =
       queue.removeHeadOption() match
@@ -533,6 +532,8 @@ final case class ControllerStateExecutor private(
                   controllerState = state
                   _keyedEvents ++= keyedEvents
                   queue ++= keyedEvents.view
+                    .collect:
+                      case e @ KeyedEvent(_, _: OrderEvent) => e.asInstanceOf[KeyedEvent[OrderEvent]]
                     .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
                     .toSeq.distinct
                   //<editor-fold desc="if isTest ...">

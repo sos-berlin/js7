@@ -19,7 +19,7 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace, PlannedBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, PostNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
@@ -108,15 +108,19 @@ final class GlobalBoardTest
 
       // Look at the Global Plan //
       assert:
-        controllerState.slowPlanTemplateToPlan(PlanTemplateId.Global) ==
+        controllerState.templateToKeyToPlan(PlanTemplateId.Global) ==
           Map:
             PlanKey.Global -> Plan(
               PlanId.Global,
               orderIds = Set(posting0OrderId, posting12OrderId) ++ expecting01OrderIds,
-              Map(
-                board0.path -> Set(notice0.id.noticeKey),
-                board1.path -> Set(notice1.id.noticeKey),
-                board2.path -> Set(notice2.id.noticeKey)))
+              Seq(
+                PlannedBoard(PlanId.Global / board0.path, Map(
+                  notice0.id.noticeKey -> NoticePlace(notice0.id, Some(notice0)))),
+                PlannedBoard(PlanId.Global / board1.path, Map(
+                  notice1.id.noticeKey -> NoticePlace(notice1.id, Some(notice1)))),
+                PlannedBoard(PlanId.Global / board2.path, Map(
+                  notice2.id.noticeKey -> NoticePlace(notice2.id, Some(notice2))))),
+              isClosed = false)
 
       for orderId <- expecting01OrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)

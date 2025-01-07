@@ -33,3 +33,5 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
       Left(Problem.pure("Invalid PlanKey"))
     else
       super.checked(string)
+
+  given Ordering[PlanKey] = GenericString.ordering

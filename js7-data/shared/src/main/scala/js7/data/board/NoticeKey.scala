@@ -2,7 +2,10 @@ package js7.data.board
 
 import js7.base.generic.GenericString
 
-final case class NoticeKey private(string: String) extends GenericString
+final case class NoticeKey private(string: String) extends GenericString:
+
+  override def toString =
+    if string.isEmpty then "NoticeKey.empty" else string
 
 
 object NoticeKey extends GenericString.NonEmpty[NoticeKey]:

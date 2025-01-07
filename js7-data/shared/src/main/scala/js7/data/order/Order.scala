@@ -864,9 +864,15 @@ extends
   def isInOutermostBlock: Boolean =
     position.branchPath == innerBlock
 
+  def markDeletion: Checked[OrderDeletionMarked] =
+    if parent.nonEmpty then
+      Left(Problem("A child order cannot be marked for deletion"))
+    else
+      Right(OrderDeletionMarked)
+
   def tryDelete: Option[OrderDeleted] =
-    ((deleteWhenTerminated || externalOrder.exists(_.vanished))
-      && isState[IsTerminated]
+    (isState[IsTerminated]
+      && (deleteWhenTerminated || externalOrder.exists(_.vanished))
       && parent.isEmpty
     ) ? OrderDeleted
 

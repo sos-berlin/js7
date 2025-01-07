@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeSnapshot}
+import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeId, NoticeSnapshot}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -349,6 +349,8 @@ extends SnapshotableStateBuilder[ControllerState],
       case KeyedEvent(planTemplateId: PlanTemplateId, event: PlanTemplateChanged) =>
         val planTemplateState = keyTo(PlanTemplateState)(planTemplateId)
         _keyToUnsignedItemState(planTemplateId) = planTemplateState.copy(
+          // No need to use planTemplateState.updateNamedValues,
+          // because PlanTemplateState will be computed in result()
           namedValues = event.namedValues)
 
       case KeyedEvent(_, _: ControllerShutDown) =>
@@ -374,8 +376,16 @@ extends SnapshotableStateBuilder[ControllerState],
   protected def onOrderPlanAttached(orderId: OrderId, planId: PlanId)
   : Checked[ControllerStateBuilder] =
     // Do nothing here.
-    // PlanTemplateState.toOrderPlan will be updated when ControllerStateBuilder finishes.
+    // PlanTemplateState.toPlan will be updated when ControllerStateBuilder finishes.
     Right(this)
+
+  protected def updateNoticePlacesInPlan(
+    planId: PlanId,
+    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+  : Checked[PlanTemplateState] =
+    // Not required for ControllerStateBuilder, so we do nothing here (?)
+    // PlanTemplateStates are updated with ControllerState#finish
+    keyTo(PlanTemplateState).checked(planId.planTemplateId)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],

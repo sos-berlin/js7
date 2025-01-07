@@ -4,14 +4,14 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.BoardPath
+import js7.data.board.{BoardPath, BoardState, NoticeId}
 import js7.data.calendar.CalendarPath
 import js7.data.controller.{ControllerId, ControllerStateView}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.PlanId
+import js7.data.plan.{PlanId, PlanTemplateState}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
@@ -121,6 +121,13 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
   : Checked[ControllerTestStateView] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
+  protected def updateNoticePlacesInPlan(
+    planId: PlanId,
+    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+  : Checked[PlanTemplateState] =
+    // DO NOTHING
+    keyTo(PlanTemplateState).checked(planId.planTemplateId)
+
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView, Event]:
 
@@ -155,6 +162,12 @@ extends TestStateView[AgentTestStateView]:
     copy(
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
+
+  protected final def updateNoticePlacesInPlan(
+    planId: PlanId,
+    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+  : Checked[PlanTemplateState] =
+    Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 
 object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView, Event]:
 

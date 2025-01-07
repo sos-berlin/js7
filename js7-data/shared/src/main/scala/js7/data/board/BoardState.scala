@@ -1,6 +1,7 @@
 package js7.data.board
 
 import cats.effect.IO
+import cats.syntax.option.*
 import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
@@ -70,19 +71,18 @@ extends UnsignedSimpleItemState:
   def announceNotice(noticeId: NoticeId): Checked[BoardState] =
     Right:
       updateNoticePlace:
-        idToNotice.getOrElse(noticeId, NoticePlace(noticeId)).announce
+        idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
+          .announce
 
   // COMPATIBLE with v2.3
   def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =
     addNotice(notice.toNotice(board.path))
 
   def addNotice(notice: Notice): Checked[BoardState] =
-    idToNotice.get(notice.id) match
-      case None =>
-        Right(updateNoticePlace(NoticePlace(notice.id, Some(notice))))
-
-      case Some(noticePlace) =>
-        Right(updateNoticePlace(noticePlace.post(notice)))
+    Right:
+      updateNoticePlace:
+        idToNotice.get(notice.id).getOrElse(NoticePlace(notice.id))
+          .post(notice)
 
   def addExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
@@ -104,11 +104,11 @@ extends UnsignedSimpleItemState:
       orderToConsumptionStack = orderToConsumptionStack.updated(orderId,
         Nel(noticeId, consumptionStack))))
 
-  def finishConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
-    orderToConsumptionStack.get(orderId).fold(Checked(this)): consumptions =>
+  def finishConsumption(orderId: OrderId, succeeded: Boolean): Checked[(BoardState, Option[NoticeId])] =
+    orderToConsumptionStack.get(orderId).fold(Checked(this -> none)): consumptions =>
       val Nel(noticeId, remainingConsumptions) = consumptions
-      idToNotice.checked(noticeId)
-        .map: noticePlace =>
+      idToNotice.checked(noticeId).map: noticePlace =>
+        val boardState =
           updateNoticePlace:
             noticePlace.finishConsumption(succeeded)
           .copy(
@@ -116,6 +116,7 @@ extends UnsignedSimpleItemState:
               Nel.fromList(remainingConsumptions) match
                 case None => orderToConsumptionStack - orderId
                 case Some(nel) => orderToConsumptionStack.updated(orderId, nel))
+        boardState -> noticeId.some
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>

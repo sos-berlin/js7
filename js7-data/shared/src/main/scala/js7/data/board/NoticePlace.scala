@@ -7,6 +7,7 @@ import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticePlace.*
 import js7.data.order.OrderId
+import js7.data.plan.PlanId
 
 /** A NoticePlace may contain both a notice and an expectation,
   * when an order awaits notices from multiple Boards.
@@ -27,7 +28,7 @@ extends Big:
     }${isAnnounced ?? " isAnnounced"
     }${isInConsumption ?? " isInConsumption"
     }${(consumptionCount != 0) ?? s" consumptionCount=$consumptionCount"
-    }${expectingOrderIds.nonEmpty ?? s"expectingOrderIds=${expectingOrderIds.toVector.sorted.mkString(" ")}"})"
+    }${expectingOrderIds.nonEmpty ?? s" expectingOrderIds=${expectingOrderIds.toVector.sorted.mkString(" ")}"})"
 
   def checked: Checked[this.type] =
     (notice.forall(_.id == noticeId) !!
@@ -89,6 +90,12 @@ extends Big:
       //post already did this: isAnnounced = isAnnounced && !isLast,
       isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
+
+  def noticeKey: NoticeKey =
+    noticeId.noticeKey
+
+  def planId: PlanId =
+    noticeId.planId
 
 
 object NoticePlace:

@@ -16,6 +16,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.board.{BoardState, NoticeId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.{ControllerId, ControllerRunId}
@@ -29,6 +30,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
+import js7.data.plan.{PlanId, PlanTemplateState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -351,6 +353,12 @@ extends SignedItemContainer,
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
   def orders: Iterable[Order[Order.State]] = idToOrder.values
+
+  protected def updateNoticePlacesInPlan(
+    planId: PlanId,
+    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+  : Checked[PlanTemplateState] =
+    Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     if !isDedicated then

@@ -180,3 +180,8 @@ object Problems:
     def arguments: Map[String, String] = Map2(
       "event", event.getClass.simpleScalaName,
       "here", here.name)
+
+  final case class PlanIsClosedProblem(planId: PlanId)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map1(
+      "planId", planId.toString)

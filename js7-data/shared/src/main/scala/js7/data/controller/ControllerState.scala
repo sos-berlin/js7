@@ -9,21 +9,20 @@ import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.fs2utils.StreamExtensions.{:+, :++}
-import js7.base.fs2utils.StreamUtils.bracketLineStream
 import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.MultipleLinesBracket.SmallSquare
+import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.MultipleLinesBracket.streamInBrackets
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.StandardMapView
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -45,14 +44,13 @@ import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.PlanTemplateEvent.PlanTemplateChanged
-import js7.data.plan.{OrderPlan, Plan, PlanId, PlanKey, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
+import js7.data.plan.{PlanKey, PlanTemplate, PlanTemplateEvent, PlanTemplateId, PlanTemplateState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View, immutable}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -76,24 +74,22 @@ extends
   EventDrivenStateView[ControllerState],
   ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
-  ClusterableState[ControllerState]:
+  ClusterableState[ControllerState],
+  ControllerStatePlanFunctions:
 
   override def toStringStream: Stream[fs2.Pure, String] =
-    def inBrackets[A](name: String)(iterable: Iterable[A]): Stream[fs2.Pure, String] =
-      Stream(name, "=\n") ++
-        bracketLineStream(brackets = SmallSquare)(iterable)
-
     Stream.emit[fs2.Pure, String]("ControllerState:\n")
-      :+ eventId.toString :+ "\n"
+      :+ "eventId=" :+ EventId.toString(eventId) :+ "\n"
       :+ standards.toString :+ "\n"
-      :++ inBrackets("keyToUnsignedItemState_"):
-        keyToUnsignedItemState_.values.toVector.sorted
-      :++ inBrackets("repo")(repo.toEvents)
-      :++ inBrackets("pathToSignedSimpleItem"):
+      :+ "keyToUnsignedItemState_=\n"
+      :++ Stream.iterable(keyToUnsignedItemState_.values.toVector.sorted).flatMap:
+        _.toStringStream.map("  " + _ + "\n")
+      :++ streamInBrackets("repo")(repo.toEvents)
+      :++ streamInBrackets("pathToSignedSimpleItem"):
         pathToSignedSimpleItem.values.toVector.sortBy(_.value.key)
       :+ agentAttachments.toString :+ "\n"
-      :++ inBrackets("deletionMarkedItems")(deletionMarkedItems.toVector.sorted)
-      :++ inBrackets("idToOrder")(idToOrder.values.toVector.sorted)
+      :++ streamInBrackets("deletionMarkedItems")(deletionMarkedItems.toVector.sorted)
+      :++ streamInBrackets("idToOrder")(idToOrder.values.toVector.sorted)
       :+ workflowToOrders.toString
 
   def isAgent = false
@@ -298,6 +294,12 @@ extends
                   Right(updated.copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
 
+                case boardPath: BoardPath =>
+                  Right(updated.copy(
+                    keyToUnsignedItemState_ =
+                      (updated.keyToUnsignedItemState_ - boardPath) ++
+                        deleteBoardInPlanTemplateStates(boardPath).toKeyedMap(_.id)))
+
                 case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
                             _: LockPath |
                             _: CalendarPath | _: BoardPath |
@@ -328,16 +330,23 @@ extends
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
-        o <- boardState.addNotice(notice.toNotice(boardPath))
+        boardState <- boardState.addNotice(notice.toNotice(boardPath))
+        planTemplateState <- updateNoticePlaceInPlan(notice.id.planId, boardState, notice.id)
       yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
+        keyToUnsignedItemState_ =
+          keyToUnsignedItemState_
+            .updated(boardState.path, boardState)
+            .updated(planTemplateState.id, planTemplateState))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
-        o <- boardState.removeNotice(noticeId)
+        boardState <- boardState.removeNotice(noticeId)
+        planTemplateState <- updateNoticePlaceInPlan(noticeId.planId, boardState, noticeId)
       yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
+        keyToUnsignedItemState_ = keyToUnsignedItemState_
+          .updated(boardState.path, boardState)
+          .updated(planTemplateState.id, planTemplateState))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       ow.onOrderWatchEvent(orderWatchPath <-: event)
@@ -355,12 +364,13 @@ extends
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
 
-    case KeyedEvent(planTemplateId: PlanTemplateId, event: PlanTemplateChanged) =>
-      keyTo(PlanTemplateState).checked(planTemplateId).map: planTemplateState =>
+    case KeyedEvent(planTemplateId: PlanTemplateId, PlanTemplateChanged(namedValues)) =>
+      for
+        planTemplateState <- keyTo(PlanTemplateState).checked(planTemplateId)
+        planTemplateState <- planTemplateState.updateNamedValues(namedValues)
+      yield
         copy(keyToUnsignedItemState_ =
-          keyToUnsignedItemState_.updated(planTemplateId,
-            planTemplateState.copy(
-              namedValues = event.namedValues)))
+          keyToUnsignedItemState_.updated(planTemplateId, planTemplateState))
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
@@ -376,10 +386,11 @@ extends
           // Move Order from GlobalPlan's to PlanId's PlanTemplateState
           planTemplateState <- self.keyTo(PlanTemplateState).checked(planId.planTemplateId)
           global <- self.keyTo(PlanTemplateState).checked(PlanTemplateId.Global)
+          planTemplateState <- planTemplateState.addOrder(planId.planKey, orderId)
           self <- self.update(
             addItemStates =
-              global.removeOrder(PlanKey.Global, orderId)
-                :: planTemplateState.addOrder(planId.planKey, orderId)
+              global.removeOrderId(PlanKey.Global, orderId)
+                :: planTemplateState
                 :: Nil)
         yield
           self
@@ -465,56 +476,6 @@ extends
       .toVector
       .flatMap(_.state.expected)
 
-  /** Returns Right(()) iff the denoted PlanTemplate is unused. */
-  def checkUnusedPlanTemplate(planTemplateId: PlanTemplateId): Checked[Unit] =
-    keyTo(PlanTemplateState).checked(planTemplateId).flatMap(_.checkUnused)
-
-  @slow
-  def slowPlanTemplateToPlan: MapView[PlanTemplateId, Map[PlanKey, Plan]] =
-    new StandardMapView[PlanTemplateId, Map[PlanKey, Plan]]:
-      override def keySet = keyTo(PlanTemplateState).keySet
-
-      def get(planTemplateId: PlanTemplateId) =
-        keyTo(PlanTemplateState).get(planTemplateId).map: planTemplateState =>
-          val toPlan0 = toPlanContainingNoticeKeys(planTemplateState)
-          toPlan0 ++ // Add the Plans which do not have a NoticeKey
-            planTemplateState.toOrderPlan.view.collect:
-              case (planKey, plan) if !toPlan0.contains(planKey) =>
-                planKey -> Plan.fromPlan(plan)
-
-  @slow
-  private def toPlanContainingNoticeKeys(planTemplateState: PlanTemplateState): Map[PlanKey, Plan]  =
-    val planTemplateId = planTemplateState.id
-    keyTo(BoardState).values.view.flatMap: boardState =>
-      boardState.idToNotice.keys.view.collect:
-        case NoticeId(noticeKey, PlanId(`planTemplateId`, planKey)) =>
-          planKey -> (boardState.path, noticeKey)
-    .toVector
-    .groupMap(_._1)(_._2)
-    .map: (planKey, boardToNotice) =>
-      planKey -> Plan(
-        planId = planTemplateId / planKey,
-        orderIds = planTemplateState.toOrderPlan.get(planKey).fold(Set.empty)(_.orderIds),
-        boardToNotices = boardToNotice.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
-
-  @TestOnly
-  def slowPlanTemplateToPlanToBoardToNoticeKey
-  : Map[PlanTemplateId, Map[PlanKey, Map[BoardPath, Set[NoticeKey]]]] =
-    keyTo(PlanTemplateState).keys.map(_ -> Map.empty).toMap ++ /* Keep PlanTemplates without a Plan*/
-      keyTo(BoardState).values.flatMap: boardState =>
-        boardState.idToNotice.keys.view.collect:
-          case NoticeId(noticeKey, PlanId(planTemplateId, planKey)) =>
-            planTemplateId -> (planKey -> (boardState.path, noticeKey))
-        .toVector
-      .groupMap(_._1)(_._2)
-      .view.mapValues:
-        _.groupMap(_._1)(_._2)
-          .view.mapValues:
-            _.groupMap(_._1)(_._2)
-              .view.mapValues(_.toSet).toMap
-          .toMap
-      .toMap
-
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
@@ -563,7 +524,6 @@ extends
           // SubagentKeeper handles this.
           pathToItem.contains(id.toSubagentId)
         case _ => false)
-
 
   private[controller] def checkRemovedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
   : Checked[Unit] =
@@ -764,12 +724,16 @@ extends
     ).finishRecovery2
 
   private def finishRecovery2: Checked[ControllerState] =
-    PlanTemplateState.recoverOrderPlans(orders, keyTo(PlanTemplateState).checked)
+    PlanTemplateState
+      .recoverPlans(
+        orders,
+        boardStates = keyTo(BoardState).values,
+        toPlanTemplateState = keyTo(PlanTemplateState).checked)
       .map: planTemplateStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
           keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
-            planTemplateStates.map(o => o.id -> o))
+            planTemplateStates.toKeyedMap(_.id))
 
   private def calculateWorkflowToOrders: WorkflowToOrders =
     ControllerState.WorkflowToOrders(idToOrder
@@ -893,7 +857,7 @@ extends
       val newOrders = orders.filterNot(o => s.idToOrder.contains(o.id))
       for
         s <- orders.foldEithers(s)(addOrUpdateOrder_)
-        updatedPlanTemplateStates <- PlanTemplateState.addOrders(
+        updatedPlanTemplateStates <- PlanTemplateState.addOrderIds(
           newOrders,
           s.keyTo(PlanTemplateState).checked)
       yield
@@ -927,12 +891,12 @@ extends
         s.copy(idToOrder = s.idToOrder -- orderIds)
       .flatMap: s =>
         PlanTemplateState
-          .removeOrders(removedOrders, s.keyTo(PlanTemplateState).checked)
+          .removeOrderIds(removedOrders, s.keyTo(PlanTemplateState).checked)
           .map: updatedPlanTemplateStates =>
             s.copy(
               idToOrder = s.idToOrder -- orderIds,
               keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
-                updatedPlanTemplateStates.map(o => o.id -> o))
+                updatedPlanTemplateStates.toKeyedMap(_.id))
 
   private def onRemoveItemStates(s: ControllerState, paths: Seq[UnsignedSimpleItemPath])
   : ControllerState =
@@ -962,6 +926,12 @@ extends
       else
         copy(workflowIdToOrders.updated(order.workflowId, orderIds))
 
+    def isLastOrder(order: Order[Order.State]): Boolean =
+      workflowIdToOrders.get(order.workflowId).contains(Set(order.id))
+
     override def toString =
-      s"WorkflowToOrders(${workflowIdToOrders.toVector.sortBy(_._1)
-        .map((k, v) => s"$k -> ${v.toVector.sorted.mkString(" ")}")}"
+      s"WorkflowToOrders(${
+        workflowIdToOrders.toVector.sortBy(_._1).map: (k, v) =>
+          s"$k -> ${v.toVector.sorted.mkString(" ")}"
+        .mkString("{", ", ", "}")
+      })"
