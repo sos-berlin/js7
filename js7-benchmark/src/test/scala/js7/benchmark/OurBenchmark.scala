@@ -19,7 +19,7 @@ open class OurBenchmark:
   deleteIfExists(Paths.get("target/js7.log"))
   deleteIfExists(Paths.get("target/js7-debug.log"))
 
-  val loggerRelease = Logger.resource[SyncIO]("CycleExecutorBenchmark").allocated.unsafeRunSync()._2
+  val loggerRelease = Logger.resource[SyncIO]("TestCycleExecutorBenchmark").allocated.unsafeRunSync()._2
 
   @TearDown
   def tearDown() =
