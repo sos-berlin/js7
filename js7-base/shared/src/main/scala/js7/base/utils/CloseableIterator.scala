@@ -1,8 +1,11 @@
 package js7.base.utils
 
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import java.util.NoSuchElementException
 import js7.base.utils.CloseableIterator.*
 import scala.util.control.NonFatal
+
 
 /**
   * @author Joacim Zschimmer
@@ -107,6 +110,16 @@ object CloseableIterator:
       def next() = baseIterator.next()
       override def toString = s"CloseableIterator($baseIterator)"
 
+  def closeableIteratorToStream[A](iterator: CloseableIterator[A], chunkSize: Int): Stream[IO, A] =
+    Stream
+      .resource(Resource.makeCase(
+        acquire = IO.pure(iterator))(
+        release = (iterator, exitCase) => IO:
+          //logger.trace(s"Close $iterator $exitCase")
+          iterator.close()))
+      .flatMap: iterator =>
+        Stream.fromIterator(iterator, chunkSize = chunkSize)
+  
   private class CloseAtEnd[A](underlying: CloseableIterator[A]) extends CloseableIterator[A]:
     def hasNext = underlying.hasNext || {
       underlying.close()
@@ -125,6 +138,7 @@ object CloseableIterator:
     def close(): Unit = underlying.close()
 
     override def toString = s"CloseableIterator.CloseAtEnd($underlying)"
+
 
   private class Concatenated[A, B >: A](a: CloseableIterator[A], lazyB: => CloseableIterator[B])
   extends CloseableIterator[B]:

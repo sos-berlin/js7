@@ -8,8 +8,6 @@ import java.util.concurrent.TimeoutException
 import js7.base.ProvisionalAssumptions
 import js7.base.catsutils.SyncDeadline
 import js7.base.fs2utils.StreamExtensions.+:
-import js7.base.fs2utils.StreamUtils
-import js7.base.fs2utils.StreamUtils.closeableIteratorToStream
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter
@@ -19,6 +17,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.CloseableIterator
+import js7.base.utils.CloseableIterator.closeableIteratorToStream
 import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
