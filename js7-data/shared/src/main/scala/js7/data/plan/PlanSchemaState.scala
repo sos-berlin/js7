@@ -84,7 +84,7 @@ extends UnsignedSimpleItemState:
     yield
       ()
 
-  def isClosed(planKey: PlanKey): Checked[Boolean] =
+  private def isClosed(planKey: PlanKey): Checked[Boolean] =
     toPlan.get(planKey) match
       case Some(plan) => Right(plan.isClosed)
       case None => calculatePlanIsClosed(planKey)

@@ -256,8 +256,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                 .toVector
       case _ => Vector.empty
 
-  private def orderMarkKeyedEvent(order: Order[Order.State])
-  : List[KeyedEvent[OrderActorEvent]] =
+  private def orderMarkKeyedEvent(order: Order[Order.State]): List[KeyedEvent[OrderActorEvent]] =
     orderMarkEvent(order)
       .map(order.id <-: _)
 

@@ -179,7 +179,7 @@ extends
           val externalOrderKey = ExternalOrderKey(id, externalOrderName)
           toOrderAdded(freshOrder, Some(externalOrderKey)) match
             case Left(problem) =>
-              // Should not happen
+              // Happens when the Order's Plan is closed
               logger.error(s"${orderWatch.path}: $externalOrderKey: $problem")
               Nil
 
