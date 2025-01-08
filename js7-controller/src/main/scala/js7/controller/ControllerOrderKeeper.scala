@@ -983,7 +983,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       Future.successful(Left(Problem("Global PlanSchema cannot be changed")))
     else
       locally:
-        val coll = ControllerEventColl(_controllerState)
+        val coll = ControllerEventColl[PlanSchemaChanged | NoticeDeleted](_controllerState)
         for
           coll <- coll.add:
             planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues)

@@ -7,7 +7,7 @@ import js7.data.event.EventDrivenState.*
 import scala.collection.immutable.Map.Map2
 import scala.util.boundary
 
-trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends BasicState[Self]:
+trait EventDrivenState[Self <: EventDrivenState[Self, E], -E <: Event] extends BasicState[Self]:
   this: Self =>
 
   override def companion: Companion[Self]

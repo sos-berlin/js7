@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import scala.annotation.targetName
+import scala.annotation.{implicitNotFound, targetName}
 
 /**
   * An object's event.
@@ -36,6 +36,7 @@ object Event:
   transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event:
     final type KeyBase = E
 
+  @implicitNotFound("Events do not have the same key type, or a KeyCompanion[${E}] is missing")
   trait KeyCompanion[E <: Event]:
     type Key
 
