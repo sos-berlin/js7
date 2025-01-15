@@ -45,14 +45,13 @@ extends SubagentDriver, Service.StoppableByRequest:
   // isDedicated when this Director gets activated after fail-over.
   private val wasRemote = subagent.isDedicated
   protected val api = new LocalSubagentApi(subagent)
-  @volatile private var shuttingDown = false
   @volatile private var _testFailover = false
 
   subagent.supressJournalLogging(true) // Events are logged by the Director's Journal
 
   protected def isHeartbeating = true
 
-  protected def isShuttingDown = shuttingDown
+  protected def isShuttingDown = false
 
   protected def start =
     dedicate.map(_.orThrow) *>
