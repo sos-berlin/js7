@@ -193,22 +193,21 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     onEvents: Seq[OrderCoreEvent] => Unit)
     (body: IO[Checked[FiberIO[OrderProcessed]]])
   : IO[Checked[FiberIO[OrderProcessed]]] =
-    val release = orderToSubagent.remove(orderId).void
-    orderToSubagent
-      .put(orderId, subagentDriver)
-      .*>(body
-        .flatMap:
-          case Left(problem) => IO.left(problem)
-          case Right(fiber) =>
-            // OrderProcessed event has been persisted by RemoteSubagentDriver
-            fiber.joinStd
-              .map: orderProcessed =>
-                onEvents(orderProcessed :: Nil)
-                orderProcessed
-              .guarantee(release)
-              .start
-              .map(Right(_)))
-      .guaranteeExceptWhenRight(release)
+    orderToSubagent.put(orderId, subagentDriver) *>
+      body.flatMap:
+        case Left(problem) => IO.left(problem)
+        case Right(fiber) =>
+          // OrderProcessed event has been persisted by Local/RemoteSubagentDriver
+          fiber.joinStd
+            .map: orderProcessed =>
+              onEvents(orderProcessed :: Nil)
+              orderProcessed
+            .guarantee:
+              orderToSubagent.remove(orderId).void
+            .start
+            .map(Right(_))
+      .guaranteeExceptWhenRight:
+        orderToSubagent.remove(orderId).void
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : IO[Checked[Option[SelectedDriver]]] =
@@ -291,14 +290,14 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   def killProcess(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
     IO.defer:
       // TODO Race condition?
-      orderToWaitForSubagent
-        .get(orderId)
-        .fold(IO.unit)(_.complete(()))
-        .*>(IO.defer:
+      orderToWaitForSubagent.get(orderId).fold(IO.unit):
+        _.complete(())
+      .productR:
+        IO.defer:
           orderToSubagent.get(orderId) match
             case None => IO(logger.error:
               s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId")
-            case Some(driver) => driver.killProcess(orderId, signal))
+            case Some(driver) => driver.killProcess(orderId, signal)
 
   def resetAllSubagents(except: Set[SubagentId]): IO[Unit] =
     logger.traceIO:
@@ -316,9 +315,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             .map(_.combineAll)
 
   def startResetSubagent(subagentId: SubagentId, force: Boolean = false): IO[Checked[Unit]] =
-    stateVar.value
-      .flatMap(s => IO:
-        s.idToDriver.checked(subagentId))
+    stateVar.value.map(_.idToDriver.checked(subagentId))
       .flatMapT:
         case driver: RemoteSubagentDriver =>
           journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
@@ -500,8 +497,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           controllerId,
           directorConf.subagentDriverConf,
           directorConf.recouplingStreamReaderConf)
-        .evalTap(driver => IO.whenA(started):
-          driver.startObserving)
+        .evalTap: driver =>
+          IO.whenA(started):
+            driver.startObserving
     yield
       driver
 
@@ -562,14 +560,17 @@ object SubagentKeeper:
       case _ =>
         DeterminedSubagentBundle(maybeJobsBundleId)
 
+
   private final case class SelectedDriver(
     subagentBundleId: Option[SubagentBundleId],
     subagentDriver: SubagentDriver,
     stick: Boolean)
 
+
   private[director] final case class DeterminedSubagentBundle(
     maybeSubagentBundleId: Option[SubagentBundleId],
     stick: Boolean = false)
+
   private[director] object DeterminedSubagentBundle:
     @TestOnly
     def stuck(stuckSubagentId: SubagentId): DeterminedSubagentBundle =

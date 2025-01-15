@@ -256,7 +256,8 @@ extends SubagentDriver, Service.StoppableByRequest:
         case Left(problem) => IO.left(problem)
         case Right(deferred) =>
           orderToExecuteDefaultArguments(order)
-            .flatMapT(subagent.startOrderProcess(order, _))
+            .flatMapT:
+              subagent.startOrderProcess(order, _)
             .materializeIntoChecked
             .flatMap:
               case Left(problem) =>
@@ -280,7 +281,8 @@ extends SubagentDriver, Service.StoppableByRequest:
                           case _ =>
                             OrderProcessed(OrderOutcome.Disrupted(problem))
 
-                      if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed] then
+                      if _testFailover && orderProcessed.outcome.isInstanceOf[OrderOutcome.Killed]
+                      then
                         IO(logger.warn:
                           s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"
                         ).start
@@ -302,31 +304,30 @@ extends SubagentDriver, Service.StoppableByRequest:
       .map(_.onProblemHandle(problem => logger.error(s"killProcess $orderId => $problem")))
 
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit] =
-    logger.debugIO("emitSubagentCouplingFailed", maybeProblem)(
+    logger.debugIO("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
-      journal
-        .lock(subagentId)(
-          journal.persist(_
-            .idToSubagentItemState.checked(subagentId)
-            .map: subagentItemState =>
-              val problem = maybeProblem
-                .orElse(subagentItemState.problem)
-                .getOrElse(Problem.pure("decoupled"))
-              (!subagentItemState.problem.contains(problem)).thenList:
-                subagentId <-: SubagentCouplingFailed(problem)))
-        .map(_.orThrow)
-        .void
-        .onError(t => IO:
-          // Error isn't logged until stopEventListener is called
-          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)))
+      journal.lock(subagentId):
+        journal.persist(_
+          .idToSubagentItemState.checked(subagentId)
+          .map: subagentItemState =>
+            val problem = maybeProblem
+              .orElse(subagentItemState.problem)
+              .getOrElse(Problem.pure("decoupled"))
+            (!subagentItemState.problem.contains(problem)).thenList:
+              subagentId <-: SubagentCouplingFailed(problem))
+      .map(_.orThrow)
+      .void
+      .onError(t => IO:
+        // Error isn't logged until stopEventListener is called
+        logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
-    enqueueCommandAndForget(
-      SubagentCommand.DetachProcessedOrder(orderId))
+    enqueueCommandAndForget:
+      SubagentCommand.DetachProcessedOrder(orderId)
 
   protected def releaseEvents(eventId: EventId): IO[Unit] =
-    enqueueCommandAndForget(
-      SubagentCommand.ReleaseEvents(eventId))
+    enqueueCommandAndForget:
+      SubagentCommand.ReleaseEvents(eventId)
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): IO[Unit] =
     subagent.commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
@@ -348,6 +349,7 @@ extends SubagentDriver, Service.StoppableByRequest:
 
 
 object LocalSubagentDriver:
+
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     subagent: Subagent,
