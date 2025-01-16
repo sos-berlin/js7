@@ -15,8 +15,8 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, ToOrderAdded, Vanished, logger}
 import js7.data.value.NamedValues
 import scala.collection.View
 
@@ -34,7 +34,7 @@ import scala.collection.View
  * For `orderAddedQueue` and `orderExternalVanishedQueue` see `recalculateQueues`.
  */
 final case class OrderWatchState(
-  orderWatch: OrderWatch,
+  item: OrderWatch,
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder] = Map.empty,
   private[orderwatch] val orderAddedQueue: Set[ExternalOrderName] = Set.empty,
   private[orderwatch] val orderExternalVanishedQueue: Set[ExternalOrderName] = Set.empty)
@@ -44,13 +44,11 @@ extends
   protected type Self = OrderWatchState
   val companion: OrderWatchState.type = OrderWatchState
 
-  val item: OrderWatch = orderWatch
+  def orderWatch: OrderWatch = item
   def path: OrderWatchPath = item.path
 
   def updateItem(item: OrderWatch): Checked[OrderWatchState] =
-    Right(copy(orderWatch = item))
-
-  def id: OrderWatchPath = orderWatch.key
+    Right(copy(item = item))
 
   def finishRecovery(isNotVanished: OrderId => Boolean): Checked[OrderWatchState] =
     Right(recalculateQueues(isNotVanished))
@@ -150,7 +148,7 @@ extends
           orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName))
 
       case Some(HasOrder(`orderId`, Some(queued: Arised))) =>
-        // The re-arisen ExternalOrderName has been deleted.
+        // The reappeared ExternalOrderName has been deleted.
         // We insert the ExternalOrderName into orderAddedQueue to start a new Order.
         Right(copy(
           externalToState = externalToState.updated(externalOrderName, queued),
@@ -158,14 +156,14 @@ extends
           orderAddedQueue = orderAddedQueue + externalOrderName))
 
       case Some(Arised(_, _)) =>
-        // The re-arisen ExternalOrderName has been deleted.
+        // The reappeared ExternalOrderName has been deleted.
         // We insert the ExternalOrderName into orderAddedQueue to start a new Order.
         Right(copy(
           orderExternalVanishedQueue = orderExternalVanishedQueue - externalOrderName,
           orderAddedQueue = orderAddedQueue + externalOrderName))
 
       case Some(x) =>
-        unexpected(s"${orderWatch.path}: unexpected $orderId <-: OrderDeleted for $x")
+        unexpected(s"$path: unexpected $orderId <-: OrderDeleted for $x")
 
   def nextEvents(toOrderAdded: ToOrderAdded)
   : View[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
@@ -190,7 +188,7 @@ extends
                 .filter(_.externalOrderKey == externalOrderKey)
                 .exists(_.vanished)
               if !vanished then
-                logger.error(s"${orderWatch.path}: ${freshOrder.id} already exists${
+                logger.error(s"$path: ${freshOrder.id} already exists${
                   existingOrder.externalOrder.fold("")(o => s" and is linked to $o")}")
               Nil
 
@@ -223,9 +221,9 @@ extends
       Right(this)
 
   override def toString =
-    s"OrderWatchState(${orderWatch.path} $externalToState orderAddedQueue=${
-      orderAddedQueue.mkString("{", " ", "}")} orderExternalVanishedQueue=${
-      orderExternalVanishedQueue.mkString("{", " ", "}")})"
+    s"OrderWatchState($path $externalToState " +
+      s"orderAddedQueue=${orderAddedQueue.mkString("{", " ", "}")
+      } orderExternalVanishedQueue=${orderExternalVanishedQueue.mkString("{", " ", "}")})"
 
 
 object OrderWatchState
@@ -266,6 +264,7 @@ with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
   sealed trait VanishedOrArised
 
 
+  // TODO Rename as Appeared
   final case class Arised(orderId: OrderId, arguments: NamedValues)
   extends ArisedOrHasOrder, VanishedOrArised:
     override def toString = s"Arised($orderId)"

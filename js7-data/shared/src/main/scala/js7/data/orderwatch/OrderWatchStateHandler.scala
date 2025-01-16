@@ -10,6 +10,7 @@ import js7.base.utils.{Assertions, Tests}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderExternalVanished}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}
 
@@ -41,9 +42,9 @@ trait OrderWatchStateHandler[Self]:
     def changeOrderWatch(changed: OrderWatch): Checked[Self] =
       pathToOrderWatchState
         .checked(changed.key)
-        .flatMap(watchState =>
+        .flatMap: watchState =>
           updateOrderWatchState(watchState.copy(
-            orderWatch = changed)))
+            item = changed))
 
     def onOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent])
     : Checked[Self] =
@@ -83,7 +84,8 @@ trait OrderWatchStateHandler[Self]:
         orderWatchState.onOrderDeleted(name, orderId)
           .flatMap(updateOrderWatchState)
 
-    def nextEvents(toOrderAdded: ToOrderAdded): View[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
+    def nextEvents(toOrderAdded: ToOrderAdded)
+    : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =
       pathToOrderWatchState.values.view.flatMap:
         _.nextEvents(toOrderAdded)
 
