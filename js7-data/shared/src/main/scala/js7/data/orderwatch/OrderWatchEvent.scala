@@ -3,6 +3,7 @@ package js7.data.orderwatch
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Problem
 import js7.data.event.Event
 import js7.data.order.OrderId
 import js7.data.value.NamedValues
@@ -26,6 +27,15 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
     override def toString =
       s"ExternalOrderArised(${externalOrderName.string}, $orderId, $arguments)"
 
+  /** The external order could not be added as an Order. */
+  final case class ExternalOrderRejected(
+    externalOrderName: ExternalOrderName,
+    orderId: OrderId,
+    problem: Problem)
+  extends OrderWatchEvent:
+    override def toString =
+      s"ExternalOrderRejected(${externalOrderName.string}, $orderId, ⛔️$problem)"
+
   /** External Order vanished, Controller should remove the added order. */
   final case class ExternalOrderVanished(externalOrderName: ExternalOrderName)
   extends OrderWatchEvent:
@@ -35,4 +45,5 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
 
   implicit val jsonCodec: TypedJsonCodec[OrderWatchEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ExternalOrderArised]),
+    Subtype(deriveCodec[ExternalOrderRejected]),
     Subtype(deriveCodec[ExternalOrderVanished]))

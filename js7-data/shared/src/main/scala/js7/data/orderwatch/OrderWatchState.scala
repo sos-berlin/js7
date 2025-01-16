@@ -70,6 +70,9 @@ extends
       case ExternalOrderArised(externalOrderName, orderId, arguments) =>
         onExternalOrderArised(externalOrderName, orderId, arguments)
 
+      case ExternalOrderRejected(externalOrderName, orderId, problem) =>
+        onExternalOrderRejected(externalOrderName, orderId, problem)
+
       case ExternalOrderVanished(externalOrderName) =>
         onExternalOrderVanished(externalOrderName)
 
@@ -91,8 +94,18 @@ extends
           externalToState = externalToState.updated(externalOrderName,
             HasOrder(orderId, Some(Arised(orderId, arguments))))))
 
-      case Some(state @ (Arised(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
-        unexpected(s"Duplicate ExternalOrderArised($externalOrderName, $arguments): $state")
+      case Some(state @ (Arised(_, _) | Rejected(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
+        unexpected(s"Duplicate ExternalOrderArised(${externalOrderName.string}, $arguments): $state")
+
+  private def onExternalOrderRejected(
+    externalOrderName: ExternalOrderName,
+    orderId: OrderId,
+    problem: Problem)
+  : Checked[OrderWatchState] =
+    Right(copy(
+      externalToState = externalToState.updated(externalOrderName,
+        Rejected(orderId, problem)),
+      orderAddedQueue = orderAddedQueue - externalOrderName))
 
   private def onExternalOrderVanished(externalOrderName: ExternalOrderName)
   : Checked[OrderWatchState] =
@@ -119,6 +132,10 @@ extends
         Right(copy(
           externalToState = externalToState.updated(externalOrderName,
             HasOrder(orderId, Some(Vanished)))))
+
+      case Some(Rejected(orderId, problem)) =>
+        Right(copy(
+          externalToState = externalToState - externalOrderName))
 
       case Some(state @ HasOrder(_, Some(Vanished))) =>
         unexpected:
@@ -166,22 +183,21 @@ extends
         unexpected(s"$path: unexpected $orderId <-: OrderDeleted for $x")
 
   def nextEvents(toOrderAdded: ToOrderAdded)
-  : View[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
+  : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected | OrderExternalVanished]] =
     nextOrderExternalVanishedEvents ++ nextOrderAddedEvents(toOrderAdded)
 
   private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
-  : View[KeyedEvent[OrderAddedEvent]] =
+  : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected]] =
     orderAddedQueue.view.flatMap: externalOrderName =>
       externalToState.get(externalOrderName)
         .toList.flatMap: arised =>
           val Arised(orderId, arguments) = arised: @unchecked
           val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
-          val externalOrderKey = ExternalOrderKey(id, externalOrderName)
+          val externalOrderKey = ExternalOrderKey(path, externalOrderName)
           toOrderAdded(freshOrder, Some(externalOrderKey)) match
             case Left(problem) =>
               // Happens when the Order's Plan is closed
-              logger.error(s"${orderWatch.path}: $externalOrderKey: $problem")
-              Nil
+              (path <-: ExternalOrderRejected(externalOrderName, orderId, problem)) :: Nil
 
             case Right(Left(existingOrder)) =>
               val vanished = existingOrder.externalOrder
@@ -274,6 +290,9 @@ with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
     queued: Option[VanishedOrArised] = None)
   extends ArisedOrHasOrder
 
+  final case class Rejected(orderId: OrderId, problem: Problem)
+  extends ArisedOrHasOrder
+
   case object Vanished
   extends VanishedOrArised
 
@@ -285,7 +304,8 @@ with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
   object ArisedOrHasOrder:
     private[orderwatch] implicit val jsonCodec: TypedJsonCodec[ArisedOrHasOrder] = TypedJsonCodec(
       Subtype(deriveCodec[Arised]),
-      Subtype(deriveCodec[HasOrder]))
+      Subtype(deriveCodec[HasOrder]),
+      Subtype(deriveCodec[Rejected]))
 
   object Snapshot:
     implicit val jsonCodec: TypedJsonCodec[Snapshot] = TypedJsonCodec(

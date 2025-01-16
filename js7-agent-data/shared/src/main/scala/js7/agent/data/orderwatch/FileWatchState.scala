@@ -13,21 +13,21 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
 import js7.data.event.{EventDriven, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import scala.collection.{View, mutable}
 
 final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
-extends 
+extends
   UnsignedSimpleItemState with EventDriven[FileWatchState, OrderWatchEvent]:
 
   protected type Self = FileWatchState
   val companion: FileWatchState.type = FileWatchState
 
   val item: FileWatch = fileWatch
-  def path: OrderWatchPath = item.path
+  def path: OrderWatchPath = fileWatch.path
 
   def updateItem(item: FileWatch): Checked[ItemState] =
     Right(copy(fileWatch = item))
@@ -44,6 +44,9 @@ extends
               directoryState.copy(
                 fileToEntry = directoryState.fileToEntry +
                   (filename -> DirectoryState.Entry(filename))))
+
+        case ExternalOrderRejected(externalOrderName, _, _) =>
+          this
 
         case ExternalOrderVanished(ExternalOrderName(filename_)) =>
           val filename = Paths.get(filename_)

@@ -28,6 +28,7 @@ import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken, OrderCoreEvent, OrderDeleted, OrderForked, OrderLocksReleased, OrderMoved, OrderOrderAdded, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
 import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
@@ -508,7 +509,7 @@ final case class ControllerStateExecutor private(
       .map:
         ItemAttachable(workflowControl.id, _)
 
-  def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
+  def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent | ExternalOrderRejected]] =
     controllerState.ow.nextEvents(addOrder(_, _))
 
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =

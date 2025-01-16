@@ -10,7 +10,7 @@ import js7.data.item.VersionId
 import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.OrderEvent.{OrderAdded, OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
 import js7.data.orderwatch.OrderWatchStateHandlerTest.TestState
 import js7.data.value.expression.ExpressionParser.expr
@@ -31,17 +31,20 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
   private def state(name: String): Option[ArisedOrHasOrder] =
     state.pathToOrderWatchState(aOrderWatch.path).externalToState.get(ExternalOrderName(name))
 
-  private def applyNextEvents(): Seq[KeyedEvent[OrderAddedEvent | OrderExternalVanished]] =
+  private def applyNextEvents()
+  : Seq[KeyedEvent[OrderAddedEvent | OrderExternalVanished | ExternalOrderRejected]] =
     val events = state.ow.nextEvents(toOrderAdded).toSeq
     events foreach:
-      case KeyedEvent(orderId, _: OrderAdded) =>
+      case KeyedEvent(orderId: OrderId, _: OrderAdded) =>
         update:
           state.ow.onOrderAdded(aExternalOrderKey(orderId.string.stripPrefix("file:A-SOURCE:")), orderId).orThrow
             .copy(isExternalNotVanished = state.isExternalNotVanished + orderId)
-      case KeyedEvent(orderId, OrderExternalVanished) =>
+      case KeyedEvent(orderId: OrderId, OrderExternalVanished) =>
         update:
           state.ow.onOrderExternalVanished(aExternalOrderKey(orderId.string.stripPrefix("file:A-SOURCE:"))).orThrow
             .copy(isExternalNotVanished = state.isExternalNotVanished - orderId)
+      case KeyedEvent(externalOrderName, ExternalOrderRejected) =>
+        throw new NotImplementedError
     events
 
   private def update(o: TestState) =
