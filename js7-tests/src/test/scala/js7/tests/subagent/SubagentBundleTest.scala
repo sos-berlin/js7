@@ -174,7 +174,8 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester:
     val checked = controller.api
       .updateItems(Stream(DeleteSimple(subagentBundle.id)))
       .await(99.s)
-    assert(checked == Left(ItemIsStillReferencedProblem(subagentBundle.id, workflow.id)))
+    assert(checked == Left(ItemIsStillReferencedProblem(subagentBundle.id, workflow.id,
+      moreInfo = ", attached to Agent:AGENT")))
 
     controller.api
       .updateItems(Stream(
@@ -188,7 +189,8 @@ final class SubagentBundleTest extends OurTestSuite, SubagentTester:
     val checked = controller.api
       .updateItems(Stream(DeleteSimple(aSubagentId)))
       .await(99.s)
-    assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentBundle.id)))
+    assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentBundle.id,
+      moreInfo = ", attached to Agent:AGENT")))
 
   "Delete SubagentBundle" in:
     val eventId = eventWatch.lastAddedEventId

@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import fs2.Stream
 import java.util.concurrent.TimeoutException
 import js7.agent.TestAgent
 import js7.base.problem.Problem
@@ -17,7 +18,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentDeleteTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import fs2.Stream
 
 final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
 
@@ -171,7 +171,8 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
         DeleteSimple(directoryProvider.subagentId)))
       .await(99.s)
     assert(checked == Left(
-      ItemIsStillReferencedProblem(directoryProvider.subagentId, agentPath)))
+      ItemIsStillReferencedProblem(directoryProvider.subagentId, agentPath,
+        moreInfo = ", attached to Agent:AGENT")))
 
 
 object SubagentDeleteTest:

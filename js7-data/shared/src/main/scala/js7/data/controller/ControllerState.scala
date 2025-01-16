@@ -562,16 +562,30 @@ extends
   private def itemIsStillReferencedProblem(
     itemPath: InventoryItemPath,
     referencingItemKey: InventoryItemKey)
-  =
+  : ItemIsStillReferencedProblem =
+    val elementsString = referencingItemKey match
+      case WorkflowId.as(workflowId) =>
+        val orderIds = workflowToOrders.workflowIdToOrders.get(workflowId).toVector.flatten
+        orderIds.length match
+          case 0 => ""
+          case 1 => s" with ${orderIds.head}"
+          case n => s" with $n Orders"
+      case orderWatchPath: OrderWatchPath =>
+        val externalNames = keyTo(OrderWatchState).get(orderWatchPath).toVector
+          .flatMap(_.externalToState.keys)
+        externalNames.length match
+          case 0 => ""
+          case 1 => s" with ${externalNames.head}"
+          case n => s" with $n ExternalOrderNames"
+      case _ => ""
+
+    val agentPathsString =
+      val agentPaths = agentAttachments.itemToDelegateToAttachedState.get(referencingItemKey)
+        .toVector.flatMap(_.keys)
+      agentPaths.nonEmpty ?? s", attached to ${agentPaths.mkString(", ")}"
+
     ItemIsStillReferencedProblem(itemPath, referencingItemKey,
-      moreInfo = referencingItemKey match
-        case WorkflowId.as(workflowId) =>
-          val refOrders = orders.view.filter(_.workflowId == workflowId).toVector
-          refOrders.length match
-            case 0 => ""
-            case 1 => s"with ${refOrders.head.id}"
-            case n => s"with $n Orders"
-        case _ => "")
+      moreInfo = elementsString + agentPathsString)
 
   private[controller] def detach(itemKey: InventoryItemKey): View[ItemDetachable] =
     itemToAgentToAttachedState
@@ -603,7 +617,8 @@ extends
       .view
       .mapValues(_.toVector)
       .toMap
-      .tap(o => logger.trace(s"${items.size} items => pathToReferencingItemKeys size=${o.size}"))
+      .tap(o => logger.trace:
+        s"pathToReferencingItemKeys: ${items.size} items => pathToReferencingItemKeys size=${o.size}")
 
   private[controller] def isObsoleteItem(itemId: VersionedItemId_) =
     !repo.isCurrentItem(itemId) && !isInUse(itemId)

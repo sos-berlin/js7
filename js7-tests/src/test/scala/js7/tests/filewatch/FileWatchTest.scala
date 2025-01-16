@@ -85,14 +85,12 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   override def beforeAll(): Unit =
     super.beforeAll()
-
-    locally:
-      // Create FileWatch and test with an already waiting Order
-      createDirectory(watchDirectory)
-      createDirectory(waitingWatchDirectory)
-      updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
-      eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
-      eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
+    // Create FileWatch and test with an already waiting Order
+    createDirectory(watchDirectory)
+    createDirectory(waitingWatchDirectory)
+    updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
+    eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
+    eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
 
   "referencedItemPaths" in:
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
@@ -242,7 +240,6 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       val singletonFile = waitingWatchDirectory / singletonName
       val singletonOrderId = waitingFileToOrderId(singletonName)
       singletonFile := ""
-
 
       eventWatch.await[OrderFinished](_.key == singletonOrderId)
       assert(exists(singletonFile))
@@ -412,7 +409,8 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       AddVersion(VersionId("TRY-DELETE")),
       RemoveVersioned(workflow.path)
     )).await(99.s) ==
-      Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path)))
+      Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path,
+        moreInfo = " with ExternalOrderName(BEFORE-DELETION), attached to Agent:AGENT-B")))
 
   "Delete a FileWatch" in:
     val eventId = eventWatch.lastAddedEventId

@@ -33,8 +33,8 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
-import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import scala.collection.immutable.Queue
 import scala.util.Random
 
@@ -1281,7 +1281,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s)
     // Lock cannot be deleted due to orders in the deleted (but still versioned) Workflow
     assert(removeWorkflowAndLock() == Left:
-      ItemIsStillReferencedProblem(lockPath, workflow.id, "with Order:DELETING"))
+      ItemIsStillReferencedProblem(lockPath, workflow.id, " with Order:DELETING"))
 
     controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)

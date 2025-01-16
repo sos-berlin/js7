@@ -442,21 +442,21 @@ final class GlobalBoardTest
         DeleteSimple(board2.path)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Set(
-      ItemIsStillReferencedProblem(board0.path, expecting0Workflow.id, "with 4 Orders"),
-      ItemIsStillReferencedProblem(board0.path, expecting01Workflow.id, "with 2 Orders"),
+      ItemIsStillReferencedProblem(board0.path, expecting0Workflow.id, " with 4 Orders"),
+      ItemIsStillReferencedProblem(board0.path, expecting01Workflow.id, " with 2 Orders"),
       ItemIsStillReferencedProblem(board0.path, expecting012Workflow.id),
-      ItemIsStillReferencedProblem(board0.path, expecting02Workflow.id, "with Order:#2222-01-01#EXPECTING-0-2"),
-      ItemIsStillReferencedProblem(board0.path, expectingAgentWorkflow.id, "with 3 Orders"),
-      ItemIsStillReferencedProblem(board0.path, posting0Workflow.id, "with 5 Orders"),
-      ItemIsStillReferencedProblem(board0.path, postingAgentWorkflow.id, "with Order:#2222-03-03#POSTING"),
+      ItemIsStillReferencedProblem(board0.path, expecting02Workflow.id, " with Order:#2222-01-01#EXPECTING-0-2"),
+      ItemIsStillReferencedProblem(board0.path, expectingAgentWorkflow.id, " with 3 Orders, attached to Agent:AGENT"),
+      ItemIsStillReferencedProblem(board0.path, posting0Workflow.id, " with 5 Orders"),
+      ItemIsStillReferencedProblem(board0.path, postingAgentWorkflow.id, " with Order:#2222-03-03#POSTING, attached to Agent:AGENT"),
 
-      ItemIsStillReferencedProblem(board1.path, expecting01Workflow.id, "with 2 Orders"),
+      ItemIsStillReferencedProblem(board1.path, expecting01Workflow.id, " with 2 Orders"),
       ItemIsStillReferencedProblem(board1.path, expecting012Workflow.id),
-      ItemIsStillReferencedProblem(board1.path, posting12Workflow.id, "with Order:#2222-01-01#POSTING-1-2"),
+      ItemIsStillReferencedProblem(board1.path, posting12Workflow.id, " with Order:#2222-01-01#POSTING-1-2"),
 
       ItemIsStillReferencedProblem(board2.path, expecting012Workflow.id),
-      ItemIsStillReferencedProblem(board2.path, expecting02Workflow.id, "with Order:#2222-01-01#EXPECTING-0-2"),
-      ItemIsStillReferencedProblem(board2.path, posting12Workflow.id, "with Order:#2222-01-01#POSTING-1-2")))))
+      ItemIsStillReferencedProblem(board2.path, expecting02Workflow.id, " with Order:#2222-01-01#EXPECTING-0-2"),
+      ItemIsStillReferencedProblem(board2.path, posting12Workflow.id, " with Order:#2222-01-01#POSTING-1-2")))))
 
     controller.api
       .deleteOrdersWhenTerminated(Stream.iterable(
