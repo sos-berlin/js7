@@ -1,21 +1,29 @@
 package js7.tests.plan
 
+import java.nio.file.Files.delete
 import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.touchFile
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
+import js7.base.utils.SimplePattern
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
-import js7.data.order.OrderEvent.OrderTerminated
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderRejected, ExternalOrderVanished}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
-import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{PostNotices, Prompt}
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tests.jobs.DeleteFileJob
 import js7.tests.plan.PlanOpenCloseTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.language.implicitConversions
@@ -65,15 +73,12 @@ final class PlanOpenCloseTest
         // No Plan
         assert(controllerState.toPlan.isEmpty)
 
-        // Still no Plan
-        assert(controllerState.toPlan.isEmpty)
-
         // Add Orders //
         for orderId <- Seq(aTodaysOrderId, bTodaysOrderId, tomorrowsOrderId) do
           controller.addOrderBlocking:
             FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
 
-        // Plans for today and tomorrow
+        // Now we have Plans for today and tomorrow
         assert(controllerState.toPlan.values.toVector.sorted == Vector(
           Plan(
             todaysPlanId,
@@ -171,7 +176,51 @@ final class PlanOpenCloseTest
           CancelOrders(todayOrderId :: Nil)
 
     "No Order can be added via FileWatch to a closed Plan" in:
-      missingTest
+      eventWatch.resetLastWatchedEventId()
+      directoryProvider.withTemporaryDirectory: dir =>
+        val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
+          DeleteFileJob.execute(agentPath))
+
+        withItems((workflow, dailyPlan)): (workflow, planSchema) =>
+          val fileWatch = FileWatch(OrderWatchPath("FILEWATCH"), workflow.path, agentPath,
+            directoryExpr = StringConstant(dir.toString),
+            pattern = Some(SimplePattern("(.+)")),
+            orderIdExpression = Some(expr(""" "#$1#" """)))
+          withItem(fileWatch, awaitDeletion = true): fileWatch =>
+            val yesterday = "2025-12-07"
+            val yesterdayExternalName = ExternalOrderName(yesterday)
+            val yesterdayOrderId = OrderId(s"#$yesterday#")
+            val yesterdayPlanId = dailyPlan.id / yesterday
+            val today = "2025-12-08"
+
+            // Close yesterday's Plan
+            execCmd:
+              ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+
+            // ExternalOrderRejected //
+            touchFile(dir / yesterday)
+            val orderRejected = eventWatch.awaitNextKey[ExternalOrderRejected](fileWatch.path)
+              .head.value
+            assert(orderRejected == fileWatch.path <-: ExternalOrderRejected(
+              yesterdayExternalName,
+              yesterdayOrderId,
+              PlanIsClosedProblem(yesterdayPlanId)))
+
+            assert(controllerState.keyTo(OrderWatchState)(fileWatch.path) == OrderWatchState(
+              fileWatch,
+              Map(yesterdayExternalName ->
+                OrderWatchState.Rejected(yesterdayOrderId, PlanIsClosedProblem(yesterdayPlanId)))))
+
+            delete(dir / yesterday)
+            eventWatch.awaitNextKey[ExternalOrderVanished](fileWatch.path,
+              _.event.externalOrderName == yesterdayExternalName)
+
+            assert(controllerState.keyTo(OrderWatchState)(fileWatch.path) == OrderWatchState(
+              fileWatch))
+
+            touchFile(dir / today)
+            eventWatch.awaitNextKey[OrderFinished](OrderId(yesterday))
+            eventWatch.awaitNextKey[OrderDeleted](OrderId(yesterday))
 
     "No other order can be added via AddOrder instruction to a closed dead Plan" in:
       // AddOrder instruction

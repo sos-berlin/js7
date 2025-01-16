@@ -5,8 +5,8 @@ import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2.Stream
-import java.nio.file.Files.{createDirectory, createTempDirectory}
-import java.nio.file.Path
+import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
+import java.nio.file.{Files, Path}
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.catsutils.CatsEffectExtensions.orIfNone
@@ -101,6 +101,8 @@ extends HasCloser:
     trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual
   ).closeWithCloser
+
+  private val tmpDirCounter = Atomic(0)
 
   createDirectory(directory / "subagents")
 
@@ -422,6 +424,13 @@ extends HasCloser:
 
   def subagentName(subagentId: SubagentId, suffix: String = ""): String =
     testName.fold("")(_ + "-") + subagentId.string + suffix
+
+  def withTemporaryDirectory[A](body: Path => A): A =
+    val nr = tmpDirCounter.incrementAndGet()
+    val dir = directory / s"tmp-$nr"
+    createDirectories(dir)
+    try body(dir)
+    finally deleteDirectoryRecursively(dir)
 
 
 object DirectoryProvider:
