@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val pekkoVersion = "1.1.2"
+  val pekkoVersion = "1.1.3"
   val pekkoHttpVersion = "1.1.0"
   val slf4jVersion = "2.0.16"  // See also plugins.sbt
   val log4jVersion = "2.24.2"  // See also plugins.sbt
