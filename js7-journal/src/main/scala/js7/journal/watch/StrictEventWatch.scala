@@ -128,7 +128,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
       stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
         .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
     else
-      underlying.await[E](predicate, after, timeout)
+      underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout)
 
   @TestOnly
   def awaitAsync[E <: Event: ClassTag](
