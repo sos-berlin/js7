@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
   * <p>
   * Collects KeyedEvents while applying them to an EventDrivenState `S`.
   */
-final case class EventColl[S  <: EventDrivenState[S, E], E <: Event] private(
+final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
   originalAggregate: S,
   keyedEvents: Vector[KeyedEvent[E]],
   aggregate: S):

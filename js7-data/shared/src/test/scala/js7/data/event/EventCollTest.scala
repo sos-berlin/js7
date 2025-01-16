@@ -81,7 +81,7 @@ final class EventCollTest extends OurTestSuite:
       .orThrow
     assert(coll.aggregate.idToOrder.values.toSeq == Seq:
       Order(orderId, workflow.id /: Position(0), Order.Finished))
-  
+
   "append" in:
     val aColl =
       val coll = EventColl[TestState, TestEvent](TestState("START:"))
