@@ -22,11 +22,16 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
     externalOrderName: ExternalOrderName,
     orderId: OrderId,
     arguments: NamedValues = Map.empty)
-  extends OrderWatchEvent
+  extends OrderWatchEvent:
+    override def toString =
+      s"ExternalOrderArised(${externalOrderName.string}, $orderId, $arguments)"
 
   /** External Order vanished, Controller should remove the added order. */
   final case class ExternalOrderVanished(externalOrderName: ExternalOrderName)
-  extends OrderWatchEvent
+  extends OrderWatchEvent:
+    override def toString =
+      s"ExternalOrderVanished(${externalOrderName.string})"
+
 
   implicit val jsonCodec: TypedJsonCodec[OrderWatchEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ExternalOrderArised]),

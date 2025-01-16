@@ -100,7 +100,8 @@ extends
   : Checked[OrderWatchState] =
     externalToState.get(externalOrderName) match
       case None =>
-        unexpected(s"${orderWatch.path}: Ignored ExternalOrderVanished($externalOrderName) event for unknown name")
+        unexpected:
+          s"$path: Ignored ExternalOrderVanished(${externalOrderName.string}) event for unknown name"
 
       case Some(Arised(_, _)) =>
         // Vanished before Order has been added
@@ -122,7 +123,8 @@ extends
             HasOrder(orderId, Some(Vanished)))))
 
       case Some(state @ HasOrder(_, Some(Vanished))) =>
-        unexpected(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state")
+        unexpected:
+          s"Duplicate ExternalOrderVanished(${externalOrderName.string}), state=$state"
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId)
   : Checked[OrderWatchState] =
