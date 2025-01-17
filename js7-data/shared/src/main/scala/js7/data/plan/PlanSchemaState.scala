@@ -154,10 +154,10 @@ extends UnsignedSimpleItemState:
   def containsNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
     toPlan.get(planKey).exists(_.containsNoticeKey(boardPath, noticeKey))
 
-  def deleteBoard(boardPath: BoardPath): PlanSchemaState =
+  def removeBoard(boardPath: BoardPath): PlanSchemaState =
     copy(toPlan =
       toPlan.values.flatMap: plan =>
-        plan.deleteBoard(boardPath)
+        plan.removeBoard(boardPath)
       .map(o => o.id.planKey -> o)
       .toMap)
 

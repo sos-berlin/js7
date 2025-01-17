@@ -298,7 +298,7 @@ extends
                   Right(updated.copy(
                     keyToUnsignedItemState_ =
                       (updated.keyToUnsignedItemState_ - boardPath) ++
-                        deleteBoardInPlanSchemaStates(boardPath).toKeyedMap(_.id)))
+                        removeBoardInPlanSchemaStates(boardPath).toKeyedMap(_.id)))
 
                 case key @ (_: AgentPath | _: SubagentId | _: SubagentBundleId |
                             _: LockPath |

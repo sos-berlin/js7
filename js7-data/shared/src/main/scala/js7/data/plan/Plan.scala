@@ -58,11 +58,11 @@ final case class Plan(
   def containsNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
     toPlannedBoard.get(boardPath).exists(_.noticeKeys(noticeKey))
 
-  def deleteBoard(boardPath: BoardPath): Option[Plan] =
+  def removeBoard(boardPath: BoardPath): Option[Plan] =
     val plan = copy(toPlannedBoard = toPlannedBoard - boardPath)
     !plan.isEmpty ? plan
 
-  def deleteDeadNoticeIds: View[KeyedEvent[NoticeDeleted]] =
+  def removeDeadNoticeIds: View[KeyedEvent[NoticeDeleted]] =
     if !isDead then
       View.empty
     else

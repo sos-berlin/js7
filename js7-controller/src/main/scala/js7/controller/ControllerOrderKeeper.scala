@@ -991,7 +991,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             coll.aggregate.keyTo(PlanSchemaState).checked(planSchemaId)
           eventColl <- coll.add:
             planSchemaState.planIds.toVector.flatMap: planKey =>
-              coll.aggregate.deleteNoticesOfDeadPlan(planSchemaId / planKey)
+              coll.aggregate.removeNoticesOfDeadPlan(planSchemaId / planKey)
         yield
           eventColl.keyedEvents
       match

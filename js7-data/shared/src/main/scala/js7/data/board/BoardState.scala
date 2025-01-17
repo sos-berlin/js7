@@ -81,7 +81,7 @@ extends UnsignedSimpleItemState:
   def addNotice(notice: Notice): Checked[BoardState] =
     Right:
       updateNoticePlace:
-        idToNotice.get(notice.id).getOrElse(NoticePlace(notice.id))
+        idToNotice.getOrElse(notice.id, NoticePlace(notice.id))
           .post(notice)
 
   def addExpectation(noticeId: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
