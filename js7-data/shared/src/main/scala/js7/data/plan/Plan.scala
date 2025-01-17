@@ -4,7 +4,7 @@ import fs2.{Pure, Stream}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardPath, NoticeKey, NoticePlace, PlannedBoard}
+import js7.data.board.{BoardPath, NoticeKey, PlannedBoard, PlannedNoticeKey}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderId
 import scala.collection.View
@@ -34,19 +34,29 @@ final case class Plan(
     else
       copy(orderIds = this.orderIds -- orderIds)
 
-  def updateNoticePlace(boardPath: BoardPath, noticePlace: NoticePlace): Plan =
-    copy(toPlannedBoard =
-      toPlannedBoard.updatedWith(boardPath): maybePlannedBoard =>
-        val plannedBoard = maybePlannedBoard.getOrElse:
-          PlannedBoard(noticePlace.planId / boardPath)
-        Some(plannedBoard.updateNoticePlace(noticePlace)))
+  def addNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Plan =
+    if containsNoticeKey(boardPath, noticeKey) then
+      this
+    else
+      copy(toPlannedBoard =
+        toPlannedBoard.updatedWith(boardPath): maybePlannedBoard =>
+          val plannedBoard = maybePlannedBoard.getOrElse:
+            PlannedBoard(id / boardPath)
+          Some(plannedBoard.addNoticeKey(noticeKey)))
 
-  def deleteNoticePlace(boardPath: BoardPath, noticeKey: NoticeKey): Option[Plan] =
-    val plan = copy(toPlannedBoard =
-      toPlannedBoard.updatedWith(boardPath):
-        _.flatMap: plannedBoard =>
-          plannedBoard.deleteNoticePlace(noticeKey))
+  def removeNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Option[Plan] =
+    val plan =
+      if !containsNoticeKey(boardPath, noticeKey) then
+        this
+      else
+        copy(toPlannedBoard =
+          toPlannedBoard.updatedWith(boardPath):
+            _.flatMap: plannedBoard =>
+              plannedBoard.deleteNoticeKey(noticeKey))
     !plan.isEmpty ? plan
+
+  def containsNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
+    toPlannedBoard.get(boardPath).exists(_.noticeKeys(noticeKey))
 
   def deleteBoard(boardPath: BoardPath): Option[Plan] =
     val plan = copy(toPlannedBoard = toPlannedBoard - boardPath)
@@ -57,8 +67,8 @@ final case class Plan(
       View.empty
     else
       toPlannedBoard.values.view.flatMap: plannedBoard =>
-        plannedBoard.keyToNoticePlace.values.view.map: noticePlace =>
-          plannedBoard.boardPath <-: NoticeDeleted(noticePlace.noticeId)
+        plannedBoard.noticeKeys.view.map: noticeKey =>
+          plannedBoard.boardPath <-: NoticeDeleted(PlannedNoticeKey(id, noticeKey))
 
   def isDead: Boolean =
     isClosed && orderIds.isEmpty

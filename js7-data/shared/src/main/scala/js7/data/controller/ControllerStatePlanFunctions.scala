@@ -14,7 +14,7 @@ import scala.collection.{MapView, View}
 /** Contains some of the ControllerState's Plan functions.
   */
 transparent trait ControllerStatePlanFunctions
-// Repeat EventDrivenStateView only to make abstract function implementation visibile:
+// Extend EventDrivenStateView to make abstract function implementation visible:
 extends EventDrivenStateView[ControllerState]:
   this: ControllerState =>
 
@@ -24,15 +24,14 @@ extends EventDrivenStateView[ControllerState]:
   : Checked[PlanSchemaState] =
     val PlanId(planSchemaId, planKey) = planId
     keyTo(PlanSchemaState).checked(planSchemaId).flatMap: templatePlanState =>
-      boardStateAndNoticeIds.view.scanLeft(Checked(templatePlanState)):
+      boardStateAndNoticeIds.scanLeft(Checked(templatePlanState)):
         case (left @ Left(_), _) => left
         case (Right(templatePlanState), (boardState, noticeId)) =>
-          boardState.idToNotice.get(noticeId) match
-            case None =>
-              Right:
-                templatePlanState.deleteNoticePlace(planKey, boardState.path, noticeId.noticeKey)
-            case Some(noticePlace) =>
-              templatePlanState.updateNoticePlace(planKey, boardState.path, noticePlace)
+          if boardState.containsNoticeKey(noticeId) then
+            templatePlanState.addNoticeKey(planKey, boardState.path, noticeId.noticeKey)
+          else
+            Right:
+              templatePlanState.removeNoticeKey(planKey, boardState.path, noticeId.noticeKey)
       .last
 
   final def deleteBoardInPlanSchemaStates(boardPath: BoardPath): View[PlanSchemaState] =

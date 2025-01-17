@@ -223,10 +223,8 @@ final class PlanTest
             planId,
             Set(postingOrderId),
             Seq(
-              PlannedBoard(planId / aBoard.path, Map(
-                NoticeKey.empty -> NoticePlace(noticeId, isAnnounced = true))),
-              PlannedBoard(planId / bBoard.path, Map(
-                NoticeKey.empty -> NoticePlace(noticeId, isAnnounced = true)))),
+              PlannedBoard(planId / aBoard.path, Set(NoticeKey.empty)),
+              PlannedBoard(planId / bBoard.path, Set(NoticeKey.empty))),
             isClosed = false))
 
         val consumingOrderId = OrderId(s"#$day#CONSUME")
@@ -239,10 +237,8 @@ final class PlanTest
             planId,
             Set(postingOrderId, consumingOrderId),
             Seq(
-              PlannedBoard(planId / aBoard.path, Seq(
-                NoticePlace(noticeId, expectingOrderIds = Set(consumingOrderId), isAnnounced = true))),
-              PlannedBoard(planId / bBoard.path, Seq(
-                NoticePlace(noticeId,  isAnnounced = true)))),
+              PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
+              PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
             isClosed = false))
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
@@ -266,10 +262,8 @@ final class PlanTest
             planId,
             orderIds = Set.empty,
             Seq(
-              PlannedBoard(planId / aBoard.path, Seq(
-                NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None))))),
-              PlannedBoard(planId / bBoard.path, Seq(
-                NoticePlace(noticeId, isAnnounced = true)))),
+              PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
+              PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
             isClosed = false))
 
         assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice == Map(
@@ -280,11 +274,10 @@ final class PlanTest
 
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).toSet ==
           Set(
-            Plan(planId, plannedBoards = Seq(
-              PlannedBoard(planId / aBoard.path, Seq(
-                NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None))))),
-              PlannedBoard(planId / bBoard.path, Seq(
-                NoticePlace(noticeId, isAnnounced = true)))),
+            Plan(planId,
+              plannedBoards = Seq(
+                PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
+                PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
               isClosed = false)))
 
         deleteItems(planSchema.path)

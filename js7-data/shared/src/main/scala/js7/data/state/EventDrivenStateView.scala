@@ -239,8 +239,7 @@ extends EventDrivenState[Self, Event], StateView:
           .flatMap: boardStatesAndNoticeIds =>
             updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
               .map: templatePlanState =>
-                val boardStates = boardStatesAndNoticeIds.map(_._1)
-                templatePlanState +: boardStates
+                templatePlanState +: boardStatesAndNoticeIds.map(_._1)
 
         case OrderNoticesRead =>
           previousOrder.ifState[ExpectingNotices] match
@@ -254,22 +253,20 @@ extends EventDrivenState[Self, Event], StateView:
               .concat(consumptions).distinct
           strictly(expectedOrConsumptionSeq.areUniqueBy(_.boardPath))
           expectedOrConsumptionSeq.traverse: expected =>
-            locally:
-              for
-                boardState <- keyTo(BoardState).checked(expected.boardPath)
-                noticeId = expected.noticeId
-                boardState <-
-                  if isConsumption(expected) then
-                    boardState.startConsumption(noticeId, orderId)
-                  else
-                    boardState.removeExpectation(noticeId, orderId)
-              yield
-                boardState -> noticeId
+            for
+              boardState <- keyTo(BoardState).checked(expected.boardPath)
+              noticeId = expected.noticeId
+              boardState <-
+                if isConsumption(expected) then
+                  boardState.startConsumption(noticeId, orderId)
+                else
+                  boardState.removeExpectation(noticeId, orderId)
+            yield
+              boardState -> noticeId
           .flatMap: boardStatesAndNoticeIds =>
             updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
               .map: templatePlanState =>
-                val boardStates = boardStatesAndNoticeIds.map(_._1)
-                templatePlanState +: boardStates
+                templatePlanState +: boardStatesAndNoticeIds.map(_._1)
 
         case OrderNoticesConsumed(failed) =>
           for

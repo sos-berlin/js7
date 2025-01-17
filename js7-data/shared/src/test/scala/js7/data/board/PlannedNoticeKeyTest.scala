@@ -25,8 +25,8 @@ final class PlannedNoticeKeyTest extends OurTestSuite:
     "PlannedNoticeKey with all fields" in:
       testJson[PlannedNoticeKey](
         PlannedNoticeKey(
-          NoticeKey("NOTICE"),
-          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08"))),
+          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")), 
+          NoticeKey("NOTICE")),
         json"""
           [ "DALIY-PLAN", "2024-11-08", "NOTICE" ]
         """)

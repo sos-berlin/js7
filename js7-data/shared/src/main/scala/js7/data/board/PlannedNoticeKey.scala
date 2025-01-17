@@ -29,7 +29,7 @@ object PlannedNoticeKey:
     global(string).orThrow
 
   @TestOnly @throws[ProblemException]
-  def apply(noticeKey: NoticeKey, planId: PlanId): PlannedNoticeKey =
+  def apply(planId: PlanId, noticeKey: NoticeKey): PlannedNoticeKey =
     checked(planId, noticeKey).orThrow
 
   def global(string: String): Checked[PlannedNoticeKey] =

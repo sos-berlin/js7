@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PlanIsClosedProblem
-import js7.data.board.{BoardPath, BoardState, NoticeKey, NoticePlace, PlannedBoard, PlannedBoardId}
+import js7.data.board.{BoardPath, BoardState, NoticeKey, PlannedBoard, PlannedBoardId}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
 import js7.data.plan.PlanSchemaState.*
@@ -120,12 +120,15 @@ extends UnsignedSimpleItemState:
       -- emptyPlans.map(_.id.planKey)
       ++ nonEmptyPlans.map(o => o.id.planKey -> o))
 
-  def updateNoticePlace(planKey: PlanKey, boardPath: BoardPath, noticePlace: NoticePlace)
+  def addNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
   : Checked[PlanSchemaState] =
-    getOrMakePlan(planKey).map:
-      _.updateNoticePlace(boardPath, noticePlace)
-    .map: plan =>
-      copy(toPlan = toPlan.updated(plan.id.planKey, plan))
+    if containsNoticeKey(planKey, boardPath, noticeKey) then
+      Right(this)
+    else
+      getOrMakePlan(planKey).map:
+        _.addNoticeKey(boardPath, noticeKey)
+      .map: plan =>
+        copy(toPlan = toPlan.updated(plan.id.planKey, plan))
 
   private def getOrMakePlan(planKey: PlanKey): Checked[Plan] =
     toPlan.get(planKey).fold(makePlan(planKey))(Right(_))
@@ -138,12 +141,18 @@ extends UnsignedSimpleItemState:
     calculatePlanIsClosed(planKey).map: isClosed =>
       Plan(id / planKey, orderIds, plannedBoards, isClosed = isClosed)
 
-  def deleteNoticePlace(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
+  def removeNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
   : PlanSchemaState =
-    copy(toPlan =
-      toPlan.updatedWith(planKey):
-        _.flatMap:
-          _.deleteNoticePlace(boardPath, noticeKey))
+    if !containsNoticeKey(planKey, boardPath, noticeKey) then
+      this
+    else
+      copy(toPlan =
+        toPlan.updatedWith(planKey):
+          _.flatMap:
+            _.removeNoticeKey(boardPath, noticeKey))
+
+  def containsNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
+    toPlan.get(planKey).exists(_.containsNoticeKey(boardPath, noticeKey))
 
   def deleteBoard(boardPath: BoardPath): PlanSchemaState =
     copy(toPlan =
@@ -193,7 +202,7 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
           .groupBy: noticePlace =>
             PlannedBoardId(noticePlace.planId, boardState.path)
           .map: (plannedBoardId, noticePlaces) =>
-            PlannedBoard(plannedBoardId, noticePlaces)
+            PlannedBoard(plannedBoardId, noticePlaces.view.map(_.noticeKey))
       .groupBy(_.planId)
 
     (planToOrders.keySet ++ planToPlannedBoards.keys)

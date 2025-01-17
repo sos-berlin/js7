@@ -133,6 +133,9 @@ extends UnsignedSimpleItemState:
   def containsNotice(noticeId: PlannedNoticeKey): Boolean =
     idToNotice.get(noticeId).exists(_.notice.isDefined)
 
+  def containsNoticeKey(plannedNoticeKey: PlannedNoticeKey): Boolean =
+    idToNotice.contains(plannedNoticeKey)
+
   def expectingOrders(noticeId: PlannedNoticeKey): Set[OrderId] =
     idToNotice.get(noticeId).fold_(Set.empty, _.expectingOrderIds)
 

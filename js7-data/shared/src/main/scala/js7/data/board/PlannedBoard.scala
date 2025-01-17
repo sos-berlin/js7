@@ -1,6 +1,5 @@
 package js7.data.board
 
-import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.plan.PlanId
 
@@ -8,14 +7,21 @@ import js7.data.plan.PlanId
   */
 final case class PlannedBoard(
   id: PlannedBoardId,
-  keyToNoticePlace: Map[NoticeKey, NoticePlace]):
+  noticeKeys: Set[NoticeKey]):
 
-  def updateNoticePlace(noticePlace: NoticePlace): PlannedBoard =
-    copy(keyToNoticePlace = keyToNoticePlace.updated(noticePlace.noticeId.noticeKey, noticePlace))
+  def addNoticeKey(noticeKey: NoticeKey): PlannedBoard =
+    if noticeKeys(noticeKey) then
+      this
+    else
+      copy(noticeKeys = noticeKeys + noticeKey)
 
-  def deleteNoticePlace(noticeKey: NoticeKey): Option[PlannedBoard] =
-    val x = keyToNoticePlace - noticeKey
-    x.nonEmpty ? copy(keyToNoticePlace = x)
+  def deleteNoticeKey(noticeKey: NoticeKey): Option[PlannedBoard] =
+    val plannedBoard =
+      if !noticeKeys(noticeKey) then
+        this
+      else
+        copy(noticeKeys = noticeKeys - noticeKey)
+    !plannedBoard.isEmpty ? plannedBoard
 
   def planId: PlanId =
     id.planId
@@ -24,15 +30,20 @@ final case class PlannedBoard(
     id.boardPath
 
   def isEmpty: Boolean =
-    keyToNoticePlace.isEmpty
+    noticeKeys.isEmpty
 
   override def toString =
-    s"PlannedBoard($id ${keyToNoticePlace.values.mkString(", ")})"
+    s"PlannedBoard($id ${noticeKeys.toArray.sorted.mkString(", ")})"
 
 
 object PlannedBoard:
 
-  def apply(id: PlannedBoardId, noticePlaces: Iterable[NoticePlace] = Nil): PlannedBoard =
-    new PlannedBoard(id, noticePlaces.toKeyedMap(_.noticeId.noticeKey))
+  private val emptyNoticeKeySet = Set(NoticeKey.empty)
+
+  def apply(id: PlannedBoardId, noticeKeys: Iterable[NoticeKey] = Nil): PlannedBoard =
+    var noticeKeysSet = noticeKeys.toSet
+    if noticeKeysSet == emptyNoticeKeySet then
+      noticeKeysSet = emptyNoticeKeySet // reuse memory
+    new PlannedBoard(id, noticeKeysSet)
 
   given Ordering[PlannedBoard] = Ordering.by(_.id)

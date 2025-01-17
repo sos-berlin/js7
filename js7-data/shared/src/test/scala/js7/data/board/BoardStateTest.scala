@@ -61,7 +61,6 @@ final class BoardStateTest extends OurAsyncTestSuite:
               "endOfLife": 123000
             }"""))
 
-
     "for GlobalBoard" - {
       lazy val boardState = BoardState(
         GlobalBoard(
@@ -156,16 +155,16 @@ final class BoardStateTest extends OurAsyncTestSuite:
           planId.noticeId -> NoticePlace(
             planId.noticeId,
             isInConsumption = true),
-          PlannedNoticeKey(NoticeKey("NOTICE-2"), planId) -> NoticePlace(
-            PlannedNoticeKey(NoticeKey("NOTICE-2"), planId),
-            Some(Notice(PlannedNoticeKey(NoticeKey("NOTICE-2"), planId), boardPath,
+          PlannedNoticeKey(planId, NoticeKey("NOTICE-2")) -> NoticePlace(
+            PlannedNoticeKey(planId, NoticeKey("NOTICE-2")),
+            Some(Notice(PlannedNoticeKey(planId, NoticeKey("NOTICE-2")), boardPath,
               endOfLife = Timestamp.ofEpochSecond(123).some)),
             expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
           OrderId("A-ORDER") -> Nel.of(
             planId.noticeId,
-            PlannedNoticeKey(NoticeKey("NOTICE-2"), planId),
+            PlannedNoticeKey(planId, NoticeKey("NOTICE-2")),
             planId.noticeId)))
 
       "toSnapshotStream JSON" in:
