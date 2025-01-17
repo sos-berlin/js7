@@ -5,7 +5,7 @@ import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resourc
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import cats.syntax.traverse.*
-import cats.{Applicative, FlatMap, Functor, Traverse}
+import cats.{Applicative, FlatMap, Traverse}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -124,12 +124,12 @@ object CatsUtils:
         resource.map(_ => b)
 
       def toAllocated[G[x] >: F[x], B >: A](
-        using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G], Tag[B])
+        using MonadCancel[F, Throwable], UnsafeMemoizable[G], Tag[B])
       : G[Allocated[G, B]] =
         resource.allocated[B].map(Allocated.fromPair(_))
 
       def toLabeledAllocated[G[x] >: F[x], B >: A](label: String)
-        (using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G])
+        (using MonadCancel[F, Throwable], UnsafeMemoizable[G])
       : G[Allocated[G, B]] =
         resource.allocated[B]
           .map: (b, release) =>

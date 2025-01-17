@@ -2,7 +2,6 @@ package js7.base.catsutils
 
 import cats.effect.{IO, Sync, SyncIO}
 import cats.syntax.all.*
-import cats.{FlatMap, effect}
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.{memoize, given}
 import js7.base.test.OurAsyncTestSuite
@@ -42,7 +41,7 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
     yield
       succeed
 
-  private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] =
+  private def check[F[_]: Sync](f: F[Int] => F[Int], expected: Int): F[Assertion] =
     val called = Atomic(0)
     // TODO How to test parallel execution?
     val x: F[Int] = f(Sync[F].delay(called.incrementAndGet()))
