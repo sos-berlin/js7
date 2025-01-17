@@ -15,7 +15,7 @@ import js7.data.plan.PlanId
   * @param isAnnounced only for PlannedBoard
   */
 final case class NoticePlace(
-  noticeId: NoticeId,
+  noticeId: PlannedNoticeKey,
   notice: Option[Notice] = None,
   expectingOrderIds: Set[OrderId] = Set.empty,
   isAnnounced: Boolean = false,
@@ -104,7 +104,7 @@ object NoticePlace:
 
   private[board] final case class Snapshot(
     boardPath: BoardPath,
-    noticeId: NoticeId,
+    noticeId: PlannedNoticeKey,
     isAnnounced: Boolean = false,
     isInConsumption: Boolean = false,
     consumptionCount: Int = 0)

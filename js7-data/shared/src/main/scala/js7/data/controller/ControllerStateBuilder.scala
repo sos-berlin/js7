@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeId, NoticeSnapshot}
+import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeSnapshot, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -382,7 +382,7 @@ extends SnapshotableStateBuilder[ControllerState],
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState] =
     // Not required for ControllerStateBuilder, so we do nothing here (?)
     // PlanSchemaStates are updated with ControllerState#finish

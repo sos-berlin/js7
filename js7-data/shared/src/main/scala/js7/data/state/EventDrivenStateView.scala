@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.board.{BoardItem, BoardState, NoticeId}
+import js7.data.board.{BoardItem, BoardState, PlannedNoticeKey}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
@@ -336,14 +336,14 @@ extends EventDrivenState[Self, Event], StateView:
   protected final def updateNoticePlaceInPlan(
     planId: PlanId,
     boardState: BoardState,
-    noticeId: NoticeId)
+    noticeId: PlannedNoticeKey)
   : Checked[PlanSchemaState] =
     strictly(planId == noticeId.planId)
     updateNoticePlacesInPlan(planId, boardState -> noticeId :: Nil)
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState]
 
 

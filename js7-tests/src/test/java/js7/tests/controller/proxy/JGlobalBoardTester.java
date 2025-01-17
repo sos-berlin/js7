@@ -8,7 +8,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import js7.base.crypt.SignedString;
-import js7.data.board.NoticeId;
+import js7.data.board.PlannedNoticeKey;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
 import js7.data.item.InventoryItemPath;
@@ -91,7 +91,7 @@ public class JGlobalBoardTester
     }
 
     private void testPostedNotice() throws ExecutionException, InterruptedException, TimeoutException {
-        NoticeId postedNoticeId = NoticeId.of("2021-01-01");
+        PlannedNoticeKey postedPlannedNoticeKey = PlannedNoticeKey.of("2021-01-01");
         OrderId posterOrderId = OrderId.of("#2021-01-01#POSTER");
         CompletableFuture<JEventAndControllerState<Event>> whenPosted =
             awaitEvent(keyedEvent ->
@@ -104,15 +104,15 @@ public class JGlobalBoardTester
         JNoticePlace noticePlace = proxy
             .currentState()
             .pathToBoardState().get(board.path())
-            .idToNotice(postedNoticeId)
+            .idToNotice(postedPlannedNoticeKey)
             .get();
         assert noticePlace.notice().isPresent();
-        assertThat(noticePlace.noticeId(), equalTo(postedNoticeId));
+        assertThat(noticePlace.noticeId(), equalTo(postedPlannedNoticeKey));
         assertThat(noticePlace.notice().get().endOfLife().get(), Matchers.greaterThan(Instant.now()));
     }
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {
-        NoticeId expectedNoticeId = NoticeId.of("2021-07-20");
+        PlannedNoticeKey expectedPlannedNoticeKey = PlannedNoticeKey.of("2021-07-20");
         OrderId expectingOrderId = OrderId.of("#2021-07-20#READER");
 
         CompletableFuture<JEventAndControllerState<Event>> whenWaiting =
@@ -127,9 +127,9 @@ public class JGlobalBoardTester
             proxy
                 .currentState()
                 .pathToBoardState().get(board.path())
-            .idToNotice(expectedNoticeId)
+            .idToNotice(expectedPlannedNoticeKey)
             .get();
-        assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
+        assertThat(noticePlace.noticeId(), equalTo(expectedPlannedNoticeKey));
         assertThat(noticePlace.expectingOrderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
     }

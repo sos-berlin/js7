@@ -3,8 +3,8 @@ package js7.data.controller
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.StandardMapView
-import js7.data.board.{BoardPath, BoardState, NoticeId}
 import js7.data.board.NoticeEvent.NoticeDeleted
+import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
 import js7.data.event.KeyedEvent
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
@@ -20,7 +20,7 @@ extends EventDrivenStateView[ControllerState]:
 
   protected final def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState] =
     val PlanId(planSchemaId, planKey) = planId
     keyTo(PlanSchemaState).checked(planSchemaId).flatMap: templatePlanState =>

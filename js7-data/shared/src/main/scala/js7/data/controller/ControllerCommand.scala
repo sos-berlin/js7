@@ -16,7 +16,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId}
+import js7.data.board.{BoardPath, PlannedNoticeKey}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -87,13 +87,13 @@ object ControllerCommand extends CommonCommand.Companion:
 
   final case class PostNotice(
     boardPath: BoardPath,
-    noticeId: NoticeId,
+    noticeId: PlannedNoticeKey,
     endOfLife: Option[Timestamp] = None)
   extends ControllerCommand:
     type Response = Response.Accepted
     override def toShortString = s"PostNotice($boardPath, $noticeId})"
 
-  final case class DeleteNotice(boardPath: BoardPath, noticeId: NoticeId)
+  final case class DeleteNotice(boardPath: BoardPath, noticeId: PlannedNoticeKey)
   extends ControllerCommand:
     type Response = Response.Accepted
     override def toShortString = s"DeleteNotice($boardPath, $noticeId)"

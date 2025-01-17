@@ -13,7 +13,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticePlace, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerStateTest.*
@@ -469,9 +469,9 @@ object ControllerStateTest:
     endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
 
-  private val notice = Notice(NoticeId("NOTICE-1"), board.path,
+  private val notice = Notice(PlannedNoticeKey("NOTICE-1"), board.path,
     endOfLife = Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000).some)
-  private val expectedNoticeId = NoticeId("NOTICE-2")
+  private val expectedNoticeId = PlannedNoticeKey("NOTICE-2")
 
   private val boardState = BoardState(
     board,

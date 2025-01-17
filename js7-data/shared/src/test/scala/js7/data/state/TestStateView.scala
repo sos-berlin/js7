@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, BoardState, NoticeId}
+import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
 import js7.data.calendar.CalendarPath
 import js7.data.controller.{ControllerId, ControllerStateView}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
@@ -123,7 +123,7 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState] =
     // DO NOTHING
     keyTo(PlanSchemaState).checked(planId.planSchemaId)
@@ -165,7 +165,7 @@ extends TestStateView[AgentTestStateView]:
 
   protected final def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState] =
     Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 

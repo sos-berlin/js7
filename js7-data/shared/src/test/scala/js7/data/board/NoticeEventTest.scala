@@ -13,7 +13,7 @@ final class NoticeEventTest extends OurTestSuite:
   "NoticePosted" in:
     testJson[NoticeEvent](
       NoticePosted(
-        NoticePosted.PostedNotice(NoticeId("NOTICE"), ts"1970-01-01T01:00:00Z".some)),
+        NoticePosted.PostedNotice(PlannedNoticeKey("NOTICE"), ts"1970-01-01T01:00:00Z".some)),
       json"""{
          "TYPE": "NoticePosted",
          "notice": {
@@ -24,7 +24,7 @@ final class NoticeEventTest extends OurTestSuite:
 
   "NoticeDeleted" in:
     testJson[NoticeEvent](
-      NoticeDeleted(NoticeId("NOTICE")),
+      NoticeDeleted(PlannedNoticeKey("NOTICE")),
       json"""{
          "TYPE": "NoticeDeleted",
          "noticeId": "NOTICE"

@@ -10,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
+import js7.data.board.{BoardPath, Notice, NoticeV2_3, PlannedNoticeKey}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
@@ -868,7 +868,7 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderNoticeAnnounced" in :
-    testJson[OrderEvent](OrderNoticeAnnounced(BoardPath("BOARD"), NoticeId("NOTICE")),
+    testJson[OrderEvent](OrderNoticeAnnounced(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")),
       json"""{
         "TYPE": "OrderNoticeAnnounced",
         "boardPath": "BOARD",
@@ -877,7 +877,7 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticePosted until v2.3" in:
     testJson[OrderEvent](OrderNoticePostedV2_3(NoticeV2_3(
-      NoticeId("NOTICE"),
+      PlannedNoticeKey("NOTICE"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
       json"""
       {
@@ -890,7 +890,7 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticePosted" in:
     testJson[OrderEvent](OrderNoticePosted(Notice(
-      NoticeId("NOTICE"),
+      PlannedNoticeKey("NOTICE"),
       BoardPath("BOARD"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z").some)),
       json"""
@@ -904,7 +904,7 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderNoticeExpected" in:
-    testJson[OrderEvent](OrderNoticeExpected(NoticeId("NOTICE")),
+    testJson[OrderEvent](OrderNoticeExpected(PlannedNoticeKey("NOTICE")),
       json"""
       {
         "TYPE": "OrderNoticeExpected",
@@ -913,7 +913,7 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesExpected" in:
     testJson[OrderEvent](OrderNoticesExpected(Vector(
-      OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE")))),
+      OrderNoticesExpected.Expected(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")))),
       json"""
       {
         "TYPE": "OrderNoticesExpected",
@@ -941,7 +941,7 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesConsumptionStarted" in:
     testJson[OrderEvent](OrderNoticesConsumptionStarted(Vector(
-      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), NoticeId("NOTICE")))),
+      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")))),
       json"""
       {
         "TYPE": "OrderNoticesConsumptionStarted",

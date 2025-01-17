@@ -14,7 +14,7 @@ final class NoticePlaceTest extends OurTestSuite:
     testJson(
       NoticePlace.Snapshot(
         BoardPath("BOARD"),
-        NoticeId("NOTICE"),
+        PlannedNoticeKey("NOTICE"),
         isAnnounced = true,
         isInConsumption = true,
         consumptionCount = 3),
@@ -28,7 +28,7 @@ final class NoticePlaceTest extends OurTestSuite:
       }""")
 
     testJsonDecoder(
-      NoticePlace.Snapshot(BoardPath("BOARD"), NoticeId("NOTICE")),
+      NoticePlace.Snapshot(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")),
       json"""{
         "TYPE": "NoticePlace",
         "noticeId": "NOTICE",

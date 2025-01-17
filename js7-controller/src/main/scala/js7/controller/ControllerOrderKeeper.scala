@@ -49,7 +49,7 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, Notice, NoticeEventSource, NoticeId}
+import js7.data.board.{BoardPath, BoardState, Notice, NoticeEventSource, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
@@ -131,7 +131,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private var journalTerminated = false
 
   private object notices:
-    private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), SyncCancelable]
+    private val noticeToSchedule = mutable.Map.empty[(BoardPath, PlannedNoticeKey), SyncCancelable]
 
     def schedule(notice: Notice): Unit =
       notice.endOfLife.foreach:
@@ -141,12 +141,12 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       notice.endOfLife.foreach:
         schedule(boardPath, notice.id, _)
 
-    private def schedule(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Timestamp): Unit =
+    private def schedule(boardPath: BoardPath, noticeId: PlannedNoticeKey, endOfLife: Timestamp): Unit =
       noticeToSchedule += boardPath -> noticeId ->
         alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($boardPath, $noticeId)"):
           self ! Internal.NoticeIsDue(boardPath, noticeId)
 
-    def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
+    def deleteSchedule(boardPath: BoardPath, noticeId: PlannedNoticeKey): Unit =
       noticeToSchedule.remove(boardPath -> noticeId).foreach(_.cancel())
 
   private object shutdown:
@@ -1598,7 +1598,7 @@ private[controller] object ControllerOrderKeeper:
   private object Internal:
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
-    final case class NoticeIsDue(boardPath: BoardPath, noticeId: NoticeId) extends DeadLetterSuppression
+    final case class NoticeIsDue(boardPath: BoardPath, noticeId: PlannedNoticeKey) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Unit])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]])
       extends DeadLetterSuppression

@@ -19,7 +19,7 @@ import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.data.board.{BoardPath, NoticeId}
+import js7.data.board.{BoardPath, PlannedNoticeKey}
 import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand
@@ -248,7 +248,7 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
   @Nonnull
   def postNotice(
     @Nonnull boardPath: BoardPath,
-    @Nonnull noticeId: NoticeId,
+    @Nonnull noticeId: PlannedNoticeKey,
     @Nonnull endOfLife: Optional[Instant])
   : CompletableFuture[VEither[Problem, Void]] =
     execute(JControllerCommand

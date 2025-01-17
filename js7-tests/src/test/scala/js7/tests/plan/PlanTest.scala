@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchChangedPlanSchemaProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation

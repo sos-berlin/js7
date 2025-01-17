@@ -5,7 +5,7 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.JavaTimestamp.specific.*
-import js7.data.board.{BoardPath, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, Notice, NoticePlace, PlannedNoticeKey}
 import js7.data.order.OrderId
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
@@ -13,7 +13,7 @@ import scala.jdk.OptionConverters.*
 final case class JNoticePlace(asScala: NoticePlace):
 
   @Nonnull
-  def noticeId: NoticeId =
+  def noticeId: PlannedNoticeKey =
     asScala.noticeId
 
   @Nonnull
@@ -32,7 +32,7 @@ final case class JNotice(asScala: Notice):
 object JNotice:
   @Nonnull
   def of(
-    @Nonnull id: NoticeId,
+    @Nonnull id: PlannedNoticeKey,
     @Nonnull boardPath: BoardPath,
     @Nonnull endOfLife: Optional[Instant])
   : JNotice =

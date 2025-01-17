@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.time.Timestamp
 
 // COMPATIBLE with v2.3
-final case class NoticeV2_3(id: NoticeId, endOfLife: Timestamp):
+final case class NoticeV2_3(id: PlannedNoticeKey, endOfLife: Timestamp):
   def toNotice(boardPath: BoardPath): Notice =
     Notice(id, boardPath, Some(endOfLife))
 

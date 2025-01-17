@@ -15,50 +15,50 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.jdk.OptionConverters.*
 
-final case class NoticeId private(noticeKey: NoticeKey, planId: PlanId):
+final case class PlannedNoticeKey private(planId: PlanId, noticeKey: NoticeKey):
 
   override def toString =
-    s"NoticeId${noticeKey.nonEmpty ?? s":$noticeKey"}${!planId.isGlobal ?? s":${planId.shortString}"}"
+    s"PlannedNoticeKey${noticeKey.nonEmpty ?? s":$noticeKey"}${!planId.isGlobal ?? s":${planId.shortString}"}"
 
 
-object NoticeId:
+object PlannedNoticeKey:
 
-  /** Make a NoticeId for a GlobalBoard. */
+  /** Make a PlannedNoticeKey for a GlobalBoard. */
   @TestOnly @throws[ProblemException]
-  def apply(string: String): NoticeId =
+  def apply(string: String): PlannedNoticeKey =
     global(string).orThrow
 
   @TestOnly @throws[ProblemException]
-  def apply(noticeKey: NoticeKey, planId: PlanId): NoticeId =
-    checked(noticeKey, planId).orThrow
+  def apply(noticeKey: NoticeKey, planId: PlanId): PlannedNoticeKey =
+    checked(planId, noticeKey).orThrow
 
-  def global(string: String): Checked[NoticeId] =
+  def global(string: String): Checked[PlannedNoticeKey] =
     NoticeKey.checked(string).flatMap(global)
 
-  def global(noticeKey: NoticeKey): Checked[NoticeId] =
-    checked(noticeKey, PlanId.Global)
+  def global(noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
+    checked(PlanId.Global, noticeKey)
 
-  def planned(planId: PlanId): NoticeId =
+  def planned(planId: PlanId): PlannedNoticeKey =
     assertThat(!planId.isGlobal)
-    new NoticeId(NoticeKey.empty, planId)
+    new PlannedNoticeKey(planId, NoticeKey.empty)
 
-  def checked(noticeKey: NoticeKey, planId: PlanId): Checked[NoticeId] =
+  def checked(planId: PlanId, noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
     if planId.isGlobal && noticeKey.isEmpty then
-      Left(EmptyStringProblem("NoticeId"))
+      Left(EmptyStringProblem("PlannedNoticeKey"))
     else
-      Right(new NoticeId(noticeKey, planId))
+      Right(new PlannedNoticeKey(planId, noticeKey))
 
   @Nonnull
-  def of(noticeKey: String): NoticeId =
+  def of(noticeKey: String): PlannedNoticeKey =
     global(NoticeKey(noticeKey)).orThrow
 
   @Nonnull
-  def of(planId: PlanId, noticeKey: String): NoticeId =
-    checked(NoticeKey(noticeKey), planId).orThrow
+  def of(planId: PlanId, noticeKey: String): PlannedNoticeKey =
+    checked(planId, NoticeKey(noticeKey)).orThrow
 
-  given Ordering[NoticeId] = orderingBy(_.planId, _.noticeKey)
+  given Ordering[PlannedNoticeKey] = orderingBy(_.planId, _.noticeKey)
 
-  given Encoder[NoticeId] = o =>
+  given Encoder[PlannedNoticeKey] = o =>
     if o.planId.isGlobal then
       o.noticeKey.asJson
     else
@@ -66,10 +66,10 @@ object NoticeId:
         View(o.planId.planSchemaId.asJson, o.planId.planKey.asJson) ++
           o.noticeKey.string.ifNonEmpty.map(_.asJson)
 
-  given Decoder[NoticeId] = c =>
+  given Decoder[PlannedNoticeKey] = c =>
     c.value.asString match
       case Some(string) =>
-        NoticeKey.checked(string).flatMap(NoticeId.global).toDecoderResult(c.history)
+        NoticeKey.checked(string).flatMap(PlannedNoticeKey.global).toDecoderResult(c.history)
       case None =>
         c.as[Vector[String]].flatMap: seq =>
           locally:
@@ -77,7 +77,7 @@ object NoticeId:
               planSchemaId <- seq.checked(0).flatMap(PlanSchemaId.checked)
               planKey <- seq.checked(1).flatMap(PlanKey.checked)
               noticeKey <- seq.get(2).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-              noticeId <- checked(noticeKey, PlanId(planSchemaId, planKey))
+              noticeId <- checked(PlanId(planSchemaId, planKey), noticeKey)
             yield
               noticeId
           .toDecoderResult(c.history)

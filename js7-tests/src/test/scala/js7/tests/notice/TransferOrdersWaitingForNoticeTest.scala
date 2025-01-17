@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand.{PostNotice, TransferOrders}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
@@ -20,12 +20,12 @@ trait TransferOrdersWaitingForNoticeTest:
 
   protected final def testTransferOrders(
     toNoticeInstr: BoardPath => ExpectNotices | ConsumeNotices,
-    assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, NoticeId) => Assertion)
+    assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, PlannedNoticeKey) => Assertion)
   : Unit =
     var eventId = eventWatch.lastAddedEventId
     val qualifier = "2024-08-23"
     val orderId = OrderId(s"#$qualifier#TRANSFER")
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     val board1 = GlobalBoard.joc(BoardPath("TRANSFER-1"), Some(1.day))
     val board2 = GlobalBoard.joc(BoardPath("TRANSFER-2"), Some(1.day))

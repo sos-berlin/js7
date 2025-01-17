@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId}
+import js7.data.board.{BoardPath, PlannedNoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -141,7 +141,7 @@ final class ControllerCommandTest extends OurTestSuite:
   "PostNotice" in:
     testJson[ControllerCommand](PostNotice(
         BoardPath("BOARD"),
-        NoticeId("NOTICE")),
+        PlannedNoticeKey("NOTICE")),
       json"""{
         "TYPE": "PostNotice",
         "boardPath": "BOARD",
@@ -150,7 +150,7 @@ final class ControllerCommandTest extends OurTestSuite:
 
     testJson[ControllerCommand](PostNotice(
         BoardPath("BOARD"),
-        NoticeId("NOTICE"), Some(Timestamp("1970-01-01T01:00:00Z"))),
+        PlannedNoticeKey("NOTICE"), Some(Timestamp("1970-01-01T01:00:00Z"))),
       json"""{
         "TYPE": "PostNotice",
         "boardPath": "BOARD",
@@ -159,7 +159,7 @@ final class ControllerCommandTest extends OurTestSuite:
       }""")
 
   "DeleteNotice" in:
-    testJson[ControllerCommand](DeleteNotice(BoardPath("BOARD"), NoticeId("NOTICE")),
+    testJson[ControllerCommand](DeleteNotice(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")),
       json"""{
         "TYPE": "DeleteNotice",
         "boardPath": "BOARD",

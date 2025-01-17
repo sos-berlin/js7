@@ -6,7 +6,7 @@ import js7.base.time.Timestamp
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import org.jetbrains.annotations.TestOnly
 
-final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Option[Timestamp])
+final case class Notice(id: PlannedNoticeKey, boardPath: BoardPath, endOfLife: Option[Timestamp])
 extends NoticeSnapshot:
 
   def toExpected: OrderNoticesExpected.Expected =
@@ -20,4 +20,4 @@ object Notice:
 
   @TestOnly
   def forPlannedBoard(plannedBoardId: PlannedBoardId): Notice =
-    Notice(NoticeId.planned(plannedBoardId.planId), plannedBoardId.boardPath, endOfLife = None)
+    Notice(PlannedNoticeKey.planned(plannedBoardId.planId), plannedBoardId.boardPath, endOfLife = None)

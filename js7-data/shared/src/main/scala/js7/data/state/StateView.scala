@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardState, NoticeId}
+import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -81,10 +81,10 @@ trait StateView extends ItemContainer:
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
-  final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[NoticeId] =
+  final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[PlannedNoticeKey] =
     planToPlannableBoardNoticeId(order.planId)
 
-  final def planToPlannableBoardNoticeId(planId: PlanId): Checked[NoticeId] =
+  final def planToPlannableBoardNoticeId(planId: PlanId): Checked[PlannedNoticeKey] =
     if planId.isGlobal then
       Left(Problem.pure(s"PlannableBoard requested, but Order is not in a Plan (or in $planId)"))
     else

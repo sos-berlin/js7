@@ -48,7 +48,7 @@ trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
 
 object ExpectOrConsumeNoticesInstruction:
 
-  /** How to handle not announced NoticeId in ConsumeNotices and ExpectedNotices instructions. */
+  /** How to handle not announced PlannedNoticeKey in ConsumeNotices and ExpectedNotices instructions. */
   enum WhenNotAnnounced:
     /** When required NoticeIds have not been announced, wait nevertheless. */
     case Wait

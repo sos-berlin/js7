@@ -35,20 +35,20 @@ extends
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for
       noticeKey <- postOrderToNoticeId.evalAsString(scope)
-      noticeId <- NoticeId.global(noticeKey)
+      noticeId <- PlannedNoticeKey.global(noticeKey)
       notice <- toNotice(noticeId)(scope)
     yield
       notice
 
-  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
+  def toNotice(noticeId: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice] =
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(o => Checked(Some(o))) yield
       Notice(noticeId, path, endOfLife)
 
-  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
+  def expectingOrderToNoticeId(scope: Scope): Checked[PlannedNoticeKey] =
     for
       noticeKey <- expectOrderToNoticeId.evalAsString(scope)
-      noticeId <- NoticeId.global(noticeKey)
+      noticeId <- PlannedNoticeKey.global(noticeKey)
     yield
       noticeId
 

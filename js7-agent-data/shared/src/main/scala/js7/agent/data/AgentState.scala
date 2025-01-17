@@ -16,7 +16,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
-import js7.data.board.{BoardState, NoticeId}
+import js7.data.board.{BoardState, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.{ControllerId, ControllerRunId}
@@ -356,7 +356,7 @@ extends SignedItemContainer,
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, NoticeId)])
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
   : Checked[PlanSchemaState] =
     Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
 

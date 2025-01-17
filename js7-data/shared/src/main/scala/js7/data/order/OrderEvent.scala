@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
+import js7.data.board.{BoardPath, Notice, NoticeV2_3, PlannedNoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.lock.LockPath
@@ -328,7 +328,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
 
-  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeId: NoticeId)
+  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeId: PlannedNoticeKey)
   extends OrderNoticeEvent
 
   object OrderNoticeAnnounced:
@@ -367,7 +367,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   // COMPATIBLE with v2.3
-  final case class OrderNoticeExpected(noticeId: NoticeId)
+  final case class OrderNoticeExpected(noticeId: PlannedNoticeKey)
   extends OrderNoticeEvent
 
 
@@ -375,7 +375,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderNoticeEvent
 
   object OrderNoticesExpected:
-    final case class Expected(boardPath: BoardPath, noticeId: NoticeId)
+    final case class Expected(boardPath: BoardPath, noticeId: PlannedNoticeKey)
     object Expected:
       implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec
 

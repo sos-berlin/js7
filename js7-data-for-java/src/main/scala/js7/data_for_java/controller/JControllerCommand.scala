@@ -10,7 +10,7 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId}
+import js7.data.board.{BoardPath, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, Batch, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
@@ -58,7 +58,7 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   @Nonnull
   def postNotice(
     @Nonnull boardPath: BoardPath,
-    @Nonnull noticeId: NoticeId,
+    @Nonnull noticeId: PlannedNoticeKey,
     @Nonnull endOfLife: Optional[Instant])
   : JControllerCommand =
     JControllerCommand(

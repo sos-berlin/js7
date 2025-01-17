@@ -6,25 +6,25 @@ import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.testJson
 
-final class NoticeIdTest extends OurTestSuite:
+final class PlannedNoticeKeyTest extends OurTestSuite:
 
   "JSON" - {
-    "NoticeId for GlobalBoard" in:
-      testJson[NoticeId](NoticeId("NOTICE"), json"""
+    "PlannedNoticeKey for GlobalBoard" in:
+      testJson[PlannedNoticeKey](PlannedNoticeKey("NOTICE"), json"""
         "NOTICE"
        """)
 
-    "NoticeId for PlannedBoard" in:
-      testJson[NoticeId](
-        NoticeId.planned:
+    "PlannedNoticeKey for PlannedBoard" in:
+      testJson[PlannedNoticeKey](
+        PlannedNoticeKey.planned:
           PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")),
         json"""
           [ "DALIY-PLAN", "2024-11-08"]
         """)
 
-    "NoticeId with all fields" in:
-      testJson[NoticeId](
-        NoticeId(
+    "PlannedNoticeKey with all fields" in:
+      testJson[PlannedNoticeKey](
+        PlannedNoticeKey(
           NoticeKey("NOTICE"),
           PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08"))),
         json"""

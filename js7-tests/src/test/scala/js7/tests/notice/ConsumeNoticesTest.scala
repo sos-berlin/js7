@@ -13,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticePlace, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
@@ -63,7 +63,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING")
@@ -132,12 +132,12 @@ final class ConsumeNoticesTest
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(NoticeId("2022-10-23"), aBoard.path, endOfLife.some)),
-        OrderNoticePosted(Notice(NoticeId("2022-10-23-X"), myBoard.path, endOfLife.some)),
+        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-23"), aBoard.path, endOfLife.some)),
+        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-23-X"), myBoard.path, endOfLife.some)),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, NoticeId("2022-10-23")),
-          Consumption(myBoard.path, NoticeId("2022-10-23-X")))),
+          Consumption(aBoard.path, PlannedNoticeKey("2022-10-23")),
+          Consumption(myBoard.path, PlannedNoticeKey("2022-10-23-X")))),
         OrderNoticesConsumed(false),
         OrderFinished(),
         OrderDeleted))
@@ -151,7 +151,7 @@ final class ConsumeNoticesTest
 
     withItem(workflow): workflow =>
       val eventId = eventWatch.lastAddedEventId
-      val noticeId = NoticeId("2022-10-24")
+      val noticeId = PlannedNoticeKey("2022-10-24")
       val orderId = OrderId(s"#${noticeId.noticeKey.string}#")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
@@ -171,10 +171,10 @@ final class ConsumeNoticesTest
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(NoticeId("2022-10-24"), aBoard.path, endOfLife.some)),
+        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-24"), aBoard.path, endOfLife.some)),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, NoticeId("2022-10-24")))),
+          Consumption(aBoard.path, PlannedNoticeKey("2022-10-24")))),
         OrderPrompted(StringValue("PROMPT")),
         OrderPromptAnswered(),
         OrderMoved(Position(1) / "consumeNotices" % 1),
@@ -189,7 +189,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#POST-UNUSED")
@@ -250,7 +250,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     execCmd:
       PostNotice(aBoard.path, noticeId)
@@ -297,7 +297,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     TestJob.reset()
     val aOrderId = OrderId(s"#$qualifier#CONSUMING-A")
@@ -375,7 +375,7 @@ final class ConsumeNoticesTest
           WorkflowJob.Name("JOB") -> TestJob.workflowJob(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#NESTED")
@@ -437,7 +437,7 @@ final class ConsumeNoticesTest
           Fail()))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING-FAILING")
@@ -480,7 +480,7 @@ final class ConsumeNoticesTest
           Prompt(expr("'PROMPT'"))))
 
     val qualifier = qualifiers.next()
-    val noticeId = NoticeId(qualifier)
+    val noticeId = PlannedNoticeKey(qualifier)
 
     val orderId = OrderId(s"#$qualifier#CANCEL-WHILE-PROMTING")
     controller.api
@@ -539,7 +539,7 @@ final class ConsumeNoticesTest
           BoardState(board2, idToNotice = Map.empty)))
 
   "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in:
-    val noticeId = NoticeId("2022-10-25")
+    val noticeId = PlannedNoticeKey("2022-10-25")
     val workflow = Workflow(
       WorkflowPath("CONSUME-NOTICES-IN-RETRY"),
       Seq(
@@ -676,10 +676,10 @@ final class ConsumeNoticesTest
       assert(events.map(_.value) == Vector(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(NoticeId("2024-12-11"), board.path, endOfLife = None)),
+        OrderNoticePosted(Notice(PlannedNoticeKey("2024-12-11"), board.path, endOfLife = None)),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector:
-          OrderNoticesConsumptionStarted.Consumption(board.path, NoticeId("2024-12-11"))),
+          OrderNoticesConsumptionStarted.Consumption(board.path, PlannedNoticeKey("2024-12-11"))),
 
         OrderAttachable(agentPath),
         OrderAttached(agentPath),

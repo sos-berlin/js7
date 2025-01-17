@@ -15,7 +15,7 @@ trait BoardItem extends UnsignedSimpleItem:
   final def toInitialItemState =
     BoardState(this)
 
-  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
+  def toNotice(noticeId: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice]
 
 

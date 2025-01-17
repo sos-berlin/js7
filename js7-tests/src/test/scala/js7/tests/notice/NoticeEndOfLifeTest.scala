@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeId}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.OrderEvent.{OrderFinished, OrderNoticesExpected}
@@ -67,7 +67,7 @@ final class NoticeEndOfLifeTest
   "PostNotice command" - {
     "Until endOfLife, the Notice is consumable" in:
       controller
-        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, PlannedNoticeKey("2023-06-24")))
         .await(99.s).orThrow
       val consumeOrderId = OrderId("#2023-06-24#🔔")
       val events = controller.runOrder(FreshOrder(consumeOrderId, consumeWorkflow.path))
@@ -76,7 +76,7 @@ final class NoticeEndOfLifeTest
 
     "After endOfLife, the Notice vanishes" in:
       controller
-        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, PlannedNoticeKey("2023-06-24")))
         .await(99.s).orThrow
       sleep(600.ms)
       val consumeOrderId = OrderId("#2023-06-24#🔕")
@@ -89,7 +89,7 @@ final class NoticeEndOfLifeTest
   "PostNotice command with immediately expired endOfLife" - {
     "The Notice is immediately deleted" in:
       controller
-        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-25"),
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, PlannedNoticeKey("2023-06-25"),
           endOfLife = Some(Timestamp.now)))
         .await(99.s).orThrow
       val consumeOrderId = OrderId("#2023-06-25#🟪")

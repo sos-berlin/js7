@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeId}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, PlannedNoticeKey}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
@@ -25,8 +25,8 @@ import js7.data.workflow.position.{InstructionNr, Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.TransferOrderTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 
 final class TransferOrderTest
 extends OurTestSuite, ControllerAgentForScalaTest:
@@ -153,7 +153,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.await[OrderFinished](_.key == cOrderId)
 
       // Notice-consuming dOrderId finished, too
-      execCmd(PostNotice(board.path, NoticeId("NOTICE")))
+      execCmd(PostNotice(board.path, PlannedNoticeKey("NOTICE")))
       eventWatch.await[OrderFinished](_.key == dOrderId)
 
   "TransferOrder with changed ConsumeNotices instruction in surrounding block is rejected" in:
@@ -167,7 +167,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     withItems((aBoard, bBoard, workflow)): (aBoard, bBoard, workflow1) =>
       val eventId = eventWatch.lastAddedEventId
       val qualifier = "2024-08-23"
-      val noticeId = NoticeId(qualifier)
+      val noticeId = PlannedNoticeKey(qualifier)
       val orderId = OrderId(s"#$qualifier#")
 
       controller.api

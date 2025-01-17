@@ -21,7 +21,7 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
     def toKeyedEvent(notice: Notice): KeyedEvent[NoticePosted] =
       notice.boardPath <-: NoticePosted(NoticePosted.PostedNotice(notice.id, notice.endOfLife))
 
-    final case class PostedNotice(id: NoticeId, endOfLife: Option[Timestamp]):
+    final case class PostedNotice(id: PlannedNoticeKey, endOfLife: Option[Timestamp]):
       def toNotice(boardPath: BoardPath): Notice =
         Notice(id, boardPath, endOfLife)
 
@@ -29,7 +29,7 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
       implicit val jsonCodec: Codec.AsObject[PostedNotice] = deriveCodec
 
 
-  final case class NoticeDeleted(noticeId: NoticeId)
+  final case class NoticeDeleted(noticeId: PlannedNoticeKey)
   extends NoticeEvent
 
   implicit val jsonCodec: TypedJsonCodec[NoticeEvent] = TypedJsonCodec(
