@@ -44,7 +44,8 @@ extends SnapshotableStateBuilder[ControllerState],
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
-  private val _keyToUnsignedItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
+  private val _keyToUnsignedItemState: mutable.Map[UnsignedItemKey, UnsignedItemState] =
+    ControllerState.empty.keyToUnsignedItemState_.to(mutable.Map)
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
@@ -433,7 +434,10 @@ extends SnapshotableStateBuilder[ControllerState],
       eventId = eventId,
       _standards,
       controllerMetaState,
-      _keyToUnsignedItemState.toMap,
+      _keyToUnsignedItemState.view.mapValues:
+        case o: PlanSchemaState => o.copy(toPlan = Map.empty) // finish will recalculate properly
+        case o => o
+      .toMap,
       repo,
       pathToSignedSimpleItem.toMap,
       agentAttachments,

@@ -13,15 +13,15 @@ import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
-import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderTerminated}
-import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderFinished, OrderTerminated}
+import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
-import js7.data.workflow.instructions.{PostNotices, Prompt}
+import js7.data.workflow.instructions.{AddOrder, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.plan.PlanOpenCloseTest.*
@@ -56,13 +56,13 @@ final class PlanOpenCloseTest
         eventWatch.resetLastWatchedEventId()
 
         val today = "2024-01-03"
-        val todaysPlanId = dailyPlan.id / today
-        val aTodaysOrderId = OrderId(s"#$today#A")
-        val bTodaysOrderId = OrderId(s"#$today#B")
+        val todayPlanId = dailyPlan.id / today
+        val aTodayOrderId = OrderId(s"#$today#A")
+        val bTodayOrderId = OrderId(s"#$today#B")
 
         val tomorrow = "2024-01-04"
-        val tomorrowsPlanId = dailyPlan.id / tomorrow
-        val tomorrowsOrderId = OrderId(s"#$tomorrow#")
+        val tomorrowPlanId = dailyPlan.id / tomorrow
+        val tomorrowOrderId = OrderId(s"#$tomorrow#")
 
         val dayAfterTomorrow = "2024-01-05"
 
@@ -74,29 +74,29 @@ final class PlanOpenCloseTest
         assert(controllerState.toPlan.isEmpty)
 
         // Add Orders //
-        for orderId <- Seq(aTodaysOrderId, bTodaysOrderId, tomorrowsOrderId) do
+        for orderId <- Seq(aTodayOrderId, bTodayOrderId, tomorrowOrderId) do
           controller.addOrderBlocking:
             FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
 
         // Now we have Plans for today and tomorrow
         assert(controllerState.toPlan.values.toVector.sorted == Vector(
           Plan(
-            todaysPlanId,
-            orderIds = Set(aTodaysOrderId, bTodaysOrderId),
+            todayPlanId,
+            orderIds = Set(aTodayOrderId, bTodayOrderId),
             plannedBoards = Seq:
               PlannedBoard(
-                todaysPlanId / board.path,
+                todayPlanId / board.path,
                 Seq:
-                  NoticePlace(todaysPlanId.noticeId, isAnnounced = true)),
+                  NoticePlace(todayPlanId.noticeId, isAnnounced = true)),
             isClosed = false),
           Plan(
-            tomorrowsPlanId,
-            orderIds = Set(tomorrowsOrderId),
+            tomorrowPlanId,
+            orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
               PlannedBoard(
-                tomorrowsPlanId / board.path,
+                tomorrowPlanId / board.path,
                 Seq:
-                  NoticePlace(tomorrowsPlanId.noticeId, isAnnounced = true)),
+                  NoticePlace(tomorrowPlanId.noticeId, isAnnounced = true)),
             isClosed = false)))
 
         // Close today's Plan //
@@ -104,44 +104,44 @@ final class PlanOpenCloseTest
           ChangePlanSchema(dailyPlan.id, Map("openingDay" -> tomorrow))
 
         execCmd:
-          AnswerOrderPrompt(aTodaysOrderId)
-        eventWatch.awaitNextKey[OrderTerminated](aTodaysOrderId)
+          AnswerOrderPrompt(aTodayOrderId)
+        eventWatch.awaitNextKey[OrderTerminated](aTodayOrderId)
 
         assert(controllerState.toPlan.values.toVector.sorted == Vector(
           Plan(
-            todaysPlanId,
-            orderIds = Set(bTodaysOrderId),
+            todayPlanId,
+            orderIds = Set(bTodayOrderId),
             plannedBoards = Seq:
               PlannedBoard(
-                todaysPlanId / board.path,
+                todayPlanId / board.path,
                 Seq:
                   NoticePlace(
-                    todaysPlanId.noticeId,
-                    Some(Notice.forPlannedBoard(todaysPlanId / board.path)))),
+                    todayPlanId.noticeId,
+                    Some(Notice.forPlannedBoard(todayPlanId / board.path)))),
             isClosed = true),
           Plan(
-            tomorrowsPlanId,
-            orderIds = Set(tomorrowsOrderId),
+            tomorrowPlanId,
+            orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
               PlannedBoard(
-                tomorrowsPlanId / board.path,
+                tomorrowPlanId / board.path,
                 Seq:
                   NoticePlace(
-                    tomorrowsPlanId.noticeId,
+                    tomorrowPlanId.noticeId,
                     isAnnounced = true)),
             isClosed = false)))
 
         // Closed today's Plan will be deleted when the last Order leaves //
-        assert(controllerState.toPlan.contains(todaysPlanId))
+        assert(controllerState.toPlan.contains(todayPlanId))
         execCmd:
-          AnswerOrderPrompt(bTodaysOrderId)
-        eventWatch.awaitNextKey[OrderTerminated](aTodaysOrderId)
-        assert(!controllerState.toPlan.contains(todaysPlanId))
+          AnswerOrderPrompt(bTodayOrderId)
+        eventWatch.awaitNextKey[OrderTerminated](bTodayOrderId)
+        assert(!controllerState.toPlan.contains(todayPlanId))
 
         // Terminate tomorrow's Orders //
         execCmd:
-          AnswerOrderPrompt(tomorrowsOrderId)
-        eventWatch.awaitNextKey[OrderTerminated](aTodaysOrderId)
+          AnswerOrderPrompt(tomorrowOrderId)
+        eventWatch.awaitNextKey[OrderTerminated](tomorrowOrderId)
 
         // Close tomorrow's Plan //
         execCmd:
@@ -187,11 +187,12 @@ final class PlanOpenCloseTest
             pattern = Some(SimplePattern("(.+)")),
             orderIdExpression = Some(expr(""" "#$1#" """)))
           withItem(fileWatch, awaitDeletion = true): fileWatch =>
-            val yesterday = "2025-12-07"
+            val yesterday = "2025-01-07"
             val yesterdayExternalName = ExternalOrderName(yesterday)
             val yesterdayOrderId = OrderId(s"#$yesterday#")
             val yesterdayPlanId = dailyPlan.id / yesterday
-            val today = "2025-12-08"
+            val today = "2025-01-08"
+            val todayOrderId = OrderId(s"#$today#")
 
             // Close yesterday's Plan
             execCmd:
@@ -219,14 +220,32 @@ final class PlanOpenCloseTest
               fileWatch))
 
             touchFile(dir / today)
-            eventWatch.awaitNextKey[OrderFinished](OrderId(yesterday))
-            eventWatch.awaitNextKey[OrderDeleted](OrderId(yesterday))
+            eventWatch.awaitNextKey[OrderFinished](todayOrderId)
+            eventWatch.awaitNextKey[OrderDeleted](todayOrderId)
 
-    "No other order can be added via AddOrder instruction to a closed dead Plan" in:
-      // AddOrder instruction
-      // Fork: cannot be dead because the forking Order is in the Plan
-      // FileWatch:
-      missingTest
+    "No other order can be added via AddOrder instruction to a closed Plan" in:
+      eventWatch.resetLastWatchedEventId()
+      val yesterday = "2025-01-09"
+      val yesterdayPlanId = dailyPlan.id / yesterday
+      val today = "2025-01-10"
+      val todayOrderId = OrderId(s"#$today#")
+      val workflowPath = WorkflowPath("WORKFLOW")
+      val workflow = Workflow.of(workflowPath,
+        AddOrder(orderId = expr(s"'#$yesterday#'"), workflowPath))
+
+      withItems((workflow, dailyPlan)): (workflow, planSchema) =>
+        // Close yesterday's Plan
+        execCmd:
+          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+
+        controller.addOrderBlocking:
+          FreshOrder(todayOrderId, workflow.path, deleteWhenTerminated = true)
+        eventWatch.awaitNextKey[OrderFailed](todayOrderId)
+
+        assert(controllerState.idToOrder(todayOrderId).lastOutcome ==
+          OrderOutcome.Failed(Some(PlanIsClosedProblem(yesterdayPlanId).toString)))
+        execCmd:
+          CancelOrders(todayOrderId :: Nil)
   }
 
 object PlanOpenCloseTest:

@@ -34,7 +34,7 @@ import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.PlanSchemaId
+import js7.data.plan.{PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -532,7 +532,8 @@ object ControllerStateTest:
       WorkflowPathControlPath(workflow.path) -> WorkflowPathControl(
         WorkflowPathControlPath(workflow.path),
         suspended = true,
-        skip = Set(Label("LABEL")))),
+        skip = Set(Label("LABEL"))),
+      PlanSchemaId.Global -> PlanSchemaState.Global),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

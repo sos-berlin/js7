@@ -69,7 +69,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", OrderId("🟦")))),
       OrderFailed(Position(0))))
 
   "AddOrder with access to clock" in:
@@ -78,7 +78,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderOutcomeAdded(OrderOutcome.Failed.fromProblem(DuplicateKey("OrderId", OrderId("🟦")))),
       OrderFailed(Position(0))))
 
   "AddOrder with startPosition and stopPositions (JS-2029)" in:

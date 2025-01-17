@@ -733,12 +733,6 @@ extends
     idToOrder.values
 
   def finish: Checked[ControllerState] =
-    copy(
-      keyToUnsignedItemState_ = keyToUnsignedItemState_
-        .updated(PlanSchemaId.Global, PlanSchemaState.Global)
-    ).finishRecovery2
-
-  private def finishRecovery2: Checked[ControllerState] =
     PlanSchemaState
       .recoverPlans(
         orders,
@@ -786,7 +780,9 @@ extends
     WorkflowToOrders(Map.empty))
 
   val empty: ControllerState =
-    Undefined.finish.orThrow
+    Undefined.copy(
+      keyToUnsignedItemState_ = Undefined.keyToUnsignedItemState_
+        .updated(PlanSchemaId.Global, PlanSchemaState.Global))
 
   def newBuilder() = new ControllerStateBuilder
 

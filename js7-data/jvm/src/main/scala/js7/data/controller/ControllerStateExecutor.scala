@@ -29,7 +29,7 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
-import js7.data.plan.{PlanId, PlanSchemaState}
+import js7.data.plan.PlanId
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -90,7 +90,7 @@ final case class ControllerStateExecutor private(
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
           maybePlanId <- controllerState.evalOrderToPlanId(freshOrder)
-          _ <- checkPlanIsOpen(maybePlanId getOrElse PlanId.Global)
+          _ <- controllerState.checkPlanIsOpen(maybePlanId getOrElse PlanId.Global)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
@@ -106,13 +106,6 @@ final case class ControllerStateExecutor private(
                 workflow.id.versionId, preparedArguments, externalOrderKey, maybePlanId,
                 startPosition),
               orderNoticeAnnounced)
-
-  private def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
-    for
-      planSchemaState <- controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
-      _ <- planSchemaState.checkIsOpen(planId.planKey)
-    yield
-      ()
 
   private def checkStartAndStopPositionAndInnerBlock(
     positionOrLabel: PositionOrLabel, workflow: Workflow, innerBlock: BranchPath)

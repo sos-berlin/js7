@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanSchema}
+import js7.data.plan.{PlanId, PlanSchema, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 
 trait ControllerStateView[Self <: ControllerStateView[Self]]
@@ -16,9 +16,13 @@ extends EventDrivenStateView[Self]:
     event match
       case orderAdded: OrderAddedX =>
         val addedOrderId = orderAdded.ownOrderId getOrElse orderId
-        idToOrder.checkNoDuplicate(addedOrderId).flatMap: _ =>
-          update(addOrders =
+        for
+          _ <- idToOrder.checkNoDuplicate(addedOrderId)
+          _ <- checkPlanIsOpen(orderAdded.planId getOrElse PlanId.Global)
+          r <- update(addOrders =
             Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil)
+        yield
+          r
 
       case _ =>
         super.applyOrderEvent(orderId, event)
@@ -38,3 +42,10 @@ extends EventDrivenStateView[Self]:
         case n => Left(Problem:
           s"${order.id} fits $n Plans: ${planIds.sorted.mkString(", ")
           } — An Order must not fit multiple Plans")
+
+  def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
+    for
+      planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
+      _ <- planSchemaState.checkIsOpen(planId.planKey)
+    yield
+      ()
