@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, NoticeId, PlannedNoticeKey}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -94,10 +94,10 @@ trait StateView extends ItemContainer:
     *         L3.False: Notice doesn't exist but is announced<br>
     *         L3.Unknown: Notice doesn't exist nor is it announced
     */
-  final def isNoticeAvailable(planId: PlanId, boardNoticeKey: BoardNoticeKey): L3 =
-    keyTo(BoardState).get(boardNoticeKey.boardPath)
+  final def isNoticeAvailable(noticeId: NoticeId): L3 =
+    keyTo(BoardState).get(noticeId.boardPath)
       .fold(L3.Unknown/*just in case*/): boardState =>
-        boardState.isNoticeAvailable(planId / boardNoticeKey.noticeKey)
+        boardState.isNoticeAvailable(noticeId.plannedNoticeKey)
 
   final def availableNotices(planId: PlanId, boardNoticeKeys: Iterable[BoardNoticeKey])
   : Set[BoardPath] =

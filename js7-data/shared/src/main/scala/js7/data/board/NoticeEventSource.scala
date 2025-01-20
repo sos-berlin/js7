@@ -120,7 +120,7 @@ object NoticeEventSource:
               .map: expectingOrder =>
                 val posted = postedNotices.map(_.notice.boardNoticeKey).toSet
                 expectNoticesInstr
-                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable(expectingOrder.planId, _), posted)
+                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, posted)
                   .map(expectingOrder.id <-: _)
           .map(_.flatten)
     yield

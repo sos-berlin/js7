@@ -41,7 +41,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                       assert(plannedNoticeKey.planId == order.planId)
                       board.path / plannedNoticeKey.noticeKey
               .map: boardNoticeKeys =>
-                instr.tryFulfill(order, boardNoticeKeys, state.isNoticeAvailable(order.planId, _))
+                instr.tryFulfill(order, boardNoticeKeys, state.isNoticeAvailable)
                   .ifEmpty:
                     OrderNoticesExpected(boardNoticeKeys) :: Nil
                   .map(order.id <-: _)
@@ -52,7 +52,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
               } instruction does not match Order.State: $instr <-> ${order.state}"))
           else
             Right:
-              instr.tryFulfillExpectingOrder(order, state.isNoticeAvailable(order.planId, _))
+              instr.tryFulfillExpectingOrder(order, state.isNoticeAvailable)
                 .map(order.id <-: _)
       .getOrElse:
         Right(Nil)
