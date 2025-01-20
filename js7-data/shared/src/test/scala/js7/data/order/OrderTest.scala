@@ -551,7 +551,7 @@ final class OrderTest extends OurTestSuite:
         cancelMarkedAllowed[Fresh] orElse
         suspendMarkedAllowed[Fresh] orElse
         planAttached[Fresh] orElse:
-          case (_: OrderNoticeAnnounced, _                 , _, IsDetached          ) => _.isInstanceOf[Fresh]
+          case (_: OrderNoticeAnnounced, _              , _, IsDetached             ) => _.isInstanceOf[Fresh]
           case (_: OrderMoved       , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
           case (_: OrderFailed      , IsSuspended(false), _, IsDetached             ) => _.isInstanceOf[FailedWhileFresh]  // Expression error
           case (_: OrderStopped     , IsSuspended(false), _, IsDetached             ) => _.isInstanceOf[StoppedWhileFresh]  // Expression error
@@ -629,7 +629,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderNoticesConsumptionStarted, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderCancelled   , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[ExpectingNotices]
-          case (_: OrderStateReset  , _, _, _   ) => _.isInstanceOf[Ready]
+          case (_: OrderStateReset  , _, _, _         ) => _.isInstanceOf[Ready]
           case (_: OrderTransferred , _, _, IsDetached) => _.isInstanceOf[ExpectingNotices]
           case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken])
 
@@ -691,7 +691,7 @@ final class OrderTest extends OurTestSuite:
         planAttached[Prompting] orElse:
           case (_: OrderPromptAnswered, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]  // COMPATIBLE with v2.4
-          case (OrderStateReset , _, _,          _) => _.isInstanceOf[Ready]
+          case (OrderStateReset       , _, _,          _) => _.isInstanceOf[Ready]
           case (_: OrderOutcomeAdded  , _, _, _         ) => _.isInstanceOf[Prompting]
           case (_: OrderTransferred   , _, _, IsDetached) => _.isInstanceOf[Prompting]
           case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken])
@@ -710,7 +710,7 @@ final class OrderTest extends OurTestSuite:
           case (OrderCancelled         , _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded   , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderTransferred    , _                 , _, IsDetached             ) => _.isInstanceOf[BetweenCycles]
-          case (OrderStateReset  , _                 , _, _                      ) => _.isInstanceOf[Ready]
+          case (OrderStateReset        , _                 , _, _                      ) => _.isInstanceOf[Ready]
           case (_: OrderGoMarked       , _                 , _, IsAttached             ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderGoes           , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderFailed         , _                 , _, IsDetached             ) => _.isInstanceOf[Failed]

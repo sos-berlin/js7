@@ -101,4 +101,5 @@ object VersionedItemPath:
             .toRight(Problem.pure(s"Unrecognized type prefix in VersionedItemPath: $prefix"))
             .flatMap(_.checked(path))
             .toDecoderResult(c.history)
-        yield itemPath.asInstanceOf[VersionedItemPath]/*???*/
+        yield
+          itemPath

@@ -81,19 +81,18 @@ object CirceUtils:
 
   private def deriveRenamingDecoder2[A](decode: ConfiguredDecoder[A], rename: Map[String, String])
   : Decoder[A] =
-    // Precalculate keySet
-    val keySet: Set[String] = rename.keySet
-    c => c
-      .as[JsonObject]
-      .flatMap(jsonObject =>
-        if !jsonObject.keys.exists(keySet) then
+    // Precalculate set of old names
+    val isOldName: Set[String] = rename.keySet
+    c =>
+      c.value.asObject.fold(decode(c)): jsonObject =>
+        if !jsonObject.keys.exists(isOldName) then
           decode(c)
         else
-          decode.decodeJson(
-            Json.fromJsonObject(
-              JsonObject.fromMap(jsonObject
-                .toMap
-                .map((k, v) => rename.getOrElse(k, k) -> v)))))
+          decode.decodeJson:
+            Json.fromJsonObject:
+              JsonObject.fromMap:
+                jsonObject.toMap.map: (k, v) =>
+                  rename.getOrElse(k, k) -> v
 
   def enumEncoder[E <: scala.reflect.Enum](values: Array[E]): Encoder[E] =
     e => Json.fromString(e.toString)
