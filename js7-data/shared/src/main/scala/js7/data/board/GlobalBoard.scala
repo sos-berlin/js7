@@ -41,10 +41,12 @@ extends
     yield
       notice
 
-  def toNotice(plannedNoticeKey: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)(scope: Scope)
-  : Checked[Notice] =
-    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(o => Checked(Some(o))) yield
-      Notice(path / plannedNoticeKey, endOfLife)
+  protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
+    endOfLife
+      .eval(scope)
+      .map(_.missingToNone)
+      .flatMap(_.traverse(_.asLongIgnoreFraction))
+      .map(_.map(Timestamp.ofEpochMilli))
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
     for
@@ -59,13 +61,6 @@ extends
       plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
     yield
       plannedNoticeKey
-
-  private def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
-    endOfLife
-      .eval(scope)
-      .map(_.missingToNone)
-      .flatMap(_.traverse(_.asLongIgnoreFraction))
-      .map(_.map(Timestamp.ofEpochMilli))
 
 
 object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
