@@ -3,7 +3,7 @@ package js7.base.generic
 import io.circe.{Codec, Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import java.util.Objects.requireNonNull
 import javax.annotation.Nullable
-import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.convert.As
 import js7.base.problem.Checked.{Ops, catchNonFatal}
 import js7.base.problem.{Checked, CheckedString, Problem}

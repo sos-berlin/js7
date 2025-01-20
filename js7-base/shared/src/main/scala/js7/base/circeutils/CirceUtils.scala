@@ -94,6 +94,9 @@ object CirceUtils:
                 jsonObject.toMap.map: (k, v) =>
                   rename.getOrElse(k, k) -> v
 
+  def enumCodec[E <: scala.reflect.Enum](valueOf: String => E, values: Array[E]): Codec[E] =
+    Codec.from(enumDecoder(valueOf), enumEncoder(values))
+
   def enumEncoder[E <: scala.reflect.Enum](values: Array[E]): Encoder[E] =
     e => Json.fromString(e.toString)
 
@@ -210,7 +213,7 @@ object CirceUtils:
     def parseJsonOrThrow: Json =
       parseJson.orThrow
 
-  implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal:
+  extension[A](underlying: Checked[A])
     def toDecoderResult(history: => List[CursorOp]): Decoder.Result[A] =
       CirceUtils.toDecoderResult(history)(underlying)
 

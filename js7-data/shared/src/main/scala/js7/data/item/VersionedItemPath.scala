@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
-import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable

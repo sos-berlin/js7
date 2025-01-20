@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
-import io.circe.{Decoder, Encoder}
-import js7.base.circeutils.CirceUtils.{enumDecoder, enumEncoder}
+import io.circe.Codec
+import js7.base.circeutils.CirceUtils.enumCodec
 import js7.base.utils.L3
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
@@ -61,5 +61,4 @@ object ExpectOrConsumeNoticesInstruction:
     case DontWait
 
   object WhenNotAnnounced:
-    given Encoder[WhenNotAnnounced] = enumEncoder(values)
-    given Decoder[WhenNotAnnounced] = enumDecoder(valueOf)
+    given Codec[WhenNotAnnounced] = enumCodec(valueOf, values)

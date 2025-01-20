@@ -5,7 +5,7 @@ import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import java.util.regex.{Pattern, PatternSyntaxException}
-import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.log.Logger
 import js7.base.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
 import js7.base.problem.Checked.{CheckedOption, catchExpected, catchNonFatalDontLog}

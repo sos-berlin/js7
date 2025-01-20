@@ -2,7 +2,7 @@ package js7.data.workflow.instructions.executable
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.generic.GenericString
 import js7.base.problem.Checked
