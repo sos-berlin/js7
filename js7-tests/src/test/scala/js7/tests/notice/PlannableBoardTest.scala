@@ -12,8 +12,6 @@ import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
-import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
-import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
@@ -101,9 +99,9 @@ final class PlannableBoardTest
         OrderAdded(consumingWorkflow.id, planId = Some(dailyPlan.id / day), deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          Expected(board.path / NoticeKey.empty))),
+          board.path / NoticeKey.empty)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(board.path / NoticeKey.empty))),
+          board.path / NoticeKey.empty)),
         OrderMoved(Position(0) / "consumeNotices" % 1),
         OrderNoticesConsumed(),
         OrderFinished(),
@@ -257,13 +255,13 @@ final class PlannableBoardTest
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                Expected(board.path / NoticeKey.empty),
-                Expected(bBoard.path / NoticeKey.empty),
-                Expected(cBoard.path / NoticeKey.empty))),
+                board.path / NoticeKey.empty,
+                bBoard.path / NoticeKey.empty,
+                cBoard.path / NoticeKey.empty)),
               OrderNoticesConsumptionStarted(Vector(
-                Consumption(board.path / NoticeKey.empty),
-                Consumption(bBoard.path / NoticeKey.empty),
-                Consumption(cBoard.path / NoticeKey.empty))),
+                board.path / NoticeKey.empty,
+                bBoard.path / NoticeKey.empty,
+                cBoard.path / NoticeKey.empty)),
               OrderMoved(Position(0) / "consumeNotices" % 1),
               OrderNoticesConsumed(),
               OrderFinished(),
@@ -300,9 +298,9 @@ final class PlannableBoardTest
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                Expected(board.path / NoticeKey.empty),
-                Expected(bBoard.path / NoticeKey.empty),
-                Expected(cBoard.path / NoticeKey.empty))),
+                board.path / NoticeKey.empty,
+                bBoard.path / NoticeKey.empty,
+                cBoard.path / NoticeKey.empty)),
               OrderNoticesRead,
               OrderMoved(Position(1)),
               OrderFinished(),
@@ -338,7 +336,7 @@ final class PlannableBoardTest
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
-          OrderNoticesConsumptionStarted(Vector(Consumption(board.path / NoticeKey.empty))),
+          OrderNoticesConsumptionStarted(Vector(board.path / NoticeKey.empty)),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -374,7 +372,7 @@ final class PlannableBoardTest
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(board.path / NoticeKey.empty))), // <-- only the posted Notice is consumed
+            board.path / NoticeKey.empty)), // <-- only the posted Notice is consumed
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),

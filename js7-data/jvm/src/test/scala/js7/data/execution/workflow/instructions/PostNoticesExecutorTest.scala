@@ -62,10 +62,10 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(expectingOrderId, state).orThrow
       assert(events == Seq(
         expectingOrderId <-: OrderNoticesExpected(Vector(
-          OrderNoticesExpected.Expected(notice0.boardNoticeKey),
-          OrderNoticesExpected.Expected(notice2.boardNoticeKey),
-          OrderNoticesExpected.Expected(notice1.boardNoticeKey),
-          OrderNoticesExpected.Expected(notice3.boardNoticeKey)))))
+          notice0.boardNoticeKey,
+          notice2.boardNoticeKey,
+          notice1.boardNoticeKey,
+          notice3.boardNoticeKey))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
@@ -97,7 +97,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(events == Seq(
         otherExpectingOrderId <-: OrderNoticesExpected(Vector(
-          OrderNoticesExpected.Expected(board0.path / otherNotice0.noticeKey)))))
+          board0.path / otherNotice0.noticeKey))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(

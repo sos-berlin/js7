@@ -30,7 +30,6 @@ import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
 import js7.data.order.Order.ExternalOrderLink
-import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
@@ -336,10 +335,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         "id": "ORDER-EXPECTING-NOTICE",
         "state": {
           "TYPE": "ExpectingNotices",
-          "expected": [
-            {
-              "boardNoticeKey": [ "BOARD", "NOTICE-2" ]
-            }
+          "boardNoticeKeys": [
+            [ "BOARD", "NOTICE-2" ]
           ]
         },
         "workflowPosition": {
@@ -549,6 +546,6 @@ object ControllerStateTest:
           vanished = true))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(
-          OrderNoticesExpected.Expected(board.path / expectedNoticeKey))))
+          board.path / expectedNoticeKey)))
     ).toKeyedMap(_.id)
   ).finish.orThrow

@@ -13,8 +13,6 @@ import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeKey}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
-import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
-import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.plan.PlanId
@@ -203,9 +201,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         OrderAdded(workflow1.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          Expected(aBoard.path / noticeId.noticeKey))),
+          aBoard.path / noticeId.noticeKey)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path / noticeId.noticeKey))),
+          aBoard.path / noticeId.noticeKey)),
         OrderPrompted(StringValue("PROMPT-1")),
         OrderStateReset,
         OrderTransferred(workflow3.id /: (Position(0) / "consumeNotices" % 0)),

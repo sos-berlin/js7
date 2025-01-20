@@ -79,13 +79,13 @@ final class GlobalBoardTest
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)).isEmpty)
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)).toSet ==
-        Set(notice0.toExpected, notice1.toExpected))
+        Set(notice0.boardNoticeKey, notice1.boardNoticeKey))
 
       val posting12OrderId = OrderId(s"#$qualifier#POSTING-1-2")
       controller.runOrder(FreshOrder(posting12OrderId, posting12Workflow.path))
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
-      assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.toExpected))
+      assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.boardNoticeKey))
 
       assert(controllerState.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(
@@ -124,8 +124,8 @@ final class GlobalBoardTest
           OrderAdded(expecting01Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector(
-            OrderNoticesExpected.Expected(notice0.boardPath / notice0.noticeKey),
-            OrderNoticesExpected.Expected(notice1.boardPath / notice1.noticeKey))),
+            notice0.boardPath / notice0.noticeKey,
+            notice1.boardPath / notice1.noticeKey)),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -184,7 +184,7 @@ final class GlobalBoardTest
           OrderAdded(expecting0Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector:
-            OrderNoticesExpected.Expected(notice.boardNoticeKey)),
+            notice.boardNoticeKey),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -390,7 +390,7 @@ final class GlobalBoardTest
       assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
         OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path / NoticeKey(qualifier)))),
+        OrderNoticesExpected(Vector(board.path / NoticeKey(qualifier))),
         OrderStateReset,
         OrderCancelled,
         OrderDeleted))
@@ -407,10 +407,10 @@ final class GlobalBoardTest
           assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
             OrderAdded(workflowId1, deleteWhenTerminated = true),
             OrderStarted,
-            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board1.path / noticeKey))),
+            OrderNoticesExpected(Vector(board1.path / noticeKey)),
             OrderStateReset,
             OrderTransferred(workflowId2 /: Position(0)),
-            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board2.path / noticeKey))),
+            OrderNoticesExpected(Vector(board2.path / noticeKey)),
             OrderNoticesRead,
             OrderMoved(Position(1)),
             OrderFinished(),

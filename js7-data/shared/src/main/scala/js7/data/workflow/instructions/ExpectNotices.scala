@@ -3,8 +3,8 @@ package js7.data.workflow.instructions
 import io.circe.derivation.ConfiguredCodec
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.utils.L3
-import js7.data.board.{BoardPath, BoardPathExpression}
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardPathExpression}
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
@@ -26,7 +26,7 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
 
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    expected: Vector[OrderNoticesExpected.Expected],
+    boardNoticeKeys: Vector[BoardNoticeKey],
     exprResult: L3)
   : List[OrderNoticesRead | OrderMoved] =
     exprResult match

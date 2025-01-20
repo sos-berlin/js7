@@ -22,7 +22,7 @@ import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -40,7 +40,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, Inventor
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
-import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderPlanAttached, OrderTransferred}
+import js7.data.order.OrderEvent.{OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
@@ -459,24 +459,24 @@ extends
     val pathToBoardState = keyTo(BoardState)
     for
       order <- idToOrder.get(orderId).toVector
-      expected <- orderToExpectedNotices(orderId)
-      noticePlace <- maybeNoticePlace(order.planId / expected.boardPath / expected.noticeKey)
+      boardNoticeKey <- orderToExpectedNotices(orderId)
+      noticePlace <- maybeNoticePlace(order.planId / boardNoticeKey)
       notice <- noticePlace.notice
     yield
       notice
 
-  def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
+  def orderToStillExpectedNotices(orderId: OrderId): Seq[BoardNoticeKey] =
     val pathToBoardState = keyTo(BoardState)
     idToOrder.get(orderId).toVector.flatMap: order =>
       orderToExpectedNotices(orderId).filter: expected =>
         pathToBoardState.get(expected.boardPath).forall: boardState =>
           !boardState.hasNotice(order.planId / expected.noticeKey)
 
-  private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
+  private def orderToExpectedNotices(orderId: OrderId): Seq[BoardNoticeKey] =
     idToOrder.get(orderId)
       .flatMap(_.ifState[Order.ExpectingNotices])
       .toVector
-      .flatMap(_.state.expected)
+      .flatMap(_.state.boardNoticeKeys)
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 

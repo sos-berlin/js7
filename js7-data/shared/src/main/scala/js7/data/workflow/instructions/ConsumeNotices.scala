@@ -5,7 +5,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.L3
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardPathExpression}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardPathExpression}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.source.SourcePos
@@ -46,23 +46,23 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.WithInstructionBlock:
 
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    consumptions: Vector[OrderEvent.OrderNoticesConsumptionStarted.Consumption],
+    boardNoticeKeys: Vector[BoardNoticeKey],
     exprResult: L3)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
     exprResult match
       case L3.False => Nil
-      case L3.True => OrderNoticesConsumptionStarted(consumptions) :: Nil
+      case L3.True => OrderNoticesConsumptionStarted(boardNoticeKeys) :: Nil
       case L3.Unknown =>
         whenNotAnnounced match
           case Wait => Nil
 
-          case SkipWhenNoNotice if consumptions.isEmpty =>
+          case SkipWhenNoNotice if boardNoticeKeys.isEmpty =>
             OrderNoticesRead
               :: OrderMoved(order.position.increment, Some(OrderMoved.NoNotice))
               :: Nil
 
           case _ =>
-            OrderNoticesConsumptionStarted(consumptions) :: Nil
+            OrderNoticesConsumptionStarted(boardNoticeKeys) :: Nil
 
   def withoutBlocks: ConsumeNotices =
     copy(subworkflow = Workflow.empty)

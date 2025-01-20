@@ -231,11 +231,11 @@ extends EventDrivenState[Self, Event], StateView:
           yield
             boardState :: templatePlanState :: Nil
 
-        case OrderNoticesExpected(expectedSeq) =>
-          expectedSeq.traverse: expected =>
-            val plannedNoticeKey = previousOrder.planId / expected.noticeKey
+        case OrderNoticesExpected(boardNoticeKeys) =>
+          boardNoticeKeys.traverse: boardNoticeKey =>
+            val plannedNoticeKey = previousOrder.planId / boardNoticeKey.noticeKey
             for
-              boardState <- keyTo(BoardState).checked(expected.boardPath)
+              boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
               boardState <- boardState.addExpectation(plannedNoticeKey, orderId)
             yield
               boardState -> plannedNoticeKey
@@ -252,7 +252,7 @@ extends EventDrivenState[Self, Event], StateView:
         case OrderNoticesConsumptionStarted(consumptions) =>
           val isConsumption = consumptions.toSet
           val expectedOrConsumptionSeq =
-            previousOrder.ifState[ExpectingNotices].fold_(Vector.empty, _.state.expected)
+            previousOrder.ifState[ExpectingNotices].fold_(Vector.empty, _.state.boardNoticeKeys)
               .concat(consumptions).distinct
           strictly(expectedOrConsumptionSeq.areUniqueBy(_.boardPath))
           expectedOrConsumptionSeq.traverse: expected =>
@@ -320,11 +320,11 @@ extends EventDrivenState[Self, Event], StateView:
 
   private def removeNoticeExpectation(order: Order[ExpectingNotices])
   : Checked[Seq[BoardState | PlanSchemaState]] =
-    order.state.expected.traverse: expected =>
-      val noticeId = order.planId / expected.boardPath / expected.noticeKey
+    order.state.boardNoticeKeys.traverse: boardNoticeKey =>
+      val noticeId = order.planId / boardNoticeKey
       for
-        boardState <- keyTo(BoardState).checked(expected.boardPath)
-        boardState <- boardState.removeExpectation(order.planId / expected.noticeKey, order.id)
+        boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
+        boardState <- boardState.removeExpectation(noticeId.plannedNoticeKey, order.id)
         templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
       yield
         boardState -> noticeId.plannedNoticeKey

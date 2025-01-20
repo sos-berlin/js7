@@ -9,8 +9,7 @@ import js7.base.generic.GenericString
 import js7.base.io.process.StdoutOrStderr
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp.specific.*
-import js7.data.board.{BoardPath, NoticeKey}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.Value
@@ -37,10 +36,10 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
 
   @Nonnull
   def of(@Nonnull orderEvent: OrderEvent): JOrderEvent =
-    apply(orderEvent.asInstanceOf[AsScala])
+    apply(orderEvent)
 
   @Nonnull
-  def apply(@Nonnull underlying: AsScala): JOrderEvent =
+  def apply(@Nonnull underlying: OrderEvent): JOrderEvent =
     underlying match
       case event: OrderAdded => JOrderAdded(event)
       case event: OrderProcessingStarted => JOrderProcessingStarted(event)
@@ -155,10 +154,3 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
 
   // TODO Move ForkBranchId out of here
   final case class ForkBranchId(string: String) extends GenericString
-
-  final case class JExpectedNotice(asScala: OrderNoticesExpected.Expected):
-    @Nonnull def boardPath: BoardPath =
-      asScala.boardPath
-
-    @Nonnull def noticeKey: NoticeKey =
-      asScala.noticeKey

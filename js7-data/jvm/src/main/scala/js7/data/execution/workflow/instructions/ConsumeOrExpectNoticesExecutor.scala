@@ -34,20 +34,20 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                       noticeId <- board.expectingOrderToNoticeId(scope)
                     yield
                       assert(noticeId.planId.isGlobal)
-                      OrderNoticesExpected.Expected(noticeId.boardNoticeKey)
+                      noticeId.boardNoticeKey
 
                   case board: PlannableBoard =>
                     state.emptyPlannedNoticeKey(order).map: plannedNoticeKey =>
                       assert(plannedNoticeKey.planId == order.planId)
-                      OrderNoticesExpected.Expected(board.path / plannedNoticeKey.noticeKey)
-              .map: expectedSeq =>
-                instr.tryFulfill(order, expectedSeq, state.isNoticeAvailable(order.planId, _))
+                      board.path / plannedNoticeKey.noticeKey
+              .map: boardNoticeKeys =>
+                instr.tryFulfill(order, boardNoticeKeys, state.isNoticeAvailable(order.planId, _))
                   .ifEmpty:
-                    OrderNoticesExpected(expectedSeq) :: Nil
+                    OrderNoticesExpected(boardNoticeKeys) :: Nil
                   .map(order.id <-: _)
       .orElse:
         order.ifState[Order.ExpectingNotices].map: order =>
-          if order.state.expected.map(_.boardPath).toSet != instr.referencedBoardPaths then
+          if order.state.boardNoticeKeys.map(_.boardPath).toSet != instr.referencedBoardPaths then
             Left(Problem.pure(s"${instr.getClass.shortClassName
               } instruction does not match Order.State: $instr <-> ${order.state}"))
           else

@@ -9,7 +9,6 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
 import js7.data.controller.ControllerCommand
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.plan.PlanId
@@ -119,7 +118,7 @@ object NoticeEventSource:
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val posted = postedNotices.map(o => Expected(o.notice.boardPath / o.notice.noticeKey)).toSet
+                val posted = postedNotices.map(_.notice.boardNoticeKey).toSet
                 expectNoticesInstr
                   .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable(expectingOrder.planId, _), posted)
                   .map(expectingOrder.id <-: _)

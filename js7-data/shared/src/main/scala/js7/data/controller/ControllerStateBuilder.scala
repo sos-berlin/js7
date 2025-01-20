@@ -21,7 +21,6 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, UnsignedVersionedItemId, VersionedControl, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
-import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
@@ -108,17 +107,16 @@ extends SnapshotableStateBuilder[ControllerState],
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
-            state = Order.ExpectingNotices(Vector(
-              OrderNoticesExpected.Expected(boardState.path / noticeKey)))))
+            state = Order.ExpectingNotices(Vector:
+              boardState.path / noticeKey)))
 
-        case Order.ExpectingNotices(expectedSeq) =>
-          _keyToUnsignedItemState ++= expectedSeq
-            .map(expected => expected.boardPath ->
-              keyTo(BoardState)
-                .checked(expected.boardPath)
-                .flatMap:
+        case Order.ExpectingNotices(boardNoticeKeys) =>
+          _keyToUnsignedItemState ++=
+            boardNoticeKeys.map: expected =>
+              expected.boardPath ->
+                keyTo(BoardState).checked(expected.boardPath).flatMap:
                   _.addExpectation(order.planId / expected.noticeKey, order.id)
-                .orThrow)
+                .orThrow
 
         case _ =>
 

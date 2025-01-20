@@ -8,14 +8,14 @@ import js7.base.time.Timestamp
 import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, PlannedNoticeKey}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
-import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
+import js7.data.order.OrderEvent.LockDemand
 import js7.data.order.{MinimumOrder, Order, OrderId}
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.expression.Scope
@@ -94,13 +94,14 @@ trait StateView extends ItemContainer:
     *         L3.False: Notice doesn't exist but is announced<br>
     *         L3.Unknown: Notice doesn't exist nor is it announced
     */
-  final def isNoticeAvailable(planId: PlanId, expected: OrderNoticesExpected.Expected): L3 =
-    keyTo(BoardState).get(expected.boardPath)
+  final def isNoticeAvailable(planId: PlanId, boardNoticeKey: BoardNoticeKey): L3 =
+    keyTo(BoardState).get(boardNoticeKey.boardPath)
       .fold(L3.Unknown/*just in case*/): boardState =>
-        boardState.isNoticeAvailable(planId / expected.noticeKey)
+        boardState.isNoticeAvailable(planId / boardNoticeKey.noticeKey)
 
-  final def availableNotices(planId: PlanId, expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
-    expectedSeq.collect:
+  final def availableNotices(planId: PlanId, boardNoticeKeys: Iterable[BoardNoticeKey])
+  : Set[BoardPath] =
+    boardNoticeKeys.collect:
       case o if keyTo(BoardState).get(o.boardPath).exists(_.hasNotice(planId / o.noticeKey)) =>
         o.boardPath
     .toSet

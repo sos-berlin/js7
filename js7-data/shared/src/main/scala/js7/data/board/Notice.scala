@@ -3,16 +3,12 @@ package js7.data.board
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json}
 import js7.base.time.Timestamp
-import js7.data.order.OrderEvent.OrderNoticesExpected
 import org.jetbrains.annotations.TestOnly
 
 final case class Notice(id: NoticeId, endOfLife: Option[Timestamp])
 extends NoticeSnapshot:
 
   export id.{boardPath, noticeKey, planId, plannedNoticeKey, boardNoticeKey}
-
-  def toExpected: OrderNoticesExpected.Expected =
-    OrderNoticesExpected.Expected(id.boardNoticeKey)
 
   override def toString = s"Notice($id${endOfLife.fold("")(o => s" $o")})"
 

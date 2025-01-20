@@ -25,6 +25,7 @@ import js7.data.event.{Event, KeyedEvent}
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
+import js7.data.order.OrderEvent.OrderNoticesExpected.Expected273
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.plan.PlanId
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
@@ -80,7 +81,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     noticeAnnounced: List[KeyedEvent[OrderNoticeAnnounced]]):
 
     def toKeyedEvents: List[KeyedEvent[OrderAddedEvent]] =
-      (orderAdded :: noticeAnnounced)
+      orderAdded :: noticeAnnounced
 
   final case class OrderAdded(
     workflowId: WorkflowId,
@@ -340,6 +341,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       if c.get[Json]("boardNoticeKey").isRight then
         jsonCodec(c)
       else
+        // COMPATIBLE with v2.7.3
         for
           boardPath <- c.get[BoardPath]("boardPath")
           noticeKey <- c.get[NoticeKey]("noticeId")
@@ -395,27 +397,35 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def noticeKey: NoticeKey = noticeId
 
 
-  final case class OrderNoticesExpected(expected: Vector[OrderNoticesExpected.Expected])
+  final case class OrderNoticesExpected(boardNoticeKeys: Vector[BoardNoticeKey])
   extends OrderNoticeEvent
 
   object OrderNoticesExpected:
-    final case class Expected(boardNoticeKey: BoardNoticeKey):
-      export boardNoticeKey.{boardPath, noticeKey}
+    private val jsonCodec: Codec.AsObject[OrderNoticesExpected] = deriveCodec
 
-    object Expected:
-      private val jsonCodec: Codec.AsObject[Expected] = deriveCodec
+    given Encoder.AsObject[OrderNoticesExpected] = jsonCodec
 
-      given Encoder.AsObject[Expected] = jsonCodec
+    @nowarn("msg=class Expected273 in object OrderNoticesExpected is deprecated since v2.7.4")
+    given Decoder[OrderNoticesExpected] = c =>
+      if c.downField("boardNoticeKeys").succeeded then
+        jsonCodec(c)
+      else
+        for
+          expected <- c.get[Vector[Expected273]]("expected")
+        yield
+          OrderNoticesExpected(expected.map(_.boardNoticeKey))
 
-      given Decoder[Expected] = c =>
-        if c.get[Json]("boardNoticeKey").isRight then
-          jsonCodec(c)
-        else
-          for
-            boardPath <- c.get[BoardPath]("boardPath")
-            noticeKey <- c.get[NoticeKey]("noticeId")
-          yield
-            Expected(boardPath / noticeKey)
+    @deprecated("use BoardNoticeKey", "v2.7.4")
+    final case class Expected273(boardNoticeKey: BoardNoticeKey)
+
+    @nowarn("msg=class Expected273 in object OrderNoticesExpected is deprecated since v2.7.4")
+    object Expected273:
+      given Decoder[Expected273] = c =>
+        for
+          boardPath <- c.get[BoardPath]("boardPath")
+          noticeKey <- c.get[NoticeKey]("noticeId")
+        yield
+          Expected273(boardPath / noticeKey)
 
   type OrderNoticesRead = OrderNoticesRead.type
   case object OrderNoticesRead
@@ -423,16 +433,27 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderNoticesConsumptionStarted(
-    consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
+    boardNoticeKeys: Vector[BoardNoticeKey])
   extends OrderNoticeEvent:
     def checked: Checked[this.type] =
-      consumptions.checkUniqueness(_.boardPath).rightAs(this)
+      boardNoticeKeys.checkUniqueness(_.boardPath).rightAs(this)
 
   object OrderNoticesConsumptionStarted:
-    implicit val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
+    private val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
       deriveCodec[OrderNoticesConsumptionStarted].checked(_.checked)
-    type Consumption = OrderNoticesExpected.Expected
-    val Consumption: OrderNoticesExpected.Expected.type = OrderNoticesExpected.Expected
+
+    given Encoder.AsObject[OrderNoticesConsumptionStarted] = jsonCodec
+
+    @nowarn("msg=class Expected273 in object OrderNoticesExpected is deprecated since v2.7.4")
+    given Decoder[OrderNoticesConsumptionStarted] = c =>
+      if c.downField("boardNoticeKeys").succeeded then
+        jsonCodec(c)
+      else
+        for
+          expected <- c.get[Vector[Expected273]]("consumptions")
+        yield
+          OrderNoticesConsumptionStarted(expected.map(_.boardNoticeKey))
+
 
   final case class OrderNoticesConsumed(failed: Boolean = false)
   extends OrderNoticeEvent
@@ -571,7 +592,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   /**
-    * Controller may have started to attach Order to Agent..
+    * Controller may have started to attach Order to Agent.
     */
   final case class OrderAttachable(agentPath: AgentPath) extends OrderActorEvent
 
@@ -879,7 +900,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),
     Subtype(deriveCodec[OrderNoticeExpected]),
-    Subtype(deriveCodec[OrderNoticesExpected]),
+    Subtype[OrderNoticesExpected],
     Subtype.singleton(OrderNoticesRead, aliases = Seq("OrderNoticeRead")),
     Subtype[OrderNoticesConsumptionStarted],
     Subtype(deriveConfiguredCodec[OrderNoticesConsumed]),

@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{GoOrderInapplicableProblem, OrderCannotAttachedToPlanProblem}
 import js7.data.agent.AgentPath
-import js7.data.board.NoticeKey
+import js7.data.board.{BoardNoticeKey, NoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.{EventDriven, EventDrivenState}
@@ -31,7 +31,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.collection.{MapView, mutable}
 import scala.reflect.ClassTag
 
@@ -494,10 +494,10 @@ extends
         // ControllerStateBuilder converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
-      case OrderNoticesExpected(expectedSeq) =>
+      case OrderNoticesExpected(boardNoticeKeys) =>
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           copy(
-            state = ExpectingNotices(expectedSeq)))
+            state = ExpectingNotices(boardNoticeKeys)))
 
       case OrderNoticesRead =>
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
@@ -1083,8 +1083,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       Subtype(deriveCodec[DelayedAfterError]),
       Subtype(deriveCodec[Forked]),
       Subtype(WaitingForLock),
-      Subtype(deriveCodec[ExpectingNotice]), // Is being converted to ExpectingNotices
-      Subtype(deriveCodec[ExpectingNotices]),
+      Subtype(deriveCodec[ExpectingNotice]), // Is converted to ExpectingNotices
+      Subtype[ExpectingNotices],
       Subtype(deriveCodec[BetweenCycles]),
       Subtype(Failed),
       Subtype(FailedWhileFresh),
@@ -1263,8 +1263,23 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   extends IsStarted, IsControllerOnly, NotTransferable:
     def noticeKey: NoticeKey = noticeId
 
-  final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
+  final case class ExpectingNotices(boardNoticeKeys: Vector[BoardNoticeKey])
   extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
+
+  object ExpectingNotices:
+    private val jsonCodec: Codec.AsObject[ExpectingNotices] = deriveCodec
+
+    given Encoder.AsObject[ExpectingNotices] = jsonCodec
+
+    @nowarn("msg=Expected in package js7.data.order is deprecated")
+    given Decoder[ExpectingNotices] = c =>
+      if c.downField("expected").succeeded then
+        for
+          expected <- c.get[Vector[OrderNoticesExpected.Expected273]]("expected")
+        yield
+          ExpectingNotices(expected.map(_.boardNoticeKey))
+      else
+        jsonCodec(c)
 
 
   final case class Prompting(question: Value)

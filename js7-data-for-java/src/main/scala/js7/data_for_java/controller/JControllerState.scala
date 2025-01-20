@@ -12,7 +12,7 @@ import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, GlobalBoard}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
@@ -35,7 +35,6 @@ import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
-import js7.data_for_java.order.JOrderEvent.JExpectedNotice
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
@@ -152,9 +151,8 @@ extends JJournaledState[JControllerState, ControllerState]:
       .map(JNotice(_))
       .asJava
 
-  def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[JExpectedNotice] =
+  def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[BoardNoticeKey] =
     asScala.orderToStillExpectedNotices(orderId)
-      .map(JExpectedNotice(_))
       .asJava
 
   @Nonnull

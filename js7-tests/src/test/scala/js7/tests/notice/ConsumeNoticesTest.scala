@@ -16,8 +16,6 @@ import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, NoticeKey, NoticePlace, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
-import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
 import js7.data.plan.PlanId
@@ -90,10 +88,10 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path / globalNoticeKey.noticeKey),
-        Expected(bBoard.path / globalNoticeKey.noticeKey))),
+        aBoard.path / globalNoticeKey.noticeKey,
+        bBoard.path / globalNoticeKey.noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path / globalNoticeKey.noticeKey))),
+        aBoard.path / globalNoticeKey.noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -137,8 +135,8 @@ final class ConsumeNoticesTest
         OrderNoticePosted(myBoard.path / NoticeKey("2022-10-23-X"), endOfLife.some),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path / NoticeKey("2022-10-23")),
-          Consumption(myBoard.path / NoticeKey("2022-10-23-X")))),
+          aBoard.path / NoticeKey("2022-10-23"),
+          myBoard.path / NoticeKey("2022-10-23-X"))),
         OrderNoticesConsumed(),
         OrderFinished(),
         OrderDeleted))
@@ -175,7 +173,7 @@ final class ConsumeNoticesTest
         OrderNoticePosted(aBoard.path / NoticeKey("2022-10-24"), endOfLife.some),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path / NoticeKey("2022-10-24")))),
+          aBoard.path / NoticeKey("2022-10-24"))),
         OrderPrompted(StringValue("PROMPT")),
         OrderPromptAnswered(),
         OrderMoved(Position(1) / "consumeNotices" % 1),
@@ -229,10 +227,10 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path / noticeKey),
-        Expected(bBoard.path / noticeKey))),
+        aBoard.path / noticeKey,
+        bBoard.path / noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path / noticeKey))),
+        aBoard.path / noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -278,7 +276,7 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path / noticeKey))),
+        aBoard.path / noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -331,7 +329,7 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path / noticeKey))),
+        aBoard.path / noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -348,7 +346,7 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path / noticeKey))),
+        aBoard.path / noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -412,11 +410,11 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -466,9 +464,9 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderNoticesConsumed(true),
       OrderFailed(Position(0)),
@@ -508,9 +506,9 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(noticeId.boardPath / noticeId.noticeKey))),
+        noticeId.boardPath / noticeId.noticeKey)),
       OrderPrompted(StringValue("PROMPT")),
       OrderStateReset,
       OrderNoticesConsumed(true),
@@ -526,13 +524,13 @@ final class ConsumeNoticesTest
           OrderAdded(workflowId1, deleteWhenTerminated = true),
           OrderStarted,
           OrderNoticesExpected(Vector(
-            Expected(board1.path / noticeKey))),
+            board1.path / noticeKey)),
           OrderStateReset,
           OrderTransferred(workflowId2 /: Position(0)),
           OrderNoticesExpected(Vector(
-            Expected(board2.path / noticeKey))),
+            board2.path / noticeKey)),
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(board2.path / noticeKey))),
+            board2.path / noticeKey)),
           OrderNoticesConsumed(),
           OrderFinished(),
           OrderDeleted))
@@ -570,7 +568,7 @@ final class ConsumeNoticesTest
         OrderMoved(Position(1) / "try+0" % 0),
 
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(noticeId.boardPath / noticeId.noticeKey))),
+          noticeId.boardPath / noticeId.noticeKey)),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
@@ -584,7 +582,7 @@ final class ConsumeNoticesTest
         OrderMoved(Position(1) / "try+1" % 0),
 
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(noticeId.boardPath / noticeId.noticeKey))),
+          noticeId.boardPath / noticeId.noticeKey)),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
@@ -681,7 +679,7 @@ final class ConsumeNoticesTest
         OrderNoticePosted(board.path / NoticeKey("2024-12-11"), endOfLife = None),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector:
-          OrderNoticesConsumptionStarted.Consumption(board.path / NoticeKey("2024-12-11"))),
+          board.path / NoticeKey("2024-12-11")),
 
         OrderAttachable(agentPath),
         OrderAttached(agentPath),

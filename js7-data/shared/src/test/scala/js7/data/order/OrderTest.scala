@@ -337,23 +337,22 @@ final class OrderTest extends OurTestSuite:
 
       "ExpectingNotices" in:
         testJson[State](ExpectingNotices(Vector(
-          OrderNoticesExpected.Expected(BoardPath("BOARD") / NoticeKey("NOTICE")))),
+          BoardPath("BOARD") / NoticeKey("NOTICE"))),
           json"""{
             "TYPE": "ExpectingNotices",
-            "expected": [
-              {
-                "boardNoticeKey": [ "BOARD", "NOTICE" ]
-              }
+            "boardNoticeKeys": [
+              [ "BOARD", "NOTICE" ]
             ]
           }""")
 
         testJsonDecoder[State](ExpectingNotices(Vector(
-          OrderNoticesExpected.Expected(BoardPath("BOARD") / NoticeKey("NOTICE")))),
+          BoardPath("BOARD") / NoticeKey("NOTICE"))),
           json"""{
             "TYPE": "ExpectingNotices",
             "expected": [
               {
-                "boardNoticeKey": [ "BOARD", "NOTICE" ]
+                "boardPath": "BOARD",
+                "noticeId": "NOTICE"
               }
             ]
           }""")
@@ -497,10 +496,10 @@ final class OrderTest extends OurTestSuite:
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
-        BoardPath("BOARD") / NoticeKey("NOTICE"), 
+        BoardPath("BOARD") / NoticeKey("NOTICE"),
         endOfLife = Timestamp.ofEpochSecond(1).some),
       OrderNoticesExpected(Vector(
-        OrderNoticesExpected.Expected(BoardPath("BOARD") / NoticeKey("NOTICE")))),
+        BoardPath("BOARD") / NoticeKey("NOTICE"))),
       OrderNoticesRead,
       OrderNoticesConsumptionStarted(Vector.empty),
       OrderNoticesConsumed(),
@@ -627,7 +626,7 @@ final class OrderTest extends OurTestSuite:
 
     "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
-        OrderNoticesExpected.Expected(BoardPath("BOARD") / NoticeKey("NOTICE"))))
+        BoardPath("BOARD") / NoticeKey("NOTICE")))
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse
