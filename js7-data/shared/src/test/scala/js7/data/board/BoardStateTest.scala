@@ -292,7 +292,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
   "addNotice, removeNotice (1)" in:
     var boardState = BoardState(board)
-    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
+    assert(!boardState.hasNotice(aNotice.plannedNoticeKey))
 
     boardState = boardState.addNotice(aNotice).orThrow
     assert(boardState.toNoticePlace == Map(
@@ -308,8 +308,8 @@ final class BoardStateTest extends OurAsyncTestSuite:
       aNotice.plannedNoticeKey -> NoticePlace(Some(aNotice)),
       bNotice.plannedNoticeKey -> NoticePlace(Some(bNotice))))
 
-    assert(boardState.containsNotice(aNotice.plannedNoticeKey))
-    assert(boardState.containsNotice(bNotice.plannedNoticeKey))
+    assert(boardState.hasNotice(aNotice.plannedNoticeKey))
+    assert(boardState.hasNotice(bNotice.plannedNoticeKey))
     assert(boardState.expectingOrders(aNotice.plannedNoticeKey).isEmpty)
 
     boardState = boardState.removeNotice(aNotice.plannedNoticeKey).orThrow
@@ -343,7 +343,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
         Set(aOrderId))))
 
     assert(boardState.expectingOrders(aNotice.plannedNoticeKey) == Set(aOrderId))
-    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
+    assert(!boardState.hasNotice(aNotice.plannedNoticeKey))
 
     boardState = boardState.addExpectation(aNotice.plannedNoticeKey, bOrderId).orThrow
     assert(boardState.toNoticePlace == Map(
@@ -352,7 +352,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
         Set(aOrderId, bOrderId))))
 
     assert(boardState.expectingOrders(aNotice.plannedNoticeKey) == Set(aOrderId, bOrderId))
-    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
+    assert(!boardState.hasNotice(aNotice.plannedNoticeKey))
     assert(boardState.notice(aNotice.plannedNoticeKey).isLeft)
     assert(boardState.notices.isEmpty)
 

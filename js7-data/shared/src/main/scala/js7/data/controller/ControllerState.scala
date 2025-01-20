@@ -470,7 +470,7 @@ extends
     idToOrder.get(orderId).toVector.flatMap: order =>
       orderToExpectedNotices(orderId).filter: expected =>
         pathToBoardState.get(expected.boardPath).forall: boardState =>
-          !boardState.toNoticePlace.get(order.planId / expected.noticeKey).exists(_.notice.isDefined)
+          !boardState.hasNotice(order.planId / expected.noticeKey)
 
   private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     idToOrder.get(orderId)

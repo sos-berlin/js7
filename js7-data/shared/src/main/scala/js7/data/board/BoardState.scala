@@ -47,8 +47,7 @@ extends UnsignedSimpleItemState:
       .mkString(" ")
     })"
 
-  override def toSnapshotStream
-  : Stream[IO, BoardItem | Notice | NoticePlace.Snapshot | NoticeConsumptionSnapshot] =
+  override def toSnapshotStream: Stream[IO, BoardItem | NoticeSnapshot] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
     Stream.iterable:
       View(board) ++
@@ -139,14 +138,14 @@ extends UnsignedSimpleItemState:
     *         L3.Unknown: Notice doesn't exist nor is it announced
     */
   def isNoticeAvailable(plannedNoticeKey: PlannedNoticeKey): L3 =
-    if containsNotice(plannedNoticeKey) then
+    if hasNotice(plannedNoticeKey) then
       L3.True
     else if isAnnounced(plannedNoticeKey) then
       L3.False
     else
       L3.Unknown
 
-  def containsNotice(plannedNoticeKey: PlannedNoticeKey): Boolean =
+  def hasNotice(plannedNoticeKey: PlannedNoticeKey): Boolean =
     toNoticePlace.get(plannedNoticeKey).exists(_.notice.isDefined)
 
   def containsNoticeKey(plannedNoticeKey: PlannedNoticeKey): Boolean =
