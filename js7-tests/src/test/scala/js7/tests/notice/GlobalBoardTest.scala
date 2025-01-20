@@ -124,8 +124,8 @@ final class GlobalBoardTest
           OrderAdded(expecting01Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector(
-            OrderNoticesExpected.Expected(notice0.boardPath, notice0.noticeKey),
-            OrderNoticesExpected.Expected(notice1.boardPath, notice1.noticeKey))),
+            OrderNoticesExpected.Expected(notice0.boardPath / notice0.noticeKey),
+            OrderNoticesExpected.Expected(notice1.boardPath / notice1.noticeKey))),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -164,7 +164,7 @@ final class GlobalBoardTest
       assert(posterEvents.map(_.value) == Seq(
         OrderAdded(posting0Workflow.id),
         OrderStarted,
-        OrderNoticePosted(notice.boardPath, notice.noticeKey, notice.endOfLife),
+        OrderNoticePosted(notice.boardNoticeKey, notice.endOfLife),
         OrderMoved(Position(1)),
         OrderFinished()))
 
@@ -184,7 +184,7 @@ final class GlobalBoardTest
           OrderAdded(expecting0Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector:
-            OrderNoticesExpected.Expected(notice.boardPath, notice.noticeKey)),
+            OrderNoticesExpected.Expected(notice.boardNoticeKey)),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -217,7 +217,7 @@ final class GlobalBoardTest
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderNoticePosted(board0.path, NoticeKey(qualifier),
+        OrderNoticePosted(board0.path / NoticeKey(qualifier),
           endOfLife = ts"2222-10-11T00:00:00Z".some),
         OrderMoved(Position(2)),
         OrderFinished()))
@@ -285,7 +285,8 @@ final class GlobalBoardTest
       assert(posterEvents.map(_.value) == Seq(
         OrderAdded(posting0Workflow.id),
         OrderStarted,
-        OrderNoticePosted(board0.path, NoticeKey(qualifier),
+        OrderNoticePosted(
+          board0.path / NoticeKey(qualifier),
           endOfLife = ts"2222-10-11T00:00:00Z".some),
         OrderMoved(Position(1)),
         OrderFinished()))
@@ -389,7 +390,7 @@ final class GlobalBoardTest
       assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
         OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path, NoticeKey(qualifier)))),
+        OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board.path / NoticeKey(qualifier)))),
         OrderStateReset,
         OrderCancelled,
         OrderDeleted))
@@ -406,10 +407,10 @@ final class GlobalBoardTest
           assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
             OrderAdded(workflowId1, deleteWhenTerminated = true),
             OrderStarted,
-            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board1.path, noticeKey))),
+            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board1.path / noticeKey))),
             OrderStateReset,
             OrderTransferred(workflowId2 /: Position(0)),
-            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board2.path, noticeKey))),
+            OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(board2.path / noticeKey))),
             OrderNoticesRead,
             OrderMoved(Position(1)),
             OrderFinished(),

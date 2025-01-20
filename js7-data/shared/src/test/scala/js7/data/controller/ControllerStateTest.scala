@@ -338,8 +338,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
           "TYPE": "ExpectingNotices",
           "expected": [
             {
-              "boardPath": "BOARD",
-              "noticeKey": "NOTICE-2"
+              "boardNoticeKey": [ "BOARD", "NOTICE-2" ]
             }
           ]
         },
@@ -549,6 +548,7 @@ object ControllerStateTest:
           ExternalOrderName("ORDER-NAME"),
           vanished = true))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
-        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeKey))))
+        Order.ExpectingNotices(Vector(
+          OrderNoticesExpected.Expected(board.path / expectedNoticeKey))))
     ).toKeyedMap(_.id)
   ).finish.orThrow

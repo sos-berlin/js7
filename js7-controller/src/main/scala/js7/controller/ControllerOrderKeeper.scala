@@ -1337,8 +1337,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                   notices.deleteSchedule(noticeId)
                   notices.schedule(noticeId, notice.endOfLife)
 
-              case OrderNoticePosted(boardPath, noticeKey, endOfLife) =>
-                val noticeId = order.planId / boardPath / noticeKey
+              case OrderNoticePosted(boardNoticeKey, endOfLife) =>
+                val noticeId = order.planId / boardNoticeKey
                 notices.deleteSchedule(noticeId)
                 notices.maybeSchedule(noticeId, endOfLife)
 

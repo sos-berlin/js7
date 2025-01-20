@@ -77,7 +77,7 @@ object NoticeEventSource:
               case _: PlannableBoard =>
                 state.emptyPlannedNoticeKey(planId).map: plannedNoticeKey =>
                   !boardState.isAnnounced(plannedNoticeKey) thenSome :
-                    OrderNoticeAnnounced(boardPath, plannedNoticeKey.noticeKey)
+                    OrderNoticeAnnounced(boardPath / plannedNoticeKey.noticeKey)
               case _ => Right(None)
         .map(_.flatten)
     .toList
@@ -88,7 +88,7 @@ object NoticeEventSource:
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =
     notices.map: notice =>
       assert(notice.planId == order.planId)
-      order.id <-: OrderNoticePosted(notice.boardPath, notice.noticeKey, notice.endOfLife)
+      order.id <-: OrderNoticePosted(notice.boardNoticeKey, notice.endOfLife)
     .appended:
       order.id <-: OrderMoved(order.position.increment)
 
@@ -119,7 +119,7 @@ object NoticeEventSource:
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val posted = postedNotices.map(o => Expected(o.notice.boardPath, o.notice.noticeKey)).toSet
+                val posted = postedNotices.map(o => Expected(o.notice.boardPath / o.notice.noticeKey)).toSet
                 expectNoticesInstr
                   .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable(expectingOrder.planId, _), posted)
                   .map(expectingOrder.id <-: _)

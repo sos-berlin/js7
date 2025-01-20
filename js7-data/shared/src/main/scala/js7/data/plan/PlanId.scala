@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, NoticeKey, PlannedBoardId, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
 import org.jetbrains.annotations.TestOnly
 
@@ -16,6 +16,9 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
 
   def emptyPlannedNoticeKey: PlannedNoticeKey =
     PlannedNoticeKey.empty(this)
+
+  def /(boardNoticeKey: BoardNoticeKey): NoticeId =
+    NoticeId(this, boardNoticeKey)
 
   def /(boardPath: BoardPath): PlannedBoardId =
     PlannedBoardId(this, boardPath)

@@ -3,8 +3,6 @@ package js7.data.board
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 import js7.data.item.UnsignedSimpleItemPath
-import js7.data.plan.PlanId
-import org.jetbrains.annotations.TestOnly
 
 final case class BoardPath private(string: String) extends UnsignedSimpleItemPath:
   protected type Self = BoardPath
@@ -12,11 +10,10 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
   val companion: BoardPath.type = BoardPath
 
   def /(plannedNoticeKey: PlannedNoticeKey): NoticeId =
-    NoticeId(plannedNoticeKey.planId, this, plannedNoticeKey.noticeKey)
+    NoticeId(plannedNoticeKey.planId, this / plannedNoticeKey.noticeKey)
 
-  //@TestOnly
-  //def /(noticeKey: NoticeKey): NoticeId =
-  //  NoticeId(PlanId.Global, this, noticeKey)
+  def /(noticeKey: NoticeKey): BoardNoticeKey =
+    BoardNoticeKey(this, noticeKey)
 
 
 object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]:

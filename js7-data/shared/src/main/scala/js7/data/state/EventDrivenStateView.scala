@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.board.{BoardItem, BoardState, Notice, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardItem, BoardNoticeKey, BoardState, Notice, NoticeId, PlannedNoticeKey}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
@@ -195,7 +195,7 @@ extends EventDrivenState[Self, Event], StateView:
     val orderId = previousOrder.id
     event
       .match
-        case OrderNoticeAnnounced(boardPath, noticeKey) =>
+        case OrderNoticeAnnounced(BoardNoticeKey(boardPath, noticeKey)) =>
           for
             boardState <- keyTo(BoardState).checked(boardPath)
             boardState <- boardState.announceNotice(previousOrder.planId / noticeKey)
@@ -213,10 +213,10 @@ extends EventDrivenState[Self, Event], StateView:
           yield
             boardState :: templatePlanState :: Nil
 
-        case OrderNoticePosted(boardPath, noticeKey, endOfLife) =>
-          val noticeId = previousOrder.planId / boardPath / noticeKey
+        case OrderNoticePosted(boardNoticeKey, endOfLife) =>
+          val noticeId = previousOrder.planId / boardNoticeKey
           for
-            boardState <- keyTo(BoardState).checked(boardPath)
+            boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
             boardState <- boardState.addNotice(Notice(noticeId, endOfLife))
             templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
           yield

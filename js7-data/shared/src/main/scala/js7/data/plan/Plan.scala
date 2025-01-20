@@ -4,7 +4,7 @@ import fs2.{Pure, Stream}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardPath, NoticeKey, PlannedBoard, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, PlannedBoard, PlannedNoticeKey}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderId
 import scala.collection.View
@@ -34,29 +34,32 @@ final case class Plan(
     else
       copy(orderIds = this.orderIds -- orderIds)
 
-  def addNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Plan =
-    if containsNoticeKey(boardPath, noticeKey) then
+  def addNoticeKey(boardNoticeKey: BoardNoticeKey): Plan =
+    if containsNoticeKey(boardNoticeKey) then
       this
     else
       copy(toPlannedBoard =
-        toPlannedBoard.updatedWith(boardPath): maybePlannedBoard =>
+        toPlannedBoard.updatedWith(boardNoticeKey.boardPath): maybePlannedBoard =>
           val plannedBoard = maybePlannedBoard.getOrElse:
-            PlannedBoard(id / boardPath)
-          Some(plannedBoard.addNoticeKey(noticeKey)))
+            PlannedBoard(id / boardNoticeKey.boardPath)
+          Some(plannedBoard.addNoticeKey(boardNoticeKey.noticeKey)))
 
-  def removeNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Option[Plan] =
+  def removeNoticeKey(boardNoticeKey: BoardNoticeKey): Option[Plan] =
     val plan =
-      if !containsNoticeKey(boardPath, noticeKey) then
+      if !containsNoticeKey(boardNoticeKey) then
         this
       else
         copy(toPlannedBoard =
-          toPlannedBoard.updatedWith(boardPath):
+          toPlannedBoard.updatedWith(boardNoticeKey.boardPath):
             _.flatMap: plannedBoard =>
-              plannedBoard.deleteNoticeKey(noticeKey))
+              plannedBoard.deleteNoticeKey(boardNoticeKey.noticeKey))
     !plan.isEmpty ? plan
 
-  def containsNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
-    toPlannedBoard.get(boardPath).exists(_.noticeKeys(noticeKey))
+  def containsNoticeKey(boardNoticeKey: BoardNoticeKey): Boolean =
+    toPlannedBoard
+      .get(boardNoticeKey.boardPath)
+      .exists:
+        _.noticeKeys(boardNoticeKey.noticeKey)
 
   def removeBoard(boardPath: BoardPath): Option[Plan] =
     val plan = copy(toPlannedBoard = toPlannedBoard - boardPath)

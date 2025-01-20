@@ -11,7 +11,9 @@ import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import scala.jdk.OptionConverters.*
 
 /** Globally unique NoticeId. */
-final case class NoticeId(planId: PlanId, boardPath: BoardPath, noticeKey: NoticeKey):
+final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
+
+  export boardNoticeKey.{boardPath, noticeKey}
 
   def plannedNoticeKey: PlannedNoticeKey =
     PlannedNoticeKey(planId, noticeKey)
@@ -19,13 +21,13 @@ final case class NoticeId(planId: PlanId, boardPath: BoardPath, noticeKey: Notic
 
 object NoticeId:
 
-  def checked(planId: PlanId, boardPath: BoardPath, noticeKey: NoticeKey): Checked[NoticeId] =
-    PlannedNoticeKey.checked(planId, noticeKey).map: _ =>
-      new NoticeId(planId, boardPath, noticeKey)
+  def checked(planId: PlanId, boardNoticeKey: BoardNoticeKey): Checked[NoticeId] =
+    PlannedNoticeKey.checked(planId, boardNoticeKey.noticeKey).map: _ =>
+      new NoticeId(planId, boardNoticeKey)
 
   @javaApi
   def of(planId: PlanId, boardPath: BoardPath, noticeKey: NoticeKey): NoticeId =
-    new NoticeId(planId.nn, boardPath.nn, noticeKey.nn)
+    new NoticeId(planId.nn, boardPath.nn / noticeKey.nn)
 
   given Ordering[NoticeId] = orderingBy(_.planId, _.boardPath, _.noticeKey)
 
@@ -50,7 +52,7 @@ object NoticeId:
           for
             boardPath <- vec.checked(0).flatMap(BoardPath.checked)
             noticeKey <- vec.get(1).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-            noticeId <- checked(PlanId.Global, boardPath, noticeKey)
+            noticeId <- checked(PlanId.Global, boardPath / noticeKey)
           yield
             noticeId
         else
@@ -59,6 +61,6 @@ object NoticeId:
             planKey <- vec.checked(1).flatMap(PlanKey.checked)
             boardPath <- vec.checked(2).flatMap(BoardPath.checked)
             noticeKey <- vec.get(3).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-            noticeId <- checked(planSchemaId / planKey, boardPath, noticeKey)
+            noticeId <- checked(planSchemaId / planKey, boardPath / noticeKey)
           yield
             noticeId

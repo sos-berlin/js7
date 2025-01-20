@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PlanIsClosedProblem
-import js7.data.board.{BoardPath, BoardState, NoticeKey, PlannedBoard, PlannedBoardId}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, PlannedBoard, PlannedBoardId}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
 import js7.data.plan.PlanSchemaState.*
@@ -120,13 +120,13 @@ extends UnsignedSimpleItemState:
       -- emptyPlans.map(_.id.planKey)
       ++ nonEmptyPlans.map(o => o.id.planKey -> o))
 
-  def addNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
+  def addNoticeKey(planKey: PlanKey, boardNoticeKey: BoardNoticeKey)
   : Checked[PlanSchemaState] =
-    if containsNoticeKey(planKey, boardPath, noticeKey) then
+    if containsNoticeKey(planKey, boardNoticeKey) then
       Right(this)
     else
       getOrMakePlan(planKey).map:
-        _.addNoticeKey(boardPath, noticeKey)
+        _.addNoticeKey(boardNoticeKey)
       .map: plan =>
         copy(toPlan = toPlan.updated(plan.id.planKey, plan))
 
@@ -141,18 +141,18 @@ extends UnsignedSimpleItemState:
     calculatePlanIsClosed(planKey).map: isClosed =>
       Plan(id / planKey, orderIds, plannedBoards, isClosed = isClosed)
 
-  def removeNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey)
+  def removeNoticeKey(planKey: PlanKey, boardNoticeKey: BoardNoticeKey)
   : PlanSchemaState =
-    if !containsNoticeKey(planKey, boardPath, noticeKey) then
+    if !containsNoticeKey(planKey, boardNoticeKey) then
       this
     else
       copy(toPlan =
         toPlan.updatedWith(planKey):
           _.flatMap:
-            _.removeNoticeKey(boardPath, noticeKey))
+            _.removeNoticeKey(boardNoticeKey))
 
-  def containsNoticeKey(planKey: PlanKey, boardPath: BoardPath, noticeKey: NoticeKey): Boolean =
-    toPlan.get(planKey).exists(_.containsNoticeKey(boardPath, noticeKey))
+  def containsNoticeKey(planKey: PlanKey, boardNoticeKey: BoardNoticeKey): Boolean =
+    toPlan.get(planKey).exists(_.containsNoticeKey(boardNoticeKey))
 
   def removeBoard(boardPath: BoardPath): PlanSchemaState =
     copy(toPlan =

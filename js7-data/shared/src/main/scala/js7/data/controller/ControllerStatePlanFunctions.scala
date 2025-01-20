@@ -28,10 +28,10 @@ extends EventDrivenStateView[ControllerState]:
         case (left @ Left(_), _) => left
         case (Right(templatePlanState), (boardState, plannedNoticeKey)) =>
           if boardState.containsNoticeKey(plannedNoticeKey) then
-            templatePlanState.addNoticeKey(planKey, boardState.path, plannedNoticeKey.noticeKey)
+            templatePlanState.addNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
           else
             Right:
-              templatePlanState.removeNoticeKey(planKey, boardState.path, plannedNoticeKey.noticeKey)
+              templatePlanState.removeNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
       .last
 
   final def removeBoardInPlanSchemaStates(boardPath: BoardPath): View[PlanSchemaState] =

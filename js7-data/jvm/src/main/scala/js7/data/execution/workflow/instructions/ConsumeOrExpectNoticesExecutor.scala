@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifEmpty
 import js7.data.board.{BoardState, GlobalBoard, PlannableBoard}
@@ -35,12 +34,12 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                       noticeId <- board.expectingOrderToNoticeId(scope)
                     yield
                       assert(noticeId.planId.isGlobal)
-                      OrderNoticesExpected.Expected(noticeId.boardPath, noticeId.noticeKey)
+                      OrderNoticesExpected.Expected(noticeId.boardNoticeKey)
 
                   case board: PlannableBoard =>
                     state.emptyPlannedNoticeKey(order).map: plannedNoticeKey =>
                       assert(plannedNoticeKey.planId == order.planId)
-                      OrderNoticesExpected.Expected(board.path, plannedNoticeKey.noticeKey)
+                      OrderNoticesExpected.Expected(board.path / plannedNoticeKey.noticeKey)
               .map: expectedSeq =>
                 instr.tryFulfill(order, expectedSeq, state.isNoticeAvailable(order.planId, _))
                   .ifEmpty:

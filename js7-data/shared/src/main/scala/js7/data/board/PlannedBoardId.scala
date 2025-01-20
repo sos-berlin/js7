@@ -8,7 +8,7 @@ final case class PlannedBoardId(planId: PlanId, boardPath: BoardPath):
 
   @TestOnly
   def /(noticeKey: NoticeKey): NoticeId =
-    NoticeId(planId, boardPath, noticeKey)
+    NoticeId(planId, boardPath / noticeKey)
 
   @TestOnly
   def /(noticeKey: String): NoticeId =

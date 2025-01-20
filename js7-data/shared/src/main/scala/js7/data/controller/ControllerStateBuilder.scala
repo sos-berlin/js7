@@ -109,7 +109,7 @@ extends SnapshotableStateBuilder[ControllerState],
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
             state = Order.ExpectingNotices(Vector(
-              OrderNoticesExpected.Expected(boardState.path, noticeKey)))))
+              OrderNoticesExpected.Expected(boardState.path / noticeKey)))))
 
         case Order.ExpectingNotices(expectedSeq) =>
           _keyToUnsignedItemState ++= expectedSeq

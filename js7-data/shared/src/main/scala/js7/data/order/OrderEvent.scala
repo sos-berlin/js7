@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeKey, NoticeV2_3}
+import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeKey, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.lock.LockPath
@@ -328,22 +328,33 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
 
-  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeKey: NoticeKey)
+  final case class OrderNoticeAnnounced(boardNoticeKey: BoardNoticeKey)
   extends OrderNoticeEvent
 
   object OrderNoticeAnnounced:
-    given Codec.AsObject[OrderNoticeAnnounced] = deriveRenamingCodec(Map(
-      "noticeId" -> "noticeKey"))
+    private val jsonCodec: Codec.AsObject[OrderNoticeAnnounced] = deriveCodec
+
+    given Encoder.AsObject[OrderNoticeAnnounced] = jsonCodec
+
+    given Decoder[OrderNoticeAnnounced] = c =>
+      if c.get[Json]("boardNoticeKey").isRight then
+        jsonCodec(c)
+      else
+        for
+          boardPath <- c.get[BoardPath]("boardPath")
+          noticeKey <- c.get[NoticeKey]("noticeId")
+        yield
+          OrderNoticeAnnounced(boardPath / noticeKey)
 
   sealed trait OrderNoticePosted_ extends OrderNoticeEvent
 
   object OrderNoticePosted_ :
-    private val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] =
+    given Encoder.AsObject[OrderNoticePosted_] =
       case o: OrderNoticePostedV2_3 => OrderNoticePostedV2_3.jsonEncoder.encodeObject(o)
       case o: OrderNoticePosted => OrderNoticePosted.jsonCodec.encodeObject(o)
 
-    private val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
-      if c.get[Json]("boardPath").isRight then
+    given Decoder[OrderNoticePosted_] = c =>
+      if c.get[Json]("boardNoticeKey").isRight then
         OrderNoticePosted.jsonCodec(c)
       else if c.value.asObject.flatMap(_("notice")).flatMap(_.asObject)
         .flatMap(_("boardPath")).exists(_.isString)
@@ -356,12 +367,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
             else
               Left(DecodingFailure("OrderNoticePosted must not contain a PlanId", c.history))
         yield
-          OrderNoticePosted(notice.boardPath, notice.noticeKey, notice.endOfLife)
+          OrderNoticePosted(notice.boardNoticeKey, notice.endOfLife)
       else
         c.get[NoticeV2_3]("notice").map(OrderNoticePostedV2_3(_))
-
-    implicit val jsonCodec: Codec.AsObject[OrderNoticePosted_] =
-      Codec.AsObject.from(jsonDecoder, jsonEncoder)
 
 
   // COMPATIBLE with v2.3
@@ -373,15 +381,12 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   final case class OrderNoticePosted(
-    boardPath: BoardPath,
-    noticeKey: NoticeKey,
+    boardNoticeKey: BoardNoticeKey,
     endOfLife: Option[Timestamp] = None)
   extends OrderNoticePosted_
 
   object OrderNoticePosted:
     private[OrderEvent] val jsonCodec: Codec.AsObject[OrderNoticePosted] = deriveCodecWithDefaults
-
-    //implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted] = deriveEncoder
 
 
   // COMPATIBLE with v2.3
@@ -394,12 +399,23 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   extends OrderNoticeEvent
 
   object OrderNoticesExpected:
-    final case class Expected(boardPath: BoardPath, noticeKey: NoticeKey)
+    final case class Expected(boardNoticeKey: BoardNoticeKey):
+      export boardNoticeKey.{boardPath, noticeKey}
 
     object Expected:
-      given Codec.AsObject[Expected] =
-        deriveRenamingCodec[Expected](Map(
-          "noticeId" -> "noticeKey"))
+      private val jsonCodec: Codec.AsObject[Expected] = deriveCodec
+
+      given Encoder.AsObject[Expected] = jsonCodec
+
+      given Decoder[Expected] = c =>
+        if c.get[Json]("boardNoticeKey").isRight then
+          jsonCodec(c)
+        else
+          for
+            boardPath <- c.get[BoardPath]("boardPath")
+            noticeKey <- c.get[NoticeKey]("noticeId")
+          yield
+            Expected(boardPath / noticeKey)
 
   type OrderNoticesRead = OrderNoticesRead.type
   case object OrderNoticesRead

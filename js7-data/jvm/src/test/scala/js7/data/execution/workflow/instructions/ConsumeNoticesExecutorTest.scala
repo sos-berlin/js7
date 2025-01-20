@@ -33,41 +33,41 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Announced, C -> Announced), any,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Announced, C -> Announced), any,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty))))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Posted, C -> Announced), any,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Announced, C -> Posted), any,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Posted, C -> Posted), any,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Posted, C -> Posted), any,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty),
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty),
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
     }
 
     "Nothing announced or posted Notices" - {
@@ -75,48 +75,48 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> notPosted, C -> notPosted), Wait,
             OrderNoticesExpected(Vector(
-              Expected(A, NoticeKey.empty),
-              Expected(B, NoticeKey.empty),
-              Expected(C, NoticeKey.empty))))
+              Expected(A / NoticeKey.empty),
+              Expected(B / NoticeKey.empty),
+              Expected(C / NoticeKey.empty))))
 
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> Posted, B -> notPosted, C -> notPosted), Wait,
             OrderNoticesConsumptionStarted(Vector(
-              Consumption(A, NoticeKey.empty))))
+              Consumption(A / NoticeKey.empty))))
 
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> Posted, C -> notPosted), Wait,
             OrderNoticesExpected(Vector(
-              Expected(A, NoticeKey.empty),
-              Expected(B, NoticeKey.empty),
-              Expected(C, NoticeKey.empty))))
+              Expected(A / NoticeKey.empty),
+              Expected(B / NoticeKey.empty),
+              Expected(C / NoticeKey.empty))))
 
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> notPosted, C -> Posted), Wait,
             OrderNoticesExpected(Vector(
-              Expected(A, NoticeKey.empty),
-              Expected(B, NoticeKey.empty),
-              Expected(C, NoticeKey.empty))))
+              Expected(A / NoticeKey.empty),
+              Expected(B / NoticeKey.empty),
+              Expected(C / NoticeKey.empty))))
 
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> Posted, C -> Posted), Wait,
             OrderNoticesConsumptionStarted(Vector(
-              Consumption(B, NoticeKey.empty),
-              Consumption(C, NoticeKey.empty))))
+              Consumption(B / NoticeKey.empty),
+              Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Posted, C -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty),
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty),
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
       }
 
       "Nothing announced or posted" - {
         testConsumeNotices(A | B & C, Map(), Wait,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(), SkipWhenNoNotice,
           OrderNoticesRead,
@@ -129,84 +129,84 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       "A posted" - {
         testConsumeNotices(A | B & C, Map(A -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(A -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(A -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty))))
       }
 
       "B posted" - {
         testConsumeNotices(A | B & C, Map(B -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(B -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(B -> Posted), Wait,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
       }
 
       "C posted" - {
         testConsumeNotices(A | B & C, Map(C -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(C, NoticeKey.empty))))
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(C -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(C, NoticeKey.empty))))
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(C -> Posted), Wait,
           OrderNoticesExpected(Vector(
-            Expected(A, NoticeKey.empty),
-            Expected(B, NoticeKey.empty),
-            Expected(C, NoticeKey.empty))))
+            Expected(A / NoticeKey.empty),
+            Expected(B / NoticeKey.empty),
+            Expected(C / NoticeKey.empty))))
       }
 
       "B and C posted" - {
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
       }
 
       "A, B and C posted" - {
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Posted, C -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty),
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty),
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Posted, C -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty),
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty),
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
 
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Posted, C -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(A, NoticeKey.empty),
-            Consumption(B, NoticeKey.empty),
-            Consumption(C, NoticeKey.empty))))
+            Consumption(A / NoticeKey.empty),
+            Consumption(B / NoticeKey.empty),
+            Consumption(C / NoticeKey.empty))))
       }
     }
 
@@ -215,7 +215,7 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         for any <- Seq(Wait, SkipWhenNoNotice, DontWait) do
           testConsumeNotices(A | B & C, Map(A -> Posted, B -> Announced), any,
             OrderNoticesConsumptionStarted(Vector(
-              Consumption(A, NoticeKey.empty))))
+              Consumption(A / NoticeKey.empty))))
         }
 
       testConsumeNotices(
@@ -223,46 +223,46 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         Map(A -> Announced, B -> Posted),
         Wait,
         OrderNoticesExpected(Vector(
-          Expected(A, NoticeKey.empty),
-          Expected(B, NoticeKey.empty),
-          Expected(C, NoticeKey.empty))))
+          Expected(A / NoticeKey.empty),
+          Expected(B / NoticeKey.empty),
+          Expected(C / NoticeKey.empty))))
 
       testConsumeNotices(
         A | B & C,
         Map(A -> Announced, B -> Posted),
         DontWait,
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(B, NoticeKey.empty))))
+          Consumption(B / NoticeKey.empty))))
 
       testConsumeNotices(
         A | B & C,
         Map(A -> Announced, B -> Posted),
         SkipWhenNoNotice,
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(B, NoticeKey.empty))))
+          Consumption(B / NoticeKey.empty))))
 
       testConsumeNotices(
         A | B & C,
         Map(B -> Announced, C -> Posted),
         Wait,
         OrderNoticesExpected(Vector(
-          Expected(A, NoticeKey.empty),
-          Expected(B, NoticeKey.empty),
-          Expected(C, NoticeKey.empty))))
+          Expected(A / NoticeKey.empty),
+          Expected(B / NoticeKey.empty),
+          Expected(C / NoticeKey.empty))))
 
       testConsumeNotices(
         A | B & C,
         Map(B -> Announced, C -> Posted),
         DontWait,
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(C, NoticeKey.empty))))
+          Consumption(C / NoticeKey.empty))))
 
       testConsumeNotices(
         A | B & C,
         Map(B -> Announced, C -> Posted),
         SkipWhenNoNotice,
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(C, NoticeKey.empty))))
+          Consumption(C / NoticeKey.empty))))
     }
   }
 
