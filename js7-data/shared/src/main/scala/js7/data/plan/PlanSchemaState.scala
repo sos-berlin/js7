@@ -198,11 +198,11 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
 
     val planToPlannedBoards: Map[PlanId, Iterable[PlannedBoard]] =
       boardStates.view.flatMap: boardState =>
-        boardState.idToNotice.values
-          .groupBy: noticePlace =>
-            PlannedBoardId(noticePlace.planId, boardState.path)
-          .map: (plannedBoardId, noticePlaces) =>
-            PlannedBoard(plannedBoardId, noticePlaces.view.map(_.noticeKey))
+        boardState.toNoticePlace
+          .groupBy: (plannedNoticeKey, noticePlace) =>
+            PlannedBoardId(plannedNoticeKey.planId, boardState.path)
+          .map: (plannedBoardId, keyToNoticePlace) =>
+            PlannedBoard(plannedBoardId, keyToNoticePlace.keys.view.map(_.noticeKey))
       .groupBy(_.planId)
 
     (planToOrders.keySet ++ planToPlannedBoards.keys)
@@ -224,7 +224,7 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
     orders: Iterable[Order[Order.State]],
     toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[PlanSchemaState]] =
-    updatedTemplateStates(orders, toPlanSchemaState)
+    updatedSchemaStates(orders, toPlanSchemaState)
       .flatMap:
         _.traverse: (planSchemaState, planToOrders) =>
           planSchemaState.addOrderIds(planToOrders)
@@ -233,11 +233,11 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
     orders: Iterable[Order[Order.State]],
     toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[PlanSchemaState]] =
-    updatedTemplateStates(orders, toPlanSchemaState)
+    updatedSchemaStates(orders, toPlanSchemaState)
       .map(_.map: (planSchemaState, planToOrders) =>
         planSchemaState.removeOrderIds(planToOrders))
 
-  private def updatedTemplateStates(
+  private def updatedSchemaStates(
     orders: Iterable[Order[Order.State]],
     toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[(PlanSchemaState, Map[PlanKey, Set[OrderId]])]] =

@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.board.{BoardItem, BoardState, PlannedNoticeKey}
+import js7.data.board.{BoardItem, BoardState, Notice, NoticeId, PlannedNoticeKey}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
@@ -195,11 +195,11 @@ extends EventDrivenState[Self, Event], StateView:
     val orderId = previousOrder.id
     event
       .match
-        case OrderNoticeAnnounced(boardPath, noticeId) =>
+        case OrderNoticeAnnounced(boardPath, noticeKey) =>
           for
             boardState <- keyTo(BoardState).checked(boardPath)
-            boardState <- boardState.announceNotice(noticeId)
-            templatePlanState <- updateNoticePlaceInPlan(previousOrder.planId, boardState, noticeId)
+            boardState <- boardState.announceNotice(previousOrder.planId / noticeKey)
+            templatePlanState <- updateNoticePlaceInPlan(previousOrder.planId / boardState.path / noticeKey, boardState)
           yield
             boardState :: templatePlanState :: Nil
 
@@ -207,39 +207,42 @@ extends EventDrivenState[Self, Event], StateView:
           for
             boardState <- orderIdToBoardState(orderId)
             boardState <- boardState.addNoticeV2_3(notice)
+            plannedNoticeKey = notice.id
             templatePlanState <-
-              updateNoticePlaceInPlan(previousOrder.planId, boardState, notice.id)
+              updateNoticePlaceInPlan(previousOrder.planId / boardState.path / plannedNoticeKey, boardState)
           yield
             boardState :: templatePlanState :: Nil
 
-        case OrderNoticePosted(notice) =>
+        case OrderNoticePosted(boardPath, noticeKey, endOfLife) =>
+          val noticeId = previousOrder.planId / boardPath / noticeKey
           for
-            boardState <- keyTo(BoardState).checked(notice.boardPath)
-            boardState <- boardState.addNotice(notice)
-            templatePlanState <-
-              updateNoticePlaceInPlan(previousOrder.planId, boardState, notice.id)
+            boardState <- keyTo(BoardState).checked(boardPath)
+            boardState <- boardState.addNotice(Notice(noticeId, endOfLife))
+            templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
           yield
             boardState :: templatePlanState :: Nil
 
-        case OrderNoticeExpected(noticeId) =>
+        case OrderNoticeExpected(noticeKey) =>
+          val plannedNoticeKey = previousOrder.planId / noticeKey
           for
             boardState <- orderIdToBoardState(orderId)
-            boardState <- boardState.addExpectation(noticeId, orderId)
-            templatePlanState <- updateNoticePlaceInPlan(previousOrder.planId, boardState, noticeId)
+            boardState <- boardState.addExpectation(plannedNoticeKey, orderId)
+            templatePlanState <- updateNoticePlaceInPlan(boardState.path / plannedNoticeKey, boardState)
           yield
             boardState :: templatePlanState :: Nil
 
         case OrderNoticesExpected(expectedSeq) =>
           expectedSeq.traverse: expected =>
+            val plannedNoticeKey = previousOrder.planId / expected.noticeKey
             for
               boardState <- keyTo(BoardState).checked(expected.boardPath)
-              boardState <- boardState.addExpectation(expected.noticeId, orderId)
+              boardState <- boardState.addExpectation(plannedNoticeKey, orderId)
             yield
-              (boardState -> expected.noticeId)
-          .flatMap: boardStatesAndNoticeIds =>
-            updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
-              .map: templatePlanState =>
-                templatePlanState +: boardStatesAndNoticeIds.map(_._1)
+              boardState -> plannedNoticeKey
+          .flatMap: boardStatesAndNoticeKeys =>
+            updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeKeys)
+              .map: planSchemaState =>
+                planSchemaState +: boardStatesAndNoticeKeys.map(_._1)
 
         case OrderNoticesRead =>
           previousOrder.ifState[ExpectingNotices] match
@@ -253,16 +256,16 @@ extends EventDrivenState[Self, Event], StateView:
               .concat(consumptions).distinct
           strictly(expectedOrConsumptionSeq.areUniqueBy(_.boardPath))
           expectedOrConsumptionSeq.traverse: expected =>
+            val plannedNoticeKey = previousOrder.planId / expected.noticeKey
             for
               boardState <- keyTo(BoardState).checked(expected.boardPath)
-              noticeId = expected.noticeId
               boardState <-
                 if isConsumption(expected) then
-                  boardState.startConsumption(noticeId, orderId)
+                  boardState.startConsumption(plannedNoticeKey, orderId)
                 else
-                  boardState.removeExpectation(noticeId, orderId)
+                  boardState.removeExpectation(plannedNoticeKey, orderId)
             yield
-              boardState -> noticeId
+              boardState -> plannedNoticeKey
           .flatMap: boardStatesAndNoticeIds =>
             updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
               .map: templatePlanState =>
@@ -287,7 +290,7 @@ extends EventDrivenState[Self, Event], StateView:
                   boardState -> maybeNoticeId
               .flatMap: boardStatesAndMaybeNoticeIds =>
                 val boardStatesAndNoticeIds = boardStatesAndMaybeNoticeIds.collect:
-                  case (boardState, Some(noticeId)) => boardState -> noticeId
+                  case (boardState, Some(plannedNoticeKey)) => boardState -> plannedNoticeKey
                 updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
                   .map: templatePlanState =>
                     val boardStates = boardStatesAndMaybeNoticeIds.map(_._1)
@@ -318,25 +321,22 @@ extends EventDrivenState[Self, Event], StateView:
   private def removeNoticeExpectation(order: Order[ExpectingNotices])
   : Checked[Seq[BoardState | PlanSchemaState]] =
     order.state.expected.traverse: expected =>
+      val noticeId = order.planId / expected.boardPath / expected.noticeKey
       for
         boardState <- keyTo(BoardState).checked(expected.boardPath)
-        boardState <- boardState.removeExpectation(expected.noticeId, order.id)
-        templatePlanState <- updateNoticePlaceInPlan(order.planId, boardState, expected.noticeId)
+        boardState <- boardState.removeExpectation(order.planId / expected.noticeKey, order.id)
+        templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
       yield
-        boardState -> expected.noticeId
-    .flatMap: boardStatesAndNoticeIds =>
-      updateNoticePlacesInPlan(order.planId, boardStatesAndNoticeIds)
+        boardState -> noticeId.plannedNoticeKey
+    .flatMap: boardStatesAndNoticeKeys =>
+      updateNoticePlacesInPlan(order.planId, boardStatesAndNoticeKeys)
         .map: templatePlanState =>
-          val boardStates = boardStatesAndNoticeIds.map(_._1)
+          val boardStates = boardStatesAndNoticeKeys.map(_._1)
           templatePlanState +: boardStates
 
-  protected final def updateNoticePlaceInPlan(
-    planId: PlanId,
-    boardState: BoardState,
-    noticeId: PlannedNoticeKey)
+  protected final def updateNoticePlaceInPlan(noticeId: NoticeId, boardState: BoardState)
   : Checked[PlanSchemaState] =
-    strictly(planId == noticeId.planId)
-    updateNoticePlacesInPlan(planId, boardState -> noticeId :: Nil)
+    updateNoticePlacesInPlan(noticeId.planId, boardState -> noticeId.plannedNoticeKey :: Nil)
 
   protected def updateNoticePlacesInPlan(
     planId: PlanId,

@@ -13,13 +13,14 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticePlace, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, NoticeId, NoticeKey, NoticePlace, PlannedNoticeKey}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderStopped, OrderSuspended, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
+import js7.data.plan.PlanId
 import js7.data.problems.UnreachableOrderPositionProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -63,7 +64,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val globalNoticeKey = GlobalNoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING")
@@ -73,15 +74,15 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(aBoard.path / globalNoticeKey)
 
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice.get(noticeId).isEmpty)
+    assert(!controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace.contains(globalNoticeKey))
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace.contains(globalNoticeKey))
 
     deleteItems(workflow.path)
 
@@ -89,10 +90,10 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path, noticeId),
-        Expected(bBoard.path, noticeId))),
+        Expected(aBoard.path, globalNoticeKey.noticeKey),
+        Expected(bBoard.path, globalNoticeKey.noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(aBoard.path, globalNoticeKey.noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -110,9 +111,9 @@ final class ConsumeNoticesTest
 
     val myBoard = GlobalBoard(
       BoardPath("MY-BOARD"),
-      postOrderToNoticeId = orderIdToNoticeId,
+      postOrderToNoticeKey = orderIdToNoticeId,
       endOfLife = expr(s"$$js7EpochMilli + ${lifetime.toMillis}"),
-      expectOrderToNoticeId = orderIdToNoticeId)
+      expectOrderToNoticeKey = orderIdToNoticeId)
 
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(
@@ -126,19 +127,19 @@ final class ConsumeNoticesTest
       val events = controller.runOrder(
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       val endOfLife = Timestamp.Epoch
-      assert(events.map(_.value).map {
-        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
+      assert(events.map(_.value).map:
+        case e: OrderNoticePosted => e.copy(endOfLife = endOfLife.some)
         case o => o
-      } == Seq(
+      == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-23"), aBoard.path, endOfLife.some)),
-        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-23-X"), myBoard.path, endOfLife.some)),
+        OrderNoticePosted(aBoard.path, NoticeKey("2022-10-23"), endOfLife.some),
+        OrderNoticePosted(myBoard.path, NoticeKey("2022-10-23-X"), endOfLife.some),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, PlannedNoticeKey("2022-10-23")),
-          Consumption(myBoard.path, PlannedNoticeKey("2022-10-23-X")))),
-        OrderNoticesConsumed(false),
+          Consumption(aBoard.path, NoticeKey("2022-10-23")),
+          Consumption(myBoard.path, NoticeKey("2022-10-23-X")))),
+        OrderNoticesConsumed(),
         OrderFinished(),
         OrderDeleted))
 
@@ -151,13 +152,13 @@ final class ConsumeNoticesTest
 
     withItem(workflow): workflow =>
       val eventId = eventWatch.lastAddedEventId
-      val noticeId = PlannedNoticeKey("2022-10-24")
-      val orderId = OrderId(s"#${noticeId.noticeKey.string}#")
+      val noticeKey = NoticeKey("2022-10-24")
+      val orderId = OrderId(s"#${noticeKey.string}#")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
 
       execCmd:
-        DeleteNotice(aBoard.path, noticeId)
+        DeleteNotice(PlanId.Global / aBoard.path / noticeKey)
 
       execCmd:
         AnswerOrderPrompt(orderId)
@@ -166,15 +167,15 @@ final class ConsumeNoticesTest
       val events = eventWatch.eventsByKey[OrderEvent](orderId, after = eventId)
       val endOfLife = Timestamp.Epoch
       assert(events.map {
-        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
+        case e: OrderNoticePosted => e.copy(endOfLife = endOfLife.some)
         case o => o
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(PlannedNoticeKey("2022-10-24"), aBoard.path, endOfLife.some)),
+        OrderNoticePosted(aBoard.path, NoticeKey("2022-10-24"), endOfLife.some),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, PlannedNoticeKey("2022-10-24")))),
+          Consumption(aBoard.path, NoticeKey("2022-10-24")))),
         OrderPrompted(StringValue("PROMPT")),
         OrderPromptAnswered(),
         OrderMoved(Position(1) / "consumeNotices" % 1),
@@ -189,7 +190,7 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeKey = NoticeKey(qualifier)
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#POST-UNUSED")
@@ -199,28 +200,28 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(PlanId.Global / aBoard.path / noticeKey)
 
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
-    assert(!controllerState.keyTo(BoardState)(bBoard.path).idToNotice.contains(noticeId))
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).notice.isDefined)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).isInConsumption)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).consumptionCount == 1)
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace.contains(PlanId.Global / noticeKey))
 
     execCmd:
-      PostNotice(bBoard.path, noticeId)
+      PostNotice(PlanId.Global / bBoard.path / noticeKey)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
     // Notice at board has been deleted:
-    assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice.contains(noticeId))
+    assert(!controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace.contains(PlanId.Global / noticeKey))
 
     // Notices posted at board2 while ConsumeNotices still exists:
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).consumptionCount == 0)
+    assert(controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace(PlanId.Global / noticeKey).notice.isDefined)
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace(PlanId.Global / noticeKey).isInConsumption)
+    assert(controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace(PlanId.Global / noticeKey).consumptionCount == 0)
 
     deleteItems(workflow.path)
 
@@ -228,10 +229,10 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path, noticeId),
-        Expected(bBoard.path, noticeId))),
+        Expected(aBoard.path, noticeKey),
+        Expected(bBoard.path, noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -250,10 +251,10 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeKey = NoticeKey(qualifier)
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(PlanId.Global / aBoard.path / noticeKey)
 
     TestJob.reset()
     TestJob.continue()
@@ -264,20 +265,20 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(PlanId.Global / aBoard.path / noticeKey)
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
     // The secondly posted Notice still exists:
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).notice.isDefined)
+    assert(!controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).isInConsumption)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).consumptionCount == 0)
 
     deleteItems(workflow.path)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -297,14 +298,14 @@ final class ConsumeNoticesTest
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeKey = NoticeKey(qualifier)
 
     TestJob.reset()
     val aOrderId = OrderId(s"#$qualifier#CONSUMING-A")
     val bOrderId = OrderId(s"#$qualifier#CONSUMING-B")
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(PlanId.Global / aBoard.path / noticeKey)
 
     for orderId <- View(aOrderId, bOrderId) do
       controller.api
@@ -312,25 +313,25 @@ final class ConsumeNoticesTest
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).isInConsumption)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).consumptionCount == 2)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).isInConsumption)
+    assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace(PlanId.Global / noticeKey).consumptionCount == 1)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
     awaitAndAssert(
-      controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
+      controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace.get(PlanId.Global / noticeKey).isEmpty)
 
     deleteItems(workflow.path)
     assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -347,7 +348,7 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(aBoard.path, noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -375,7 +376,7 @@ final class ConsumeNoticesTest
           WorkflowJob.Name("JOB") -> TestJob.workflowJob(agentPath)))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeId = PlanId.Global / aBoard.path / qualifier
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#NESTED")
@@ -385,20 +386,21 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(noticeId)
 
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
-    assert(!controllerState.keyTo(BoardState)(bBoard.path).idToNotice.contains(noticeId))
+
+    assert(controllerState.toNoticePlace.contains(noticeId))
+    assert(controllerState.toNoticePlace(noticeId).isInConsumption)
+    assert(controllerState.toNoticePlace(noticeId).consumptionCount == 2)
+    assert(!controllerState.keyTo(BoardState)(bBoard.path).toNoticePlace.contains(noticeId.plannedNoticeKey))
 
     TestJob.continue()
     eventWatch.await[OrderPrompted](_.key == orderId)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
+    assert(controllerState.toNoticePlace(noticeId).notice.isDefined)
+    assert(controllerState.toNoticePlace(noticeId).isInConsumption)
+    assert(controllerState.toNoticePlace(noticeId).consumptionCount == 1)
 
     execCmd:
       AnswerOrderPrompt(orderId)
@@ -410,11 +412,11 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path, noticeId))),
+        Expected(noticeId.boardPath, noticeId.noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(noticeId.boardPath, noticeId.noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(noticeId.boardPath, noticeId.noticeKey))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -437,7 +439,7 @@ final class ConsumeNoticesTest
           Fail()))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeId = PlanId.Global / aBoard.path / qualifier
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING-FAILING")
@@ -446,7 +448,7 @@ final class ConsumeNoticesTest
       .await(99.s).orThrow
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(noticeId)
 
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
@@ -454,9 +456,9 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
     eventWatch.await[OrderFailed](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)
+    assert(controllerState.toNoticePlace(noticeId).notice.isDefined)
+    assert(!controllerState.toNoticePlace(noticeId).isInConsumption)
+    assert(controllerState.toNoticePlace(noticeId).consumptionCount == 0)
 
     execCmd(CancelOrders(Seq(orderId)))
     deleteItems(workflow.path)
@@ -464,9 +466,9 @@ final class ConsumeNoticesTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path, noticeId))),
+        Expected(noticeId.boardPath, noticeId.noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(noticeId.boardPath, noticeId.noticeKey))),
       OrderOutcomeAdded(OrderOutcome.failed),
       OrderNoticesConsumed(true),
       OrderFailed(Position(0)),
@@ -480,7 +482,7 @@ final class ConsumeNoticesTest
           Prompt(expr("'PROMPT'"))))
 
     val qualifier = qualifiers.next()
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeId = PlanId.Global / aBoard.path / qualifier
 
     val orderId = OrderId(s"#$qualifier#CANCEL-WHILE-PROMTING")
     controller.api
@@ -488,7 +490,7 @@ final class ConsumeNoticesTest
       .await(99.s).orThrow
 
     execCmd:
-      PostNotice(aBoard.path, noticeId)
+      PostNotice(noticeId)
 
     eventWatch.await[OrderPrompted](_.key == orderId)
     execCmd:
@@ -497,18 +499,18 @@ final class ConsumeNoticesTest
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
     eventWatch.await[OrderCancelled](_.key == orderId)
 
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)
+    assert(controllerState.toNoticePlace(noticeId).notice.isDefined)
+    assert(!controllerState.toNoticePlace(noticeId).isInConsumption)
+    assert(controllerState.toNoticePlace(noticeId).consumptionCount == 0)
 
     deleteItems(workflow.path)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderNoticesExpected(Vector(
-        Expected(aBoard.path, noticeId))),
+        Expected(noticeId.boardPath, noticeId.noticeKey))),
       OrderNoticesConsumptionStarted(Vector(
-        Consumption(aBoard.path, noticeId))),
+        Consumption(noticeId.boardPath, noticeId.noticeKey))),
       OrderPrompted(StringValue("PROMPT")),
       OrderStateReset,
       OrderNoticesConsumed(true),
@@ -519,27 +521,27 @@ final class ConsumeNoticesTest
     val eventId = eventWatch.lastAddedEventId
     testTransferOrders(
       boardPath => ConsumeNotices(ExpectNotice(boardPath), subworkflow = Workflow.empty),
-      (board1, board2, workflowId1, workflowId2, orderId, noticeId) =>
+      (board1, board2, workflowId1, workflowId2, orderId, noticeKey) =>
         assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
           OrderAdded(workflowId1, deleteWhenTerminated = true),
           OrderStarted,
           OrderNoticesExpected(Vector(
-            Expected(board1.path, noticeId))),
+            Expected(board1.path, noticeKey))),
           OrderStateReset,
           OrderTransferred(workflowId2 /: Position(0)),
           OrderNoticesExpected(Vector(
-            Expected(board2.path, noticeId))),
+            Expected(board2.path, noticeKey))),
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(board2.path, noticeId))),
+            Consumption(board2.path, noticeKey))),
           OrderNoticesConsumed(),
           OrderFinished(),
           OrderDeleted))
 
         assert(controllerState.keyTo(BoardState)(board2.path) ==
-          BoardState(board2, idToNotice = Map.empty)))
+          BoardState(board2, toNoticePlace = Map.empty)))
 
   "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in:
-    val noticeId = PlannedNoticeKey("2022-10-25")
+    val noticeId = PlanId.Global / aBoard.path / "2022-10-25"
     val workflow = Workflow(
       WorkflowPath("CONSUME-NOTICES-IN-RETRY"),
       Seq(
@@ -559,16 +561,16 @@ final class ConsumeNoticesTest
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
       val endOfLife = Timestamp.Epoch
       assert(events.map(_.value).map {
-        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife.some))
+        case e: OrderNoticePosted => e.copy(endOfLife = endOfLife.some)
         case o => o
       } == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(noticeId, aBoard.path, endOfLife.some)),
+        OrderNoticePosted(noticeId.boardPath, noticeId.noticeKey, endOfLife.some),
         OrderMoved(Position(1) / "try+0" % 0),
 
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, noticeId))),
+          Consumption(noticeId.boardPath, noticeId.noticeKey))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
@@ -582,7 +584,7 @@ final class ConsumeNoticesTest
         OrderMoved(Position(1) / "try+1" % 0),
 
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, noticeId))),
+          Consumption(noticeId.boardPath, noticeId.noticeKey))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
@@ -676,10 +678,10 @@ final class ConsumeNoticesTest
       assert(events.map(_.value) == Vector(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticePosted(Notice(PlannedNoticeKey("2024-12-11"), board.path, endOfLife = None)),
+        OrderNoticePosted(board.path, NoticeKey("2024-12-11"), endOfLife = None),
         OrderMoved(Position(1)),
         OrderNoticesConsumptionStarted(Vector:
-          OrderNoticesConsumptionStarted.Consumption(board.path, PlannedNoticeKey("2024-12-11"))),
+          OrderNoticesConsumptionStarted.Consumption(board.path, NoticeKey("2024-12-11"))),
 
         OrderAttachable(agentPath),
         OrderAttached(agentPath),

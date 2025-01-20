@@ -8,6 +8,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import js7.base.crypt.SignedString;
+import js7.data.board.NoticeId;
+import js7.data.board.NoticeKey;
 import js7.data.board.PlannedNoticeKey;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
@@ -16,6 +18,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded;
 import js7.data.item.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
+import js7.data.plan.PlanId;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.board.JGlobalBoard;
 import js7.data_for_java.board.JNoticePlace;
@@ -92,6 +95,7 @@ public class JGlobalBoardTester
 
     private void testPostedNotice() throws ExecutionException, InterruptedException, TimeoutException {
         PlannedNoticeKey postedPlannedNoticeKey = PlannedNoticeKey.of("2021-01-01");
+        NoticeId postedNoticeId = NoticeId.of(PlanId.Global(), board.path(), NoticeKey.of("2021-01-01"));
         OrderId posterOrderId = OrderId.of("#2021-01-01#POSTER");
         CompletableFuture<JEventAndControllerState<Event>> whenPosted =
             awaitEvent(keyedEvent ->
@@ -104,15 +108,16 @@ public class JGlobalBoardTester
         JNoticePlace noticePlace = proxy
             .currentState()
             .pathToBoardState().get(board.path())
-            .idToNotice(postedPlannedNoticeKey)
+            .toNotice(postedPlannedNoticeKey)
             .get();
         assert noticePlace.notice().isPresent();
-        assertThat(noticePlace.noticeId(), equalTo(postedPlannedNoticeKey));
+        assertThat(noticePlace.noticeId(), equalTo(postedNoticeId));
         assertThat(noticePlace.notice().get().endOfLife().get(), Matchers.greaterThan(Instant.now()));
     }
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {
         PlannedNoticeKey expectedPlannedNoticeKey = PlannedNoticeKey.of("2021-07-20");
+        NoticeId expectedNoticeId = NoticeId.of(PlanId.Global(), board.path(), NoticeKey.of("2021-07-20"));
         OrderId expectingOrderId = OrderId.of("#2021-07-20#READER");
 
         CompletableFuture<JEventAndControllerState<Event>> whenWaiting =
@@ -127,9 +132,9 @@ public class JGlobalBoardTester
             proxy
                 .currentState()
                 .pathToBoardState().get(board.path())
-            .idToNotice(expectedPlannedNoticeKey)
+            .toNotice(expectedPlannedNoticeKey)
             .get();
-        assertThat(noticePlace.noticeId(), equalTo(expectedPlannedNoticeKey));
+        assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
         assertThat(noticePlace.expectingOrderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
     }

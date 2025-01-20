@@ -1,7 +1,7 @@
 package js7.data.controller
 
 import io.circe.derivation.ConfiguredCodec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
@@ -16,14 +16,14 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeId, NoticeKey}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.PlanSchemaId
+import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.workflow.position.{Label, Position}
@@ -85,18 +85,45 @@ object ControllerCommand extends CommonCommand.Companion:
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       yield CancelOrders(orderIds, mode)
 
-  final case class PostNotice(
-    boardPath: BoardPath,
-    noticeId: PlannedNoticeKey,
-    endOfLife: Option[Timestamp] = None)
+  final case class PostNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)
   extends ControllerCommand:
     type Response = Response.Accepted
-    override def toShortString = s"PostNotice($boardPath, $noticeId})"
 
-  final case class DeleteNotice(boardPath: BoardPath, noticeId: PlannedNoticeKey)
+  object PostNotice:
+    private val codec = deriveConfiguredCodec[PostNotice]
+    given Encoder.AsObject[PostNotice] = codec
+
+    given Decoder[PostNotice] = c =>
+      if c.get[Json]("boardPath").isRight then
+        // COMPATIBLE with v2.7.3
+        case class PostNotice273(
+          boardPath: BoardPath,
+          private val noticeId: NoticeKey,
+          endOfLife: Option[Timestamp] = None):
+          def noticeKey = noticeId
+        deriveDecoder[PostNotice273].apply(c).map: o =>
+          PostNotice(PlanId.Global / o.boardPath / o.noticeKey, o.endOfLife)
+      else
+        codec(c)
+
+  final case class DeleteNotice(noticeId: NoticeId)
   extends ControllerCommand:
     type Response = Response.Accepted
-    override def toShortString = s"DeleteNotice($boardPath, $noticeId)"
+
+  object DeleteNotice:
+    private val codec = deriveConfiguredCodec[DeleteNotice]
+
+    given Encoder.AsObject[DeleteNotice] = codec
+
+    given Decoder[DeleteNotice] = c =>
+      if c.get[Json]("boardPath").isRight then
+        // COMPATIBLE with v2.7.3
+        case class DeleteNotice273(boardPath: BoardPath, private val noticeId: NoticeKey):
+          def noticeKey = noticeId
+        deriveDecoder[DeleteNotice273].apply(c).map: o =>
+          DeleteNotice(PlanId.Global / o.boardPath / o.noticeKey)
+      else
+        codec(c)
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand, Big:
@@ -265,8 +292,8 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype(deriveConfiguredCodec[AddOrder]),
     Subtype(deriveConfiguredCodec[AddOrders]),
     Subtype[CancelOrders],
-    Subtype(deriveConfiguredCodec[PostNotice]),
-    Subtype(deriveConfiguredCodec[DeleteNotice]),
+    Subtype[PostNotice],
+    Subtype[DeleteNotice],
     Subtype(deriveConfiguredCodec[DeleteOrdersWhenTerminated]),
     Subtype(deriveConfiguredCodec[AnswerOrderPrompt]),
     Subtype(deriveConfiguredCodec[NoOperation]),

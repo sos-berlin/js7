@@ -9,7 +9,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeKey}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
 import js7.data.item.BasicItemEvent.ItemDeleted
@@ -17,6 +17,7 @@ import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStateReset, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
+import js7.data.plan.PlanId
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, Fork, Prompt}
@@ -153,7 +154,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.await[OrderFinished](_.key == cOrderId)
 
       // Notice-consuming dOrderId finished, too
-      execCmd(PostNotice(board.path, PlannedNoticeKey("NOTICE")))
+      execCmd(PostNotice(PlanId.Global / board.path / NoticeKey("NOTICE")))
       eventWatch.await[OrderFinished](_.key == dOrderId)
 
   "TransferOrder with changed ConsumeNotices instruction in surrounding block is rejected" in:
@@ -164,16 +165,17 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
       ConsumeNotices(ExpectNotice(aBoard.path)):
         Prompt(expr("'PROMPT-1'")))
+
     withItems((aBoard, bBoard, workflow)): (aBoard, bBoard, workflow1) =>
       val eventId = eventWatch.lastAddedEventId
       val qualifier = "2024-08-23"
-      val noticeId = PlannedNoticeKey(qualifier)
+      val noticeId = PlanId.Global / aBoard.path / NoticeKey(qualifier)
       val orderId = OrderId(s"#$qualifier#")
 
       controller.api
         .addOrder(FreshOrder(orderId, workflow1.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
-      execCmd(PostNotice(aBoard.path, noticeId))
+      execCmd(PostNotice(noticeId))
       eventWatch.await[OrderPrompted](_.key == orderId, after = eventId)
 
       /// TransferOrders with changed ConsumeNotices instructions will fail ///
@@ -201,9 +203,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         OrderAdded(workflow1.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          Expected(aBoard.path, noticeId))),
+          Expected(aBoard.path, noticeId.noticeKey))),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(aBoard.path, noticeId))),
+          Consumption(aBoard.path, noticeId.noticeKey))),
         OrderPrompted(StringValue("PROMPT-1")),
         OrderStateReset,
         OrderTransferred(workflow3.id /: (Position(0) / "consumeNotices" % 0)),

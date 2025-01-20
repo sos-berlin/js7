@@ -14,9 +14,9 @@ final class GlobalBoardTest extends OurTestSuite:
       testJson(
         GlobalBoard(
           BoardPath("BOARD"),
-          postOrderToNoticeId =
+          postOrderToNoticeKey =
             expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')"""),
-          expectOrderToNoticeId =
+          expectOrderToNoticeKey =
             expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"),
           Some(ItemRevision(7))),
@@ -24,9 +24,28 @@ final class GlobalBoardTest extends OurTestSuite:
           {
             "TYPE": "GlobalBoard",
             "path": "BOARD",
-            "postOrderToNoticeId": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')",
+            "postOrderToNoticeKey": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')",
             "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000",
-            "expectOrderToNoticeId": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')",
+            "expectOrderToNoticeKey": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')",
+            "itemRevision": 7
+          }"""
+      )(using TypedJsonCodec[GlobalBoard](GlobalBoard.subtype))
+
+    "until v2.7.3" in: // COMPATIBLE with v2.7.3
+      testJsonDecoder(
+        GlobalBoard(
+          BoardPath("BOARD"),
+          postOrderToNoticeKey = expr("1"),
+          expectOrderToNoticeKey = expr("1"),
+          endOfLife = expr("1"),
+          Some(ItemRevision(7))),
+        json"""
+          {
+            "TYPE": "GlobalBoard",
+            "path": "BOARD",
+            "postOrderToNoticeId": "1",
+            "endOfLife": "1",
+            "expectOrderToNoticeId": "1",
             "itemRevision": 7
           }"""
       )(using TypedJsonCodec[GlobalBoard](GlobalBoard.subtype))
@@ -35,8 +54,8 @@ final class GlobalBoardTest extends OurTestSuite:
       testJsonDecoder(
         GlobalBoard(
           BoardPath("BOARD"),
-          postOrderToNoticeId = expr("1"),
-          expectOrderToNoticeId = expr("1"),
+          postOrderToNoticeKey = expr("1"),
+          expectOrderToNoticeKey = expr("1"),
           endOfLife = expr("1"),
           Some(ItemRevision(7))),
         json"""

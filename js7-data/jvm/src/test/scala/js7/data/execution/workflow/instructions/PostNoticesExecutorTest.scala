@@ -7,7 +7,7 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticePlace, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticePlace}
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
@@ -38,16 +38,16 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
-        postingOrderId <-: OrderNoticePosted(notice0),
-        postingOrderId <-: OrderNoticePosted(notice1),
+        postingOrderId <-: OrderNoticePosted(notice0.boardPath, notice0.noticeKey, notice0.endOfLife),
+        postingOrderId <-: OrderNoticePosted(notice1.boardPath, notice1.noticeKey, notice1.endOfLife),
         postingOrderId <-: OrderMoved(Position(1))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
-          notice0.id -> NoticePlace(notice0.id, Some(notice0)))),
+          notice0.plannedNoticeKey -> NoticePlace(Some(notice0)))),
         board1.path -> BoardState(board1, Map(
-          notice1.id -> NoticePlace(notice1.id, Some(notice1)))),
+          notice1.plannedNoticeKey -> NoticePlace(Some(notice1)))),
         board2.path -> BoardState(board2),
         board3.path -> BoardState(board3)))
 
@@ -62,31 +62,27 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(expectingOrderId, state).orThrow
       assert(events == Seq(
         expectingOrderId <-: OrderNoticesExpected(Vector(
-          OrderNoticesExpected.Expected(board0.path, notice0.id),
-          OrderNoticesExpected.Expected(board2.path, notice2.id),
-          OrderNoticesExpected.Expected(board1.path, notice1.id),
-          OrderNoticesExpected.Expected(board3.path, notice3.id)))))
+          OrderNoticesExpected.Expected(board0.path, notice0.noticeKey),
+          OrderNoticesExpected.Expected(board2.path, notice2.noticeKey),
+          OrderNoticesExpected.Expected(board1.path, notice1.noticeKey),
+          OrderNoticesExpected.Expected(board3.path, notice3.noticeKey)))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
-          notice0.id -> NoticePlace(
-            notice0.id,
+          notice0.plannedNoticeKey -> NoticePlace(
             Some(notice0),
             Set(expectingOrderId)))),
         board1.path -> BoardState(board1, Map(
-          notice1.id -> NoticePlace(
-            notice1.id,
+          notice1.plannedNoticeKey -> NoticePlace(
             Some(notice1),
             Set(expectingOrderId)))),
         board2.path -> BoardState(board2, Map(
-          notice2.id -> NoticePlace(
-            notice2.id,
+          notice2.plannedNoticeKey -> NoticePlace(
             None,
             Set(expectingOrderId)))),
         board3.path -> BoardState(board3, Map(
-          notice3.id -> NoticePlace(
-            notice3.id,
+          notice3.plannedNoticeKey -> NoticePlace(
             None,
             Set(expectingOrderId))))))
 
@@ -101,32 +97,27 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(events == Seq(
         otherExpectingOrderId <-: OrderNoticesExpected(Vector(
-          OrderNoticesExpected.Expected(board0.path, otherNotice0.id)))))
+          OrderNoticesExpected.Expected(board0.path, otherNotice0.noticeKey)))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
-          notice0.id -> NoticePlace(
-            notice0.id,
+          notice0.plannedNoticeKey -> NoticePlace(
             Some(notice0),
             Set(expectingOrderId)),
-          otherNotice0.id -> NoticePlace(
-            otherNotice0.id,
+          otherNotice0.plannedNoticeKey -> NoticePlace(
             None,
             Set(otherExpectingOrderId)))),
         board1.path -> BoardState(board1, Map(
-          notice1.id -> NoticePlace(
-            notice1.id,
+          notice1.plannedNoticeKey -> NoticePlace(
             Some(notice1),
             Set(expectingOrderId)))),
         board2.path -> BoardState(board2, Map(
-          notice2.id -> NoticePlace(
-            notice2.id,
+          notice2.plannedNoticeKey -> NoticePlace(
             None,
             Set(expectingOrderId)))),
         board3.path -> BoardState(board3, Map(
-          notice3.id -> NoticePlace(
-            notice3.id,
+          notice3.plannedNoticeKey -> NoticePlace(
             None,
             Set(expectingOrderId))))))
 
@@ -134,7 +125,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     locally:
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
-        postingOrderId <-: OrderNoticePosted(notice2),
+        postingOrderId <-: OrderNoticePosted(notice2.boardPath, notice2.noticeKey, notice2.endOfLife),
         postingOrderId <-: OrderMoved(Position(2)),
         expectingOrderId <-: OrderNoticesRead,
         expectingOrderId <-: OrderMoved(Position(1)),
@@ -143,19 +134,15 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
-          notice0.id -> NoticePlace(
-            notice0.id,
+          notice0.plannedNoticeKey -> NoticePlace(
             Some(notice0)),
-          otherNotice0.id -> NoticePlace(
-            otherNotice0.id,
+          otherNotice0.plannedNoticeKey -> NoticePlace(
             None,
             Set(otherExpectingOrderId)))),
         board1.path -> BoardState(board1, Map(
-          notice1.id -> NoticePlace(
-            notice1.id, Some(notice1)))),
+          notice1.plannedNoticeKey -> NoticePlace(Some(notice1)))),
         board2.path -> BoardState(board2, Map(
-          notice2.id -> NoticePlace(
-            notice2.id, Some(notice2)))),
+          notice2.plannedNoticeKey -> NoticePlace(Some(notice2)))),
         board3.path -> BoardState(board3)))
 
 
@@ -180,9 +167,9 @@ object PostNoticesExecutorTest:
   private val boards = for i <- 0 to 3 yield
     GlobalBoard(
       BoardPath(s"BOARD-$i"),
-      postOrderToNoticeId = postingOrderToNoticeId(i),
+      postOrderToNoticeKey = postingOrderToNoticeId(i),
       endOfLife = expr(s"$$js7EpochMilli + ($i + 1) * ${lifeTime.toMillis}"),
-      expectOrderToNoticeId = expectingOrderToNoticeId(i))
+      expectOrderToNoticeKey = expectingOrderToNoticeId(i))
 
   private val Seq(board0, board1, board2, board3) = boards
 
@@ -190,15 +177,15 @@ object PostNoticesExecutorTest:
   private val qualifier = "2222-01-01"
   private val postingOrderId = OrderId(s"#$qualifier#POST")
   private val expectingOrderId = OrderId(s"%$qualifier%EXPECT")
-  private val notice0 = Notice(PlannedNoticeKey(s"$qualifier-0"), board0.path, endOfLife0.some)
-  private val notice1 = Notice(PlannedNoticeKey(s"$qualifier-1"), board1.path, endOfLife1.some)
-  private val notice2 = Notice(PlannedNoticeKey(s"$qualifier-2"), board2.path, endOfLife2.some)
-  private val notice3 = Notice(PlannedNoticeKey(s"$qualifier-3"), board3.path, endOfLife3.some)
+  private val notice0 = Notice(board0.path / GlobalNoticeKey(s"$qualifier-0"), endOfLife0.some)
+  private val notice1 = Notice(board1.path / GlobalNoticeKey(s"$qualifier-1"), endOfLife1.some)
+  private val notice2 = Notice(board2.path / GlobalNoticeKey(s"$qualifier-2"), endOfLife2.some)
+  private val notice3 = Notice(board3.path / GlobalNoticeKey(s"$qualifier-3"), endOfLife3.some)
 
   // This is for a different expecting, endlessly waiting Order
   private val otherQualifier = "3333-11-11"
   private val otherExpectingOrderId = OrderId(s"%$otherQualifier%OTHER")
-  private val otherNotice0 = Notice(PlannedNoticeKey(s"$otherQualifier-0"), board0.path, endOfLife0.some)
+  private val otherNotice0 = Notice(board0.path / GlobalNoticeKey(s"$otherQualifier-0"), endOfLife0.some)
 
   private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ "1", Seq(
     PostNotices(Seq(board0.path, board1.path)),

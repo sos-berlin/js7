@@ -10,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeV2_3, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeKey, NoticeV2_3}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
@@ -868,7 +868,16 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderNoticeAnnounced" in :
-    testJson[OrderEvent](OrderNoticeAnnounced(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")),
+    testJson[OrderEvent](
+      OrderNoticeAnnounced(BoardPath("BOARD"), NoticeKey("NOTICE")),
+      json"""{
+        "TYPE": "OrderNoticeAnnounced",
+        "boardPath": "BOARD",
+        "noticeKey": "NOTICE"
+      }""")
+
+    testJsonDecoder[OrderEvent](
+      OrderNoticeAnnounced(BoardPath("BOARD"), NoticeKey("NOTICE")),
       json"""{
         "TYPE": "OrderNoticeAnnounced",
         "boardPath": "BOARD",
@@ -877,7 +886,7 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticePosted until v2.3" in:
     testJson[OrderEvent](OrderNoticePostedV2_3(NoticeV2_3(
-      PlannedNoticeKey("NOTICE"),
+      NoticeKey("NOTICE"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
       json"""
       {
@@ -889,10 +898,25 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderNoticePosted" in:
-    testJson[OrderEvent](OrderNoticePosted(Notice(
-      PlannedNoticeKey("NOTICE"),
-      BoardPath("BOARD"),
-      endOfLife = Timestamp("1970-01-01T01:00:00Z").some)),
+    testJson[OrderEvent](
+      OrderNoticePosted(
+        BoardPath("BOARD"),
+        NoticeKey("NOTICE"),
+        endOfLife = Timestamp("1970-01-01T01:00:00Z").some),
+      json"""
+      {
+        "TYPE": "OrderNoticePosted",
+        "boardPath": "BOARD",
+        "noticeKey": "NOTICE",
+        "endOfLife": 3600000
+      }""")
+
+    // COMPATIBLE with v2.7.3
+    testJsonDecoder[OrderEvent](
+      OrderNoticePosted(
+        BoardPath("BOARD"),
+        NoticeKey("NOTICE"),
+        endOfLife = Timestamp("1970-01-01T01:00:00Z").some),
       json"""
       {
         "TYPE": "OrderNoticePosted",
@@ -904,7 +928,8 @@ final class OrderEventTest extends OurTestSuite:
       }""")
 
   "OrderNoticeExpected" in:
-    testJson[OrderEvent](OrderNoticeExpected(PlannedNoticeKey("NOTICE")),
+    // COMPATIBLE with v2.3
+    testJson[OrderEvent](OrderNoticeExpected(NoticeKey("NOTICE")),
       json"""
       {
         "TYPE": "OrderNoticeExpected",
@@ -913,7 +938,21 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesExpected" in:
     testJson[OrderEvent](OrderNoticesExpected(Vector(
-      OrderNoticesExpected.Expected(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")))),
+      OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE")))),
+      json"""
+      {
+        "TYPE": "OrderNoticesExpected",
+        "expected": [
+          {
+            "boardPath": "BOARD",
+            "noticeKey": "NOTICE"
+          }
+        ]
+      }""")
+
+    // COMPATIBLE with v2.7.3
+    testJsonDecoder[OrderEvent](OrderNoticesExpected(Vector(
+      OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE")))),
       json"""
       {
         "TYPE": "OrderNoticesExpected",
@@ -941,7 +980,20 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesConsumptionStarted" in:
     testJson[OrderEvent](OrderNoticesConsumptionStarted(Vector(
-      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")))),
+      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), NoticeKey("NOTICE")))),
+      json"""
+      {
+        "TYPE": "OrderNoticesConsumptionStarted",
+        "consumptions": [
+          {
+            "boardPath": "BOARD",
+            "noticeKey": "NOTICE"
+          }
+        ]
+      }""")
+
+    testJsonDecoder[OrderEvent](OrderNoticesConsumptionStarted(Vector(
+      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), NoticeKey("NOTICE")))),
       json"""
       {
         "TYPE": "OrderNoticesConsumptionStarted",

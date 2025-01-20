@@ -9,7 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, Notice, PlannableBoard}
+import js7.data.board.{BoardPath, BoardPathExpression, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted.Consumption
@@ -86,13 +86,13 @@ final class PlannableBoardTest
       eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
-      val noticeId = (dailyPlan.id / day).noticeId
+      val noticeId = (dailyPlan.id / day) / board.path / NoticeKey.empty
 
       assert(eventWatch.eventsByKey[OrderEvent](postingOrderId) == Seq(
         OrderAdded(postingWorkflow.id, planId = Some(dailyPlan.id / day), deleteWhenTerminated = true),
-        OrderNoticeAnnounced(board.path, noticeId),
+        OrderNoticeAnnounced(board.path, NoticeKey.empty),
         OrderStarted,
-        OrderNoticePosted(Notice(noticeId, board.path, endOfLife = None)),
+        OrderNoticePosted(board.path, NoticeKey.empty, endOfLife = None),
         OrderMoved(Position(1), None),
         OrderFinished(),
         OrderDeleted))
@@ -101,9 +101,9 @@ final class PlannableBoardTest
         OrderAdded(consumingWorkflow.id, planId = Some(dailyPlan.id / day), deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          Expected(board.path, noticeId))),
+          Expected(board.path, NoticeKey.empty))),
         OrderNoticesConsumptionStarted(Vector(
-          Consumption(board.path, noticeId))),
+          Consumption(board.path, NoticeKey.empty))),
         OrderMoved(Position(0) / "consumeNotices" % 1),
         OrderNoticesConsumed(),
         OrderFinished(),
@@ -234,31 +234,36 @@ final class PlannableBoardTest
             val orderId = OrderId(s"#$day#CONSUME")
             controller.addOrderBlocking:
               FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
-            eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
+            eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
 
-            val noticeId = (dailyPlan.id / day).noticeId
+            val planId = dailyPlan.id / day
+            val plannedNoticeKey = planId.emptyPlannedNoticeKey
 
             // Post board and cBoard
-            execCmd(ControllerCommand.PostNotice(board.path, noticeId))
-            execCmd(ControllerCommand.PostNotice(cBoard.path, noticeId))
+            execCmd:
+              ControllerCommand.PostNotice:
+                planId / board.path / NoticeKey.empty
+            execCmd:
+              ControllerCommand.PostNotice:
+                planId / cBoard.path / NoticeKey.empty
 
             // Post bBoard
             execCmd(AnswerOrderPrompt(announcingOrderId))
-            eventWatch.awaitNext[OrderNoticePosted](_.key == announcingOrderId)
+            eventWatch.awaitNextKey[OrderNoticePosted](announcingOrderId)
 
-            eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+            eventWatch.awaitNextKey[OrderTerminated](orderId)
             assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
               OrderAdded(workflow.id, planId = Some(dailyPlan.id / day),
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                Expected(board.path, noticeId),
-                Expected(bBoard.path, noticeId),
-                Expected(cBoard.path, noticeId))),
+                Expected(board.path, NoticeKey.empty),
+                Expected(bBoard.path, NoticeKey.empty),
+                Expected(cBoard.path, NoticeKey.empty))),
               OrderNoticesConsumptionStarted(Vector(
-                Consumption(board.path, noticeId),
-                Consumption(bBoard.path, noticeId),
-                Consumption(cBoard.path, noticeId))),
+                Consumption(board.path, NoticeKey.empty),
+                Consumption(bBoard.path, NoticeKey.empty),
+                Consumption(cBoard.path, NoticeKey.empty))),
               OrderMoved(Position(0) / "consumeNotices" % 1),
               OrderNoticesConsumed(),
               OrderFinished(),
@@ -279,11 +284,11 @@ final class PlannableBoardTest
               FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
             eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
 
-            val noticeId = (dailyPlan.id / day).noticeId
+            val plannedNoticeKey = (dailyPlan.id / day).emptyPlannedNoticeKey
 
             // Post board and cBoard
-            execCmd(ControllerCommand.PostNotice(board.path, noticeId))
-            execCmd(ControllerCommand.PostNotice(cBoard.path, noticeId))
+            execCmd(ControllerCommand.PostNotice(board.path / plannedNoticeKey))
+            execCmd(ControllerCommand.PostNotice(cBoard.path / plannedNoticeKey))
 
             // Post cBoard
             execCmd(AnswerOrderPrompt(announcingOrderId))
@@ -295,9 +300,9 @@ final class PlannableBoardTest
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                Expected(board.path, noticeId),
-                Expected(bBoard.path, noticeId),
-                Expected(cBoard.path, noticeId))),
+                Expected(board.path, NoticeKey.empty),
+                Expected(bBoard.path, NoticeKey.empty),
+                Expected(cBoard.path, NoticeKey.empty))),
               OrderNoticesRead,
               OrderMoved(Position(1)),
               OrderFinished(),
@@ -316,11 +321,11 @@ final class PlannableBoardTest
         (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
       ): (dailyPlan, _, _, _, workflow) =>
         val planId = dailyPlan.id / day
-        val noticeId = planId.noticeId
+        val noticeId = planId / board.path / NoticeKey.empty
 
         // Post one of the two required Notices
         execCmd:
-          ControllerCommand.PostNotice(board.path, noticeId)
+          ControllerCommand.PostNotice(noticeId)
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
@@ -333,7 +338,7 @@ final class PlannableBoardTest
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
-          OrderNoticesConsumptionStarted(Vector(Consumption(board.path, noticeId))),
+          OrderNoticesConsumptionStarted(Vector(Consumption(board.path, NoticeKey.empty))),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -351,11 +356,11 @@ final class PlannableBoardTest
         (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
       ): (dailyPlan, _, _, _, workflow) =>
         val planId = dailyPlan.id / day
-        val noticeId = planId.noticeId
+        val noticeId = planId / board.path / NoticeKey.empty
 
         // Post one of the two required Notices
         execCmd:
-          ControllerCommand.PostNotice(board.path, noticeId)
+          ControllerCommand.PostNotice(noticeId)
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
@@ -369,7 +374,7 @@ final class PlannableBoardTest
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
           OrderNoticesConsumptionStarted(Vector(
-            Consumption(board.path, noticeId))), // <-- only the posted Notice is consumed
+            Consumption(board.path, NoticeKey.empty))), // <-- only the posted Notice is consumed
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),

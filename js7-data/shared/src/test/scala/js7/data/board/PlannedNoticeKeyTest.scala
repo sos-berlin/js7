@@ -10,13 +10,13 @@ final class PlannedNoticeKeyTest extends OurTestSuite:
 
   "JSON" - {
     "PlannedNoticeKey for GlobalBoard" in:
-      testJson[PlannedNoticeKey](PlannedNoticeKey("NOTICE"), json"""
+      testJson[PlannedNoticeKey](GlobalNoticeKey("NOTICE"), json"""
         "NOTICE"
        """)
 
     "PlannedNoticeKey for PlannedBoard" in:
       testJson[PlannedNoticeKey](
-        PlannedNoticeKey.planned:
+        PlannedNoticeKey.empty:
           PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")),
         json"""
           [ "DALIY-PLAN", "2024-11-08"]
@@ -25,7 +25,7 @@ final class PlannedNoticeKeyTest extends OurTestSuite:
     "PlannedNoticeKey with all fields" in:
       testJson[PlannedNoticeKey](
         PlannedNoticeKey(
-          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")), 
+          PlanId(PlanSchemaId("DALIY-PLAN"), PlanKey("2024-11-08")),
           NoticeKey("NOTICE")),
         json"""
           [ "DALIY-PLAN", "2024-11-08", "NOTICE" ]

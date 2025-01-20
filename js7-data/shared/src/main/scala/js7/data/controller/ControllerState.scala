@@ -327,22 +327,23 @@ extends
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       applyOrderEvent(orderId, event)
 
-    case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
+    case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
-        boardState <- boardState.addNotice(notice.toNotice(boardPath))
-        planSchemaState <- updateNoticePlaceInPlan(notice.id.planId, boardState, notice.id)
+        notice = noticePosted.toNotice(boardPath)
+        boardState <- boardState.addNotice(notice)
+        planSchemaState <- updateNoticePlaceInPlan(notice.id, boardState)
       yield copy(
         keyToUnsignedItemState_ =
           keyToUnsignedItemState_
             .updated(boardState.path, boardState)
             .updated(planSchemaState.id, planSchemaState))
 
-    case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
+    case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
-        boardState <- boardState.removeNotice(noticeId)
-        planSchemaState <- updateNoticePlaceInPlan(noticeId.planId, boardState, noticeId)
+        boardState <- boardState.removeNotice(plannedNoticeKey)
+        planSchemaState <- updateNoticePlaceInPlan(boardState.path / plannedNoticeKey, boardState)
       yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           .updated(boardState.path, boardState)
@@ -456,19 +457,20 @@ extends
 
   def orderToAvailableNotices(orderId: OrderId): Seq[Notice] =
     val pathToBoardState = keyTo(BoardState)
-    orderToExpectedNotices(orderId).flatMap: expected =>
-      pathToBoardState.get(expected.boardPath)
-        .flatMap(_
-          .idToNotice.get(expected.noticeId)
-          .flatMap(_.notice))
+    for
+      order <- idToOrder.get(orderId).toVector
+      expected <- orderToExpectedNotices(orderId)
+      noticePlace <- maybeNoticePlace(order.planId / expected.boardPath / expected.noticeKey)
+      notice <- noticePlace.notice
+    yield
+      notice
 
   def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     val pathToBoardState = keyTo(BoardState)
-    orderToExpectedNotices(orderId)
-      .filter: expected =>
-        pathToBoardState.get(expected.boardPath)
-          .forall: boardState =>
-            !boardState.idToNotice.get(expected.noticeId).exists(_.notice.isDefined)
+    idToOrder.get(orderId).toVector.flatMap: order =>
+      orderToExpectedNotices(orderId).filter: expected =>
+        pathToBoardState.get(expected.boardPath).forall: boardState =>
+          !boardState.toNoticePlace.get(order.planId / expected.noticeKey).exists(_.notice.isDefined)
 
   private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     idToOrder.get(orderId)

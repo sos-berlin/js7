@@ -1,19 +1,22 @@
 package js7.data.board
 
 import cats.syntax.option.*
-import io.circe.Printer
 import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Printer}
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.data.value.expression.ExpressionParser.expr
+import js7.tester.CirceJsonTester
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import scala.collection.View
 
 final class BoardStateTest extends OurAsyncTestSuite:
@@ -21,19 +24,57 @@ final class BoardStateTest extends OurAsyncTestSuite:
   "JSON" - {
     val boardPath = BoardPath("BOARD")
 
+    "NoticeConsumptionSnapshot" in:
+      given Codec.AsObject[NoticeConsumptionSnapshot] = TypedJsonCodec(NoticeConsumptionSnapshot.subtype)
+
+      testJson(
+        NoticeConsumptionSnapshot(
+          boardPath,
+          OrderId("ORDER"),
+          Nel.of(
+            PlanSchemaId("DailyPlan") / "2025-01-17" / NoticeKey("NOTICE"),
+            PlanSchemaId("DailyPlan") / "2025-01-17" / NoticeKey.empty,
+            PlanId.Global / NoticeKey("NOTICE"))),
+        json"""{
+          "TYPE": "NoticeConsumption",
+          "orderId": "ORDER",
+          "boardPath": "BOARD",
+          "plannedNoticeKeyStack": [
+            [ "DailyPlan", "2025-01-17", "NOTICE" ],
+            [ "DailyPlan", "2025-01-17" ],
+            "NOTICE"
+          ]
+        }""")
+
+      testJsonDecoder(
+        NoticeConsumptionSnapshot(
+          boardPath,
+          OrderId("ORDER"),
+          Nel.of:
+            PlanId.Global / NoticeKey("NOTICE")),
+        json"""{
+          "TYPE": "NoticeConsumption",
+          "orderId": "ORDER",
+          "boardPath": "BOARD",
+          "noticeIdStack": [
+            "NOTICE"
+          ]
+        }""")
+
+
     "v2.4 JSON compatibility" in:
       val boardState = BoardState(
         GlobalBoard(
           boardPath,
-          postOrderToNoticeId =
+          postOrderToNoticeKey =
             expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-          expectOrderToNoticeId =
+          expectOrderToNoticeKey =
             expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
-        idToNotice = Map(
-          PlannedNoticeKey("NOTICE") -> NoticePlace(
-            PlannedNoticeKey("NOTICE"),
-            Some(Notice(PlannedNoticeKey("NOTICE"), boardPath,
+        toNoticePlace = Map(
+          GlobalNoticeKey("NOTICE") -> NoticePlace(
+            Some(Notice(
+              boardPath / GlobalNoticeKey("NOTICE"),
               endOfLife = Timestamp.ofEpochSecond(123).some)))))
 
       boardState.toSnapshotStream
@@ -48,16 +89,15 @@ final class BoardStateTest extends OurAsyncTestSuite:
             json"""{
               "TYPE": "GlobalBoard",
               "path": "BOARD",
-              "postOrderToNoticeId":
+              "postOrderToNoticeKey":
                 "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-              "expectOrderToNoticeId":
+              "expectOrderToNoticeKey":
                 "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
               "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
             }""",
             json"""{
               "TYPE": "Notice",
-              "id": "NOTICE",
-              "boardPath": "BOARD",
+              "id": [ "BOARD", "NOTICE" ],
               "endOfLife": 123000
             }"""))
 
@@ -65,26 +105,25 @@ final class BoardStateTest extends OurAsyncTestSuite:
       lazy val boardState = BoardState(
         GlobalBoard(
           boardPath,
-          postOrderToNoticeId =
+          postOrderToNoticeKey =
             expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')?"""),
-          expectOrderToNoticeId =
+          expectOrderToNoticeKey =
             expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')?"""),
           endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
-        idToNotice = Map(
-          PlannedNoticeKey("NOTICE-1") -> NoticePlace(
-            PlannedNoticeKey("NOTICE-1"),
+        toNoticePlace = Map(
+          GlobalNoticeKey("NOTICE-1") -> NoticePlace(
             isInConsumption = true),
-          PlannedNoticeKey("NOTICE-2") -> NoticePlace(
-            PlannedNoticeKey("NOTICE-2"),
-            Some(Notice(PlannedNoticeKey("NOTICE-2"), boardPath,
+          GlobalNoticeKey("NOTICE-2") -> NoticePlace(
+            Some(Notice(
+              boardPath / GlobalNoticeKey("NOTICE-2"),
               endOfLife = Timestamp.ofEpochSecond(123).some)),
             expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
           OrderId("A-ORDER") -> Nel.of(
-            PlannedNoticeKey("NOTICE-3"),
-            PlannedNoticeKey("NOTICE-2"),
-            PlannedNoticeKey("NOTICE-1"))))
+            GlobalNoticeKey("NOTICE-3"),
+            GlobalNoticeKey("NOTICE-2"),
+            GlobalNoticeKey("NOTICE-1"))))
 
       "toSnapshotStream JSON" in:
         boardState.toSnapshotStream
@@ -98,35 +137,32 @@ final class BoardStateTest extends OurAsyncTestSuite:
               json"""{
                 "TYPE": "GlobalBoard",
                 "path": "BOARD",
-                "postOrderToNoticeId":
+                "postOrderToNoticeKey":
                   "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
-                "expectOrderToNoticeId":
+                "expectOrderToNoticeKey":
                   "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
                 "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
               }""", json"""{
                 "TYPE": "Notice",
-                "id": "NOTICE-2",
-                "boardPath": "BOARD",
+                "id": [ "BOARD" ,"NOTICE-2" ],
                 "endOfLife": 123000
               }""", json"""{
                 "TYPE": "NoticePlace",
-                "boardPath": "BOARD",
-                "noticeId": "NOTICE-1",
+                "noticeId": [ "BOARD" ,"NOTICE-1" ],
                 "isAnnounced": false,
                 "isInConsumption": true,
                 "consumptionCount": 0
               }""", json"""{
                 "TYPE": "NoticePlace",
-                "boardPath": "BOARD",
-                "noticeId": "NOTICE-2",
+                "noticeId": [ "BOARD", "NOTICE-2" ],
                 "isAnnounced": false,
                 "isInConsumption": false,
                 "consumptionCount": 7
               }""", json"""{
                 "TYPE": "NoticeConsumption",
-                "orderId": "A-ORDER",
                 "boardPath": "BOARD",
-                "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
+                "orderId": "A-ORDER",
+                "plannedNoticeKeyStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
               }""")))
 
       "toSnapshotStream and recover" in:
@@ -151,21 +187,20 @@ final class BoardStateTest extends OurAsyncTestSuite:
       val planId = PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-08"))
       lazy val boardState = BoardState(
         PlannableBoard(boardPath),
-        idToNotice = Map(
-          planId.noticeId -> NoticePlace(
-            planId.noticeId,
+        toNoticePlace = Map(
+          planId.emptyPlannedNoticeKey -> NoticePlace(
             isInConsumption = true),
-          PlannedNoticeKey(planId, NoticeKey("NOTICE-2")) -> NoticePlace(
-            PlannedNoticeKey(planId, NoticeKey("NOTICE-2")),
-            Some(Notice(PlannedNoticeKey(planId, NoticeKey("NOTICE-2")), boardPath,
+          planId / NoticeKey("NOTICE-2") -> NoticePlace(
+            Some(Notice(
+              planId / boardPath / "NOTICE-2",
               endOfLife = Timestamp.ofEpochSecond(123).some)),
             expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
           OrderId("A-ORDER") -> Nel.of(
-            planId.noticeId,
-            PlannedNoticeKey(planId, NoticeKey("NOTICE-2")),
-            planId.noticeId)))
+            planId.emptyPlannedNoticeKey,
+            planId / NoticeKey("NOTICE-2"),
+            planId.emptyPlannedNoticeKey)))
 
       "toSnapshotStream JSON" in:
         boardState.toSnapshotStream
@@ -181,20 +216,17 @@ final class BoardStateTest extends OurAsyncTestSuite:
                 "path": "BOARD"
               }""", json"""{
                 "TYPE": "Notice",
-                "id": [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
-                "boardPath": "BOARD",
+                "id": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
                 "endOfLife": 123000
               }""", json"""{
                 "TYPE": "NoticePlace",
-                "boardPath": "BOARD",
-                "noticeId": [ "DailyPlan", "2024-11-08" ],
+                "noticeId": [ "DailyPlan", "2024-11-08", "BOARD" ],
                 "isAnnounced": false,
                 "isInConsumption": true,
                 "consumptionCount": 0
               }""", json"""{
                 "TYPE": "NoticePlace",
-                "boardPath": "BOARD",
-                "noticeId": [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+                "noticeId": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
                 "isAnnounced": false,
                 "isInConsumption": false,
                 "consumptionCount": 7
@@ -202,7 +234,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
                 "TYPE": "NoticeConsumption",
                 "orderId": "A-ORDER",
                 "boardPath": "BOARD",
-                "noticeIdStack": [
+                "plannedNoticeKeyStack": [
                   [ "DailyPlan", "2024-11-08" ],
                   [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
                   [ "DailyPlan", "2024-11-08" ]
@@ -230,144 +262,135 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
   "addNoticeV2_3 (1)" in:
     var boardState = BoardState(board)
-    val aNotice = NoticeV2_3(PlannedNoticeKey("A"), endOfLife)
+    val aNotice = NoticeV2_3(NoticeKey("A"), endOfLife)
 
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice.toNotice(board.path)))))
+    assert(boardState.toNoticePlace == Map(
+      PlanId.Global / aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path)))))
 
     val a1Notice = NoticeV2_3(aNotice.id, endOfLife)
     boardState = boardState.addNoticeV2_3(a1Notice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(a1Notice.id, Some(a1Notice.toNotice(board.path)))))
+    assert(boardState.toNoticePlace == Map(
+      PlanId.Global / aNotice.id -> NoticePlace(Some(a1Notice.toNotice(board.path)))))
 
-    val bNotice = NoticeV2_3(PlannedNoticeKey("B"), endOfLife)
+    val bNotice = NoticeV2_3(NoticeKey("B"), endOfLife)
     boardState = boardState.addNoticeV2_3(bNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice.toNotice(board.path))),
-      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice.toNotice(board.path)))))
+    assert(boardState.toNoticePlace == Map(
+      PlanId.Global / aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path))),
+      PlanId.Global / bNotice.id -> NoticePlace(Some(bNotice.toNotice(board.path)))))
 
   "addNoticeV2_3 (2)" in:
     var boardState = BoardState(board)
-    val aNotice = NoticeV2_3(PlannedNoticeKey("A"), endOfLife)
+    val aNotice = NoticeV2_3(NoticeKey("A"), endOfLife)
 
-    boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
+    boardState = boardState.addExpectation(GlobalNoticeKey(aNotice.id), aOrderId).orThrow
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    assert(boardState.toNoticePlace == Map(
+      PlanId.Global / aNotice.id -> NoticePlace(
         Some(aNotice.toNotice(board.path)),
         Set(aOrderId))))
 
   "addNotice, removeNotice (1)" in:
     var boardState = BoardState(board)
-    assert(!boardState.containsNotice(aNotice.id))
+    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
 
     boardState = boardState.addNotice(aNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(Some(aNotice))))
 
-    val a1Notice = Notice(aNotice.id, board.path, endOfLife.some)
+    val a1Notice = Notice(board.path / aNotice.plannedNoticeKey, endOfLife.some)
     boardState = boardState.addNotice(a1Notice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(a1Notice.id, Some(a1Notice))))
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(Some(a1Notice))))
 
     boardState = boardState.addNotice(bNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice)),
-      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice))))
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(Some(aNotice)),
+      bNotice.plannedNoticeKey -> NoticePlace(Some(bNotice))))
 
-    assert(boardState.containsNotice(aNotice.id))
-    assert(boardState.containsNotice(bNotice.id))
-    assert(boardState.expectingOrders(aNotice.id).isEmpty)
+    assert(boardState.containsNotice(aNotice.plannedNoticeKey))
+    assert(boardState.containsNotice(bNotice.plannedNoticeKey))
+    assert(boardState.expectingOrders(aNotice.plannedNoticeKey).isEmpty)
 
-    boardState = boardState.removeNotice(aNotice.id).orThrow
-    assert(boardState.idToNotice == Map(
-      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice))))
+    boardState = boardState.removeNotice(aNotice.plannedNoticeKey).orThrow
+    assert(boardState.toNoticePlace == Map(
+      bNotice.plannedNoticeKey -> NoticePlace(Some(bNotice))))
 
-    boardState = boardState.removeNotice(bNotice.id).orThrow
-    assert(boardState.idToNotice == Map.empty)
+    boardState = boardState.removeNotice(bNotice.plannedNoticeKey).orThrow
+    assert(boardState.toNoticePlace == Map.empty)
 
   "addNotice, removeNotice (2)" in:
     var boardState = BoardState(board)
-    boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
+    boardState = boardState.addExpectation(aNotice.plannedNoticeKey, aOrderId).orThrow
     boardState = boardState.addNotice(aNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         Some(aNotice),
         Set(aOrderId))))
 
-    boardState = boardState.removeNotice(aNotice.id).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.removeNotice(aNotice.plannedNoticeKey).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         None,
         Set(aOrderId))))
 
   "addExpectation, removeExpectation (1)" in:
     var boardState = BoardState(board)
-    boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.addExpectation(aNotice.plannedNoticeKey, aOrderId).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         None,
         Set(aOrderId))))
 
-    assert(boardState.expectingOrders(aNotice.id) == Set(aOrderId))
-    assert(!boardState.containsNotice(aNotice.id))
+    assert(boardState.expectingOrders(aNotice.plannedNoticeKey) == Set(aOrderId))
+    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
 
-    boardState = boardState.addExpectation(aNotice.id, bOrderId).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.addExpectation(aNotice.plannedNoticeKey, bOrderId).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         None,
         Set(aOrderId, bOrderId))))
 
-    assert(boardState.expectingOrders(aNotice.id) == Set(aOrderId, bOrderId))
-    assert(!boardState.containsNotice(aNotice.id))
-    assert(boardState.notice(aNotice.id).isLeft)
+    assert(boardState.expectingOrders(aNotice.plannedNoticeKey) == Set(aOrderId, bOrderId))
+    assert(!boardState.containsNotice(aNotice.plannedNoticeKey))
+    assert(boardState.notice(aNotice.plannedNoticeKey).isLeft)
     assert(boardState.notices.isEmpty)
 
     boardState = boardState.addNotice(aNotice).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         Some(aNotice),
         Set(aOrderId, bOrderId))))
-    assert(boardState.notice(aNotice.id) == Right(aNotice))
+    assert(boardState.notice(aNotice.plannedNoticeKey) == Right(aNotice))
     assert(boardState.notices.toSeq == Seq(aNotice))
 
-    boardState = boardState.removeExpectation(aNotice.id, aOrderId).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.removeExpectation(aNotice.plannedNoticeKey, aOrderId).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         Some(aNotice),
         Set(bOrderId))))
 
-    boardState = boardState.removeNotice(aNotice.id).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.removeNotice(aNotice.plannedNoticeKey).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         None,
         Set(bOrderId))))
 
-    boardState = boardState.removeExpectation(aNotice.id, bOrderId).orThrow
-    assert(boardState.idToNotice == Map.empty)
+    boardState = boardState.removeExpectation(aNotice.plannedNoticeKey, bOrderId).orThrow
+    assert(boardState.toNoticePlace == Map.empty)
 
   "addExpectation, removeExpectation (2)" in:
     var boardState = BoardState(board)
     boardState = boardState.addNotice(aNotice).orThrow
-    boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(
-        aNotice.id,
+    boardState = boardState.addExpectation(aNotice.plannedNoticeKey, aOrderId).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(
         Some(aNotice),
         Set(aOrderId))))
 
-    boardState = boardState.removeExpectation(aNotice.id, aOrderId).orThrow
-    assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
+    boardState = boardState.removeExpectation(aNotice.plannedNoticeKey, aOrderId).orThrow
+    assert(boardState.toNoticePlace == Map(
+      aNotice.plannedNoticeKey -> NoticePlace(Some(aNotice))))
 
   "BoardState snapshot" in:
     for snapshot <- boardState.toSnapshotStream.compile.toVector yield
@@ -376,14 +399,14 @@ final class BoardStateTest extends OurAsyncTestSuite:
       // Order of addExpectation is irrelevant
       var recovered = BoardState(board)
       recovered = recovered.addNotice(notice).orThrow
-      recovered = recovered.addExpectation(PlannedNoticeKey("B"), aOrderId).orThrow
-      recovered = recovered.addExpectation(PlannedNoticeKey("B"), bOrderId).orThrow
+      recovered = recovered.addExpectation(GlobalNoticeKey("B"), aOrderId).orThrow
+      recovered = recovered.addExpectation(GlobalNoticeKey("B"), bOrderId).orThrow
       assert(recovered == boardState)
 
       // Now the other way round
       recovered = BoardState(board)
-      recovered = recovered.addExpectation(PlannedNoticeKey("B"), bOrderId).orThrow
-      recovered = recovered.addExpectation(PlannedNoticeKey("B"), aOrderId).orThrow
+      recovered = recovered.addExpectation(GlobalNoticeKey("B"), bOrderId).orThrow
+      recovered = recovered.addExpectation(GlobalNoticeKey("B"), aOrderId).orThrow
       recovered = recovered.addNotice(notice).orThrow
       assert(recovered == boardState)
 
@@ -391,21 +414,20 @@ private object BoardStateTest:
 
   private val board = GlobalBoard(
     BoardPath("BOARD"),
-    postOrderToNoticeId = expr("'NOTICE'"),
-    expectOrderToNoticeId = expr("'NOTICE'"),
+    postOrderToNoticeKey = expr("'NOTICE'"),
+    expectOrderToNoticeKey = expr("'NOTICE'"),
     endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
 
   private val endOfLife = Timestamp.ofEpochSecond(1)
-  private val notice = Notice(PlannedNoticeKey("A"), board.path, endOfLife.some)
+  private val notice = Notice(board.path / GlobalNoticeKey("A"), endOfLife.some)
   private val aOrderId = OrderId("A")
   private val bOrderId = OrderId("B")
 
-  private val aNotice = Notice(PlannedNoticeKey("A"), board.path, endOfLife.some)
-  private val bNotice = Notice(PlannedNoticeKey("B"), board.path, endOfLife.some)
+  private val aNotice = Notice(board.path / GlobalNoticeKey("A"), endOfLife.some)
+  private val bNotice = Notice(board.path / GlobalNoticeKey("B"), endOfLife.some)
 
   private val boardState = BoardState(
     board,
-    View(
-      NoticePlace(notice.id, Some(notice)),
-      NoticePlace(PlannedNoticeKey("B"), None, Set(aOrderId, bOrderId))
-    ).toKeyedMap(_.noticeId))
+    Map(
+      notice.plannedNoticeKey -> NoticePlace(Some(notice)),
+      GlobalNoticeKey("B") -> NoticePlace(None, Set(aOrderId, bOrderId))))

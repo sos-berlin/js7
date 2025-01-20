@@ -1,6 +1,6 @@
 package js7.data.board
 
-import io.circe.Codec
+import io.circe.{Codec, Decoder, Encoder, Json}
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
@@ -13,25 +13,54 @@ sealed trait NoticeEvent extends Event.IsKeyBase[NoticeEvent]:
 object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
   implicit def implicitSelf: NoticeEvent.type = this
 
-  /** Notice posts via a PostNotice command (not workflow instruction). */
-  final case class NoticePosted(notice: NoticePosted.PostedNotice)
-  extends NoticeEvent
+  /** Notice posts via a PostNotice command (not the workflow instruction). */
+  final case class NoticePosted(
+    plannedNoticeKey: PlannedNoticeKey,
+    endOfLife: Option[Timestamp] = None)
+  extends NoticeEvent:
+    def toNotice(boardPath: BoardPath): Notice =
+      Notice(boardPath / plannedNoticeKey, endOfLife)
 
   object NoticePosted:
     def toKeyedEvent(notice: Notice): KeyedEvent[NoticePosted] =
-      notice.boardPath <-: NoticePosted(NoticePosted.PostedNotice(notice.id, notice.endOfLife))
+      notice.boardPath <-: NoticePosted(notice.plannedNoticeKey, notice.endOfLife)
 
-    final case class PostedNotice(id: PlannedNoticeKey, endOfLife: Option[Timestamp]):
-      def toNotice(boardPath: BoardPath): Notice =
-        Notice(id, boardPath, endOfLife)
+    private val jsonCodec: Codec.AsObject[NoticePosted] = deriveCodec[NoticePosted]
 
-    object PostedNotice:
-      implicit val jsonCodec: Codec.AsObject[PostedNotice] = deriveCodec
+    given Encoder.AsObject[NoticePosted] = jsonCodec
+
+    given Decoder[NoticePosted] = c =>
+      val notice = c.downField("notice")
+      if notice.succeeded then
+        // COMPATIBLE with v2.7.3
+        for
+          noticeKey <- notice.get[NoticeKey]("id")
+          endOfLife <- notice.get[Option[Timestamp]]("endOfLife")
+        yield
+          NoticePosted(GlobalNoticeKey(noticeKey), endOfLife)
+      else
+        jsonCodec(c)
 
 
-  final case class NoticeDeleted(noticeId: PlannedNoticeKey)
+  final case class NoticeDeleted(plannedNoticeKey: PlannedNoticeKey)
   extends NoticeEvent
 
+  object NoticeDeleted:
+    private val jsonCodec: Codec.AsObject[NoticeDeleted] = deriveCodec[NoticeDeleted]
+
+    given Encoder.AsObject[NoticeDeleted] = jsonCodec
+
+    given Decoder[NoticeDeleted] = c =>
+      if c.get[Json]("noticeId").isRight then
+        // COMPATIBLE with v2.7.3
+        for
+          noticeKey <- c.get[NoticeKey]("noticeId")
+        yield
+          NoticeDeleted(GlobalNoticeKey(noticeKey))
+      else
+        jsonCodec(c)
+
+
   implicit val jsonCodec: TypedJsonCodec[NoticeEvent] = TypedJsonCodec(
-    Subtype(deriveCodec[NoticePosted]),
-    Subtype(deriveCodec[NoticeDeleted]))
+    Subtype[NoticePosted],
+    Subtype[NoticeDeleted])

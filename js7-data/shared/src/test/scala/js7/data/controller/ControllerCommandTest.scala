@@ -5,16 +5,17 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
+import js7.base.time.TimestampForTests.ts
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, PlannedNoticeKey}
+import js7.data.board.{BoardPath, GlobalNoticeKey, NoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
+import js7.data.plan.PlanSchemaId
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
@@ -139,18 +140,40 @@ final class ControllerCommandTest extends OurTestSuite:
   }
 
   "PostNotice" in:
-    testJson[ControllerCommand](PostNotice(
-        BoardPath("BOARD"),
-        PlannedNoticeKey("NOTICE")),
+    testJson[ControllerCommand](
+      PostNotice(
+        BoardPath("BOARD") / GlobalNoticeKey("NOTICE"),
+        endOfLife = None),
+      json"""{
+        "TYPE": "PostNotice",
+        "noticeId": [ "BOARD", "NOTICE" ]
+      }""")
+
+    testJson[ControllerCommand](
+      PostNotice(
+        BoardPath("BOARD") / GlobalNoticeKey("NOTICE"),
+        Some(ts"1970-01-01T01:00:00Z")),
+      json"""{
+        "TYPE": "PostNotice",
+        "noticeId": [ "BOARD", "NOTICE" ],
+        "endOfLife": 3600000
+      }""")
+
+    testJsonDecoder[ControllerCommand](
+      PostNotice(
+        BoardPath("BOARD") / GlobalNoticeKey("NOTICE"),
+        endOfLife = None),
       json"""{
         "TYPE": "PostNotice",
         "boardPath": "BOARD",
         "noticeId": "NOTICE"
       }""")
 
-    testJson[ControllerCommand](PostNotice(
-        BoardPath("BOARD"),
-        PlannedNoticeKey("NOTICE"), Some(Timestamp("1970-01-01T01:00:00Z"))),
+    // COMPATIBLE with v2.7.3
+    testJsonDecoder[ControllerCommand](
+      PostNotice(
+        BoardPath("BOARD") / GlobalNoticeKey("NOTICE"),
+        Some(ts"1970-01-01T01:00:00Z")),
       json"""{
         "TYPE": "PostNotice",
         "boardPath": "BOARD",
@@ -159,7 +182,17 @@ final class ControllerCommandTest extends OurTestSuite:
       }""")
 
   "DeleteNotice" in:
-    testJson[ControllerCommand](DeleteNotice(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")),
+    testJson[ControllerCommand](
+      DeleteNotice(PlanSchemaId("DailyPlan") / "2025-01-17" / BoardPath("BOARD") / NoticeKey("NOTICE")),
+      json"""{
+        "TYPE": "DeleteNotice",
+        "noticeId": [ "DailyPlan", "2025-01-17", "BOARD", "NOTICE" ]
+      }""")
+
+    // COMPATIBLE with v2.7.3
+    testJsonDecoder[ControllerCommand](
+      DeleteNotice:
+        BoardPath("BOARD") / GlobalNoticeKey("NOTICE"),
       json"""{
         "TYPE": "DeleteNotice",
         "boardPath": "BOARD",

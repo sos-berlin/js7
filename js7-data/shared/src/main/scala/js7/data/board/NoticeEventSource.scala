@@ -4,7 +4,6 @@ import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.WallClock
-import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
@@ -28,13 +27,13 @@ final class NoticeEventSource(clock: WallClock):
       fatNotices <- boardStates.traverse: boardState =>
         boardState.board.match
           case board: GlobalBoard =>
-            // A big, unpure Scope ???
+            // A big, impure Scope ???
             state.toImpureOrderExecutingScope(order, clock.now()).flatMap: scope =>
               board.postingOrderToNotice(scope)
 
           case board: PlannableBoard =>
-            state.orderToPlannableBoardNoticeId(order).map: noticeId =>
-              Notice(noticeId, board.path, endOfLife = None)
+            state.emptyPlannedNoticeKey(order).map: plannedNoticeKey =>
+              Notice(board.path / plannedNoticeKey)
         .map:
           FatNotice(_, boardState)
       postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
@@ -44,16 +43,17 @@ final class NoticeEventSource(clock: WallClock):
 
   def executePostNoticeCommand(postNotice: ControllerCommand.PostNotice, state: StateView)
   : Checked[Seq[KeyedEvent[OrderNoticeEvent | OrderMoved | NoticeEvent]]] =
-    val ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) = postNotice
+    import postNotice.endOfLife
+    import postNotice.noticeId.{boardPath, plannedNoticeKey}
     val scope = NowScope(clock.now()) // TODO Should be pure ?
     for
       boardState <- state.keyTo(BoardState).checked(boardPath)
-      notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
+      notice <- boardState.board.toNotice(plannedNoticeKey, endOfLife)(scope)
       _ <- boardState.addNotice(notice) // Check
       expectingOrderEvents <-
-        if notice.endOfLife.exists(_ <= clock.now()) then
+        if endOfLife.exists(_ <= clock.now()) then
           logger.debug(s"Delete $notice immediately because endOfLife has been reached")
-          Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
+          Right((boardPath <-: NoticeDeleted(plannedNoticeKey)) :: Nil)
         else
           postedNoticeToExpectingOrderEvents(boardState, notice, state)
     yield
@@ -75,9 +75,9 @@ object NoticeEventSource:
           state.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
             boardState.board match
               case _: PlannableBoard =>
-                state.planToPlannableBoardNoticeId(planId).map: noticeId =>
-                  !boardState.isAnnounced(noticeId) thenSome :
-                    OrderNoticeAnnounced(boardPath, noticeId)
+                state.emptyPlannedNoticeKey(planId).map: plannedNoticeKey =>
+                  !boardState.isAnnounced(plannedNoticeKey) thenSome :
+                    OrderNoticeAnnounced(boardPath, plannedNoticeKey.noticeKey)
               case _ => Right(None)
         .map(_.flatten)
     .toList
@@ -86,8 +86,9 @@ object NoticeEventSource:
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =
-    notices.map: n =>
-      order.id <-: OrderNoticePosted(n)
+    notices.map: notice =>
+      assert(notice.planId == order.planId)
+      order.id <-: OrderNoticePosted(notice.boardPath, notice.noticeKey, notice.endOfLife)
     .appended:
       order.id <-: OrderMoved(order.position.increment)
 
@@ -106,7 +107,7 @@ object NoticeEventSource:
     for
       expectingOrders <- postedNotices
         .flatMap: post =>
-          post.boardState.expectingOrders(post.notice.id)
+          post.boardState.expectingOrders(post.notice.plannedNoticeKey)
         .distinct
         .traverse(state.idToOrder.checked)
       events <- expectingOrders
@@ -118,9 +119,9 @@ object NoticeEventSource:
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val posted = postedNotices.map(o => Expected(o.boardState.path, o.notice.id)).toSet
+                val posted = postedNotices.map(o => Expected(o.notice.boardPath, o.notice.noticeKey)).toSet
                 expectNoticesInstr
-                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, posted)
+                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable(expectingOrder.planId, _), posted)
                   .map(expectingOrder.id <-: _)
           .map(_.flatten)
     yield

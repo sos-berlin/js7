@@ -101,21 +101,23 @@ extends SnapshotableStateBuilder[ControllerState],
       _idToOrder.insert(order.id, order)
 
       order.state match
-        case Order.ExpectingNotice(noticeId) =>
+        case Order.ExpectingNotice(noticeKey) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _keyToUnsignedItemState(boardState.path) = boardState.addExpectation(noticeId, order.id).orThrow
+          _keyToUnsignedItemState(boardState.path) =
+            boardState.addExpectation(order.planId / noticeKey, order.id).orThrow
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
             state = Order.ExpectingNotices(Vector(
-              OrderNoticesExpected.Expected(boardState.path, noticeId)))))
+              OrderNoticesExpected.Expected(boardState.path, noticeKey)))))
 
         case Order.ExpectingNotices(expectedSeq) =>
           _keyToUnsignedItemState ++= expectedSeq
             .map(expected => expected.boardPath ->
               keyTo(BoardState)
                 .checked(expected.boardPath)
-                .flatMap(_.addExpectation(expected.noticeId, order.id))
+                .flatMap:
+                  _.addExpectation(order.planId / expected.noticeKey, order.id)
                 .orThrow)
 
         case _ =>
@@ -338,14 +340,14 @@ extends SnapshotableStateBuilder[ControllerState],
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
         ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow
 
-      case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
+      case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
           _keyToUnsignedItemState(boardState.path) =
-            boardState.addNotice(notice.toNotice(boardState.path)).orThrow
+            boardState.addNotice(noticePosted.toNotice(boardState.path)).orThrow
 
-      case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
+      case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
-          _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
+          _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(plannedNoticeKey).orThrow
 
       case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaChanged) =>
         val planSchemaState = keyTo(PlanSchemaState)(planSchemaId)

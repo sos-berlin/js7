@@ -1,23 +1,44 @@
 package js7.data.board
 
-import io.circe.Codec
+import io.circe.{Codec, Decoder, Encoder, Json}
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.time.Timestamp
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import org.jetbrains.annotations.TestOnly
 
-final case class Notice(id: PlannedNoticeKey, boardPath: BoardPath, endOfLife: Option[Timestamp])
+final case class Notice(id: NoticeId, endOfLife: Option[Timestamp])
 extends NoticeSnapshot:
 
-  def toExpected: OrderNoticesExpected.Expected =
-    OrderNoticesExpected.Expected(boardPath, id)
+  export id.{boardPath, noticeKey, planId, plannedNoticeKey}
 
-  override def toString = s"Notice($boardPath $id${endOfLife.fold("")(o => s" $o")})"
+  def toExpected: OrderNoticesExpected.Expected =
+    OrderNoticesExpected.Expected(boardPath, id.noticeKey)
+
+  override def toString = s"Notice($id${endOfLife.fold("")(o => s" $o")})"
 
 
 object Notice:
-  implicit val jsonCodec: Codec.AsObject[Notice] = deriveCodec
+  private val jsonCodec: Codec.AsObject[Notice] = deriveCodec
+
+  given Encoder.AsObject[Notice] = jsonCodec
+
+  given Decoder[Notice] = c =>
+    if c.get[Json]("boardPath").isRight then
+      // COMPATIBLE with v2.7.3
+      for
+        boardPath <- c.get[BoardPath]("boardPath")
+        plannedNoticeKey <- c.get[PlannedNoticeKey]("id")
+        endOfLife <- c.get[Option[Timestamp]]("endOfLife")
+      yield
+        Notice(boardPath / plannedNoticeKey, endOfLife)
+    else
+      jsonCodec(c)
+
+  def apply(id: NoticeId, endOfLife: Option[Timestamp] = None): Notice =
+    new Notice(id, endOfLife)
 
   @TestOnly
   def forPlannedBoard(plannedBoardId: PlannedBoardId): Notice =
-    Notice(PlannedNoticeKey.planned(plannedBoardId.planId), plannedBoardId.boardPath, endOfLife = None)
+    Notice(
+      plannedBoardId.boardPath / PlannedNoticeKey.empty(plannedBoardId.planId),
+      endOfLife = None)

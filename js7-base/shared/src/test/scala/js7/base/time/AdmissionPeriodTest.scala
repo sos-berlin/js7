@@ -18,7 +18,7 @@ final class AdmissionPeriodTest extends OurTestSuite:
             "TYPE":  "AlwaysPeriod"
           }""")
 
-    "Daily" in:
+    "DailyPlan" in:
       testJson[AdmissionPeriod](
         DailyPeriod(3*3600, 600.s), // 3:00, 10 minutes
         json"""

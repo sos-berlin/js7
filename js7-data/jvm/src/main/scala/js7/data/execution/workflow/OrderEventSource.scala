@@ -250,7 +250,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         ControllerEventColl.keyedEvents[OrderDeleted | NoticeDeleted](controllerState): coll =>
           for
             coll <- coll.add(order.id)(order.tryDelete)
-            coll <- coll.add(coll.aggregate.deleteNoticesOfDeadPlan(order.planId))
+            coll <- coll.add(coll.aggregate.removeNoticesOfDeadPlan(order.planId))
           yield coll
         match
           case Left(problem) =>

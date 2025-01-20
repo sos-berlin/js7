@@ -190,7 +190,7 @@ final class PlanTest
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)
 
-    "When a PlanSchema is being deleted, all its PlannedBoards and NoticeIds are deleted" in:
+    "When a PlanSchema is being deleted, all its PlannedBoards and NoticePlaces are deleted" in:
       val day = "2024-11-27"
       val aBoard = PlannableBoard(BoardPath("A-BOARD"))
       val bBoard = PlannableBoard(BoardPath("B-BOARD"))
@@ -216,7 +216,8 @@ final class PlanTest
           FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
-        val noticeId = planId.noticeId
+        val plannedNoticeKey = planId.emptyPlannedNoticeKey
+        val noticeKey = plannedNoticeKey.noticeKey
 
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
@@ -237,8 +238,8 @@ final class PlanTest
             planId,
             Set(postingOrderId, consumingOrderId),
             Seq(
-              PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
-              PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
+              PlannedBoard(planId / aBoard.path, Set(noticeKey)),
+              PlannedBoard(planId / bBoard.path, Set(noticeKey))),
             isClosed = false))
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
@@ -262,12 +263,12 @@ final class PlanTest
             planId,
             orderIds = Set.empty,
             Seq(
-              PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
-              PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
+              PlannedBoard(planId / aBoard.path, Set(noticeKey)),
+              PlannedBoard(planId / bBoard.path, Set(noticeKey))),
             isClosed = false))
 
-        assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice == Map(
-          noticeId -> NoticePlace(noticeId, Some(Notice(noticeId, aBoard.path, endOfLife = None)))))
+        assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace == Map(
+          plannedNoticeKey -> NoticePlace(Some(Notice(aBoard.path / plannedNoticeKey)))))
         assert(controllerState.keyTo(BoardState)(aBoard.path).orderToConsumptionStack == Map.empty)
 
         // When PlanSchema has been deleted, its NoticePlaces are deleted, too //
@@ -276,8 +277,8 @@ final class PlanTest
           Set(
             Plan(planId,
               plannedBoards = Seq(
-                PlannedBoard(planId / aBoard.path, Set(noticeId.noticeKey)),
-                PlannedBoard(planId / bBoard.path, Set(noticeId.noticeKey))),
+                PlannedBoard(planId / aBoard.path, Set(noticeKey)),
+                PlannedBoard(planId / bBoard.path, Set(noticeKey))),
               isClosed = false)))
 
         deleteItems(planSchema.path)

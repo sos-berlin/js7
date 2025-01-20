@@ -7,7 +7,7 @@ import js7.data.plan.PlanSchemaId.Global
 
 /** A template for Plans-
   *
-  * "Daily", daily plan, is a usual PlanSchemaId.
+  * "DailyPlan", daily plan, is a usual PlanSchemaId.
   */
 final case class PlanSchemaId private(string: String)
   extends GenericString, UnsignedSimpleItemPath:

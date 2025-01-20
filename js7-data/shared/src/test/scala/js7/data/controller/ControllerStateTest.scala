@@ -13,7 +13,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticePlace, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerStateTest.*
@@ -34,7 +34,7 @@ import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.{PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -248,14 +248,13 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       }, {
         "TYPE": "GlobalBoard",
         "path": "BOARD",
-        "postOrderToNoticeId": "$$orderId",
-        "expectOrderToNoticeId": "$$orderId",
+        "postOrderToNoticeKey": "$$orderId",
+        "expectOrderToNoticeKey": "$$orderId",
         "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000",
         "itemRevision": 7
       }, {
         "TYPE": "Notice",
-        "id": "NOTICE-1",
-        "boardPath": "BOARD",
+        "id": [ "BOARD", "NOTICE-1" ],
         "endOfLife": 10086400000
       }, {
         "TYPE": "Calendar",
@@ -340,7 +339,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
           "expected": [
             {
               "boardPath": "BOARD",
-              "noticeId": "NOTICE-2"
+              "noticeKey": "NOTICE-2"
             }
           ]
         },
@@ -464,20 +463,21 @@ object ControllerStateTest:
 
   private val board = GlobalBoard(
     BoardPath("BOARD"),
-    postOrderToNoticeId = expr("$orderId"),
-    expectOrderToNoticeId = expr("$orderId"),
+    postOrderToNoticeKey = expr("$orderId"),
+    expectOrderToNoticeKey = expr("$orderId"),
     endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
 
-  private val notice = Notice(PlannedNoticeKey("NOTICE-1"), board.path,
+  private val notice = Notice(
+    board.path / GlobalNoticeKey("NOTICE-1"),
     endOfLife = Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000).some)
-  private val expectedNoticeId = PlannedNoticeKey("NOTICE-2")
+  private val expectedNoticeKey = NoticeKey("NOTICE-2")
 
   private val boardState = BoardState(
     board,
     Map(
-      notice.id -> NoticePlace(notice.id, Some(notice)),
-      expectedNoticeId -> NoticePlace(expectedNoticeId, None, Set(expectingNoticeOrderId))))
+      notice.plannedNoticeKey -> NoticePlace(Some(notice)),
+      PlanId.Global / expectedNoticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
@@ -549,6 +549,6 @@ object ControllerStateTest:
           ExternalOrderName("ORDER-NAME"),
           vanished = true))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
-        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeId))))
+        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeKey))))
     ).toKeyedMap(_.id)
   ).finish.orThrow

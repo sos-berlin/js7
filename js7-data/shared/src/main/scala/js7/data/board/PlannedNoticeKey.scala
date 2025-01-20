@@ -15,19 +15,18 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.jdk.OptionConverters.*
 
-final case class PlannedNoticeKey private(planId: PlanId, noticeKey: NoticeKey):
+/** A pair of PlanId and NoticeKey.
+  *
+  * A PlannedNoticeKey combined with a BoardPath is a NoticeId. */
+final case class PlannedNoticeKey private[board](planId: PlanId, noticeKey: NoticeKey):
 
   override def toString =
-    s"PlannedNoticeKey${noticeKey.nonEmpty ?? s":$noticeKey"}${!planId.isGlobal ?? s":${planId.shortString}"}"
+    s"PlannedNoticeKey:${planId.shortString}/${noticeKey.nonEmpty ?? noticeKey.toString}"
 
 
 object PlannedNoticeKey:
 
   /** Make a PlannedNoticeKey for a GlobalBoard. */
-  @TestOnly @throws[ProblemException]
-  def apply(string: String): PlannedNoticeKey =
-    global(string).orThrow
-
   @TestOnly @throws[ProblemException]
   def apply(planId: PlanId, noticeKey: NoticeKey): PlannedNoticeKey =
     checked(planId, noticeKey).orThrow
@@ -38,7 +37,7 @@ object PlannedNoticeKey:
   def global(noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
     checked(PlanId.Global, noticeKey)
 
-  def planned(planId: PlanId): PlannedNoticeKey =
+  def empty(planId: PlanId): PlannedNoticeKey =
     assertThat(!planId.isGlobal)
     new PlannedNoticeKey(planId, NoticeKey.empty)
 
@@ -77,7 +76,15 @@ object PlannedNoticeKey:
               planSchemaId <- seq.checked(0).flatMap(PlanSchemaId.checked)
               planKey <- seq.checked(1).flatMap(PlanKey.checked)
               noticeKey <- seq.get(2).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-              noticeId <- checked(PlanId(planSchemaId, planKey), noticeKey)
+              plannedNoticeKey <- checked(PlanId(planSchemaId, planKey), noticeKey)
             yield
-              noticeId
+              plannedNoticeKey
           .toDecoderResult(c.history)
+
+
+object GlobalNoticeKey:
+  def apply(noticeKey: String): PlannedNoticeKey =
+    apply(NoticeKey(noticeKey))
+
+  def apply(noticeKey: NoticeKey): PlannedNoticeKey =
+    PlannedNoticeKey(PlanId.Global, noticeKey)

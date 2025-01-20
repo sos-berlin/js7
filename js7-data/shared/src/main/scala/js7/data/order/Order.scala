@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{GoOrderInapplicableProblem, OrderCannotAttachedToPlanProblem}
 import js7.data.agent.AgentPath
-import js7.data.board.PlannedNoticeKey
+import js7.data.board.NoticeKey
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.{EventDriven, EventDrivenState}
@@ -1259,8 +1259,9 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
 
   // COMPATIBLE with v2.3, only used for JSON deserialization
-  final case class ExpectingNotice(noticeId: PlannedNoticeKey)
-  extends IsStarted, IsControllerOnly, NotTransferable
+  final case class ExpectingNotice(private val noticeId: NoticeKey)
+  extends IsStarted, IsControllerOnly, NotTransferable:
+    def noticeKey: NoticeKey = noticeId
 
   final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
   extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction

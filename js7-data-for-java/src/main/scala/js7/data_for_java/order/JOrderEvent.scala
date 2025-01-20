@@ -9,7 +9,7 @@ import js7.base.generic.GenericString
 import js7.base.io.process.StdoutOrStderr
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp.specific.*
-import js7.data.board.{BoardPath, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeKey}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId, OrderOutcome}
 import js7.data.subagent.SubagentId
@@ -160,5 +160,5 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
     @Nonnull def boardPath: BoardPath =
       asScala.boardPath
 
-    @Nonnull def noticeId: PlannedNoticeKey =
-      asScala.noticeId
+    @Nonnull def noticeKey: NoticeKey =
+      asScala.noticeKey

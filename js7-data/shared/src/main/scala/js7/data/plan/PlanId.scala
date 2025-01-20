@@ -4,8 +4,9 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, PlannedBoardId, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
+import org.jetbrains.annotations.TestOnly
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
 final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
@@ -13,11 +14,15 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   def isGlobal: Boolean =
     this == Global
 
-  def noticeId: PlannedNoticeKey =
-    PlannedNoticeKey.planned(this)
+  def emptyPlannedNoticeKey: PlannedNoticeKey =
+    PlannedNoticeKey.empty(this)
 
   def /(boardPath: BoardPath): PlannedBoardId =
     PlannedBoardId(this, boardPath)
+
+  @TestOnly
+  def /(noticeKey: NoticeKey): PlannedNoticeKey =
+    PlannedNoticeKey(this, noticeKey)
 
   override def toString =
     s"Plan:$shortString"

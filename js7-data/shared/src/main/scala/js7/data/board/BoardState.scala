@@ -4,9 +4,12 @@ import cats.effect.IO
 import cats.syntax.option.*
 import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.CirceUtils
+import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.strictly
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
@@ -19,10 +22,11 @@ import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderId
 import js7.data.plan.PlanSchemaId
 import scala.collection.View
+import scala.collection.immutable.ArraySeq
 
 final case class BoardState(
   board: BoardItem,
-  idToNotice: Map[PlannedNoticeKey, NoticePlace] = Map.empty,
+  toNoticePlace: Map[PlannedNoticeKey, NoticePlace] = Map.empty,
   orderToConsumptionStack: Map[OrderId, Nel[PlannedNoticeKey]] = Map.empty)
 extends UnsignedSimpleItemState:
 
@@ -36,7 +40,12 @@ extends UnsignedSimpleItemState:
     Right(copy(board = item))
 
   override def toString =
-    s"BoardState(${board.pathRev} ${idToNotice.values.toVector.sorted.mkString(" ")})"
+    s"BoardState(${board.pathRev} ${toNoticePlace
+      .to(ArraySeq)
+      .sortBy(_._1)
+      .view.map((k, v) => s"$k -> $v")
+      .mkString(" ")
+    })"
 
   override def toSnapshotStream
   : Stream[IO, BoardItem | Notice | NoticePlace.Snapshot | NoticeConsumptionSnapshot] =
@@ -44,7 +53,7 @@ extends UnsignedSimpleItemState:
     Stream.iterable:
       View(board) ++
         notices ++
-        idToNotice.values.view.flatMap(_.toSnapshot(path)) ++
+        toNoticePlace.view.flatMap((k, v) => v.toSnapshot(path, k)) ++
         orderToConsumptionStack.view
           .map: (orderId, consumptionStack) =>
             NoticeConsumptionSnapshot(path, orderId, consumptionStack)
@@ -57,22 +66,23 @@ extends UnsignedSimpleItemState:
       case snapshot: BoardState.NoticeConsumptionSnapshot =>
         Right(copy(
           orderToConsumptionStack = orderToConsumptionStack
-            .updated(snapshot.orderId, snapshot.noticeIdStack)))
+            .updated(snapshot.orderId, snapshot.plannedNoticeKeyStack)))
 
       case snapshot: NoticePlace.Snapshot =>
         Right(copy(
-          idToNotice = idToNotice.updated(snapshot.noticeId,
-            idToNotice.getOrElse(snapshot.noticeId, NoticePlace(snapshot.noticeId))
+          toNoticePlace = toNoticePlace.updated(snapshot.plannedNoticeKey,
+            toNoticePlace.getOrElse(snapshot.plannedNoticeKey, NoticePlace.empty)
               .withSnapshot(snapshot))))
 
-  def isAnnounced(noticeId: PlannedNoticeKey): Boolean =
-    idToNotice.get(noticeId).exists(_.isAnnounced)
+  def isAnnounced(plannedNoticeKey: PlannedNoticeKey): Boolean =
+    toNoticePlace.get(plannedNoticeKey).exists(_.isAnnounced)
 
-  def announceNotice(noticeId: PlannedNoticeKey): Checked[BoardState] =
+  def announceNotice(plannedNoticeKey: PlannedNoticeKey): Checked[BoardState] =
     Right:
-      updateNoticePlace:
-        idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-          .announce
+      updateNoticePlace(
+        plannedNoticeKey,
+        toNoticePlace.getOrElse(plannedNoticeKey, NoticePlace.empty)
+          .announce)
 
   // COMPATIBLE with v2.3
   def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =
@@ -80,114 +90,122 @@ extends UnsignedSimpleItemState:
 
   def addNotice(notice: Notice): Checked[BoardState] =
     Right:
-      updateNoticePlace:
-        idToNotice.getOrElse(notice.id, NoticePlace(notice.id))
-          .post(notice)
+      updateNoticePlace(
+        notice.plannedNoticeKey,
+        toNoticePlace.getOrElse(notice.plannedNoticeKey, NoticePlace.empty)
+          .post(notice))
 
-  def addExpectation(noticeId: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
-    val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-    Right(updateNoticePlace:
-      noticePlace.addExpecting(orderId))
+  def addExpectation(plannedNoticeKey: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
+    val noticePlace = toNoticePlace.getOrElse(plannedNoticeKey, NoticePlace.empty)
+    Right(updateNoticePlace(
+      plannedNoticeKey,
+      noticePlace.addExpecting(orderId)))
 
-  def removeExpectation(noticeId: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
+  def removeExpectation(plannedNoticeKey: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
     Right:
-      idToNotice.get(noticeId).fold(this) : noticePlace =>
-        updateNoticePlace:
-          noticePlace.removeExpecting(orderId)
+      toNoticePlace.get(plannedNoticeKey).fold(this) : noticePlace =>
+        updateNoticePlace(
+          plannedNoticeKey,
+          noticePlace.removeExpecting(orderId))
 
-  def startConsumption(noticeId: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
+  def startConsumption(plannedNoticeKey: PlannedNoticeKey, orderId: OrderId): Checked[BoardState] =
     // We can consume a non-existent PlannedNoticeKey, too, due to BoardExpression's or-operator
-    val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
+    val noticePlace = toNoticePlace.getOrElse(plannedNoticeKey, NoticePlace.empty)
     val consumptionStack = orderToConsumptionStack.get(orderId).fold_(Nil, _.toList)
     Right(copy(
-      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(orderId)),
+      toNoticePlace = toNoticePlace.updated(plannedNoticeKey,
+        noticePlace.startConsumption(orderId)),
       orderToConsumptionStack = orderToConsumptionStack.updated(orderId,
-        Nel(noticeId, consumptionStack))))
+        Nel(plannedNoticeKey, consumptionStack))))
 
-  def finishConsumption(orderId: OrderId, succeeded: Boolean): Checked[(BoardState, Option[PlannedNoticeKey])] =
+  def finishConsumption(orderId: OrderId, succeeded: Boolean)
+  : Checked[(BoardState, Option[PlannedNoticeKey])] =
     orderToConsumptionStack.get(orderId).fold(Checked(this -> none)): consumptions =>
-      val Nel(noticeId, remainingConsumptions) = consumptions
-      idToNotice.checked(noticeId).map: noticePlace =>
+      val Nel(plannedNoticeKey, remainingConsumptions) = consumptions
+      toNoticePlace.checked(plannedNoticeKey).map: noticePlace =>
         val boardState =
-          updateNoticePlace:
-            noticePlace.finishConsumption(succeeded)
+          updateNoticePlace(
+            plannedNoticeKey,
+            noticePlace.finishConsumption(succeeded))
           .copy(
             orderToConsumptionStack =
               Nel.fromList(remainingConsumptions) match
                 case None => orderToConsumptionStack - orderId
                 case Some(nel) => orderToConsumptionStack.updated(orderId, nel))
-        boardState -> noticeId.some
+        boardState -> plannedNoticeKey.some
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>
     *         L3.Unknown: Notice doesn't exist nor is it announced
     */
-  def isNoticeAvailable(noticeId: PlannedNoticeKey): L3 =
-    if containsNotice(noticeId) then
+  def isNoticeAvailable(plannedNoticeKey: PlannedNoticeKey): L3 =
+    if containsNotice(plannedNoticeKey) then
       L3.True
-    else if isAnnounced(noticeId) then
+    else if isAnnounced(plannedNoticeKey) then
       L3.False
     else
       L3.Unknown
 
-  def containsNotice(noticeId: PlannedNoticeKey): Boolean =
-    idToNotice.get(noticeId).exists(_.notice.isDefined)
+  def containsNotice(plannedNoticeKey: PlannedNoticeKey): Boolean =
+    toNoticePlace.get(plannedNoticeKey).exists(_.notice.isDefined)
 
   def containsNoticeKey(plannedNoticeKey: PlannedNoticeKey): Boolean =
-    idToNotice.contains(plannedNoticeKey)
+    toNoticePlace.contains(plannedNoticeKey)
 
-  def expectingOrders(noticeId: PlannedNoticeKey): Set[OrderId] =
-    idToNotice.get(noticeId).fold_(Set.empty, _.expectingOrderIds)
+  def expectingOrders(plannedNoticeKey: PlannedNoticeKey): Set[OrderId] =
+    toNoticePlace.get(plannedNoticeKey).fold_(Set.empty, _.expectingOrderIds)
 
   def notices: View[Notice] =
-    idToNotice.values.view.flatMap(_.notice)
+    toNoticePlace.values.view.flatMap(_.notice)
 
   def noticeCount: Int =
-    idToNotice.values.count(_.notice.isDefined)
+    toNoticePlace.values.count(_.notice.isDefined)
 
-  def deleteNoticeEvent(noticeId: PlannedNoticeKey): Checked[KeyedEvent[NoticeDeleted]] =
-    for _ <- checkDelete(noticeId) yield
-      board.path <-: NoticeDeleted(noticeId)
+  def deleteNoticeEvent(plannedNoticeKey: PlannedNoticeKey): Checked[KeyedEvent[NoticeDeleted]] =
+    for _ <- checkDelete(plannedNoticeKey) yield
+      board.path <-: NoticeDeleted(plannedNoticeKey)
 
-  def removeNotice(noticeId: PlannedNoticeKey): Checked[BoardState] =
-    for _ <- checkDelete(noticeId) yield
-      idToNotice.get(noticeId).fold(this): noticePlace =>
-        updateNoticePlace(noticePlace.removeNotice)
+  def removeNotice(plannedNoticeKey: PlannedNoticeKey): Checked[BoardState] =
+    for _ <- checkDelete(plannedNoticeKey) yield
+      toNoticePlace.get(plannedNoticeKey).fold(this): noticePlace =>
+        updateNoticePlace(plannedNoticeKey, noticePlace.removeNotice)
 
-  /** PlanSchema must not contain an Order. */
   def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId): Option[BoardState] =
-    val which = idToNotice.values.filter(_.noticeId.planId.planSchemaId == planSchemaId)
-    which.foreachWithBracket(Square): (noticePlace, br) =>
-      logger.trace(s"${br}Remove $planSchemaId: Remove $noticePlace")
+    strictly(orderToConsumptionStack.isEmpty)
+    val which = toNoticePlace.filter(_._1.planId.planSchemaId == planSchemaId)
+    which.foreachWithBracket(Square):
+      case ((key, noticePlace), br) =>
+        logger.trace(s"${br}Remove $planSchemaId: Remove $key -> $noticePlace")
     requireNoNoticePlaceIsInUse(planSchemaId, which)
     which.nonEmpty ?
-      copy(idToNotice = idToNotice -- which.view.map(_.noticeId))
+      copy(toNoticePlace = toNoticePlace -- which.keys)
 
   private def requireNoNoticePlaceIsInUse(
     planSchemaId: PlanSchemaId,
-    noticePlaces: Iterable[NoticePlace])
+    noticePlaces: Iterable[(PlannedNoticeKey, NoticePlace)])
   : Unit =
     var msg = ""
-    noticePlaces.filter(_.isInUse).foreachWithBracket(Square): (noticePlace, br) =>
-      msg = s"Remove $planSchemaId: Internal problem: Removing a being expected or consumed $noticePlace"
-      logger.error(s"${br}$msg")
+    noticePlaces.filter(_._2.isInUse).foreachWithBracket(Square):
+      case ((key, noticePlace), br) =>
+        msg = s"Remove $planSchemaId: Internal problem: Removing a being expected or consumed $key -> $noticePlace"
+        logger.error(s"$br$msg")
     if isStrict && msg.nonEmpty then throw new AssertionError(msg)
 
-  private def updateNoticePlace(noticePlace: NoticePlace): BoardState =
-    copy(idToNotice =
+  private def updateNoticePlace(key: PlannedNoticeKey, noticePlace: NoticePlace): BoardState =
+    copy(toNoticePlace =
       if noticePlace.isEmpty then
-        idToNotice - noticePlace.noticeId
+        toNoticePlace - key
       else
-        idToNotice.updated(noticePlace.noticeId, noticePlace))
+        toNoticePlace.updated(key, noticePlace))
 
-  private def checkDelete(noticeId: PlannedNoticeKey): Checked[Unit] =
-    for _ <- notice(noticeId) yield ()
+  private def checkDelete(plannedNoticeKey: PlannedNoticeKey): Checked[Unit] =
+    for _ <- notice(plannedNoticeKey) yield ()
 
-  def notice(noticeId: PlannedNoticeKey): Checked[Notice] =
+  def notice(plannedNoticeKey: PlannedNoticeKey): Checked[Notice] =
     for
-      noticePlace <- idToNotice.checked(noticeId)
+      noticePlace <- toNoticePlace.checked(plannedNoticeKey)
       notice <- noticePlace.notice match
-        case None => Left(Problem(s"$noticeId does not denote a Notice (but a Notice expectation)"))
+        case None => Left(Problem(s"$plannedNoticeKey does not denote a Notice (but a Notice expectation)"))
         case Some(notice) => Right(notice)
     yield
       notice
@@ -206,8 +224,12 @@ with EventDriven.Companion[BoardState, BoardEvent]*/:
   final case class NoticeConsumptionSnapshot(
     boardPath: BoardPath,
     orderId: OrderId,
-    noticeIdStack: Nel[PlannedNoticeKey])
+    plannedNoticeKeyStack: Nel[PlannedNoticeKey])
   extends NoticeSnapshot
 
   object NoticeConsumptionSnapshot:
-    val subtype: Subtype[NoticeConsumptionSnapshot] = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")
+    val subtype: Subtype[NoticeConsumptionSnapshot] =
+      Subtype.named(
+        deriveRenamingCodec[NoticeConsumptionSnapshot](Map(
+          "noticeIdStack" -> "plannedNoticeKeyStack")),
+        "NoticeConsumption")

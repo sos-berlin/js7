@@ -81,26 +81,27 @@ trait StateView extends ItemContainer:
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
-  final def orderToPlannableBoardNoticeId(order: Order[Order.State]): Checked[PlannedNoticeKey] =
-    planToPlannableBoardNoticeId(order.planId)
+  final def emptyPlannedNoticeKey(order: Order[Order.State]): Checked[PlannedNoticeKey] =
+    emptyPlannedNoticeKey(order.planId)
 
-  final def planToPlannableBoardNoticeId(planId: PlanId): Checked[PlannedNoticeKey] =
+  final def emptyPlannedNoticeKey(planId: PlanId): Checked[PlannedNoticeKey] =
     if planId.isGlobal then
       Left(Problem.pure(s"PlannableBoard requested, but Order is not in a Plan (or in $planId)"))
     else
-      Right(planId.noticeId)
+      Right(planId.emptyPlannedNoticeKey)
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>
     *         L3.Unknown: Notice doesn't exist nor is it announced
     */
-  final def isNoticeAvailable(expected: OrderNoticesExpected.Expected): L3 =
-    keyTo(BoardState).get(expected.boardPath).fold(L3.Unknown/*just in case*/): boardState =>
-      boardState.isNoticeAvailable(expected.noticeId)
+  final def isNoticeAvailable(planId: PlanId, expected: OrderNoticesExpected.Expected): L3 =
+    keyTo(BoardState).get(expected.boardPath)
+      .fold(L3.Unknown/*just in case*/): boardState =>
+        boardState.isNoticeAvailable(planId / expected.noticeKey)
 
-  final def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
+  final def availableNotices(planId: PlanId, expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq.collect:
-      case o if keyTo(BoardState).get(o.boardPath).exists(_.containsNotice(o.noticeId)) =>
+      case o if keyTo(BoardState).get(o.boardPath).exists(_.containsNotice(planId / o.noticeKey)) =>
         o.boardPath
     .toSet
 

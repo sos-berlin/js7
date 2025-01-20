@@ -3,6 +3,7 @@ package js7.data.board
 import cats.syntax.traverse.*
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked
@@ -16,8 +17,8 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class GlobalBoard(
   path: BoardPath,
-  postOrderToNoticeId: Expression,
-  expectOrderToNoticeId: Expression,
+  postOrderToNoticeKey: Expression,
+  expectOrderToNoticeKey: Expression,
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
 extends
@@ -34,23 +35,30 @@ extends
 
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for
-      noticeKey <- postOrderToNoticeId.evalAsString(scope)
-      noticeId <- PlannedNoticeKey.global(noticeKey)
-      notice <- toNotice(noticeId)(scope)
+      noticeKey <- postOrderToNoticeKey.evalAsString(scope)
+      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
+      notice <- toNotice(plannedNoticeKey)(scope)
     yield
       notice
 
-  def toNotice(noticeId: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)(scope: Scope)
+  def toNotice(plannedNoticeKey: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice] =
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(o => Checked(Some(o))) yield
-      Notice(noticeId, path, endOfLife)
+      Notice(path / plannedNoticeKey, endOfLife)
 
-  def expectingOrderToNoticeId(scope: Scope): Checked[PlannedNoticeKey] =
+  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
     for
-      noticeKey <- expectOrderToNoticeId.evalAsString(scope)
-      noticeId <- PlannedNoticeKey.global(noticeKey)
+      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
+      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
     yield
-      noticeId
+      path / plannedNoticeKey
+
+  def expectingOrderToPlannedNoticeKey(scope: Scope): Checked[PlannedNoticeKey] =
+    for
+      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
+      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
+    yield
+      plannedNoticeKey
 
   private def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     endOfLife
@@ -69,6 +77,10 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
 
   type ItemState = BoardState
 
+  given jsonCodec: Codec.AsObject[GlobalBoard] = deriveRenamingCodec(Map(
+    "postOrderToNoticeId" -> "postOrderToNoticeKey",
+    "expectOrderToNoticeId" -> "expectOrderToNoticeKey"))
+
   override val subtype: Subtype[GlobalBoard] =
     Subtype[GlobalBoard](aliases = Seq("Board"/*until v2.7.2*/))
 
@@ -80,8 +92,8 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
   : GlobalBoard =
     GlobalBoard(
       boardPath,
-      postOrderToNoticeId = expr(orderToNoticeId),
-      expectOrderToNoticeId = expr(orderToNoticeId),
+      postOrderToNoticeKey = expr(orderToNoticeId),
+      expectOrderToNoticeKey = expr(orderToNoticeId),
       endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
   private val sosOrderToNotice =
@@ -91,9 +103,8 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
   def joc(boardPath: BoardPath, lifetime: Option[FiniteDuration] = Some(24.h)): GlobalBoard =
     GlobalBoard(
       boardPath,
-      postOrderToNoticeId = sosOrderToNotice,
-      expectOrderToNoticeId = sosOrderToNotice,
+      postOrderToNoticeKey = sosOrderToNotice,
+      expectOrderToNoticeKey = sosOrderToNotice,
       endOfLife = lifetime.fold(MissingConstant):
         lifetime => expr("$js7EpochMilli + " + lifetime.toMillis))
 
-  given jsonCodec: Codec.AsObject[GlobalBoard] = ConfiguredCodec.derive(useDefaults = true)

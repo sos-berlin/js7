@@ -23,9 +23,10 @@ extends
   def withRevision(revision: Option[ItemRevision]): PlannableBoard =
     copy(itemRevision = revision)
 
-  def toNotice(noticeId: PlannedNoticeKey, endOfLife: Option[Timestamp])(scope: Scope): Checked[Notice] =
+  def toNotice(plannedNoticeKey: PlannedNoticeKey, endOfLife: Option[Timestamp])(scope: Scope)
+  : Checked[Notice] =
     Right:
-      Notice(noticeId, path, endOfLife)
+      Notice(path / plannedNoticeKey, endOfLife)
 
 
 object PlannableBoard extends BoardItem.Companion[PlannableBoard]:

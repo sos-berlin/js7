@@ -19,7 +19,7 @@ import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.data.board.{BoardPath, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeId, NoticeKey}
 import js7.data.cluster.ClusterWatchId
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand
@@ -246,14 +246,32 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
       .map(_.toVoidVavr))
 
   @Nonnull
+  @Deprecated @deprecated("Use postGlobalNotice", "v2.7.4")
   def postNotice(
     @Nonnull boardPath: BoardPath,
-    @Nonnull noticeId: PlannedNoticeKey,
+    @Nonnull noticeKey: NoticeKey,
     @Nonnull endOfLife: Optional[Instant])
   : CompletableFuture[VEither[Problem, Void]] =
-    execute(JControllerCommand
-      .postNotice(boardPath, noticeId, endOfLife)
-      .asScala)
+    postGlobalNotice(boardPath, noticeKey, endOfLife)
+
+  @Nonnull
+  def postGlobalNotice(
+    @Nonnull boardPath: BoardPath,
+    @Nonnull noticeKey: NoticeKey,
+    @Nonnull endOfLife: Optional[Instant])
+  : CompletableFuture[VEither[Problem, Void]] =
+    execute:
+      JControllerCommand.postGlobalNotice(boardPath, noticeKey, endOfLife)
+        .asScala
+
+  @Nonnull
+  def postNotice(
+    @Nonnull noticeId: NoticeId,
+    @Nonnull endOfLife: Optional[Instant])
+  : CompletableFuture[VEither[Problem, Void]] =
+    execute:
+      JControllerCommand.postNotice(noticeId, endOfLife)
+        .asScala
 
   @Nonnull
   def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =

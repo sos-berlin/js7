@@ -10,11 +10,12 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeId, NoticeKey}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, Batch, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data.plan.PlanId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.data_for_java.common.JJsonable
@@ -56,17 +57,28 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
     JControllerCommand(GoOrder(orderId, position.asScala))
 
   @Nonnull
+  @Deprecated @deprecated("Use postGlobalNotice", "v2.7.4")
   def postNotice(
     @Nonnull boardPath: BoardPath,
-    @Nonnull noticeId: PlannedNoticeKey,
+    @Nonnull noticeKey: NoticeKey,
     @Nonnull endOfLife: Optional[Instant])
   : JControllerCommand =
-    JControllerCommand(
-      PostNotice(
-        requireNonNull(boardPath),
-        requireNonNull(noticeId),
-        endOfLife.toScala
-          .map(JavaTimestamp.ofInstant)))
+    postGlobalNotice(boardPath, noticeKey, endOfLife)
+
+  @Nonnull
+  def postGlobalNotice(
+    @Nonnull boardPath: BoardPath,
+    @Nonnull noticeKey: NoticeKey,
+    @Nonnull endOfLife: Optional[Instant])
+  : JControllerCommand =
+    postNotice(
+      PlanId.Global / requireNonNull(boardPath) / requireNonNull(noticeKey),
+      endOfLife)
+
+  @Nonnull
+  def postNotice(@Nonnull noticeId: NoticeId, @Nonnull endOfLife: Optional[Instant])
+  : JControllerCommand =
+    JControllerCommand(PostNotice(noticeId, endOfLife.toScala.map(JavaTimestamp.ofInstant)))
 
   @Nonnull
   def controlWorkflowPath(

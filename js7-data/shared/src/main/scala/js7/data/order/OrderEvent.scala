@@ -4,7 +4,7 @@ import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils
 import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.parameterListToString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeV2_3, PlannedNoticeKey}
+import js7.data.board.{BoardPath, Notice, NoticeKey, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.lock.LockPath
@@ -328,22 +328,35 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
 
-  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeId: PlannedNoticeKey)
+  final case class OrderNoticeAnnounced(boardPath: BoardPath, noticeKey: NoticeKey)
   extends OrderNoticeEvent
 
   object OrderNoticeAnnounced:
-    given Codec.AsObject[OrderNoticeAnnounced] = deriveCodec
+    given Codec.AsObject[OrderNoticeAnnounced] = deriveRenamingCodec(Map(
+      "noticeId" -> "noticeKey"))
 
   sealed trait OrderNoticePosted_ extends OrderNoticeEvent
 
   object OrderNoticePosted_ :
     private val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] =
       case o: OrderNoticePostedV2_3 => OrderNoticePostedV2_3.jsonEncoder.encodeObject(o)
-      case o: OrderNoticePosted => OrderNoticePosted.jsonEncoder.encodeObject(o)
+      case o: OrderNoticePosted => OrderNoticePosted.jsonCodec.encodeObject(o)
 
     private val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
-      if c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")) then
-        c.get[Notice]("notice").map(OrderNoticePosted(_))
+      if c.get[Json]("boardPath").isRight then
+        OrderNoticePosted.jsonCodec(c)
+      else if c.value.asObject.flatMap(_("notice")).flatMap(_.asObject)
+        .flatMap(_("boardPath")).exists(_.isString)
+      then
+        for
+          notice <- c.get[Notice]("notice")
+          _ <-
+            if notice.planId == PlanId.Global /*The Order's PlanId is used*/ then
+              Right(())
+            else
+              Left(DecodingFailure("OrderNoticePosted must not contain a PlanId", c.history))
+        yield
+          OrderNoticePosted(notice.boardPath, notice.noticeKey, notice.endOfLife)
       else
         c.get[NoticeV2_3]("notice").map(OrderNoticePostedV2_3(_))
 
@@ -359,26 +372,34 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     implicit val jsonEncoder: Encoder.AsObject[OrderNoticePostedV2_3] = deriveEncoder
 
 
-  final case class OrderNoticePosted(notice: Notice)
+  final case class OrderNoticePosted(
+    boardPath: BoardPath,
+    noticeKey: NoticeKey,
+    endOfLife: Option[Timestamp] = None)
   extends OrderNoticePosted_
 
   object OrderNoticePosted:
-    implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted] = deriveEncoder
+    private[OrderEvent] val jsonCodec: Codec.AsObject[OrderNoticePosted] = deriveCodecWithDefaults
+
+    //implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted] = deriveEncoder
 
 
   // COMPATIBLE with v2.3
-  final case class OrderNoticeExpected(noticeId: PlannedNoticeKey)
-  extends OrderNoticeEvent
+  final case class OrderNoticeExpected(private val noticeId: NoticeKey)
+  extends OrderNoticeEvent:
+    def noticeKey: NoticeKey = noticeId
 
 
   final case class OrderNoticesExpected(expected: Vector[OrderNoticesExpected.Expected])
   extends OrderNoticeEvent
 
   object OrderNoticesExpected:
-    final case class Expected(boardPath: BoardPath, noticeId: PlannedNoticeKey)
-    object Expected:
-      implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec
+    final case class Expected(boardPath: BoardPath, noticeKey: NoticeKey)
 
+    object Expected:
+      given Codec.AsObject[Expected] =
+        deriveRenamingCodec[Expected](Map(
+          "noticeId" -> "noticeKey"))
 
   type OrderNoticesRead = OrderNoticesRead.type
   case object OrderNoticesRead
@@ -837,7 +858,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       OrderLocksAcquired(LockDemand(e.lockPath, e.count) :: Nil).checked),
     Subtype.decodeCompatible(deriveDecoder[OrderLockReleased])(e =>
       OrderLocksReleased(e.lockPath :: Nil).checked),
-    Subtype(deriveCodec[OrderNoticeAnnounced]),
+    Subtype[OrderNoticeAnnounced],
     Subtype.named1[OrderNoticePosted_](typeName = "OrderNoticePosted", subclasses = Seq(
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),

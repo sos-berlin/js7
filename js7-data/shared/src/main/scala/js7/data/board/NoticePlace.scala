@@ -1,8 +1,9 @@
 package js7.data.board
 
+import io.circe.{Codec, Decoder}
 import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.typed.Subtype
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticePlace.*
@@ -15,7 +16,6 @@ import js7.data.plan.PlanId
   * @param isAnnounced only for PlannedBoard
   */
 final case class NoticePlace(
-  noticeId: PlannedNoticeKey,
   notice: Option[Notice] = None,
   expectingOrderIds: Set[OrderId] = Set.empty,
   isAnnounced: Boolean = false,
@@ -24,16 +24,14 @@ final case class NoticePlace(
 extends Big:
 
   override def toString =
-    s"NoticePlace(${notice getOrElse noticeId
+    s"NoticePlace(${notice getOrElse "—"
     }${isAnnounced ?? " isAnnounced"
     }${isInConsumption ?? " isInConsumption"
     }${(consumptionCount != 0) ?? s" consumptionCount=$consumptionCount"
     }${expectingOrderIds.nonEmpty ?? s" expectingOrderIds=${expectingOrderIds.toVector.sorted.mkString(" ")}"})"
 
   def checked: Checked[this.type] =
-    (notice.forall(_.id == noticeId) !!
-      Problem(s"NoticePlace($noticeId) with different NoticeIds")
-    ).rightAs(this)
+    Right(this)
 
   def isEmpty: Boolean =
     notice.isEmpty &&
@@ -45,9 +43,9 @@ extends Big:
   def isInUse: Boolean =
     expectingOrderIds.nonEmpty || isInConsumption || consumptionCount != 0
 
-  def toSnapshot(boardPath: BoardPath): Option[Snapshot] =
+  def toSnapshot(boardPath: BoardPath, plannedNoticeKey: PlannedNoticeKey): Option[Snapshot] =
     (isAnnounced || isInConsumption || consumptionCount != 0) ?
-      Snapshot(boardPath, noticeId, isAnnounced, isInConsumption, consumptionCount)
+      Snapshot(boardPath / plannedNoticeKey, isAnnounced, isInConsumption, consumptionCount)
 
   def withSnapshot(snapshot: Snapshot): NoticePlace =
     copy(
@@ -91,26 +89,47 @@ extends Big:
       isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
 
-  def noticeKey: NoticeKey =
-    noticeId.noticeKey
-
-  def planId: PlanId =
-    noticeId.planId
-
 
 object NoticePlace:
 
-  given Ordering[NoticePlace] = Ordering.by(_.noticeId)
+  val empty: NoticePlace =
+    NoticePlace()
 
-  private[board] final case class Snapshot(
-    boardPath: BoardPath,
-    noticeId: PlannedNoticeKey,
+  final case class Snapshot(
+    noticeId: NoticeId,
     isAnnounced: Boolean = false,
     isInConsumption: Boolean = false,
     consumptionCount: Int = 0)
   extends NoticeSnapshot:
     override def productPrefix = "NoticePlace.Snapshot"
 
+    def plannedNoticeKey: PlannedNoticeKey =
+      noticeId.plannedNoticeKey
+
+    def boardPath: BoardPath =
+      noticeId.boardPath
+
   object Snapshot:
+    private val jsonCodec = deriveCodecWithDefaults[Snapshot]
+
+    private val jsonDecoder: Decoder[Snapshot] = c =>
+      c.value.asObject.fold(jsonCodec(c)): obj =>
+        if obj("boardPath").isDefined then
+          // COMPATIBLE with v2.7.3
+          for
+            boardPath <- c.get[BoardPath]("boardPath")
+            noticeKey <- c.get[NoticeKey]("noticeId")
+            isAnnounced <- c.getOrElse[Boolean]("isAnnounced")(false)
+            isInConsumption <- c.getOrElse[Boolean]("isInConsumption")(false)
+            consumptionCount <- c.getOrElse[Int]("consumptionCount")(0)
+          yield
+            NoticePlace.Snapshot(
+              PlanId.Global / boardPath / noticeKey,
+              isAnnounced = isAnnounced,
+              isInConsumption = isInConsumption,
+              consumptionCount)
+        else
+          jsonCodec(c)
+
     val subtype: Subtype[Snapshot] =
-      Subtype.named(deriveCodecWithDefaults[Snapshot], "NoticePlace")
+      Subtype.named(Codec.AsObject.from(jsonDecoder, jsonCodec), "NoticePlace")

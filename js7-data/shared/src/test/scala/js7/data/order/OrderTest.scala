@@ -12,7 +12,7 @@ import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, Notice, NoticeV2_3, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeKey, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
@@ -329,7 +329,7 @@ final class OrderTest extends OurTestSuite:
           }""")
 
       "ExpectingNotice" in:
-        testJson[State](ExpectingNotice(PlannedNoticeKey("NOTICE")),
+        testJson[State](ExpectingNotice(NoticeKey("NOTICE")),
           json"""{
             "TYPE": "ExpectingNotice",
             "noticeId": "NOTICE"
@@ -337,9 +337,19 @@ final class OrderTest extends OurTestSuite:
 
       "ExpectingNotices" in:
         testJson[State](ExpectingNotices(Vector(
-          OrderNoticesExpected.Expected(
-            BoardPath("BOARD"),
-            PlannedNoticeKey("NOTICE")))),
+          OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE")))),
+          json"""{
+            "TYPE": "ExpectingNotices",
+            "expected": [
+              {
+                "boardPath": "BOARD",
+                "noticeKey": "NOTICE"
+              }
+            ]
+          }""")
+
+        testJsonDecoder[State](ExpectingNotices(Vector(
+          OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE")))),
           json"""{
             "TYPE": "ExpectingNotices",
             "expected": [
@@ -485,15 +495,13 @@ final class OrderTest extends OurTestSuite:
       OrderLocksReleased(List(LockPath("LOCK"))),
 
       OrderPlanAttached(planId),
-      OrderNoticeAnnounced(
-        BoardPath("BOARD"),
-        PlannedNoticeKey.planned(planId)),
+      OrderNoticeAnnounced(BoardPath("BOARD"), NoticeKey.empty),
       OrderNoticePostedV2_3(
-        NoticeV2_3(PlannedNoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
+        NoticeV2_3(NoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
-        Notice(PlannedNoticeKey("NOTICE"), BoardPath("BOARD"), endOfLife = Timestamp.ofEpochSecond(1).some)),
+        BoardPath("BOARD"), NoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1).some),
       OrderNoticesExpected(Vector(
-        OrderNoticesExpected.Expected(BoardPath("BOARD"), PlannedNoticeKey("NOTICE")))),
+        OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE")))),
       OrderNoticesRead,
       OrderNoticesConsumptionStarted(Vector.empty),
       OrderNoticesConsumed(),
@@ -620,7 +628,7 @@ final class OrderTest extends OurTestSuite:
 
     "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
-        OrderNoticesExpected.Expected(BoardPath("BOARD"), PlannedNoticeKey("NOTICE"))))
+        OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeKey("NOTICE"))))
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse

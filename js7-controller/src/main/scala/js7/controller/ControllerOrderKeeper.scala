@@ -49,7 +49,7 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, Notice, NoticeEventSource, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardState, NoticeEventSource, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
@@ -72,7 +72,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, 
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.PlanSchemaState
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
@@ -131,23 +131,19 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private var journalTerminated = false
 
   private object notices:
-    private val noticeToSchedule = mutable.Map.empty[(BoardPath, PlannedNoticeKey), SyncCancelable]
+    private val noticeToSchedule = mutable.Map.empty[NoticeId, SyncCancelable]
 
-    def schedule(notice: Notice): Unit =
-      notice.endOfLife.foreach:
-        schedule(notice.boardPath, notice.id, _)
+    def maybeSchedule(noticeId: NoticeId, endOfLife: Option[Timestamp]): Unit =
+      endOfLife.foreach:
+        schedule(noticeId, _)
 
-    def schedule(boardPath: BoardPath, notice: NoticePosted.PostedNotice): Unit =
-      notice.endOfLife.foreach:
-        schedule(boardPath, notice.id, _)
+    def schedule(noticeId: NoticeId, endOfLife: Timestamp): Unit =
+      noticeToSchedule += noticeId ->
+        alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($noticeId)"):
+          self ! Internal.NoticeIsDue(noticeId)
 
-    private def schedule(boardPath: BoardPath, noticeId: PlannedNoticeKey, endOfLife: Timestamp): Unit =
-      noticeToSchedule += boardPath -> noticeId ->
-        alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($boardPath, $noticeId)"):
-          self ! Internal.NoticeIsDue(boardPath, noticeId)
-
-    def deleteSchedule(boardPath: BoardPath, noticeId: PlannedNoticeKey): Unit =
-      noticeToSchedule.remove(boardPath -> noticeId).foreach(_.cancel())
+    def deleteSchedule(noticeId: NoticeId): Unit =
+      noticeToSchedule.remove(noticeId).foreach(_.cancel())
 
   private object shutdown:
     var delayUntil = scheduler.now()
@@ -301,7 +297,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       boardState <- controllerState.keyTo(BoardState).values;
       notice <- boardState.notices
     do
-      notices.schedule(notice)
+      notices.maybeSchedule(notice.id, notice.endOfLife)
 
     persistedEventId = controllerState.eventId
 
@@ -579,17 +575,17 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       proceedWithOrders(orderId :: Nil)
       orderQueue.enqueue(orderId :: Nil)
 
-    case Internal.NoticeIsDue(boardPath, noticeId) =>
-      notices.deleteSchedule(boardPath, noticeId)
+    case Internal.NoticeIsDue(noticeId) =>
+      notices.deleteSchedule(noticeId)
       for
-        boardState <- _controllerState.keyTo(BoardState).checked(boardPath);
-        notice <- boardState.notice(noticeId);
-        keyedEvent <- boardState.deleteNoticeEvent(noticeId)
+        boardState <- _controllerState.keyTo(BoardState).checked(noticeId.boardPath);
+        notice <- boardState.notice(noticeId.plannedNoticeKey);
+        keyedEvent <- boardState.deleteNoticeEvent(noticeId.plannedNoticeKey)
       do
         if notice.endOfLife.exists(alarmClock.now() < _) then
-          notices.schedule(notice)
+          notices.maybeSchedule(noticeId, notice.endOfLife)
         else
-          logger.debug(s"Notice lifetime expired: $boardPath $noticeId")
+          logger.debug(s"Notice lifetime expired: $noticeId")
           persistMultiple(keyedEvent :: Nil)(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
@@ -753,10 +749,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             persistTransactionAndSubsequentEvents(events)(handleEvents)
               .map(_ => Right(ControllerCommand.Response.Accepted))
 
-      case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
+      case ControllerCommand.DeleteNotice(noticeId) =>
         (for
-          boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
-          keyedEvent <- boardState.deleteNoticeEvent(noticeId)
+          boardState <- _controllerState.keyTo(BoardState).checked(noticeId.boardPath)
+          keyedEvent <- boardState.deleteNoticeEvent(noticeId.plannedNoticeKey)
         yield keyedEvent)
         match
           case Left(problem) => Future.successful(Left(problem))
@@ -1182,13 +1178,14 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           itemKeys += event.key
           handleItemEvent(event)
 
-        case KeyedEvent(boardPath: BoardPath, NoticePosted(postedNotice)) =>
-          notices.deleteSchedule(boardPath, postedNotice.id)
-          notices.schedule(boardPath, postedNotice)
+        case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
+          val noticeId = boardPath / noticePosted.plannedNoticeKey
+          notices.deleteSchedule(noticeId)
+          notices.maybeSchedule(noticeId, noticePosted.endOfLife)
           _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
 
-        case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-          notices.deleteSchedule(boardPath, noticeId)
+        case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
+          notices.deleteSchedule(boardPath / plannedNoticeKey)
           _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
 
         case _ =>
@@ -1336,12 +1333,14 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             event match
               case OrderNoticePostedV2_3(notice) =>
                 for boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition) do
-                  notices.deleteSchedule(boardPath, notice.id)
-                  notices.schedule(notice.toNotice(boardPath))
+                  val noticeId = PlanId.Global / boardPath / notice.noticeKey
+                  notices.deleteSchedule(noticeId)
+                  notices.schedule(noticeId, notice.endOfLife)
 
-              case OrderNoticePosted(notice) =>
-                notices.deleteSchedule(notice.boardPath, notice.id)
-                notices.schedule(notice)
+              case OrderNoticePosted(boardPath, noticeKey, endOfLife) =>
+                val noticeId = order.planId / boardPath / noticeKey
+                notices.deleteSchedule(noticeId)
+                notices.maybeSchedule(noticeId, endOfLife)
 
               case _ =>
 
@@ -1598,7 +1597,7 @@ private[controller] object ControllerOrderKeeper:
   private object Internal:
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
-    final case class NoticeIsDue(boardPath: BoardPath, noticeId: PlannedNoticeKey) extends DeadLetterSuppression
+    final case class NoticeIsDue(noticeId: NoticeId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Unit])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]])
       extends DeadLetterSuppression

@@ -5,10 +5,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeKey}
 import js7.data.controller.ControllerCommand.{PostNotice, TransferOrders}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTerminated, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.plan.PlanId
 import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -20,12 +21,12 @@ trait TransferOrdersWaitingForNoticeTest:
 
   protected final def testTransferOrders(
     toNoticeInstr: BoardPath => ExpectNotices | ConsumeNotices,
-    assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, PlannedNoticeKey) => Assertion)
+    assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, NoticeKey) => Assertion)
   : Unit =
     var eventId = eventWatch.lastAddedEventId
     val qualifier = "2024-08-23"
     val orderId = OrderId(s"#$qualifier#TRANSFER")
-    val noticeId = PlannedNoticeKey(qualifier)
+    val noticeKey = NoticeKey(qualifier)
 
     val board1 = GlobalBoard.joc(BoardPath("TRANSFER-1"), Some(1.day))
     val board2 = GlobalBoard.joc(BoardPath("TRANSFER-2"), Some(1.day))
@@ -34,7 +35,7 @@ trait TransferOrdersWaitingForNoticeTest:
 
     withItems((board1, board2, workflow)): (board1, board2, workflow) =>
       assert(controllerState.keyTo(BoardState)(board1.path) ==
-        BoardState(board1, idToNotice = Map.empty, orderToConsumptionStack = Map.empty))
+        BoardState(board1, toNoticePlace = Map.empty, orderToConsumptionStack = Map.empty))
 
       controller.api.addOrder:
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
@@ -51,7 +52,9 @@ trait TransferOrdersWaitingForNoticeTest:
         eventWatch.await[OrderTransferred](_.key == orderId, after = eventId)
 
         // Let order in newWorkflow continue
-        controller.api.executeCommand(PostNotice(board2.path, noticeId)).await(99.s).orThrow
+        controller.api.executeCommand:
+          PostNotice(PlanId.Global / board2.path / noticeKey)
+        .await(99.s).orThrow
         eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
 
-        assertResult(board1, board2, workflow.id, newWorkflow.id, orderId, noticeId)
+        assertResult(board1, board2, workflow.id, newWorkflow.id, orderId, noticeKey)

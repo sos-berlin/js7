@@ -17,8 +17,8 @@ final case class JBoardState(asScala: BoardState):
       case o: GlobalBoard => JGlobalBoard(o)
       case o: PlannableBoard => JPlannableBoard(o)
 
-  def idToNotice(noticeId: PlannedNoticeKey): Optional[JNoticePlace] =
-    asScala.idToNotice
-      .get(noticeId)
-      .map(JNoticePlace(_))
+  def toNotice(plannedNoticeKey: PlannedNoticeKey): Optional[JNoticePlace] =
+    asScala.toNoticePlace
+      .get(plannedNoticeKey)
+      .map(JNoticePlace(path / plannedNoticeKey, _))
       .toJava
