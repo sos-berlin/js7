@@ -4,6 +4,8 @@ import js7.base.utils.ScalaUtils.orderingBy
 import js7.data.plan.PlanId
 import org.jetbrains.annotations.TestOnly
 
+/** A PlannedBoardId denotes a PlannabeBoard or a GlobalBoard.
+  */
 final case class PlannedBoardId(planId: PlanId, boardPath: BoardPath):
 
   @TestOnly
@@ -15,8 +17,6 @@ final case class PlannedBoardId(planId: PlanId, boardPath: BoardPath):
     this / NoticeKey(noticeKey)
 
   override def toString = s"PlannedBoard:${planId.shortString}/${boardPath.string}"
-
-
 
 
 object PlannedBoardId:

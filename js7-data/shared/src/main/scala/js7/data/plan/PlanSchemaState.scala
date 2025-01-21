@@ -30,6 +30,8 @@ extends UnsignedSimpleItemState:
   val companion: PlanSchemaState.type = PlanSchemaState
   private lazy val namedValuesScope = NamedValueScope(namedValues)
 
+  export item.isGlobal
+
   inline def planSchema: PlanSchema =
     item
 
@@ -59,9 +61,6 @@ extends UnsignedSimpleItemState:
     .map: updatedPlans =>
       copy(
         toPlan = toPlan ++ updatedPlans.toKeyedMap(_.id.planKey))
-
-  def isGlobal: Boolean =
-    item.isGlobal
 
   /** Returns Right(()) iff this PlanSchema is unused. */
   def checkIsDeletable: Checked[Unit] =

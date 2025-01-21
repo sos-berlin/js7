@@ -7,6 +7,8 @@ import js7.base.time.Timestamp
 import js7.data.item.ItemRevision
 import js7.data.value.expression.Scope
 
+/** A PlannableBoard is a BoardItem with NoticeIds for each PlanId.
+  */
 final case class PlannableBoard(
   path: BoardPath,
   itemRevision: Option[ItemRevision] = None)
@@ -22,6 +24,12 @@ extends
 
   def withRevision(revision: Option[ItemRevision]): PlannableBoard =
     copy(itemRevision = revision)
+
+  def isGlobal: Boolean =
+    false
+
+  //def isAnnounced: Boolean =
+  //  true
 
   protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     Right(None)

@@ -12,7 +12,7 @@ import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, GlobalBoard}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
@@ -151,7 +151,7 @@ extends JJournaledState[JControllerState, ControllerState]:
       .map(JNotice(_))
       .asJava
 
-  def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[BoardNoticeKey] =
+  def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[NoticeId] =
     asScala.orderToStillExpectedNotices(orderId)
       .asJava
 

@@ -33,7 +33,7 @@ final class PlannableBoardTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 1ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
     """
 
   override protected def agentConfig = config"""
@@ -54,6 +54,7 @@ final class PlannableBoardTest
     ): (dailyPlan, _, postingWorkflow, consumingWorkflow) =>
       eventWatch.resetLastWatchedEventId()
       val day = "2024-11-08"
+      val planId = dailyPlan.id / day
 
       // otherConsumingOrderId is in some other Plan //
       val day0 = "2024-11-07"
@@ -84,24 +85,24 @@ final class PlannableBoardTest
       eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
 
-      val noticeId = (dailyPlan.id / day) / board.path / NoticeKey.empty
+      val noticeId = planId / board.path / NoticeKey.empty
 
       assert(eventWatch.eventsByKey[OrderEvent](postingOrderId) == Seq(
-        OrderAdded(postingWorkflow.id, planId = Some(dailyPlan.id / day), deleteWhenTerminated = true),
-        OrderNoticeAnnounced(board.path / NoticeKey.empty),
+        OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
+        OrderNoticeAnnounced(planId / board.path / NoticeKey.empty),
         OrderStarted,
-        OrderNoticePosted(board.path / NoticeKey.empty, endOfLife = None),
+        OrderNoticePosted(planId / board.path / NoticeKey.empty, endOfLife = None),
         OrderMoved(Position(1), None),
         OrderFinished(),
         OrderDeleted))
 
       assert(eventWatch.eventsByKey[OrderEvent](consumingOrderId) == Seq(
-        OrderAdded(consumingWorkflow.id, planId = Some(dailyPlan.id / day), deleteWhenTerminated = true),
+        OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          board.path / NoticeKey.empty)),
+          planId / board.path / NoticeKey.empty)),
         OrderNoticesConsumptionStarted(Vector(
-          board.path / NoticeKey.empty)),
+          planId / board.path / NoticeKey.empty)),
         OrderMoved(Position(0) / "consumeNotices" % 1),
         OrderNoticesConsumed(),
         OrderFinished(),
@@ -221,12 +222,13 @@ final class PlannableBoardTest
     "WhenNotAnnounced.Wait" - {
       "ConsumeNotices" in:
         eventWatch.resetLastWatchedEventId()
+        val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
         val day = "2024-11-22"
         val workflow = Workflow(WorkflowPath("EXPECTING"), Seq(
           ConsumeNotices(boardPathExpr, whenNotAnnounced = Wait):
             EmptyInstruction()))
         withItems(
-          (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
+          (planSchema, board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#CONSUME")
@@ -255,13 +257,13 @@ final class PlannableBoardTest
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                board.path / NoticeKey.empty,
-                bBoard.path / NoticeKey.empty,
-                cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey.empty,
+                planId / bBoard.path / NoticeKey.empty,
+                planId / cBoard.path / NoticeKey.empty)),
               OrderNoticesConsumptionStarted(Vector(
-                board.path / NoticeKey.empty,
-                bBoard.path / NoticeKey.empty,
-                cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey.empty,
+                planId / bBoard.path / NoticeKey.empty,
+                planId / cBoard.path / NoticeKey.empty)),
               OrderMoved(Position(0) / "consumeNotices" % 1),
               OrderNoticesConsumed(),
               OrderFinished(),
@@ -269,12 +271,14 @@ final class PlannableBoardTest
 
       "ExpectNotices" in:
         eventWatch.resetLastWatchedEventId()
+        val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
         val day = "2024-11-23"
+        val planId = planSchema.id / day
         val workflow =
           Workflow(WorkflowPath("CONSUMING"), Seq(
             ExpectNotices(boardPathExpr, whenNotAnnounced = Wait)))
         withItems(
-          (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
+          (planSchema, board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#EXPECT")
@@ -298,9 +302,9 @@ final class PlannableBoardTest
                 deleteWhenTerminated = true),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                board.path / NoticeKey.empty,
-                bBoard.path / NoticeKey.empty,
-                cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey.empty,
+                planId / bBoard.path / NoticeKey.empty,
+                planId / cBoard.path / NoticeKey.empty)),
               OrderNoticesRead,
               OrderMoved(Position(1)),
               OrderFinished(),
@@ -309,16 +313,17 @@ final class PlannableBoardTest
 
     "WhenNotAnnounced.SkipWhenNoNotice when Notice is not announced" in:
       eventWatch.resetLastWatchedEventId()
+      val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
       val day = "2024-11-24"
+      val planId = planSchema.id / day
       val workflow =
         Workflow(WorkflowPath("CONSUMING"), Seq(
           ExpectNotices(boardPathExpr, whenNotAnnounced = SkipWhenNoNotice),
           ConsumeNotices(boardPathExpr, whenNotAnnounced = SkipWhenNoNotice):
             EmptyInstruction()))
       withItems(
-        (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
-      ): (dailyPlan, _, _, _, workflow) =>
-        val planId = dailyPlan.id / day
+        (planSchema, board, bBoard, cBoard, workflow)
+      ): (_, _, _, _, workflow) =>
         val noticeId = planId / board.path / NoticeKey.empty
 
         // Post one of the two required Notices
@@ -336,7 +341,7 @@ final class PlannableBoardTest
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
-          OrderNoticesConsumptionStarted(Vector(board.path / NoticeKey.empty)),
+          OrderNoticesConsumptionStarted(Vector(planId / board.path / NoticeKey.empty)),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -344,16 +349,17 @@ final class PlannableBoardTest
 
     "WhenNotAnnounced.Ignore when Notice is not announced" in:
       eventWatch.resetLastWatchedEventId()
+      val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
       val day = "2024-11-25"
+      val planId = planSchema.id / day
       val workflow =
         Workflow(WorkflowPath("CONSUMING"), Seq(
           ExpectNotices(boardPathExpr, whenNotAnnounced = DontWait),
           ConsumeNotices(boardPathExpr, whenNotAnnounced = DontWait):
             EmptyInstruction()))
       withItems(
-        (PlanSchema.joc(PlanSchemaId("DailyPlan")), board, bBoard, cBoard, workflow)
-      ): (dailyPlan, _, _, _, workflow) =>
-        val planId = dailyPlan.id / day
+        (planSchema, board, bBoard, cBoard, workflow)
+      ): (_, _, _, _, workflow) =>
         val noticeId = planId / board.path / NoticeKey.empty
 
         // Post one of the two required Notices
@@ -372,7 +378,7 @@ final class PlannableBoardTest
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
           OrderNoticesConsumptionStarted(Vector(
-            board.path / NoticeKey.empty)), // <-- only the posted Notice is consumed
+            planId / board.path / NoticeKey.empty)), // <-- only the posted Notice is consumed
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),

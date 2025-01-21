@@ -121,12 +121,10 @@ extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTe
   : Checked[ControllerTestStateView] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
-  protected def updateNoticePlacesInPlan(
-    planId: PlanId,
+  protected def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState] =
-    // DO NOTHING
-    keyTo(PlanSchemaState).checked(planId.planSchemaId)
+  : Checked[Seq[PlanSchemaState]] =
+    Right(Nil) // DO NOTHING
 
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView]:
@@ -163,11 +161,9 @@ extends TestStateView[AgentTestStateView]:
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
-  protected final def updateNoticePlacesInPlan(
-    planId: PlanId,
-    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState] =
-    Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
+  protected final def updateNoticeIdsInPlans(
+    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)]): Checked[Seq[PlanSchemaState]] =
+    Left(Problem.pure("updateNoticeIdsInPlans is not implemented"))
 
 object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView]:
 

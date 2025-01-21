@@ -72,12 +72,12 @@ object NoticeEventSource:
       case postNotices: PostNotices =>
         postNotices.boardPaths.traverse: boardPath =>
           state.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
-            boardState.board match
-              case _: PlannableBoard =>
-                state.emptyPlannedNoticeKey(planId).map: plannedNoticeKey =>
-                  !boardState.isAnnounced(plannedNoticeKey) thenSome :
-                    OrderNoticeAnnounced(boardPath / plannedNoticeKey.noticeKey)
-              case _ => Right(None)
+            if boardState.isGlobal then
+              Right(None)
+            else
+              state.emptyPlannedNoticeKey(planId).map: plannedNoticeKey =>
+                !boardState.isAnnounced(plannedNoticeKey) thenSome :
+                  OrderNoticeAnnounced(boardPath / plannedNoticeKey)
         .map(_.flatten)
     .toList
     .sequence
@@ -86,8 +86,7 @@ object NoticeEventSource:
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =
     notices.map: notice =>
-      assert(notice.planId == order.planId)
-      order.id <-: OrderNoticePosted(notice.boardNoticeKey, notice.endOfLife)
+      order.id <-: OrderNoticePosted(notice.id, notice.endOfLife)
     .appended:
       order.id <-: OrderMoved(order.position.increment)
 
@@ -118,9 +117,9 @@ object NoticeEventSource:
             state.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val posted = postedNotices.map(_.notice.boardNoticeKey).toSet
+                val postedNoticeIds = postedNotices.map(_.notice.id).toSet
                 expectNoticesInstr
-                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, posted)
+                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, postedNoticeIds)
                   .map(expectingOrder.id <-: _)
           .map(_.flatten)
     yield

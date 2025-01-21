@@ -3,7 +3,7 @@ package js7.data.workflow.instructions
 import io.circe.Codec
 import js7.base.circeutils.CirceUtils.enumCodec
 import js7.base.utils.L3
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardPathExpression, NoticeId}
+import js7.data.board.{BoardPath, BoardPathExpression, NoticeId}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 
@@ -13,35 +13,34 @@ trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
 
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    boardNoticeKeys: Vector[BoardNoticeKey],
+    noticeIds: Vector[NoticeId],
     exprResult: L3)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]
 
   final def tryFulfillExpectingOrder(
     order: Order[Order.ExpectingNotices],
     isNoticeAvailable: NoticeId => L3,
-    postedNoticeIds: Set[BoardNoticeKey] = Set.empty)
+    isPostedNow: Set[NoticeId] = Set.empty)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
-    tryFulfill(order, order.state.boardNoticeKeys, isNoticeAvailable, postedNoticeIds)
+    tryFulfill(order, order.state.noticeIds, isNoticeAvailable, isPostedNow)
 
   final def tryFulfill(
     order: Order[Order.Ready | Order.ExpectingNotices],
-    boardNoticeKeys: Vector[BoardNoticeKey],
+    noticeIds: Vector[NoticeId],
     isNoticeAvailable: NoticeId => L3,
-    postedNoticeIds: Set[BoardNoticeKey] = Set.empty)
+    isPostedNow: Set[NoticeId] = Set.empty)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
-    val planId = order.planId
     val boardToL3: BoardPath => L3 =
-      boardNoticeKeys.map: boardNoticeKey =>
-        boardNoticeKey.boardPath -> locally:
-          if postedNoticeIds(boardNoticeKey) then
+      noticeIds.map: noticeId =>
+        noticeId.boardPath -> locally:
+          if isPostedNow(noticeId) then
             L3.True
           else
-            isNoticeAvailable(planId / boardNoticeKey)
+            isNoticeAvailable(noticeId)
       .toMap
     if boardPaths.eval(boardToL3) != L3.False then
-      val consumedNoticeKeys = boardNoticeKeys.filter:
-        o => postedNoticeIds(o) || isNoticeAvailable(planId / o) == L3.True
+      val consumedNoticeKeys = noticeIds.filter:
+        o => isPostedNow(o) || isNoticeAvailable(o) == L3.True
       fulfilledEvents(order, consumedNoticeKeys, boardPaths.eval(boardToL3))
     else
       Nil

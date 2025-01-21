@@ -22,7 +22,7 @@ import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
@@ -332,22 +332,19 @@ extends
         boardState <- keyTo(BoardState).checked(boardPath)
         notice = noticePosted.toNotice(boardPath)
         boardState <- boardState.addNotice(notice)
-        planSchemaState <- updateNoticePlaceInPlan(notice.id, boardState)
+        maybePlanSchemaState <- updateNoticeIdInPlan(notice.id, boardState)
       yield copy(
-        keyToUnsignedItemState_ =
-          keyToUnsignedItemState_
-            .updated(boardState.path, boardState)
-            .updated(planSchemaState.id, planSchemaState))
+        keyToUnsignedItemState_ = keyToUnsignedItemState_
+          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
       for
         boardState <- keyTo(BoardState).checked(boardPath)
         boardState <- boardState.removeNotice(plannedNoticeKey)
-        planSchemaState <- updateNoticePlaceInPlan(boardState.path / plannedNoticeKey, boardState)
+        maybePlanSchemaState <- updateNoticeIdInPlan(boardState.path / plannedNoticeKey, boardState)
       yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
-          .updated(boardState.path, boardState)
-          .updated(planSchemaState.id, planSchemaState))
+          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       ow.onOrderWatchEvent(orderWatchPath <-: event)
@@ -456,27 +453,28 @@ extends
         agents.nonEmpty ? agents
 
   def orderToAvailableNotices(orderId: OrderId): Seq[Notice] =
-    val pathToBoardState = keyTo(BoardState)
     for
       order <- idToOrder.get(orderId).toVector
-      boardNoticeKey <- orderToExpectedNotices(orderId)
-      noticePlace <- maybeNoticePlace(order.planId / boardNoticeKey)
+      noticeId <- orderToExpectedNotices(order)
+      noticePlace <- maybeNoticePlace(noticeId)
       notice <- noticePlace.notice
     yield
       notice
 
-  def orderToStillExpectedNotices(orderId: OrderId): Seq[BoardNoticeKey] =
+  def orderToStillExpectedNotices(orderId: OrderId): Seq[NoticeId] =
     val pathToBoardState = keyTo(BoardState)
     idToOrder.get(orderId).toVector.flatMap: order =>
-      orderToExpectedNotices(orderId).filter: expected =>
-        pathToBoardState.get(expected.boardPath).forall: boardState =>
-          !boardState.hasNotice(order.planId / expected.noticeKey)
+      orderToExpectedNotices(order).filter: noticeId =>
+        pathToBoardState.get(noticeId.boardPath).forall: boardState =>
+          !boardState.hasNotice(noticeId.plannedNoticeKey)
 
-  private def orderToExpectedNotices(orderId: OrderId): Seq[BoardNoticeKey] =
-    idToOrder.get(orderId)
-      .flatMap(_.ifState[Order.ExpectingNotices])
+  private def orderToExpectedNotices(order: Order[Order.State]): Seq[NoticeId] =
+    order.ifState[Order.ExpectingNotices]
       .toVector
-      .flatMap(_.state.boardNoticeKeys)
+      .flatMap(_.state.noticeIds)
+
+  private def isGlobalBoard(boardPath: BoardPath): Boolean =
+    keyTo(BoardState).get(boardPath).exists(_.isGlobal)
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 

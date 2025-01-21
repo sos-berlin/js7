@@ -335,7 +335,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         "id": "ORDER-EXPECTING-NOTICE",
         "state": {
           "TYPE": "ExpectingNotices",
-          "boardNoticeKeys": [
+          "noticeIds": [
             [ "BOARD", "NOTICE-2" ]
           ]
         },
@@ -467,13 +467,13 @@ object ControllerStateTest:
   private val notice = Notice(
     board.path / GlobalNoticeKey("NOTICE-1"),
     endOfLife = Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000).some)
-  private val expectedNoticeKey = NoticeKey("NOTICE-2")
+  private val expectedNoticeId = PlanId.Global / board.path / NoticeKey("NOTICE-2")
 
   private val boardState = BoardState(
     board,
     Map(
       notice.plannedNoticeKey -> NoticePlace(Some(notice)),
-      PlanId.Global / expectedNoticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))
+      expectedNoticeId.plannedNoticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
@@ -546,6 +546,6 @@ object ControllerStateTest:
           vanished = true))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(
-          board.path / expectedNoticeKey)))
+          expectedNoticeId)))
     ).toKeyedMap(_.id)
   ).finish.orThrow

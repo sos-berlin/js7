@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.StandardMapView
@@ -18,21 +19,22 @@ transparent trait ControllerStatePlanFunctions
 extends EventDrivenStateView[ControllerState]:
   this: ControllerState =>
 
-  protected final def updateNoticePlacesInPlan(
-    planId: PlanId,
+  protected final def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState] =
-    val PlanId(planSchemaId, planKey) = planId
-    keyTo(PlanSchemaState).checked(planSchemaId).flatMap: templatePlanState =>
-      boardStateAndNoticeIds.scanLeft(Checked(templatePlanState)):
-        case (left @ Left(_), _) => left
-        case (Right(templatePlanState), (boardState, plannedNoticeKey)) =>
-          if boardState.containsNoticeKey(plannedNoticeKey) then
-            templatePlanState.addNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
-          else
-            Right:
-              templatePlanState.removeNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
-      .last
+  : Checked[Seq[PlanSchemaState]] =
+    boardStateAndNoticeIds.groupBy(_._2.planId).toVector
+      .traverse: (planId, boardStateAndNoticeIds) =>
+        import planId.{planKey, planSchemaId}
+        keyTo(PlanSchemaState).checked(planSchemaId).flatMap: planSchemaState =>
+          boardStateAndNoticeIds.scanLeft(Checked(planSchemaState)):
+            case (left @ Left(_), _) => left
+            case (Right(planSchemaState), (boardState, plannedNoticeKey)) =>
+              if boardState.containsNoticeKey(plannedNoticeKey) then
+                planSchemaState.addNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
+              else
+                Right:
+                  planSchemaState.removeNoticeKey(planKey, boardState.path / plannedNoticeKey.noticeKey)
+          .last
 
   final def removeBoardInPlanSchemaStates(boardPath: BoardPath): View[PlanSchemaState] =
     keyTo(PlanSchemaState).values.view.map:

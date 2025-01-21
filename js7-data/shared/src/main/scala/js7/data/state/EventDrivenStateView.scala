@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.board.{BoardItem, BoardNoticeKey, BoardState, Notice, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardItem, BoardState, Notice, NoticeId, PlannedNoticeKey}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}
@@ -130,8 +130,10 @@ extends EventDrivenState[Self, Event], StateView:
                 addItemStates = lockStates)
 
         case event: OrderNoticeEvent =>
-          applyOrderNoticeEvent(previousOrder, event)
-            .flatMap(_.update(addOrders = updatedOrder :: Nil))
+          applyOrderNoticeEvent(previousOrder, event).flatMap: itemStates =>
+            update(
+              addOrders = updatedOrder :: Nil,
+              addItemStates = itemStates)
 
         case OrderStateReset =>
           previousOrder.ifState[WaitingForLock].map: order =>
@@ -188,117 +190,109 @@ extends EventDrivenState[Self, Event], StateView:
     yield
       result
 
-  private def applyOrderNoticeEvent(
-    previousOrder: Order[Order.State],
-    event: OrderNoticeEvent)
-  : Checked[Self] =
-    val orderId = previousOrder.id
-    event
-      .match
-        case OrderNoticeAnnounced(BoardNoticeKey(boardPath, noticeKey)) =>
+  private def applyOrderNoticeEvent(order: Order[Order.State], event: OrderNoticeEvent)
+  : Checked[Seq[BoardState | PlanSchemaState]] =
+    val orderId = order.id
+    event match
+      case OrderNoticeAnnounced(noticeId) =>
+        for
+          boardState <- keyTo(BoardState).checked(noticeId.boardPath)
+          boardState <- boardState.announceNotice(noticeId.plannedNoticeKey)
+          maybePlanSchemaState <- updateNoticeIdInPlan(noticeId, boardState)
+        yield
+          boardState :: maybePlanSchemaState.toList
+
+      case OrderNoticePostedV2_3(notice) =>
+        for
+          boardState <- orderIdToBoardState(orderId)
+          boardState <- boardState.addNoticeV2_3(notice)
+          noticeId = PlanId.Global / boardState.path / notice.noticeKey
+          maybePlanSchemaState <- updateNoticeIdInPlan(noticeId, boardState)
+        yield
+          boardState :: maybePlanSchemaState.toList
+
+      case OrderNoticePosted(noticeId, endOfLife) =>
+        for
+          boardState <- keyTo(BoardState).checked(noticeId.boardPath)
+          boardState <- boardState.addNotice(Notice(noticeId, endOfLife))
+          maybePlanSchemaState <- updateNoticeIdInPlan(noticeId, boardState)
+        yield
+          boardState :: maybePlanSchemaState.toList
+
+      case OrderNoticeExpected(noticeKey) =>
+        // COMPATIBLE with v2.3
+        for
+          boardState <- orderIdToBoardState(orderId)
+          noticeId = PlanId.Global / boardState.path / noticeKey
+          boardState <- boardState.addExpectation(noticeId.plannedNoticeKey, orderId)
+          maybePlanSchemaState <- updateNoticeIdInPlan(noticeId, boardState)
+        yield
+          boardState :: maybePlanSchemaState.toList
+
+      case OrderNoticesExpected(noticeIds) =>
+        noticeIds.traverse: noticeId =>
           for
-            boardState <- keyTo(BoardState).checked(boardPath)
-            boardState <- boardState.announceNotice(previousOrder.planId / noticeKey)
-            templatePlanState <- updateNoticePlaceInPlan(previousOrder.planId / boardState.path / noticeKey, boardState)
+            boardState <- keyTo(BoardState).checked(noticeId.boardPath)
+            boardState <- boardState.addExpectation(noticeId.plannedNoticeKey, orderId)
           yield
-            boardState :: templatePlanState :: Nil
+            boardState -> noticeId.plannedNoticeKey
+        .flatMap: boardStatesAndNoticeIds =>
+          updateNoticeIdsInPlans(boardStatesAndNoticeIds)
+            .map: planSchemaStates =>
+              planSchemaStates ++ boardStatesAndNoticeIds.map(_._1)
 
-        case OrderNoticePostedV2_3(notice) =>
+      case OrderNoticesRead =>
+        order.ifState[ExpectingNotices] match
+          case None => Right(Nil)
+          case Some(previousOrder) => removeNoticeExpectation(previousOrder)
+
+      case OrderNoticesConsumptionStarted(consumedNoticeIds) =>
+        val isConsumption = consumedNoticeIds.toSet
+        val noticeIds =
+          order.ifState[ExpectingNotices].fold_(Vector.empty, _.state.noticeIds)
+            .concat(consumedNoticeIds).distinct
+        strictly(noticeIds.areUniqueBy(_.boardPath))
+        noticeIds.traverse: noticeId =>
           for
-            boardState <- orderIdToBoardState(orderId)
-            boardState <- boardState.addNoticeV2_3(notice)
-            plannedNoticeKey = notice.id
-            templatePlanState <-
-              updateNoticePlaceInPlan(previousOrder.planId / boardState.path / plannedNoticeKey, boardState)
-          yield
-            boardState :: templatePlanState :: Nil
-
-        case OrderNoticePosted(boardNoticeKey, endOfLife) =>
-          val noticeId = previousOrder.planId / boardNoticeKey
-          for
-            boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
-            boardState <- boardState.addNotice(Notice(noticeId, endOfLife))
-            templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
-          yield
-            boardState :: templatePlanState :: Nil
-
-        case OrderNoticeExpected(noticeKey) =>
-          val plannedNoticeKey = previousOrder.planId / noticeKey
-          for
-            boardState <- orderIdToBoardState(orderId)
-            boardState <- boardState.addExpectation(plannedNoticeKey, orderId)
-            templatePlanState <- updateNoticePlaceInPlan(boardState.path / plannedNoticeKey, boardState)
-          yield
-            boardState :: templatePlanState :: Nil
-
-        case OrderNoticesExpected(boardNoticeKeys) =>
-          boardNoticeKeys.traverse: boardNoticeKey =>
-            val plannedNoticeKey = previousOrder.planId / boardNoticeKey.noticeKey
-            for
-              boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
-              boardState <- boardState.addExpectation(plannedNoticeKey, orderId)
-            yield
-              boardState -> plannedNoticeKey
-          .flatMap: boardStatesAndNoticeKeys =>
-            updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeKeys)
-              .map: planSchemaState =>
-                planSchemaState +: boardStatesAndNoticeKeys.map(_._1)
-
-        case OrderNoticesRead =>
-          previousOrder.ifState[ExpectingNotices] match
-            case None => Right(Nil)
-            case Some(previousOrder) => removeNoticeExpectation(previousOrder)
-
-        case OrderNoticesConsumptionStarted(consumptions) =>
-          val isConsumption = consumptions.toSet
-          val expectedOrConsumptionSeq =
-            previousOrder.ifState[ExpectingNotices].fold_(Vector.empty, _.state.boardNoticeKeys)
-              .concat(consumptions).distinct
-          strictly(expectedOrConsumptionSeq.areUniqueBy(_.boardPath))
-          expectedOrConsumptionSeq.traverse: expected =>
-            val plannedNoticeKey = previousOrder.planId / expected.noticeKey
-            for
-              boardState <- keyTo(BoardState).checked(expected.boardPath)
-              boardState <-
-                if isConsumption(expected) then
-                  boardState.startConsumption(plannedNoticeKey, orderId)
-                else
-                  boardState.removeExpectation(plannedNoticeKey, orderId)
-            yield
-              boardState -> plannedNoticeKey
-          .flatMap: boardStatesAndNoticeIds =>
-            updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
-              .map: templatePlanState =>
-                templatePlanState +: boardStatesAndNoticeIds.map(_._1)
-
-        case OrderNoticesConsumed(failed) =>
-          for
-            consumeNotices <-
-              if failed then
-                findInstructionInCallStack[ConsumeNotices](previousOrder.workflowPosition)
+            boardState <- keyTo(BoardState).checked(noticeId.boardPath)
+            boardState <-
+              if isConsumption(noticeId) then
+                boardState.startConsumption(noticeId.plannedNoticeKey, orderId)
               else
-                // When succeeding, the Order must be in the instruction block just below
-                // the ConsumeNotice instruction.
-                previousOrder.workflowPosition.checkedParent.flatMap(instruction_[ConsumeNotices])
-            itemStates <-
-              consumeNotices.referencedBoardPaths.toVector.traverse: boardPath =>
-                for
-                  boardState <- keyTo(BoardState).checked(boardPath)
-                  (boardState, maybeNoticeId) <-
-                    boardState.finishConsumption(previousOrder.id, succeeded = !failed)
-                yield
-                  boardState -> maybeNoticeId
-              .flatMap: boardStatesAndMaybeNoticeIds =>
-                val boardStatesAndNoticeIds = boardStatesAndMaybeNoticeIds.collect:
-                  case (boardState, Some(plannedNoticeKey)) => boardState -> plannedNoticeKey
-                updateNoticePlacesInPlan(previousOrder.planId, boardStatesAndNoticeIds)
-                  .map: templatePlanState =>
-                    val boardStates = boardStatesAndMaybeNoticeIds.map(_._1)
-                    templatePlanState +: boardStates
+                boardState.removeExpectation(noticeId.plannedNoticeKey, orderId)
           yield
-            itemStates
-      .flatMap: o =>
-        update(addItemStates = o)
+            boardState -> noticeId.plannedNoticeKey
+        .flatMap: boardStatesAndPlannedNoticeIds =>
+          updateNoticeIdsInPlans(boardStatesAndPlannedNoticeIds)
+            .map: planSchemaStates =>
+              planSchemaStates ++ boardStatesAndPlannedNoticeIds.map(_._1)
+
+      case OrderNoticesConsumed(failed) =>
+        for
+          consumeNotices <-
+            if failed then
+              findInstructionInCallStack[ConsumeNotices](order.workflowPosition)
+            else
+              // When succeeding, the Order must be in the instruction block just below
+              // the ConsumeNotice instruction.
+              order.workflowPosition.checkedParent.flatMap(instruction_[ConsumeNotices])
+          itemStates <-
+            consumeNotices.referencedBoardPaths.toVector.traverse: boardPath =>
+              for
+                boardState <- keyTo(BoardState).checked(boardPath)
+                (boardState, maybeNoticeId) <-
+                  boardState.finishConsumption(orderId, succeeded = !failed)
+              yield
+                boardState -> maybeNoticeId
+            .flatMap: boardStatesAndMaybeNoticeIds =>
+              val boardStatesAndNoticeIds = boardStatesAndMaybeNoticeIds.collect:
+                case (boardState, Some(plannedNoticeKey)) => boardState -> plannedNoticeKey
+              updateNoticeIdsInPlans(boardStatesAndNoticeIds)
+                .map: planSchemaStates =>
+                  val boardStates = boardStatesAndMaybeNoticeIds.map(_._1)
+                  planSchemaStates ++ boardStates: Seq[BoardState | PlanSchemaState]
+        yield
+          itemStates
 
   private def findInstructionInCallStack[I <: Instruction: ClassTag](
     workflowPosition: WorkflowPosition)
@@ -320,28 +314,28 @@ extends EventDrivenState[Self, Event], StateView:
 
   private def removeNoticeExpectation(order: Order[ExpectingNotices])
   : Checked[Seq[BoardState | PlanSchemaState]] =
-    order.state.boardNoticeKeys.traverse: boardNoticeKey =>
-      val noticeId = order.planId / boardNoticeKey
+    order.state.noticeIds.traverse: noticeId =>
       for
-        boardState <- keyTo(BoardState).checked(boardNoticeKey.boardPath)
+        boardState <- keyTo(BoardState).checked(noticeId.boardPath)
         boardState <- boardState.removeExpectation(noticeId.plannedNoticeKey, order.id)
-        templatePlanState <- updateNoticePlaceInPlan(noticeId, boardState)
       yield
         boardState -> noticeId.plannedNoticeKey
     .flatMap: boardStatesAndNoticeKeys =>
-      updateNoticePlacesInPlan(order.planId, boardStatesAndNoticeKeys)
-        .map: templatePlanState =>
+      updateNoticeIdsInPlans(boardStatesAndNoticeKeys)
+        .map: planSchemaStates =>
           val boardStates = boardStatesAndNoticeKeys.map(_._1)
-          templatePlanState +: boardStates
+          planSchemaStates ++ boardStates
 
-  protected final def updateNoticePlaceInPlan(noticeId: NoticeId, boardState: BoardState)
-  : Checked[PlanSchemaState] =
-    updateNoticePlacesInPlan(noticeId.planId, boardState -> noticeId.plannedNoticeKey :: Nil)
+  protected final def updateNoticeIdInPlan(noticeId: NoticeId, boardState: BoardState)
+  : Checked[Option[PlanSchemaState]] =
+    updateNoticeIdsInPlans(boardState -> noticeId.plannedNoticeKey :: Nil)
+      .map: planSchemaStates =>
+        assertThat(planSchemaStates.sizeIs <= 1)
+        planSchemaStates.headOption
 
-  protected def updateNoticePlacesInPlan(
-    planId: PlanId,
+  protected def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState]
+  : Checked[Seq[PlanSchemaState]]
 
 
 object EventDrivenStateView:

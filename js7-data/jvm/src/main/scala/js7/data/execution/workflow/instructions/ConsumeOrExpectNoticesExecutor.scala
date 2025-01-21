@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifEmpty
 import js7.data.board.{BoardState, GlobalBoard, PlannableBoard}
@@ -32,22 +33,23 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                     for
                       scope <- state.toOrderScope(order)
                       noticeId <- board.expectingOrderToNoticeId(scope)
+                        .left.map:
+                          _.withPrefix(s"${instr.getClass.shortClassName}:")
                     yield
-                      assert(noticeId.planId.isGlobal)
-                      noticeId.boardNoticeKey
+                      noticeId
 
                   case board: PlannableBoard =>
                     state.emptyPlannedNoticeKey(order).map: plannedNoticeKey =>
-                      assert(plannedNoticeKey.planId == order.planId)
-                      board.path / plannedNoticeKey.noticeKey
-              .map: boardNoticeKeys =>
-                instr.tryFulfill(order, boardNoticeKeys, state.isNoticeAvailable)
+                      assertThat(plannedNoticeKey.planId == order.planId)
+                      board.path / plannedNoticeKey
+              .map: noticeIds =>
+                instr.tryFulfill(order, noticeIds, state.isNoticeAvailable)
                   .ifEmpty:
-                    OrderNoticesExpected(boardNoticeKeys) :: Nil
+                    OrderNoticesExpected(noticeIds) :: Nil
                   .map(order.id <-: _)
       .orElse:
         order.ifState[Order.ExpectingNotices].map: order =>
-          if order.state.boardNoticeKeys.map(_.boardPath).toSet != instr.referencedBoardPaths then
+          if order.state.noticeIds.map(_.boardPath).toSet != instr.referencedBoardPaths then
             Left(Problem.pure(s"${instr.getClass.shortClassName
               } instruction does not match Order.State: $instr <-> ${order.state}"))
           else

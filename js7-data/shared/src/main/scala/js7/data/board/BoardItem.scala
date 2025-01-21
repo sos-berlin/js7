@@ -12,6 +12,12 @@ trait BoardItem extends UnsignedSimpleItem:
 
   val companion: Companion[Self]
 
+  def path: BoardPath
+
+  def isGlobal: Boolean
+
+  //def isAnnounced: Boolean
+
   protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]]
 
   final def toInitialItemState: BoardState =

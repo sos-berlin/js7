@@ -201,9 +201,9 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         OrderAdded(workflow1.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          aBoard.path / noticeId.noticeKey)),
+          aBoard.path \ noticeId.noticeKey)),
         OrderNoticesConsumptionStarted(Vector(
-          aBoard.path / noticeId.noticeKey)),
+          aBoard.path \ noticeId.noticeKey)),
         OrderPrompted(StringValue("PROMPT-1")),
         OrderStateReset,
         OrderTransferred(workflow3.id /: (Position(0) / "consumeNotices" % 0)),

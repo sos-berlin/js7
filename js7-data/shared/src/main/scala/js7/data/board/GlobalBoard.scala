@@ -15,6 +15,10 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
 
+/** A GlobalBoard is a BoardItem with global NoticeIds.
+  *
+  * NoticeIds are in the global Plan (PlanId.Global).
+  */
 final case class GlobalBoard(
   path: BoardPath,
   postOrderToNoticeKey: Expression,
@@ -32,6 +36,12 @@ extends
 
   def rename(path: BoardPath): GlobalBoard =
     copy(path = path)
+
+  def isGlobal: Boolean =
+    true
+
+  //def isAnnounced: Boolean =
+  //  false
 
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for

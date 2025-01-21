@@ -101,21 +101,23 @@ extends SnapshotableStateBuilder[ControllerState],
 
       order.state match
         case Order.ExpectingNotice(noticeKey) =>
+          // COMPATIBLE with v2.3
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
+          val noticeId = PlanId.Global / boardState.path / noticeKey
           _keyToUnsignedItemState(boardState.path) =
-            boardState.addExpectation(order.planId / noticeKey, order.id).orThrow
+            boardState.addExpectation(noticeId.plannedNoticeKey, order.id).orThrow
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
             state = Order.ExpectingNotices(Vector:
-              boardState.path / noticeKey)))
+              PlanId.Global / boardState.path / noticeKey)))
 
-        case Order.ExpectingNotices(boardNoticeKeys) =>
+        case Order.ExpectingNotices(noticeIds) =>
           _keyToUnsignedItemState ++=
-            boardNoticeKeys.map: expected =>
-              expected.boardPath ->
-                keyTo(BoardState).checked(expected.boardPath).flatMap:
-                  _.addExpectation(order.planId / expected.noticeKey, order.id)
+            noticeIds.map: noticeId =>
+              noticeId.boardPath ->
+                keyTo(BoardState).checked(noticeId.boardPath).flatMap: boardState =>
+                  boardState.addExpectation(noticeId.plannedNoticeKey, order.id)
                 .orThrow
 
         case _ =>
@@ -380,13 +382,12 @@ extends SnapshotableStateBuilder[ControllerState],
     // PlanSchemaState.toPlan will be updated when ControllerStateBuilder finishes.
     Right(this)
 
-  protected def updateNoticePlacesInPlan(
-    planId: PlanId,
+  protected def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState] =
+  : Checked[Seq[PlanSchemaState]] =
     // Not required for ControllerStateBuilder, so we do nothing here (?)
     // PlanSchemaStates are updated with ControllerState#finish
-    keyTo(PlanSchemaState).checked(planId.planSchemaId)
+    Right(Nil)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],

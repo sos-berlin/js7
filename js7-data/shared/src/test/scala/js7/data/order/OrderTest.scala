@@ -337,16 +337,16 @@ final class OrderTest extends OurTestSuite:
 
       "ExpectingNotices" in:
         testJson[State](ExpectingNotices(Vector(
-          BoardPath("BOARD") / NoticeKey("NOTICE"))),
+          PlanSchemaId("DailyPlan") / "2025-01-21" / BoardPath("BOARD") / NoticeKey("NOTICE"))),
           json"""{
             "TYPE": "ExpectingNotices",
-            "boardNoticeKeys": [
-              [ "BOARD", "NOTICE" ]
+            "noticeIds": [
+              [ "DailyPlan", "2025-01-21", "BOARD", "NOTICE" ]
             ]
           }""")
 
         testJsonDecoder[State](ExpectingNotices(Vector(
-          BoardPath("BOARD") / NoticeKey("NOTICE"))),
+          BoardPath("BOARD") \ NoticeKey("NOTICE"))),
           json"""{
             "TYPE": "ExpectingNotices",
             "expected": [
@@ -492,14 +492,14 @@ final class OrderTest extends OurTestSuite:
       OrderLocksReleased(List(LockPath("LOCK"))),
 
       OrderPlanAttached(planId),
-      OrderNoticeAnnounced(BoardPath("BOARD") / NoticeKey.empty),
+      OrderNoticeAnnounced(BoardPath("BOARD") \ NoticeKey.empty),
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
-        BoardPath("BOARD") / NoticeKey("NOTICE"),
+        BoardPath("BOARD") \ NoticeKey("NOTICE"),
         endOfLife = Timestamp.ofEpochSecond(1).some),
       OrderNoticesExpected(Vector(
-        BoardPath("BOARD") / NoticeKey("NOTICE"))),
+        BoardPath("BOARD") \ NoticeKey("NOTICE"))),
       OrderNoticesRead,
       OrderNoticesConsumptionStarted(Vector.empty),
       OrderNoticesConsumed(),
@@ -626,7 +626,7 @@ final class OrderTest extends OurTestSuite:
 
     "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
-        BoardPath("BOARD") / NoticeKey("NOTICE")))
+        BoardPath("BOARD") \ NoticeKey("NOTICE")))
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse

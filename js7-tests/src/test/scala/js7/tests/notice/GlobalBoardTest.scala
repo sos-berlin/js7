@@ -79,13 +79,13 @@ final class GlobalBoardTest
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)).isEmpty)
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)).toSet ==
-        Set(notice0.boardNoticeKey, notice1.boardNoticeKey))
+        Set(notice0.id, notice1.id))
 
       val posting12OrderId = OrderId(s"#$qualifier#POSTING-1-2")
       controller.runOrder(FreshOrder(posting12OrderId, posting12Workflow.path))
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
-      assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.boardNoticeKey))
+      assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.id))
 
       assert(controllerState.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(
@@ -124,8 +124,8 @@ final class GlobalBoardTest
           OrderAdded(expecting01Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector(
-            notice0.boardPath / notice0.noticeKey,
-            notice1.boardPath / notice1.noticeKey)),
+            notice0.boardPath \ notice0.noticeKey,
+            notice1.boardPath \ notice1.noticeKey)),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -164,7 +164,7 @@ final class GlobalBoardTest
       assert(posterEvents.map(_.value) == Seq(
         OrderAdded(posting0Workflow.id),
         OrderStarted,
-        OrderNoticePosted(notice.boardNoticeKey, notice.endOfLife),
+        OrderNoticePosted(notice.id, notice.endOfLife),
         OrderMoved(Position(1)),
         OrderFinished()))
 
@@ -184,7 +184,7 @@ final class GlobalBoardTest
           OrderAdded(expecting0Workflow.id),
           OrderStarted,
           OrderNoticesExpected(Vector:
-            notice.boardNoticeKey),
+            notice.id),
           OrderNoticesRead,
           OrderMoved(Position(1)),
           OrderFinished()))
@@ -217,7 +217,7 @@ final class GlobalBoardTest
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderNoticePosted(board0.path / NoticeKey(qualifier),
+        OrderNoticePosted(board0.path \ NoticeKey(qualifier),
           endOfLife = ts"2222-10-11T00:00:00Z".some),
         OrderMoved(Position(2)),
         OrderFinished()))
@@ -286,7 +286,7 @@ final class GlobalBoardTest
         OrderAdded(posting0Workflow.id),
         OrderStarted,
         OrderNoticePosted(
-          board0.path / NoticeKey(qualifier),
+          board0.path \ NoticeKey(qualifier),
           endOfLife = ts"2222-10-11T00:00:00Z".some),
         OrderMoved(Position(1)),
         OrderFinished()))
@@ -390,7 +390,7 @@ final class GlobalBoardTest
       assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
         OrderAdded(workflow.path ~ versionId, deleteWhenTerminated = true),
         OrderStarted,
-        OrderNoticesExpected(Vector(board.path / NoticeKey(qualifier))),
+        OrderNoticesExpected(Vector(board.path \ NoticeKey(qualifier))),
         OrderStateReset,
         OrderCancelled,
         OrderDeleted))
@@ -407,10 +407,10 @@ final class GlobalBoardTest
           assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
             OrderAdded(workflowId1, deleteWhenTerminated = true),
             OrderStarted,
-            OrderNoticesExpected(Vector(board1.path / noticeKey)),
+            OrderNoticesExpected(Vector(board1.path \ noticeKey)),
             OrderStateReset,
             OrderTransferred(workflowId2 /: Position(0)),
-            OrderNoticesExpected(Vector(board2.path / noticeKey)),
+            OrderNoticesExpected(Vector(board2.path \ noticeKey)),
             OrderNoticesRead,
             OrderMoved(Position(1)),
             OrderFinished(),
@@ -429,7 +429,7 @@ final class GlobalBoardTest
   "Update GlobalBoard" in:
     val boardState = controllerState.keyTo(BoardState)(board0.path)
 
-    val updatedBoard = board0.copy(postOrderToNoticeKey = expr("$jsOrderId"))
+    val updatedBoard = board0.copy(postOrderToNoticeKey = expr("orderId"))
     controller.api.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
     assert(controllerState.keyTo(BoardState)(board0.path) ==

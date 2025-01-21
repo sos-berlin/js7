@@ -266,27 +266,27 @@ final class BoardStateTest extends OurAsyncTestSuite:
 
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
     assert(boardState.toNoticePlace == Map(
-      PlanId.Global / aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path)))))
+      PlanId.Global / aNotice.noticeKey -> NoticePlace(Some(aNotice.toNotice(board.path)))))
 
-    val a1Notice = NoticeV2_3(aNotice.id, endOfLife)
+    val a1Notice = NoticeV2_3(aNotice.noticeKey, endOfLife)
     boardState = boardState.addNoticeV2_3(a1Notice).orThrow
     assert(boardState.toNoticePlace == Map(
-      PlanId.Global / aNotice.id -> NoticePlace(Some(a1Notice.toNotice(board.path)))))
+      PlanId.Global / aNotice.noticeKey -> NoticePlace(Some(a1Notice.toNotice(board.path)))))
 
     val bNotice = NoticeV2_3(NoticeKey("B"), endOfLife)
     boardState = boardState.addNoticeV2_3(bNotice).orThrow
     assert(boardState.toNoticePlace == Map(
-      PlanId.Global / aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path))),
-      PlanId.Global / bNotice.id -> NoticePlace(Some(bNotice.toNotice(board.path)))))
+      PlanId.Global / aNotice.noticeKey -> NoticePlace(Some(aNotice.toNotice(board.path))),
+      PlanId.Global / bNotice.noticeKey -> NoticePlace(Some(bNotice.toNotice(board.path)))))
 
   "addNoticeV2_3 (2)" in:
     var boardState = BoardState(board)
     val aNotice = NoticeV2_3(NoticeKey("A"), endOfLife)
 
-    boardState = boardState.addExpectation(GlobalNoticeKey(aNotice.id), aOrderId).orThrow
+    boardState = boardState.addExpectation(GlobalNoticeKey(aNotice.noticeKey), aOrderId).orThrow
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
     assert(boardState.toNoticePlace == Map(
-      PlanId.Global / aNotice.id -> NoticePlace(
+      PlanId.Global / aNotice.noticeKey -> NoticePlace(
         Some(aNotice.toNotice(board.path)),
         Set(aOrderId))))
 

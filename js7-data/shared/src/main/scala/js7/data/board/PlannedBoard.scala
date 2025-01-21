@@ -4,6 +4,8 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.plan.PlanId
 
 /** PlannedBoard, mirrors NoticeIds whose originals are stored in BoardState.
+  *
+  * A PlannedBoard mirrors NoticeIds of a PlannableBoard or a GlobalBoard.
   */
 final case class PlannedBoard(
   id: PlannedBoardId,

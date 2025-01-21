@@ -68,8 +68,7 @@ trait StateView extends ItemContainer:
 
   def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState]
 
-  final def keyTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
-  : MapView[A.Key, A] =
+  final def keyTo[A <: InventoryItemState](A: InventoryItemState.Companion[A]): MapView[A.Key, A] =
     keyToUnsignedItemState
       .filter((_, v) => v.companion eq A)
       .asInstanceOf[MapView[A.Key, A]]

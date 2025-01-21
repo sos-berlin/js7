@@ -17,7 +17,10 @@ import scala.jdk.OptionConverters.*
 
 /** A pair of PlanId and NoticeKey.
   *
-  * A PlannedNoticeKey combined with a BoardPath is a NoticeId. */
+  * A PlannedNoticeKey combined with a BoardPath is a NoticeId.
+  *
+  * A PlannedNoticeKey denotes a NoticeId of a PlannabeBoard or a GlobalBoard.
+  */
 final case class PlannedNoticeKey private[board](planId: PlanId, noticeKey: NoticeKey):
 
   override def toString =

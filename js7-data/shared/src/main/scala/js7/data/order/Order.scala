@@ -17,7 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.Problems.{GoOrderInapplicableProblem, OrderCannotAttachedToPlanProblem}
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardNoticeKey, NoticeKey}
+import js7.data.board.{NoticeId, NoticeKey}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.{EventDriven, EventDrivenState}
@@ -494,10 +494,10 @@ extends
         // ControllerStateBuilder converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
-      case OrderNoticesExpected(boardNoticeKeys) =>
+      case OrderNoticesExpected(noticeIds) =>
         check(isDetached && isState[Ready] && !isSuspendedOrStopped,
           copy(
-            state = ExpectingNotices(boardNoticeKeys)))
+            state = ExpectingNotices(noticeIds)))
 
       case OrderNoticesRead =>
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
@@ -1263,7 +1263,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   extends IsStarted, IsControllerOnly, NotTransferable:
     def noticeKey: NoticeKey = noticeId
 
-  final case class ExpectingNotices(boardNoticeKeys: Vector[BoardNoticeKey])
+  final case class ExpectingNotices(noticeIds: Vector[NoticeId])
   extends IsStarted, IsControllerOnly, IsResettable, IsTransferableButResetChangedInstruction
 
   object ExpectingNotices:
@@ -1277,7 +1277,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
         for
           expected <- c.get[Vector[OrderNoticesExpected.Expected273]]("expected")
         yield
-          ExpectingNotices(expected.map(_.boardNoticeKey))
+          ExpectingNotices(expected.map(PlanId.Global / _.boardNoticeKey))
       else
         jsonCodec(c)
 

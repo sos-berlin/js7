@@ -36,6 +36,8 @@ extends UnsignedSimpleItemState:
   val item: BoardItem = board
   def path: BoardPath = item.path
 
+  export item.isGlobal
+
   def updateItem(item: BoardItem): Checked[BoardState] =
     Right(copy(board = item))
 

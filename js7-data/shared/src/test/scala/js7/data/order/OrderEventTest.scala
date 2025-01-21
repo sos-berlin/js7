@@ -869,19 +869,10 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticeAnnounced" in :
     testJson[OrderEvent](
-      OrderNoticeAnnounced(BoardPath("BOARD") / NoticeKey("NOTICE")),
+      OrderNoticeAnnounced(BoardPath("BOARD") \ NoticeKey("NOTICE")),
       json"""{
         "TYPE": "OrderNoticeAnnounced",
-        "boardNoticeKey": [ "BOARD", "NOTICE" ]
-      }""")
-
-    // COMPATIBLE with v2.7.3
-    testJsonDecoder[OrderEvent](
-      OrderNoticeAnnounced(BoardPath("BOARD") / NoticeKey("NOTICE")),
-      json"""{
-        "TYPE": "OrderNoticeAnnounced",
-        "boardPath": "BOARD",
-        "noticeId": "NOTICE"
+        "noticeId": [ "BOARD", "NOTICE" ]
       }""")
 
   "OrderNoticePosted until v2.3" in:
@@ -900,19 +891,19 @@ final class OrderEventTest extends OurTestSuite:
   "OrderNoticePosted" in:
     testJson[OrderEvent](
       OrderNoticePosted(
-        BoardPath("BOARD") / NoticeKey("NOTICE"),
+        BoardPath("BOARD") \ NoticeKey("NOTICE"),
         endOfLife = Timestamp("1970-01-01T01:00:00Z").some),
       json"""
       {
         "TYPE": "OrderNoticePosted",
-        "boardNoticeKey": [ "BOARD", "NOTICE" ],
+        "noticeId": [ "BOARD", "NOTICE" ],
         "endOfLife": 3600000
       }""")
 
     // COMPATIBLE with v2.7.3
     testJsonDecoder[OrderEvent](
       OrderNoticePosted(
-        BoardPath("BOARD") / NoticeKey("NOTICE"),
+        BoardPath("BOARD") \ NoticeKey("NOTICE"),
         endOfLife = Timestamp("1970-01-01T01:00:00Z").some),
       json"""
       {
@@ -935,18 +926,18 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesExpected" in:
     testJson[OrderEvent](OrderNoticesExpected(Vector(
-      BoardPath("BOARD") / NoticeKey("NOTICE"))),
+      BoardPath("BOARD") \ NoticeKey("NOTICE"))),
       json"""
       {
         "TYPE": "OrderNoticesExpected",
-        "boardNoticeKeys": [
+        "noticeIds": [
           [ "BOARD", "NOTICE" ]
         ]
       }""")
 
     // COMPATIBLE with v2.7.3
     testJsonDecoder[OrderEvent](OrderNoticesExpected(Vector(
-      BoardPath("BOARD") / NoticeKey("NOTICE"))),
+      BoardPath("BOARD") \ NoticeKey("NOTICE"))),
       json"""
       {
         "TYPE": "OrderNoticesExpected",
@@ -974,18 +965,18 @@ final class OrderEventTest extends OurTestSuite:
 
   "OrderNoticesConsumptionStarted" in:
     testJson[OrderEvent](OrderNoticesConsumptionStarted(Vector(
-      BoardPath("BOARD") / NoticeKey("NOTICE"))),
+      BoardPath("BOARD") \ NoticeKey("NOTICE"))),
       json"""
       {
         "TYPE": "OrderNoticesConsumptionStarted",
-        "boardNoticeKeys": [
+        "noticeIds": [
           [ "BOARD", "NOTICE" ]
         ]
       }""")
 
     // COMPATIBLE with v2.7.3
     testJsonDecoder[OrderEvent](OrderNoticesConsumptionStarted(Vector(
-      BoardPath("BOARD") / NoticeKey("NOTICE"))),
+      BoardPath("BOARD") \ NoticeKey("NOTICE"))),
       json"""
       {
         "TYPE": "OrderNoticesConsumptionStarted",

@@ -30,7 +30,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.plan.{PlanId, PlanSchemaState}
+import js7.data.plan.PlanSchemaState
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -354,11 +354,10 @@ extends SignedItemContainer,
 
   def orders: Iterable[Order[Order.State]] = idToOrder.values
 
-  protected def updateNoticePlacesInPlan(
-    planId: PlanId,
+  protected def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[PlanSchemaState] =
-    Left(Problem.pure("updateNoticePlacesInPlan is not implemented"))
+  : Checked[Seq[PlanSchemaState]] =
+    Left(Problem.pure("updateNoticeIdsInPlans is not implemented"))
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     if !isDedicated then

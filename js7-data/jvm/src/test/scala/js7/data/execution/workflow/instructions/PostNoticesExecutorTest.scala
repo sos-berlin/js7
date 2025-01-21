@@ -38,8 +38,8 @@ final class PostNoticesExecutorTest extends OurTestSuite:
 
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
-        postingOrderId <-: OrderNoticePosted(notice0.boardNoticeKey, notice0.endOfLife),
-        postingOrderId <-: OrderNoticePosted(notice1.boardNoticeKey, notice1.endOfLife),
+        postingOrderId <-: OrderNoticePosted(notice0.id, notice0.endOfLife),
+        postingOrderId <-: OrderNoticePosted(notice1.id, notice1.endOfLife),
         postingOrderId <-: OrderMoved(Position(1))))
 
       state = state.applyKeyedEvents(events).orThrow
@@ -62,10 +62,10 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(expectingOrderId, state).orThrow
       assert(events == Seq(
         expectingOrderId <-: OrderNoticesExpected(Vector(
-          notice0.boardNoticeKey,
-          notice2.boardNoticeKey,
-          notice1.boardNoticeKey,
-          notice3.boardNoticeKey))))
+          notice0.id,
+          notice2.id,
+          notice1.id,
+          notice3.id))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
@@ -97,7 +97,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
       val events = executorService.toEvents(otherExpectingOrderId, state).orThrow
       assert(events == Seq(
         otherExpectingOrderId <-: OrderNoticesExpected(Vector(
-          board0.path / otherNotice0.noticeKey))))
+          otherNotice0.id))))
 
       state = state.applyKeyedEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
@@ -125,7 +125,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     locally:
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
-        postingOrderId <-: OrderNoticePosted(notice2.boardNoticeKey, notice2.endOfLife),
+        postingOrderId <-: OrderNoticePosted(notice2.id, notice2.endOfLife),
         postingOrderId <-: OrderMoved(Position(2)),
         expectingOrderId <-: OrderNoticesRead,
         expectingOrderId <-: OrderMoved(Position(1)),

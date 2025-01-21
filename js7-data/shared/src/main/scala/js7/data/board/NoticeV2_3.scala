@@ -6,7 +6,7 @@ import js7.base.time.Timestamp
 import js7.data.plan.PlanId
 
 // COMPATIBLE with v2.3
-final case class NoticeV2_3(id: NoticeKey, endOfLife: Timestamp):
+final case class NoticeV2_3(private val id: NoticeKey, endOfLife: Timestamp):
 
   def noticeKey: NoticeKey = id
 
