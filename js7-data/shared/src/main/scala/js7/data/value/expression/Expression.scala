@@ -772,6 +772,25 @@ object Expression:
     override def toString = s"replaceAll($string, $pattern, $replacement)"
 
 
+  final case class Substring(string: Expression, start: Expression, end: Option[Expression] = None)
+  extends StringExpr, IsPureIfSubexpressionsArePure:
+    def precedence: Int = Precedence.Factor
+    def subexpressions: Iterable[Expression] =
+      View(string, start) ++ end
+
+    def evalRaw(using scope: Scope): Checked[Value] =
+      for
+        string <- string.eval.flatMap(_.asString)
+        start <- start.eval.flatMap(_.asInt)
+        end <- end.traverse(_.eval.flatMap(_.asInt))
+        result <- catchExpected[RuntimeException]:
+          StringValue(string.substring(start, end getOrElse string.length))
+      yield
+        result
+
+    override def toString = s"substring($string, $start${end.fold("")(", " + _)})"
+
+
   /** Match returns the replacement of the whole (anchored) string, or fails. */
   final case class Match(string: Expression, pattern: Expression, replacement: Expression)
   extends StringExpr, IsPureIfSubexpressionsArePure:

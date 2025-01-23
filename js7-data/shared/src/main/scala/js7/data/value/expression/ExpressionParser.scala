@@ -206,6 +206,13 @@ object ExpressionParser:
           case Seq((None, string), (None, pattern), (None, replacement)) =>
             pure(ReplaceAll(string, pattern, replacement))
           case _ => failWith("replaceAll function expects exactly three arguments")
+      case ("substring", Some(arguments)) =>
+        arguments match
+          case Seq((None, string), (None, start)) =>
+            pure(Substring(string, start))
+          case Seq((None, string), (None, start), (None, end)) =>
+            pure(Substring(string, start, Some(end)))
+          case _ => failWith("substring function expects exactly three arguments")
       case ("match", Some(arguments)) =>
         arguments match
           case Seq((None, string), (None, pattern), (None, replacement)) =>

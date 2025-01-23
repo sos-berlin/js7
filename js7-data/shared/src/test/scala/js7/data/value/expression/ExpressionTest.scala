@@ -957,6 +957,60 @@ final class ExpressionTest extends OurTestSuite:
       ReplaceAll("abcdef", "([ae])", MissingConstant))
   }
 
+  "Substring" - {
+    testEval(""" substring("abcdef", 0) """,
+      result = Right(StringValue("abcdef")),
+      Substring("abcdef", 0))
+
+    testEval(""" substring("abcdef", 1) """,
+      result = Right(StringValue("bcdef")),
+      Substring("abcdef", 1))
+
+    testEval(""" substring("abcdef", 9) """,
+      result = Left(Problem:
+        if Runtime.version.feature >= 23 then
+          "StringIndexOutOfBoundsException: Range [9, 6) out of bounds for length 6"
+        else
+         "StringIndexOutOfBoundsException: begin 9, end 6, length 6"),
+      Substring("abcdef", 9))
+
+    testEval(""" substring("abcdef", 1, 3) """,
+      result = Right(StringValue("bc")),
+      Substring("abcdef", 1, Some(3)))
+
+    testEval(""" substring("abcdef", 1, 99) """,
+      result = Left(Problem:
+        if Runtime.version.feature >= 23 then
+          "StringIndexOutOfBoundsException: Range [1, 99) out of bounds for length 6"
+        else
+          "StringIndexOutOfBoundsException: begin 1, end 99, length 6"),
+      Substring("abcdef", 1, Some(99)))
+
+    testEval(""" substring("abcdef", 1, -3) """,
+      result = Left(Problem:
+        if Runtime.version.feature >= 23 then
+          "StringIndexOutOfBoundsException: Range [1, -3) out of bounds for length 6"
+        else
+          "StringIndexOutOfBoundsException: begin 1, end -3, length 6"),
+      Substring("abcdef", 1, Some(-3)))
+
+    testEval(""" substring("abcdef", -2, 3) """,
+      result = Left(Problem:
+        if Runtime.version.feature >= 23 then
+          "StringIndexOutOfBoundsException: Range [-2, 3) out of bounds for length 6"
+        else
+          "StringIndexOutOfBoundsException: begin -2, end 3, length 6"),
+      Substring("abcdef", -2, Some(3)))
+
+    testEval(""" substring("abcdef", 1.7) """,
+      result = Left(Problem("ArithmeticException: Rounding necessary")),
+      Substring("abcdef", BigDecimal("1.7")))
+
+    testEval(""" substring("abcdef", "1") """,
+      result = Left(UnexpectedValueTypeProblem(NumberValue, StringValue("1"))),
+      Substring("abcdef", "1"))
+  }
+
   "match" - {
     testEval(""" match("", "(", "") """,
       result = Left(Problem("Unclosed group in regular expression pattern: “(❓”")),
