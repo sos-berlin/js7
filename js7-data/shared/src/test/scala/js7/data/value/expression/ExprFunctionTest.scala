@@ -72,7 +72,7 @@ final class ExprFunctionTest extends OurTestSuite:
       assert(checked == checkedFunction)
       for function <- checkedFunction do
         assert(parseFunction(function.toString) == checkedFunction, " in toString❗")
-        assert(function.eval(args)(scope) == result)
+        assert(function.eval(args)(using scope) == result)
         assert(parseExpressionOrFunction(exprString) == Right(FunctionExpr(function)))
 
   "FunctionExpr and FunctionValue" - {
@@ -113,8 +113,9 @@ final class ExprFunctionTest extends OurTestSuite:
     def eval(min: Int, max: Int, args: Iterable[String]): Checked[Value] =
       for
         function <- restrict(min, max)
-        result <- function.eval(args.map(StringValue(_)))(Scope.empty)
-      yield result
+        result <- function.eval(args.map(StringValue(_)))(using Scope.empty)
+      yield
+        result
 
     assert(eval(1, 2, Nil) == Left(Problem(
       "Number of arguments=0 does not match required number of function parameters=1...2 in 'myFunction' function")))
@@ -129,4 +130,3 @@ final class ExprFunctionTest extends OurTestSuite:
 
     assert(eval(1, 2, Seq("A", "B", "C")) == Left(Problem(
     "Number of arguments=3 does not match required number of function parameters=1...2 in 'myFunction' function")))
-                                                         x2

@@ -29,7 +29,7 @@ extends ForkInstructionExecutor:
       childIds <- elements
         .traverseWithIndexM { case (element, i) =>
           fork.childToId
-            .eval(View(element, NumberValue(i)))(scope)
+            .eval(View(element, NumberValue(i)))(using scope)
             .flatMap(_.toStringValueString)
         }
       _ <- childIds.checkUniqueness
@@ -37,7 +37,7 @@ extends ForkInstructionExecutor:
       argsOfChildren <- elements
         .traverseWithIndexM { case (element, i) =>
           fork.childToArguments
-            .eval(View(element, NumberValue(i)))(scope)
+            .eval(View(element, NumberValue(i)))(using scope)
             .flatMap(_.as[ObjectValue])
         }
       children <- childIds.zip(argsOfChildren)
