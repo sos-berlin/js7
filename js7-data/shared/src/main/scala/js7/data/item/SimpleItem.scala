@@ -13,6 +13,10 @@ trait SimpleItem extends InventoryItem:
 
   def withRevision(revision: Option[ItemRevision]): Self
 
+  def nextRevision: Self =
+    withRevision:
+      Some(itemRevision.fold(ItemRevision.Initial)(_.next))
+
   final def key: companion.Key = path
 
   def path: companion.Path

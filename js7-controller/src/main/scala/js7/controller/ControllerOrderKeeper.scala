@@ -1009,12 +1009,11 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             case None => WorkflowPathControl(path) -> true
             case Some(o) => o -> false
         var item = itemState.item
-        item = item.copy(
+        item = item.nextRevision.copy(
           suspended = cmd.suspend.fold(item.suspended)(identity),
           skip = item.skip
             -- cmd.skip.filterNot(_._2).keys
-            ++ cmd.skip.filter(_._2).keys,
-          itemRevision = Some(item.itemRevision.fold(ItemRevision.Initial)(_.next)))
+            ++ cmd.skip.filter(_._2).keys)
         val event = if isNew then UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
 
         val keyedEvents = Vector(event)
@@ -1044,9 +1043,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           .get(workflowControlId) match
             case None => WorkflowControl(workflowControlId) -> true
             case Some(o) => o -> false
-        val item = item0.copy(
-          breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints,
-          itemRevision = Some(item0.itemRevision.fold(ItemRevision.Initial)(_.next)))
+        val item = item0.nextRevision.copy(
+          breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints)
 
         val event = if isNew then UnsignedItemAdded(item) else UnsignedItemChanged(item)
         val keyedEvents = Vector(event)

@@ -20,6 +20,11 @@ extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
   def withRevision(revision: Option[ItemRevision]): WorkflowControl =
     copy(itemRevision = revision)
 
+  // Duplicate in SimpleItem
+  def nextRevision: WorkflowControl =
+    withRevision:
+      Some(itemRevision.fold(ItemRevision.Initial)(_.next))
+
   def workflowPath: WorkflowPath = id.path.workflowPath
 
 

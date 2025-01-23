@@ -168,8 +168,8 @@ object VerifiedUpdateItemsExecutor:
               SignedItemChanged:
                 verified.signedItem.copy(
                   value = verified.signedItem.value
-                    .withRevision(Some:
-                      existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
+                    .withRevision:
+                      existing.nextRevision.itemRevision)
 
     def unsignedSimpleItemToEvent(
       item: UnsignedSimpleItem,
@@ -196,8 +196,7 @@ object VerifiedUpdateItemsExecutor:
                   case _ => Checked.unit
                 .map: _ =>
                   UnsignedSimpleItemChanged:
-                    item.withRevision:
-                      existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next).some
+                    item.withRevision(existing.nextRevision.itemRevision)
 
     def checkOrdersMatchStillItsPlan(
       controllerState: ControllerState,
