@@ -40,9 +40,13 @@ object PlannedNoticeKey:
   def global(noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
     checked(PlanId.Global, noticeKey)
 
+  @deprecated
   def empty(planId: PlanId): PlannedNoticeKey =
     assertThat(!planId.isGlobal)
     new PlannedNoticeKey(planId, NoticeKey.empty)
+
+  def checked(planId: PlanId, noticeKey: String): Checked[PlannedNoticeKey] =
+    NoticeKey.checked(noticeKey).flatMap(checked(planId, _))
 
   def checked(planId: PlanId, noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
     if planId.isGlobal && noticeKey.isEmpty then
@@ -50,13 +54,13 @@ object PlannedNoticeKey:
     else
       Right(new PlannedNoticeKey(planId, noticeKey))
 
-  @Nonnull
+  @Nonnull @throws[RuntimeException]
   def of(noticeKey: String): PlannedNoticeKey =
-    global(NoticeKey(noticeKey)).orThrow
+    global(noticeKey).orThrow
 
-  @Nonnull
+  @Nonnull @throws[RuntimeException]
   def of(planId: PlanId, noticeKey: String): PlannedNoticeKey =
-    checked(planId, NoticeKey(noticeKey)).orThrow
+    checked(planId, noticeKey).orThrow
 
   given Ordering[PlannedNoticeKey] = orderingBy(_.planId, _.noticeKey)
 
@@ -86,8 +90,17 @@ object PlannedNoticeKey:
 
 
 object GlobalNoticeKey:
+
+  @TestOnly
   def apply(noticeKey: String): PlannedNoticeKey =
     apply(NoticeKey(noticeKey))
 
+  @TestOnly
   def apply(noticeKey: NoticeKey): PlannedNoticeKey =
     PlannedNoticeKey(PlanId.Global, noticeKey)
+
+  def checked(noticeKey: String): Checked[PlannedNoticeKey] =
+    NoticeKey.checked(noticeKey).flatMap(checked)
+
+  def checked(noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
+    PlannedNoticeKey.checked(PlanId.Global, noticeKey)

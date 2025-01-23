@@ -56,7 +56,8 @@ object GenericString:
         catchNonFatal:
           unchecked(requireNonNull(string))
 
-    final def apply(o: String): A = checked(o).orThrow
+    def apply(o: String): A =
+      checked(o).orThrow
 
     implicit val jsonEncoder: Encoder[A] = o =>
       if isReserved(o.string) then

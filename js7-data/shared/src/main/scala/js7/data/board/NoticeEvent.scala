@@ -35,9 +35,10 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
         // COMPATIBLE with v2.7.3
         for
           noticeKey <- notice.get[NoticeKey]("id")
+          noticeKey <- GlobalNoticeKey.checked(noticeKey).toDecoderResult(c.history)
           endOfLife <- notice.get[Option[Timestamp]]("endOfLife")
         yield
-          NoticePosted(GlobalNoticeKey(noticeKey), endOfLife)
+          NoticePosted(noticeKey, endOfLife)
       else
         jsonCodec(c)
 
@@ -55,8 +56,9 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
         // COMPATIBLE with v2.7.3
         for
           noticeKey <- c.get[NoticeKey]("noticeId")
+          globalNoticeKey <- GlobalNoticeKey.checked(noticeKey).toDecoderResult(c.history)
         yield
-          NoticeDeleted(GlobalNoticeKey(noticeKey))
+          NoticeDeleted(globalNoticeKey)
       else
         jsonCodec(c)
 

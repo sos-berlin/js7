@@ -10,6 +10,8 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
 import js7.data.item.{ItemRevision, UnsignedItemPath}
+import js7.data.order.Order
+import js7.data.state.StateView
 import js7.data.value.expression.Expression.MissingConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
@@ -40,16 +42,25 @@ extends
   def isGlobal: Boolean =
     true
 
-  //def isAnnounced: Boolean =
-  //  false
-
-  def postingOrderToNotice(scope: Scope): Checked[Notice] =
+  def postingOrderToNotice(order: Order[Order.Ready], state: StateView, now: Timestamp)
+  : Checked[Notice] =
     for
+      // Does this Scope make sense??? It differs from scope in expectingOrderToNoticeId.
+      scope <- state.toImpureOrderExecutingScope(order, now)
       noticeKey <- postOrderToNoticeKey.evalAsString(scope)
       plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
       notice <- toNotice(plannedNoticeKey)(scope)
     yield
       notice
+
+  def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView, now: Timestamp)
+  : Checked[NoticeId] =
+    for
+      scope <- state.toOrderScope(order)
+      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
+      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
+    yield
+      path / plannedNoticeKey
 
   protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     endOfLife
@@ -57,20 +68,6 @@ extends
       .map(_.missingToNone)
       .flatMap(_.traverse(_.asLongIgnoreFraction))
       .map(_.map(Timestamp.ofEpochMilli))
-
-  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    for
-      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
-      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
-    yield
-      path / plannedNoticeKey
-
-  def expectingOrderToPlannedNoticeKey(scope: Scope): Checked[PlannedNoticeKey] =
-    for
-      noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
-      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
-    yield
-      plannedNoticeKey
 
 
 object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
@@ -113,3 +110,25 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
       endOfLife = lifetime.fold(MissingConstant):
         lifetime => expr("$js7EpochMilli + " + lifetime.toMillis))
 
+  //<editor-fold desc="// General JOC OrderId pattern">
+  // General JOC OrderId pattern: #DATE#(T|P|D|F|C)[\d-]-NAME(|BRANCHID)? (Olli)
+
+  //private val dailyPlanDateAndOrderName = expr:
+  //  "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*-([^:]*)(?::[^|]*)?([|].*)?$', '$1$2$3')"
+  //
+  //private val matchingDailyPlanDate = expr:
+  //  "match(orderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"
+  //
+  //private val matchingOrderName = expr:
+  //  "match(orderId, '^#[0-9]{4}-[0-9]{2}-[0-9]{2}#.*-([^:]*)(?::[^|]*)?([|].*)?$', '$1$2')"
+  //
+  ///** A GlobalBoard for JOC-style OrderIds. */
+  //def joc2(boardPath: BoardPath, lifetime: Option[FiniteDuration] = Some(24.h))
+  //: GlobalBoard =
+  //  GlobalBoard(
+  //    boardPath,
+  //    postOrderToNoticeKey = dailyPlanDateAndOrderName,
+  //    expectOrderToNoticeKey = dailyPlanDateAndOrderName,
+  //    endOfLife = lifetime.fold(MissingConstant):
+  //      lifetime => expr("$js7EpochMilli + " + lifetime.toMillis))
+  //</editor-fold>

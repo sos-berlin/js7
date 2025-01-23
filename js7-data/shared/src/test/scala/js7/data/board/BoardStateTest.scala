@@ -213,7 +213,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
             assert(snapshots == List(
               json"""{
                 "TYPE": "PlannableBoard",
-                "path": "BOARD"
+                "path": "BOARD",
+                "postOrderToNoticeKey" : "\"\"",
+                "expectOrderToNoticeKey" : "\"\""
               }""", json"""{
                 "TYPE": "Notice",
                 "id": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],

@@ -16,14 +16,12 @@ trait BoardItem extends UnsignedSimpleItem:
 
   def isGlobal: Boolean
 
-  //def isAnnounced: Boolean
-
   protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]]
 
   final def toInitialItemState: BoardState =
     BoardState(this)
 
-  def toNotice(plannedNoticeKey: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)
+  final def toNotice(plannedNoticeKey: PlannedNoticeKey, endOfLife: Option[Timestamp] = None)
     (scope: Scope)
   : Checked[Notice] =
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(o => Checked(Some(o))) yield

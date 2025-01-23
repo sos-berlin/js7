@@ -2,6 +2,7 @@ package js7.data.plan
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
@@ -27,11 +28,17 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   def /(noticeKey: NoticeKey): PlannedNoticeKey =
     PlannedNoticeKey(this, noticeKey)
 
+  def nonGlobal: Checked[this.type] =
+    if isGlobal then
+      Left(Problem.pure("Non-global PlanId required"))
+    else
+      Right(this)
+
   override def toString =
     s"Plan:$shortString"
 
   def shortString =
-    s"${planSchemaId.string}${planKey.string.nonEmpty ?? s"/${planKey.string}"}"
+    s"${planSchemaId.string}${planKey.string.nonEmpty ?? s"╱${planKey.string}"}"
 
 
 object PlanId:

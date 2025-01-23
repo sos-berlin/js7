@@ -26,13 +26,10 @@ final class NoticeEventSource(clock: WallClock):
       fatNotices <- boardStates.traverse: boardState =>
         boardState.board.match
           case board: GlobalBoard =>
-            // A big, impure Scope ???
-            state.toImpureOrderExecutingScope(order, clock.now()).flatMap: scope =>
-              board.postingOrderToNotice(scope)
+            board.postingOrderToNotice(order, state, clock.now())
 
           case board: PlannableBoard =>
-            state.emptyPlannedNoticeKey(order).map: plannedNoticeKey =>
-              Notice(board.path / plannedNoticeKey)
+            board.postingOrderToNotice(order, state.controllerId)
         .map:
           FatNotice(_, boardState)
       postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)

@@ -80,9 +80,7 @@ trait StateView extends ItemContainer:
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
 
-  final def emptyPlannedNoticeKey(order: Order[Order.State]): Checked[PlannedNoticeKey] =
-    emptyPlannedNoticeKey(order.planId)
-
+  @deprecated
   final def emptyPlannedNoticeKey(planId: PlanId): Checked[PlannedNoticeKey] =
     if planId.isGlobal then
       Left(Problem.pure(s"PlannableBoard requested, but Order is not in a Plan (or in $planId)"))

@@ -12,6 +12,7 @@ trait OrderDetails:
   def scheduledFor: Option[Timestamp]
 
   // Not sure about workflowPath with future callable Workflows ???
+  // This must be constant. In a future nested workflow, this must be the original workflow.
   def workflowPath: WorkflowPath
 
   //def forceJobAdmission: Boolean

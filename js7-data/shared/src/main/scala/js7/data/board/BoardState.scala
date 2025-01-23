@@ -54,7 +54,7 @@ extends UnsignedSimpleItemState:
     Stream.iterable:
       View(board) ++
         notices ++
-        toNoticePlace.view.flatMap((k, v) => v.toSnapshot(path, k)) ++
+        toNoticePlace.view.flatMap((k, v) => v.toSnapshot(path / k)) ++
         orderToConsumptionStack.view
           .map: (orderId, consumptionStack) =>
             NoticeConsumptionSnapshot(path, orderId, consumptionStack)

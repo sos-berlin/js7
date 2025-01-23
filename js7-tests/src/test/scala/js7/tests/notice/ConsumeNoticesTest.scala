@@ -64,7 +64,7 @@ final class ConsumeNoticesTest
 
     withItem(workflow): workflow =>
       val qualifier = qualifiers.next()
-      val globalNoticeKey = GlobalNoticeKey(qualifier + "NOTICE")
+      val globalNoticeKey = GlobalNoticeKey(qualifier)
 
       TestJob.reset()
       val orderId = OrderId(s"#$qualifier#CONSUMING-NOTICE")
@@ -110,8 +110,8 @@ final class ConsumeNoticesTest
     val myBoard = GlobalBoard(
       BoardPath("MY-BOARD"),
       postOrderToNoticeKey = orderIdToNoticeId,
-      endOfLife = expr(s"$$js7EpochMilli + ${lifetime.toMillis}"),
-      expectOrderToNoticeKey = orderIdToNoticeId)
+      expectOrderToNoticeKey = orderIdToNoticeId,
+      endOfLife = expr(s"$$js7EpochMilli + ${lifetime.toMillis}"))
 
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(

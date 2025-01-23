@@ -129,3 +129,4 @@ final class ExprFunctionTest extends OurTestSuite:
 
     assert(eval(1, 2, Seq("A", "B", "C")) == Left(Problem(
     "Number of arguments=3 does not match required number of function parameters=1...2 in 'myFunction' function")))
+                                                         x2

@@ -40,12 +40,15 @@ extends Big:
       !isInConsumption &&
       consumptionCount == 0
 
+  inline def nonEmpty: Boolean =
+    !isEmpty
+
   def isInUse: Boolean =
     expectingOrderIds.nonEmpty || isInConsumption || consumptionCount != 0
 
-  def toSnapshot(boardPath: BoardPath, plannedNoticeKey: PlannedNoticeKey): Option[Snapshot] =
+  def toSnapshot(noticeId: NoticeId): Option[Snapshot] =
     (isAnnounced || isInConsumption || consumptionCount != 0) ?
-      Snapshot(boardPath / plannedNoticeKey, isAnnounced, isInConsumption, consumptionCount)
+      Snapshot(noticeId, isAnnounced, isInConsumption, consumptionCount)
 
   def withSnapshot(snapshot: Snapshot): NoticePlace =
     copy(

@@ -11,6 +11,7 @@ sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent:
 
 
 object UnsignedSimpleItemEvent:
+
   sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent, ItemAddedOrChanged:
     def item: UnsignedSimpleItem
     assertThat(item.itemRevision.isDefined)
@@ -20,6 +21,7 @@ object UnsignedSimpleItemEvent:
   final case class UnsignedSimpleItemAdded(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged:
     def key: UnsignedSimpleItemPath = item.key
+
 
   final case class UnsignedSimpleItemChanged(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged:
