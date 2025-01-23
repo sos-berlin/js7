@@ -13,6 +13,7 @@ import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.mkString
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Atomic, DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
@@ -52,7 +53,7 @@ extends MainService, Service.StoppableByRequest:
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
-    startServiceAndLog(logger, nodeApis.toList.mkString(", ")):
+    startServiceAndLog(logger, nodeApis.mkString(", ")):
       run
 
   val untilTerminated: IO[ProgramTermination] =

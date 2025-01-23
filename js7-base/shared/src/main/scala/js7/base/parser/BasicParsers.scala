@@ -7,6 +7,7 @@ import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import js7.base.parser.Parsers.syntax.*
 import js7.base.problem.Checked
+import js7.base.utils.CatsUtils.syntax.mkString
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -74,7 +75,7 @@ object BasicParsers:
 
   private val backtickIdentifier: Parser[String] =
     rawBacktickIdentifierPart.rep
-      .map(_.toList.mkString("`")/* `` -> ` */)
+      .map(_.mkString("`")/* `` -> ` */)
       .flatMap:
         case "" => failWith("Identifier in backticks (`) must not be empty")
         case o => pure(o)

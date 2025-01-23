@@ -7,6 +7,7 @@ import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
 import js7.base.parser.Parsers.syntax.*
 import js7.base.problem.Checked
+import js7.base.utils.CatsUtils.syntax.mkString
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
@@ -102,7 +103,7 @@ object ExpressionParser:
     val expr = char('$') *> (namedValue | curlyName | inParentheses(expression))
     val simpleConstant = charsWhile(ch => ch != '"' && ch != '\\' && ch != '$').string
     val constant = (simpleConstant | escapedCharInString.map(_.toString)).rep
-      .map(_.toList.mkString)
+      .map(_.mkString)
       .map(StringConstant(_))
 
     (constant.? ~ (expr ~ constant.?).rep0)

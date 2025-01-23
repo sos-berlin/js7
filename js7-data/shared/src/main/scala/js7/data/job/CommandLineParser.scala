@@ -5,6 +5,7 @@ import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.singleQuoted
 import js7.base.parser.Parsers
 import js7.base.problem.Checked
+import js7.base.utils.CatsUtils.syntax.mkString
 import js7.data.job.CommandLineExpression.optimizeCommandLine
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpr, MkString, StringConstant, StringExpr}
@@ -30,7 +31,7 @@ object CommandLineParser:
 
   private val stringConstant: Parser[StringConstant] =
     (normalCharInUnquotedWord.map(_.toString) | escapedCharInUnquotedWord).rep
-      .map(chars => StringConstant(chars.toList.mkString))
+      .map(chars => StringConstant(chars.mkString))
 
   private val constantInDoubleQuotedWord: Parser0[StringConstant] =
     charsWhile0(c => c != '\\' && c != '"' && c != '$')

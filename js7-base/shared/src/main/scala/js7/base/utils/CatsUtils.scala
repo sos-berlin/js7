@@ -174,6 +174,15 @@ object CatsUtils:
     extension [A](nonEmptyList: NonEmptyList[A])
       def view: View[A] = nonEmptyList.toList.view
 
+      def mkString: String =
+        nonEmptyList.toList.mkString
+
+      def mkString(separator: String): String =
+        nonEmptyList.toList.mkString(separator)
+
+      def mkString(start: String, separator: String, end: String): String =
+        nonEmptyList.toList.mkString(start, separator, end)
+
     extension [A](nonEmptyVector: NonEmptyVector[A])
       def view: View[A] = nonEmptyVector.toVector.view
 
