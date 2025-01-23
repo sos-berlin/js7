@@ -6,6 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.board.{BoardPath, PlannableBoard}
 import js7.data.item.ItemRevision
+import js7.data.value.expression.Expression
 import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters.*
 
@@ -27,8 +28,14 @@ extends JJsonable[JPlannableBoard], JBoardItem:
 object JPlannableBoard extends JJsonable.Companion[JPlannableBoard]:
   type AsScala = PlannableBoard
 
+  /** Use this a default for postOrderToNoticeKey and expectOrderToNoticeKey. */
+  final val defaultToNoticeKey = PlannableBoard.DefaultToNoticeExpr
+
   @Nonnull
-  def of(@Nonnull path: BoardPath)
+  def of(
+    @Nonnull path: BoardPath,
+    @Nonnull postOrderToNoticeKey: Expression,
+    @Nonnull expectOrderToNoticeKey: Expression)
   : JPlannableBoard =
     JPlannableBoard(PlannableBoard(path))
 
