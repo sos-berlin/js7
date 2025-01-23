@@ -48,8 +48,8 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, ClusterModuleShuttingDownProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
-import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, NoticeEventSource, NoticeId}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved, NoticePosted}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeEventSource, NoticeId, NoticeKey}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
@@ -68,16 +68,18 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderStateReset, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{PlanId, PlanSchemaState}
+import js7.data.plan.{PlanId, PlanKey, PlanSchemaState}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
+import js7.data.value.StringValue
+import js7.data.value.expression.Scope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
@@ -759,6 +761,54 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           case Right(keyedEvent) =>
             persistTransactionAndSubsequentEvents(keyedEvent :: Nil)(handleEvents)
              .map(_ => Right(ControllerCommand.Response.Accepted))
+
+      case cmd: ControllerCommand.ChangeGlobalToPlannableBoard =>
+        import cmd.{planSchemaId, plannableBoard, splitNoticeKey}
+        val boardPath = plannableBoard.path
+        locally:
+          for
+            boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
+            globalBoard <- boardState.item match
+              case item: GlobalBoard => Right(item)
+              case _ => Left(Problem(s"$boardPath does not denote a GlobalBoard"))
+            keyedEvents <-
+              // Update Notices and Orders waiting for Notices
+              boardState.toNoticePlace.toVector.flatTraverse: (plannedNoticeKey, noticePlace) =>
+                for
+                  result <- splitNoticeKey
+                    .eval(StringValue(plannedNoticeKey.noticeKey.string))(using Scope.empty)
+                  pair <- result.asPair[StringValue, StringValue]
+                  planKey <- PlanKey.checked(pair._1.string)
+                  noticeKeyString = pair._2.string
+                  noticeKey <- NoticeKey.checked(pair._2.string)
+                  orderReset = noticePlace.expectingOrderIds.toVector.map: orderId =>
+                    orderId <-: OrderStateReset
+                  maybeNoticeMoved =
+                    // OrderStateReset removes OrderId from NoticePlace#expectingOrderIds,
+                    // NoticePlace may then be empty and non-existent,
+                    // then NoticeMoved (which should not move expectingOrderIds, too)
+                    noticePlace.copy(expectingOrderIds = Set.empty).nonEmpty.thenSome:
+                      boardPath <-: NoticeMoved(
+                        plannedNoticeKey = plannedNoticeKey,
+                        newPlannedNoticeKey = planSchemaId / planKey / noticeKey,
+                        endOfLife = None)
+                yield
+                  orderReset ++ maybeNoticeMoved
+            keyedEvents <- ControllerEventColl.keyedEvents(_controllerState): coll =>
+              for
+                coll <- coll.add:
+                  NoKey <-: UnsignedSimpleItemChanged:
+                    plannableBoard.withRevision(globalBoard.nextRevision.itemRevision)
+                coll <- coll.add:
+                  keyedEvents
+              yield coll
+          yield
+            keyedEvents
+        match
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(keyedEvents) =>
+            persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
+              .map(_ => Right(ControllerCommand.Response.Accepted))
 
       case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>
         orderIds.toVector

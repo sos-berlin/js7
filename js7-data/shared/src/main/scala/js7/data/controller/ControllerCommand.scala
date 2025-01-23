@@ -4,7 +4,7 @@ import io.circe.derivation.ConfiguredCodec
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -16,7 +16,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId, NoticeKey}
+import js7.data.board.{BoardPath, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -26,6 +26,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
+import js7.data.value.expression.ExprFunction
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import scala.collection.immutable
@@ -124,6 +125,12 @@ object ControllerCommand extends CommonCommand.Companion:
           DeleteNotice(PlanId.Global / o.boardPath / o.noticeKey)
       else
         codec(c)
+
+  final case class ChangeGlobalToPlannableBoard(
+    plannableBoard: PlannableBoard,
+    planSchemaId: PlanSchemaId,
+    splitNoticeKey: ExprFunction)
+  extends ControllerCommand
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand, Big:
@@ -295,6 +302,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype[CancelOrders],
     Subtype[PostNotice],
     Subtype[DeleteNotice],
+    Subtype(deriveCodecWithDefaults[ChangeGlobalToPlannableBoard]),
     Subtype(deriveConfiguredCodec[DeleteOrdersWhenTerminated]),
     Subtype(deriveConfiguredCodec[AnswerOrderPrompt]),
     Subtype(deriveConfiguredCodec[NoOperation]),

@@ -1,7 +1,8 @@
 package js7.data.board
 
-import io.circe.{Codec, Decoder, Encoder, Json}
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder, Json}
+import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, toDecoderResult}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent}
@@ -63,6 +64,14 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
         jsonCodec(c)
 
 
-  implicit val jsonCodec: TypedJsonCodec[NoticeEvent] = TypedJsonCodec(
+  final case class NoticeMoved(
+    plannedNoticeKey: PlannedNoticeKey,
+    newPlannedNoticeKey: PlannedNoticeKey,
+    endOfLife: Option[Timestamp])
+  extends NoticeEvent
+
+
+  given TypedJsonCodec[NoticeEvent] = TypedJsonCodec(
     Subtype[NoticePosted],
-    Subtype[NoticeDeleted])
+    Subtype[NoticeDeleted],
+    Subtype(deriveCodecWithDefaults[NoticeMoved]))

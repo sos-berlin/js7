@@ -10,7 +10,11 @@ object ControllerEventColl:
   def apply[E <: Event](aggregate: ControllerState): ControllerEventColl[E] =
     EventColl[ControllerState, E](aggregate)
 
-  def keyedEvents[E <: Event](aggregate: ControllerState)
+  def tryEvents[E <: Event](controllerState: ControllerState)(keyedEvents: IterableOnce[KeyedEvent[E]])
+  : Checked[Vector[KeyedEvent[E]]] =
+    ControllerEventColl.keyedEvents(controllerState)(_.add(keyedEvents))
+
+  def keyedEvents[E <: Event](controllerState: ControllerState)
     (body: ControllerEventColl[E] => Checked[ControllerEventColl[E]])
   : Checked[Vector[KeyedEvent[E]]] =
-    body(apply[E](aggregate)).map(_.keyedEvents)
+    body(apply[E](controllerState)).map(_.keyedEvents)

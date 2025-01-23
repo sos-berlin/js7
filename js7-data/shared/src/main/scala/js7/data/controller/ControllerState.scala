@@ -21,7 +21,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticePlace, PlannableBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
@@ -342,6 +342,18 @@ extends
         boardState <- keyTo(BoardState).checked(boardPath)
         boardState <- boardState.removeNotice(plannedNoticeKey)
         maybePlanSchemaState <- updateNoticeIdInPlan(boardState.path / plannedNoticeKey, boardState)
+      yield copy(
+        keyToUnsignedItemState_ = keyToUnsignedItemState_
+          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
+
+    case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
+      import noticeMoved.{endOfLife, newPlannedNoticeKey, plannedNoticeKey}
+      for
+        boardState <- keyTo(BoardState).checked(boardPath)
+        boardState <- boardState.moveNotice(plannedNoticeKey, newPlannedNoticeKey, endOfLife)
+        maybePlanSchemaState <- updateNoticeIdsInPlans(Seq(
+          boardState -> plannedNoticeKey,
+          boardState -> newPlannedNoticeKey))
       yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))

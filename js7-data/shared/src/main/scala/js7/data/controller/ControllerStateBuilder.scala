@@ -7,7 +7,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved, NoticePosted}
 import js7.data.board.{BoardItem, BoardPath, BoardState, NoticeSnapshot, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
@@ -342,12 +342,18 @@ extends SnapshotableStateBuilder[ControllerState],
 
       case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
-          _keyToUnsignedItemState(boardState.path) =
-            boardState.addNotice(noticePosted.toNotice(boardState.path)).orThrow
+          _keyToUnsignedItemState(boardPath) =
+            boardState.addNotice(noticePosted.toNotice(boardPath)).orThrow
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
-          _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(plannedNoticeKey).orThrow
+          _keyToUnsignedItemState(boardPath) = boardState.removeNotice(plannedNoticeKey).orThrow
+
+      case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
+        for boardState <- keyTo(BoardState).get(boardPath) do
+          import noticeMoved.{endOfLife, newPlannedNoticeKey, plannedNoticeKey}
+          _keyToUnsignedItemState(boardPath) =
+            boardState.moveNotice(plannedNoticeKey, newPlannedNoticeKey, endOfLife).orThrow
 
       case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaChanged) =>
         val planSchemaState = keyTo(PlanSchemaState)(planSchemaId)

@@ -9,6 +9,7 @@ import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Assertions.strictly
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.mkString
@@ -177,6 +178,24 @@ extends UnsignedSimpleItemState:
     for _ <- checkDelete(plannedNoticeKey) yield
       toNoticePlace.get(plannedNoticeKey).fold(this): noticePlace =>
         updateNoticePlace(plannedNoticeKey, noticePlace.removeNotice)
+
+  def moveNotice(
+    plannedNoticeKey: PlannedNoticeKey,
+    newPlannedNoticeKey: PlannedNoticeKey,
+    endOfLife: Option[Timestamp])
+  : Checked[BoardState] =
+    toNoticePlace.checked(plannedNoticeKey).flatMap: noticePlace =>
+      if toNoticePlace.contains(newPlannedNoticeKey) then
+        Left(Problem.pure(s"$newPlannedNoticeKey exists already"))
+      else
+        val newNoticePlace = noticePlace.copy(
+          notice = noticePlace.notice.map(_.copy(
+            id = path / newPlannedNoticeKey,
+            endOfLife = endOfLife)))
+        Right(copy(
+          toNoticePlace = toNoticePlace
+            - plannedNoticeKey
+            + (newPlannedNoticeKey -> newNoticePlace)))
 
   def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId): Option[BoardState] =
     strictly(orderToConsumptionStack.isEmpty)

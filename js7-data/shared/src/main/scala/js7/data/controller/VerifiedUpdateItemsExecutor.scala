@@ -10,6 +10,7 @@ import js7.base.utils.CatsUtils.syntax.sequence
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
 import js7.data.Problems.OrderWouldNotMatchChangedPlanSchemaProblem
 import js7.data.agent.AgentPath
+import js7.data.board.BoardItem
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, NoKeyEvent}
@@ -184,7 +185,11 @@ object VerifiedUpdateItemsExecutor:
               Right:
                 UnsignedSimpleItemAdded(item.withRevision(ItemRevision.Initial.some))
             case Some(existing) =>
-              if controllerState.deletionMarkedItems.contains(item.key) then
+              if item.isInstanceOf[BoardItem] && existing.isInstanceOf[BoardItem]
+                && item.getClass != existing.getClass
+              then
+                Left(Problem.pure("Type of BoardItem cannot be changed"))
+              else if controllerState.deletionMarkedItems.contains(item.key) then
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
                 item.match

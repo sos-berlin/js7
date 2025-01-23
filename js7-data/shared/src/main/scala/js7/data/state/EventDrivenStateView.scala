@@ -304,13 +304,7 @@ extends EventDrivenState[Self, Event], StateView:
       instr
 
   protected final def checkChangedItem(item: UnsignedSimpleItem): Checked[Unit] =
-    item match
-      case board: BoardItem =>
-        keyToUnsignedItemState.get(board.path).fold(Checked.unit): existing =>
-          (board.getClass eq existing.item.getClass) !!
-            Problem.pure("Type of NoticeBoard cannot be changed")
-      case _ =>
-        Checked.unit
+    Checked.unit
 
   private def removeNoticeExpectation(order: Order[ExpectingNotices])
   : Checked[Seq[BoardState | PlanSchemaState]] =

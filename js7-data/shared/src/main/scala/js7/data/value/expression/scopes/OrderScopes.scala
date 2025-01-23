@@ -99,15 +99,18 @@ object OrderScopes:
       NamedValueScope.simple(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
 
+  /** A Scope that does not change in the Order's lifetime. */
   def minimumOrderScope(order: MinimumOrder, controllerId: ControllerId): Scope =
     minimumOrderScope(order.id, order, controllerId)
 
+  /** A Scope that does not change in the Order's lifetime. */
   def minimumOrderScope(orderId: OrderId, orderDetails: OrderDetails, controllerId: ControllerId)
   : Scope =
     val symbolScope = ArgumentlessFunctionScope.simpleJava:
       case "orderId" => orderId.string
       case "controllerId" => controllerId.string
       // Not sure about workflowPath with future callable Workflows ???
+      // This must be constant. In a future nested workflow, this must be the original workflow.
       case "workflowPath" => orderDetails.workflowPath.string
     combine(
       symbolScope,

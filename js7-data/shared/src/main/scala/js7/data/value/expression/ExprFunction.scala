@@ -44,7 +44,10 @@ final case class ExprFunction(
         minimumArgumentCount = minimum,
         maximumArgumentCount = Some(maximum)))
 
-  def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
+  def eval(arguments: Value*)(using scope: Scope): Checked[Value] =
+    eval(arguments: Iterable[Value])(using scope)
+
+  def eval(arguments: Iterable[Value])(using scope: Scope): Checked[Value] =
     if arguments.sizeIs < minimumArgumentCount
       || maximumArgumentCount.exists(arguments.sizeIs > _)
     then

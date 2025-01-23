@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, GlobalNoticeKey, NoticeKey}
+import js7.data.board.{BoardPath, GlobalNoticeKey, NoticeKey, PlannableBoard}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -16,6 +16,9 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.plan.PlanSchemaId
+import js7.data.value.expression.ExprFunction.testing.|=>
+import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
@@ -197,6 +200,24 @@ final class ControllerCommandTest extends OurTestSuite:
         "TYPE": "DeleteNotice",
         "boardPath": "BOARD",
         "noticeId": "NOTICE"
+      }""")
+
+  "ChangeGlobalToPlannableBoard" in:
+    testJson[ControllerCommand](
+      ChangeGlobalToPlannableBoard(
+        PlannableBoard(BoardPath("BOARD")),
+        PlanSchemaId("DailyPlan"),
+        "noticeKey" |=> expr("[ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]")
+      ),
+      json"""{
+        "TYPE": "ChangeGlobalToPlannableBoard",
+        "plannableBoard": {
+          "path": "BOARD",
+          "expectOrderToNoticeKey": "\"\"",
+          "postOrderToNoticeKey": "\"\""
+        },
+        "planSchemaId": "DailyPlan",
+        "splitNoticeKey": "(noticeKey) => [substring($$noticeKey, 0, 10), substring($$noticeKey, 10)]"
       }""")
 
   "DeleteOrdersWhenTerminated" in:

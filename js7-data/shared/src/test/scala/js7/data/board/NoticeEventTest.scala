@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.base.time.TimestampForTests.ts
-import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved, NoticePosted}
 import js7.data.plan.PlanSchemaId
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
@@ -57,4 +57,17 @@ final class NoticeEventTest extends OurTestSuite:
       json"""{
        "TYPE": "NoticeDeleted",
        "noticeId": "NOTICE"
+      }""")
+
+  "NoticeMoved" in:
+    testJson[NoticeEvent](
+      NoticeMoved(
+        GlobalNoticeKey("2025-01-22/NOTICE"),
+        PlanSchemaId("DailyPlan") / "2025-01-22" / NoticeKey("NOTICE"),
+        Some(ts"1970-01-01T01:00:00Z")),
+      json"""{
+       "TYPE": "NoticeMoved",
+       "plannedNoticeKey": "2025-01-22/NOTICE",
+       "newPlannedNoticeKey": [ "DailyPlan", "2025-01-22", "NOTICE"],
+       "endOfLife": 3600000
       }""")
