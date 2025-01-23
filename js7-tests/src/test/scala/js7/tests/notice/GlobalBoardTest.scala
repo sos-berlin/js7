@@ -297,7 +297,7 @@ final class GlobalBoardTest
         controller.api.executeCommand:
           DeleteNotice(PlanId.Global / board0.path / "UNKNOWN")
         .await(99.s) ==
-          Left(UnknownKeyProblem("PlannedNoticeKey", "PlannedNoticeKey:Global/UNKNOWN"))
+          Left(UnknownKeyProblem("PlannedNoticeKey", "NoticeKey:Global╱UNKNOWN"))
 
       assert:
         controller.api.executeCommand:

@@ -230,11 +230,15 @@ object ScalaUtils:
       def toSimplifiedString: String =
         lazy val msg = throwable.getMessage
         throwable.match
+          case _: java.lang.IllegalStateException
+               | _: java.lang.NumberFormatException
+               | _: java.lang.IndexOutOfBoundsException
+               | _: java.lang.StringIndexOutOfBoundsException
+               | _: java.lang.ArrayIndexOutOfBoundsException =>
+            throwable.toString.stripPrefix("java.lang.")
+
           case _: java.util.NoSuchElementException =>
             throwable.toString.stripPrefix("java.util.")
-
-          case _: IllegalStateException | _: NumberFormatException =>
-            throwable.toString.stripPrefix("java.lang.")
 
           case _: ArithmeticException if msg != null =>
             s"ArithmeticException: $msg"

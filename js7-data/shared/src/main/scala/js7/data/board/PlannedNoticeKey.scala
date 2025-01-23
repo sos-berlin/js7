@@ -24,7 +24,10 @@ import scala.jdk.OptionConverters.*
 final case class PlannedNoticeKey private[board](planId: PlanId, noticeKey: NoticeKey):
 
   override def toString =
-    s"PlannedNoticeKey:${planId.shortString}/${noticeKey.nonEmpty ?? noticeKey.toString}"
+    s"NoticeKey:$toShortString"
+
+  def toShortString: String =
+    s"${planId.shortString}╱${noticeKey.toShortString}"
 
 
 object PlannedNoticeKey:

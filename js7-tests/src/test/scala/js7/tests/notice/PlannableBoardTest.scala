@@ -184,11 +184,11 @@ final class PlannableBoardTest
       locally: // Two Plans fit, Order is rejected //
         val order = FreshOrder(OrderId("AB-#1#"), postingWorkflow.path)
         assert(controllerState.evalOrderToPlanId(order) == Left(Problem:
-          "Order:AB-#1# fits 2 Plans: Plan:APlan/1, Plan:BPlan/1 — An Order must not fit multiple Plans"))
+          "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
 
         val checked = controller.api.addOrder(order).await(99.s)
         assert(checked == Left(Problem:
-          "Order:AB-#1# fits 2 Plans: Plan:APlan/1, Plan:BPlan/1 — An Order must not fit multiple Plans"))
+          "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
 
       locally: // APlan fits //
         val order = FreshOrder(OrderId("A-#1#"), WorkflowPath("WORKFLOW"))

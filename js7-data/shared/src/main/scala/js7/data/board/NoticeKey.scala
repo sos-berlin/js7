@@ -8,7 +8,10 @@ import org.jetbrains.annotations.TestOnly
 final case class NoticeKey private(string: String) extends GenericString:
 
   override def toString =
-    if string.isEmpty then "NoticeKey.empty" else string
+    if string.isEmpty then "NoticeKey.empty" else s"NoticeKey:$string"
+
+  def toShortString: String =
+    if string.isEmpty then "—" else string
 
 
 object NoticeKey extends GenericString.Checked_[NoticeKey]:

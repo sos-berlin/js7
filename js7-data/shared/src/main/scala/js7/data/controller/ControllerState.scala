@@ -90,7 +90,7 @@ extends
       :+ agentAttachments.toString :+ "\n"
       :++ streamInBrackets("deletionMarkedItems")(deletionMarkedItems.toVector.sorted)
       :++ streamInBrackets("idToOrder")(idToOrder.values.toVector.sorted)
-      :+ workflowToOrders.toString
+      :++ workflowToOrders.toStringStream
 
   def isAgent = false
 
@@ -940,9 +940,8 @@ extends
     def isLastOrder(order: Order[Order.State]): Boolean =
       workflowIdToOrders.get(order.workflowId).contains(Set(order.id))
 
-    override def toString =
-      s"WorkflowToOrders(${
-        workflowIdToOrders.toVector.sortBy(_._1).map: (k, v) =>
-          s"$k -> ${v.toVector.sorted.mkString(" ")}"
-        .mkString("{", ", ", "}")
-      })"
+    def toStringStream: fs2.Stream[fs2.Pure, String] =
+      Stream.emit(s"WorkflowToOrders:\n") ++
+        Stream.iterable(workflowIdToOrders.toVector.sortBy(_._1)).flatMap: (k, v) =>
+          Stream.emit(s"  $k\n") ++
+            Stream.iterable(v.toVector.sorted.map(_.toString)).map(o => s"    $o")

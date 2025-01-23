@@ -6,7 +6,14 @@ import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 
-final case class BoardNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey)
+final case class BoardNoticeKey(boardPath: BoardPath, noticeKey: NoticeKey):
+
+  override def toString =
+    s"NoticeKey:$toShortString"
+
+  def toShortString: String =
+    s"${boardPath.string}╱${noticeKey.toShortString}"
+
 
 object BoardNoticeKey:
 

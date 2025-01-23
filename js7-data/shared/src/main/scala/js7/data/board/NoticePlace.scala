@@ -24,7 +24,7 @@ final case class NoticePlace(
 extends Big:
 
   override def toString =
-    s"NoticePlace(${notice getOrElse "—"
+    s"NoticePlace(${notice getOrElse ""
     }${isAnnounced ?? " isAnnounced"
     }${isInConsumption ?? " isInConsumption"
     }${(consumptionCount != 0) ?? s" consumptionCount=$consumptionCount"

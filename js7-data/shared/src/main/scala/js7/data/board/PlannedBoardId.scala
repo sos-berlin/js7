@@ -16,7 +16,7 @@ final case class PlannedBoardId(planId: PlanId, boardPath: BoardPath):
   def /(noticeKey: String): NoticeId =
     this / NoticeKey(noticeKey)
 
-  override def toString = s"PlannedBoard:${planId.shortString}/${boardPath.string}"
+  override def toString = s"PlannedBoard:${planId.shortString}╱${boardPath.string}"
 
 
 object PlannedBoardId:

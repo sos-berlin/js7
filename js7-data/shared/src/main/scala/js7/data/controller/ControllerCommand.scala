@@ -128,7 +128,8 @@ object ControllerCommand extends CommonCommand.Companion:
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand, Big:
     type Response = Response.Accepted
-    override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
+    override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${
+      orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
 
   final case class AnswerOrderPrompt(orderId: OrderId)
   extends ControllerCommand:

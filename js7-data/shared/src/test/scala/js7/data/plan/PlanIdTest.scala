@@ -28,4 +28,4 @@ final class PlanIdTest extends OurTestSuite:
   "toString" in:
     assert(PlanId.Global.toString == "Plan:Global")
     assert(PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-22")).toString ==
-      "Plan:DailyPlan/2024-11-22")
+      "Plan:DailyPlan╱2024-11-22")

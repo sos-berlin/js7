@@ -11,6 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.strictly
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.mkString
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
@@ -58,6 +59,12 @@ extends UnsignedSimpleItemState:
         orderToConsumptionStack.view
           .map: (orderId, consumptionStack) =>
             NoticeConsumptionSnapshot(path, orderId, consumptionStack)
+
+  override def toStringStream: Stream[fs2.Pure, String] =
+    Stream.emit(s"BoardState($path)") ++
+      Stream.iterable(toNoticePlace.toVector.sortBy(_._1)).map((k, v) => s"  $k -> $v") ++
+      Stream.iterable(orderToConsumptionStack.toVector.sortBy(_._1)).map: (orderId, noticeKeys) =>
+        s"  $orderId: ${noticeKeys.mkString(" ")}"
 
   def recover(snapshot: NoticeSnapshot): Checked[BoardState] =
     snapshot match
