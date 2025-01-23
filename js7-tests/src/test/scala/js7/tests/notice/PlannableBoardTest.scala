@@ -50,8 +50,8 @@ final class PlannableBoardTest
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
-      consumingWorkflow),
-    ): (dailyPlan, _, postingWorkflow, consumingWorkflow) =>
+      consumingWorkflow
+    )): (dailyPlan, _, postingWorkflow, consumingWorkflow) =>
       eventWatch.resetLastWatchedEventId()
       val day = "2024-11-08"
       val planId = dailyPlan.id / day
@@ -66,14 +66,14 @@ final class PlannableBoardTest
         assert(controllerState.evalOrderToPlanId(otherConsumingOrder) == Right(Some(
           dailyPlan.id / day0)))
         execCmd(DeleteOrdersWhenTerminated(Set(otherConsumingOrderId)))
-        eventWatch.awaitNext[OrderNoticesExpected](_.key == otherConsumingOrderId)
+        eventWatch.awaitNextKey[OrderNoticesExpected](otherConsumingOrderId)
 
 
       // Wait for notice, post notice, consume notice //
       val consumingOrderId = OrderId(s"#$day#CONSUME")
       controller.addOrderBlocking:
         FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
-      eventWatch.awaitNext[OrderNoticesExpected](_.key == consumingOrderId)
+      eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       // Post a Notice //
       val postingOrderId = OrderId(s"#$day#POST")
@@ -82,8 +82,8 @@ final class PlannableBoardTest
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
-      eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
-      eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
+      eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
+      eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
       val noticeId = planId / board.path / NoticeKey.empty
 
@@ -142,9 +142,9 @@ final class PlannableBoardTest
           Right(Some(weeklyPlan.id / "2024w47")))
 
         controller.addOrderBlocking(consumingOrder)
-        eventWatch.awaitNext[OrderAdded](_.key == consumingOrderId)
-        eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
-        eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
+        eventWatch.awaitNextKey[OrderAdded](consumingOrderId)
+        eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
+        eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
         assert(controllerState.idToOrder(consumingOrderId).maybePlanId ==
           Some(PlanSchemaId("WeeklyPlan") / "2024w47"))
@@ -161,8 +161,8 @@ final class PlannableBoardTest
       //  controller.addOrderBlocking:
       //    FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
       //
-      //  eventWatch.awaitNext[OrderNoticesConsumed](_.key == consumingOrderId)
-      //  eventWatch.awaitNext[OrderTerminated](_.key == consumingOrderId)
+      //  eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
+      //  eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
   "Two PlanSchemas with overlapping OrderId patterns" in:
     withItems((
