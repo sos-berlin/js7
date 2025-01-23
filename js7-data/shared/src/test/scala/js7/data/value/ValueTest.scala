@@ -152,3 +152,10 @@ final class ValueTest extends OurTestSuite:
 
     assert((NumberValue(7): Value).as[GoodValue] == Right(NumberValue(7)))
     assert((BooleanValue(true): Value).as[GoodValue] == Right(BooleanValue(true)))
+
+  "asPair" in:
+    val listValue = ListValue(Vector(NumberValue(1), StringValue("STRING")))
+    assert(listValue.asPair[NumberValue, StringValue] == Right:
+      (NumberValue(1), StringValue("STRING")))
+    assert(listValue.asPair[StringValue, BooleanValue] == Left:
+      UnexpectedValueTypeProblem(StringValue, NumberValue(1)))

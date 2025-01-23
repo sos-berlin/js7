@@ -108,6 +108,25 @@ sealed trait Value:
   def asList: Checked[Seq[Value]] =
     as[ListValue].map(_.elements)
 
+  def asList(size: Int): Checked[Seq[Value]] =
+    as[ListValue].flatMap: list =>
+      if list.elements.sizeIs != size then
+        Left(Problem(s"Result list has not expected size $size"))
+      else
+        Right(list.elements)
+
+  def asPair[A <: Value, B <: Value](using A: Value.Companion[A], B: Value.Companion[B])
+  : Checked[(A, B)] =
+    as[ListValue].flatMap:
+      case ListValue(Vector(a, b)) => Right((a, b))
+      case _ => Left(Problem("List of exactly 2 elements expected"))
+    .flatMap: (a, b) =>
+      for
+        a <- a.as(using A)
+        b <- b.as(using B)
+      yield
+        (a, b)
+
   final def asObject: Checked[Map[String, Value]] =
     as[ObjectValue].map(_.nameToValue)
 
