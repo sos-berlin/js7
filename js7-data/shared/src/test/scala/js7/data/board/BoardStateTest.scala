@@ -188,7 +188,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
       lazy val boardState = BoardState(
         PlannableBoard(boardPath),
         toNoticePlace = Map(
-          planId.emptyPlannedNoticeKey -> NoticePlace(
+          planId / NoticeKey.empty -> NoticePlace(
             isInConsumption = true),
           planId / NoticeKey("NOTICE-2") -> NoticePlace(
             Some(Notice(
@@ -198,9 +198,9 @@ final class BoardStateTest extends OurAsyncTestSuite:
             consumptionCount = 7)),
         orderToConsumptionStack = Map(
           OrderId("A-ORDER") -> Nel.of(
-            planId.emptyPlannedNoticeKey,
+            planId / NoticeKey.empty,
             planId / NoticeKey("NOTICE-2"),
-            planId.emptyPlannedNoticeKey)))
+            planId / NoticeKey.empty)))
 
       "toSnapshotStream JSON" in:
         boardState.toSnapshotStream

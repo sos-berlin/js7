@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, PlannableBoard, PlannedBoard}
+import js7.data.board.{BoardPath, NoticeKey, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
@@ -86,7 +86,7 @@ final class PlanOpenCloseTest
             plannedBoards = Seq:
               PlannedBoard(
                 todayPlanId / board.path,
-                Set(todayPlanId.emptyPlannedNoticeKey.noticeKey)),
+                Set(NoticeKey.empty)),
             isClosed = false),
           Plan(
             tomorrowPlanId,
@@ -94,7 +94,7 @@ final class PlanOpenCloseTest
             plannedBoards = Seq:
               PlannedBoard(
                 tomorrowPlanId / board.path,
-                Set(tomorrowPlanId.emptyPlannedNoticeKey.noticeKey)),
+                Set(NoticeKey.empty)),
             isClosed = false)))
 
         // Close today's Plan //
@@ -112,7 +112,7 @@ final class PlanOpenCloseTest
             plannedBoards = Seq:
               PlannedBoard(
                 todayPlanId / board.path,
-                Set(todayPlanId.emptyPlannedNoticeKey.noticeKey)),
+                Set(NoticeKey.empty)),
             isClosed = true),
           Plan(
             tomorrowPlanId,
@@ -120,7 +120,7 @@ final class PlanOpenCloseTest
             plannedBoards = Seq:
               PlannedBoard(
                 tomorrowPlanId / board.path,
-                Set(tomorrowPlanId.emptyPlannedNoticeKey.noticeKey)),
+                Set(NoticeKey.empty)),
             isClosed = false)))
 
         // Closed today's Plan will be deleted when the last Order leaves //

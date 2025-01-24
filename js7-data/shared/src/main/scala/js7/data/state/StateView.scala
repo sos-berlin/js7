@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, NoticeId}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -79,13 +79,6 @@ trait StateView extends ItemContainer:
       .filter((_, v) => v.item.companion eq A)
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
-
-  @deprecated
-  final def emptyPlannedNoticeKey(planId: PlanId): Checked[PlannedNoticeKey] =
-    if planId.isGlobal then
-      Left(Problem.pure(s"PlannableBoard requested, but Order is not in a Plan (or in $planId)"))
-    else
-      Right(planId.emptyPlannedNoticeKey)
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>
@@ -202,7 +195,7 @@ trait StateView extends ItemContainer:
       .exists(_.item.suspended)
 
   def toPlanOrderScope(order: MinimumOrder): Scope =
-    OrderScopes.minimumOrderScope(order, controllerId)
+    order.planScope(controllerId)
 
   /** A pure (stable, repeatable) Scope. */
   final def toOrderScope(order: Order[Order.State]): Checked[Scope] =

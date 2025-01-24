@@ -15,9 +15,6 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   def isGlobal: Boolean =
     this == Global
 
-  def emptyPlannedNoticeKey: PlannedNoticeKey =
-    PlannedNoticeKey.empty(this)
-
   def /(boardNoticeKey: BoardNoticeKey): NoticeId =
     NoticeId(this, boardNoticeKey)
 

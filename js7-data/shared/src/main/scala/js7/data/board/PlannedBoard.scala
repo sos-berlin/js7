@@ -40,12 +40,12 @@ final case class PlannedBoard(
 
 object PlannedBoard:
 
-  private val emptyNoticeKeySet = Set(NoticeKey.empty)
+  private val EmptyNoticeKeySet = Set(NoticeKey.empty)
 
   def apply(id: PlannedBoardId, noticeKeys: Iterable[NoticeKey] = Nil): PlannedBoard =
     var noticeKeysSet = noticeKeys.toSet
-    if noticeKeysSet == emptyNoticeKeySet then
-      noticeKeysSet = emptyNoticeKeySet // reuse memory
+    if noticeKeysSet == EmptyNoticeKeySet then
+      noticeKeysSet = EmptyNoticeKeySet // reuse memory
     new PlannedBoard(id, noticeKeysSet)
 
   given Ordering[PlannedBoard] = Ordering.by(_.id)

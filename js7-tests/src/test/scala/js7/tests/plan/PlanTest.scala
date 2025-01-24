@@ -216,8 +216,8 @@ final class PlanTest
           FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
-        val plannedNoticeKey = planId.emptyPlannedNoticeKey
-        val noticeKey = plannedNoticeKey.noticeKey
+        val noticeKey = NoticeKey.empty
+        val plannedNoticeKey = planId / noticeKey
 
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
