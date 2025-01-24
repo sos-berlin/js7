@@ -96,8 +96,8 @@ final case class ControllerStateExecutor private(
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
           _ <- freshOrder.stopPositions.toSeq.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
-          orderNoticeAnnounced <- maybePlanId.fold(Checked(Nil)):
-            NoticeEventSource.planToNoticeAnnounced(_, innerBlock, controllerState)
+          orderNoticeAnnounced <- maybePlanId.fold(Checked(Nil)): planId =>
+            NoticeEventSource.planToNoticeAnnounced(planId, freshOrder, innerBlock, controllerState)
               .map(_.map(freshOrder.id <-: _))
         yield
           Right:

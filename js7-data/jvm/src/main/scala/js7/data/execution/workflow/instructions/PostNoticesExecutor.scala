@@ -22,8 +22,6 @@ extends EventInstructionExecutor:
       .orElse:
         order.ifState[Order.Ready].map: order =>
           noticeEventSource.postNotices(instr.boardPaths, order, state)
-            .left.map:
-              _.withPrefix(s"${instr.getClass.shortClassName}:")
-
+            .left.map(_.withPrefix(s"${instr.getClass.shortClassName}:"))
       .getOrElse:
         Right(Nil)

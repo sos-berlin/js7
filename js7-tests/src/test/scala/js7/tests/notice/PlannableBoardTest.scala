@@ -15,6 +15,8 @@ import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, D
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderMoved, OrderNoticeAnnounced, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
+import js7.data.value.StringValue
+import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction.WhenNotAnnounced.{DontWait, SkipWhenNoNotice, Wait}
 import js7.data.workflow.instructions.{ConsumeNotices, EmptyInstruction, ExpectNotices, PostNotices, Prompt}
@@ -61,7 +63,8 @@ final class PlannableBoardTest
       val otherConsumingOrderId = OrderId(s"#$day0#CONSUME")
 
       locally:
-        val otherConsumingOrder = FreshOrder(otherConsumingOrderId, consumingWorkflow.path)
+        val otherConsumingOrder = FreshOrder(otherConsumingOrderId, consumingWorkflow.path,
+          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         controller.addOrderBlocking(otherConsumingOrder)
         assert(controllerState.evalOrderToPlanId(otherConsumingOrder) == Right(Some(
           dailyPlan.id / day0)))
@@ -72,37 +75,41 @@ final class PlannableBoardTest
       // Wait for notice, post notice, consume notice //
       val consumingOrderId = OrderId(s"#$day#CONSUME")
       controller.addOrderBlocking:
-        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true,
+          arguments = Map("ARG" -> "🔸"))
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       // Post a Notice //
       val postingOrderId = OrderId(s"#$day#POST")
       controller.addOrderBlocking:
-        FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+          arguments = Map("ARG" -> "🔸"))
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
       eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
       eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
-      val noticeId = planId / board.path / NoticeKey.empty
+      val noticeId = planId / board.path / NoticeKey("🔸")
 
       assert(eventWatch.eventsByKey[OrderEvent](postingOrderId) == Seq(
-        OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
-        OrderNoticeAnnounced(planId / board.path / NoticeKey.empty),
+        OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true,
+          arguments = Map("ARG" -> "🔸")),
+        OrderNoticeAnnounced(noticeId),
         OrderStarted,
-        OrderNoticePosted(planId / board.path / NoticeKey.empty, endOfLife = None),
+        OrderNoticePosted(noticeId, endOfLife = None),
         OrderMoved(Position(1), None),
         OrderFinished(),
         OrderDeleted))
 
       assert(eventWatch.eventsByKey[OrderEvent](consumingOrderId) == Seq(
-        OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
+        OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true,
+          arguments = Map("ARG" -> "🔸")),
         OrderStarted,
         OrderNoticesExpected(Vector(
-          planId / board.path / NoticeKey.empty)),
+          planId / board.path / NoticeKey("🔸"))),
         OrderNoticesConsumptionStarted(Vector(
-          planId / board.path / NoticeKey.empty)),
+          planId / board.path / NoticeKey("🔸"))),
         OrderMoved(Position(0) / "consumeNotices" % 1),
         OrderNoticesConsumed(),
         OrderFinished(),
@@ -131,13 +138,15 @@ final class PlannableBoardTest
       locally:
         val postingOrderId = OrderId("#2024w47#POST")
         controller.addOrderBlocking:
-          FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+          FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+            arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
         eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
       locally:
         val consumingOrderId = OrderId("#2024w47#CONSUME")
-        val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path)
+        val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path,
+          arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(consumingOrder) ==
           Right(Some(weeklyPlan.id / "2024w47")))
 
@@ -178,11 +187,13 @@ final class PlannableBoardTest
     ): (aPlan, bPlan, postingWorkflow, _) =>
       eventWatch.resetLastWatchedEventId()
       locally: // No Plan fits --> Global Plan //
-        val order = FreshOrder(OrderId("X-#2#"), WorkflowPath("WORKFLOW"))
+        val order = FreshOrder(OrderId("X-#2#"), WorkflowPath("WORKFLOW"),
+          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(order) == Right(None))
 
       locally: // Two Plans fit, Order is rejected //
-        val order = FreshOrder(OrderId("AB-#1#"), postingWorkflow.path)
+        val order = FreshOrder(OrderId("AB-#1#"), postingWorkflow.path,
+          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(order) == Left(Problem:
           "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
 
@@ -191,11 +202,13 @@ final class PlannableBoardTest
           "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
 
       locally: // APlan fits //
-        val order = FreshOrder(OrderId("A-#1#"), WorkflowPath("WORKFLOW"))
+        val order = FreshOrder(OrderId("A-#1#"), WorkflowPath("WORKFLOW"),
+          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(order) == Right(Some(aPlan.id / "1")))
 
       locally: // BPlan fits //
-        val order = FreshOrder(OrderId("B-#2#"), WorkflowPath("WORKFLOW"))
+        val order = FreshOrder(OrderId("B-#2#"), WorkflowPath("WORKFLOW"),
+          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(order) == Right(Some(bPlan.id / "2")))
 
   "Announced Notices" - {
@@ -210,7 +223,8 @@ final class PlannableBoardTest
       withItem(postingWorkflow): postingWorkflow =>
         val announcingOrderId = OrderId(s"#$day#POST")
         controller.addOrderBlocking:
-          FreshOrder(announcingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+          FreshOrder(announcingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+            arguments = Map("ARG" -> "🔸"))
         try
           body(announcingOrderId)
         finally
@@ -233,19 +247,20 @@ final class PlannableBoardTest
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#CONSUME")
             controller.addOrderBlocking:
-              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+                arguments = Map("ARG" -> "🔸"))
             eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
 
             val planId = dailyPlan.id / day
-            val plannedNoticeKey = planId.emptyPlannedNoticeKey
+            val plannedNoticeKey = planId / NoticeKey("🔸")
 
             // Post board and cBoard
             execCmd:
               ControllerCommand.PostNotice:
-                planId / board.path / NoticeKey.empty
+                planId / board.path / NoticeKey("🔸")
             execCmd:
               ControllerCommand.PostNotice:
-                planId / cBoard.path / NoticeKey.empty
+                planId / cBoard.path / NoticeKey("🔸")
 
             // Post bBoard
             execCmd(AnswerOrderPrompt(announcingOrderId))
@@ -254,16 +269,16 @@ final class PlannableBoardTest
             eventWatch.awaitNextKey[OrderTerminated](orderId)
             assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
               OrderAdded(workflow.id, planId = Some(dailyPlan.id / day),
-                deleteWhenTerminated = true),
+                deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                planId / board.path / NoticeKey.empty,
-                planId / bBoard.path / NoticeKey.empty,
-                planId / cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey("🔸"),
+                planId / bBoard.path / NoticeKey("🔸"),
+                planId / cBoard.path / NoticeKey("🔸"))),
               OrderNoticesConsumptionStarted(Vector(
-                planId / board.path / NoticeKey.empty,
-                planId / bBoard.path / NoticeKey.empty,
-                planId / cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey("🔸"),
+                planId / bBoard.path / NoticeKey("🔸"),
+                planId / cBoard.path / NoticeKey("🔸"))),
               OrderMoved(Position(0) / "consumeNotices" % 1),
               OrderNoticesConsumed(),
               OrderFinished(),
@@ -283,10 +298,11 @@ final class PlannableBoardTest
           announcingTest(bBoard.path, day): announcingOrderId =>
             val orderId = OrderId(s"#$day#EXPECT")
             controller.addOrderBlocking:
-              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+                arguments = Map("ARG" -> "🔸"))
             eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
 
-            val plannedNoticeKey = (dailyPlan.id / day).emptyPlannedNoticeKey
+            val plannedNoticeKey = dailyPlan.id / day / NoticeKey("🔸")
 
             // Post board and cBoard
             execCmd(ControllerCommand.PostNotice(board.path / plannedNoticeKey))
@@ -299,12 +315,12 @@ final class PlannableBoardTest
             eventWatch.awaitNext[OrderTerminated](_.key == orderId)
             assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
               OrderAdded(workflow.id, planId = Some(dailyPlan.id / day),
-                deleteWhenTerminated = true),
+                deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
               OrderStarted,
               OrderNoticesExpected(Vector(
-                planId / board.path / NoticeKey.empty,
-                planId / bBoard.path / NoticeKey.empty,
-                planId / cBoard.path / NoticeKey.empty)),
+                planId / board.path / NoticeKey("🔸"),
+                planId / bBoard.path / NoticeKey("🔸"),
+                planId / cBoard.path / NoticeKey("🔸"))),
               OrderNoticesRead,
               OrderMoved(Position(1)),
               OrderFinished(),
@@ -324,7 +340,7 @@ final class PlannableBoardTest
       withItems(
         (planSchema, board, bBoard, cBoard, workflow)
       ): (_, _, _, _, workflow) =>
-        val noticeId = planId / board.path / NoticeKey.empty
+        val noticeId = planId / board.path / NoticeKey("🔸")
 
         // Post one of the two required Notices
         execCmd:
@@ -332,16 +348,17 @@ final class PlannableBoardTest
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+            arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id, planId = Some(planId),
-            deleteWhenTerminated = true),
+            deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
-          OrderNoticesConsumptionStarted(Vector(planId / board.path / NoticeKey.empty)),
+          OrderNoticesConsumptionStarted(Vector(planId / board.path / NoticeKey("🔸"))),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -360,7 +377,7 @@ final class PlannableBoardTest
       withItems(
         (planSchema, board, bBoard, cBoard, workflow)
       ): (_, _, _, _, workflow) =>
-        val noticeId = planId / board.path / NoticeKey.empty
+        val noticeId = planId / board.path / NoticeKey("🔸")
 
         // Post one of the two required Notices
         execCmd:
@@ -368,17 +385,18 @@ final class PlannableBoardTest
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+            arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id, planId = Some(planId),
-            deleteWhenTerminated = true),
+            deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
           OrderNoticesConsumptionStarted(Vector(
-            planId / board.path / NoticeKey.empty)), // <-- only the posted Notice is consumed
+            planId / board.path / NoticeKey("🔸"))), // <-- only the posted Notice is consumed
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -390,9 +408,15 @@ object PlannableBoardTest:
 
   private val agentPath = AgentPath("AGENT")
 
-  private val board = PlannableBoard(BoardPath("A-BOARD"))
-  private val bBoard = PlannableBoard(BoardPath("B-BOARD"))
-  private val cBoard = PlannableBoard(BoardPath("C-BOARD"))
+  private val board = PlannableBoard(BoardPath("A-BOARD"),
+    postOrderToNoticeKey = expr("$ARG"),
+    expectOrderToNoticeKey = expr("$ARG"))
+  private val bBoard = PlannableBoard(BoardPath("B-BOARD"),
+    postOrderToNoticeKey = expr("$ARG"),
+    expectOrderToNoticeKey = expr("$ARG"))
+  private val cBoard = PlannableBoard(BoardPath("C-BOARD"),
+    postOrderToNoticeKey = expr("$ARG"),
+    expectOrderToNoticeKey = expr("$ARG"))
 
   private val consumingWorkflow =
     Workflow(WorkflowPath("CONSUMING"), Seq(

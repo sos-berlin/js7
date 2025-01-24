@@ -4,13 +4,14 @@ import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.WallClock
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
 import js7.data.controller.ControllerCommand
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.PlanId
 import js7.data.state.StateView
 import js7.data.value.expression.scopes.NowScope
@@ -29,7 +30,7 @@ final class NoticeEventSource(clock: WallClock):
             board.postingOrderToNotice(order, state, clock.now())
 
           case board: PlannableBoard =>
-            board.postingOrderToNotice(order, state.controllerId)
+            board.postingOrderToNotice(order, state)
         .map:
           FatNotice(_, boardState)
       postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
@@ -63,22 +64,27 @@ object NoticeEventSource:
   private final case class FatNotice(notice: Notice, boardState: BoardState)
 
   /** Returns the OrderNoticeAnnounced events required for an added posting order. */
-  def planToNoticeAnnounced(planId: PlanId, innerBlock: Workflow, state: StateView)
+  def planToNoticeAnnounced(
+    planId: PlanId,
+    order: FreshOrder,
+    innerBlock: Workflow,
+    state: StateView)
   : Checked[List[OrderNoticeAnnounced]] =
+    assertThat(!planId.isGlobal)
     innerBlock.instructions.view.collect:
       case postNotices: PostNotices =>
         postNotices.boardPaths.traverse: boardPath =>
           state.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
-            if boardState.isGlobal then
-              Right(None)
-            else
-              state.emptyPlannedNoticeKey(planId).map: plannedNoticeKey =>
-                !boardState.isAnnounced(plannedNoticeKey) thenSome :
-                  OrderNoticeAnnounced(boardPath / plannedNoticeKey)
+            boardState.item match
+              case _: GlobalBoard => Right(None)
+              case plannableBoard: PlannableBoard =>
+                plannableBoard.freshOrderToNoticeKey(planId, order, state)
+                  .map: plannedNoticeKey =>
+                    !boardState.isAnnounced(plannedNoticeKey) thenSome:
+                      OrderNoticeAnnounced(boardPath / plannedNoticeKey)
         .map(_.flatten)
-    .toList
-    .sequence
-    .map(_.flatten)
+    .toList.sequence
+    .map(_.flatten.distinct)
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =

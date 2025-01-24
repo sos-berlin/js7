@@ -33,7 +33,7 @@ trait ConsumeOrExpectNoticesExecutor extends EventInstructionExecutor:
                       .left.map(_.withPrefix(s"${instr.getClass.shortClassName}:"))
 
                   case board: PlannableBoard =>
-                    board.expectingOrderToNoticeId(order, state.controllerId)
+                    board.expectingOrderToNoticeId(order, state)
               .map: noticeIds =>
                 instr.tryFulfill(order, noticeIds, state.isNoticeAvailable)
                   .ifEmpty:
