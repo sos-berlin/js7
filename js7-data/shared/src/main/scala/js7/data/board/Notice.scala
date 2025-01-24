@@ -32,9 +32,3 @@ object Notice:
 
   def apply(id: NoticeId, endOfLife: Option[Timestamp] = None): Notice =
     new Notice(id, endOfLife)
-
-  @TestOnly
-  def forPlannedBoard(plannedBoardId: PlannedBoardId): Notice =
-    Notice(
-      plannedBoardId.boardPath / PlannedNoticeKey.empty(plannedBoardId.planId),
-      endOfLife = None)

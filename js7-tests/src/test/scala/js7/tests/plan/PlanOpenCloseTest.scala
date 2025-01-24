@@ -84,17 +84,13 @@ final class PlanOpenCloseTest
             todayPlanId,
             orderIds = Set(aTodayOrderId, bTodayOrderId),
             plannedBoards = Seq:
-              PlannedBoard(
-                todayPlanId / board.path,
-                Set(NoticeKey.empty)),
+              PlannedBoard(todayPlanId / board.path, Set(NoticeKey.empty)),
             isClosed = false),
           Plan(
             tomorrowPlanId,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
-              PlannedBoard(
-                tomorrowPlanId / board.path,
-                Set(NoticeKey.empty)),
+              PlannedBoard(tomorrowPlanId / board.path, Set(NoticeKey.empty)),
             isClosed = false)))
 
         // Close today's Plan //
@@ -110,17 +106,13 @@ final class PlanOpenCloseTest
             todayPlanId,
             orderIds = Set(bTodayOrderId),
             plannedBoards = Seq:
-              PlannedBoard(
-                todayPlanId / board.path,
-                Set(NoticeKey.empty)),
+              PlannedBoard(todayPlanId / board.path, Set(NoticeKey.empty)),
             isClosed = true),
           Plan(
             tomorrowPlanId,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
-              PlannedBoard(
-                tomorrowPlanId / board.path,
-                Set(NoticeKey.empty)),
+              PlannedBoard(tomorrowPlanId / board.path, Set(NoticeKey.empty)),
             isClosed = false)))
 
         // Closed today's Plan will be deleted when the last Order leaves //

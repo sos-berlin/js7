@@ -43,11 +43,6 @@ object PlannedNoticeKey:
   def global(noticeKey: NoticeKey): Checked[PlannedNoticeKey] =
     checked(PlanId.Global, noticeKey)
 
-  @deprecated
-  def empty(planId: PlanId): PlannedNoticeKey =
-    assertThat(!planId.isGlobal)
-    new PlannedNoticeKey(planId, NoticeKey.empty)
-
   def checked(planId: PlanId, noticeKey: String): Checked[PlannedNoticeKey] =
     NoticeKey.checked(noticeKey).flatMap(checked(planId, _))
 
@@ -57,6 +52,7 @@ object PlannedNoticeKey:
     else
       Right(new PlannedNoticeKey(planId, noticeKey))
 
+  /** Make a PlannedNoticeKey in the global Plan. */
   @Nonnull @throws[RuntimeException]
   def of(noticeKey: String): PlannedNoticeKey =
     global(noticeKey).orThrow
