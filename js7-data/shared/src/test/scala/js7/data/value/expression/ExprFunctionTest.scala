@@ -4,12 +4,13 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
-import js7.data.value.expression.Expression.convenience.*
+import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.Expression.{Add, Divide, FunctionExpr, MissingConstant, Multiply, NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{parseExpressionOrFunction, parseFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{FunctionValue, MissingValue, NumberValue, StringValue, Value}
 import org.scalactic.source
+import scala.language.implicitConversions
 
 final class ExprFunctionTest extends OurTestSuite:
 

@@ -30,7 +30,7 @@ import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderResumed, OrderRetrying, OrderStarted, OrderStateReset, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.problems.CannotResumeOrderProblem
-import js7.data.value.Value.convenience.*
+import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
@@ -43,11 +43,12 @@ import js7.launcher.processkiller.ProcessKiller.TestChildProcessTerminated
 import js7.proxy.data.event.EventAndState
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.OptionConverters.*
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

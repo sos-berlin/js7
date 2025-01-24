@@ -894,20 +894,9 @@ object Expression:
       case v => Left(UnexpectedValueTypeProblem(t, v))
 
   object convenience:
-    implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
-      BooleanConstant(b)
-
-    implicit def convenientNumericConstant(n: Int): NumericConstant =
-      NumericConstant(n)
-
-    implicit def convenientNumericConstant(n: Long): NumericConstant =
-      NumericConstant(n)
-
-    implicit def convenientNumericConstant(n: BigDecimal): NumericConstant =
-      NumericConstant(n)
-
-    implicit def convenientStringConstant(string: String): StringConstant =
-      StringConstant(string)
-
-    implicit def convenientListConstant(list: List[Expression]): ListExpr =
-      ListExpr(list)
+    given Conversion[Boolean, BooleanConstant] = BooleanConstant(_)
+    given Conversion[Int, NumericConstant] = NumericConstant(_)
+    given Conversion[Long, NumericConstant] = NumericConstant(_)
+    given Conversion[BigDecimal, NumericConstant] = NumericConstant(_)
+    given Conversion[String, StringConstant] = StringConstant(_)
+    given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr(iterable.toList)

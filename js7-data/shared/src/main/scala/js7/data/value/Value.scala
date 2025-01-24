@@ -242,23 +242,12 @@ object Value:
     implicit val implicitCompanion: Companion[V] = this
 
   object convenience:
-    implicit def convenientBooleanValue(b: Boolean): BooleanValue =
-      BooleanValue(b)
-
-    implicit def convenientStringValue(string: String): StringValue =
-      StringValue(string)
-
-    implicit def convenientNumberValue(number: Int): NumberValue =
-      NumberValue(number)
-
-    implicit def convenientNumberValue(number: Long): NumberValue =
-      NumberValue(number)
-
-    implicit def convenientNumberValue(number: BigDecimal): NumberValue =
-      NumberValue(number)
-
-    implicit def convenientListValue(seq: Seq[Value]): ListValue =
-      ListValue(seq)
+    given Conversion[Boolean, BooleanValue] = BooleanValue(_)
+    given Conversion[Int, NumberValue] = NumberValue(_)
+    given Conversion[Long, NumberValue] = NumberValue(_)
+    given Conversion[BigDecimal, NumberValue] = NumberValue(_)
+    given Conversion[String, StringValue] = StringValue(_)
+    given Conversion[Iterable[Value], ListValue] = ListValue(_)
 
 /** ValueType for any Value. */
 object AnyValue extends ValueType:

@@ -3,11 +3,11 @@ package js7.data.value.expression
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
-import js7.data.value.Value.convenience.*
+import js7.data.value.Value.convenience.given
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.BooleanConstant.{False, True}
-import js7.data.value.expression.Expression.convenience.*
+import js7.data.value.expression.Expression.convenience.given
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}
@@ -16,6 +16,7 @@ import js7.data.workflow.position.Label
 import org.scalactic.source
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
+import scala.language.implicitConversions
 
 final class ExpressionTest extends OurTestSuite:
 
@@ -24,13 +25,13 @@ final class ExpressionTest extends OurTestSuite:
       import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
       import ValueSearch.{LastExecuted, Name}
 
-      override lazy val nameToCheckedValue =
+      override lazy val nameToCheckedValue: MapView[String, Checked[Value]] =
         MapView(
           "ASTRING" -> Right(StringValue("AA")),
-          "ANUMBER" -> Right(7),
+          "ANUMBER" -> Right(NumberValue(7)),
           "ABOOLEAN" -> Right(BooleanValue(true)),
           "WEIRD/NAME" -> Right(StringValue("weird")),
-          "returnCode" -> Right(1),
+          "returnCode" -> Right(NumberValue(1)),
           "myObject" -> Right(ObjectValue(Map(
             "myField" -> ObjectValue(Map(
               "a" -> 1))))),
@@ -39,7 +40,7 @@ final class ExpressionTest extends OurTestSuite:
       override def findValue(search: ValueSearch) =
         search match
           case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-            nameToCheckedValue.lift(name)
+            nameToCheckedValue.get(name)
 
           case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
             Map("KEY" -> "LABEL-VALUE")
@@ -1087,7 +1088,7 @@ final class ExpressionTest extends OurTestSuite:
   }
 
   "error(\"ERROR\")" - {
-    implicit val scope = Scope.empty
+    given Scope = Scope.empty
 
     testEval("error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
