@@ -6,8 +6,8 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.board.{BoardPath, PlannableBoard}
 import js7.data.item.ItemRevision
-import js7.data.value.expression.Expression
 import js7.data_for_java.common.JJsonable
+import js7.data_for_java.value.JExpression
 import scala.jdk.OptionConverters.*
 
 final case class JPlannableBoard(asScala: PlannableBoard)
@@ -34,10 +34,11 @@ object JPlannableBoard extends JJsonable.Companion[JPlannableBoard]:
   @Nonnull
   def of(
     @Nonnull path: BoardPath,
-    @Nonnull postOrderToNoticeKey: Expression,
-    @Nonnull expectOrderToNoticeKey: Expression)
+    @Nonnull postOrderToNoticeKey: JExpression,
+    @Nonnull expectOrderToNoticeKey: JExpression)
   : JPlannableBoard =
-    JPlannableBoard(PlannableBoard(path))
+    JPlannableBoard:
+      PlannableBoard(path, postOrderToNoticeKey.asScala, expectOrderToNoticeKey.asScala)
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JPlannableBoard] =
