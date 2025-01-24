@@ -9,6 +9,7 @@ import js7.base.problem.Checked.{Ops, catchNonFatal}
 import js7.base.problem.{Checked, CheckedString, Problem}
 import js7.base.standards.Js7NameValidator
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 
 trait GenericString:
 
@@ -56,7 +57,8 @@ object GenericString:
         catchNonFatal:
           unchecked(requireNonNull(string))
 
-    def apply(o: String): A =
+    @TestOnly @throws[RuntimeException]
+    final def apply(o: String): A =
       checked(o).orThrow
 
     implicit val jsonEncoder: Encoder[A] = o =>
