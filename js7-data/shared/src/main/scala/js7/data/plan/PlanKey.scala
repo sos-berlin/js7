@@ -22,7 +22,7 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
     * It should serialize to None. */
   val Global: PlanKey = new PlanKey("")
 
-  val jocOrderToPlanKey: Expression =
+  val jocPlanKeyExpr: Expression =
     expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")
 
   protected def unchecked(string: String) =

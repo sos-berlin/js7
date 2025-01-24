@@ -19,13 +19,13 @@ final class PlanSchemaTest extends OurTestSuite:
     testJson[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        orderToPlanKey = expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?"),
+        planKeyExpr = expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?"),
         planIsClosedFunction = Some(exprFunction("(testPlanKey) => false")),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "orderToPlanKey": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
+        "planKeyExpr": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
         "planIsClosedFunction": "(testPlanKey) => false",
         "itemRevision": 1
       }""")
@@ -33,21 +33,21 @@ final class PlanSchemaTest extends OurTestSuite:
     testJson[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        orderToPlanKey = expr("match(orderId, '#(.+)#.*', '$1') ?")),
+        planKeyExpr = expr("match(orderId, '#(.+)#.*', '$1') ?")),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "orderToPlanKey": "match(orderId, '#(.+)#.*', '$$1')?"
+        "planKeyExpr": "match(orderId, '#(.+)#.*', '$$1')?"
       }""")
 
-  "orderToPlanKey" in:
+  "planKeyExpr" in:
     val freshOrder = FreshOrder(OrderId("#2024-11-20#bla"), WorkflowPath("WORKFLOW"))
     val scope = freshOrder.minimumScope(ControllerId("CONTROLLER"))
 
     val dailyPlanSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
-    assert(dailyPlanSchema.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))
+    assert(dailyPlanSchema.planKeyExpr.eval(scope) == Right(StringValue("2024-11-20")))
 
     val weeklyPlanSchema = PlanSchema(
       PlanSchemaId("WeeklyPlan"),
       expr("match(orderId, '^#([0-9]{4}w[0-9]{2})#.*$', '$1') ?"))
-    assert(weeklyPlanSchema.orderToPlanKey.eval(scope) == Right(MissingValue))
+    assert(weeklyPlanSchema.planKeyExpr.eval(scope) == Right(MissingValue))

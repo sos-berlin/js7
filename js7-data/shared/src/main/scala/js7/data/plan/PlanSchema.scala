@@ -52,7 +52,7 @@ import org.jetbrains.annotations.TestOnly
   */
 final case class PlanSchema(
   id: PlanSchemaId,
-  orderToPlanKey: Expression,
+  planKeyExpr: Expression,
   planIsClosedFunction: Option[ExprFunction] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
@@ -80,15 +80,15 @@ extends UnsignedSimpleItem:
     copy(itemRevision = revision)
 
   /** @param scope is expected to contain the Order Scope.
-    * @return None iff `orderToPlanKey` expression evaluates to MissingValue (no match). */
+    * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
   def evalOrderToPlanId(scope: Scope): Checked[Option[PlanId]] =
-    evalOrderToPlanKey(scope)
+    evalPlanKeyExpr(scope)
       .map(_.map(PlanId(id, _)))
 
   /** @param scope is expected to contain the Order Scope.
-    * @return None iff `orderToPlanKey` expression evaluates to MissingValue (no match). */
-  private def evalOrderToPlanKey(scope: Scope): Checked[Option[PlanKey]] =
-    orderToPlanKey.eval(using scope).flatMap:
+    * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
+  private def evalPlanKeyExpr(scope: Scope): Checked[Option[PlanKey]] =
+    planKeyExpr.eval(using scope).flatMap:
       _.missingToNone.traverse:
         _.toStringValueString.flatMap(PlanKey.checked)
 
@@ -107,15 +107,15 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   val Global: PlanSchema =
     PlanSchema(
       PlanSchemaId.Global,
-      // orderToPlanKey must not match, despite Global is used as the fallback PlanSchema
-      orderToPlanKey = MissingConstant)
+      // planKeyExpr must not match, despite Global is used as the fallback PlanSchema
+      planKeyExpr = MissingConstant)
 
   /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
   def joc(id: PlanSchemaId, planIsClosedFunction: Option[ExprFunction] = None): PlanSchema =
     PlanSchema(
       id,
-      orderToPlanKey = PlanKey.jocOrderToPlanKey,
+      planKeyExpr = PlanKey.jocPlanKeyExpr,
       planIsClosedFunction = planIsClosedFunction)
 
   /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
@@ -123,7 +123,7 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      orderToPlanKey = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"))
+      planKeyExpr = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"))
 
   type Key = PlanSchemaId
 

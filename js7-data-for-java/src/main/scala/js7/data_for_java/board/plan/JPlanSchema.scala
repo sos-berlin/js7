@@ -29,8 +29,8 @@ extends JJsonable[JPlanSchema], JUnsignedSimpleItem:
   @Nonnull def id: PlanSchemaId =
     asScala.id
 
-  @Nonnull def orderToPlanKey: JExpression =
-    JExpression(asScala.orderToPlanKey)
+  @Nonnull def planKeyExpr: JExpression =
+    JExpression(asScala.planKeyExpr)
 
   @Nonnull def planIsClosedFunction: Optional[ExprFunction] =
     asScala.planIsClosedFunction.toJava
@@ -42,11 +42,11 @@ object JPlanSchema extends JJsonable.Companion[JPlanSchema]:
   @Nonnull
   def of(
     @Nonnull id: PlanSchemaId,
-    @Nonnull orderToPlanKey: JExpression,
+    @Nonnull planKeyExpr: JExpression,
     @Nonnull planIsClosedFunction: Optional[ExprFunction])
   : JPlanSchema =
     JPlanSchema:
-      PlanSchema(id, orderToPlanKey.asScala, planIsClosedFunction.toScala)
+      PlanSchema(id, planKeyExpr.asScala, planIsClosedFunction.toScala)
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JPlanSchema] =
