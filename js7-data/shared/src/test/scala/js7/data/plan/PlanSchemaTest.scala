@@ -6,7 +6,6 @@ import js7.data.controller.ControllerId
 import js7.data.item.{InventoryItem, ItemRevision}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
-import js7.data.value.expression.scopes.OrderScopes
 import js7.data.value.{MissingValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester
@@ -43,7 +42,7 @@ final class PlanSchemaTest extends OurTestSuite:
 
   "orderToPlanKey" in:
     val freshOrder = FreshOrder(OrderId("#2024-11-20#bla"), WorkflowPath("WORKFLOW"))
-    val scope = OrderScopes.minimumOrderScope(freshOrder, ControllerId("CONTROLLER"))
+    val scope = freshOrder.minimumScope(ControllerId("CONTROLLER"))
 
     val dailyPlanSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
     assert(dailyPlanSchema.orderToPlanKey.eval(scope) == Right(StringValue("2024-11-20")))

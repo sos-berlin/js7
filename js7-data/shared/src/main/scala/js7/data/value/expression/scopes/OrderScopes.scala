@@ -26,7 +26,7 @@ trait OrderScopes:
 
   /** The same Scope over the Order's whole lifetime. */
   private lazy val minimumOrderScope: Scope =
-    OrderScopes.minimumOrderScope(order, controllerId)
+    order.minimumScope(controllerId)
 
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
@@ -91,17 +91,13 @@ object OrderScopes:
     nowScope: Scope)
   : Scope =
     val nestedScope = combine(
-      minimumOrderScope(freshOrder, controllerId),
+      freshOrder.minimumScope(controllerId),
       EnvScope,
       nowScope)
     combine(
       nestedScope,
       NamedValueScope.simple(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
-
-  /** A Scope that does not change in the Order's lifetime. */
-  def minimumOrderScope(order: MinimumOrder, controllerId: ControllerId): Scope =
-    minimumOrderScope(order.id, order, controllerId)
 
   /** A Scope that does not change in the Order's lifetime. */
   def minimumOrderScope(orderId: OrderId, orderDetails: OrderDetails, controllerId: ControllerId)
