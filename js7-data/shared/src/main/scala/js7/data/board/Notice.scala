@@ -3,7 +3,6 @@ package js7.data.board
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json}
 import js7.base.time.Timestamp
-import org.jetbrains.annotations.TestOnly
 
 final case class Notice(id: NoticeId, endOfLife: Option[Timestamp])
 extends NoticeSnapshot:

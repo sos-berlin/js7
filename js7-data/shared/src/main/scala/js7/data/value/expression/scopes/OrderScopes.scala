@@ -6,7 +6,7 @@ import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
-import js7.data.order.{FreshOrder, MinimumOrder, Order, OrderDetails, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderDetails, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{BooleanValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, missingValue}

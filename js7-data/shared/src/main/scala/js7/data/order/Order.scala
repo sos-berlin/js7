@@ -1271,7 +1271,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
     given Encoder.AsObject[ExpectingNotices] = jsonCodec
 
-    @nowarn("msg=Expected in package js7.data.order is deprecated")
+    @nowarn("msg=class Expected273 in object OrderNoticesExpected is deprecated since v2.7.4")
     given Decoder[ExpectingNotices] = c =>
       if c.downField("expected").succeeded then
         for

@@ -7,7 +7,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.Problems.EventNotHandledHereProblem
-import js7.data.board.{BoardItem, BoardState, Notice, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardState, Notice, NoticeId, PlannedNoticeKey}
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.{ExpectingNotices, WaitingForLock}

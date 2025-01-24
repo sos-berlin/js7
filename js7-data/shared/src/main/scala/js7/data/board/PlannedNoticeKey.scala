@@ -6,7 +6,6 @@ import javax.annotation.Nonnull
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.{Checked, ProblemException}
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
