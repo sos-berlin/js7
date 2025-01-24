@@ -19,7 +19,7 @@ import js7.data.order.OrderEvent.LockDemand
 import js7.data.order.{MinimumOrder, Order, OrderId}
 import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
+import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
@@ -194,8 +194,19 @@ trait StateView extends ItemContainer:
       .get(WorkflowPathControlPath(workflowPath))
       .exists(_.item.suspended)
 
+  /** Scope to calculate PlanId and NoticeKey of a PlannableBoard.  */
   def toPlanOrderScope(order: MinimumOrder): Scope =
-    order.planScope(controllerId)
+    // TODO Add final Workflow defined named values ?
+    OrderScopes.minimumOrderScope(order.id, order, controllerId)
+      |+| NamedValueScope(order.arguments)
+
+  ///** Scope to calculate PlanId and NoticeKey of a PlannableBoard.  */
+  //private def toPlanOrderScopeXX(order: MinimumOrder): Checked[Scope] =
+  //  keyToItem(Workflow).checked(order.workflowId).flatMap: workflow =>
+  //    workflow.orderParameterList
+  //    // TODO Add final Workflow defined named values ?
+  //    OrderScopes.minimumOrderScope(order.id, order, controllerId)
+  //      |+| NamedValueScope(arguments)
 
   /** A pure (stable, repeatable) Scope. */
   final def toOrderScope(order: Order[Order.State]): Checked[Scope] =

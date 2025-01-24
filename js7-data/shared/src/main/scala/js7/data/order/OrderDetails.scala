@@ -29,11 +29,6 @@ trait MinimumOrder extends OrderDetails:
 
   def id: OrderId
 
-  /** Scope to calculate PlanId and NoticeKey of a PlannableBoard.  */
-  def planScope(controllerId: ControllerId): Scope =
-    // TODO Add final Workflow defined named values ?
-    minimumScope(controllerId) |+| NamedValueScope(arguments)
-
   /** A Scope that does not change in the Order's lifetime. */
   def minimumScope(controllerId: ControllerId): Scope =
     OrderScopes.minimumOrderScope(id, this, controllerId)
