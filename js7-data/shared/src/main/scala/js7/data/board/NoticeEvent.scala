@@ -2,10 +2,11 @@ package js7.data.board
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json}
-import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, toDecoderResult}
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent}
+import js7.data.plan.PlanId
 
 sealed trait NoticeEvent extends Event.IsKeyBase[NoticeEvent]:
   val keyCompanion: NoticeEvent.type = NoticeEvent
@@ -36,10 +37,9 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
         // COMPATIBLE with v2.7.3
         for
           noticeKey <- notice.get[NoticeKey]("id")
-          noticeKey <- GlobalNoticeKey.checked(noticeKey).toDecoderResult(c.history)
           endOfLife <- notice.get[Option[Timestamp]]("endOfLife")
         yield
-          NoticePosted(noticeKey, endOfLife)
+          NoticePosted(PlanId.Global / noticeKey, endOfLife)
       else
         jsonCodec(c)
 
@@ -57,9 +57,8 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
         // COMPATIBLE with v2.7.3
         for
           noticeKey <- c.get[NoticeKey]("noticeId")
-          globalNoticeKey <- GlobalNoticeKey.checked(noticeKey).toDecoderResult(c.history)
         yield
-          NoticeDeleted(globalNoticeKey)
+          NoticeDeleted(PlanId.Global / noticeKey)
       else
         jsonCodec(c)
 

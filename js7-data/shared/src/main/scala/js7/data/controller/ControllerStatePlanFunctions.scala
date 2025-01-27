@@ -48,7 +48,6 @@ extends EventDrivenStateView[ControllerState]:
   final def checkPlanSchemaIsDeletable(planSchemaId: PlanSchemaId): Checked[Unit] =
     keyTo(PlanSchemaState).checked(planSchemaId).flatMap(_.checkIsDeletable)
 
-  @TestOnly
   final def toPlan: MapView[PlanId, Plan] =
     val toPlanSchemaState = keyTo(PlanSchemaState)
     new StandardMapView[PlanId, Plan]:

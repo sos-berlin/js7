@@ -24,10 +24,6 @@ final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
 
 object NoticeId:
 
-  def checked(planId: PlanId, boardNoticeKey: BoardNoticeKey): Checked[NoticeId] =
-    PlannedNoticeKey.checked(planId, boardNoticeKey.noticeKey).map: _ =>
-      new NoticeId(planId, boardNoticeKey)
-
   @javaApi
   def of(planId: PlanId, boardPath: BoardPath, noticeKey: NoticeKey): NoticeId =
     new NoticeId(planId.nn, boardPath.nn / noticeKey.nn)
@@ -63,6 +59,5 @@ object NoticeId:
             planKey <- vec.checked(1).flatMap(PlanKey.checked)
             boardPath <- vec.checked(2).flatMap(BoardPath.checked)
             noticeKey <- vec.get(3).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-            noticeId <- checked(planSchemaId / planKey, boardPath / noticeKey)
           yield
-            noticeId
+            planSchemaId / planKey / boardPath / noticeKey

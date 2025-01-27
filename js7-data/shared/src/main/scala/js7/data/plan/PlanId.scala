@@ -7,7 +7,6 @@ import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
-import org.jetbrains.annotations.TestOnly
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
 final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
@@ -21,7 +20,6 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   def /(boardPath: BoardPath): PlannedBoardId =
     PlannedBoardId(this, boardPath)
 
-  @TestOnly
   def /(noticeKey: NoticeKey): PlannedNoticeKey =
     PlannedNoticeKey(this, noticeKey)
 
@@ -40,7 +38,8 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
 
 object PlanId:
 
-  val Global: PlanId = PlanId(PlanSchemaId.Global, PlanKey.Global)
+  final val Global: PlanId =
+    PlanSchemaId.Global / PlanKey.Global
 
   given Ordering[PlanId] = orderingBy(_.planSchemaId, _.planKey)
 
