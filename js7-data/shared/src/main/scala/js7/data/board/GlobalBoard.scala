@@ -9,11 +9,12 @@ import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.item.{ItemRevision, UnsignedItemPath}
 import js7.data.order.Order
 import js7.data.state.StateView
-import js7.data.value.expression.Expression.MissingConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{MissingConstant, expr}
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
 
@@ -94,12 +95,12 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
   : GlobalBoard =
     GlobalBoard(
       boardPath,
-      postOrderToNoticeKey = expr(orderToNoticeId),
-      expectOrderToNoticeKey = expr(orderToNoticeId),
-      endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
+      postOrderToNoticeKey = parseExpression(orderToNoticeId).orThrow,
+      expectOrderToNoticeKey = parseExpression(orderToNoticeId).orThrow,
+      endOfLife = parseExpression("$js7EpochMilli + " + lifetime.toMillis).orThrow)
 
   private val sosOrderToNotice =
-    expr("""match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1')""")
+    expr""" match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1') """
 
   /** A GlobalBoard for JOC-style OrderIds. */
   def joc(boardPath: BoardPath, lifetime: Option[FiniteDuration] = Some(24.h)): GlobalBoard =
@@ -108,7 +109,7 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
       postOrderToNoticeKey = sosOrderToNotice,
       expectOrderToNoticeKey = sosOrderToNotice,
       endOfLife = lifetime.fold(MissingConstant):
-        lifetime => expr("$js7EpochMilli + " + lifetime.toMillis))
+        lifetime => parseExpression("$js7EpochMilli + " + lifetime.toMillis).orThrow)
 
   //<editor-fold desc="// General JOC OrderId pattern">
   // General JOC OrderId pattern: #DATE#(T|P|D|F|C)[\d-]-NAME(|BRANCHID)? (Olli)

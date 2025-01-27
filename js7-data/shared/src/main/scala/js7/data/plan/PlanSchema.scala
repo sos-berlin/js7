@@ -7,8 +7,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
-import js7.data.value.expression.Expression.MissingConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{MissingConstant, expr}
 import js7.data.value.expression.{ExprFunction, Expression, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
@@ -121,7 +120,7 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planKeyExpr = expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?"))
+      planKeyExpr = expr""" match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$$1') ? """)
 
   type Key = PlanSchemaId
 

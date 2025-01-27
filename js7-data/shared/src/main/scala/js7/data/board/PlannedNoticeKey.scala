@@ -74,7 +74,8 @@ object PlannedNoticeKey:
 
 object GlobalNoticeKey:
 
-  @TestOnly
+  /** Check noticeKey and return a PlannedNoticeKey in the global Plan. */
+  @TestOnly @throws[RuntimeException]
   def apply(noticeKey: String): PlannedNoticeKey =
     PlanId.Global / NoticeKey(noticeKey)
 

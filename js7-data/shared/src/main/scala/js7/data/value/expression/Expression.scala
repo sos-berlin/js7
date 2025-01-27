@@ -1,5 +1,6 @@
 package js7.data.value.expression
 
+import org.typelevel.literally.Literally
 import cats.syntax.all.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
@@ -10,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
 import js7.base.problem.Checked.{CheckedOption, catchExpected, catchNonFatalDontLog}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichOption}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichOption}
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
@@ -76,7 +77,8 @@ sealed trait Expression extends HasPrecedence:
 
 
 object Expression:
-  private val logger = Logger[this.type]
+  // Lazy, because Expression is used in a macro (at compile-time)
+  private lazy val logger = Logger[this.type]
 
   @TestOnly
   val LastReturnCode: NamedValue = NamedValue("returnCode")
@@ -900,3 +902,40 @@ object Expression:
     given Conversion[BigDecimal, NumericConstant] = NumericConstant(_)
     given Conversion[String, StringConstant] = StringConstant(_)
     given Conversion[Iterable[Expression], ListExpr] = iterable => ListExpr(iterable.toList)
+
+  extension (inline ctx: StringContext)
+    inline def expr(inline args: Any*): Expression =
+      ${ExprLiteral('ctx, 'args)}
+
+    inline def exprFun(inline args: Any*): ExprFunction =
+      ${ExprFunctionLiteral('ctx, 'args)}
+
+    //inline def exprFunX(inline args: Any*): ExprFunction =
+    //  ${ExprFunXLiteral('ctx, 'args)}
+
+
+object ExprLiteral extends Literally[Expression]:
+  def validate(string: String)(using Quotes) =
+    ExpressionParser.parseExpression(string) match
+      case Left(problem) => Left(problem.toString)
+      case Right(_) => Right:
+        '{ ExpressionParser.parseExpression(${Expr(string)}).orThrow }
+
+
+object ExprFunctionLiteral extends Literally[ExprFunction]:
+  def validate(string: String)(using Quotes) =
+    ExpressionParser.parseFunction(string) match
+      case Left(problem) => Left(problem.toString)
+      case Right(_) => Right:
+        '{ ExpressionParser.parseFunction(${Expr(string)}).orThrow }
+
+
+//trait CheckedLiterally[A](parse: String => Checked[A])(using quoted.Type[A])
+//extends Literally[A]:
+//  def validate(string: String)(using Quotes) =
+//    parse(string) match
+//      case Left(problem) => Left(problem.toString)
+//      case Right(_) => Right('{ parse(${Expr(string)}).orThrow })
+//
+//object ExprFunXLiteral
+//extends CheckedLiterally[ExprFunction](ExpressionParser.parseFunction)

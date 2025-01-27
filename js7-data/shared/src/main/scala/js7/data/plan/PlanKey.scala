@@ -3,7 +3,7 @@ package js7.data.plan
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.data.value.expression.Expression
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.expr
 
 /** Identifies a Plan of a PlanSchema.
   * <p>
@@ -23,7 +23,7 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
   final val Global: PlanKey = new PlanKey("")
 
   val jocPlanKeyExpr: Expression =
-    expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")
+    expr""" match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1') ? """
 
   protected def unchecked(string: String) =
     new PlanKey(string)
