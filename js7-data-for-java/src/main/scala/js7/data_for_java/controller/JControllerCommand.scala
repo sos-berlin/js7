@@ -10,16 +10,17 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId, NoticeKey}
+import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, Batch, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
+import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
-import js7.data.plan.PlanId
+import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
+import js7.data_for_java.value.JExprFunction
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.JPosition
 import scala.jdk.CollectionConverters.*
@@ -127,6 +128,23 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   def transferOrders(@Nonnull workflowId: JWorkflowId): JControllerCommand =
     JControllerCommand(
       TransferOrders(workflowId.asScala))
+
+  @Nonnull
+  def changeGlobalToPlannableBoard(
+    plannableBoard: PlannableBoard,
+    planSchemaId: PlanSchemaId,
+    splitNoticeKey: JExprFunction)
+  : ChangeGlobalToPlannableBoard =
+    ChangeGlobalToPlannableBoard(plannableBoard, planSchemaId, splitNoticeKey.asScala)
+
+  @Nonnull
+  def changePlannableToGlobalBoard(
+    globalBoard: GlobalBoard,
+    planSchemaId: PlanSchemaId,
+    makeNoticeKey: JExprFunction)
+  : ChangePlannableToGlobalBoard =
+    ChangePlannableToGlobalBoard(globalBoard, planSchemaId, makeNoticeKey.asScala)
+
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =
