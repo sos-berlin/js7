@@ -1058,7 +1058,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             case None => WorkflowPathControl(path) -> true
             case Some(o) => o -> false
         var item = itemState.item
-        item = item.nextRevision.copy(
+        item = item.incrementRevision.copy(
           suspended = cmd.suspend.fold(item.suspended)(identity),
           skip = item.skip
             -- cmd.skip.filterNot(_._2).keys
