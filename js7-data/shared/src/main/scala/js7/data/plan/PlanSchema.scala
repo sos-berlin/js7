@@ -93,18 +93,16 @@ extends UnsignedSimpleItem:
         _.toStringValueString.flatMap(PlanKey.checked)
 
   private[plan] def isClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
-    planIsClosedFunction
-      .fold_(Right(false), function =>
-        val args = StringValue(planKey.string) :: Nil
-        function.eval(args)(using scope)
-          .flatMap(_.asBoolean))
+    planIsClosedFunction.fold(Checked(false)): function =>
+      function.eval(StringValue(planKey.string))(using scope)
+        .flatMap(_.asBoolean)
 
 
 object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
 
   type ItemState = PlanSchemaState
 
-  val Global: PlanSchema =
+  final val Global: PlanSchema =
     PlanSchema(
       PlanSchemaId.Global,
       // planKeyExpr must not match, despite Global is used as the fallback PlanSchema

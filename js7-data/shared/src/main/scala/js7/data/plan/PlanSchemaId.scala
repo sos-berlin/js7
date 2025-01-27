@@ -32,7 +32,7 @@ object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
   override protected val isReserved = Set("Global")
 
-  val Global: PlanSchemaId = new PlanSchemaId("Global")
+  final val Global: PlanSchemaId = new PlanSchemaId("Global")
 
   protected def unchecked(string: String) =
     new PlanSchemaId(string)

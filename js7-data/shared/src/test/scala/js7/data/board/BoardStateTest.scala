@@ -285,7 +285,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
     var boardState = BoardState(board)
     val aNotice = NoticeV2_3(NoticeKey("A"), endOfLife)
 
-    boardState = boardState.addExpectation(GlobalNoticeKey(aNotice.noticeKey), aOrderId).orThrow
+    boardState = boardState.addExpectation(PlanId.Global / aNotice.noticeKey, aOrderId).orThrow
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
     assert(boardState.toNoticePlace == Map(
       PlanId.Global / aNotice.noticeKey -> NoticePlace(

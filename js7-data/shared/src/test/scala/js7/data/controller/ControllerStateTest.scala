@@ -529,7 +529,7 @@ object ControllerStateTest:
         WorkflowPathControlPath(workflow.path),
         suspended = true,
         skip = Set(Label("LABEL"))),
-      PlanSchemaId.Global -> PlanSchemaState.Global),
+      PlanSchemaId.Global -> PlanSchemaState.initialGlobal),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

@@ -25,7 +25,7 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   def /(noticeKey: NoticeKey): PlannedNoticeKey =
     PlannedNoticeKey(this, noticeKey)
 
-  def nonGlobal: Checked[this.type] =
+  def checkNonGlobal: Checked[this.type] =
     if isGlobal then
       Left(Problem.pure("Non-global PlanId required"))
     else

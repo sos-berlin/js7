@@ -48,7 +48,7 @@ extends
       // Does this Scope make sense??? It differs from scope in expectingOrderToNoticeId.
       scope <- state.toImpureOrderExecutingScope(order, now)
       noticeKey <- postOrderToNoticeKey.evalAsString(scope)
-      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
+      plannedNoticeKey <- GlobalNoticeKey.checked(noticeKey)
       notice <- toNotice(plannedNoticeKey)(scope)
     yield
       notice
@@ -58,7 +58,7 @@ extends
     for
       scope <- state.toOrderScope(order)
       noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
-      plannedNoticeKey <- PlannedNoticeKey.global(noticeKey)
+      plannedNoticeKey <- GlobalNoticeKey.checked(noticeKey)
     yield
       path / plannedNoticeKey
 

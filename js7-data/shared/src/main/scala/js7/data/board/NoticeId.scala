@@ -16,7 +16,7 @@ final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
   export boardNoticeKey.{boardPath, noticeKey}
 
   def plannedNoticeKey: PlannedNoticeKey =
-    PlannedNoticeKey(planId, noticeKey)
+    planId / noticeKey
 
   override def toString =
     s"NoticeKey:${planId.shortString}╱${boardNoticeKey.toShortString}"
@@ -55,9 +55,8 @@ object NoticeId:
           for
             boardPath <- vec.checked(0).flatMap(BoardPath.checked)
             noticeKey <- vec.get(1).fold(Checked(NoticeKey.empty))(NoticeKey.checked)
-            noticeId <- checked(PlanId.Global, boardPath / noticeKey)
           yield
-            noticeId
+            PlanId.Global / boardPath / noticeKey
         else
           for
             planSchemaId <- vec.checked(0).flatMap(PlanSchemaId.checked)

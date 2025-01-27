@@ -184,8 +184,8 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
   type Key = PlanSchemaId
   type Item = PlanSchema
 
-  val Global: PlanSchemaState =
-    PlanSchemaState(PlanSchema.Global, namedValues = Map.empty, toPlan = Map.empty)
+  def initialGlobal: PlanSchemaState =
+    PlanSchema.Global.toInitialItemState
 
   def recoverPlans(
     orders: Iterable[Order[Order.State]],

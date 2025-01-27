@@ -20,7 +20,7 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
 
   /** This name is internally used only.
     * It should serialize to None. */
-  val Global: PlanKey = new PlanKey("")
+  final val Global: PlanKey = new PlanKey("")
 
   val jocPlanKeyExpr: Expression =
     expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")
@@ -29,8 +29,10 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
     new PlanKey(string)
 
   override def checked(string: String): Checked[PlanKey] =
+    // "Global" should never occur. Instead, a global PlanKey is omitted.
+    // This check may no longer necessary after development.
     if string == Global.string then
-      Left(Problem.pure("Invalid PlanKey"))
+      Left(Problem.pure("Invalid PlanKey:Global"))
     else
       super.checked(string)
 

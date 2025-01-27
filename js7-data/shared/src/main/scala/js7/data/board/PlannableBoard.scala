@@ -60,7 +60,6 @@ extends
     val scope = state.toPlanOrderScope(order)
     for
       noticeKey <- expectOrderToNoticeKey.evalAsString(scope)
-      _ <- order.planId.nonGlobal
     yield
       order.planId / path / noticeKey
 

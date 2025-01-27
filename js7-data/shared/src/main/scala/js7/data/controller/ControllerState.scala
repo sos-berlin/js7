@@ -395,11 +395,11 @@ extends
           self <- super.applyOrderEvent(orderId, event)
           // Move Order from GlobalPlan's to PlanId's PlanSchemaState
           planSchemaState <- self.keyTo(PlanSchemaState).checked(planId.planSchemaId)
-          global <- self.keyTo(PlanSchemaState).checked(PlanSchemaId.Global)
+          globalPlanSchemaState <- self.keyTo(PlanSchemaState).checked(PlanSchemaId.Global)
           planSchemaState <- planSchemaState.addOrder(planId.planKey, orderId)
           self <- self.update(
             addItemStates =
-              global.removeOrderId(PlanKey.Global, orderId)
+              globalPlanSchemaState.removeOrderId(PlanKey.Global, orderId)
                 :: planSchemaState
                 :: Nil)
         yield
@@ -794,7 +794,7 @@ extends
   val empty: ControllerState =
     Undefined.copy(
       keyToUnsignedItemState_ = Undefined.keyToUnsignedItemState_
-        .updated(PlanSchemaId.Global, PlanSchemaState.Global))
+        .updated(PlanSchemaId.Global, PlanSchemaState.initialGlobal))
 
   def newBuilder() = new ControllerStateBuilder
 

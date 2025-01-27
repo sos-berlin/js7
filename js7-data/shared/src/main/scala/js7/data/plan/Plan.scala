@@ -4,7 +4,7 @@ import fs2.{Pure, Stream}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardNoticeKey, BoardPath, PlannedBoard, PlannedNoticeKey}
+import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, PlannedBoard}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderId
 import scala.collection.View
@@ -65,14 +65,19 @@ final case class Plan(
     val plan = copy(toPlannedBoard = toPlannedBoard - boardPath)
     !plan.isEmpty ? plan
 
-  def removeDeadNoticeIds: View[KeyedEvent[NoticeDeleted]] =
+  def deadNoticeDeleted: View[KeyedEvent[NoticeDeleted]] =
     if !isDead then
       View.empty
     else
-      toPlannedBoard.values.view.flatMap: plannedBoard =>
-        plannedBoard.noticeKeys.view.map: noticeKey =>
-          plannedBoard.boardPath <-: NoticeDeleted(PlannedNoticeKey(id, noticeKey))
+      noticeIds.map: noticeId =>
+        noticeId.boardPath <-: NoticeDeleted(noticeId.plannedNoticeKey)
 
+  private def noticeIds: View[NoticeId] =
+    toPlannedBoard.values.view.flatMap: plannedBoard =>
+      plannedBoard.noticeKeys.view.map: noticeKey =>
+        id / plannedBoard.boardPath / noticeKey
+
+  /** A dead Plan will be deleted immediately and should not exist. */
   def isDead: Boolean =
     isClosed && orderIds.isEmpty
 

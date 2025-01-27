@@ -1028,18 +1028,17 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     if planSchemaId.isGlobal then
       Future.successful(Left(Problem("Global PlanSchema cannot be changed")))
     else
-      locally:
-        val coll = ControllerEventColl[PlanSchemaChanged | NoticeDeleted](_controllerState)
+      ControllerEventColl.keyedEvents[PlanSchemaChanged | NoticeDeleted](_controllerState): coll =>
         for
           coll <- coll.add:
             planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues)
           planSchemaState <-
             coll.aggregate.keyTo(PlanSchemaState).checked(planSchemaId)
-          eventColl <- coll.add:
-            planSchemaState.planIds.toVector.flatMap: planKey =>
-              coll.aggregate.removeNoticesOfDeadPlan(planSchemaId / planKey)
+          coll <- coll.add:
+            planSchemaState.planIds.view.flatMap: planKey =>
+              coll.aggregate.deadPlanNoticeDeleted(planSchemaId / planKey)
         yield
-          eventColl.keyedEvents
+          coll
       match
         case Left(problem) => Future.successful(Left(problem))
         case Right(keyedEvents) =>

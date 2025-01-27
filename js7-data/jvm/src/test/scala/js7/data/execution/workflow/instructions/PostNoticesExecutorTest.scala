@@ -26,7 +26,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
     var state = ControllerTestStateView.of(
       orders = Some(Nil),
       workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
-      itemStates = PlanSchemaState.Global +: boards.map(BoardState(_)))
+      itemStates = PlanSchemaState.initialGlobal +: boards.map(BoardState(_)))
 
     // PostNotice board0, board1
     locally:

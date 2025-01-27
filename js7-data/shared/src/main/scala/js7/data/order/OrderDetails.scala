@@ -1,11 +1,10 @@
 package js7.data.order
 
-import cats.syntax.semigroup.*
 import js7.base.time.Timestamp
 import js7.data.controller.ControllerId
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.{NamedValueScope, OrderScopes}
+import js7.data.value.expression.scopes.OrderScopes
 import js7.data.workflow.WorkflowPath
 
 /** Details of an `Order` which are known at start and do not change in the Order's lifetime. */
@@ -32,4 +31,3 @@ trait MinimumOrder extends OrderDetails:
   /** A Scope that does not change in the Order's lifetime. */
   def minimumScope(controllerId: ControllerId): Scope =
     OrderScopes.minimumOrderScope(id, this, controllerId)
-

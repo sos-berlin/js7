@@ -40,11 +40,9 @@ extends EventDrivenStateView[ControllerState]:
     keyTo(PlanSchemaState).values.view.map:
       _.removeBoard(boardPath)
 
-  final def removeNoticesOfDeadPlan(planId: PlanId): View[KeyedEvent[NoticeDeleted]] =
-    if planId.isGlobal then
-      View.empty
-    else
-      toPlan.get(planId).view.flatMap(_.removeDeadNoticeIds)
+  /** Return NoticeDeleted events if Plan isDead. */
+  final def deadPlanNoticeDeleted(planId: PlanId): View[KeyedEvent[NoticeDeleted]] =
+    toPlan.get(planId).view.flatMap(_.deadNoticeDeleted)
 
   /** Returns Right(()) iff the denoted PlanSchema is unused. */
   final def checkPlanSchemaIsDeletable(planSchemaId: PlanSchemaId): Checked[Unit] =
