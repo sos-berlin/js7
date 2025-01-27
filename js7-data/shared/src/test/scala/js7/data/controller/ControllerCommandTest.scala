@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, GlobalNoticeKey, NoticeKey, PlannableBoard}
+import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, NoticeKey, PlannableBoard}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -16,10 +16,11 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
 import js7.data.plan.PlanSchemaId
+import js7.data.value.NamedValues
 import js7.data.value.expression.ExprFunction.testing.|=>
+import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -218,6 +219,28 @@ final class ControllerCommandTest extends OurTestSuite:
         },
         "planSchemaId": "DailyPlan",
         "splitNoticeKey": "(noticeKey) => [substring($$noticeKey, 0, 10), substring($$noticeKey, 10)]"
+      }""")
+
+  "ChangePlannableToGlobalBoard" in:
+    testJson[ControllerCommand](
+      ChangePlannableToGlobalBoard(
+        GlobalBoard(
+          BoardPath("BOARD"),
+          postOrderToNoticeKey = expr("'NOTICEKEY'"),
+          expectOrderToNoticeKey = expr("'NOTICEKEY'"),
+          endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+        PlanSchemaId("DailyPlan"),
+        exprFun""" (planKey, noticeKey) => "$$planKey$$noticeKey" """),
+      json"""{
+        "TYPE": "ChangePlannableToGlobalBoard",
+        "globalBoard": {
+          "path": "BOARD",
+          "expectOrderToNoticeKey": "'NOTICEKEY'",
+          "postOrderToNoticeKey": "'NOTICEKEY'",
+          "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+        },
+        "planSchemaId": "DailyPlan",
+        "makeNoticeKey": "(planKey,noticeKey) => \"$$planKey$$noticeKey\""
       }""")
 
   "DeleteOrdersWhenTerminated" in:

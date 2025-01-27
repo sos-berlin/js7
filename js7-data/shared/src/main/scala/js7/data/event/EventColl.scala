@@ -25,6 +25,9 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
   def computeEvents(toEvents: S => Checked[IterableOnce[KeyedEvent[E]]]): Checked[EventColl[S, E]] =
     toEvents(aggregate).flatMap(addEvents)
 
+  def addChecked(keyedEvents: Checked[IterableOnce[KeyedEvent[E]]]): Checked[EventColl[S, E]] =
+    keyedEvents.flatMap(addEvents)
+
   inline def add(keyedEvent: KeyedEvent[E]): Checked[EventColl[S, E]] =
     addEvent(keyedEvent)
 

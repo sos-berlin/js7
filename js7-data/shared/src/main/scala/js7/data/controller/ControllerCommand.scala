@@ -16,17 +16,17 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeId, NoticeKey, PlannableBoard}
+import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.{PlanId, PlanSchemaId}
+import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import js7.data.subagent.SubagentId
-import js7.data.value.NamedValues
-import js7.data.value.expression.ExprFunction
+import js7.data.value.expression.{ExprFunction, Scope}
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import scala.collection.immutable
@@ -126,11 +126,35 @@ object ControllerCommand extends CommonCommand.Companion:
       else
         codec(c)
 
+
   final case class ChangeGlobalToPlannableBoard(
     plannableBoard: PlannableBoard,
     planSchemaId: PlanSchemaId,
     splitNoticeKey: ExprFunction)
-  extends ControllerCommand
+  extends ControllerCommand:
+
+    def evalSplitNoticeKey(noticeKey: NoticeKey): Checked[(PlanKey, NoticeKey)] =
+      given Scope = Scope.empty
+      for
+        result <- splitNoticeKey.eval(StringValue(noticeKey.string))
+        pair <- result.asPair[StringValue, StringValue]
+        planKey <- PlanKey.checked(pair._1.string)
+        noticeKey <- NoticeKey.checked(pair._2.string)
+      yield
+        (planKey, noticeKey)
+
+
+  final case class ChangePlannableToGlobalBoard(
+    globalBoard: GlobalBoard,
+    planSchemaId: PlanSchemaId,
+    makeNoticeKey: ExprFunction)
+  extends ControllerCommand:
+
+    def evalMakeNoticeKey(planKey: PlanKey, noticeKey: NoticeKey): Checked[NoticeKey] =
+      given Scope = Scope.empty
+      makeNoticeKey.eval(StringValue(planKey.string), StringValue(noticeKey.string))
+        .flatMap(_.asString).flatMap(NoticeKey.checked)
+
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
   extends ControllerCommand, Big:
@@ -303,6 +327,7 @@ object ControllerCommand extends CommonCommand.Companion:
     Subtype[PostNotice],
     Subtype[DeleteNotice],
     Subtype(deriveCodecWithDefaults[ChangeGlobalToPlannableBoard]),
+    Subtype(deriveCodecWithDefaults[ChangePlannableToGlobalBoard]),
     Subtype(deriveConfiguredCodec[DeleteOrdersWhenTerminated]),
     Subtype(deriveConfiguredCodec[AnswerOrderPrompt]),
     Subtype(deriveConfiguredCodec[NoOperation]),

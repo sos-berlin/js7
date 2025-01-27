@@ -1,12 +1,16 @@
 package js7.data.controller
 
 import cats.syntax.traverse.*
-import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.base.utils.StandardMapView
-import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardPath, BoardState, Notice, NoticeId, NoticePlace, PlannedNoticeKey}
-import js7.data.event.KeyedEvent
+import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved}
+import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeId, NoticePlace, PlannableBoard, PlannedNoticeKey}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{Event, KeyedEvent}
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
+import js7.data.order.OrderEvent.OrderStateReset
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import org.jetbrains.annotations.TestOnly
@@ -105,3 +109,56 @@ extends EventDrivenStateView[ControllerState]:
   //def noticeIdExists(noticeId: NoticeId): Boolean =
   //  keyTo(BoardState).get(noticeId.boardPath).fold(false):boardState =>
   //    boardState.toNoticePlace.contains(noticeId.plannedNoticeKey)
+
+
+object ControllerStatePlanFunctions:
+
+  def changeBoardType(
+    newBoard: BoardItem,
+    planSchemaId: PlanSchemaId,
+    endOfLife: Option[Timestamp],
+    controllerState: ControllerState)
+    (convertNoticeKey: PlannedNoticeKey => Checked[Option[PlannedNoticeKey]])
+  : Checked[Seq[KeyedEvent[Event]]] =
+    val boardPath = newBoard.path
+    ControllerEventColl.keyedEvents(controllerState): coll =>
+      for
+        boardState <- controllerState.keyTo(BoardState).checked(boardPath)
+        _ <- checkIsOtherBoardType(boardState.item, newBoard)
+        coll <- coll.add:
+          NoKey <-: UnsignedSimpleItemChanged:
+            newBoard.withRevision(Some(boardState.item.nextRevision))
+        coll <- coll.addChecked:
+          changeBoardTypeOrderAndNoticeEvents(boardState, planSchemaId, endOfLife, convertNoticeKey)
+      yield
+        coll
+
+  private def checkIsOtherBoardType(board: BoardItem, newBoard: BoardItem): Checked[Unit] =
+    (board, newBoard) match
+      case (_: PlannableBoard, _: GlobalBoard) => Right(())
+      case (_: GlobalBoard, _: PlannableBoard) => Right(())
+      case _ => Left(Problem(s"${board.path} is already of the request Board type"))
+
+  private def changeBoardTypeOrderAndNoticeEvents(
+    boardState: BoardState,
+    planSchemaId: PlanSchemaId,
+    endOfLife: Option[Timestamp],
+    convertNoticeKey: PlannedNoticeKey => Checked[Option[PlannedNoticeKey]])
+  : Checked[Seq[KeyedEvent[Event]]] =
+    // Update Notices and Orders waiting for Notices
+    boardState.toNoticePlace.toVector.flatTraverse: (plannedNoticeKey, noticePlace) =>
+      convertNoticeKey(plannedNoticeKey).map:
+        case None => Vector.empty
+        case Some(newPlannedNoticeKey) =>
+          val orderResets = noticePlace.expectingOrderIds.toVector.map: orderId =>
+            orderId <-: OrderStateReset
+          val maybeNoticeMoved =
+            // OrderStateReset removes OrderId from NoticePlace#expectingOrderIds,
+            // NoticePlace may then be empty and non-existent,
+            // then NoticeMoved (which should not move expectingOrderIds, too)
+            noticePlace.copy(expectingOrderIds = Set.empty).nonEmpty.thenSome:
+              boardState.path <-: NoticeMoved(
+                plannedNoticeKey = plannedNoticeKey,
+                newPlannedNoticeKey = newPlannedNoticeKey,
+                endOfLife = endOfLife)
+          orderResets ++ maybeNoticeMoved

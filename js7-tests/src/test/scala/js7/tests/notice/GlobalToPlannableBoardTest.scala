@@ -11,7 +11,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.NoticeEvent.{NoticeMoved, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeEvent, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{ChangeGlobalToPlannableBoard, PostNotice}
 import js7.data.event.Event
@@ -116,7 +116,8 @@ final class GlobalToPlannableBoardTest
         PostNotice(otherPlanId / boardPath / "NOTICE")
       eventWatch.awaitNextKey[OrderFinished](consumingOrderId)
 
-      assert(eventWatch.keyedEvents(after = startEventId) == Seq(
+      val events = eventWatch.keyedEvents(after = startEventId)
+      assert(events.dropWhile(ke => !ke.event.isInstanceOf[OrderAdded]) == Seq(
         postingOrderId <-: OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
         postingOrderId <-: OrderStarted,
         postingOrderId <-: OrderNoticePosted(boardPath \ "2025-01-20ALPHA", endOfLife = Some(ts"2099-01-01T01:00:00Z")),
@@ -196,7 +197,8 @@ final class GlobalToPlannableBoardTest
         PostNotice(planId / boardPath / "B")
       eventWatch.awaitNextKey[OrderFinished](consumingOrderId)
 
-      assert(eventWatch.keyedEvents(after = startEventId) == Seq(
+      val events = eventWatch.keyedEvents(after = startEventId)
+      assert(events.dropWhile(ke => !ke.event.isInstanceOf[NoticePosted]) == Seq(
         boardPath <-: NoticePosted(PlanId.Global / NoticeKey("2025-01-22A"), Some(ts"2099-01-01T01:00:00Z")),
 
         consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),

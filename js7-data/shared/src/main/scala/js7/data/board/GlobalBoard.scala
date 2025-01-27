@@ -63,7 +63,7 @@ extends
     yield
       path / plannedNoticeKey
 
-  protected def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
+  def evalEndOfLife(scope: Scope): Checked[Option[Timestamp]] =
     endOfLife
       .eval(scope)
       .map(_.missingToNone)
