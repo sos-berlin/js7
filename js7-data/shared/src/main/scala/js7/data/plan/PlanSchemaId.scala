@@ -4,6 +4,7 @@ import js7.base.generic.GenericString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
 import js7.data.plan.PlanSchemaId.Global
+import org.jetbrains.annotations.TestOnly
 
 /** A template for Plans-
   *
@@ -22,6 +23,7 @@ final case class PlanSchemaId private(string: String)
   def /(planKey: PlanKey): PlanId =
     PlanId(this, planKey)
 
+  @TestOnly @throws[RuntimeException]
   def /(planKey: String): PlanId =
     PlanId(this, PlanKey(planKey))
 

@@ -26,6 +26,14 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
     * noticeKey.boardPath MUST denote a GlobalBoard.
     */
   @TestOnly
+  def \(noticeKey: String): NoticeId =
+    this \ NoticeKey(noticeKey)
+
+  /** Make a NoticeId in a GlobalBoard.
+    *
+    * noticeKey.boardPath MUST denote a GlobalBoard.
+    */
+  @TestOnly
   def \(noticeKey: NoticeKey): NoticeId =
     PlanId.Global / this / noticeKey
 

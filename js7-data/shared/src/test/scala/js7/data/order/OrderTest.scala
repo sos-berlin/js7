@@ -346,7 +346,7 @@ final class OrderTest extends OurTestSuite:
           }""")
 
         testJsonDecoder[State](ExpectingNotices(Vector(
-          BoardPath("BOARD") \ NoticeKey("NOTICE"))),
+          BoardPath("BOARD") \ "NOTICE")),
           json"""{
             "TYPE": "ExpectingNotices",
             "expected": [
@@ -496,10 +496,10 @@ final class OrderTest extends OurTestSuite:
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeKey("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
-        BoardPath("BOARD") \ NoticeKey("NOTICE"),
+        BoardPath("BOARD") \ "NOTICE",
         endOfLife = Timestamp.ofEpochSecond(1).some),
       OrderNoticesExpected(Vector(
-        BoardPath("BOARD") \ NoticeKey("NOTICE"))),
+        BoardPath("BOARD") \ "NOTICE")),
       OrderNoticesRead,
       OrderNoticesConsumptionStarted(Vector.empty),
       OrderNoticesConsumed(),
@@ -626,7 +626,7 @@ final class OrderTest extends OurTestSuite:
 
     "ExpectingNotice" in:
       val expectingNotices = ExpectingNotices(Vector(
-        BoardPath("BOARD") \ NoticeKey("NOTICE")))
+        BoardPath("BOARD") \ "NOTICE"))
       checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse

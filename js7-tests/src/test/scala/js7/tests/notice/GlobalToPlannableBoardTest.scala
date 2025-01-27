@@ -97,8 +97,9 @@ final class GlobalToPlannableBoardTest
       // Change GlobalBoard to PlannableBoard //
       // Notices and expecting Order will be changed
 
-      val checked = controller.api.updateItems(fs2.Stream.emit(AddOrChangeSimple(plannableBoard)))
-        .await(99.s)
+      val checked = controller.api.updateItems(fs2.Stream.emit:
+        AddOrChangeSimple(plannableBoard))
+      .await(99.s)
       assert(checked == Left(Problem("Type of BoardItem cannot be changed")))
 
       execCmd:
@@ -118,7 +119,7 @@ final class GlobalToPlannableBoardTest
       assert(eventWatch.keyedEvents(after = startEventId) == Seq(
         postingOrderId <-: OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
         postingOrderId <-: OrderStarted,
-        postingOrderId <-: OrderNoticePosted(boardPath \ NoticeKey("2025-01-20ALPHA"), endOfLife = Some(ts"2099-01-01T01:00:00Z")),
+        postingOrderId <-: OrderNoticePosted(boardPath \ "2025-01-20ALPHA", endOfLife = Some(ts"2099-01-01T01:00:00Z")),
         postingOrderId <-: OrderMoved(Position(1)),
         postingOrderId <-: OrderFinished(),
         postingOrderId <-: OrderDeleted,
@@ -127,7 +128,7 @@ final class GlobalToPlannableBoardTest
 
         consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(otherPlanId), deleteWhenTerminated = true),
         consumingOrderId <-: OrderStarted,
-        consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ NoticeKey("2025-01-21NOTICE"))),
+        consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ "2025-01-21NOTICE")),
 
         // ChangeGlobalToPlannableBoard //
         NoKey <-: UnsignedSimpleItemChanged(plannableBoard.withRevision(Some(ItemRevision(1)))),
@@ -142,7 +143,7 @@ final class GlobalToPlannableBoardTest
         consumingOrderId <-: OrderFinished(),
         consumingOrderId <-: OrderDeleted))
 
-  "Change GlobalBoard to PlannableBoard while using a wrong NoticeKey pattern" in:
+  "Change GlobalBoard to PlannableBoard, using a wrong NoticeKey pattern" in:
     withItems((
       dailyPlan, globalBoard, postingWorkflow, consumingWorkflow
     )): (dailyPlan, globalBoard, postingWorkflow, consumingWorkflow) =>
@@ -200,7 +201,7 @@ final class GlobalToPlannableBoardTest
 
         consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
         consumingOrderId <-: OrderStarted,
-        consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ NoticeKey("2025-01-22B"))),
+        consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ "2025-01-22B")),
 
         NoKey <-: UnsignedSimpleItemChanged(plannableBoard.withRevision(Some(ItemRevision(1)))),
         boardPath <-: NoticeMoved(GlobalNoticeKey("2025-01-22A"), wrongPlanId / NoticeKey("A"), endOfLife = None),
