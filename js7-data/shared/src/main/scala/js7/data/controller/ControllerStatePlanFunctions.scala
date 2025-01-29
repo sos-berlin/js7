@@ -91,12 +91,19 @@ extends EventDrivenStateView[ControllerState]:
   def toNoticePlace: MapView[NoticeId, NoticePlace] =
     new StandardMapView[NoticeId, NoticePlace]:
       override def keySet: Set[NoticeId] =
-        keyTo(BoardState).values.view.flatMap: boardState =>
-          boardState.toNoticePlace.keys.map(boardState.path / _)
-        .toSet
+        allNoticeIds.toSet
 
       def get(noticeId: NoticeId): Option[NoticePlace] =
         maybeNoticePlace(noticeId)
+
+  def allNoticeIds: View[NoticeId] =
+    keyTo(BoardState).values.view.flatMap: boardState =>
+      boardState.toNoticePlace.keys.view.map(boardState.path / _)
+
+  def allNoticePlaces: View[(NoticeId, NoticePlace)] =
+    keyTo(BoardState).values.view.flatMap: boardState =>
+      boardState.toNoticePlace.view.map: (k, v) =>
+        boardState.path / k -> v
 
   def maybeNoticePlace(noticeId: NoticeId): Option[NoticePlace] =
     for

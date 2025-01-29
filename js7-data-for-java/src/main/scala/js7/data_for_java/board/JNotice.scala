@@ -5,12 +5,12 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.JavaTimestamp.specific.*
-import js7.data.board.{BoardPath, Notice, NoticeId, NoticePlace, PlannedNoticeKey}
+import js7.data.board.{BoardPath, Notice, NoticeId, NoticeKey, NoticePlace, PlannedNoticeKey}
 import js7.data.order.OrderId
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final case class JNoticePlace(noticeId: NoticeId, asScala: NoticePlace):
+final case class JNoticePlace(asScala: NoticePlace):
 
   @Nonnull
   def notice: Optional[JNotice] =
@@ -19,14 +19,41 @@ final case class JNoticePlace(noticeId: NoticeId, asScala: NoticePlace):
   def expectingOrderIds: java.util.Set[OrderId] =
     asScala.expectingOrderIds.asJava
 
+  def isAnnounced: Boolean =
+    asScala.isAnnounced
+
+
+object JNoticePlace:
+
+  def of(
+    notice: Optional[Notice],
+    expectingOrderIds: java.util.Set[OrderId],
+    isAnnounced: Boolean,
+    isInConsumption: Boolean,
+    consumptionCount: Int)
+  : JNoticePlace =
+    JNoticePlace:
+      NoticePlace(
+        notice.toScala,
+        expectingOrderIds.asScala.toSet,
+        isAnnounced,
+        isInConsumption,
+        consumptionCount)
+
 
 final case class JNotice(asScala: Notice):
+
+  @Nonnull
+  def noticeKey: NoticeKey =
+    asScala.noticeKey
+
   @Nonnull
   def endOfLife: Optional[Instant] =
     asScala.endOfLife.map(_.toInstant).toJava
 
 
 object JNotice:
+
   @Nonnull
   def of(
     @Nonnull id: PlannedNoticeKey,

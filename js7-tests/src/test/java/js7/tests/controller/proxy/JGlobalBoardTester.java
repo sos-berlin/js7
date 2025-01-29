@@ -30,7 +30,7 @@ import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import org.hamcrest.Matchers;
 import reactor.core.publisher.Flux;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
 import static js7.data_for_java.vavr.VavrUtils.await;
@@ -111,7 +111,6 @@ public class JGlobalBoardTester
             .toNotice(postedPlannedNoticeKey)
             .get();
         assert noticePlace.notice().isPresent();
-        assertThat(noticePlace.noticeId(), equalTo(postedNoticeId));
         assertThat(noticePlace.notice().get().endOfLife().get(), Matchers.greaterThan(Instant.now()));
     }
 
@@ -134,9 +133,8 @@ public class JGlobalBoardTester
                 .pathToBoardState().get(board.path())
             .toNotice(expectedPlannedNoticeKey)
             .get();
-        assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
         assertThat(noticePlace.expectingOrderIds(),
-            equalTo(new HashSet<>(asList(expectingOrderId))));
+            equalTo(new HashSet<>(singleton(expectingOrderId))));
     }
 
     private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, InventoryItemPath path) {

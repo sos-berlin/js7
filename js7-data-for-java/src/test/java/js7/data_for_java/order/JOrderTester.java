@@ -57,6 +57,7 @@ public class JOrderTester
        "    \"key1\": \"value1\",\n" +
        "    \"key2\": \"value2\"\n" +
        "  },\n" +
+       "  \"planId\": [ \"DailyPlan\", \"2025-01-29\" ],\n" +
        "  \"historicOutcomes\": [],\n" +
        "  \"deleteWhenTerminated\": true\n" +
        "}";

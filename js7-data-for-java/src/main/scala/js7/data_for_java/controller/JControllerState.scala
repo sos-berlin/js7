@@ -6,6 +6,7 @@ import java.util.{Map as JMap, Optional as JOptional, Set as JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.metering.CallMeter
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
@@ -22,22 +23,25 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.{JBoardState, JGlobalBoard, JNotice}
+import js7.data_for_java.board.{JBoardState, JGlobalBoard, JNotice, JPlannedBoard}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.common.MoreJavaConverters.asJava
+import js7.data_for_java.controller.JControllerState.*
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
+import js7.data_for_java.plan.{JPlan, JPlanSchemaState}
 import js7.data_for_java.subagent.{JSubagentBundle, JSubagentItem, JSubagentItemState}
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
@@ -119,6 +123,10 @@ extends JJournaledState[JControllerState, ControllerState]:
       .mapValues(JSubagentBundle(_))
       .asJava
 
+  @Nonnull
+  def idToPlanSchemaState: JMap[PlanSchemaId, JPlanSchemaState] =
+    asScala.keyTo(PlanSchemaState).mapValues(JPlanSchemaState(_)).asJava
+
   /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock: JMap[LockPath, JLock] =
@@ -153,6 +161,25 @@ extends JJournaledState[JControllerState, ControllerState]:
 
   def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[NoticeId] =
     asScala.orderToStillExpectedNotices(orderId)
+      .asJava
+
+  // FIXME: PROBABLY SLOW
+  @Nonnull
+  def toPlan: java.util.Map[PlanId, JPlan] =
+    meterToPlan:
+      val planToBoardToPlannedBoard: Map[PlanId, Map[BoardPath, JPlannedBoard]] =
+        asScala.allNoticePlaces
+          .groupBy(_._1.planId)
+          .view.mapValues:
+            _.groupMap(_._1.plannedBoardId): (noticeId, noticePlace) =>
+              noticeId.noticeKey -> noticePlace
+            .map: (plannedBoardId, toNoticePlace) =>
+              plannedBoardId.boardPath -> JPlannedBoard(plannedBoardId, toNoticePlace.toMap)
+          .toMap
+      asScala.keyTo(PlanSchemaState).values.view.flatMap: planSchemaState =>
+        planSchemaState.toPlan.values.view.map: plan =>
+          plan.id -> JPlan(plan, planToBoardToPlannedBoard.getOrElse(plan.id, Map.empty))
+      .toMap
       .asJava
 
   @Nonnull
@@ -280,3 +307,5 @@ object JControllerState extends JJournaledState.Companion[JControllerState, Cont
   /** Includes the type. */
   def inventoryItemToJson(item: JInventoryItem): String =
     ControllerState.inventoryItemJsonCodec(item.asScala).compactPrint
+
+  private val meterToPlan = CallMeter("JControllerState.toPlan")

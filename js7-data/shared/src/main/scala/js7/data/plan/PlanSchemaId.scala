@@ -1,5 +1,6 @@
 package js7.data.plan
 
+import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
@@ -38,3 +39,7 @@ object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
   protected def unchecked(string: String) =
     new PlanSchemaId(string)
+
+  @javaApi @throws[RuntimeException]
+  def of(planSchemaId: String): PlanSchemaId =
+    checked(planSchemaId).orThrow

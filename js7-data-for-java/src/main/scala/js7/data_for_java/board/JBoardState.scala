@@ -20,5 +20,5 @@ final case class JBoardState(asScala: BoardState):
   def toNotice(plannedNoticeKey: PlannedNoticeKey): Optional[JNoticePlace] =
     asScala.toNoticePlace
       .get(plannedNoticeKey)
-      .map(JNoticePlace(path / plannedNoticeKey, _))
+      .map(JNoticePlace(_))
       .toJava

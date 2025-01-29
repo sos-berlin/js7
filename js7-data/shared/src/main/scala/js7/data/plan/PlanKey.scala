@@ -1,7 +1,9 @@
 package js7.data.plan
 
+import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.expr
 
@@ -35,5 +37,9 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
       Left(Problem.pure("Invalid PlanKey:Global"))
     else
       super.checked(string)
+
+  @javaApi @throws[RuntimeException]
+  def of(planKey: String): PlanKey =
+    checked(planKey).orThrow
 
   given Ordering[PlanKey] = GenericString.ordering

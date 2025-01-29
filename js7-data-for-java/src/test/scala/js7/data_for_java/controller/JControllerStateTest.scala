@@ -10,6 +10,7 @@ import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
+import js7.data.board.{BoardPath, BoardState, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
@@ -19,8 +20,10 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
+import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.controller.JControllerStateTest.*
@@ -50,6 +53,10 @@ final class JControllerStateTest extends OurTestSuite:
   "testStateToOrder" in:
     tester.testOrderStateToCount()
 
+  "toPlan" in:
+    tester.testToPlan()
+
+
 private object JControllerStateTest:
   private val v1 = VersionId("1.0")
   private val v2 = VersionId("2.0")
@@ -66,6 +73,7 @@ private object JControllerStateTest:
 
   private val itemSigner = new ItemSigner(SillySigner.Default, versionedItemJsonCodec)
 
+  private val planId = PlanSchemaId("DailyPlan") / "2025-01-29"
   private val controllerState = ControllerState.empty.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(
@@ -82,11 +90,26 @@ private object JControllerStateTest:
       ControllerId("CONTROLLER-ID"),
       ts"2019-05-24T12:00:00Z",
       Timezone("Europe/Berlin")),
-    keyToUnsignedItemState_ = Map(AgentPath("AGENT") ->
-      AgentRefState(
-        AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
-        None, None, DelegateCouplingState.Reset.fresh, EventId(7), None,
-        ClusterState.Empty, Map.empty, None)),
+    keyToUnsignedItemState_ = ControllerState.empty.keyToUnsignedItemState_ ++
+      Seq(
+        AgentRefState(
+          AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
+          None, None, DelegateCouplingState.Reset.fresh, EventId(7), None,
+          ClusterState.Empty, Map.empty, None),
+        PlanSchemaState(
+          PlanSchema(PlanSchemaId("DailyPlan"), StringConstant.empty),
+          namedValues = Map.empty,
+          toPlan = Map.empty),
+        BoardState(
+          PlannableBoard(BoardPath("BOARD")),
+          toNoticePlace = Map(
+            PlanId.Global / NoticeKey("NOTICE") -> NoticePlace(isAnnounced = true))),
+        BoardState(
+          PlannableBoard(BoardPath("BOARD-2")),
+          toNoticePlace = Map(
+            planId / NoticeKey("NOTICE") ->
+              NoticePlace(expectingOrderIds = Set(OrderId("B-ORDER"))))),
+      ).map(o => o.path -> o),
     repo = Repo.empty
       .applyEvents(List(
         VersionAdded(v1),
@@ -105,5 +128,7 @@ private object JControllerStateTest:
         arguments = Map(
           "key1" -> StringValue("value1"),
           "key2" -> StringValue("value2")),
+        maybePlanId = Some(planId),
         deleteWhenTerminated = true)
     ).toKeyedMap(_.id))
+    .finish.orThrow

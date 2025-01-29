@@ -15,6 +15,9 @@ final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
 
   export boardNoticeKey.{boardPath, noticeKey}
 
+  def plannedBoardId: PlannedBoardId =
+    planId / boardPath
+
   def plannedNoticeKey: PlannedNoticeKey =
     planId / noticeKey
 

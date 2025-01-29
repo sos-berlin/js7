@@ -4,19 +4,30 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import js7.base.web.Uri;
+import js7.data.board.BoardPath;
+import js7.data.board.NoticeKey;
+import js7.data.board.PlannedBoardId;
 import js7.data.node.NodeId;
 import js7.data.order.Order;
 import js7.data.order.OrderId;
+import js7.data.plan.PlanId;
+import js7.data.plan.PlanKey;
+import js7.data.plan.PlanSchemaId;
 import js7.data.workflow.WorkflowPath;
+import js7.data_for_java.board.JNoticePlace;
+import js7.data_for_java.board.JPlannedBoard;
 import js7.data_for_java.cluster.JClusterState;
 import js7.data_for_java.order.JOrder;
 import js7.data_for_java.order.JOrderTester;
+import js7.data_for_java.plan.JPlan;
 import js7.data_for_java.workflow.JWorkflowId;
 import js7.data_for_java.workflow.JWorkflowTester;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static js7.data_for_java.order.JOrderPredicates.and;
 import static js7.data_for_java.order.JOrderPredicates.by;
@@ -125,6 +136,41 @@ final class JControllerStateTester
             new HashMap<Class<? extends Order.State>, Integer>() {{
                 put(Order.Fresh$.class, 1);
             }}));
+    }
+
+    void testToPlan() {
+        var toPlan = controllerState.toPlan();
+
+        var expected = Map.of(
+            PlanId.Global(),
+            JPlan.of(
+                PlanId.Global(),
+                Set.of(OrderId.of("A-ORDER")),
+                singleton(
+                    JPlannedBoard.of(
+                        PlannedBoardId.apply(PlanId.Global(), BoardPath.of("BOARD")),
+                        Map.of(
+                            NoticeKey.of("NOTICE"),
+                            JNoticePlace.of(Optional.empty(), Set.of(), true, false, 0)))),
+                false),
+            PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
+            JPlan.of(
+                PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
+                Set.of(OrderId.of("B-ORDER")),
+                singleton(
+                    JPlannedBoard.of(
+                        PlannedBoardId.apply(
+                            PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
+                            BoardPath.of("BOARD-2")),
+                        Map.of(
+                            NoticeKey.of("NOTICE"),
+                            JNoticePlace.of(
+                                Optional.empty(),
+                                Set.of(OrderId.of("B-ORDER")),
+                                false, false, 0)))),
+                false));
+
+        assertThat(toPlan, equalTo(expected));
     }
 
     private void testOrdersBy(scala.Function1<Order<Order.State>,Object> predicate, List<JOrder> expected) {
