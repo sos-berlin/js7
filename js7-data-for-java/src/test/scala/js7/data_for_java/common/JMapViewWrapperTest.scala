@@ -1,7 +1,7 @@
 package js7.data_for_java.common
 
 import js7.base.test.OurTestSuite
-import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
+import js7.data_for_java.common.MoreJavaConverters.asJava
 import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters.*
 

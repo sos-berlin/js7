@@ -4,7 +4,7 @@ import scala.collection.MapView
 
 object MoreJavaConverters:
 
-  implicit final class MapViewHasAsJava[K, V](private val mapView: MapView[K, V]) extends AnyVal:
+  extension [K, V](mapView: MapView[K, V])
     def asJava: java.util.Map[K, V] =
       mapView match
         //case w: JMapViewWrapper[K @unchecked, V @unchecked] => w.underlying

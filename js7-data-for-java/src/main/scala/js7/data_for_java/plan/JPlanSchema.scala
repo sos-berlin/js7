@@ -1,4 +1,4 @@
-package js7.data_for_java.board.plan
+package js7.data_for_java.plan
 
 import io.vavr.control.Either as VEither
 import java.util.Optional

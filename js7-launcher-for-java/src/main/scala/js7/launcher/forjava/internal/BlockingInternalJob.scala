@@ -12,7 +12,7 @@ import js7.base.utils.Lazy
 import js7.data.job.JobResourcePath
 import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
-import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
+import js7.data_for_java.common.MoreJavaConverters.asJava
 import js7.data_for_java.order.JOutcome
 import js7.data_for_java.value.JExpression
 import js7.data_for_java.vavr.VavrConverters.*

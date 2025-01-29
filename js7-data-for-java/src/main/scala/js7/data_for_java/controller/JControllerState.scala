@@ -31,7 +31,7 @@ import js7.data_for_java.board.{JBoardState, JGlobalBoard, JNotice}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
-import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
+import js7.data_for_java.common.MoreJavaConverters.asJava
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
