@@ -58,8 +58,8 @@ object GenericString:
           unchecked(requireNonNull(string))
 
     @TestOnly @throws[RuntimeException]
-    final def apply(o: String): A =
-      checked(o).orThrow
+    final def apply(string: String): A =
+      checked(string).orThrow
 
     implicit val jsonEncoder: Encoder[A] = o =>
       if isReserved(o.string) then
