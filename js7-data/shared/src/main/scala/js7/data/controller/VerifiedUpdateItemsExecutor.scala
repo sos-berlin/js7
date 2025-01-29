@@ -19,8 +19,9 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
+import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent
-import js7.data.order.OrderEvent.OrderPlanAttached
+import js7.data.order.OrderEvent.{OrderPlanAttached, OrderStateReset}
 import js7.data.plan.{PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
@@ -48,8 +49,8 @@ object VerifiedUpdateItemsExecutor:
     verifiedUpdateItems: VerifiedUpdateItems,
     controllerState: ControllerState,
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
-  : Checked[Seq[KeyedEvent[NoKeyEvent | OrderPlanAttached]]] =
-    def result: Checked[Seq[KeyedEvent[NoKeyEvent | OrderPlanAttached]]] =
+  : Checked[Seq[KeyedEvent[NoKeyEvent | OrderStateReset | OrderPlanAttached]]] =
+    def result: Checked[Seq[KeyedEvent[NoKeyEvent | OrderStateReset | OrderPlanAttached]]] =
       (for
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyKeyedEvents(versionedEvents)
@@ -71,7 +72,10 @@ object VerifiedUpdateItemsExecutor:
         updatedState <- updatedState.applyKeyedEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
         (orderPlanAttached, updatedState) <-
-          attachPlanlessOrdersPlanSchemas(updatedState, verifiedUpdateItems)
+          if verifiedUpdateItems.hasPlanSchema then
+            attachPlanlessOrders(updatedState)
+          else
+            Right(Nil -> controllerState)
       yield
         simpleItemEvents
           .concat(versionedEvents)
@@ -217,25 +221,25 @@ object VerifiedUpdateItemsExecutor:
         .sequence
         .map(_.combineAll)
 
-    def attachPlanlessOrdersPlanSchemas(
-      controllerState: ControllerState,
-      verifiedUpdateItems: VerifiedUpdateItems)
-    : Checked[(Vector[KeyedEvent[OrderPlanAttached]], ControllerState)] =
-      if !verifiedUpdateItems.hasPlanSchema then
-        Right(Vector.empty -> controllerState)
-      else
-        controllerState.orders.view
-          .filter(_.maybePlanId.isEmpty)
-          .toVector
-          .traverse: order =>
-            controllerState.evalOrderToPlanId(order).map: maybePlanId =>
-              maybePlanId.map: planId =>
-                // The Order will check whether the event is applicable
-                order.id <-: OrderPlanAttached(planId)
-          .map(_.flatten)
-          .flatMap: events =>
-            controllerState.applyKeyedEvents(events)
-              .map(events -> _)
+    def attachPlanlessOrders(controllerState: ControllerState)
+    : Checked[(Vector[KeyedEvent[OrderStateReset | OrderPlanAttached]], ControllerState)] =
+      controllerState.orders.view
+        .toVector
+        .traverse: order =>
+          controllerState.evalOrderToPlanId(order).flatMap:
+            case None => Right(Vector.empty)
+            case Some(planId) =>
+              order.maybePlanId match
+                case Some(orderPlanId) =>
+                  Left(Problem(s"${order.id} is in already in $orderPlanId"))
+                case None =>
+                  Right:
+                    order.isState[ExpectingNotices].thenList(order.id <-: OrderStateReset)
+                      ::: (order.id <-: OrderPlanAttached(planId)) :: Nil
+        .map(_.flatten)
+        .flatMap: events =>
+          controllerState.applyKeyedEvents(events)
+            .map(events -> _)
 
     def simpleItemDeletionEvents(
       path: SimpleItemPath,

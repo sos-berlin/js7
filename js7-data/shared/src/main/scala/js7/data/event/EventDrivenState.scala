@@ -23,8 +23,9 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], -E <: Event] extends B
         state.applyKeyedEvent(stamped.value) match
           case Left(prblm) =>
             problem = prblm match
-              case OrderCannotAttachedToPlanProblem(orderId) if stamped.value.key ==
-                orderId => prblm
+              case OrderCannotAttachedToPlanProblem(orderId, _)
+                if stamped.value.key == orderId =>
+                prblm
               case _ =>
                 prblm.withPrefix(s"Event '$stamped' cannot be applied to ${companion.name}:")
             boundary.break()

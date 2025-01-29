@@ -593,14 +593,21 @@ extends
           inapplicable
 
       case OrderPlanAttached(planId) =>
-        val ok = isDetached
-          && !isState[ExpectingNotices]
-          && !isState[ExpectingNotice]
-          && position.branchPath.forall(_.branchId != BranchId.ConsumeNotices)
-          && this.planId.isGlobal
-          && !planId.isGlobal
-        if !ok then
-          Left(OrderCannotAttachedToPlanProblem(id))
+        val reason =
+          if planId.isGlobal then
+            "OrderPlanAttached(PlanId.Global) is not applicable"
+          else if !isDetached then
+            "Order is not detached from any Agent"
+          else if isState[ExpectingNotices] || isState[ExpectingNotice] then
+            "Order is expecting notices"
+          else if position.branchPath.exists(_.branchId == BranchId.ConsumeNotices) then
+            "Order is consuming notices"
+          else if !this.planId.isGlobal then
+            "Order is already attached to a plan"
+          else
+            ""
+        if reason.nonEmpty then
+          Left(OrderCannotAttachedToPlanProblem(id, reason))
         else
           Right(copy(
             maybePlanId = planId.some))

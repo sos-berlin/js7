@@ -11,10 +11,10 @@ import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchCh
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedNoticeKey}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, PostNotice}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.value.Value.convenience.given
@@ -89,16 +89,51 @@ final class PlanTest
       val checked = controller.api.updateItems(fs2.Stream:
           ItemOperation.AddOrChangeSimple(dailyPlan))
         .await(99.s)
-      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
+      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId, "Order is not detached from any Agent")))
       ASemaphoreJob.continue()
       eventWatch.awaitNextKey[OrderFinished](orderId)
 
-  "Adding a PlanSchemas is rejected when a planless Orders is expecting a global Notice" in :
+  "When aAdding a PlanSchema, Orders expecting a Notice are state-reset" in :
+    // It's recommended to SuspendOrders(resetState) all Orders before
+    // adding or changing a PlanSchema.
+
+    val eventId = eventWatch.resetLastWatchedEventId()
+    val orderId = OrderId(s"#2024-12-05#")
+    val board = GlobalBoard.joc(BoardPath("BOARD"))
+    val workflow = Workflow.of:
+      ConsumeNotices(board.path)()
+
+    withItems((workflow, board)): (workflow, board) =>
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
+
+      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+      withItem(dailyPlan): dailyPlan =>
+        val noticeId = PlanId.Global / board.path / "2024-12-05"
+        execCmd:
+          PostNotice(noticeId)
+        eventWatch.awaitNextKey[OrderTerminated](orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated =  true),
+          OrderStarted,
+          OrderNoticesExpected(Vector(noticeId)),
+          
+          OrderStateReset, // <-- automatic state reset 
+          OrderPlanAttached(dailyPlan.id / "2024-12-05"),
+          
+          OrderNoticesExpected(Vector(noticeId)),
+          OrderNoticesConsumptionStarted(Vector(noticeId)),
+          OrderNoticesConsumed(),
+          OrderFinished(),
+          OrderDeleted))
+
+  "Adding a PlanSchemas is rejected when a planless Orders is in a ConsumeNotices block" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
 
     eventWatch.resetLastWatchedEventId()
-    val orderId = OrderId(s"#2024-12-05#")
+    val orderId = OrderId(s"#2025-01-29#")
     val board = GlobalBoard.joc(BoardPath("BOARD"))
     val workflow = Workflow.of:
       ConsumeNotices(board.path):
@@ -106,13 +141,17 @@ final class PlanTest
 
     withItems((workflow, board)): (workflow, board) =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
+      val noticeId = PlanId.Global / board.path / "2025-01-29"
+      execCmd(PostNotice(noticeId))
+      eventWatch.awaitNextKey[OrderPrompted](orderId)
 
       val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
       val checked = controller.api.updateItems(fs2.Stream:
           ItemOperation.AddOrChangeSimple(dailyPlan))
         .await(99.s)
-      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId)))
+
+      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId, "Order is consuming notices")))
+
       execCmd(CancelOrders(Seq(orderId)))
       eventWatch.awaitNextKey[OrderTerminated](orderId)
 

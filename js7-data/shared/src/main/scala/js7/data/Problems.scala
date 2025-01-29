@@ -52,10 +52,11 @@ object Problems:
   trait KeyedEventProblem extends Problem.Coded:
     def key: Any
 
-  final case class OrderCannotAttachedToPlanProblem(orderId: OrderId) extends KeyedEventProblem:
+  final case class OrderCannotAttachedToPlanProblem(orderId: OrderId, reason: String) extends KeyedEventProblem:
     def key: OrderId = orderId
-    def arguments: Map[String, String] = Map1(
-      "orderId", orderId.string)
+    def arguments: Map[String, String] = Map2(
+      "orderId", orderId.string,
+      "reason", reason)
 
   final case class OrderWouldNotMatchChangedPlanSchemaProblem(orderId: OrderId, planId: PlanId)
   extends Problem.Coded:
