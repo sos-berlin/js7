@@ -4,6 +4,7 @@ import java.io.IOException
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Paths
 import js7.base.log.{Log4j, Logger}
+import js7.base.metering.CallMeter
 import js7.base.system.Java17Polyfill.*
 import js7.base.system.JavaHeapDump.dumpHeapTo
 import js7.base.test.LoggingTestAdder.Result
@@ -27,15 +28,16 @@ private object TestResultCollector:
   try
     deleteIfExists(Paths.get(s"$dumpFile.idom")) // YourKit Java profiler file
     deleteIfExists(dumpFile)
-  catch { case e: IOException => logger.warn(e.toStringWithCauses) }
+  catch case e: IOException =>
+    logger.warn(e.toStringWithCauses)
 
-  sys.runtime.addShutdownHook(
-    newMaybeVirtualThread("TestResultCollector-shutdown-hook") {
+  sys.runtime.addShutdownHook:
+    newMaybeVirtualThread("TestResultCollector-shutdown-hook"):
+      CallMeter.logAndResetAll()
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
       if sys.props.asSwitch("js7.dumpHeap") then dumpJavaHeap()
       if false then Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
-    })
 
   private def logThreads(): Unit =
     if logger.underlying.isDebugEnabled then
@@ -88,7 +90,7 @@ private object TestResultCollector:
   def asString: String =
     synchronized:
       results
-        .sortWith { (a, b) =>
+        .sortWith: (a, b) =>
           val at = weighTry(a.tried)
           val bt = weighTry(b.tried)
           if at != bt then
@@ -99,7 +101,6 @@ private object TestResultCollector:
             a.prefix.compareTo(b.prefix) match
               case 0 => a.testName == b.testName
               case i => i < 0
-        }
         .map(_.toSummaryLine)
         .mkString("\n")
 
