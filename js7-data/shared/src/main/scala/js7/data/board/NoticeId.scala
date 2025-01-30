@@ -13,6 +13,7 @@ import scala.jdk.OptionConverters.*
 /** Globally unique NoticeId. */
 final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
 
+  export planId.{planSchemaId, planKey}
   export boardNoticeKey.{boardPath, noticeKey}
 
   def plannedBoardId: PlannedBoardId =
@@ -41,8 +42,8 @@ object NoticeId:
     else
       Json.fromValues:
         Seq(
-          o.planId.planSchemaId.asJson,
-          o.planId.planKey.asJson,
+          o.planSchemaId.asJson,
+          o.planKey.asJson,
           o.boardPath.asJson
         ) ++ o.noticeKey.nonEmpty ? o.noticeKey.asJson
 

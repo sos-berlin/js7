@@ -21,6 +21,8 @@ import scala.jdk.OptionConverters.*
   */
 final case class PlannedNoticeKey private[board](planId: PlanId, noticeKey: NoticeKey):
 
+  export planId.{planSchemaId, planKey}
+
   override def toString =
     s"NoticeKey:$toShortString"
 
@@ -53,7 +55,7 @@ object PlannedNoticeKey:
       o.noticeKey.asJson
     else
       Json.fromValues:
-        View(o.planId.planSchemaId.asJson, o.planId.planKey.asJson) ++
+        View(o.planSchemaId.asJson, o.planKey.asJson) ++
           o.noticeKey.string.ifNonEmpty.map(_.asJson)
 
   given Decoder[PlannedNoticeKey] = c =>

@@ -11,6 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichMapView
+import js7.base.utils.StandardMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId}
@@ -46,6 +47,7 @@ import js7.data_for_java.subagent.{JSubagentBundle, JSubagentItem, JSubagentItem
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import scala.annotation.nowarn
+import scala.collection.MapView
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*
@@ -165,22 +167,25 @@ extends JJournaledState[JControllerState, ControllerState]:
 
   // FIXME: PROBABLY SLOW
   @Nonnull
-  def toPlan: java.util.Map[PlanId, JPlan] =
-    meterToPlan:
-      val planToBoardToPlannedBoard: Map[PlanId, Map[BoardPath, JPlannedBoard]] =
-        asScala.allNoticePlaces
-          .groupBy(_._1.planId)
-          .view.mapValues:
-            _.groupMap(_._1.plannedBoardId): (noticeId, noticePlace) =>
-              noticeId.noticeKey -> noticePlace
-            .map: (plannedBoardId, toNoticePlace) =>
-              plannedBoardId.boardPath -> JPlannedBoard(plannedBoardId, toNoticePlace.toMap)
-          .toMap
-      asScala.keyTo(PlanSchemaState).values.view.flatMap: planSchemaState =>
-        planSchemaState.toPlan.values.view.map: plan =>
-          plan.id -> JPlan(plan, planToBoardToPlannedBoard.getOrElse(plan.id, Map.empty))
-      .toMap
-      .asJava
+  lazy val toPlan: java.util.Map[PlanId, JPlan] =
+    lazy val planToBoardToPlannedBoard: MapView[PlanId, Map[BoardPath, JPlannedBoard]] =
+      asScala.allNoticePlaces
+        .groupBy(_._1.planId)
+        .view.mapValues: toNoticePlace =>
+          toNoticePlace.groupMap(_._1.plannedBoardId): (noticeId, noticePlace) =>
+            noticeId.noticeKey -> noticePlace
+          .map: (plannedBoardId, toNoticePlace) =>
+            plannedBoardId.boardPath -> JPlannedBoard(plannedBoardId, toNoticePlace.toMap)
+    new StandardMapView[PlanId, JPlan]:
+      override def keySet: collection.Set[PlanId] =
+        meterToPlanKeySet:
+          asScala.toPlan.keySet
+
+      def get(planId: PlanId): Option[JPlan] =
+        asScala.toPlan.get(planId).map: plan =>
+          meterToPlanGet:
+            JPlan(plan, planToBoardToPlannedBoard.getOrElse(plan.id, Map.empty))
+    .asJava
 
   @Nonnull
   def pathToCalendar: JMap[CalendarPath, JCalendar] =
@@ -308,4 +313,5 @@ object JControllerState extends JJournaledState.Companion[JControllerState, Cont
   def inventoryItemToJson(item: JInventoryItem): String =
     ControllerState.inventoryItemJsonCodec(item.asScala).compactPrint
 
-  private val meterToPlan = CallMeter("JControllerState.toPlan")
+  private val meterToPlanGet = CallMeter("JControllerState.toPlan.get")
+  private val meterToPlanKeySet = CallMeter("JControllerState.toPlan.keySet")

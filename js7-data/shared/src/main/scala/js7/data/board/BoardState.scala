@@ -199,7 +199,7 @@ extends UnsignedSimpleItemState:
 
   def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId): Option[BoardState] =
     strictly(orderToConsumptionStack.isEmpty)
-    val which = toNoticePlace.filter(_._1.planId.planSchemaId == planSchemaId)
+    val which = toNoticePlace.filter(_._1.planSchemaId == planSchemaId)
     which.foreachWithBracket(Square):
       case ((key, noticePlace), br) =>
         logger.trace(s"${br}Remove $planSchemaId: Remove $key -> $noticePlace")
