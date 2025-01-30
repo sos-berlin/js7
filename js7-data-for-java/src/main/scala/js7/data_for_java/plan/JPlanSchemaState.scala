@@ -2,7 +2,7 @@ package js7.data_for_java.plan
 
 import javax.annotation.Nonnull
 import js7.data.order.OrderId
-import js7.data.plan.{PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{PlanKey, PlanSchemaId, PlanSchemaState}
 import js7.data.value.Value
 import js7.data_for_java.common.JavaWrapper
 import scala.jdk.CollectionConverters.*
@@ -27,3 +27,7 @@ extends JavaWrapper:
   @Nonnull
   def namedValues: java.util.Map[String, Value] =
     asScala.namedValues.asJava
+
+  @Nonnull
+  def planKeys: java.util.Set[PlanKey] =
+    asScala.toPlan.keySet.asJava

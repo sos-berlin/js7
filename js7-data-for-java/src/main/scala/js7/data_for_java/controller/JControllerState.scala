@@ -165,9 +165,12 @@ extends JJournaledState[JControllerState, ControllerState]:
     asScala.orderToStillExpectedNotices(orderId)
       .asJava
 
+  def toPlanSchemaState: JMap[PlanSchemaId, JPlanSchemaState] =
+    asScala.keyTo(PlanSchemaState).mapValues(JPlanSchemaState(_)).asJava
+
   // FIXME: PROBABLY SLOW
   @Nonnull
-  lazy val toPlan: java.util.Map[PlanId, JPlan] =
+  lazy val toPlan: JMap[PlanId, JPlan] =
     lazy val planToBoardToPlannedBoard: MapView[PlanId, Map[BoardPath, JPlannedBoard]] =
       asScala.allNoticePlaces
         .groupBy(_._1.planId)
