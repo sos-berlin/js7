@@ -75,7 +75,7 @@ extends
   ControllerStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
-  ControllerStatePlanFunctions:
+  ControllerStatePlanFunctions[ControllerState]:
 
   override def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit[fs2.Pure, String]("ControllerState:\n")

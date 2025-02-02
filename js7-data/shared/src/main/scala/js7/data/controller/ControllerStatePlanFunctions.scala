@@ -18,10 +18,10 @@ import scala.collection.{MapView, View}
 
 /** Contains some of the ControllerState's Plan functions.
   */
-transparent trait ControllerStatePlanFunctions
+transparent trait ControllerStatePlanFunctions[Self <: ControllerStateView[Self]]
 // Extend EventDrivenStateView to make abstract function implementation visible:
-extends EventDrivenStateView[ControllerState]:
-  this: ControllerState =>
+extends EventDrivenStateView[Self]:
+  this: Self =>
 
   protected final def updateNoticeIdsInPlans(
     boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
