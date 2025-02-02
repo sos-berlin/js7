@@ -8,7 +8,7 @@ import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 
-trait ControllerStateView[Self <: ControllerStateView[Self]]
+trait ControllerEventDrivenStateView[Self <: ControllerEventDrivenStateView[Self]]
 extends EventDrivenStateView[Self]:
   this: Self =>
 

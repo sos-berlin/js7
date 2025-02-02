@@ -34,7 +34,7 @@ import scala.collection.{MapView, mutable}
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState],
   StandardsBuilder,
-  ControllerStateView[ControllerStateBuilder],
+  ControllerEventDrivenStateView[ControllerStateBuilder],
   OrderWatchStateHandler[ControllerStateBuilder]:
 
   protected val S = ControllerState

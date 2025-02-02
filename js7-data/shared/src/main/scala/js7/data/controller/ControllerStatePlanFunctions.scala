@@ -18,7 +18,7 @@ import scala.collection.{MapView, View}
 
 /** Contains some of the ControllerState's Plan functions.
   */
-transparent trait ControllerStatePlanFunctions[Self <: ControllerStateView[Self]]
+transparent trait ControllerStatePlanFunctions[Self <: ControllerEventDrivenStateView[Self]]
 // Extend EventDrivenStateView to make abstract function implementation visible:
 extends EventDrivenStateView[Self]:
   this: Self =>

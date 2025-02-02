@@ -72,7 +72,7 @@ final case class ControllerState(
 extends
   SignedItemContainer,
   EventDrivenStateView[ControllerState],
-  ControllerStateView[ControllerState],
+  ControllerEventDrivenStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
   ControllerStatePlanFunctions[ControllerState]:

@@ -6,7 +6,7 @@ import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
 import js7.data.calendar.CalendarPath
-import js7.data.controller.{ControllerId, ControllerStateView}
+import js7.data.controller.{ControllerEventDrivenStateView, ControllerId}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
@@ -99,7 +99,7 @@ case class ControllerTestStateView(
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
-extends TestStateView[ControllerTestStateView], ControllerStateView[ControllerTestStateView]:
+extends TestStateView[ControllerTestStateView], ControllerEventDrivenStateView[ControllerTestStateView]:
 
   val companion: ControllerTestStateView.type = ControllerTestStateView
 
