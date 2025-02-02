@@ -153,10 +153,10 @@ object ControllerStatePlanFunctions:
     convertNoticeKey: PlannedNoticeKey => Checked[Option[PlannedNoticeKey]])
   : Checked[Seq[KeyedEvent[Event]]] =
     // Update Notices and Orders waiting for Notices
-    boardState.toNoticePlace.toVector.flatTraverse: (plannedNoticeKey, noticePlace) =>
-      convertNoticeKey(plannedNoticeKey).map:
+    boardState.toNoticePlace.toVector.flatTraverse: (fromPlannedNoticeKey, noticePlace) =>
+      convertNoticeKey(fromPlannedNoticeKey).map:
         case None => Vector.empty
-        case Some(newPlannedNoticeKey) =>
+        case Some(toPlannedNoticeKey) =>
           val orderResets = noticePlace.expectingOrderIds.toVector.map: orderId =>
             orderId <-: OrderStateReset
           val maybeNoticeMoved =
@@ -165,7 +165,7 @@ object ControllerStatePlanFunctions:
             // then NoticeMoved (which should not move expectingOrderIds, too)
             noticePlace.copy(expectingOrderIds = Set.empty).nonEmpty.thenSome:
               boardState.path <-: NoticeMoved(
-                plannedNoticeKey = plannedNoticeKey,
-                newPlannedNoticeKey = newPlannedNoticeKey,
+                fromPlannedNoticeKey = fromPlannedNoticeKey,
+                toPlannedNoticeKey = toPlannedNoticeKey,
                 endOfLife = endOfLife)
           orderResets ++ maybeNoticeMoved

@@ -347,13 +347,13 @@ extends
           ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
 
     case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
-      import noticeMoved.{endOfLife, newPlannedNoticeKey, plannedNoticeKey}
+      import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
       for
         boardState <- keyTo(BoardState).checked(boardPath)
-        boardState <- boardState.moveNotice(plannedNoticeKey, newPlannedNoticeKey, endOfLife)
+        boardState <- boardState.moveNotice(fromPlannedNoticeKey, toPlannedNoticeKey, endOfLife)
         maybePlanSchemaState <- updateNoticeIdsInPlans(Seq(
-          boardState -> plannedNoticeKey,
-          boardState -> newPlannedNoticeKey))
+          boardState -> fromPlannedNoticeKey,
+          boardState -> toPlannedNoticeKey))
       yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))

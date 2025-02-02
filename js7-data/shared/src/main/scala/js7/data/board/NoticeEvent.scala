@@ -64,8 +64,8 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
 
 
   final case class NoticeMoved(
-    plannedNoticeKey: PlannedNoticeKey,
-    newPlannedNoticeKey: PlannedNoticeKey,
+    fromPlannedNoticeKey: PlannedNoticeKey,
+    toPlannedNoticeKey: PlannedNoticeKey,
     endOfLife: Option[Timestamp])
   extends NoticeEvent
 

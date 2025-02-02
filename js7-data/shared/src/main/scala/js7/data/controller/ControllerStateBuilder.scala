@@ -351,9 +351,9 @@ extends SnapshotableStateBuilder[ControllerState],
 
       case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
         for boardState <- keyTo(BoardState).get(boardPath) do
-          import noticeMoved.{endOfLife, newPlannedNoticeKey, plannedNoticeKey}
+          import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
           _keyToUnsignedItemState(boardPath) =
-            boardState.moveNotice(plannedNoticeKey, newPlannedNoticeKey, endOfLife).orThrow
+            boardState.moveNotice(fromPlannedNoticeKey, toPlannedNoticeKey, endOfLife).orThrow
 
       case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaChanged) =>
         val planSchemaState = keyTo(PlanSchemaState)(planSchemaId)

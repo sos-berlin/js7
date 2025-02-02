@@ -67,7 +67,7 @@ final class NoticeEventTest extends OurTestSuite:
         Some(ts"1970-01-01T01:00:00Z")),
       json"""{
        "TYPE": "NoticeMoved",
-       "plannedNoticeKey": "2025-01-22/NOTICE",
-       "newPlannedNoticeKey": [ "DailyPlan", "2025-01-22", "NOTICE"],
+       "fromPlannedNoticeKey": "2025-01-22/NOTICE",
+       "toPlannedNoticeKey": [ "DailyPlan", "2025-01-22", "NOTICE"],
        "endOfLife": 3600000
       }""")
