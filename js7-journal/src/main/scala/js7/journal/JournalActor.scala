@@ -518,13 +518,13 @@ extends Actor, Stash, JournalLogging:
         .filter:
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true
-        .mapParallelBatch() { snapshotObject =>
+        .mapParallelBatch(): snapshotObject =>
           //logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
-        }
-        .foreach((snapshotObject, byteArray) => IO:
-          if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
-          snapshotWriter.writeSnapshot(byteArray))
+        .foreach: (snapshotObject, byteArray) =>
+          IO:
+            if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
+            snapshotWriter.writeSnapshot(byteArray)
         .compile
         .drain
         .unsafeRunSyncX() // TODO Do not block the thread

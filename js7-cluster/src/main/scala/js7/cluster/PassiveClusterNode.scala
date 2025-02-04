@@ -306,9 +306,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
       def releaseEvents(): Unit =
         if journalConf.deleteObsoleteFiles then
-          eventWatch.releaseEvents(
+          eventWatch.releaseEvents:
             builder.journalState
-              .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
+              .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds)
 
       val maybeTmpFile = continuation match
         case _: NoLocalJournal | _: NextFile =>
@@ -424,10 +424,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                         IO:
                           val file = recoveredJournalFile.file
                           val fileSize =
-                            autoClosing(FileChannel.open(file, APPEND)) { out =>
+                            autoClosing(FileChannel.open(file, APPEND)): out =>
                               writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                               out.size
-                            }
                           builder.startWithState(JournalProgress.InCommittedEventsSection,
                             journalHeader = Some(recoveredJournalFile.journalHeader),
                             eventId = lastEventId,

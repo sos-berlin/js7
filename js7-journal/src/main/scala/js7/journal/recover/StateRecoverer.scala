@@ -34,7 +34,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   def recoverAll(): Unit =
     logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
-    autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
+    autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
         fileJournaledStateBuilder.put(S.decodeJournalJson(json).orThrow)
         fileJournaledStateBuilder.journalProgress match
@@ -46,10 +46,11 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
           case _ =>
         if _firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection then
           _firstEventPosition := jsonReader.position
-      for h <- fileJournaledStateBuilder.fileJournalHeader if journalLocation.file(h.eventId) != file do
-        sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
+      for h <- fileJournaledStateBuilder.fileJournalHeader do
+        if journalLocation.file(h.eventId) != file then
+          sys.error:
+            s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'"
       fileJournaledStateBuilder.logStatistics()
-    }
 
   def firstEventPosition = _firstEventPosition.toOption
 

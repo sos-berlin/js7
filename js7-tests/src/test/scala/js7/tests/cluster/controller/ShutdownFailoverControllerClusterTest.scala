@@ -33,7 +33,8 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         }
 
         backupController.eventWatch.await[ClusterFailedOver]()
-        waitForCondition(3.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
+        waitForCondition(3.s, 10.ms):
+          backupController.clusterState.await(99.s).isInstanceOf[FailedOver]
         assert(backupController.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
 
         // When journal file must be truncated due to non-replicated data after failover,
@@ -52,8 +53,8 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
                 case _ =>
                   restart = false
                   // Restarted Primary should have become passive
-                  waitForCondition(3.s, 10.ms)(
-                    primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
+                  waitForCondition(3.s, 10.ms):
+                    primaryController.clusterState.await(99.s).isInstanceOf[Coupled]
                   assert(primaryController.clusterState.await(99.s) ==
                     backupController.clusterState.await(99.s))
                   assert(primaryController.clusterState.await(99.s) ==

@@ -17,8 +17,8 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
   override protected def removeObsoleteJournalFiles = false
 
   "Backup node replicates truncated journal file" in:
-    withControllerAndBackup() { (primary, _, backup, _, _) =>
-      primary.runController() { primaryController =>
+    withControllerAndBackup(): (primary, _, backup, _, _) =>
+      primary.runController(): primaryController =>
         val backupController = backup.newController()
 
         backupController.eventWatch.await[ClusterCoupled]()
@@ -26,26 +26,21 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
         primaryController.eventWatch.await[ClusterPassiveLost]()
 
         primaryController.terminate(suppressSnapshot = true).await(99.s)
-      }
 
       truncateLastJournalFile(primary.controllerEnv)
 
-      primary.runController(dontWaitUntilReady = true/*Since v2.7*/) { primaryController =>
-        backup.runController(dontWaitUntilReady = true) { _ =>
+      primary.runController(dontWaitUntilReady = true/*Since v2.7*/): primaryController =>
+        backup.runController(dontWaitUntilReady = true): _ =>
           primaryController.waitUntilReady() // Since v2.7
           primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId).head.eventId
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
           assert(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
           primaryController.terminate().await(99.s)
-        }
-      }
-    }
 
   private def truncateLastJournalFile(env: ControllerEnv): Unit =
     val lastFile = listJournalFiles(env.stateDir / "controller").last.file
     assert(lastFile.contentString.last == '\n')
-    autoClosing(new RandomAccessFile(lastFile.toFile, "rw")) { f =>
+    autoClosing(new RandomAccessFile(lastFile.toFile, "rw")): f =>
       f.setLength(f.length - 2)
-    }
     assert(lastFile.contentString.last != '\n')
