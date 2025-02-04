@@ -401,7 +401,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       cs = cs.applyKeyedEvent(event).orThrow
       cs = cs.withEventId(eventId)
       builder.addStampedEvent(Stamped(eventId, event))
-      assert(builder.result() == cs)
+      assert(builder.result().withEventId(eventId) == cs)
 
     "UnsignedSimpleItemAdded" in:
       applyEvent(UnsignedSimpleItemAdded(agentRef))

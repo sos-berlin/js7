@@ -130,7 +130,7 @@ extends Actor, Stash, JournalLogging:
       uncommittedState = committedState
       if conf.slowCheckState then
         journaledStateBuilder.initializeState(None, journaledState_.eventId, totalEventCount = 0, committedState)
-        assertEqualSnapshotState("Start", journaledStateBuilder.result().withEventId(uncommittedState.eventId))
+        assertEqualSnapshotState("Start", journaledStateBuilder.result())
       requireClusterAcknowledgement = committedState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -530,7 +530,7 @@ extends Actor, Stash, JournalLogging:
         // Simulate recovery
         checkingBuilder.onAllSnapshotObjectsAdded()
         assertEqualSnapshotState("Written snapshot",
-          checkingBuilder.result().withEventId(journalHeader.eventId))
+          checkingBuilder.result().withEventId(committedState.eventId))
 
     snapshotWriter.endSnapshotSection()
     // Write a SnapshotTaken event to increment EventId and force a new filename
@@ -649,9 +649,7 @@ extends Actor, Stash, JournalLogging:
       // Check SnapshotStateBuilder#initializeState
       val builder = S.newBuilder()
       builder.initializeState(None, uncommittedState.eventId, totalEventCount, uncommittedState)
-      assertEqualSnapshotState("Builder.initializeState",
-        builder.result().withEventId(uncommittedState.eventId),
-        stampedEvents)
+      assertEqualSnapshotState("Builder.initializeState", builder.result(), stampedEvents)
 
   private def assertEqualSnapshotState(what: String, couldBeRecoveredState: S,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)

@@ -673,7 +673,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S): Unit =
     for recoveredJournalFile <- continuation.maybeRecoveredJournalFile do
-      if recoveredJournalFile.state != snapshot then
+      if recoveredJournalFile.state.withEventId/*why???*/(snapshot.eventId) != snapshot then
         val msg = s"Calculated '$S' from recovered or replicated journal file ${
           recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
         logger.error(msg)

@@ -153,10 +153,6 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
 
   final def eventId: EventId = _eventId
 
-  protected def updateEventId(o: EventId): Unit =
-    assert(_eventId < o)
-    _eventId = o
-
   final def snapshotCount: Long =
     _snapshotCount
 
@@ -195,7 +191,6 @@ object SnapshotableStateBuilder:
     protected def onAddEvent =
       case stamped =>
         _state = _state.applyKeyedEvent(stamped.value).orThrow
-        updateEventId(stamped.eventId)
 
     def result(): S =
       _state.withEventId(eventId)

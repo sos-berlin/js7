@@ -91,7 +91,6 @@ extends SnapshotableStateBuilder[AgentState]:
 
   protected def onAddEvent =
     case Stamped(eventId, _, keyedEvent) =>
-      updateEventId(eventId)
       _state = _state.applyKeyedEvent(keyedEvent).orThrow
 
   def journalState: JournalState =
