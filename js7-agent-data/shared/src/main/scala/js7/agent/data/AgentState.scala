@@ -389,7 +389,7 @@ extends
   private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
     Set(AgentRefState, SubagentItemState, FileWatchState)
 
-  def newBuilder() = new AgentStateBuilder
+  def newRecoverer() = new AgentStateRecoverer
 
   protected val inventoryItems = Vector(
     AgentRef, SubagentItem, SubagentBundle,

@@ -501,7 +501,7 @@ extends Actor, Stash, JournalLogging:
     //journalLogger.logHeader(journalHeader)
 
     locally:
-      lazy val checkingBuilder = S.newBuilder()
+      lazy val checkingRecoverer = S.newRecoverer()
 
       committedState.toSnapshotStream
         .filter:
@@ -512,7 +512,7 @@ extends Actor, Stash, JournalLogging:
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         .foreach: (snapshotObject, byteArray) =>
           IO:
-            if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
+            if conf.slowCheckState then checkingRecoverer.addSnapshotObject(snapshotObject)
             snapshotWriter.writeSnapshot(byteArray)
         .compile
         .drain
@@ -520,9 +520,9 @@ extends Actor, Stash, JournalLogging:
 
       if conf.slowCheckState then
         // Simulate recovery
-        checkingBuilder.onAllSnapshotObjectsAdded()
+        checkingRecoverer.onAllSnapshotObjectsAdded()
         assertEqualSnapshotState("Written snapshot",
-          checkingBuilder.result().withEventId(committedState.eventId))
+          checkingRecoverer.result().withEventId(committedState.eventId))
 
     snapshotWriter.endSnapshotSection()
     // Write a SnapshotTaken event to increment EventId and force a new filename

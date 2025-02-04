@@ -75,6 +75,6 @@ private object ClusterableStateTest:
     // TODO Refactor this into a separate common trait
     def snapshotObjectJsonCodec = throw new NotImplementedError
     implicit def keyedEventJsonCodec = throw new NotImplementedError
-    def newBuilder() = throw new NotImplementedError
+    def newRecoverer() = throw new NotImplementedError
 
   private case object MyEvent extends NoKeyEvent

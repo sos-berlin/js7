@@ -24,7 +24,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
@@ -227,12 +227,13 @@ private object FileJournalTest:
 
   case object NumberUnhandled  extends NumberEvent
 
+
   final case class TestState(
     eventId: EventId,
     numberThingCollection: NumberThingCollection,
     standards: SnapshotableState.Standards = SnapshotableState.Standards.empty)
-  extends SnapshotableState[TestState]
-  :
+  extends SnapshotableState[TestState]:
+
     protected type Self = NumberThingCollection
     protected type Snapshot = NumberThing
     protected type E = NumberEvent
@@ -258,12 +259,13 @@ private object FileJournalTest:
     def estimatedSnapshotSize = numberThingCollection.numberThings.size
 
     def toSnapshotStream = Stream.iterable(numberThingCollection.numberThings.values)
-  object TestState extends SnapshotableState.Companion[TestState]
-  :
+
+
+  object TestState extends SnapshotableState.Companion[TestState]:
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
-    def newBuilder(): SnapshotableStateBuilder[TestState] =
-      new SnapshotableStateBuilder.Simple(TestState):
+    def newRecoverer(): SnapshotableStateRecoverer[TestState] =
+      new SnapshotableStateRecoverer.Simple(TestState):
         protected def onAddSnapshotObject =
           case numberThing: NumberThing =>
             updateState(result().copy(numberThingCollection = result().numberThingCollection.copy(

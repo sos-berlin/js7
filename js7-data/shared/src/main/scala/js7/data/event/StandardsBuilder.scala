@@ -3,7 +3,7 @@ package js7.data.event
 import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
 
 trait StandardsBuilder:
-  this: SnapshotableStateBuilder[?] =>
+  this: SnapshotableStateRecoverer[?] =>
 
   protected var _standards: SnapshotableState.Standards =
     SnapshotableState.Standards.empty

@@ -14,23 +14,20 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichString}
 import js7.data.cluster.ClusterState
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalState, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.recover.FileSnapshotableStateBuilder.*
+import js7.journal.recover.FileSnapshotableStateRecoverer.*
 import js7.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
+final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId])
   (using S: SnapshotableState.Companion[S]):
 
   private val since = now
-  private val builder = S.newBuilder()
+  private val recoverer = S.newRecoverer()
   private var _progress: JournalProgress = JournalProgress.Initial
   private var _state: S = null.asInstanceOf[S]
   private var _eventId: EventId = -999
@@ -59,7 +56,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     state: S)
   : Unit =
     this._progress = InCommittedEventsSection
-    builder.initializeState(Some(journalHeader), eventId, state)
+    recoverer.initializeState(Some(journalHeader), eventId, state)
     _state = state
     _eventId = eventId
     _eventCount = totalEventCount - journalHeader.totalEventCount
@@ -72,7 +69,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
             logger.debug(journalHeader.toString)
             JournalHeader.checkedHeader[S](journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
-            builder.addSnapshotObject(journalHeader)
+            recoverer.addSnapshotObject(journalHeader)
             _progress = AfterHeader
 
           case _ => throw new IllegalArgumentException(
@@ -87,17 +84,17 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
       case InSnapshotSection =>
         journalRecord match
           case SnapshotFooter =>
-            builder.onAllSnapshotObjectsAdded()
+            recoverer.onAllSnapshotObjectsAdded()
             _progress = AfterSnapshotSection
           case _ =>
-            builder.addSnapshotObject(journalRecord)
+            recoverer.addSnapshotObject(journalRecord)
 
       case AfterSnapshotSection =>
         if journalRecord != EventHeader then throw new IllegalArgumentException(
           "Missing EventHeader in journal file")
-        _state = builder.result()
+        _state = recoverer.result()
         _eventId = _state.eventId
-        //builder = null.asInstanceOf[SnapshotableStateBuilder[S]]
+        //recoverer = null.asInstanceOf[SnapshotableStateRecoverer[S]]
         _progress = InCommittedEventsSection
 
       case InCommittedEventsSection =>
@@ -139,20 +136,20 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     _progress
 
   def fileJournalHeader: Option[JournalHeader] =
-    builder.fileJournalHeader
+    recoverer.fileJournalHeader
 
   /** Calculated next JournalHeader. */
   def nextJournalHeader: Option[JournalHeader] =
-    builder.fileJournalHeader.map(_.copy(
+    recoverer.fileJournalHeader.map(_.copy(
       eventId = _eventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = builder.fileJournalHeader.fold(ZeroDuration): header =>
+      totalRunningTime = recoverer.fileJournalHeader.fold(ZeroDuration): header =>
         val lastJournalDuration = lastEventIdTimestamp - header.timestamp
         (header.totalRunningTime + lastJournalDuration).roundUpToNext(1.ms),
       timestamp = lastEventIdTimestamp))
 
   def totalEventCount: Long =
-    builder.fileJournalHeader.fold(0L)(_.totalEventCount) + _eventCount
+    recoverer.fileJournalHeader.fold(0L)(_.totalEventCount) + _eventCount
 
   private def lastEventIdTimestamp: Timestamp =
     if eventId == EventId.BeforeFirst then
@@ -164,19 +161,19 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     if nonNull(_state) then
       _eventId
     else
-      builder.eventId
+      recoverer.eventId
 
   def journalState: JournalState =
     if nonNull(_state) then
       _state.journalState
     else
-      builder.journalState
+      recoverer.journalState
 
   def clusterState: ClusterState =
     if nonNull(_state) then
       _state.clusterState
     else
-      builder.clusterState
+      recoverer.clusterState
 
   def maybeState(): Option[S] =
     Option(_state)
@@ -187,7 +184,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   def logStatistics(): Unit =
     val byteCount = Try(Files.size(journalFileForInfo)).toOption
     val elapsed = since.elapsed
-    val snapshotCount = builder.snapshotCount
+    val snapshotCount = recoverer.snapshotCount
     if elapsed >= 1.s then
       logger.debug:
         itemsPerSecondString(elapsed, snapshotCount + _eventCount, "snapshots+events") +
@@ -205,5 +202,5 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         ")")
 
 
-object FileSnapshotableStateBuilder:
+object FileSnapshotableStateRecoverer:
   private val logger = Logger[this.type]

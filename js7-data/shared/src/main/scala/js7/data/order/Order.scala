@@ -491,7 +491,7 @@ extends
           this)
 
       case OrderNoticeExpected(_) =>
-        // ControllerStateBuilder converts this State to OrderNoticesExpected
+        // ControllerStateRecoverer converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
       case OrderNoticesExpected(noticeIds) =>
@@ -549,7 +549,7 @@ extends
             //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case _: OrderOrderAdded =>
-        // See also ControllerState, ControllerStateBuilder
+        // See also ControllerState, ControllerStateRecoverer
         check(isDetached && isState[Ready],
           this)
 

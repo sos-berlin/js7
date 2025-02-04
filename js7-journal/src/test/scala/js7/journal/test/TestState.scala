@@ -4,7 +4,7 @@ import fs2.Stream
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder}
+import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateRecoverer}
 
 /**
   * @author Joacim Zschimmer
@@ -54,7 +54,7 @@ extends SnapshotableState[TestState]:
 object TestState extends SnapshotableState.Companion[TestState]:
   val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 
-  def newBuilder() = new SnapshotableStateBuilder.Simple(TestState):
+  def newRecoverer() = new SnapshotableStateRecoverer.Simple(TestState):
     def onAddSnapshotObject =
       case o: TestAggregate =>
         updateState(state.copy(keyToAggregate =

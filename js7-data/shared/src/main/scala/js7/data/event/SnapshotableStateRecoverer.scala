@@ -6,10 +6,10 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.*
 import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.SnapshotableStateBuilder.*
+import js7.data.event.SnapshotableStateRecoverer.*
 import scala.util.control.NonFatal
 
-trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
+trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
   protected val S: SnapshotableState.Companion[S]
 
   private var recordCount = 1L
@@ -82,10 +82,10 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     _snapshotCount
 
 
-object SnapshotableStateBuilder:
+object SnapshotableStateRecoverer:
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
-  extends SnapshotableStateBuilder[S], StandardsBuilder:
+  extends SnapshotableStateRecoverer[S], StandardsBuilder:
     private var _state = S.empty
 
     protected def onInitializeState(state: S): Unit =

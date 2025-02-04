@@ -153,7 +153,7 @@ object JournaledProxy:
     obs: Stream[IO, EventAndState[Event, S]],
     fromEventId: EventId)
   : Stream[IO, EventAndState[Event, S]] =
-    // TODO Optimize this with SnapshotableStateBuilder ?
+    // TODO Optimize this with SnapshotableStateRecoverer ?
     obs.dropWhile(_.stampedEvent.eventId < fromEventId)
       .map:
         case es if es.stampedEvent.eventId == fromEventId &&

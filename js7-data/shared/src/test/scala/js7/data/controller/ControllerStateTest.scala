@@ -356,14 +356,14 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
     yield assertion
 
-  "ControllerStateBuilder.addSnapshotObject" in:
+  "ControllerStateRecoverer.addSnapshotObject" in:
     ControllerState.snapshotObjectJsonCodec
-    val builder = new ControllerStateBuilder
+    val recoverer = new ControllerStateRecoverer
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
-      .foreach(builder.addSnapshotObject)
-    builder.onAllSnapshotObjectsAdded()
-    assertEqual(builder.result(), controllerState)
+      .foreach(recoverer.addSnapshotObject)
+    recoverer.onAllSnapshotObjectsAdded()
+    assertEqual(recoverer.result(), controllerState)
 
   "keyToItem" in:
     assert(!controllerState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
@@ -408,10 +408,10 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
 
     "AgentRefState snapshot object" in:
-      val b = ControllerState.newBuilder()
-      b.addSnapshotObject(AgentRefState(agentRef))
-      b.onAllSnapshotObjectsAdded()
-      assert(b.result() == cs.withEventId(0))
+      val recoverer = ControllerState.newRecoverer()
+      recoverer.addSnapshotObject(AgentRefState(agentRef))
+      recoverer.onAllSnapshotObjectsAdded()
+      assert(recoverer.result() == cs.withEventId(0))
 
     "UnsignedSimpleItemChanged" in:
       val changedUri = Uri("https://example.com")

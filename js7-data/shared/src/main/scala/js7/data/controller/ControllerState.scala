@@ -801,7 +801,7 @@ extends
       keyToUnsignedItemState_ = Undefined.keyToUnsignedItemState_
         .updated(PlanSchemaId.Global, PlanSchemaState.initialGlobal))
 
-  def newBuilder() = new ControllerStateBuilder
+  def newRecoverer() = new ControllerStateRecoverer
 
   protected val inventoryItems = Vector[InventoryItem.Companion_](
     AgentRef, SubagentItem, SubagentBundle, Lock,

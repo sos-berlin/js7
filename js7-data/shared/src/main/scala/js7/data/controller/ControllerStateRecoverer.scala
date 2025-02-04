@@ -11,7 +11,7 @@ import js7.base.utils.{Nulls, StandardMapView}
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.{BoardPath, BoardState, NoticeSnapshot}
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.{JournalState, SnapshotableStateBuilder, StandardsBuilder}
+import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsBuilder}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -26,12 +26,12 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
-final class ControllerStateBuilder
+final class ControllerStateRecoverer
 extends
-  SnapshotableStateBuilder[ControllerState],
+  SnapshotableStateRecoverer[ControllerState],
   StandardsBuilder,
   ControllerStateView,
-  OrderWatchStateHandler[ControllerStateBuilder]:
+  OrderWatchStateHandler[ControllerStateRecoverer]:
 
   protected val S = ControllerState
 
@@ -48,7 +48,7 @@ extends
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
     remove: Seq[OrderWatchPath])
-  : Checked[ControllerStateBuilder] =
+  : Checked[ControllerStateRecoverer] =
     _keyToUnsignedItemState --= remove
     _keyToUnsignedItemState ++= orderWatchStates.map(o => o.path -> o)
     Right(this)

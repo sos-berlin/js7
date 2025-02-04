@@ -22,10 +22,10 @@ import scala.concurrent.duration.Deadline.now
 private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
   journalLocation: JournalLocation,
-  newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
+  newFileJournaledStateRecoverer: () => FileSnapshotableStateRecoverer[S])
   (implicit S: SnapshotableState.Companion[S]):
 
-  private val fileJournaledStateBuilder = newFileJournaledStateBuilder()
+  private val fileJournaledStateRecoverer = newFileJournaledStateRecoverer()
 
   private var _position = 0L
   private var _lastProperEventPosition = 0L
@@ -36,21 +36,21 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
-        fileJournaledStateBuilder.put(S.decodeJournalJson(json).orThrow)
-        fileJournaledStateBuilder.journalProgress match
+        fileJournaledStateRecoverer.put(S.decodeJournalJson(json).orThrow)
+        fileJournaledStateRecoverer.journalProgress match
           case AfterSnapshotSection =>
             _position = jsonReader.position
           case InCommittedEventsSection =>
             _position = jsonReader.position
             _lastProperEventPosition = jsonReader.position
           case _ =>
-        if _firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection then
+        if _firstEventPosition.isEmpty && fileJournaledStateRecoverer.journalProgress == InCommittedEventsSection then
           _firstEventPosition := jsonReader.position
-      for h <- fileJournaledStateBuilder.fileJournalHeader do
+      for h <- fileJournaledStateRecoverer.fileJournalHeader do
         if journalLocation.file(h.eventId) != file then
           sys.error:
             s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'"
-      fileJournaledStateBuilder.logStatistics()
+      fileJournaledStateRecoverer.logStatistics()
 
   def firstEventPosition = _firstEventPosition.toOption
 
@@ -75,15 +75,15 @@ object StateRecoverer:
     (using S: SnapshotableState.Companion[S], ioRuntime: IORuntime)
   : Recovered[S] =
     val file = journalLocation.currentFile.toOption
-    val fileJournaledStateBuilder = new FileSnapshotableStateBuilder(
+    val fileJournaledStateRecoverer = new FileSnapshotableStateRecoverer(
       journalFileForInfo = file getOrElse journalLocation.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None)
 
     file match
       case Some(file) =>
-        val recoverer = new StateRecoverer(file, journalLocation, () => fileJournaledStateBuilder)
+        val recoverer = new StateRecoverer(file, journalLocation, () => fileJournaledStateRecoverer)
         recoverer.recoverAll()
-        val nextJournalHeader = fileJournaledStateBuilder.nextJournalHeader
+        val nextJournalHeader = fileJournaledStateRecoverer.nextJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
         Recovered.fromJournalFile(
           journalLocation,
@@ -91,12 +91,12 @@ object StateRecoverer:
             file,
             length = recoverer.position,
             lastProperEventPosition = recoverer.lastProperEventPosition,
-            journalHeader = fileJournaledStateBuilder.fileJournalHeader
+            journalHeader = fileJournaledStateRecoverer.fileJournalHeader
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
             nextJournalHeader,
             firstEventPosition = recoverer.firstEventPosition
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
-            fileJournaledStateBuilder.result()),
+            fileJournaledStateRecoverer.result()),
           totalRunningSince = runningSince - nextJournalHeader.totalRunningTime,
           config)
 

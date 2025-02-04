@@ -6,7 +6,7 @@ import js7.base.crypt.Signed
 import js7.base.utils.Collections.implicits.*
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
-import js7.data.event.{JournalState, SnapshotableStateBuilder}
+import js7.data.event.{JournalState, SnapshotableStateRecoverer}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -14,8 +14,8 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
-final class AgentStateBuilder
-extends SnapshotableStateBuilder[AgentState]:
+final class AgentStateRecoverer
+extends SnapshotableStateRecoverer[AgentState]:
 
   protected val S = AgentState
 
