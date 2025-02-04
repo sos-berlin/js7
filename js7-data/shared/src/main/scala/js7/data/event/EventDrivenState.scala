@@ -2,7 +2,7 @@ package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.{KeyedEventProblem, OrderCannotAttachedToPlanProblem}
+import js7.data.Problems.KeyedEventProblem
 import js7.data.event.EventDrivenState.*
 import scala.collection.immutable.Map.Map2
 import scala.util.boundary
@@ -13,26 +13,6 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], -E <: Event] extends B
   override def companion: Companion[Self]
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
-
-  def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] =
-    var state = this
-    var problem: Problem | Null = null
-
-    boundary:
-      for stamped <- stampedEvents.iterator do
-        state.applyKeyedEvent(stamped.value) match
-          case Left(prblm) =>
-            problem = prblm match
-              case OrderCannotAttachedToPlanProblem(orderId, _)
-                if stamped.value.key == orderId =>
-                prblm
-              case _ =>
-                prblm.withPrefix(s"Event '$stamped' cannot be applied to ${companion.name}:")
-            boundary.break()
-          case Right(s) =>
-            state = s
-
-    problem.toLeftOr(state)
 
   final def applyKeyedEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     var state = this

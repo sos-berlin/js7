@@ -1,6 +1,9 @@
 package js7.data.event
 
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.Problems.OrderCannotAttachedToPlanProblem
+import scala.util.boundary
 
 /** An EventDrivenState with EventId. An aggregate. */
 trait JournaledState[S <: JournaledState[S]]
@@ -13,13 +16,30 @@ extends EventDrivenState[S, Event]:
 
   def eventId: EventId
 
-  override final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]])
+  final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]])
   : Checked[S] =
     if stampedEvents.isEmpty then
       Right(this)
     else
-      super.applyStampedEvents(stampedEvents).map:
-        _.withEventId(stampedEvents.last.eventId)
+      // Duplicate with applyEvents to allow to in include EventId in error message
+      var state = this
+      var problem: Problem | Null = null
+
+      boundary:
+        for stamped <- stampedEvents.iterator do
+          state.applyKeyedEvent(stamped.value) match
+            case Left(prblm) =>
+              problem = prblm match
+                case OrderCannotAttachedToPlanProblem(orderId, _)
+                  if stamped.value.key == orderId =>
+                  prblm
+                case _ =>
+                  prblm.withPrefix(s"Event '$stamped' cannot be applied to ${companion.name}:")
+              boundary.break()
+            case Right(s) =>
+              state = s
+
+      problem.toLeftOr(state.withEventId(stampedEvents.last.eventId))
 
 
 object JournaledState:

@@ -19,9 +19,10 @@ final class EventDrivenStateTest extends OurTestSuite:
       Stamped(2000L, Timestamp.ofEpochMilli(2), NoKey <-: Added("ADDED")) ::
       Stamped(3000L, Timestamp.ofEpochMilli(3), NoKey <-: Added(")")) ::
       Nil
+    val keyedEvents = stampedEvents.map(_.value)
 
-    assert(s.applyStampedEvents(stampedEvents) == s.applyKeyedEvents(stampedEvents.map(_.value)))
-    s = s.applyStampedEvents(stampedEvents).orThrow
+    assert(s.applyKeyedEvents(keyedEvents) == s.applyKeyedEvents(keyedEvents))
+    s = s.applyKeyedEvents(keyedEvents).orThrow
 
     assert(s == TestState("(ADDED)"))
 
@@ -33,8 +34,7 @@ final class EventDrivenStateTest extends OurTestSuite:
       Stamped(5000L, Timestamp.ofEpochMilli(5), NoKey <-: InvalidEvent) ::
       Nil
 
-    assert(s.applyStampedEvents(stampedEvents) ==
+    assert(s.applyKeyedEvents(stampedEvents.map(_.value)) ==
       Left(
         EventNotApplicableProblem(InvalidEvent, TestState("(ADDED)MORE"))
-          .withPrefix("Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' " +
-            "cannot be applied to TestCase:")))
+          .withPrefix("Event 'InvalidEvent' cannot be applied to TestCase:")))
