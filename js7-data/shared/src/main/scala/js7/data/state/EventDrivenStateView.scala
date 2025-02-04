@@ -25,10 +25,7 @@ trait EventDrivenStateView[Self <: EventDrivenStateView[Self]]
 extends EventDrivenState[Self, Event], StateView:
   this: Self =>
 
-  final def isOrderExternalNotVanished(orderId: OrderId): Boolean =
-    idToOrder.get(orderId).flatMap(_.externalOrder).exists(o => !o.vanished)
-
-  protected def update(
+  protected final def update(
     addOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,

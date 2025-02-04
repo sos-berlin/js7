@@ -264,7 +264,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
             assertThat(recoveredClusterState == ClusterState.Empty)
             NoLocalJournal(initialFileEventId.get)
           case Some(recoveredJournalFile) =>
-            FirstPartialFile(recoveredJournalFile /*, recoveredClusterState*/)
+            FirstPartialFile(recoveredJournalFile)
         start.tailRecM: continuation =>
           replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
            // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen

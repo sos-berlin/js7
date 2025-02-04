@@ -30,7 +30,12 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
   private val _journalHeader = SetOnce[JournalHeader]
   private val getStatePromise = Promise[IO[S]]()
 
-  def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit =
+  def initializeState(
+    journalHeader: Option[JournalHeader],
+    eventId: EventId,
+    totalEventCount: Long,
+    state: S)
+  : Unit =
     journalHeader foreach { _journalHeader := _ }
     _eventId = eventId
     _eventCount = totalEventCount - journalHeader.fold(0L)(_.totalEventCount)
@@ -57,7 +62,8 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     obj match
       case journalHeader: JournalHeader =>
         try
-          require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
+          require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
+            "EventId mismatch in snapshot")
           _journalHeader := journalHeader
           _firstEventId = journalHeader.eventId
           _eventId = journalHeader.eventId
