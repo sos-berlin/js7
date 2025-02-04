@@ -72,6 +72,7 @@ final case class ControllerState(
 extends
   SignedItemContainer,
   EventDrivenStateView[ControllerState],
+  ControllerStateView,
   ControllerEventDrivenStateView[ControllerState],
   OrderWatchStateHandler[ControllerState],
   ClusterableState[ControllerState],
@@ -150,6 +151,9 @@ extends
 
   def withStandards(standards: SnapshotableState.Standards): ControllerState =
     copy(standards = standards)
+
+  def checkedBoardState(path: BoardPath): Checked[BoardState] =
+    keyToUnsignedItemState_.checked(path).asInstanceOf[Checked[BoardState]]
 
   def applyKeyedEvent(keyedEvent: KeyedEvent[Event]): Checked[ControllerState] =
    keyedEvent match

@@ -2,7 +2,6 @@ package js7.data.state
 
 import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
-import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.L3
@@ -23,12 +22,12 @@ import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowS
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
-import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.{MapView, View}
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
-trait StateView extends ItemContainer:
+trait StateView extends ItemContainer, EngineStateFunctions:
 
   def isAgent: Boolean
 
@@ -96,22 +95,6 @@ trait StateView extends ItemContainer:
         o.boardPath
     .toSet
 
-  // COMPATIBLE with v2.3
-  final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
-    for
-      boardPath <- workflowPositionToBoardPath(workflowPosition)
-      boardState <- keyTo(BoardState).checked(boardPath)
-    yield
-      boardState
-
-  // COMPATIBLE with v2.3
-  final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
-    instruction_[NoticeInstruction](workflowPosition).flatMap:
-      _.referencedBoardPaths.toSeq match
-        case Seq(boardPath) => Right(boardPath)
-        case _ => Left(Problem.pure:
-          "Legacy orderIdToBoardState, but instruction has multiple BoardPaths")
-
   final def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId)
   : View[(BoardPath, BoardState)] =
     keyTo(BoardState).values.view.flatMap: boardState =>
@@ -157,19 +140,6 @@ trait StateView extends ItemContainer:
       boardState <- keyTo(BoardState).checked(boardPath)
     yield
       boardState
-
-  def instruction(workflowPosition: WorkflowPosition): Instruction =
-    idToWorkflow
-      .checked(workflowPosition.workflowId)
-      .orThrow
-      .instruction(workflowPosition.position)
-
-  final def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition)
-  : Checked[A] =
-    idToWorkflow
-      .checked(workflowPosition.workflowId)
-      .orThrow
-      .instruction_[A](workflowPosition.position)
 
   final def workflowPositionToLabel(workflowPosition: WorkflowPosition): Checked[Option[Label]] =
     for
