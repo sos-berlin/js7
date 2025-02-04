@@ -161,12 +161,13 @@ extends
     case o @ (_: JournalState | _: ClusterStateSnapshot) =>
       addStandardObject(o)
 
-  override protected def onOnAllSnapshotsObjectsAdded(): Unit =
+  def result(): ControllerState =
     assert(isNull(_controllerState))
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow
+
     _controllerState = ControllerState(
       eventId = eventId,
       _standards,
@@ -189,6 +190,8 @@ extends
     deletionMarkedItems.clear()
     pathToSignedSimpleItem.clear()
 
+    _controllerState
+
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match
       case jobResource: JobResource =>
@@ -203,6 +206,3 @@ extends
 
       def get(path: OrderWatchPath): Option[OrderWatchState] =
         _keyToUnsignedItemState.get(path).asInstanceOf[Option[OrderWatchState]]
-
-  def result(): ControllerState =
-    _controllerState.nn.copy(eventId = eventId)

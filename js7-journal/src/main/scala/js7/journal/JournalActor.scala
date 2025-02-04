@@ -520,7 +520,6 @@ extends Actor, Stash, JournalLogging:
 
       if conf.slowCheckState then
         // Simulate recovery
-        checkingRecoverer.onAllSnapshotObjectsAdded()
         assertEqualSnapshotState("Written snapshot",
           checkingRecoverer.result().withEventId(committedState.eventId))
 

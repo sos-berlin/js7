@@ -161,7 +161,6 @@ object SnapshotableState:
         .compile.drain
         .productR:
           IO:
-            recoverer.onAllSnapshotObjectsAdded()
             recoverer.result()
 
     private lazy val journalDecoder: Decoder[Any] =

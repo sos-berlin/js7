@@ -362,7 +362,6 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
       .foreach(recoverer.addSnapshotObject)
-    recoverer.onAllSnapshotObjectsAdded()
     assertEqual(recoverer.result(), controllerState)
 
   "keyToItem" in:
@@ -410,7 +409,6 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     "AgentRefState snapshot object" in:
       val recoverer = ControllerState.newRecoverer()
       recoverer.addSnapshotObject(AgentRefState(agentRef))
-      recoverer.onAllSnapshotObjectsAdded()
       assert(recoverer.result() == cs.withEventId(0))
 
     "UnsignedSimpleItemChanged" in:

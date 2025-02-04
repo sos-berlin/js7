@@ -31,6 +31,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
   private var _progress: JournalProgress = JournalProgress.Initial
   private var _state: S = null.asInstanceOf[S]
   private var _eventId: EventId = -999
+  private var _snapshotCount = 0
   private var _eventCount = 0L
 
   private object transaction:
@@ -70,6 +71,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
             JournalHeader.checkedHeader[S](journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
             recoverer.addSnapshotObject(journalHeader)
+            _snapshotCount += 1
             _progress = AfterHeader
 
           case _ => throw new IllegalArgumentException(
@@ -84,17 +86,17 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
       case InSnapshotSection =>
         journalRecord match
           case SnapshotFooter =>
-            recoverer.onAllSnapshotObjectsAdded()
+            _state = recoverer.result()
+            _eventId = _state.eventId
             _progress = AfterSnapshotSection
+            //recoverer = null.asInstanceOf[SnapshotableStateRecoverer[S]]
           case _ =>
             recoverer.addSnapshotObject(journalRecord)
+            _snapshotCount += 1
 
       case AfterSnapshotSection =>
         if journalRecord != EventHeader then throw new IllegalArgumentException(
           "Missing EventHeader in journal file")
-        _state = recoverer.result()
-        _eventId = _state.eventId
-        //recoverer = null.asInstanceOf[SnapshotableStateRecoverer[S]]
         _progress = InCommittedEventsSection
 
       case InCommittedEventsSection =>
@@ -184,7 +186,7 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
   def logStatistics(): Unit =
     val byteCount = Try(Files.size(journalFileForInfo)).toOption
     val elapsed = since.elapsed
-    val snapshotCount = recoverer.snapshotCount
+    val snapshotCount = _snapshotCount
     if elapsed >= 1.s then
       logger.debug:
         itemsPerSecondString(elapsed, snapshotCount + _eventCount, "snapshots+events") +

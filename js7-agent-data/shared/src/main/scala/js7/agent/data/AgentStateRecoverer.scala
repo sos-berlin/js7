@@ -78,7 +78,7 @@ extends SnapshotableStateRecoverer[AgentState]:
         pathToJobResource.insert(jobResource.path, jobResource)
       case _ =>
 
-  override protected def onOnAllSnapshotsObjectsAdded(): Unit =
+  def result(): AgentState =
     _state = _state.copy(
       eventId = eventId,
       meta = agentMetaState,
@@ -87,17 +87,15 @@ extends SnapshotableStateRecoverer[AgentState]:
       idToWorkflow = idToWorkflow.toMap,
       pathToJobResource = pathToJobResource.toMap,
       keyToSignedItem = keyToSignedItem.toMap)
+    synchronized:
+      fixMetaBeforev2_6_3()
+    _state
 
   def journalState: JournalState =
     _state.journalState
 
   def clusterState: ClusterState =
     _state.clusterState
-
-  def result(): AgentState =
-    synchronized:
-      fixMetaBeforev2_6_3()
-    _state.copy(eventId = eventId)
 
   private def fixMetaBeforev2_6_3(): Unit =
     val meta = _state.meta

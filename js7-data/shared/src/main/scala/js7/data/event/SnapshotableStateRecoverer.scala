@@ -13,7 +13,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
   protected val S: SnapshotableState.Companion[S]
 
   private var recordCount = 1L
-  private var _snapshotCount = 0L
   private var _firstEventId = EventId.BeforeFirst
   private var _eventId = EventId.BeforeFirst
   private val _journalHeader = SetOnce[JournalHeader]
@@ -28,8 +27,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
 
   protected def onAddSnapshotObject: PartialFunction[Any, Unit]
 
-  protected def onOnAllSnapshotsObjectsAdded(): Unit = {}
-
   def journalState: JournalState
 
   def clusterState: ClusterState
@@ -38,7 +35,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
 
   def addSnapshotObject(obj: Any): Unit =
     recordCount += 1
-    _snapshotCount += 1
     obj match
       case journalHeader: JournalHeader =>
         try
@@ -68,9 +64,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
 
-  def onAllSnapshotObjectsAdded(): Unit =
-    onOnAllSnapshotsObjectsAdded()
-
   /** Journal file's JournalHeader. */
   final def fileJournalHeader: Option[JournalHeader] =
     _journalHeader.toOption
@@ -78,8 +71,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
   final def eventId: EventId =
     _eventId
 
-  final def snapshotCount: Long =
-    _snapshotCount
 
 
 object SnapshotableStateRecoverer:
