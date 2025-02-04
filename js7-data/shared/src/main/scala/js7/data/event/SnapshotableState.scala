@@ -5,16 +5,24 @@ import cats.implicits.toShow
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Json}
+import java.io.FileWriter
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.io.NullWriter
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing
+import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.MultipleLinesBracket.{Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowableEither}
+import js7.base.utils.Tests.isTest
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
+import scala.util.control.NonFatal
 
 /** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
 trait SnapshotableState[S <: SnapshotableState[S]]
@@ -71,12 +79,47 @@ extends JournaledState[S]:
     .map:
       _.withEventId(eventId)
 
+  final def emitLineStream(emit: String => Unit): Unit =
+    toLineStream.map(emit).compile.drain
+
+  final def toLineStream: Stream[fs2.Pure, String] =
+    toStringStream.through(fs2.text.lines)
+      .zipWithBracket(Square)
+      .map: (line, br) =>
+        br +: line
+
   def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit(toString)
 
 
 object SnapshotableState:
   private val logger = Logger[this.type]
+
+  def showDifference[S <: SnapshotableState[S]](
+    a: S, aName: String,
+    b: S, bName: String,
+    errorFile: Option[Path] = None)
+  : Unit =
+    autoClosing(
+      errorFile match
+        case Some(errorFile: Path) if isTest =>
+          try
+            logger.error(s"Diff is also in file://${errorFile.toAbsolutePath}") // clickable in IntelliJ
+            new FileWriter(errorFile.toFile)
+          catch case NonFatal(_) => NullWriter()
+        case _ => NullWriter()
+    ): errorFile =>
+      def logLine(line: String) =
+        logger.error(line)
+        errorFile.write(line)
+        errorFile.write('\n')
+
+      logLine(s"$aName = ⏎")
+      a.emitLineStream(logLine)
+      errorFile.write('\n')
+
+      logLine(s"$bName = ⏎")
+      b.emitLineStream(logLine)
 
 
   final case class Standards(journalState: JournalState, clusterState: ClusterState):

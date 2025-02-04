@@ -81,6 +81,7 @@ extends
     Stream.emit[fs2.Pure, String]("ControllerState:\n")
       :+ "eventId=" :+ EventId.toString(eventId) :+ "\n"
       :+ standards.toString :+ "\n"
+      :+ controllerMetaState.toString :+ "\n"
       :+ "keyToUnsignedItemState_=\n"
       :++ Stream.iterable(keyToUnsignedItemState_.values.toVector.sorted).flatMap:
         _.toStringStream.map("  " + _ + "\n")

@@ -48,7 +48,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostPro
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.extensions.*
@@ -679,6 +679,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         logger.error(msg)
         // msg may get very big
         //logger.info(msg)  // Without colors because msg is already colored
+        SnapshotableState.showDifference(
+          recoveredJournalFile.state, "recoveredJournalFile.state",
+          snapshot, "snapshot")
         sys.error(msg)
 
   private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition)
