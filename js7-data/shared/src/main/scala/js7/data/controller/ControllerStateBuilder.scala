@@ -5,13 +5,13 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.Collections.implicits.*
-import js7.base.utils.Nulls.{isNull, nonNull}
+import js7.base.utils.Nulls.isNull
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.{Nulls, StandardMapView}
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.{BoardPath, BoardState, NoticeSnapshot}
-import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
-import js7.data.event.{Event, JournalState, KeyedEvent, SnapshotableStateBuilder, Stamped, StandardsBuilder}
+import js7.data.cluster.ClusterStateSnapshot
+import js7.data.event.{JournalState, SnapshotableStateBuilder, StandardsBuilder}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -79,7 +79,7 @@ extends
     _keyToUnsignedItemState.view
 
   protected def onInitializeState(state: ControllerState): Unit =
-    assert(_controllerState.asInstanceOf[ControllerState | Null] == null)
+    assert(isNull(_controllerState))
     _controllerState = state
 
   protected def onAddSnapshotObject =
@@ -162,11 +162,11 @@ extends
       addStandardObject(o)
 
   override protected def onOnAllSnapshotsObjectsAdded(): Unit =
+    assert(isNull(_controllerState))
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow
-    assert(isNull(_controllerState))
     _controllerState = ControllerState(
       eventId = eventId,
       _standards,
@@ -203,22 +203,6 @@ extends
 
       def get(path: OrderWatchPath): Option[OrderWatchState] =
         _keyToUnsignedItemState.get(path).asInstanceOf[Option[OrderWatchState]]
-
-  protected def onAddEvent =
-    case Stamped(eventId, _, keyedEvent) =>
-      _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
-
-  override def journalState: JournalState =
-    if nonNull(_controllerState) then
-      _controllerState.journalState
-    else
-      super.journalState
-
-  override def clusterState: ClusterState =
-    if nonNull(_controllerState) then
-      _controllerState.clusterState
-    else
-      super.clusterState
 
   def result(): ControllerState =
     _controllerState.nn.copy(eventId = eventId)

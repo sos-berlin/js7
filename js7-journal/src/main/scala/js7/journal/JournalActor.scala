@@ -78,7 +78,6 @@ extends Actor, Stash, JournalLogging:
   // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
   @volatile private var committedState: S = null.asInstanceOf[S]
   private val commitStateSync = new Object
-  private val journaledStateBuilder = S.newBuilder()
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
   private var totalRunningSince = now
@@ -128,9 +127,6 @@ extends Actor, Stash, JournalLogging:
     case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
       committedState = journaledState_.asInstanceOf[S]
       uncommittedState = committedState
-      if conf.slowCheckState then
-        journaledStateBuilder.initializeState(None, journaledState_.eventId, totalEventCount = 0, committedState)
-        assertEqualSnapshotState("Start", journaledStateBuilder.result())
       requireClusterAcknowledgement = committedState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -171,7 +167,6 @@ extends Actor, Stash, JournalLogging:
 
             case Right(updatedState) =>
               uncommittedState = updatedState
-              checkUncommittedState(stampedEvents)
               eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
               val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
               for o <- lastFileLengthAndEventId do
@@ -396,9 +391,6 @@ extends Actor, Stash, JournalLogging:
       logger.error(msg)
       sys.error(msg)
     uncommittedState = committedState    // Reduce duplicate allocated objects
-    if conf.slowCheckState then
-      assertEqualSnapshotState("onAllCommitsFinished",
-        journaledStateBuilder.result().withEventId(committedState.eventId))
     waitingForAcknowledge = false
     waitingForAcknowledgeTimer := SyncCancelable.empty
     maybeDoASnapshot()
@@ -621,35 +613,6 @@ extends Actor, Stash, JournalLogging:
           catch { case NonFatal(t) =>
             logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")
           }
-
-  private def checkUncommittedState(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Unit =
-    if conf.slowCheckState then
-      // Check event JSON recoverability via journaledStateBuilder
-      stampedEvents.map: stamped =>
-        // Write and read as JSON
-        import S.keyedEventJsonCodec
-        stamped.asJson.as[Stamped[AnyKeyedEvent]].orThrow
-      .foreach:
-        journaledStateBuilder.addStampedEvent
-
-      assertEqualSnapshotState("SnapshotableStateBuilder.result()",
-        journaledStateBuilder.result().withEventId(uncommittedState.eventId),
-        stampedEvents)
-
-      // Check snapshot recoverability
-      locally:
-        val recovered = uncommittedState.toRecovered.unsafeRunSyncX()
-        if recovered != uncommittedState then
-          uncommittedState.toSnapshotStream.evalMap: o =>
-            IO(logger.error(s"Snapshot $o"))
-          .compile.drain.unsafeRunSyncX()
-          assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.unsafeRunSyncX(),
-            stampedEvents)
-
-      // Check SnapshotStateBuilder#initializeState
-      val builder = S.newBuilder()
-      builder.initializeState(None, uncommittedState.eventId, totalEventCount, uncommittedState)
-      assertEqualSnapshotState("Builder.initializeState", builder.result(), stampedEvents)
 
   private def assertEqualSnapshotState(what: String, couldBeRecoveredState: S,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)

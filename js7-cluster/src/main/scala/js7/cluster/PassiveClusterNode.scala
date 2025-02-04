@@ -48,7 +48,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostPro
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken, StampedHeartbeatByteArray}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.extensions.*
@@ -91,7 +91,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   private def activeApiResource(implicit src: sourcecode.Enclosing) =
     activeApiCache.resource
 
-  private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)
+  private var _currentState = IO.pure(recovered.state)
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile private var awaitingCoupledEvent = false
   @volatile private var stopped = false
@@ -108,7 +108,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       // Active and passive node may be shut down at the same time. We try to handle this here.
       val untilDecoupled = logger.traceIO:
         ().tailRecM: _ =>
-          stateBuilderAndAccessor.state
+          _currentState
             .map(_.clusterState)
             .flatMap:
               case _: Coupled => IO.left(()).delayBy(1.s)
@@ -140,7 +140,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         .as(())
 
   def state: IO[S] =
-    stateBuilderAndAccessor.state
+    IO.defer(_currentState)
 
   /**
     * Runs the passive node until activated or terminated.
@@ -266,7 +266,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
           case Some(recoveredJournalFile) =>
             FirstPartialFile(recoveredJournalFile)
         start.tailRecM: continuation =>
-          replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
+          replicateJournalFile(continuation, activeNodeApi)
            // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map:
               case Left(problem) =>
@@ -283,17 +283,15 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
-    newStateBuilder: () => SnapshotableStateBuilder[S],
     activeNodeApi: ClusterNodeApi)
     (implicit ioRuntime: IORuntime)
   : IO[Checked[Continuation.Replicatable]] =
     logger.debugIO("replicateJournalFile", continuation.fileEventId):
       SyncDeadline.now.flatMap: startedAt =>
-        replicateJournalFile2(continuation, newStateBuilder, activeNodeApi, startedAt)
+        replicateJournalFile2(continuation, activeNodeApi, startedAt)
 
   private def replicateJournalFile2(
     continuation: Continuation.Replicatable,
-    newStateBuilder: () => SnapshotableStateBuilder[S],
     activeNodeApi: ClusterNodeApi,
     startedAt: SyncDeadline)
     (implicit ioRuntime: IORuntime)
@@ -302,8 +300,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       import continuation.file
 
       val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
-        continuation.maybeJournalId, newStateBuilder)
-
+        continuation.maybeJournalId)
       def releaseEvents(): Unit =
         if journalConf.deleteObsoleteFiles then
           eventWatch.releaseEvents:
@@ -338,10 +335,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         case FirstPartialFile(recoveredJournalFile) =>
           logger.info(s"Start replicating '${file.getFileName}' file after " +
             s"${EventId.toString(recoveredJournalFile.eventId)}, position ${recoveredJournalFile.length}")
-          builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
+          builder.startWithState(
+            journalHeader = recoveredJournalFile.journalHeader,
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount,
             recoveredJournalFile.state)
+          _currentState = IO(builder.result())
           eventWatch.onJournalingStarted(file,
             recoveredJournalFile.journalId,
             firstEventPositionAndFileEventId =
@@ -427,12 +426,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                             autoClosing(FileChannel.open(file, APPEND)): out =>
                               writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                               out.size
-                          builder.startWithState(JournalProgress.InCommittedEventsSection,
-                            journalHeader = Some(recoveredJournalFile.journalHeader),
+                          builder.startWithState(
+                            journalHeader = recoveredJournalFile.journalHeader,
                             eventId = lastEventId,
                             totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount + 1,
                             recoveredJournalFile.state)
                           builder.put(failedOverStamped)
+                          _currentState = IO(builder.result())
 
                           replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
                           replicatedFileLength = fileSize
@@ -501,6 +501,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
               ensureEqualState(continuation, builder.result())
             builder.put(journalRecord)  // throws on invalid event
             if isSnapshotTaken then
+              _currentState = IO(builder.result())
               for tmpFile <- maybeTmpFile do
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                   sys.error(s"Missing JournalHeader in replicated journal file '$file'")

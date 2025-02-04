@@ -19,7 +19,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest.*
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventId, JournalState, SnapshotableState, Stamped}
+import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.Attachable
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -384,8 +384,6 @@ final class ControllerStateTest extends OurAsyncTestSuite:
   "v2.2 compatiblity" - {
     // COMPATIBLE with v2.2
     var cs = ControllerState.empty
-    val builder = ControllerState.newBuilder()
-    builder.onAllSnapshotObjectsAdded()
     val eventIds = Iterator.from(1)
     val agentPath = AgentPath("v2.2")
     val uri = Uri("https://localhost")
@@ -400,8 +398,6 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       val eventId = eventIds.next()
       cs = cs.applyKeyedEvent(event).orThrow
       cs = cs.withEventId(eventId)
-      builder.addStampedEvent(Stamped(eventId, event))
-      assert(builder.result().withEventId(eventId) == cs)
 
     "UnsignedSimpleItemAdded" in:
       applyEvent(UnsignedSimpleItemAdded(agentRef))
