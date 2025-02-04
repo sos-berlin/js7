@@ -118,7 +118,7 @@ object SnapshotableState:
         .compile.drain
         .productR:
           IO:
-            builder.onAllSnapshotsAdded()
+            builder.onAllSnapshotObjectsAdded()
             builder.result()
 
     private lazy val journalDecoder: Decoder[Any] =

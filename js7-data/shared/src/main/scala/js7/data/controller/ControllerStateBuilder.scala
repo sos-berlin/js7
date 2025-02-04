@@ -172,7 +172,7 @@ extends SnapshotableStateBuilder[ControllerState],
     case o @ (_: JournalState | _: ClusterStateSnapshot) =>
       addStandardObject(o)
 
-  override protected def onOnAllSnapshotsAdded(): Unit =
+  override protected def onOnAllSnapshotsObjectsAdded(): Unit =
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted

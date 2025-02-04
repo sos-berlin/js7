@@ -79,7 +79,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
       case InSnapshotSection =>
         journalRecord match
           case SnapshotFooter =>
-            builder.onAllSnapshotsAdded()
+            builder.onAllSnapshotObjectsAdded()
             _progress = AfterSnapshotSection
           case _ =>
             builder.addSnapshotObject(journalRecord)
@@ -95,14 +95,14 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
             transaction.begin()
             _progress = InTransaction
           case _ =>
-            builder.addEvent(cast[Stamped[KeyedEvent[Event]]](journalRecord))
+            builder.addStampedEvent(cast[Stamped[KeyedEvent[Event]]](journalRecord))
 
       case InTransaction =>
         journalRecord match
           case Commit =>
             _progress = InCommittedEventsSection
             for stamped <- transaction.buffer.nn do
-              builder.addEvent(stamped)
+              builder.addStampedEvent(stamped)
             transaction.clear()
           case _ =>
             transaction.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))

@@ -79,7 +79,7 @@ extends SnapshotableStateBuilder[AgentState]:
         pathToJobResource.insert(jobResource.path, jobResource)
       case _ =>
 
-  override protected def onOnAllSnapshotsAdded(): Unit =
+  override protected def onOnAllSnapshotsObjectsAdded(): Unit =
     _state = _state.copy(
       eventId = eventId,
       meta = agentMetaState,
@@ -94,10 +94,10 @@ extends SnapshotableStateBuilder[AgentState]:
       updateEventId(eventId)
       _state = _state.applyKeyedEvent(keyedEvent).orThrow
 
-  override def journalState: JournalState =
+  def journalState: JournalState =
     _state.journalState
 
-  override def clusterState: ClusterState =
+  def clusterState: ClusterState =
     _state.clusterState
 
   def result(): AgentState =

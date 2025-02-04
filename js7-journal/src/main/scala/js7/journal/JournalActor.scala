@@ -531,7 +531,7 @@ extends Actor, Stash, JournalLogging:
 
       if conf.slowCheckState then
         // Simulate recovery
-        checkingBuilder.onAllSnapshotsAdded()
+        checkingBuilder.onAllSnapshotObjectsAdded()
         assertEqualSnapshotState("Written snapshot",
           checkingBuilder.result().withEventId(journalHeader.eventId))
 
@@ -633,7 +633,7 @@ extends Actor, Stash, JournalLogging:
         import S.keyedEventJsonCodec
         stamped.asJson.as[Stamped[AnyKeyedEvent]].orThrow
       .foreach:
-        journaledStateBuilder.addEvent
+        journaledStateBuilder.addStampedEvent
 
       assertEqualSnapshotState("SnapshotableStateBuilder.result()",
         journaledStateBuilder.result().withEventId(uncommittedState.eventId),

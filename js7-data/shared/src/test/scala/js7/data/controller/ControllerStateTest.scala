@@ -362,7 +362,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
       .foreach(builder.addSnapshotObject)
-    builder.onAllSnapshotsAdded()
+    builder.onAllSnapshotObjectsAdded()
     assertEqual(builder.result(), controllerState)
 
   "keyToItem" in:
@@ -385,6 +385,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     // COMPATIBLE with v2.2
     var cs = ControllerState.empty
     val builder = ControllerState.newBuilder()
+    builder.onAllSnapshotObjectsAdded()
     val eventIds = Iterator.from(1)
     val agentPath = AgentPath("v2.2")
     val uri = Uri("https://localhost")
@@ -399,7 +400,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
       val eventId = eventIds.next()
       cs = cs.applyKeyedEvent(event).orThrow
       cs = cs.withEventId(eventId)
-      builder.addEvent(Stamped(eventId, event))
+      builder.addStampedEvent(Stamped(eventId, event))
       assert(builder.result() == cs)
 
     "UnsignedSimpleItemAdded" in:
@@ -413,8 +414,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     "AgentRefState snapshot object" in:
       val b = ControllerState.newBuilder()
       b.addSnapshotObject(AgentRefState(agentRef))
-      b.onAllSnapshotsAdded()
-      val x = b.result()
+      b.onAllSnapshotObjectsAdded()
       assert(b.result() == cs.withEventId(0))
 
     "UnsignedSimpleItemChanged" in:

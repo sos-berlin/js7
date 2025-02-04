@@ -35,7 +35,7 @@ private object StateRecovererTest
 //      case o: TestState => _state = o
 //    }
 //
-//    protected def onOnAllSnapshotsAdded() = {}
+//    protected def onOnAllSnapshotsObjectsAdded() = {}
 //
 //    protected def onAddEvent = {
 //      case Stamped(KeyedEvent(NoKey <-: event)) => _state = _state.apply()

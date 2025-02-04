@@ -41,7 +41,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
 
   protected def onAddSnapshotObject: PartialFunction[Any, Unit]
 
-  protected def onOnAllSnapshotsAdded(): Unit = {}
+  protected def onOnAllSnapshotsObjectsAdded(): Unit = {}
 
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
@@ -82,8 +82,8 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
 
-  def onAllSnapshotsAdded(): Unit =
-    onOnAllSnapshotsAdded()
+  def onAllSnapshotObjectsAdded(): Unit =
+    onOnAllSnapshotsObjectsAdded()
     onStateIsAvailable()
 
   private def onStateIsAvailable(): Unit =
@@ -91,7 +91,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
       synchronized:
         result())
 
-  final def addEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
+  final def addStampedEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
     synchronized:  // synchronize with asynchronous execution of synchronizedStateFuture
       try
         recordCount += 1
