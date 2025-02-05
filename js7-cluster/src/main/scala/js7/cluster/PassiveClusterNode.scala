@@ -158,8 +158,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
           if journalConf.deleteObsoleteFiles then
             for f <- recovered.recoveredJournalFile do
               val eventId = f.fileEventId/*release files before the recovered file*/
-              eventWatch.releaseEvents(
-                recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+              eventWatch.releaseEvents:
+                recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds)
 
           for o <- recovered.recoveredJournalFile do
             cutJournalFile(o.file, o.length, o.eventId)
@@ -179,30 +179,44 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                 case _ => IO.unit
         ))
 
-  private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): IO[Unit] =
-    recoveredClusterState
-      .match
-        case ClusterState.Empty =>
-          IO.unit
+  private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState)
+  : IO[Unit] =
+    recoveredClusterState match
+      case ClusterState.Empty =>
+        IO.unit
 
-        case _: IsDecoupled =>
-          tryEndlesslyToSendCommandInBackground(
-            ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
+      case _: IsDecoupled =>
+        tryEndlesslyToSendCommandInBackground:
+          ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _)
 
-        case _: PreparedToBeCoupled =>
-          tryEndlesslyToSendCommandInBackground(
-            ClusterCouple(activeId = activeId, passiveId = ownId, _))
+      case _: PreparedToBeCoupled =>
+        tryEndlesslyToSendCommandInBackground:
+          ClusterCouple(activeId = activeId, passiveId = ownId, _)
 
-        case _: Coupled =>
-          // After a quick restart of this passive node, the active node may not yet have noticed the loss.
-          // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
-          // Then the active node couples again with this passive node,
-          // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
-          // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-          IO.defer:
-            awaitingCoupledEvent = true
-            tryEndlesslyToSendCommandInBackground(
-              _ => ClusterRecouple(activeId = activeId, passiveId = ownId))
+      case _: Coupled =>
+        // After a quick restart of this passive node, the active node may not yet have noticed the loss.
+        // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
+        // Then the active node couples again with this passive node,
+        // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
+        // The active node ignores this command if it has emitted a ClusterPassiveLost event.
+        IO.defer:
+          awaitingCoupledEvent = true
+          tryEndlesslyToSendCommandInBackground:
+            _ => ClusterRecouple(activeId = activeId, passiveId = ownId)
+
+  private def tryEndlesslyToSendCommandInBackground(toCommand: OneTimeToken => ClusterCommand)
+  : IO[Unit] =
+    logger.traceIO:
+      tryEndlesslyToSendCommand(toCommand)
+        .attempt
+        .map:
+          case Left(throwable) => logger.error(
+            "While notifying the active cluster node about restart of this passive node:" +
+              s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+          case Right(()) =>
+            logger.debug:
+              "Active cluster node has been notified about restart of this passive node"
+    .startAndForget
 
   def confirmCoupling(token: OneTimeToken): Checked[Unit] =
     common.couplingTokenProvider.confirms(token) !!
@@ -224,36 +238,21 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
-      tryEndlesslyToSendCommand(
-        ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
+      tryEndlesslyToSendCommand:
+        ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _)
 
-  private def tryEndlesslyToSendCommandInBackground(toCommand: OneTimeToken => ClusterCommand)
-  : IO[Unit] =
-    tryEndlesslyToSendCommand(toCommand)
-      .attempt
-      .map:
-        case Left(throwable) => logger.error(
-          "While notifying the active cluster node about restart of this passive node:" +
-            s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-        case Right(()) =>
-          logger.debug(
-            "Active cluster node has been notified about restart of this passive node")
-      .startAndForget
+  private def sendClusterCouple: IO[Unit] =
+    tryEndlesslyToSendCommand:
+      ClusterCouple(activeId = activeId, passiveId = ownId, _)
 
-  private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand)
-  : IO[Unit] =
-    IO
-      .race(
+  private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand): IO[Unit] =
+    IO.race(
         shutdown.get,
         common.tryEndlesslyToSendCommand(activeApiResource, toCommand))
       .flatMap:
         case Left(()) => IO(logger.debug(
           s"◼️  tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
         case Right(()) => IO.unit
-
-  private def sendClusterCouple: IO[Unit] =
-    tryEndlesslyToSendCommand(
-      ClusterCouple(activeId = activeId, passiveId = ownId, _))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : IO[Checked[Recovered[S]]] =
