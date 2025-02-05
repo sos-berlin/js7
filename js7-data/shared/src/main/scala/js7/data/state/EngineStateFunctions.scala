@@ -9,8 +9,8 @@ import scala.reflect.ClassTag
 
 trait EngineStateFunctions:
 
-  def idToWorkflow: PartialFunction[WorkflowId, Workflow]
-  def idToOrder: PartialFunction[OrderId, Order[Order.State]]
+  protected def idToWorkflow: PartialFunction[WorkflowId, Workflow]
+  protected def idToOrder: PartialFunction[OrderId, Order[Order.State]]
 
   final def instruction_[A <: Instruction : ClassTag](workflowPosition: WorkflowPosition)
   : Checked[A] =
