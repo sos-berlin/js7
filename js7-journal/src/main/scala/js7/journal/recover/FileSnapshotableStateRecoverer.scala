@@ -6,16 +6,13 @@ import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
 import js7.base.time.{Stopwatch, Timestamp}
-import js7.base.utils.ByteUnits
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.Nulls.nonNull
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichString}
 import js7.data.cluster.ClusterState
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalState, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateRecoverer, Stamped}
 import js7.journal.recover.FileSnapshotableStateRecoverer.*
-import js7.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Deadline.now
@@ -27,28 +24,9 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
   (using S: SnapshotableState.Companion[S]):
 
   private val since = now
-  private val recoverer = S.newRecoverer()
-  private var _progress: JournalProgress = JournalProgress.Initial
-  private var _state: S = null.asInstanceOf[S]
-  private var _eventId: EventId = -999
+  private var _progress: Progress = Initial(S.newRecoverer())
   private var _snapshotCount = 0
   private var _eventCount = 0L
-
-  private object transaction:
-    var buffer: ArrayBuffer[Stamped[KeyedEvent[Event]]] | Null = null
-
-    def begin(): Unit =
-      require(!isInTransaction)
-      buffer = new mutable.ArrayBuffer[Stamped[KeyedEvent[Event]]]
-
-    def add(stamped: Stamped[KeyedEvent[Event]]): Unit =
-      require(isInTransaction)
-      buffer = buffer.nn :+ stamped
-
-    def clear(): Unit =
-      buffer = null
-
-    private def isInTransaction = buffer != null
 
   def startWithState(
     journalHeader: JournalHeader,
@@ -56,15 +34,12 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
     totalEventCount: Long,
     state: S)
   : Unit =
-    this._progress = InCommittedEventsSection
-    recoverer.initializeState(Some(journalHeader), eventId, state)
-    _state = state
-    _eventId = eventId
+    _progress = InCommittedEventsSection(journalHeader, state, eventId)
     _eventCount = totalEventCount - journalHeader.totalEventCount
 
   def put(journalRecord: Any): Unit =
     _progress match
-      case Initial =>
+      case Initial(recoverer) =>
         journalRecord match
           case journalHeader: JournalHeader =>
             logger.debug(journalHeader.toString)
@@ -72,86 +47,82 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
               .orThrow
             recoverer.addSnapshotObject(journalHeader)
             _snapshotCount += 1
-            _progress = AfterHeader
+            _progress = AfterHeader(recoverer, journalHeader)
 
           case _ => throw new IllegalArgumentException(
             s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader" +
               s" instead of ${journalRecord.toString.truncateWithEllipsis(100)}:")
 
-      case AfterHeader =>
+      case AfterHeader(recoverer, journalHeader) =>
         if journalRecord != SnapshotHeader then throw new IllegalArgumentException(
           "Missing SnapshotHeader in journal file")
-        _progress = InSnapshotSection
+        _progress = InSnapshotSection(recoverer, journalHeader)
 
-      case InSnapshotSection =>
+      case InSnapshotSection(recoverer, journalHeader) =>
         journalRecord match
           case SnapshotFooter =>
-            _state = recoverer.result()
-            _eventId = _state.eventId
-            _progress = AfterSnapshotSection
+            _progress = AfterSnapshotSection(journalHeader, recoverer.result())
             //recoverer = null.asInstanceOf[SnapshotableStateRecoverer[S]]
           case _ =>
             recoverer.addSnapshotObject(journalRecord)
             _snapshotCount += 1
 
-      case AfterSnapshotSection =>
+      case AfterSnapshotSection(journalHeader, state) =>
         if journalRecord != EventHeader then throw new IllegalArgumentException(
           "Missing EventHeader in journal file")
-        _progress = InCommittedEventsSection
+        _progress = InCommittedEventsSection(journalHeader, state, state.eventId)
 
-      case InCommittedEventsSection =>
+      case progress: InCommittedEventsSection =>
         journalRecord match
           case Transaction =>
-            transaction.begin()
-            _progress = InTransaction
+            _progress = InTransaction(progress.journalHeader, progress.state)
           case _ =>
             val stamped = cast[Stamped[KeyedEvent[Event]]](journalRecord)
-            _state = _state.applyKeyedEvent(stamped.value).orThrow
-            _eventId = stamped.eventId
+            progress.rawState = progress.rawState.applyKeyedEvent(stamped.value).orThrow
+            progress.eventId = stamped.eventId
             _eventCount += 1
 
-      case InTransaction =>
+      case ta: InTransaction =>
         journalRecord match
           case Commit =>
-            _progress = InCommittedEventsSection
-            val stampedEvents = transaction.buffer.nn
-            _state = _state.applyStampedEvents(stampedEvents).orThrow
-            _eventId = _state.eventId
-            _eventCount += stampedEvents.size
-            transaction.clear()
+            val events = ta.stampedKeyedEvents
+            val updated = ta.state.applyStampedEvents(events).orThrow
+            _progress = InCommittedEventsSection(ta.journalHeader, updated, updated.eventId)
+            _eventCount += events.size
           case _ =>
-            transaction.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
+            ta.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
 
   def rollbackToEventSection(): Unit =
     _progress match
-      case InCommittedEventsSection =>
-      case InTransaction =>
-        rollback()
+      case _: InCommittedEventsSection =>
+      case InTransaction(journalHeader, state) =>
+        _progress = InCommittedEventsSection(journalHeader, state, state.eventId)
       case _ =>
         throw new IllegalStateException(s"rollbackToEventSection() but progress=${_progress}")
 
-  private def rollback(): Unit =
-    transaction.clear()
-    _progress = InCommittedEventsSection
+  def isAfterSnapshotSection: Boolean =
+    _progress.isInstanceOf[AfterSnapshotSection]
 
-  def journalProgress: JournalProgress =
-    _progress
+  def isInCommittedEventsSection: Boolean =
+    _progress.isInstanceOf[InCommittedEventsSection]
 
   def fileJournalHeader: Option[JournalHeader] =
-    recoverer.fileJournalHeader
+    _progress match
+      case o: HasJournalHeader => Some(o.journalHeader)
+      case _ => None
 
   /** Calculated next JournalHeader. */
   def nextJournalHeader: Option[JournalHeader] =
-    recoverer.fileJournalHeader.map(_.copy(
-      eventId = _eventId,
+    fileJournalHeader.map(_.copy(
+      eventId = _progress.eventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = recoverer.fileJournalHeader.fold(ZeroDuration): header =>
+      totalRunningTime = fileJournalHeader.fold(ZeroDuration): header =>
         val lastJournalDuration = lastEventIdTimestamp - header.timestamp
         (header.totalRunningTime + lastJournalDuration).roundUpToNext(1.ms),
       timestamp = lastEventIdTimestamp))
 
   def totalEventCount: Long =
-    recoverer.fileJournalHeader.fold(0L)(_.totalEventCount) + _eventCount
+    fileJournalHeader.fold(0L)(_.totalEventCount) + _eventCount
 
   private def lastEventIdTimestamp: Timestamp =
     if eventId == EventId.BeforeFirst then
@@ -160,28 +131,19 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
       EventId.toTimestamp(eventId)
 
   def eventId: EventId =
-    if nonNull(_state) then
-      _eventId
-    else
-      recoverer.eventId
+    _progress.eventId
 
   def journalState: JournalState =
-    if nonNull(_state) then
-      _state.journalState
-    else
-      recoverer.journalState
+    _progress.journalState
 
   def clusterState: ClusterState =
-    if nonNull(_state) then
-      _state.clusterState
-    else
-      recoverer.clusterState
-
-  def maybeState(): Option[S] =
-    Option(_state)
+    _progress.clusterState
 
   def result(): S =
-    _state.withEventId(eventId = _eventId)
+    _progress match
+      case o: HasState => o.state
+      case _ => throw new IllegalStateException(
+        s"$toString has not yet recovered all snapshot objects for $S")
 
   def logStatistics(): Unit =
     val byteCount = Try(Files.size(journalFileForInfo)).toOption
@@ -202,6 +164,65 @@ final class FileSnapshotableStateRecoverer[S <: SnapshotableState[S]](
         " read" +
         ((elapsed >= 10.s) ?? s" in ${elapsed.pretty}") +
         ")")
+
+  // Progress //
+
+  private sealed trait Progress:
+    def eventId: EventId
+    def journalState: JournalState
+    def clusterState: ClusterState
+
+  private sealed trait HasRecoverer extends  Progress:
+    def recoverer: SnapshotableStateRecoverer[S]
+    final def eventId = recoverer.eventId
+    final def journalState = recoverer.journalState
+    final def clusterState = recoverer.clusterState
+
+  private sealed trait HasJournalHeader extends Progress:
+    def journalHeader: JournalHeader
+
+  private sealed trait HasState extends HasJournalHeader:
+    /** S without valid EventId. */
+    def rawState: S
+    def state: S
+    final def journalState = state.journalState
+    final def clusterState = state.clusterState
+
+
+  private final case class Initial(recoverer: SnapshotableStateRecoverer[S])
+  extends HasRecoverer
+
+  private final case class AfterHeader(
+    recoverer: SnapshotableStateRecoverer[S],
+    journalHeader: JournalHeader)
+  extends HasRecoverer
+
+  private final case class InSnapshotSection(
+    recoverer: SnapshotableStateRecoverer[S],
+    journalHeader: JournalHeader)
+  extends HasRecoverer
+
+  private final case class AfterSnapshotSection(journalHeader: JournalHeader, state: S)
+  extends HasState:
+    def eventId = state.eventId
+    def rawState = state
+
+  private final case class InCommittedEventsSection(
+    journalHeader: JournalHeader,
+    var rawState: S,
+    var eventId: EventId)
+  extends HasState:
+    def state = rawState.withEventId(eventId)
+
+  private final case class InTransaction(journalHeader: JournalHeader, state: S)
+  extends HasState:
+    def eventId = state.eventId
+    def rawState = state
+
+    var stampedKeyedEvents = new mutable.ArrayBuffer[Stamped[KeyedEvent[Event]]]
+
+    def add(stamped: Stamped[KeyedEvent[Event]]): Unit =
+      stampedKeyedEvents = stampedKeyedEvents.nn :+ stamped
 
 
 object FileSnapshotableStateRecoverer:

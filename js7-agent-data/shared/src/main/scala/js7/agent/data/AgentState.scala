@@ -7,7 +7,7 @@ import io.circe.{Decoder, Encoder}
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
+import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateRecoverer}
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -53,7 +53,7 @@ final case class AgentState(
 extends SignedItemContainer,
   EventDrivenStateView[AgentState],
   SubagentDirectorState[AgentState],
-  FileWatchStateHandler[AgentState],
+  FileWatchStateRecoverer[AgentState],
   ClusterableState[AgentState]:
 
   override def isAgent = true

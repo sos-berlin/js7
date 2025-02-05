@@ -52,7 +52,7 @@ import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, Journ
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.extensions.*
-import js7.journal.recover.{FileSnapshotableStateRecoverer, JournalProgress, Recovered, RecoveredJournalFile}
+import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   ownId: NodeId,
@@ -525,12 +525,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                 releaseEvents()
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
             replicatedFileLength = fileLength
-            if recoverer.journalProgress == JournalProgress.InCommittedEventsSection then
+            if recoverer.isInCommittedEventsSection then
               lastProperEventPosition = fileLength
             if isReplicatingHeadOfFile then
               Stream.emit(Right(()))
             else
-              if recoverer.journalProgress == JournalProgress.InCommittedEventsSection then
+              if recoverer.isInCommittedEventsSection then
                 // An open transaction may be rolled back, so we do not notify about these
                 eventWatch.onFileWritten(fileLength)
                 journalRecord match

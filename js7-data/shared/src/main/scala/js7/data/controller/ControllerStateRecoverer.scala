@@ -5,13 +5,12 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.Collections.implicits.*
-import js7.base.utils.Nulls.isNull
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.base.utils.{Nulls, StandardMapView}
+import js7.base.utils.StandardMapView
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.board.{BoardPath, BoardState, NoticeSnapshot}
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsBuilder}
+import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -29,7 +28,7 @@ import scala.collection.{MapView, mutable}
 final class ControllerStateRecoverer
 extends
   SnapshotableStateRecoverer[ControllerState],
-  StandardsBuilder,
+  StandardsRecoverer,
   ControllerStateView,
   OrderWatchStateHandler[ControllerStateRecoverer]:
 
@@ -43,7 +42,6 @@ extends
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
-  private var _controllerState: ControllerState = null.asInstanceOf[ControllerState]
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
@@ -77,10 +75,6 @@ extends
 
   val keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
     _keyToUnsignedItemState.view
-
-  protected def onInitializeState(state: ControllerState): Unit =
-    assert(isNull(_controllerState))
-    _controllerState = state
 
   protected def onAddSnapshotObject =
     case order: Order[Order.State] =>
@@ -162,15 +156,14 @@ extends
       addStandardObject(o)
 
   def result(): ControllerState =
-    assert(isNull(_controllerState))
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow
 
-    _controllerState = ControllerState(
+    ControllerState(
       eventId = eventId,
-      _standards,
+      standards,
       controllerMetaState,
       _keyToUnsignedItemState.view.mapValues:
         case o: PlanSchemaState => o.copy(toPlan = Map.empty) // finish will recalculate properly
@@ -182,15 +175,6 @@ extends
       deletionMarkedItems.toSet,
       _idToOrder.toMap
     ).finish.orThrow
-
-    repo = Repo.empty
-    _idToOrder.clear()
-    _keyToUnsignedItemState.clear()
-    agentAttachments = ClientAttachments.empty[AgentPath]
-    deletionMarkedItems.clear()
-    pathToSignedSimpleItem.clear()
-
-    _controllerState
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match

@@ -14,7 +14,6 @@ import js7.common.utils.UntilNoneIterator
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
-import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.StateRecoverer.*
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
@@ -25,7 +24,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   newFileJournaledStateRecoverer: () => FileSnapshotableStateRecoverer[S])
   (implicit S: SnapshotableState.Companion[S]):
 
-  private val fileJournaledStateRecoverer = newFileJournaledStateRecoverer()
+  private val fileRecoverer = newFileJournaledStateRecoverer()
 
   private var _position = 0L
   private var _lastProperEventPosition = 0L
@@ -36,21 +35,19 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
-        fileJournaledStateRecoverer.put(S.decodeJournalJson(json).orThrow)
-        fileJournaledStateRecoverer.journalProgress match
-          case AfterSnapshotSection =>
-            _position = jsonReader.position
-          case InCommittedEventsSection =>
-            _position = jsonReader.position
-            _lastProperEventPosition = jsonReader.position
-          case _ =>
-        if _firstEventPosition.isEmpty && fileJournaledStateRecoverer.journalProgress == InCommittedEventsSection then
+        fileRecoverer.put(S.decodeJournalJson(json).orThrow)
+        if fileRecoverer.isAfterSnapshotSection then
+          _position = jsonReader.position
+        else if fileRecoverer.isInCommittedEventsSection then
+          _position = jsonReader.position
+          _lastProperEventPosition = jsonReader.position
+        if _firstEventPosition.isEmpty && fileRecoverer.isInCommittedEventsSection then
           _firstEventPosition := jsonReader.position
-      for h <- fileJournaledStateRecoverer.fileJournalHeader do
+      for h <- fileRecoverer.fileJournalHeader do
         if journalLocation.file(h.eventId) != file then
           sys.error:
             s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'"
-      fileJournaledStateRecoverer.logStatistics()
+      fileRecoverer.logStatistics()
 
   def firstEventPosition = _firstEventPosition.toOption
 

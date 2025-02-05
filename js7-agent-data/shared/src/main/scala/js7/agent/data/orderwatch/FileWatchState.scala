@@ -99,7 +99,7 @@ with EventDriven.Companion[FileWatchState, OrderWatchEvent]:
     Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),
     Subtype.named(deriveCodec[EntrySnapshot], "FileWatchState.File"))
 
-  final class Builder:
+  final class Recoverer:
     private val header = SetOnce[HeaderSnapshot]
     private val entries = mutable.Buffer.empty[DirectoryState.Entry]
 

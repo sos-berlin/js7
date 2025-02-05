@@ -5,9 +5,9 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.event.KeyedEvent
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import scala.collection.{MapView, mutable}
+import scala.collection.{MapView, View, mutable}
 
-trait FileWatchStateHandler[Self]:
+trait FileWatchStateRecoverer[Self]:
   self: Self =>
 
   protected def pathToFileWatchState: MapView[OrderWatchPath, FileWatchState]
@@ -45,15 +45,15 @@ trait FileWatchStateHandler[Self]:
           updateFileWatchState(o)
 
 
-object FileWatchStateHandler:
+object FileWatchStateRecoverer:
 
-  final class Builder:
-    private val pathToFileWatch = mutable.Map.empty[OrderWatchPath, FileWatchState.Builder]
+  final class Recoverer:
+    private val pathToFileWatch = mutable.Map.empty[OrderWatchPath, FileWatchState.Recoverer]
 
     def addSnapshot(snapshot: FileWatchState.Snapshot): Unit =
       pathToFileWatch
-        .getOrElseUpdate(snapshot.orderWatchPath, new FileWatchState.Builder)
+        .getOrElseUpdate(snapshot.orderWatchPath, new FileWatchState.Recoverer)
         .addSnapshot(snapshot)
 
-    def result: Map[OrderWatchPath, FileWatchState] =
-      pathToFileWatch.view.mapValues(_.result()).toMap
+    def result: View[(OrderWatchPath, FileWatchState)] =
+      pathToFileWatch.view.mapValues(_.result())

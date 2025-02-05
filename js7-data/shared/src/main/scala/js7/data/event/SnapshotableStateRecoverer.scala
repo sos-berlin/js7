@@ -17,14 +17,6 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
   private var _eventId = EventId.BeforeFirst
   private val _journalHeader = SetOnce[JournalHeader]
 
-  @deprecated
-  def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, state: S): Unit =
-    journalHeader foreach { _journalHeader := _ }
-    _eventId = eventId
-    onInitializeState(state)
-
-  protected def onInitializeState(state: S): Unit
-
   protected def onAddSnapshotObject: PartialFunction[Any, Unit]
 
   def journalState: JournalState
@@ -72,15 +64,11 @@ trait SnapshotableStateRecoverer[S <: SnapshotableState[S]]:
     _eventId
 
 
-
 object SnapshotableStateRecoverer:
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
-  extends SnapshotableStateRecoverer[S], StandardsBuilder:
+  extends SnapshotableStateRecoverer[S], StandardsRecoverer:
     private var _state = S.empty
-
-    protected def onInitializeState(state: S): Unit =
-      _state = state
 
     override def addSnapshotObject(obj: Any): Unit = obj match
       case o: JournalState =>

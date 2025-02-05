@@ -2,11 +2,14 @@ package js7.data.event
 
 import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
 
-trait StandardsBuilder:
+trait StandardsRecoverer:
   this: SnapshotableStateRecoverer[?] =>
 
-  protected var _standards: SnapshotableState.Standards =
+  private var _standards: SnapshotableState.Standards =
     SnapshotableState.Standards.empty
+
+  protected final def standards: SnapshotableState.Standards =
+    _standards
 
   def journalState: JournalState =
     _standards.journalState
