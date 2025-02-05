@@ -21,9 +21,9 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
       primary.runController(): primaryController =>
         val backupController = backup.newController()
 
-        backupController.eventWatch.await[ClusterCoupled]()
+        backupController.eventWatch.awaitNext[ClusterCoupled]()
         backupController.stop.await(99.s)
-        primaryController.eventWatch.await[ClusterPassiveLost]()
+        primaryController.eventWatch.awaitNext[ClusterPassiveLost]()
 
         primaryController.terminate(suppressSnapshot = true).await(99.s)
 
@@ -32,9 +32,17 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
       primary.runController(dontWaitUntilReady = true/*Since v2.7*/): primaryController =>
         backup.runController(dontWaitUntilReady = true): _ =>
           primaryController.waitUntilReady() // Since v2.7
-          primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId).head.eventId
+          primaryController.eventWatch.awaitNext[ClusterCoupled](
+            after = primaryController.eventWatch.lastFileEventId)
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
+
+          if !primaryController.clusterState.await(99.s).isInstanceOf[Coupled] then
+            // On a busy machine (quite often when tests run), the passive node may send a
+            // ClusterRecouple lately, and a second ClusterPassiveLost is emitted.
+            // This is due to a race condition with the primary's ClusterPassiveLost
+            primaryController.eventWatch.awaitNext[ClusterCoupled]()
+
           assert(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
           primaryController.terminate().await(99.s)
 
