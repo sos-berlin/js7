@@ -8,14 +8,12 @@ final class OneTimeTokenProvider private():
 
   val resource: ResourceIO[OneTimeToken] =
     Resource.make(
-      acquire = IO {
+      acquire = IO:
         val token = OneTimeToken.random()
         current = Some(token)
-        token
-      })(
-      release = _ => IO {
-        current = None
-      })
+        token)(
+      release = _ => IO:
+        current = None)
 
   def confirms(token: OneTimeToken): Boolean =
     current.contains(token)
