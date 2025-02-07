@@ -196,153 +196,149 @@ final class AgentStateTest extends OurAsyncTestSuite:
 
   "estimatedSnapshotSize" in:
     assert(agentState.estimatedSnapshotSize == 14)
-    for n <- agentState.toSnapshotStream.compile.count
-      yield assert(n == agentState.estimatedSnapshotSize)
+    val n = agentState.toSnapshotStream.compile.count
+    assert(n == agentState.estimatedSnapshotSize)
 
   "Snapshot JSON" in:
     implicit val x = AgentState.snapshotObjectJsonCodec
-    agentState.toSnapshotStream.map(_.asJson).map(removeJNull).toListL
-      .flatMap { jsons =>
-        assert(jsons == List(
-          json"""{
-            "TYPE": "JournalState",
-            "userIdToReleasedEventId": {
-              "USER": 500
-            }
-          }""",
-          json"""{
-            "TYPE": "AgentMetaState",
-            "directors": [ "SUBAGENT" ],
-            "agentPath": "AGENT",
-            "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
-            "controllerId": "CONTROLLER"
-          }""",
-          json"""{
-            "TYPE": "SubagentItemState",
-            "subagentItem": {
-              "id": "SUBAGENT",
-              "agentPath": "AGENT",
-              "uri": "https://localhost:0",
-              "disabled": false,
-              "itemRevision": 7
-             },
-             "couplingState": {
-               "TYPE": "Reset",
-               "reason": {
-                 "TYPE": "Fresh"
-               }
-             },
-             "eventId": 0
-          }""",
-          json"""{
-            "TYPE": "SubagentBundle",
-            "id": "BUNDLE",
-            "subagentToPriority": {
-              "SUBAGENT": 1
-            },
-            "itemRevision": 7
-          }""",
-          json"""{
-            "TYPE": "FileWatchState",
-            "fileWatch": {
-              "path": "FILE-WATCH-ID",
-              "workflowPath": "WORKFLOW",
-              "agentPath": "AGENT",
-              "directoryExpr": "'${separator}DIRECTORY'",
-              "pattern": "\\.csv",
-              "delay": 3,
-              "orderIdExpression": "$$0",
-              "itemRevision": 7
-            }
-          }""",
-          json"""{
-            "TYPE": "FileWatchState.File",
-            "orderWatchPath": "FILE-WATCH-ID",
-            "path": "${separator}DIRECTORY${separator}1.csv"
-          }""",
-          json"""{
-            "TYPE": "FileWatchState.File",
-            "orderWatchPath": "FILE-WATCH-ID",
-            "path": "${separator}DIRECTORY${separator}2.csv"
-          }""",
-          json"""{
-            "TYPE": "SignedItemAdded",
-            "signed": {
-              "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOBRESOURCE\",\"variables\":{},\"env\":{}}",
-              "signature": {
-                "TYPE": "Silly",
-                "signatureString": "SILLY-SIGNATURE"
-              }
-            }
-          }""",
-          json"""{
-            "TYPE": "SignedItemAdded",
-            "signed": {
-              "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[]}",
-              "signature": {
-                "TYPE": "Silly",
-                "signatureString": "SILLY-SIGNATURE"
-              }
-            }
-          }""",
-          json"""{
-            "TYPE": "Workflow",
-            "path": "UNSIGNED-v2.2-WORKFLOW",
-            "versionId": "1.0",
-            "instructions": []
-          }""",
-          json"""{
-            "TYPE": "JobResource",
-            "path": "UNSIGNED-v2.2-JOB-RESOURCE",
-            "variables": {},
-            "env": {}
-          }""",
-          json"""{
-            "TYPE": "Calendar",
-            "path": "CALENDAR",
-            "dateOffset": 21600,
-            "orderIdPattern": "#([^#]+)#.*",
-            "periodDatePattern": "yyyy-MM-dd",
-            "itemRevision": 1
-          }""",
-          json"""{
-            "TYPE": "WorkflowPathControl",
-            "path": "WORKFLOW",
-            "suspended": true,
-            "skip": [],
-            "itemRevision": 1
-          }""",
-          json"""{
-            "TYPE": "Order",
-            "id": "ORDER",
-            "workflowPosition": {
-              "workflowId": {
-                "path": "WORKFLOW",
-                "versionId": "1.0"
-              },
-              "position": [ 0 ]
-             },
-            "state": {
-              "TYPE": "Fresh"
-            },
-            "attachedState": {
-              "TYPE": "Attached",
-              "agentPath": "AGENT"
-            }
-          }"""))
-
-        AgentState
-          .fromStream(
-            Stream.iterable(jsons)
-              .map(o => AgentState.snapshotObjectJsonCodec.decodeJson(o).toChecked.orThrow))
-          .map { fromSnapshot =>
-            val a = agentState.copy(eventId = 0)
-            if fromSnapshot != a then  // Diff.compare do not uses our equals implementation
-              fail("Eevent-build state differs from snapshot")
-            else
-              succeed
+    val jsons = agentState.toSnapshotStream.map(_.asJson).map(removeJNull).toListL
+    assert(jsons == List(
+      json"""{
+        "TYPE": "JournalState",
+        "userIdToReleasedEventId": {
+          "USER": 500
+        }
+      }""",
+      json"""{
+        "TYPE": "AgentMetaState",
+        "directors": [ "SUBAGENT" ],
+        "agentPath": "AGENT",
+        "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+        "controllerId": "CONTROLLER"
+      }""",
+      json"""{
+        "TYPE": "SubagentItemState",
+        "subagentItem": {
+          "id": "SUBAGENT",
+          "agentPath": "AGENT",
+          "uri": "https://localhost:0",
+          "disabled": false,
+          "itemRevision": 7
+         },
+         "couplingState": {
+           "TYPE": "Reset",
+           "reason": {
+             "TYPE": "Fresh"
+           }
+         },
+         "eventId": 0
+      }""",
+      json"""{
+        "TYPE": "SubagentBundle",
+        "id": "BUNDLE",
+        "subagentToPriority": {
+          "SUBAGENT": 1
+        },
+        "itemRevision": 7
+      }""",
+      json"""{
+        "TYPE": "FileWatchState",
+        "fileWatch": {
+          "path": "FILE-WATCH-ID",
+          "workflowPath": "WORKFLOW",
+          "agentPath": "AGENT",
+          "directoryExpr": "'${separator}DIRECTORY'",
+          "pattern": "\\.csv",
+          "delay": 3,
+          "orderIdExpression": "$$0",
+          "itemRevision": 7
+        }
+      }""",
+      json"""{
+        "TYPE": "FileWatchState.File",
+        "orderWatchPath": "FILE-WATCH-ID",
+        "path": "${separator}DIRECTORY${separator}1.csv"
+      }""",
+      json"""{
+        "TYPE": "FileWatchState.File",
+        "orderWatchPath": "FILE-WATCH-ID",
+        "path": "${separator}DIRECTORY${separator}2.csv"
+      }""",
+      json"""{
+        "TYPE": "SignedItemAdded",
+        "signed": {
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOBRESOURCE\",\"variables\":{},\"env\":{}}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "SILLY-SIGNATURE"
           }
-      }
+        }
+      }""",
+      json"""{
+        "TYPE": "SignedItemAdded",
+        "signed": {
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[]}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "SILLY-SIGNATURE"
+          }
+        }
+      }""",
+      json"""{
+        "TYPE": "Workflow",
+        "path": "UNSIGNED-v2.2-WORKFLOW",
+        "versionId": "1.0",
+        "instructions": []
+      }""",
+      json"""{
+        "TYPE": "JobResource",
+        "path": "UNSIGNED-v2.2-JOB-RESOURCE",
+        "variables": {},
+        "env": {}
+      }""",
+      json"""{
+        "TYPE": "Calendar",
+        "path": "CALENDAR",
+        "dateOffset": 21600,
+        "orderIdPattern": "#([^#]+)#.*",
+        "periodDatePattern": "yyyy-MM-dd",
+        "itemRevision": 1
+      }""",
+      json"""{
+        "TYPE": "WorkflowPathControl",
+        "path": "WORKFLOW",
+        "suspended": true,
+        "skip": [],
+        "itemRevision": 1
+      }""",
+      json"""{
+        "TYPE": "Order",
+        "id": "ORDER",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "WORKFLOW",
+            "versionId": "1.0"
+          },
+          "position": [ 0 ]
+         },
+        "state": {
+          "TYPE": "Fresh"
+        },
+        "attachedState": {
+          "TYPE": "Attached",
+          "agentPath": "AGENT"
+        }
+      }"""))
+
+    AgentState.fromStream:
+      Stream.iterable(jsons)
+        .map(o => AgentState.snapshotObjectJsonCodec.decodeJson(o).toChecked.orThrow)
+    .map: fromSnapshot =>
+      val a = agentState.copy(eventId = 0)
+      if fromSnapshot != a then  // Diff.compare do not uses our equals implementation
+        fail("Eevent-build state differs from snapshot")
+      else
+        succeed
 
   "Unknown TYPE for snapshotObjectJsonCodec" in:
     assert(AgentState.snapshotObjectJsonCodec

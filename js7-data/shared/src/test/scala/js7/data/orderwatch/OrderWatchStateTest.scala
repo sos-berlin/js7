@@ -186,77 +186,77 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
           Subtype[OrderWatchState.Snapshot])
 
-      for snapshot <- orderWatchState.toSnapshotStream.compile.toVector yield
-        testJsonDecoder(snapshot, json"""[
-          {
-            "TYPE": "UnsignedSimpleItemAdded",
-            "item": {
-              "TYPE": "FileWatch",
-              "path": "FILE-WATCH",
-              "workflowPath": "WORKFLOW",
-              "agentPath": "AGENT",
-              "directoryExpr": "'DIRECTORY'",
-              "pattern": "PATTERN.*\\.csv",
-              "orderIdExpression": "$$1",
-              "delay": 2,
-              "itemRevision": 7
+      val snapshot = orderWatchState.toSnapshotStream.compile.toVector
+      testJsonDecoder(snapshot, json"""[
+        {
+          "TYPE": "UnsignedSimpleItemAdded",
+          "item": {
+            "TYPE": "FileWatch",
+            "path": "FILE-WATCH",
+            "workflowPath": "WORKFLOW",
+            "agentPath": "AGENT",
+            "directoryExpr": "'DIRECTORY'",
+            "pattern": "PATTERN.*\\.csv",
+            "orderIdExpression": "$$1",
+            "delay": 2,
+            "itemRevision": 7
+          }
+        }, {
+          "TYPE": "ExternalOrder",
+          "orderWatchPath": "FILE-WATCH",
+          "externalOrderName": "C-NAME",
+          "state": {
+            "TYPE": "HasOrder",
+            "orderId": "C-ORDER",
+            "queued": {
+              "TYPE": "Vanished"
             }
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "C-NAME",
-            "state": {
-              "TYPE": "HasOrder",
-              "orderId": "C-ORDER",
-              "queued": {
-                "TYPE": "Vanished"
-              }
+          }
+        }, {
+          "TYPE": "ExternalOrder",
+          "orderWatchPath": "FILE-WATCH",
+          "externalOrderName": "B-NAME",
+          "state": {
+            "TYPE": "HasOrder",
+            "orderId": "B-ORDER"
+          }
+        }, {
+          "TYPE": "ExternalOrder",
+          "orderWatchPath": "FILE-WATCH",
+          "externalOrderName": "A-NAME",
+          "state": {
+            "TYPE": "Arised",
+            "orderId": "A-ORDER",
+            "arguments": {
+              "K": "V"
             }
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "B-NAME",
-            "state": {
-              "TYPE": "HasOrder",
-              "orderId": "B-ORDER"
+          }
+        }, {
+          "TYPE": "ExternalOrder",
+          "orderWatchPath": "FILE-WATCH",
+          "externalOrderName": "C2-NAME",
+          "state": {
+            "TYPE": "HasOrder",
+            "orderId": "C2-ORDER",
+            "queued": {
+              "TYPE": "Vanished"
             }
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "A-NAME",
-            "state": {
+          }
+        }, {
+          "TYPE": "ExternalOrder",
+          "orderWatchPath": "FILE-WATCH",
+          "externalOrderName": "D-NAME",
+          "state": {
+            "TYPE": "HasOrder",
+            "orderId": "D-ORDER",
+            "queued": {
               "TYPE": "Arised",
-              "orderId": "A-ORDER",
-              "arguments": {
-                "K": "V"
-              }
-            }
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "C2-NAME",
-            "state": {
-              "TYPE": "HasOrder",
-              "orderId": "C2-ORDER",
-              "queued": {
-                "TYPE": "Vanished"
-              }
-            }
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "FILE-WATCH",
-            "externalOrderName": "D-NAME",
-            "state": {
-              "TYPE": "HasOrder",
               "orderId": "D-ORDER",
-              "queued": {
-                "TYPE": "Arised",
-                "orderId": "D-ORDER",
-                "arguments": {
-                  "K": "V2"
-                }
+              "arguments": {
+                "K": "V2"
               }
             }
           }
-        ]""")
+        }
+      ]""")
   }

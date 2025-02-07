@@ -13,7 +13,7 @@ trait InventoryItemState:
 
   def updateItem(item: companion.Item): Checked[companion.ItemState]
 
-  def toSnapshotStream: Stream[IO, Any] =
+  def toSnapshotStream: Stream[fs2.Pure, Any] =
     Stream.emit(this)
 
   def toStringStream: Stream[Pure, String] =

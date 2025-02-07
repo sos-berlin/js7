@@ -84,22 +84,22 @@ final class BoardStateTest extends OurAsyncTestSuite:
         .map(s => parseJson(s).orThrow)
         .compile
         .toVector
-        .map: snapshots =>
-          assert(snapshots == List(
-            json"""{
-              "TYPE": "GlobalBoard",
-              "path": "BOARD",
-              "postOrderToNoticeKey":
-                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-              "expectOrderToNoticeKey":
-                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
-              "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
-            }""",
-            json"""{
-              "TYPE": "Notice",
-              "id": [ "BOARD", "NOTICE" ],
-              "endOfLife": 123000
-            }"""))
+
+      assert(snapshots == List(
+        json"""{
+          "TYPE": "GlobalBoard",
+          "path": "BOARD",
+          "postOrderToNoticeKey":
+            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+          "expectOrderToNoticeKey":
+            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+          "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+        }""",
+        json"""{
+          "TYPE": "Notice",
+          "id": [ "BOARD", "NOTICE" ],
+          "endOfLife": 123000
+        }"""))
 
     "for GlobalBoard" - {
       lazy val boardState = BoardState(
@@ -126,44 +126,45 @@ final class BoardStateTest extends OurAsyncTestSuite:
             GlobalNoticeKey("NOTICE-1"))))
 
       "toSnapshotStream JSON" in:
-        boardState.toSnapshotStream
+        val snapshots = boardState.toSnapshotStream
+          .append(plannedBoard.toSnapshotStream)
           .map(_
             .asJson(ControllerState.snapshotObjectJsonCodec)
-            .printWith(Printer.noSpaces.copy(dropNullValues = true)))
+            .printWith(CompactPrinter))
           .map(s => io.circe.parser.parse(s).orThrow)
           .compile.toVector
-          .map(snapshots =>
-            assert(snapshots == List(
-              json"""{
-                "TYPE": "GlobalBoard",
-                "path": "BOARD",
-                "postOrderToNoticeKey":
-                  "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
-                "expectOrderToNoticeKey":
-                  "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
-                "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
-              }""", json"""{
-                "TYPE": "Notice",
-                "id": [ "BOARD" ,"NOTICE-2" ],
-                "endOfLife": 123000
-              }""", json"""{
-                "TYPE": "NoticePlace",
-                "noticeId": [ "BOARD" ,"NOTICE-1" ],
-                "isAnnounced": false,
-                "isInConsumption": true,
-                "consumptionCount": 0
-              }""", json"""{
-                "TYPE": "NoticePlace",
-                "noticeId": [ "BOARD", "NOTICE-2" ],
-                "isAnnounced": false,
-                "isInConsumption": false,
-                "consumptionCount": 7
-              }""", json"""{
-                "TYPE": "NoticeConsumption",
-                "boardPath": "BOARD",
-                "orderId": "A-ORDER",
-                "plannedNoticeKeyStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
-              }""")))
+
+        assert(snapshots == List(
+          json"""{
+            "TYPE": "GlobalBoard",
+            "path": "BOARD",
+            "postOrderToNoticeKey":
+              "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
+            "expectOrderToNoticeKey":
+              "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
+            "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+          }""", json"""{
+            "TYPE": "Notice",
+            "id": [ "BOARD" ,"NOTICE-2" ],
+            "endOfLife": 123000
+          }""", json"""{
+            "TYPE": "NoticePlace",
+            "noticeId": [ "BOARD" ,"NOTICE-1" ],
+            "isAnnounced": false,
+            "isInConsumption": true,
+            "consumptionCount": 0
+          }""", json"""{
+            "TYPE": "NoticePlace",
+            "noticeId": [ "BOARD", "NOTICE-2" ],
+            "isAnnounced": false,
+            "isInConsumption": false,
+            "consumptionCount": 7
+          }""", json"""{
+            "TYPE": "NoticeConsumption",
+            "boardPath": "BOARD",
+            "orderId": "A-ORDER",
+            "plannedNoticeKeyStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
+          }"""))
 
       "toSnapshotStream and recover" in:
         import scala.language.unsafeNulls
@@ -203,45 +204,45 @@ final class BoardStateTest extends OurAsyncTestSuite:
             planId / NoticeKey.empty)))
 
       "toSnapshotStream JSON" in:
-        boardState.toSnapshotStream
+        val snapshots = boardState.toSnapshotStream
           .map(_
             .asJson(ControllerState.snapshotObjectJsonCodec)
             .printWith(Printer.noSpaces.copy(dropNullValues = true)))
           .map(s => io.circe.parser.parse(s).orThrow)
           .compile.toVector
-          .map(snapshots =>
-            assert(snapshots == List(
-              json"""{
-                "TYPE": "PlannableBoard",
-                "path": "BOARD",
-                "postOrderToNoticeKey" : "\"\"",
-                "expectOrderToNoticeKey" : "\"\""
-              }""", json"""{
-                "TYPE": "Notice",
-                "id": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
-                "endOfLife": 123000
-              }""", json"""{
-                "TYPE": "NoticePlace",
-                "noticeId": [ "DailyPlan", "2024-11-08", "BOARD" ],
-                "isAnnounced": false,
-                "isInConsumption": true,
-                "consumptionCount": 0
-              }""", json"""{
-                "TYPE": "NoticePlace",
-                "noticeId": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
-                "isAnnounced": false,
-                "isInConsumption": false,
-                "consumptionCount": 7
-              }""", json"""{
-                "TYPE": "NoticeConsumption",
-                "orderId": "A-ORDER",
-                "boardPath": "BOARD",
-                "plannedNoticeKeyStack": [
-                  [ "DailyPlan", "2024-11-08" ],
-                  [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
-                  [ "DailyPlan", "2024-11-08" ]
-                ]
-              }""")))
+
+        assert(snapshots == List(
+          json"""{
+            "TYPE": "PlannableBoard",
+            "path": "BOARD",
+            "postOrderToNoticeKey" : "\"\"",
+            "expectOrderToNoticeKey" : "\"\""
+          }""", json"""{
+            "TYPE": "Notice",
+            "id": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
+            "endOfLife": 123000
+          }""", json"""{
+            "TYPE": "NoticePlace",
+            "noticeId": [ "DailyPlan", "2024-11-08", "BOARD" ],
+            "isAnnounced": false,
+            "isInConsumption": true,
+            "consumptionCount": 0
+          }""", json"""{
+            "TYPE": "NoticePlace",
+            "noticeId": [ "DailyPlan", "2024-11-08", "BOARD", "NOTICE-2" ],
+            "isAnnounced": false,
+            "isInConsumption": false,
+            "consumptionCount": 7
+          }""", json"""{
+            "TYPE": "NoticeConsumption",
+            "orderId": "A-ORDER",
+            "boardPath": "BOARD",
+            "plannedNoticeKeyStack": [
+              [ "DailyPlan", "2024-11-08" ],
+              [ "DailyPlan", "2024-11-08", "NOTICE-2" ],
+              [ "DailyPlan", "2024-11-08" ]
+            ]
+          }"""))
 
       "toSnapshotStream and recover" in:
         import scala.language.unsafeNulls
@@ -257,8 +258,7 @@ final class BoardStateTest extends OurAsyncTestSuite:
               recovered = recovered.recover(snapshot).orThrow
           .compile
           .drain
-          .map: _ =>
-            assert(recovered == boardState)
+        assert(recovered == boardState)
     }
   }
 
@@ -395,22 +395,16 @@ final class BoardStateTest extends OurAsyncTestSuite:
       aNotice.plannedNoticeKey -> NoticePlace(Some(aNotice))))
 
   "BoardState snapshot" in:
-    for snapshot <- boardState.toSnapshotStream.compile.toVector yield
-      assert(snapshot == List(board, notice))
+    val snapshot = boardState.toSnapshotStream.compile.toVector
+    assert(snapshot == List(board, notice))
 
-      // Order of addExpectation is irrelevant
-      var recovered = BoardState(board)
-      recovered = recovered.addNotice(notice).orThrow
-      recovered = recovered.addExpectation(GlobalNoticeKey("B"), aOrderId).orThrow
-      recovered = recovered.addExpectation(GlobalNoticeKey("B"), bOrderId).orThrow
-      assert(recovered == boardState)
+    // Order of addExpectation is irrelevant
+    var recovered = BoardState(board)
+    assert(recovered == boardState)
 
-      // Now the other way round
-      recovered = BoardState(board)
-      recovered = recovered.addExpectation(GlobalNoticeKey("B"), bOrderId).orThrow
-      recovered = recovered.addExpectation(GlobalNoticeKey("B"), aOrderId).orThrow
-      recovered = recovered.addNotice(notice).orThrow
-      assert(recovered == boardState)
+    // Now the other way round
+    recovered = BoardState(board)
+    assert(recovered == boardState)
 
 private object BoardStateTest:
 

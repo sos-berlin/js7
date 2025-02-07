@@ -124,7 +124,7 @@ extends
     deletionMarkedItems.size +
     idToOrder.size
 
-  def toSnapshotStream: Stream[IO, Any] =
+  def toSnapshotStream: Stream[fs2.Pure, Any] =
     Stream(
       Stream.emit(SnapshotEventId(eventId)),
       standards.toSnapshotStream,

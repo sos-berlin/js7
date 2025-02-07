@@ -28,7 +28,7 @@ extends
   def estimatedSnapshotSize: Int =
     itemToDelegateToAttachedState.values.view.map(_.size).sum
 
-  def toSnapshotStream: Stream[IO, ItemAttachedStateEvent] =
+  def toSnapshotStream: Stream[fs2.Pure, ItemAttachedStateEvent] =
     Stream.iterable(itemToDelegateToAttachedState
       .to(View)
       .flatMap:(key, agentToAttached) =>

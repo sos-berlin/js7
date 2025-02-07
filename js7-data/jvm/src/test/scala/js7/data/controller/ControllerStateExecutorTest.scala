@@ -576,8 +576,8 @@ object ControllerStateExecutorTest:
         for eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents) yield
           controllerState = eventsAndState.controllerState
           eventsAndState.keyedEvents.toVector
-      assert(controllerState.toRecovered.unsafeRunSync() == controllerState)
+      assert(controllerState.toRecovered == controllerState)
       result
 
     def toSnapshot: Seq[Any] =
-      controllerState.toSnapshotStream.compile.toVector.unsafeRunSync()
+      controllerState.toSnapshotStream.compile.toVector

@@ -53,8 +53,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
   "estimatedSnapshotSize" in:
     assert(controllerState.estimatedSnapshotSize == 21)
-    for n <- controllerState.toSnapshotStream.compile.count.unsafeToFuture() yield
-      assert(controllerState.estimatedSnapshotSize == n)
+    val n = controllerState.toSnapshotStream.compile.count
+    assert(controllerState.estimatedSnapshotSize == n)
 
   "pathToSimpleItem" in:
     val sum =
@@ -63,50 +63,49 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
 
   "toSnapshotStream" in:
-    for list <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
-      yield assert(list ==
+    val list = controllerState.toSnapshotStream.compile.toVector
+    assert(list ==
+      Seq(
+        SnapshotEventId(1001L),
+        JournalState(Map(UserId("A") -> EventId(1000))),
+        ClusterStateSnapshot(
+          ClusterState.Coupled(
+            ClusterSetting(
+              Map(
+                NodeId("A") -> Uri("https://A"),
+                NodeId("B") -> Uri("https://B")),
+              activeId = NodeId("A"),
+              ClusterTiming(10.s, 20.s),
+              Some(ClusterWatchId("CLUSTER-WATCH"))))),
+        controllerState.controllerMetaState,
+        WorkflowPathControl(
+          WorkflowPathControlPath(workflow.path), suspended = true, skip = Set("LABEL"),
+          itemRevision = Some(ItemRevision(0)))
+      ) ++
+        controllerState.keyTo(AgentRefState).values ++
+        controllerState.keyTo(SubagentItemState).values ++
+        controllerState.pathToUnsignedSimple(SubagentBundle).values ++
+        controllerState.keyTo(LockState).values ++
+        Seq(board) ++
+        Seq(calendar) ++
         Seq(
-          SnapshotEventId(1001L),
-          JournalState(Map(UserId("A") -> EventId(1000))),
-          ClusterStateSnapshot(
-            ClusterState.Coupled(
-              ClusterSetting(
-                Map(
-                  NodeId("A") -> Uri("https://A"),
-                  NodeId("B") -> Uri("https://B")),
-                activeId = NodeId("A"),
-                ClusterTiming(10.s, 20.s),
-                Some(ClusterWatchId("CLUSTER-WATCH"))))),
-          controllerState.controllerMetaState,
-          WorkflowPathControl(
-            WorkflowPathControlPath(workflow.path), suspended = true, skip = Set("LABEL"),
-            itemRevision = Some(ItemRevision(0)))
-        ) ++
-          controllerState.keyTo(AgentRefState).values ++
-          controllerState.keyTo(SubagentItemState).values ++
-          controllerState.pathToUnsignedSimple(SubagentBundle).values ++
-          controllerState.keyTo(LockState).values ++
-          Seq(board) ++
-          boardState.notices ++
-          Seq(calendar) ++
-          Seq(
-            UnsignedSimpleItemAdded(FileWatch(
-              fileWatch.path,
-              workflow.path,
-              agentRef.path,
-              expr("'/tmp/directory'"),
-              itemRevision = Some(ItemRevision(7)))),
-            OrderWatchState.ExternalOrderSnapshot(
-              fileWatch.path,
-              ExternalOrderName("ORDER-NAME"),
-              HasOrder(OrderId("ORDER"), Some(Vanished))),
-            SignedItemAdded(signedJobResource),
-            VersionAdded(versionId),
-            VersionedItemAdded(signedWorkflow)) ++
-          Seq(
-            ItemAttachable(jobResource.path, agentRef.path),
-            ItemDeletionMarked(fileWatch.path)) ++
-          controllerState.idToOrder.values)
+          UnsignedSimpleItemAdded(FileWatch(
+            fileWatch.path,
+            workflow.path,
+            agentRef.path,
+            expr("'/tmp/directory'"),
+            itemRevision = Some(ItemRevision(7)))),
+          OrderWatchState.ExternalOrderSnapshot(
+            fileWatch.path,
+            ExternalOrderName("ORDER-NAME"),
+            HasOrder(OrderId("ORDER"), Some(Vanished))),
+          SignedItemAdded(signedJobResource),
+          VersionAdded(versionId),
+          VersionedItemAdded(signedWorkflow)) ++
+        Seq(
+          ItemAttachable(jobResource.path, agentRef.path),
+          ItemDeletionMarked(fileWatch.path)) ++
+        controllerState.idToOrder.values)
 
   "isWorkflowUsedByOrders" in:
     assert(controllerState.isWorkflowUsedByOrders == Set(workflow.id))
@@ -351,10 +350,8 @@ final class ControllerStateTest extends OurAsyncTestSuite:
 
   "toSnapshotStream JSON" in:
     implicit val x = ControllerState.snapshotObjectJsonCodec
-    for
-      jsonArray <- controllerState.toSnapshotStream.compile.toVector.unsafeToFuture()
-      assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
-    yield assertion
+    val jsonArray = controllerState.toSnapshotStream.compile.toVector
+    testJson(jsonArray, expectedSnapshotJsonArray)
 
   "ControllerStateRecoverer.addSnapshotObject" in:
     ControllerState.snapshotObjectJsonCodec

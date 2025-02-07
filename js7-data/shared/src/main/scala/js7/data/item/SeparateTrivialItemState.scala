@@ -17,7 +17,7 @@ extends InventoryItemState:
   final def updateItem(item: companion.Item): Checked[companion.ItemState] =
     Right(item.toInitialItemState./*???*/asInstanceOf[companion.ItemState])
 
-  override final def toSnapshotStream: Stream[IO, Any] =
+  override final def toSnapshotStream: Stream[fs2.Pure, Any] =
     Stream.emit(item)
 
 

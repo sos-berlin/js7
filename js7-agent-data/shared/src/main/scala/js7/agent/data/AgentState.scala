@@ -96,7 +96,7 @@ extends SignedItemContainer,
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
 
-  def toSnapshotStream: Stream[IO, Any] = Stream(
+  def toSnapshotStream: Stream[fs2.Pure, Any] = Stream(
     standards.toSnapshotStream,
     Stream.iterable(meta != AgentMetaState.empty thenList meta),
     Stream.iterable(keyToItem(AgentRef).values),

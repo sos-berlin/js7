@@ -33,7 +33,7 @@ extends JournaledState[S]:
 
   def name: String
 
-  def toSnapshotStream: Stream[IO, Any]
+  def toSnapshotStream: Stream[fs2.Pure, Any]
 
   def estimatedSnapshotSize: Int
 
@@ -70,14 +70,11 @@ extends JournaledState[S]:
   def eventId: EventId
 
   /** For testing, should be equal to this. */
-  final def toRecovered: IO[S] =
+  final def toRecovered: S =
     given Codec[Any] = companion.snapshotObjectJsonCodec
-    companion.fromStream:
-      Stream.eval(toSnapshotStream.compile.toVector).flatMap(Stream.iterable) // one big Chunk
-        .mapParallelBatch():
-          _.asJson.as[Any].orThrow
-    .map:
-      _.withEventId(eventId)
+    companion.fromStreamSync:
+      toSnapshotStream.map(_.asJson.as[Any].orThrow)
+    .withEventId(eventId)
 
   final def emitLineStream(emit: String => Unit): Unit =
     toLineStream.map(emit).compile.drain
@@ -126,7 +123,7 @@ object SnapshotableState:
     def snapshotSize: Int =
       journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
 
-    def toSnapshotStream: Stream[IO, Any] =
+    def toSnapshotStream: Stream[fs2.Pure, Any] =
       journalState.toSnapshotStream ++
         clusterState.toSnapshotStream
 
@@ -162,6 +159,14 @@ object SnapshotableState:
         .productR:
           IO:
             recoverer.result()
+
+    final def fromStreamSync(snapshotObjects: Stream[fs2.Pure, Any]): S =
+      val recoverer = newRecoverer()
+      snapshotObjects.chunks.map: snapshots =>
+        snapshots.foreach: o =>
+          recoverer.addSnapshotObject(o)
+      .compile.drain
+      recoverer.result()
 
     private lazy val journalDecoder: Decoder[Any] =
       val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]

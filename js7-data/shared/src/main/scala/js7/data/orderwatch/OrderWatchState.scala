@@ -219,7 +219,7 @@ extends
   def estimatedSnapshotSize: Int =
     1 + externalToState.size
 
-  override def toSnapshotStream: Stream[IO, Any] =
+  override def toSnapshotStream: Stream[fs2.Pure, Any] =
     UnsignedSimpleItemAdded(orderWatch) +:
       Stream.iterable(externalToState)
         .map: (externalOrderName, state) =>

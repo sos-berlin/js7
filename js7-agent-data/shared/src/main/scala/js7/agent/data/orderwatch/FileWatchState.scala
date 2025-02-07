@@ -67,7 +67,7 @@ extends
   def estimatedExtraSnapshotSize: Int =
     directoryState.fileToEntry.size
 
-  override def toSnapshotStream: Stream[IO, Snapshot] =
+  override def toSnapshotStream: Stream[fs2.Pure, Snapshot] =
     Stream.emit(HeaderSnapshot(fileWatch)) ++
       Stream.iterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
