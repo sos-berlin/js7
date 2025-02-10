@@ -27,6 +27,7 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.NoInstructionBlock:
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
     noticeIds: Vector[NoticeId],
+    consumedNoticeIds: Vector[NoticeId],
     exprResult: L3)
   : List[OrderNoticesRead | OrderMoved] =
     exprResult match

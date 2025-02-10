@@ -1,6 +1,5 @@
 package js7.data.controller
 
-import cats.effect.IO
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import fs2.Stream
@@ -13,10 +12,11 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.MultipleLinesBracket.streamInBrackets
+import js7.base.utils.MultipleLinesBracket.{Space, streamInBrackets}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
@@ -40,16 +40,18 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, Inventor
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.{NodeId, NodeName}
-import js7.data.order.OrderEvent.{OrderPlanAttached, OrderTransferred}
+import js7.data.order.Order.ExpectingNotices
+import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.system.ServerMeteringEvent
 import js7.data.value.Value
+import js7.data.workflow.instructions.ConsumeNotices
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.{MapView, View, immutable}
 import scala.util.chaining.scalaUtilChainingOps
@@ -86,12 +88,12 @@ extends
       :+ "keyToUnsignedItemState_=\n"
       :++ Stream.iterable(keyToUnsignedItemState_.values.toVector.sorted).flatMap:
         _.toStringStream.map("  " + _ + "\n")
-      :++ streamInBrackets("repo")(repo.toEvents)
-      :++ streamInBrackets("pathToSignedSimpleItem"):
+      :++ Stream.emit("repo=\n") :++ Stream.iterable(repo.toEvents).map(o => s"  $o\n")
+      :++ streamInBrackets("pathToSignedSimpleItem", Space):
         pathToSignedSimpleItem.values.toVector.sortBy(_.value.key)
       :+ agentAttachments.toString :+ "\n"
-      :++ streamInBrackets("deletionMarkedItems")(deletionMarkedItems.toVector.sorted)
-      :++ streamInBrackets("idToOrder")(idToOrder.values.toVector.sorted)
+      :++ streamInBrackets("deletionMarkedItems", Space)(deletionMarkedItems.toVector.sorted)
+      :++ streamInBrackets("orders", Space)(idToOrder.values.toVector.sorted)
       :++ workflowToOrders.toStringStream
 
   def isAgent = false
@@ -116,9 +118,9 @@ extends
     standards.snapshotSize +
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
-    keyToUnsignedItemState_.size - 1/*PlanSchema.Global*/+
+    keyToUnsignedItemState_.size +
     keyTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
-    keyTo(BoardState).values.view.map(_.noticeCount).sum +
+    keyTo(PlanSchemaState).values.view.map(_.estimatedSnapshotSize - 1).sum +
     pathToSignedSimpleItem.size +
     agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
@@ -197,8 +199,11 @@ extends
                   ow.addOrderWatch(orderWatch.toInitialItemState)
 
                 case item: UnsignedSimpleItem =>
-                  for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
-                    copy(keyToUnsignedItemState_ = o)
+                  if item.path == PlanSchemaId.Global then
+                    Left(Problem("The Global PlanSchema is predefined and cannot be added"))
+                  else
+                    for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
+                      copy(keyToUnsignedItemState_ = o)
 
             case UnsignedSimpleItemChanged(item) =>
               item match
@@ -333,35 +338,38 @@ extends
       applyOrderEvent(orderId, event)
 
     case KeyedEvent(boardPath: BoardPath, noticePosted: NoticePosted) =>
-      for
-        boardState <- keyTo(BoardState).checked(boardPath)
-        notice = noticePosted.toNotice(boardPath)
-        boardState <- boardState.addNotice(notice)
-        maybePlanSchemaState <- updateNoticeIdInPlan(notice.id, boardState)
-      yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_
-          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
+      updatePlannedBoard(noticePosted.planId / boardPath):
+        _.addNotice(noticePosted.toNotice(boardPath))
+      .map: planSchemaState =>
+        copy(
+          keyToUnsignedItemState_ = keyToUnsignedItemState_
+            .updated(planSchemaState.id, planSchemaState))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
-      for
-        boardState <- keyTo(BoardState).checked(boardPath)
-        boardState <- boardState.removeNotice(plannedNoticeKey)
-        maybePlanSchemaState <- updateNoticeIdInPlan(boardState.path / plannedNoticeKey, boardState)
-      yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_
-          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
+      updatePlannedBoard(plannedNoticeKey.planId / boardPath):
+        _.removeNotice(plannedNoticeKey.noticeKey)
+      .map: planSchemaState =>
+        copy(
+          keyToUnsignedItemState_ = keyToUnsignedItemState_
+            .updated(planSchemaState.id, planSchemaState))
 
     case KeyedEvent(boardPath: BoardPath, noticeMoved: NoticeMoved) =>
       import noticeMoved.{endOfLife, fromPlannedNoticeKey, toPlannedNoticeKey}
-      for
-        boardState <- keyTo(BoardState).checked(boardPath)
-        boardState <- boardState.moveNotice(fromPlannedNoticeKey, toPlannedNoticeKey, endOfLife)
-        maybePlanSchemaState <- updateNoticeIdsInPlans(Seq(
-          boardState -> fromPlannedNoticeKey,
-          boardState -> toPlannedNoticeKey))
-      yield copy(
-        keyToUnsignedItemState_ = keyToUnsignedItemState_
-          ++ (boardState :: maybePlanSchemaState.toList).map(o => o.path -> o))
+      if toPlannedNoticeKey.planId == fromPlannedNoticeKey.planId then
+        Left(Problem(s"$keyedEvent: PlanIds must be different"))
+      else
+        for
+          fromPlannedBoard <- maybePlannedBoard(fromPlannedNoticeKey.planId / boardPath).toRight:
+            Problem(s"${fromPlannedNoticeKey.planId / boardPath} does not exist")
+          noticePlace <- fromPlannedBoard.toNoticePlace.checked(fromPlannedNoticeKey.noticeKey)
+          from <- updatePlannedBoard(fromPlannedNoticeKey.planId / boardPath):
+            _.moveFromNoticePlace(fromPlannedNoticeKey.noticeKey)
+          to <- updatePlannedBoard(toPlannedNoticeKey.planId / boardPath):
+            _.moveToNoticePlace(toPlannedNoticeKey.noticeKey, noticePlace, endOfLife)
+        yield
+          copy(
+            keyToUnsignedItemState_ = keyToUnsignedItemState_ ++
+              View(from, to).map(o => o.path -> o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       ow.onOrderWatchEvent(orderWatchPath <-: event)
@@ -395,6 +403,17 @@ extends
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent)
   : Checked[ControllerState] =
     event match
+      case event: OrderNoticeEvent =>
+        for
+          previousOrder <- idToOrder.checked(orderId)
+          updatedOrder <- previousOrder.applyEvent(event)
+          itemStates <- applyOrderNoticeEvent(previousOrder, event)
+          controllerState <- update(
+            addOrders = updatedOrder :: Nil,
+            addItemStates = itemStates)
+        yield
+          controllerState
+
       case OrderPlanAttached(planId) =>
         for
           self <- super.applyOrderEvent(orderId, event)
@@ -418,6 +437,110 @@ extends
 
       case _ =>
         super.applyOrderEvent(orderId, event)
+
+  private def applyOrderNoticeEvent(order: Order[Order.State], event: OrderNoticeEvent)
+  : Checked[Seq[PlanSchemaState | BoardState]] =
+    val orderId = order.id
+    event match
+      case OrderNoticeAnnounced(noticeId) =>
+        updatePlannedBoard(noticeId.plannedBoardId)(_.announceNotice(noticeId.noticeKey))
+          .map(_ :: Nil)
+
+      case OrderNoticePostedV2_3(notice) =>
+        for
+          boardState <- orderIdToBoardState(orderId)
+          noticeId = PlanId.Global / boardState.path / notice.noticeKey
+          planSchemaState <- updatePlannedBoard(noticeId.plannedBoardId):
+            _.addNoticeV2_3(notice)
+        yield
+          planSchemaState :: Nil
+
+      case OrderNoticePosted(noticeId, endOfLife) =>
+        updatePlannedBoard(noticeId.plannedBoardId)(_.addNotice(Notice(noticeId, endOfLife)))
+          .map(_ :: Nil)
+
+      case OrderNoticeExpected(noticeKey) =>
+        // COMPATIBLE with v2.3
+        for
+          boardState <- orderIdToBoardState(orderId)
+          noticeId = PlanId.Global / boardState.path / noticeKey
+          plannedBoard <- updatePlannedBoard(noticeId.plannedBoardId): plannedBoard =>
+            Right:
+              plannedBoard.addExpectation(noticeId.noticeKey, orderId)
+        yield
+          plannedBoard :: Nil
+
+      case OrderNoticesExpected(noticeIds) =>
+        updatePlannedBoards(noticeIds): (plannedBoard, noticeKey) =>
+          Right:
+            plannedBoard.addExpectation(noticeKey, orderId)
+
+      case OrderNoticesRead =>
+        order.ifState[ExpectingNotices] match
+          case None => Right(Nil)
+          case Some(previousOrder) => removeNoticeExpectation(previousOrder)
+
+      case OrderNoticesConsumptionStarted(consumedNoticeIds) =>
+        val isConsumption = consumedNoticeIds.toSet
+        val allNoticeIds =
+          order.ifState[ExpectingNotices].fold_(Vector.empty, _.state.noticeIds)
+            .concat(consumedNoticeIds)
+            .distinct
+        assertThat(allNoticeIds == consumedNoticeIds) // For now, application of OrderNoticesConsumed requires all notices
+
+        for
+          _ <- allNoticeIds.checkUniquenessBy(_.boardPath)
+          planSchemaStates <-
+            allNoticeIds.groupBy(_.planSchemaId).toVector.traverse: (planSchemaId, noticeIds) =>
+              for
+                planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+                planSchemaState <-
+                  noticeIds.scanLeft(Checked(planSchemaState)): (checkedPlanSchemaState, noticeId) =>
+                    checkedPlanSchemaState.flatMap:
+                      _.updatePlannedBoard(noticeId.planKey, noticeId.boardPath): plannedBoard =>
+                        if isConsumption(noticeId) then
+                          Right(plannedBoard.startConsumption(noticeId.noticeKey, orderId))
+                        else
+                          plannedBoard.removeExpectation(noticeId.noticeKey, orderId)
+                  .last
+              yield
+                planSchemaState
+          boardStates <-
+            consumedNoticeIds.traverse: noticeId =>
+              keyTo(BoardState).checked(noticeId.boardPath).map:
+                _.pushConsumption(orderId, noticeId.plannedNoticeKey)
+        yield
+          planSchemaStates ++ boardStates
+
+      case OrderNoticesConsumed(failed) =>
+        for
+          instr <-
+            if failed then
+              findInstructionInCallStack[ConsumeNotices](order.workflowPosition)
+            else
+              // When succeeding, the Order must be in the instruction block just below
+              // the ConsumeNotice instruction.
+              order.workflowPosition.checkedParent.flatMap(instruction_[ConsumeNotices])
+          (boardStates, notices) <-
+            instr.referencedBoardPaths.toVector.traverse: boardPath =>
+              keyTo(BoardState).checked(boardPath).flatMap: boardState =>
+                boardState.popConsumption(orderId).map: (boardState, plannedNoticeKey) =>
+                  boardState -> boardState.path / plannedNoticeKey
+            .map(_.unzip)
+          planSchemaStates <-
+            notices.groupBy(_.planSchemaId).toVector.traverse: (planSchemaId, noticeIds) =>
+              for
+                planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+                planSchemaState <-
+                  noticeIds.scanLeft(Checked(planSchemaState)): (checkedPlanSchemaState, noticeId) =>
+                    checkedPlanSchemaState.flatMap:
+                      _.updatePlannedBoard(noticeId.planKey, noticeId.boardPath): plannedBoard =>
+                        plannedBoard.finishConsumption(noticeId.noticeKey, succeeded = !failed)
+                  .last
+              yield
+                planSchemaState
+        yield
+          planSchemaStates ++ boardStates
 
   /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
   def workflowPathControlToIgnorantAgents: MapView[WorkflowPathControlPath, Set[AgentPath]] =
@@ -479,11 +602,12 @@ extends
       notice
 
   def orderToStillExpectedNotices(orderId: OrderId): Seq[NoticeId] =
-    val pathToBoardState = keyTo(BoardState)
     idToOrder.get(orderId).toVector.flatMap: order =>
       orderToExpectedNotices(order).filter: noticeId =>
-        pathToBoardState.get(noticeId.boardPath).forall: boardState =>
-          !boardState.hasNotice(noticeId.plannedNoticeKey)
+        import noticeId.{boardPath, planId, planKey, planSchemaId}
+        keyTo(PlanSchemaState).get(planSchemaId).exists: planSchemaState =>
+          val plan = planSchemaState.toPlan.getOrElse(planKey, Plan.initial(planId))
+          !plan.toPlannedBoard.get(boardPath).fold(false)(_.hasNotice(noticeId.noticeKey))
 
   private def orderToExpectedNotices(order: Order[Order.State]): Seq[NoticeId] =
     order.ifState[Order.ExpectingNotices]
@@ -751,10 +875,7 @@ extends
 
   def finish: Checked[ControllerState] =
     PlanSchemaState
-      .recoverPlans(
-        orders,
-        boardStates = keyTo(BoardState).values,
-        toPlanSchemaState = keyTo(PlanSchemaState).checked)
+      .recoverPlanSchemaStatesFromOrders(orders, keyTo(PlanSchemaState))
       .map: planSchemaStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
@@ -824,6 +945,7 @@ extends
       PlannableBoard.subtype,
       PlanSchema.subtype,
       PlanSchemaState.subtype,
+      Plan.subtype,
       Calendar.subtype,
       Subtype[Notice],
       NoticePlace.Snapshot.subtype,
@@ -869,7 +991,6 @@ extends
       s <- externalVanishedOrders.foldEithers(s):
         _.ow.onOrderExternalVanished(_)
       s <- removeOrders_(s, removeOrders)
-      s <- Right(onRemoveItemStates(s, removeUnsignedSimpleItems))
       s <- Right(s.copy(
         keyToUnsignedItemState_ = s.keyToUnsignedItemState_
           -- removeUnsignedSimpleItems
@@ -926,14 +1047,6 @@ extends
               keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
                 updatedPlanSchemaStates.toKeyedMap(_.id))
 
-  private def onRemoveItemStates(s: ControllerState, paths: Seq[UnsignedSimpleItemPath])
-  : ControllerState =
-    paths.collect:
-      case id: PlanSchemaId => id
-    .foldLeft(s): (s, planSchemaId) =>
-      s.copy(
-        keyToUnsignedItemState_ = s.keyToUnsignedItemState_ ++
-          s.removeNoticeKeysForPlanSchema(planSchemaId))
 
   final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
     def transferOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =

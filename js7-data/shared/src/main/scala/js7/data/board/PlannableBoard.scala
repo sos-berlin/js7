@@ -36,25 +36,24 @@ extends
     false
 
   def freshOrderToNoticeKey(planId: PlanId, order: FreshOrder, state: StateView)
-  : Checked[PlannedNoticeKey] =
+  : Checked[NoticeKey] =
     val scope = state.toPlanOrderScope(order)
-    postingOrderToNoticeKey(planId, scope)
+    postingOrderToNoticeKey(scope)
 
   def postingOrderToNotice(order: Order[Order.Ready], state: StateView): Checked[Notice] =
     val scope = state.toPlanOrderScope(order)
     for
-      plannedNoticeKey <- postingOrderToNoticeKey(order.planId, scope)
-      notice <- toNotice(plannedNoticeKey)(scope)
+      noticeKey <- postingOrderToNoticeKey(scope)
+      notice <- toNotice(order.planId / noticeKey)(scope)
     yield
       notice
 
-  private def postingOrderToNoticeKey(planId: PlanId, scope: Scope)
-  : Checked[PlannedNoticeKey] =
+  def postingOrderToNoticeKey(scope: Scope): Checked[NoticeKey] =
     for
       noticeKey <- postOrderToNoticeKey.evalAsString(scope)
-      plannedNoticeKey <- PlannedNoticeKey.checked(planId, noticeKey)
+      noticeKey <- NoticeKey.checked(noticeKey)
     yield
-      plannedNoticeKey
+      noticeKey
 
   def expectingOrderToNoticeId(order: Order[Order.Ready], state: StateView): Checked[NoticeId] =
     val scope = state.toPlanOrderScope(order)

@@ -46,15 +46,24 @@ extends Big:
   def isInUse: Boolean =
     expectingOrderIds.nonEmpty || isInConsumption || consumptionCount != 0
 
-  def toSnapshot(noticeId: NoticeId): Option[Snapshot] =
-    (isAnnounced || isInConsumption || consumptionCount != 0) ?
-      Snapshot(noticeId, isAnnounced, isInConsumption, consumptionCount)
+  def estimatedSnapshotSize: Int =
+    (isAnnounced || isInConsumption || consumptionCount != 0).toInt
 
-  def withSnapshot(snapshot: Snapshot): NoticePlace =
-    copy(
-      isAnnounced = snapshot.isAnnounced,
-      isInConsumption = snapshot.isInConsumption,
-      consumptionCount = snapshot.consumptionCount)
+  def toSnapshot(noticeId: NoticeId): Seq[Snapshot | Notice] =
+    notice.toList :::
+      (isAnnounced || isInConsumption || consumptionCount != 0).thenList:
+        Snapshot(noticeId, isAnnounced, isInConsumption, consumptionCount)
+
+  def recoverSnapshot(snapshot: Notice | NoticePlace.Snapshot): NoticePlace =
+    snapshot match
+      case snapshot: Notice =>
+        copy(
+          notice = Some(snapshot))
+      case snapshot: NoticePlace.Snapshot =>
+        copy(
+          isAnnounced = snapshot.isAnnounced,
+          isInConsumption = snapshot.isInConsumption,
+          consumptionCount = snapshot.consumptionCount)
 
   def announce: NoticePlace =
     copy(isAnnounced = true)
@@ -89,7 +98,7 @@ extends Big:
         else
           notice,
       //post already did this: isAnnounced = isAnnounced && !isLast,
-      isInConsumption = !isLast,
+      isInConsumption = isInConsumption && !isLast,
       consumptionCount = consumptionCount - 1)
 
 
@@ -106,8 +115,10 @@ object NoticePlace:
   extends NoticeSnapshot:
     override def productPrefix = "NoticePlace.Snapshot"
 
-    def plannedNoticeKey: PlannedNoticeKey =
-      noticeId.plannedNoticeKey
+    export noticeId.plannedNoticeKey
+
+    def plannedBoardId: PlannedBoardId =
+      noticeId.plannedBoardId
 
     def boardPath: BoardPath =
       noticeId.boardPath

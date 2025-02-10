@@ -13,7 +13,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannedBoard}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerStateTest.*
@@ -33,7 +33,7 @@ import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -86,6 +86,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         controllerState.keyTo(SubagentItemState).values ++
         controllerState.pathToUnsignedSimple(SubagentBundle).values ++
         controllerState.keyTo(LockState).values ++
+        Seq(notice) ++
         Seq(board) ++
         Seq(calendar) ++
         Seq(
@@ -244,16 +245,16 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         },
         "queue": []
       }, {
+        "TYPE": "Notice",
+        "id": [ "BOARD", "NOTICE-1" ],
+        "endOfLife": 10086400000
+      }, {
         "TYPE": "GlobalBoard",
         "path": "BOARD",
         "postOrderToNoticeKey": "$$orderId",
         "expectOrderToNoticeKey": "$$orderId",
         "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000",
         "itemRevision": 7
-      }, {
-        "TYPE": "Notice",
-        "id": [ "BOARD", "NOTICE-1" ],
-        "endOfLife": 10086400000
       }, {
         "TYPE": "Calendar",
         "path": "Calendar",
@@ -460,11 +461,7 @@ object ControllerStateTest:
     endOfLife = Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000).some)
   private val expectedNoticeId = PlanId.Global / board.path / NoticeKey("NOTICE-2")
 
-  private val boardState = BoardState(
-    board,
-    Map(
-      notice.plannedNoticeKey -> NoticePlace(Some(notice)),
-      expectedNoticeId.plannedNoticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))
+  private val boardState = BoardState(board)
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
@@ -520,7 +517,20 @@ object ControllerStateTest:
         WorkflowPathControlPath(workflow.path),
         suspended = true,
         skip = Set(Label("LABEL"))),
-      PlanSchemaId.Global -> PlanSchemaState.initialGlobal),
+      PlanSchemaId.Global -> PlanSchemaState(
+        PlanSchema.Global,
+        namedValues = Map.empty,
+        Map(
+          PlanKey.Global -> Plan(
+            PlanId.Global,
+            Set(),
+            Map(
+              board.path -> PlannedBoard(
+                PlanId.Global / board.path,
+                Map(
+                  notice.noticeKey -> NoticePlace(Some(notice)),
+                  expectedNoticeId.noticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))),
+            isClosed = false)))),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

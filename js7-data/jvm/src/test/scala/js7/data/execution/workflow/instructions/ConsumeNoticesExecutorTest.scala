@@ -6,14 +6,14 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.*
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.NoticeState.{Announced, Posted, Unknown}
 import js7.data.order.OrderEvent.OrderMoved.NoNotice
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanSchema, PlanSchemaId}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.state.ControllerTestStateView
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -40,7 +40,9 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Posted, B -> Announced, C -> Announced), any,
           OrderNoticesConsumptionStarted(Vector(
-            planId / A / noticeKey)))
+            planId / A / noticeKey,
+            planId / B / noticeKey /*despite notice does not exist*/,
+            planId / C / noticeKey /*despite notice does not exist*/)))
 
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Posted, C -> Announced), any,
@@ -59,6 +61,7 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       for any <- Seq(Wait, DontWait, SkipWhenNoNotice) do
         testConsumeNotices(A | B & C, Map(A -> Announced, B -> Posted, C -> Posted), any,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
             planId / B / noticeKey,
             planId / C / noticeKey)))
 
@@ -70,7 +73,7 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
             planId / C / noticeKey)))
     }
 
-    "Nothing announced or posted Notices" - {
+    "Nothing announced, or posted Notices" - {
       "Wait: no difference between unknown and announced Notices (see above)" - {
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> notPosted, C -> notPosted), Wait,
@@ -82,7 +85,9 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> Posted, B -> notPosted, C -> notPosted), Wait,
             OrderNoticesConsumptionStarted(Vector(
-              planId / A / noticeKey)))
+              planId / A / noticeKey,
+              planId / B / noticeKey /*despite notice does not exist*/,
+              planId / C / noticeKey /*despite notice does not exist*/)))
 
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> Posted, C -> notPosted), Wait,
@@ -101,6 +106,7 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         for notPosted <- Seq(Unknown, Announced) do
           testConsumeNotices(A | B & C, Map(A -> notPosted, B -> Posted, C -> Posted), Wait,
             OrderNoticesConsumptionStarted(Vector(
+              planId / A / noticeKey /*despite notice does not exist*/,
               planId / B / noticeKey,
               planId / C / noticeKey)))
 
@@ -123,31 +129,44 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
           OrderMoved(Position(1), Some(NoNotice)))
 
         testConsumeNotices(A | B & C, Map(), DontWait,
-          OrderNoticesConsumptionStarted(Vector()))
+          OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
+            planId / B / noticeKey /*despite notice does not exist*/,
+            planId / C / noticeKey /*despite notice does not exist*/)))
       }
 
       "A posted" - {
         testConsumeNotices(A | B & C, Map(A -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
-            planId / A / noticeKey)))
+            planId / A / noticeKey,
+            planId / B / noticeKey, /*despite notice does not exist*/
+            planId / C / noticeKey /*despite notice does not exist*/)))
 
         testConsumeNotices(A | B & C, Map(A -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            planId / A / noticeKey)))
+            planId / A / noticeKey,
+            planId / B / noticeKey, /*despite notice does not exist*/
+            planId / C / noticeKey /*despite notice does not exist*/)))
 
         testConsumeNotices(A | B & C, Map(A -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            planId / A / noticeKey)))
+            planId / A / noticeKey,
+            planId / B / noticeKey, /*despite notice does not exist*/
+            planId / C / noticeKey /*despite notice does not exist*/)))
       }
 
       "B posted" - {
         testConsumeNotices(A | B & C, Map(B -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
-            planId / B / noticeKey)))
+            planId / A / noticeKey /*despite notice does not exist*/,
+            planId / B / noticeKey,
+            planId / C / noticeKey /*despite notice does not exist*/)))
 
         testConsumeNotices(A | B & C, Map(B -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
-            planId / B / noticeKey)))
+            planId / A / noticeKey /*despite notice does not exist*/ ,
+            planId / B / noticeKey,
+            planId / C / noticeKey /*despite notice does not exist*/)))
 
         testConsumeNotices(A | B & C, Map(B -> Posted), Wait,
           OrderNoticesExpected(Vector(
@@ -159,10 +178,14 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       "C posted" - {
         testConsumeNotices(A | B & C, Map(C -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
+            planId / B / noticeKey /*despite notice does not exist*/,
             planId / C / noticeKey)))
 
         testConsumeNotices(A | B & C, Map(C -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
+            planId / B / noticeKey /*despite notice does not exist*/,
             planId / C / noticeKey)))
 
         testConsumeNotices(A | B & C, Map(C -> Posted), Wait,
@@ -175,16 +198,19 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
       "B and C posted" - {
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), SkipWhenNoNotice,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
             planId / B / noticeKey,
             planId / C / noticeKey)))
 
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), DontWait,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
             planId / B / noticeKey,
             planId / C / noticeKey)))
 
         testConsumeNotices(A | B & C, Map(B -> Posted, C -> Posted), Wait,
           OrderNoticesConsumptionStarted(Vector(
+            planId / A / noticeKey /*despite notice does not exist*/,
             planId / B / noticeKey,
             planId / C / noticeKey)))
       }
@@ -215,7 +241,9 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         for any <- Seq(Wait, SkipWhenNoNotice, DontWait) do
           testConsumeNotices(A | B & C, Map(A -> Posted, B -> Announced), any,
             OrderNoticesConsumptionStarted(Vector(
-              planId / A / noticeKey)))
+              planId / A / noticeKey,
+              planId / B / noticeKey /*despite notice does not exist*/,
+              planId / C / noticeKey /*despite notice does not exist*/)))
         }
 
       testConsumeNotices(
@@ -232,14 +260,18 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         Map(A -> Announced, B -> Posted),
         DontWait,
         OrderNoticesConsumptionStarted(Vector(
-          planId / B / noticeKey)))
+          planId / A / noticeKey /*despite notice does not exist*/,
+          planId / B / noticeKey,
+          planId / C / noticeKey /*despite notice does not exist*/)))
 
       testConsumeNotices(
         A | B & C,
         Map(A -> Announced, B -> Posted),
         SkipWhenNoNotice,
         OrderNoticesConsumptionStarted(Vector(
-          planId / B / noticeKey)))
+          planId / A / noticeKey /*despite notice does not exist*/,
+          planId / B / noticeKey,
+          planId / C / noticeKey /*despite notice does not exist*/)))
 
       testConsumeNotices(
         A | B & C,
@@ -255,6 +287,8 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         Map(B -> Announced, C -> Posted),
         DontWait,
         OrderNoticesConsumptionStarted(Vector(
+          planId / A / noticeKey /*despite notice does not exist*/,
+          planId / B / noticeKey /*despite notice does not exist*/,
           planId / C / noticeKey)))
 
       testConsumeNotices(
@@ -262,6 +296,8 @@ final class ConsumeNoticesExecutorTest extends OurTestSuite:
         Map(B -> Announced, C -> Posted),
         SkipWhenNoNotice,
         OrderNoticesConsumptionStarted(Vector(
+          planId / A / noticeKey /*despite notice does not exist*/,
+          planId / B / noticeKey /*despite notice does not exist*/,
           planId / C / noticeKey)))
     }
   }
@@ -304,40 +340,43 @@ object ConsumeNoticesExecutorTest:
     whenNotAnnounced: WhenNotAnnounced,
     boardToNoticeState: Map[BoardPath, NoticeState] = Map.empty)
   : Checked[List[OrderEvent.OrderActorEvent]] =
-    val instr = ConsumeNotices(
-      boardExpr,
-      whenNotAnnounced = whenNotAnnounced,
-      Workflow.empty)
+    val instr = ConsumeNotices(boardExpr, whenNotAnnounced = whenNotAnnounced, Workflow.empty)
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"), instr)
     val order = Order(orderId, workflow.id /: Position(0), Order.Ready, maybePlanId = Some(planId),
       arguments = Map("ARG" -> StringValue("🔸")))
     val controllerState = ControllerTestStateView.of(
       workflows = Some(Seq(workflow)),
       orders = Some(Seq(order)),
-      itemStates = boardPaths.map: boardPath =>
-        toBoardState(boardPath, boardToNoticeState.getOrElse(boardPath, Unknown)))
+      itemStates =
+        boardPaths.map: boardPath =>
+          BoardState(
+            PlannableBoard(
+              boardPath,
+              postOrderToNoticeKey = expr("$ARG"),
+              expectOrderToNoticeKey = expr("$ARG")))
+        .appended:
+          PlanSchemaState(
+            dailyPlan,
+            namedValues = Map.empty,
+            toPlan = Map(
+              planId.planKey -> Plan(
+                planId,
+                Set(orderId),
+                boardPaths.map: boardPath =>
+                  PlannedBoard(
+                    planId / boardPath,
+                    boardToNoticeState.getOrElse(boardPath, Unknown) match
+                      case Announced => Map(noticeKey -> NoticePlace(isAnnounced = true))
+                      case Posted => Map(noticeKey -> NoticePlace(Some(Notice(boardPath / plannedNoticeKey))))
+                      case Unknown => Map.empty),
+                isClosed = false))))
 
-    val result = ConsumeNoticesExecutor:
+    ConsumeNoticesExecutor:
       InstructionExecutorService(TestWallClock(ts"2024-11-25T12:00:00Z"))
     .toEvents(instr, order, controllerState)
-    result.map(_.map:
+    .map(_.map:
       case KeyedEvent(`orderId`, event) => event)
 
-  private def toBoardState(boardPath: BoardPath, noticeState: NoticeState)
-  : BoardState =
-    BoardState(
-      PlannableBoard(
-        boardPath,
-        postOrderToNoticeKey = expr("$ARG"),
-        expectOrderToNoticeKey = expr("$ARG")),
-      toNoticePlace =
-        noticeState match
-          case Announced =>
-            Map(plannedNoticeKey -> NoticePlace(isAnnounced = true))
-          case Posted =>
-            Map(plannedNoticeKey -> NoticePlace(Some(Notice(boardPath / plannedNoticeKey))))
-          case Unknown =>
-            Map.empty)
 
   private[instructions] enum NoticeState:
     case Announced

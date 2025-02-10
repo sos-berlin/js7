@@ -20,6 +20,7 @@ object NoticeEvent extends Event.CompanionForKey[BoardPath, NoticeEvent]:
     plannedNoticeKey: PlannedNoticeKey,
     endOfLife: Option[Timestamp] = None)
   extends NoticeEvent:
+    export plannedNoticeKey.planId
     def toNotice(boardPath: BoardPath): Notice =
       Notice(boardPath / plannedNoticeKey, endOfLife)
 

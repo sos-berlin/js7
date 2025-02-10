@@ -10,7 +10,7 @@ import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{BoardPath, BoardState, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, BoardState, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
@@ -20,7 +20,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
-import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
@@ -99,16 +99,24 @@ private object JControllerStateTest:
         PlanSchemaState(
           PlanSchema(PlanSchemaId("DailyPlan"), StringConstant.empty),
           namedValues = Map.empty,
-          toPlan = Map.empty),
+          toPlan = Map(
+            planId.planKey -> Plan(
+              planId,
+              orderIds = Set.empty,
+              toPlannedBoard = Map(
+                BoardPath("BOARD") -> PlannedBoard(
+                  planId / BoardPath("BOARD"),
+                  toNoticePlace = Map(
+                    NoticeKey("NOTICE") -> NoticePlace(isAnnounced = true))),
+                BoardPath("BOARD-2") -> PlannedBoard(
+                  planId / BoardPath("BOARD-2"),
+                  toNoticePlace = Map(
+                    NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(OrderId("B-ORDER")))))),
+              isClosed = false))),
         BoardState(
-          PlannableBoard(BoardPath("BOARD")),
-          toNoticePlace = Map(
-            PlanId.Global / NoticeKey("NOTICE") -> NoticePlace(isAnnounced = true))),
+          PlannableBoard(BoardPath("BOARD"))),
         BoardState(
-          PlannableBoard(BoardPath("BOARD-2")),
-          toNoticePlace = Map(
-            planId / NoticeKey("NOTICE") ->
-              NoticePlace(expectingOrderIds = Set(OrderId("B-ORDER"))))),
+          PlannableBoard(BoardPath("BOARD-2"))),
       ).map(o => o.path -> o),
     repo = Repo.empty
       .applyEvents(List(

@@ -5,54 +5,59 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.NoticeEventSource.*
-import js7.data.controller.ControllerCommand
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticePosted, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import js7.data.plan.PlanId
-import js7.data.state.StateView
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{ExpectOrConsumeNoticesInstruction, PostNotices}
 
 final class NoticeEventSource(clock: WallClock):
 
-  def postNotices(boardPaths: Vector[BoardPath], order: Order[Order.Ready], state: StateView)
+  def postNotices(
+    boardPaths: Vector[BoardPath],
+    order: Order[Order.Ready],
+    controllerState: ControllerState)
   : Checked[List[KeyedEvent[OrderNoticeEvent | OrderMoved]]] =
     for
-      boardStates <- boardPaths.traverse(state.keyTo(BoardState).checked)
-      fatNotices <- boardStates.traverse: boardState =>
+      _ <- boardPaths.checkUniqueness
+      boardStates <- boardPaths.traverse(controllerState.keyTo(BoardState).checked)
+      notices <- boardStates.traverse: boardState =>
         boardState.board.match
           case board: GlobalBoard =>
-            board.postingOrderToNotice(order, state, clock.now())
+            board.postingOrderToNotice(order, controllerState, clock.now())
 
           case board: PlannableBoard =>
-            board.postingOrderToNotice(order, state)
-        .map:
-          FatNotice(_, boardState)
-      postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
-      expectingOrderEvents <- toExpectingOrderEvents(fatNotices, state)
+            board.postingOrderToNotice(order, controllerState)
+      postingOrderEvents = toPostingOrderEvents(notices, order)
+      expectingOrderEvents <- toExpectingOrderEvents(order.planId, notices, controllerState)
     yield
       postingOrderEvents ++: expectingOrderEvents.toList
 
-  def executePostNoticeCommand(postNotice: ControllerCommand.PostNotice, state: StateView)
+  def executePostNoticeCommand(
+    postNotice: ControllerCommand.PostNotice,
+    controllerState: ControllerState)
   : Checked[Seq[KeyedEvent[OrderNoticeEvent | OrderMoved | NoticeEvent]]] =
     import postNotice.endOfLife
     import postNotice.noticeId.{boardPath, plannedNoticeKey}
     val scope = NowScope(clock.now()) // TODO Should be pure ?
     for
-      boardState <- state.keyTo(BoardState).checked(boardPath)
+      boardState <- controllerState.keyTo(BoardState).checked(boardPath)
       notice <- boardState.board.toNotice(plannedNoticeKey, endOfLife)(scope)
-      _ <- boardState.addNotice(notice) // Check
+      _ <- controllerState.updatePlannedBoard(postNotice.noticeId.plannedBoardId):
+        _.addNotice(notice) // Check only
       expectingOrderEvents <-
         if endOfLife.exists(_ <= clock.now()) then
           logger.debug(s"Delete $notice immediately because endOfLife has been reached")
           Right((boardPath <-: NoticeDeleted(plannedNoticeKey)) :: Nil)
         else
-          postedNoticeToExpectingOrderEvents(boardState, notice, state)
+          postedNoticeToExpectingOrderEvents(notice, controllerState)
     yield
       NoticePosted.toKeyedEvent(notice) +: expectingOrderEvents
 
@@ -61,27 +66,29 @@ object NoticeEventSource:
 
   private val logger = Logger[this.type]
 
-  private final case class FatNotice(notice: Notice, boardState: BoardState)
 
   /** Returns the OrderNoticeAnnounced events required for an added posting order. */
   def planToNoticeAnnounced(
     planId: PlanId,
     order: FreshOrder,
     innerBlock: Workflow,
-    state: StateView)
+    controllerState: ControllerState)
   : Checked[List[OrderNoticeAnnounced]] =
     assertThat(!planId.isGlobal)
     innerBlock.instructions.view.collect:
       case postNotices: PostNotices =>
-        postNotices.boardPaths.traverse: boardPath =>
-          state.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
-            boardState.item match
-              case _: GlobalBoard => Right(None)
-              case plannableBoard: PlannableBoard =>
-                plannableBoard.freshOrderToNoticeKey(planId, order, state)
-                  .map: plannedNoticeKey =>
-                    !boardState.isAnnounced(plannedNoticeKey) thenSome:
-                      OrderNoticeAnnounced(boardPath / plannedNoticeKey)
+        controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
+          .flatMap: planSchemaState =>
+            planSchemaState.plan(planId.planKey).flatMap: plan =>
+              postNotices.boardPaths.traverse: boardPath =>
+                controllerState.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
+                  boardState.item match
+                    case _: GlobalBoard => Right(None)
+                    case plannableBoard: PlannableBoard =>
+                      plannableBoard.freshOrderToNoticeKey(planId, order, controllerState)
+                        .map: noticeKey =>
+                          !plan.isNoticeAnnounced(boardPath / noticeKey) thenSome:
+                            OrderNoticeAnnounced(planId / boardPath / noticeKey)
         .map(_.flatten)
     .toList.sequence
     .map(_.flatten.distinct)
@@ -95,34 +102,37 @@ object NoticeEventSource:
 
   // For PostNotice command
   private def postedNoticeToExpectingOrderEvents(
-    boardState: BoardState,
     notice: Notice,
-    state: StateView)
+    controllerState: ControllerState)
   : Checked[Seq[KeyedEvent[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]]] =
-    toExpectingOrderEvents(Vector(FatNotice(notice, boardState)), state)
+    toExpectingOrderEvents(notice.planId, Vector(notice), controllerState)
 
   private def toExpectingOrderEvents(
-    postedNotices: Vector[FatNotice],
-    state: StateView)
+    planId: PlanId,
+    postedNotices: Vector[Notice],
+    controllerState: ControllerState)
   : Checked[Vector[KeyedEvent[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]]] =
     for
+      _ <- postedNotices.map(_.boardPath).checkUniqueness
+      planSchemaState <- controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
+      plan <- planSchemaState.plan(planId.planKey)
       expectingOrders <- postedNotices
-        .flatMap: post =>
-          post.boardState.expectingOrders(post.notice.plannedNoticeKey)
+        .flatMap: notice =>
+          plan.plannedBoard(notice.boardPath).expectingOrders(notice.noticeKey)
         .distinct
-        .traverse(state.idToOrder.checked)
+        .traverse(controllerState.idToOrder.checked)
       events <- expectingOrders
         .traverse: expectingOrder =>
-          state.instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
+          controllerState.instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
             .map(expectingOrder -> _)
         .flatMap:
           _.traverse: (expectingOrder, expectNoticesInstr) =>
-            state.idToOrder.checked(expectingOrder.id)
+            controllerState.idToOrder.checked(expectingOrder.id)
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map: expectingOrder =>
-                val postedNoticeIds = postedNotices.map(_.notice.id).toSet
+                val postedNoticeIds = postedNotices.map(_.id).toSet
                 expectNoticesInstr
-                  .tryFulfillExpectingOrder(expectingOrder, state.isNoticeAvailable, postedNoticeIds)
+                  .tryFulfillExpectingOrder(expectingOrder, controllerState.isNoticeAvailable, postedNoticeIds)
                   .map(expectingOrder.id <-: _)
           .map(_.flatten)
     yield

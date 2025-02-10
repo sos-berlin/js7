@@ -49,7 +49,7 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, NoticeEventSource, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeEventSource, NoticeId, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
@@ -72,7 +72,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, 
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{PlanId, PlanSchemaState}
+import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
@@ -294,10 +294,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     this._controllerState = controllerState
     //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
 
-    for
-      boardState <- controllerState.keyTo(BoardState).values;
-      notice <- boardState.notices
-    do
+    controllerState.allNotices.foreach: notice =>
       notices.maybeSchedule(notice.id, notice.endOfLife)
 
     persistedEventId = controllerState.eventId
@@ -579,9 +576,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     case Internal.NoticeIsDue(noticeId) =>
       notices.deleteSchedule(noticeId)
       for
-        boardState <- _controllerState.keyTo(BoardState).checked(noticeId.boardPath);
-        notice <- boardState.notice(noticeId.plannedNoticeKey);
-        keyedEvent <- boardState.deleteNoticeEvent(noticeId.plannedNoticeKey)
+        plan <- _controllerState.toPlan.get(noticeId.planId);
+        plannedBoard <- plan.toPlannedBoard.get(noticeId.boardPath)
+        notice <- plannedBoard.maybeNotice(noticeId.noticeKey)
+        keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey).toOption
       do
         if notice.endOfLife.exists(alarmClock.now() < _) then
           notices.maybeSchedule(noticeId, notice.endOfLife)
@@ -752,8 +750,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
       case ControllerCommand.DeleteNotice(noticeId) =>
         (for
-          boardState <- _controllerState.keyTo(BoardState).checked(noticeId.boardPath)
-          keyedEvent <- boardState.deleteNoticeEvent(noticeId.plannedNoticeKey)
+          plan <- _controllerState.toPlan.checked(noticeId.planId);
+          plannedBoard <- plan.toPlannedBoard.checked(noticeId.boardPath)
+          notice <- plannedBoard.checkedNotice(noticeId.noticeKey)
+          keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey)
         yield keyedEvent)
         match
           case Left(problem) => Future.successful(Left(problem))
@@ -764,7 +764,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case cmd: ControllerCommand.ChangeGlobalToPlannableBoard =>
         import cmd.{planSchemaId, plannableBoard}
         ControllerStatePlanFunctions
-          .changeBoardType(plannableBoard, planSchemaId, endOfLife = None, _controllerState):
+          .changeBoardType(
+            plannableBoard,
+            fromPlanSchemaId = PlanSchemaId.Global,
+            toPlanSchemaId = planSchemaId,
+            endOfLife = None,
+            _controllerState
+          ):
             plannedNoticeKey =>
               cmd.evalSplitNoticeKey(plannedNoticeKey.noticeKey).map: (planKey, noticeKey) =>
                 Some(planSchemaId / planKey / noticeKey)
@@ -777,7 +783,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case cmd: ControllerCommand.ChangePlannableToGlobalBoard =>
         import cmd.{globalBoard, planSchemaId}
         globalBoard.evalEndOfLife(NowScope(alarmClock.now())).flatMap: endOfLife =>
-          ControllerStatePlanFunctions.changeBoardType(globalBoard, planSchemaId, endOfLife, _controllerState):
+          ControllerStatePlanFunctions.changeBoardType(
+            globalBoard,
+            fromPlanSchemaId = planSchemaId,
+            toPlanSchemaId = PlanSchemaId.Global,
+            endOfLife,
+            _controllerState
+          ):
             case PlannedNoticeKey(PlanId(`planSchemaId`, planKey), noticeKey) =>
               cmd.evalMakeNoticeKey(planKey, noticeKey).map: noticeKey =>
                 Some(PlanId.Global / noticeKey)

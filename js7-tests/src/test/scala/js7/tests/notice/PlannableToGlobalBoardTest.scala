@@ -11,7 +11,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.NoticeEvent.{NoticeMoved, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, ChangePlannableToGlobalBoard, PostNotice}
 import js7.data.event.Event
@@ -94,12 +94,12 @@ final class PlannableToGlobalBoardTest
       execCmd:
         PostNotice(weekPlanId / boardPath / "POSTED")
 
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        planId / NoticeKey("ALPHA") -> NoticePlace(Some(Notice(planId / boardPath / "ALPHA"))),
-        planId / NoticeKey("BETA") -> NoticePlace(Some(Notice(planId / boardPath / "BETA"))),
-        otherPlanId / NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(consumingOrderId)),
-        weekPlanId / NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(weekConsumingOrderId)),
-        weekPlanId / NoticeKey("POSTED") -> NoticePlace(Some(Notice(weekPlanId / boardPath / "POSTED")))))
+      assert(controllerState.toNoticePlace.toMap == Map(
+        planId / boardPath / NoticeKey("ALPHA") -> NoticePlace(Some(Notice(planId / boardPath / "ALPHA"))),
+        planId / boardPath / NoticeKey("BETA") -> NoticePlace(Some(Notice(planId / boardPath / "BETA"))),
+        otherPlanId / boardPath / NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(consumingOrderId)),
+        weekPlanId / boardPath / NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(weekConsumingOrderId)),
+        weekPlanId / boardPath / NoticeKey("POSTED") -> NoticePlace(Some(Notice(weekPlanId / boardPath / "POSTED")))))
 
       // Change PlannableBoard to GlobalBoard//
       // Notices and expecting Order will be changed
@@ -113,20 +113,20 @@ final class PlannableToGlobalBoardTest
         ChangePlannableToGlobalBoard(globalBoard, dailyPlan.id,
           exprFun"""(planKey, noticeKey) => "$$planKey$$noticeKey" """)
 
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        GlobalNoticeKey("2025-01-20ALPHA") -> NoticePlace(
+      assert(controllerState.toNoticePlace.toMap == Map(
+        PlanId.Global / boardPath / NoticeKey("2025-01-20ALPHA") -> NoticePlace(
           Some(Notice(
             PlanId.Global / boardPath / "2025-01-20ALPHA",
             endOfLife = Some(ts"2099-01-01T01:00:00Z")))),
-        GlobalNoticeKey("2025-01-20BETA") -> NoticePlace(
+        PlanId.Global / boardPath / NoticeKey("2025-01-20BETA") -> NoticePlace(
           Some(Notice(
             PlanId.Global / boardPath / "2025-01-20BETA",
             endOfLife = Some(ts"2099-01-01T01:00:00Z")))),
-        GlobalNoticeKey("2025-01-21NOTICE") -> NoticePlace(
+        PlanId.Global / boardPath / NoticeKey("2025-01-21NOTICE") -> NoticePlace(
           expectingOrderIds = Set(consumingOrderId)),
-        weekPlanId / NoticeKey("NOTICE") -> NoticePlace(
+        weekPlanId / boardPath / NoticeKey("NOTICE") -> NoticePlace(
           expectingOrderIds = Set(weekConsumingOrderId)),
-        weekPlanId / NoticeKey("POSTED") -> NoticePlace(
+        weekPlanId / boardPath / NoticeKey("POSTED") -> NoticePlace(
           Some(Notice(weekPlanId / boardPath / "POSTED")))))
 
       assert(controllerState.idToOrder(consumingOrderId).isState[ExpectingNotices])
@@ -160,11 +160,11 @@ final class PlannableToGlobalBoardTest
 
         // ChangeGlobalToPlannableBoard //
         NoKey <-: UnsignedSimpleItemChanged(globalBoard.withRevision(Some(ItemRevision(1)))),
-        consumingOrderId <-: OrderStateReset,
         boardPath <-: NoticeMoved(planId / NoticeKey("ALPHA"), GlobalNoticeKey("2025-01-20ALPHA"),
           endOfLife = Some(ts"2099-01-01T01:00:00Z")),
         boardPath <-: NoticeMoved(planId / NoticeKey("BETA"), GlobalNoticeKey("2025-01-20BETA"),
           endOfLife = Some(ts"2099-01-01T01:00:00Z")),
+        consumingOrderId <-: OrderStateReset,
         consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ "2025-01-21NOTICE")),
 
         boardPath <-: NoticePosted(GlobalNoticeKey("2025-01-21NOTICE"),

@@ -1,6 +1,5 @@
 package js7.agent.data
 
-import cats.effect.IO
 import fs2.Stream
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Decoder, Encoder}
@@ -16,7 +15,6 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isStrict
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
-import js7.data.board.{BoardState, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.{ControllerId, ControllerRunId}
@@ -30,7 +28,6 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.node.{NodeId, NodeName}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.plan.PlanSchemaState
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -353,11 +350,6 @@ extends SignedItemContainer,
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
   def orders: Iterable[Order[Order.State]] = idToOrder.values
-
-  protected def updateNoticeIdsInPlans(
-    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[Seq[PlanSchemaState]] =
-    Left(Problem.pure("updateNoticeIdsInPlans is not implemented"))
 
   def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName] =
     if !isDedicated then

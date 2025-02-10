@@ -11,7 +11,7 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.NoticeEvent.{NoticeMoved, NoticePosted}
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeEvent, NoticeKey, NoticePlace, PlannableBoard}
+import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticeEvent, NoticeKey, NoticePlace, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{ChangeGlobalToPlannableBoard, PostNotice}
 import js7.data.event.Event
@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, Order
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaId}
 import js7.data.value.expression.ExprFunction.testing.|=>
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -82,16 +82,16 @@ final class GlobalToPlannableBoardTest
         FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        GlobalNoticeKey("2025-01-20ALPHA") -> NoticePlace(
+      assert(controllerState.toNoticePlace.toMap == Map(
+        boardPath \ NoticeKey("2025-01-20ALPHA") -> NoticePlace(
           Some(Notice(
             PlanId.Global / boardPath / "2025-01-20ALPHA",
             endOfLife = Some(ts"2099-01-01T01:00:00Z")))),
-        GlobalNoticeKey("2025-01-20BETA") -> NoticePlace(
+        boardPath \ NoticeKey("2025-01-20BETA") -> NoticePlace(
           Some(Notice(
             PlanId.Global / boardPath / "2025-01-20BETA",
             endOfLife = Some(ts"2099-01-01T01:00:00Z")))),
-        GlobalNoticeKey("2025-01-21NOTICE") -> NoticePlace(
+        boardPath \ NoticeKey("2025-01-21NOTICE") -> NoticePlace(
           expectingOrderIds = Set(consumingOrderId))))
 
       // Change GlobalBoard to PlannableBoard //
@@ -104,12 +104,13 @@ final class GlobalToPlannableBoardTest
 
       execCmd:
         ChangeGlobalToPlannableBoard(plannableBoard, dailyPlan.id,
-          "noticeKey" |=> expr("[ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]"))
+          exprFunction("(noticeKey) => [ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]"))
 
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        planId / NoticeKey("ALPHA") -> NoticePlace(Some(Notice(planId / boardPath / "ALPHA"))),
-        planId / NoticeKey("BETA") -> NoticePlace(Some(Notice(planId / boardPath / "BETA"))),
-        otherPlanId / NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(consumingOrderId))))
+      assert(controllerState.toNoticePlace.toMap == Map(
+        planId / boardPath / NoticeKey("ALPHA") -> NoticePlace(Some(Notice(planId / boardPath / "ALPHA"))),
+        planId / boardPath / NoticeKey("BETA") -> NoticePlace(Some(Notice(planId / boardPath / "BETA"))),
+        otherPlanId / boardPath / NoticeKey("NOTICE") -> NoticePlace(
+          expectingOrderIds = Set(consumingOrderId))))
 
       assert(controllerState.idToOrder(consumingOrderId).isState[ExpectingNotices])
       execCmd:
@@ -162,12 +163,12 @@ final class GlobalToPlannableBoardTest
         FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        GlobalNoticeKey("2025-01-22A") -> NoticePlace(
+      assert(controllerState.toNoticePlace.toMap == Map(
+        boardPath \ NoticeKey("2025-01-22A") -> NoticePlace(
           Some(Notice(
             PlanId.Global / boardPath / "2025-01-22A",
             endOfLife = Some(ts"2099-01-01T01:00:00Z")))),
-        GlobalNoticeKey("2025-01-22B") -> NoticePlace(
+        boardPath \ NoticeKey("2025-01-22B") -> NoticePlace(
           expectingOrderIds = Set(consumingOrderId))))
 
       // Change GlobalBoard to PlannableBoard //
@@ -188,9 +189,9 @@ final class GlobalToPlannableBoardTest
             """[ "$(substring($noticeKey, 0, 7))🔵$(substring($noticeKey, 8, 10))", substring($noticeKey, 10) ]""")
 
       val wrongPlanId = dailyPlan.id / "2025-01🔵22"
-      assert(controllerState.keyTo(BoardState)(boardPath).toNoticePlace == Map(
-        wrongPlanId / NoticeKey("A") -> NoticePlace(Some(Notice(wrongPlanId / boardPath / "A"))),
-        planId / NoticeKey("B") -> NoticePlace(expectingOrderIds = Set(consumingOrderId))))
+      assert(controllerState.toNoticePlace.toMap == Map(
+        wrongPlanId / boardPath / NoticeKey("A") -> NoticePlace(Some(Notice(wrongPlanId / boardPath / "A"))),
+        planId / boardPath / NoticeKey("B") -> NoticePlace(expectingOrderIds = Set(consumingOrderId))))
 
       assert(controllerState.idToOrder(consumingOrderId).isState[ExpectingNotices])
       execCmd:

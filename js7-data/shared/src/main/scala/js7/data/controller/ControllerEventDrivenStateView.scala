@@ -2,7 +2,9 @@ package js7.data.controller
 
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.board.NoticeId
 import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
 import js7.data.plan.{PlanId, PlanSchema, PlanSchemaState}
@@ -11,6 +13,8 @@ import js7.data.state.EventDrivenStateView
 trait ControllerEventDrivenStateView[Self <: ControllerEventDrivenStateView[Self]]
 extends EventDrivenStateView[Self]:
   this: Self =>
+
+  def isNoticeAvailable(noticeId: NoticeId): L3
 
   override protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match

@@ -47,6 +47,7 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.WithInstructionBlock:
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
     noticeIds: Vector[NoticeId],
+    consumedNoticeIds: Vector[NoticeId],
     exprResult: L3)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
     exprResult match
@@ -56,7 +57,7 @@ extends ExpectOrConsumeNoticesInstruction, Instruction.WithInstructionBlock:
         whenNotAnnounced match
           case Wait => Nil
 
-          case SkipWhenNoNotice if noticeIds.isEmpty =>
+          case SkipWhenNoNotice if consumedNoticeIds.isEmpty =>
             OrderNoticesRead
               :: OrderMoved(order.position.increment, Some(OrderMoved.NoNotice))
               :: Nil

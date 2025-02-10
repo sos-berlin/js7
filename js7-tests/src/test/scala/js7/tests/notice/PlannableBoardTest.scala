@@ -358,7 +358,10 @@ final class PlannableBoardTest
           OrderStarted,
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
-          OrderNoticesConsumptionStarted(Vector(planId / board.path / NoticeKey("🔸"))),
+          OrderNoticesConsumptionStarted(Vector(
+            planId / board.path / NoticeKey("🔸"),
+            planId / bBoard.path / NoticeKey("🔸"),
+            planId / cBoard.path / NoticeKey("🔸"))),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),
@@ -396,7 +399,9 @@ final class PlannableBoardTest
           OrderNoticesRead,
           OrderMoved(Position(1), Some(OrderMoved.NoNotice)),
           OrderNoticesConsumptionStarted(Vector(
-            planId / board.path / NoticeKey("🔸"))), // <-- only the posted Notice is consumed
+            planId / board.path / NoticeKey("🔸"), // <-- only the posted Notice is consumed
+            planId / bBoard.path / NoticeKey("🔸")/*Despite it's not consumed !!!*/,
+            planId / cBoard.path / NoticeKey("🔸")/*Despite it's not consumed !!!*/)),
           OrderMoved(Position(1) / "consumeNotices" % 1),
           OrderNoticesConsumed(),
           OrderFinished(),

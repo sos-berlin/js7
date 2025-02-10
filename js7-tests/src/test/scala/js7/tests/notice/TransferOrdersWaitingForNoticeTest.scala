@@ -20,8 +20,8 @@ trait TransferOrdersWaitingForNoticeTest:
   this: ControllerAgentForScalaTest =>
 
   protected final def testTransferOrders(
-    toNoticeInstr: BoardPath => ExpectNotices | ConsumeNotices,
-    assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, NoticeKey) => Assertion)
+    toNoticeInstr: BoardPath => ExpectNotices | ConsumeNotices)
+    (assertResult: (GlobalBoard, GlobalBoard, WorkflowId, WorkflowId, OrderId, NoticeKey) => Assertion)
   : Unit =
     var eventId = eventWatch.lastAddedEventId
     val qualifier = "2024-08-23"
@@ -35,7 +35,7 @@ trait TransferOrdersWaitingForNoticeTest:
 
     withItems((board1, board2, workflow)): (board1, board2, workflow) =>
       assert(controllerState.keyTo(BoardState)(board1.path) ==
-        BoardState(board1, toNoticePlace = Map.empty, orderToConsumptionStack = Map.empty))
+        BoardState(board1))
 
       controller.api.addOrder:
         FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)

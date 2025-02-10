@@ -679,7 +679,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
         logger.error(msg)
         // msg may get very big
         //logger.info(msg)  // Without colors because msg is already colored
-        SnapshotableState.showDifference(
+        SnapshotableState.logBoth(
           recoveredJournalFile.state, "recoveredJournalFile.state",
           snapshot, "snapshot")
         sys.error(msg)

@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.board.NoticeEventSource
+import js7.data.controller.ControllerState
 import js7.data.order.Order
 import js7.data.state.StateView
 import js7.data.workflow.instructions.PostNotices
@@ -20,8 +21,9 @@ extends EventInstructionExecutor:
       .orElse:
         start(order)
       .orElse:
+        val controllerState = state.asInstanceOf[ControllerState]
         order.ifState[Order.Ready].map: order =>
-          noticeEventSource.postNotices(instr.boardPaths, order, state)
+          noticeEventSource.postNotices(instr.boardPaths, order, controllerState)
             .left.map(_.withPrefix(s"${instr.getClass.shortClassName}:"))
       .getOrElse:
         Right(Nil)

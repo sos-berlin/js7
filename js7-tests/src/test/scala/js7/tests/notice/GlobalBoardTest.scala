@@ -26,7 +26,7 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId}
+import js7.data.plan.{Plan, PlanId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
@@ -87,34 +87,28 @@ final class GlobalBoardTest
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.id))
 
-      assert(controllerState.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(
-          board0.withRevision(Some(ItemRevision(0))),
-          Map(
-            notice0.plannedNoticeKey -> NoticePlace(None, expecting01OrderIds.toSet))),
-        board1.path -> BoardState(
-          board1.withRevision(Some(ItemRevision(0))),
-          Map(
-            notice1.plannedNoticeKey -> NoticePlace(Some(notice1), expecting01OrderIds.toSet))),
-        board2.path -> BoardState(
-          board2.withRevision(Some(ItemRevision(0))),
-          Map(
-            notice2.plannedNoticeKey -> NoticePlace(Some(notice2))))))
+      assert(controllerState.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(None, expecting01OrderIds.toSet),
+        notice1.id -> NoticePlace(Some(notice1), expecting01OrderIds.toSet),
+        notice2.id -> NoticePlace(Some(notice2))))
 
       val posting0OrderId = OrderId(s"#$qualifier#POSTING-0")
       controller.runOrder(FreshOrder(posting0OrderId, posting0Workflow.path))
 
       // Look at the Global Plan //
       assert:
-        controllerState.schemaToKeyToPlan(PlanSchemaId.Global) ==
+        controllerState.toPlan.toMap ==
           Map:
-            PlanKey.Global -> Plan(
+            PlanId.Global -> Plan(
               PlanId.Global,
               orderIds = Set(posting0OrderId, posting12OrderId) ++ expecting01OrderIds,
               Seq(
-                PlannedBoard(PlanId.Global / board0.path, Set(notice0.plannedNoticeKey.noticeKey)),
-                PlannedBoard(PlanId.Global / board1.path, Set(notice1.plannedNoticeKey.noticeKey)),
-                PlannedBoard(PlanId.Global / board2.path, Set(notice2.plannedNoticeKey.noticeKey))),
+                PlannedBoard(PlanId.Global / board0.path, Map(
+                  notice0.noticeKey -> NoticePlace(Some(notice0)))),
+                PlannedBoard(PlanId.Global / board1.path, Map(
+                  notice1.noticeKey -> NoticePlace(Some(notice1)))),
+                PlannedBoard(PlanId.Global / board2.path, Map(
+                  notice2.noticeKey -> NoticePlace(Some(notice2))))),
               isClosed = false)
 
       for orderId <- expecting01OrderIds do
@@ -130,7 +124,8 @@ final class GlobalBoardTest
           OrderMoved(Position(1)),
           OrderFinished()))
 
-      val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING-0-2"), expecting02Workflow.path))
+      val readerEvents = controller.runOrder:
+        FreshOrder(OrderId(s"#$qualifier#EXPECTING-0-2"), expecting02Workflow.path)
       assert(readerEvents.map(_.value) == Seq(
         OrderAdded(expecting02Workflow.id),
         OrderStarted,
@@ -138,25 +133,21 @@ final class GlobalBoardTest
         OrderMoved(Position(1)),
         OrderFinished()))
 
-      assert(controllerState.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(
-          board0.withRevision(Some(ItemRevision(0))),
-          Map(notice0.plannedNoticeKey -> NoticePlace(Some(notice0)))),
-        board1.path -> BoardState(
-          board1.withRevision(Some(ItemRevision(0))),
-          Map(notice1.plannedNoticeKey -> NoticePlace(Some(notice1)))),
-        board2.path -> BoardState(
-          board2.withRevision(Some(ItemRevision(0))),
-          Map(notice2.plannedNoticeKey -> NoticePlace(Some(notice2))))))
+      assert(controllerState.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(Some(notice0)),
+        notice1.id -> NoticePlace(Some(notice1)),
+        notice2.id -> NoticePlace(Some(notice2))))
 
     "Two orders expect a notice, then post the notice" in:
       val qualifier = nextQualifier()
-      val notice = Notice(board0.path / GlobalNoticeKey(qualifier), endOfLife0.some)
+      val notice = Notice(board0.path \ NoticeKey(qualifier), endOfLife0.some)
 
-      val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
-      controller.api.addOrders(
+      val expectingOrderIds = Seq(
+        OrderId(s"#$qualifier#EXPECTING-A"),
+        OrderId(s"#$qualifier#EXPECTING-B"))
+      controller.api.addOrders:
         Stream.iterable(expectingOrderIds).map(FreshOrder(_, expecting0Workflow.path))
-      ).await(99.s).orThrow
+      .await(99.s).orThrow
       for orderId <- expectingOrderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
       val posterEvents = controller.runOrder(
@@ -168,14 +159,10 @@ final class GlobalBoardTest
         OrderMoved(Position(1)),
         OrderFinished()))
 
-      assert(controllerState.keyTo(BoardState)(board0.path) ==
-        BoardState(
-          board0.withRevision(Some(ItemRevision(0))),
-          Map(
-            GlobalNoticeKey("2222-01-01") -> NoticePlace(
-              Some(Notice(board0.path / GlobalNoticeKey("2222-01-01"), endOfLife0.some))),  // from previous test
-            notice.plannedNoticeKey -> NoticePlace(
-              Some(notice)))))
+      assert(controllerState.toNoticePlace.filterKeys(_.boardPath == board0.path).toMap == Map(
+        board0.path \ NoticeKey("2222-01-01") -> NoticePlace(
+          Some(Notice(board0.path \ NoticeKey("2222-01-01"), endOfLife0.some))), // from previous test
+        notice.id -> NoticePlace(Some(notice))))
 
       for orderId <- expectingOrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)
@@ -189,21 +176,23 @@ final class GlobalBoardTest
           OrderMoved(Position(1)),
           OrderFinished()))
 
-      assert(controllerState.keyTo(BoardState)(board0.path) ==
-        BoardState(
-          board0.withRevision(Some(ItemRevision(0))),
-          Map(
-            GlobalNoticeKey("2222-01-01") -> NoticePlace(
-              Some(Notice(board0.path / GlobalNoticeKey("2222-01-01"), endOfLife0.some))),  // from previous test
-            GlobalNoticeKey("2222-02-02") -> NoticePlace(
-              Some(notice))
-          )))
+      assert(controllerState.toNoticePlace.filterKeys(_.boardPath == board0.path).toMap == Map(
+        board0.path \ NoticeKey("2222-01-01") -> NoticePlace(
+          Some(Notice(board0.path \ NoticeKey("2222-01-01"), endOfLife0.some))), // from previous test
+        board0.path \ NoticeKey("2222-02-02") -> NoticePlace(
+          Some(Notice(board0.path \ NoticeKey("2222-02-02"), endOfLife0.some)))))
+
+      assert(controllerState.toNoticePlace.filterKeys(_.boardPath == board0.path).toMap == Map(
+        board0.path \ NoticeKey("2222-01-01") -> NoticePlace(
+          Some(Notice(board0.path \ NoticeKey("2222-01-01"), endOfLife0.some))),  // from previous test
+        board0.path \ NoticeKey("2222-02-02") -> NoticePlace(
+          Some(notice))))
 
     "Detach order when at Agent" in:
       // TODO Post kann am Agenten ausgeführt werden, wenn GlobalBoard (ohne BoardState)
       //  dahin übertragen wird, und anschließend der Controller Order.ExpectingNotice löst.
       val qualifier = nextQualifier()
-      val notice = Notice(board0.path / GlobalNoticeKey(qualifier), endOfLife0.some)
+      val notice = Notice(board0.path \ NoticeKey(qualifier), endOfLife0.some)
 
       val posterEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#POSTING"), postingAgentWorkflow.path))
@@ -252,33 +241,33 @@ final class GlobalBoardTest
       .await(99.s).orThrow
       for orderId <- orderIds do eventWatch.await[OrderNoticesRead](_.key == orderId)
 
-      val notice2 = Notice(board0.path / GlobalNoticeKey("2222-08-09"), endOfLife0.some)
+      val notice2 = Notice(board0.path \ NoticeKey("2222-08-09"), endOfLife0.some)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(notice2.id, notice2.endOfLife)
       ).await(99.s).orThrow
-      assert(controllerState.keyTo(BoardState)(board0.path).toNoticePlace(notice2.plannedNoticeKey) ==
+      assert(controllerState.toNoticePlace(notice2.id) ==
         NoticePlace(Some(notice2)))
 
     "PostNotices command without expecting order" in:
-      val notice = Notice(board0.path / GlobalNoticeKey("2222-08-09"), endOfLife0.some)
+      val notice = Notice(board0.path \ NoticeKey("2222-08-09"), endOfLife0.some)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(notice.id, notice.endOfLife)
       ).await(99.s).orThrow
 
       // With explicit endOfLife
-      val notice2 = Notice(board0.path / GlobalNoticeKey("2222-08-10"), Some(clock.now() + 1.h))
+      val notice2 = Notice(board0.path \ NoticeKey("2222-08-10"), Some(clock.now() + 1.h))
       controller.api.executeCommand(
         ControllerCommand.PostNotice(notice2.id, notice2.endOfLife)
       ).await(99.s).orThrow
 
-      assert(controllerState.keyTo(BoardState)(board0.path).toNoticePlace(notice.plannedNoticeKey) ==
+      assert(controllerState.toNoticePlace(notice.id) ==
         NoticePlace(Some(notice)))
-      assert(controllerState.keyTo(BoardState)(board0.path).toNoticePlace(notice2.plannedNoticeKey) ==
+      assert(controllerState.toNoticePlace(notice2.id) ==
         NoticePlace(Some(notice2)))
 
     "DeleteNotice command" in:
       val qualifier = "2222-09-09"
-      val notice = Notice(board0.path / GlobalNoticeKey(qualifier), endOfLife0.some)
+      val notice = Notice(board0.path \ NoticeKey(qualifier), endOfLife0.some)
 
       val posterEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#POSTING"), posting0Workflow.path))
@@ -297,7 +286,7 @@ final class GlobalBoardTest
         controller.api.executeCommand:
           DeleteNotice(PlanId.Global / board0.path / "UNKNOWN")
         .await(99.s) ==
-          Left(UnknownKeyProblem("PlannedNoticeKey", "NoticeKey:Global╱UNKNOWN"))
+          Left(UnknownKeyProblem("NoticeKey", "NoticeKey:UNKNOWN"))
 
       assert:
         controller.api.executeCommand:
@@ -372,9 +361,7 @@ final class GlobalBoardTest
       val Some(versionId) = updateItems(board, workflow): @unchecked
 
       val expectedBoardState = BoardState(
-        board.copy(itemRevision = Some(ItemRevision(0))),
-        toNoticePlace = Map.empty,
-        orderToConsumptionStack = Map.empty)
+        board.copy(itemRevision = Some(ItemRevision(0))))
 
       assert(controllerState.keyTo(BoardState)(board.path) == expectedBoardState)
 
@@ -401,8 +388,7 @@ final class GlobalBoardTest
 
     "TransferOrders of Order.ExpectingNotice" in:
       val eventId = eventWatch.lastAddedEventId
-      testTransferOrders(
-        boardPath => ExpectNotices(ExpectNotice(boardPath)),
+      testTransferOrders(boardPath => ExpectNotices(ExpectNotice(boardPath))):
         (board1, board2, workflowId1, workflowId2, orderId, noticeKey) =>
           assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(
             OrderAdded(workflowId1, deleteWhenTerminated = true),
@@ -416,14 +402,10 @@ final class GlobalBoardTest
             OrderFinished(),
             OrderDeleted))
 
-          val endOfLife = controllerState.keyTo(BoardState)(board2.path)
-            .toNoticePlace(PlanId.Global / noticeKey).notice.get.endOfLife
-          assert(controllerState.keyTo(BoardState)(board2.path) ==
-            BoardState(
-              board2,
-              toNoticePlace = Map:
-                PlanId.Global / noticeKey ->
-                  NoticePlace(Some(Notice(PlanId.Global / board2.path / noticeKey, endOfLife))))))
+          val endOfLife = controllerState.toNoticePlace(board2.path \ noticeKey).notice.get.endOfLife
+          assert(controllerState.toNoticePlace.filterKeys(_.boardPath == board2.path).toMap == Map(
+            board2.path \ noticeKey ->
+              NoticePlace(Some(Notice(board2.path \ noticeKey, endOfLife)))))
   }
 
   "Update GlobalBoard" in:

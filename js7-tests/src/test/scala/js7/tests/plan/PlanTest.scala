@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchChangedPlanSchemaProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedNoticeKey}
+import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, PostNotice}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
@@ -93,7 +93,7 @@ final class PlanTest
       ASemaphoreJob.continue()
       eventWatch.awaitNextKey[OrderFinished](orderId)
 
-  "When aAdding a PlanSchema, Orders expecting a Notice are state-reset" in :
+  "When adding a PlanSchema, Orders expecting a Notice are state-reset" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
 
@@ -118,10 +118,10 @@ final class PlanTest
           OrderAdded(workflow.id, deleteWhenTerminated =  true),
           OrderStarted,
           OrderNoticesExpected(Vector(noticeId)),
-          
-          OrderStateReset, // <-- automatic state reset 
+
+          OrderStateReset, // <-- automatic state reset
           OrderPlanAttached(dailyPlan.id / "2024-12-05"),
-          
+
           OrderNoticesExpected(Vector(noticeId)),
           OrderNoticesConsumptionStarted(Vector(noticeId)),
           OrderNoticesConsumed(),
@@ -243,7 +243,8 @@ final class PlanTest
       val consumingWorkflow = Workflow.of(
         ConsumeNotices(aBoard.path):
           Prompt(expr("'PROMPT'")))
-      withItems((aBoard, bBoard, postingWorkflow, consumingWorkflow)
+      withItems(
+        (aBoard, bBoard, postingWorkflow, consumingWorkflow)
       ): (aBoard, bBoard, postingWorkflow, consumingWorkflow) =>
         eventWatch.resetLastWatchedEventId()
 
@@ -264,8 +265,10 @@ final class PlanTest
             planId,
             Set(postingOrderId),
             Seq(
-              PlannedBoard(planId / aBoard.path, Set(aNoticeKey)),
-              PlannedBoard(planId / bBoard.path, Set(bNoticeKey))),
+              PlannedBoard(planId / aBoard.path, Map(
+                aNoticeKey -> NoticePlace(isAnnounced = true))),
+              PlannedBoard(planId / bBoard.path, Map(
+                bNoticeKey -> NoticePlace(isAnnounced = true)))),
             isClosed = false))
 
         val consumingOrderId = OrderId(s"#$day#CONSUME")
@@ -278,8 +281,10 @@ final class PlanTest
             planId,
             Set(postingOrderId, consumingOrderId),
             Seq(
-              PlannedBoard(planId / aBoard.path, Set(aNoticeKey)),
-              PlannedBoard(planId / bBoard.path, Set(bNoticeKey))),
+              PlannedBoard(planId / aBoard.path, Map(
+                aNoticeKey -> NoticePlace(isAnnounced = true, expectingOrderIds = Set(consumingOrderId)))),
+              PlannedBoard(planId / bBoard.path, Map(
+                bNoticeKey -> NoticePlace(isAnnounced = true)))),
             isClosed = false))
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
@@ -298,28 +303,17 @@ final class PlanTest
           execCmd(CancelOrders(Seq(orderId)))
           eventWatch.awaitNextKey[OrderDeleted](orderId)
 
-        assert(controllerState.toPlan(planSchema.id / planKey) ==
-          Plan(
-            planId,
-            orderIds = Set.empty,
-            Seq(
-              PlannedBoard(planId / aBoard.path, Set(aNoticeKey)),
-              PlannedBoard(planId / bBoard.path, Set(bNoticeKey))),
-            isClosed = false))
-
-        assert(controllerState.keyTo(BoardState)(aBoard.path).toNoticePlace == Map(
-          planId / aNoticeKey -> NoticePlace(Some(Notice(planId / aBoard.path / aNoticeKey)))))
-        assert(controllerState.keyTo(BoardState)(aBoard.path).orderToConsumptionStack == Map.empty)
-
-        // When PlanSchema has been deleted, its NoticePlaces are deleted, too //
-
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).toSet ==
           Set(
             Plan(planId,
               plannedBoards = Seq(
-                PlannedBoard(planId / aBoard.path, Set(aNoticeKey)),
-                PlannedBoard(planId / bBoard.path, Set(bNoticeKey))),
+                PlannedBoard(planId / aBoard.path, Map(
+                  aNoticeKey -> NoticePlace(Some(Notice(planId / aBoard.path / aNoticeKey))))),
+                PlannedBoard(planId / bBoard.path, Map(
+                  bNoticeKey -> NoticePlace(isAnnounced = true)))),
               isClosed = false)))
+
+        // When PlanSchema is being deleted, its NoticePlaces are deleted, too //
 
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)

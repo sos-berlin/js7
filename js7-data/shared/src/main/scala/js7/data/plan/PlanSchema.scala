@@ -62,6 +62,9 @@ extends UnsignedSimpleItem:
 
   def path: PlanSchemaId = id
 
+  def estimatedSnapshotSize: Int =
+    (!isGlobal).toInt
+
   def toSnapshotStream: fs2.Stream[fs2.Pure, PlanSchema] =
     fs2.Stream.fromOption:
       !isGlobal ? this
@@ -81,8 +84,8 @@ extends UnsignedSimpleItem:
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
   def evalOrderToPlanId(scope: Scope): Checked[Option[PlanId]] =
-    evalPlanKeyExpr(scope)
-      .map(_.map(PlanId(id, _)))
+    evalPlanKeyExpr(scope).flatMap: maybePlanKey =>
+      maybePlanKey.traverse(PlanId(id, _).checked)
 
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */

@@ -107,9 +107,9 @@ public class JGlobalBoardTester
         whenPosted.get(99, SECONDS);
         JNoticePlace noticePlace = proxy
             .currentState()
-            .pathToBoardState().get(board.path())
-            .toNotice(postedPlannedNoticeKey)
-            .get();
+            .toPlan().get(postedPlannedNoticeKey.planId())
+            .toPlannedBoard().get(board.path())
+            .toNoticePlace().get(postedPlannedNoticeKey.noticeKey());
         assert noticePlace.notice().isPresent();
         assertThat(noticePlace.notice().get().endOfLife().get(), Matchers.greaterThan(Instant.now()));
     }
@@ -130,9 +130,9 @@ public class JGlobalBoardTester
         JNoticePlace noticePlace =
             proxy
                 .currentState()
-                .pathToBoardState().get(board.path())
-            .toNotice(expectedPlannedNoticeKey)
-            .get();
+                .toPlan().get(expectedPlannedNoticeKey.planId())
+                .toPlannedBoard().get(board.path())
+                .toNoticePlace().get(expectedPlannedNoticeKey.noticeKey());
         assertThat(noticePlace.expectingOrderIds(),
             equalTo(new HashSet<>(singleton(expectingOrderId))));
     }

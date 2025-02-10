@@ -27,7 +27,6 @@ import js7.data_for_java.workflow.JWorkflowId;
 import js7.data_for_java.workflow.JWorkflowTester;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static js7.data_for_java.order.JOrderPredicates.and;
 import static js7.data_for_java.order.JOrderPredicates.by;
@@ -93,10 +92,10 @@ final class JControllerStateTester
     }
 
     void testOrdersBy() {
-        testOrdersBy(by(aOrder.workflowId()), asList(aOrder));
-        testOrdersBy(by(bOrder.workflowId()), asList(bOrder));
-        testOrdersBy(by(aOrder.workflowId().path()), asList(aOrder));
-        testOrdersBy(by(bOrder.workflowId().path()), asList(bOrder));
+        testOrdersBy(by(aOrder.workflowId()), List.of(aOrder));
+        testOrdersBy(by(bOrder.workflowId()), List.of(bOrder));
+        testOrdersBy(by(aOrder.workflowId().path()), List.of(aOrder));
+        testOrdersBy(by(bOrder.workflowId().path()), List.of(bOrder));
         testOrdersBy(
             or(
                 by(aOrder.workflowId().path()),
@@ -110,16 +109,16 @@ final class JControllerStateTester
             emptyList());
 
         testOrdersBy(not(by(aOrder.workflowId().path())),
-            asList(bOrder));
+            List.of(bOrder));
 
         testOrdersBy(byOrderState(Order.Fresh$.class),
-            asList(aOrder));
+            List.of(aOrder));
 
         testOrdersBy(byOrderIdPredicate(orderId -> orderId.string().startsWith("B-")),
-            asList(bOrder));
+            List.of(bOrder));
 
-        testOrdersBy(markedAsDeleteWhenTerminated(false), asList(aOrder));
-        testOrdersBy(markedAsDeleteWhenTerminated(true), asList(bOrder));
+        testOrdersBy(markedAsDeleteWhenTerminated(false), List.of(aOrder));
+        testOrdersBy(markedAsDeleteWhenTerminated(true), List.of(bOrder));
     }
 
     void testOrderStateToCount() {
@@ -146,18 +145,20 @@ final class JControllerStateTester
             JPlan.of(
                 PlanId.Global(),
                 Set.of(OrderId.of("A-ORDER")),
-                singleton(
-                    JPlannedBoard.of(
-                        PlannedBoardId.apply(PlanId.Global(), BoardPath.of("BOARD")),
-                        Map.of(
-                            NoticeKey.of("NOTICE"),
-                            JNoticePlace.of(Optional.empty(), Set.of(), true, false, 0)))),
+                asList(),
                 false),
             PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
             JPlan.of(
                 PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
                 Set.of(OrderId.of("B-ORDER")),
-                singleton(
+                asList(
+                    JPlannedBoard.of(
+                        PlannedBoardId.apply(
+                            PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
+                            BoardPath.of("BOARD")),
+                        Map.of(
+                            NoticeKey.of("NOTICE"),
+                            JNoticePlace.of(Optional.empty(), Set.of(), true, false, 0))),
                     JPlannedBoard.of(
                         PlannedBoardId.apply(
                             PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),

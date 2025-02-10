@@ -1,18 +1,22 @@
 package js7.data.execution.workflow.instructions
 
 import cats.syntax.option.*
+import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticePlace}
+import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticePlace}
+import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
+import js7.data.item.VersionId
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
-import js7.data.plan.PlanSchemaState
-import js7.data.state.ControllerTestStateView
+import js7.data.plan.PlanSchema
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
@@ -23,10 +27,18 @@ final class PostNoticesExecutorTest extends OurTestSuite:
   private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
 
   "PostNotices and ExpectNotices" in:
-    var state = ControllerTestStateView.of(
-      orders = Some(Nil),
-      workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
-      itemStates = PlanSchemaState.initialGlobal +: boards.map(BoardState(_)))
+    var state =
+      val signedString = SignedString("??", GenericSignature("??", "??"))
+      ControllerState.empty.copy(
+        keyToUnsignedItemState_ = (boards :+ PlanSchema.Global)
+          .map(_.toInitialItemState).toKeyedMap(_.path),
+        repo = ControllerState.empty.repo.applyEvents(Seq(
+          VersionAdded(versionId),
+          VersionedItemAdded(Signed(postingWorkflow, signedString)),
+          VersionedItemAdded(Signed(expecting02or13Workflow, signedString)),
+          VersionedItemAdded(Signed(expecting0Workflow, signedString)))
+        ).orThrow
+      ).finish.orThrow
 
     // PostNotice board0, board1
     locally:
@@ -43,13 +55,9 @@ final class PostNoticesExecutorTest extends OurTestSuite:
         postingOrderId <-: OrderMoved(Position(1))))
 
       state = state.applyKeyedEvents(events).orThrow
-      assert(state.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(board0, Map(
-          notice0.plannedNoticeKey -> NoticePlace(Some(notice0)))),
-        board1.path -> BoardState(board1, Map(
-          notice1.plannedNoticeKey -> NoticePlace(Some(notice1)))),
-        board2.path -> BoardState(board2),
-        board3.path -> BoardState(board3)))
+      assert(state.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(Some(notice0)),
+        notice1.id -> NoticePlace(Some(notice1))))
 
     // ExpectNotices
     locally:
@@ -68,23 +76,19 @@ final class PostNoticesExecutorTest extends OurTestSuite:
           notice3.id))))
 
       state = state.applyKeyedEvents(events).orThrow
-      assert(state.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(board0, Map(
-          notice0.plannedNoticeKey -> NoticePlace(
-            Some(notice0),
-            Set(expectingOrderId)))),
-        board1.path -> BoardState(board1, Map(
-          notice1.plannedNoticeKey -> NoticePlace(
-            Some(notice1),
-            Set(expectingOrderId)))),
-        board2.path -> BoardState(board2, Map(
-          notice2.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(expectingOrderId)))),
-        board3.path -> BoardState(board3, Map(
-          notice3.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(expectingOrderId))))))
+      assert(state.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(
+          Some(notice0),
+          Set(expectingOrderId)),
+        notice1.id -> NoticePlace(
+          Some(notice1),
+          Set(expectingOrderId)),
+        notice2.id -> NoticePlace(
+          None,
+          Set(expectingOrderId)),
+        notice3.id -> NoticePlace(
+          None,
+          Set(expectingOrderId))))
 
     // ExpectNotice with a different, never posted PlannedNoticeKey
     locally:
@@ -100,26 +104,22 @@ final class PostNoticesExecutorTest extends OurTestSuite:
           otherNotice0.id))))
 
       state = state.applyKeyedEvents(events).orThrow
-      assert(state.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(board0, Map(
-          notice0.plannedNoticeKey -> NoticePlace(
-            Some(notice0),
-            Set(expectingOrderId)),
-          otherNotice0.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(otherExpectingOrderId)))),
-        board1.path -> BoardState(board1, Map(
-          notice1.plannedNoticeKey -> NoticePlace(
-            Some(notice1),
-            Set(expectingOrderId)))),
-        board2.path -> BoardState(board2, Map(
-          notice2.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(expectingOrderId)))),
-        board3.path -> BoardState(board3, Map(
-          notice3.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(expectingOrderId))))))
+      assert(state.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(
+          Some(notice0),
+          Set(expectingOrderId)),
+        otherNotice0.id -> NoticePlace(
+          None,
+          Set(otherExpectingOrderId)),
+        notice1.id -> NoticePlace(
+          Some(notice1),
+          Set(expectingOrderId)),
+        notice2.id -> NoticePlace(
+          None,
+          Set(expectingOrderId)),
+        notice3.id -> NoticePlace(
+          None,
+          Set(expectingOrderId))))
 
     // PostNotice board2
     locally:
@@ -128,22 +128,17 @@ final class PostNoticesExecutorTest extends OurTestSuite:
         postingOrderId <-: OrderNoticePosted(notice2.id, notice2.endOfLife),
         postingOrderId <-: OrderMoved(Position(2)),
         expectingOrderId <-: OrderNoticesRead,
-        expectingOrderId <-: OrderMoved(Position(1)),
-      ))
+        expectingOrderId <-: OrderMoved(Position(1))))
 
       state = state.applyKeyedEvents(events).orThrow
-      assert(state.keyTo(BoardState).toMap == Map(
-        board0.path -> BoardState(board0, Map(
-          notice0.plannedNoticeKey -> NoticePlace(
-            Some(notice0)),
-          otherNotice0.plannedNoticeKey -> NoticePlace(
-            None,
-            Set(otherExpectingOrderId)))),
-        board1.path -> BoardState(board1, Map(
-          notice1.plannedNoticeKey -> NoticePlace(Some(notice1)))),
-        board2.path -> BoardState(board2, Map(
-          notice2.plannedNoticeKey -> NoticePlace(Some(notice2)))),
-        board3.path -> BoardState(board3)))
+      assert(state.toNoticePlace.toMap == Map(
+        notice0.id -> NoticePlace(
+          Some(notice0)),
+        otherNotice0.id -> NoticePlace(
+          None,
+          Set(otherExpectingOrderId)),
+        notice1.id -> NoticePlace(Some(notice1)),
+        notice2.id -> NoticePlace(Some(notice2))))
 
 
 object PostNoticesExecutorTest:
@@ -187,17 +182,18 @@ object PostNoticesExecutorTest:
   private val otherExpectingOrderId = OrderId(s"%$otherQualifier%OTHER")
   private val otherNotice0 = Notice(board0.path / GlobalNoticeKey(s"$otherQualifier-0"), endOfLife0.some)
 
-  private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ "1", Seq(
+  private val versionId = VersionId("1")
+  private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ versionId, Seq(
     PostNotices(Seq(board0.path, board1.path)),
     PostNotices(Seq(board2.path))))
 
-  private val expecting02or13Workflow = Workflow(WorkflowPath("EXPECTING-0-OR-1-2") ~ "1", Seq(
+  private val expecting02or13Workflow = Workflow(WorkflowPath("EXPECTING-0-OR-1-2") ~ versionId, Seq(
     ExpectNotices(boardPathExpr(
       s"'${board0.path.string}' && " +
       s"'${board2.path.string}' || " +
       s"'${board1.path.string}' && " +
       s"'${board3.path.string}'"))))
 
-  private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ "1", Seq(
+  private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ versionId, Seq(
     ExpectNotices(boardPathExpr(
       s"'${board0.path.string}'"))))

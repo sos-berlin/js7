@@ -21,21 +21,22 @@ final case class PlanSchemaId private(string: String)
   def isGlobal: Boolean =
     this == Global
 
+  //@TestOnly @throws[RuntimeException]
   def /(planKey: PlanKey): PlanId =
+    //assertThat(!isGlobal || planKey == PlanKey.Global)
     PlanId(this, planKey)
 
   @TestOnly @throws[RuntimeException]
   def /(planKey: String): PlanId =
-    PlanId(this, PlanKey(planKey))
+    this / PlanKey(planKey)
 
 
 object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
   type Item = PlanSchema
 
-  override protected val isReserved = Set("Global")
-
-  final val Global: PlanSchemaId = new PlanSchemaId("Global")
+  final val Global: PlanSchemaId =
+    new PlanSchemaId("Global")
 
   protected def unchecked(string: String) =
     new PlanSchemaId(string)

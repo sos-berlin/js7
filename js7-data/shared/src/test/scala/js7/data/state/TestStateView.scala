@@ -4,14 +4,14 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.{BoardPath, BoardState, PlannedNoticeKey}
+import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
-import js7.data.controller.{ControllerEventDrivenStateView, ControllerId}
+import js7.data.controller.{ControllerEventDrivenStateView, ControllerId, ControllerStatePlanFunctions}
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanSchemaState}
+import js7.data.plan.PlanId
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View}
 
@@ -99,7 +99,10 @@ case class ControllerTestStateView(
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: Map[WorkflowId, Workflow] = new NotImplementedMap,
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
-extends TestStateView[ControllerTestStateView], ControllerEventDrivenStateView[ControllerTestStateView]:
+extends
+  TestStateView[ControllerTestStateView],
+  ControllerEventDrivenStateView[ControllerTestStateView],
+  ControllerStatePlanFunctions[ControllerTestStateView]:
 
   val companion: ControllerTestStateView.type = ControllerTestStateView
 
@@ -121,10 +124,6 @@ extends TestStateView[ControllerTestStateView], ControllerEventDrivenStateView[C
   : Checked[ControllerTestStateView] =
     Left(Problem.pure("onOrderPlanAttached is not implemented"))
 
-  protected def updateNoticeIdsInPlans(
-    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)])
-  : Checked[Seq[PlanSchemaState]] =
-    Right(Nil) // DO NOTHING
 
 
 object ControllerTestStateView extends EventDrivenState.Companion[ControllerTestStateView]:
@@ -161,9 +160,6 @@ extends TestStateView[AgentTestStateView]:
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
-  protected final def updateNoticeIdsInPlans(
-    boardStateAndNoticeIds: Seq[(BoardState, PlannedNoticeKey)]): Checked[Seq[PlanSchemaState]] =
-    Left(Problem.pure("updateNoticeIdsInPlans is not implemented"))
 
 object AgentTestStateView extends EventDrivenState.Companion[AgentTestStateView]:
 

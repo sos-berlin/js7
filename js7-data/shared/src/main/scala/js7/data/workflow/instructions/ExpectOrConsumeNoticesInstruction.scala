@@ -3,7 +3,7 @@ package js7.data.workflow.instructions
 import io.circe.Codec
 import js7.base.circeutils.CirceUtils.enumCodec
 import js7.base.utils.L3
-import js7.data.board.{BoardPath, BoardPathExpression, NoticeId}
+import js7.data.board.{BoardPathExpression, NoticeId}
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
 
@@ -14,6 +14,7 @@ trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
   protected def fulfilledEvents(
     order: Order[Order.Ready | Order.ExpectingNotices],
     noticeIds: Vector[NoticeId],
+    consumedNoticeIds: Vector[NoticeId],
     exprResult: L3)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved]
 
@@ -30,7 +31,7 @@ trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
     isNoticeAvailable: NoticeId => L3,
     isPostedNow: Set[NoticeId] = Set.empty)
   : List[OrderNoticesConsumptionStarted | OrderNoticesRead | OrderMoved] =
-    val boardToL3: BoardPath => L3 =
+    val boardToL3 =
       noticeIds.map: noticeId =>
         noticeId.boardPath -> locally:
           if isPostedNow(noticeId) then
@@ -39,9 +40,9 @@ trait ExpectOrConsumeNoticesInstruction extends NoticeInstruction:
             isNoticeAvailable(noticeId)
       .toMap
     if boardPaths.eval(boardToL3) != L3.False then
-      val consumedNoticeKeys = noticeIds.filter:
+      val consumedNoticeIds = noticeIds.filter:
         o => isPostedNow(o) || isNoticeAvailable(o) == L3.True
-      fulfilledEvents(order, consumedNoticeKeys, boardPaths.eval(boardToL3))
+      fulfilledEvents(order, noticeIds, consumedNoticeIds, boardPaths.eval(boardToL3))
     else
       Nil
 

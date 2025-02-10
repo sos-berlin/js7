@@ -9,7 +9,6 @@ import java.io.FileWriter
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.io.NullWriter
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
@@ -92,7 +91,7 @@ extends JournaledState[S]:
 object SnapshotableState:
   private val logger = Logger[this.type]
 
-  def showDifference[S <: SnapshotableState[S]](
+  def logBoth[S <: SnapshotableState[S]](
     a: S, aName: String,
     b: S, bName: String,
     errorFile: Option[Path] = None)
@@ -113,11 +112,9 @@ object SnapshotableState:
 
       logLine(s"$aName = ⏎")
       a.emitLineStream(logLine)
-      errorFile.write('\n')
 
       logLine(s"$bName = ⏎")
       b.emitLineStream(logLine)
-
 
   final case class Standards(journalState: JournalState, clusterState: ClusterState):
     def snapshotSize: Int =

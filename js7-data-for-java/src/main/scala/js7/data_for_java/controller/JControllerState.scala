@@ -30,7 +30,7 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.{JBoardState, JGlobalBoard, JNotice, JPlannedBoard}
+import js7.data_for_java.board.{JBoardItem, JBoardState, JGlobalBoard, JNotice, JPlannedBoard}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
@@ -72,14 +72,14 @@ extends JJournaledState[JControllerState, ControllerState]:
   def repo: JRepo =
     new JRepo(asScala.repo)
 
-  /** Looks up an AgentRef Item. */
+  /** Look up an AgentRef Item. */
   @Nonnull
   def pathToAgentRef: JMap[AgentPath, JAgentRef] =
     asScala.pathToUnsignedSimple(AgentRef)
       .mapValues(JAgentRef(_))
       .asJava
 
-  /** Looks up the URI of an AgentPath. */
+  /** Look up the URI of an AgentPath. */
   @deprecated("Use agentToUris", "2.6")
   @Deprecated
   @Nonnull
@@ -87,14 +87,14 @@ extends JJournaledState[JControllerState, ControllerState]:
     Some((asScala.agentToUris(agentPath): @nowarn("msg=deprecated")).head)
       .toJava
 
-  /** Looks up the URIs of an AgentPath. */
+  /** Look up the URIs of an AgentPath. */
   @Nonnull
   def agentToUris(@Nonnull agentPath: AgentPath): java.util.List[Uri] =
     asScala.agentToUris(agentPath)
       .toList
       .asJava
 
-  /** Looks up an AgentRefState. */
+  /** Look up an AgentRefState. */
   @Nonnull
   def pathToAgentRefState: JMap[AgentPath, JAgentRefState] =
     asScala.keyTo(AgentRefState)
@@ -129,26 +129,26 @@ extends JJournaledState[JControllerState, ControllerState]:
   def idToPlanSchemaState: JMap[PlanSchemaId, JPlanSchemaState] =
     asScala.keyTo(PlanSchemaState).mapValues(JPlanSchemaState(_)).asJava
 
-  /** Looks up a Lock item in the current version. */
+  /** Look up a Lock item in the current version. */
   @Nonnull
   def pathToLock: JMap[LockPath, JLock] =
     asScala.keyToItem(Lock)
       .mapValues(JLock.apply)
       .asJava
 
-  /** Looks up a LockState. */
+  /** Look up a LockState. */
   @Nonnull
   def pathToLockState: JMap[LockPath, JLockState] =
     asScala.keyTo(LockState)
       .mapValues(JLockState.apply)
       .asJava
 
-  /** Looks up a Board item. */
+  /** Look up a Board item. */
   @Nonnull
-  def pathToBoard: JMap[BoardPath, JGlobalBoard] =
-    keyToItem(GlobalBoard, JGlobalBoard.apply)
+  def pathToBoard: JMap[BoardPath, JBoardItem] =
+    asScala.keyToItem(GlobalBoard).mapValues(JBoardItem(_)).asJava
 
-  /** Looks up a GlobalBoard item. */
+  /** Look up a GlobalBoard item. */
   @Nonnull
   def pathToBoardState: JMap[BoardPath, JBoardState] =
     asScala.keyTo(BoardState)
@@ -168,38 +168,20 @@ extends JJournaledState[JControllerState, ControllerState]:
   def toPlanSchemaState: JMap[PlanSchemaId, JPlanSchemaState] =
     asScala.keyTo(PlanSchemaState).mapValues(JPlanSchemaState(_)).asJava
 
-  // FIXME: PROBABLY SLOW
   @Nonnull
   lazy val toPlan: JMap[PlanId, JPlan] =
-    lazy val planToBoardToPlannedBoard: MapView[PlanId, Map[BoardPath, JPlannedBoard]] =
-      asScala.allNoticePlaces
-        .groupBy(_._1.planId)
-        .view.mapValues: toNoticePlace =>
-          toNoticePlace.groupMap(_._1.plannedBoardId): (noticeId, noticePlace) =>
-            noticeId.noticeKey -> noticePlace
-          .map: (plannedBoardId, toNoticePlace) =>
-            plannedBoardId.boardPath -> JPlannedBoard(plannedBoardId, toNoticePlace.toMap)
-    new StandardMapView[PlanId, JPlan]:
-      override def keySet: collection.Set[PlanId] =
-        meterToPlanKeySet:
-          asScala.toPlan.keySet
-
-      def get(planId: PlanId): Option[JPlan] =
-        asScala.toPlan.get(planId).map: plan =>
-          meterToPlanGet:
-            JPlan(plan, planToBoardToPlannedBoard.getOrElse(plan.id, Map.empty))
-    .asJava
+    asScala.toPlan.mapValues(JPlan(_)).asJava
 
   @Nonnull
   def pathToCalendar: JMap[CalendarPath, JCalendar] =
     keyToItem(Calendar, JCalendar.apply)
 
-  /** Looks up a JFileWatch. */
+  /** Look up a JFileWatch. */
   @Nonnull
   def pathToFileWatch: JMap[OrderWatchPath, JFileWatch] =
     keyToItem(FileWatch, JFileWatch.apply)
 
-  /** Looks up a JJobResource. */
+  /** Look up a JJobResource. */
   @Nonnull
   def pathToJobResource: JMap[JobResourcePath, JJobResource] =
     keyToItem(JobResource, JJobResource.apply)

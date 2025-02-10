@@ -1,13 +1,19 @@
 package js7.data.plan
 
-import fs2.{Pure, Stream}
+import fs2.Stream
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
+import js7.base.circeutils.typed.Subtype
+import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StandardMapView
 import js7.data.board.NoticeEvent.NoticeDeleted
-import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, PlannedBoard}
+import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderId
-import scala.collection.View
+import js7.data.plan.Plan.Snapshot
+import org.jetbrains.annotations.TestOnly
+import scala.collection.{MapView, View}
 
 /** Plan, mirrors OrderIds and NoticeKeys that belong to this PlanId.
   *
@@ -22,6 +28,33 @@ final case class Plan(
   toPlannedBoard: Map[BoardPath, PlannedBoard],
   isClosed: Boolean):
 
+  export id.planKey
+
+  def estimatedSnapshotSize: Int =
+    toPlannedBoard.values.view.map(_.estimatedSnapshotSize).sum
+
+  def toSnapshotStream: Stream[fs2.Pure, Snapshot | NoticeSnapshot] =
+    Stream.iterable(snapshot) ++
+      Stream.iterable(toPlannedBoard.values).flatMap(_.toSnapshotStream)
+
+  def toStringStream: Stream[fs2.Pure, String] =
+    Stream.emit(s"$id${isClosed ?? " CLOSED"}${isDead ?? " ❌DEAD"}") ++
+      Stream.iterable(orderIds.toVector.sorted)
+        .append:
+          Stream.iterable(toPlannedBoard.values.toVector.sorted).flatMap(_.toStringStream)
+        .map(o => s"  $o")
+
+  override def toString =
+    s"Plan($id${isClosed ?? " CLOSED"} {${orderIds.toVector.sorted.mkString(" ")}} ${
+      toPlannedBoard.values.toVector.sortBy(_.boardPath).mkString(", ")
+    })"
+
+  private def snapshot: Option[Snapshot] =
+    isClosed ? Snapshot(id, isClosed = isClosed)
+
+  def recoverSnapshot(snapshot: Snapshot): Plan =
+    copy(isClosed = snapshot.isClosed)
+
   def addOrders(orderIds: Iterable[OrderId]): Plan =
     if orderIds.isEmpty then
       this
@@ -34,26 +67,8 @@ final case class Plan(
     else
       copy(orderIds = this.orderIds -- orderIds)
 
-  def addNoticeKey(boardNoticeKey: BoardNoticeKey): Plan =
-    if containsNoticeKey(boardNoticeKey) then
-      this
-    else
-      copy(toPlannedBoard =
-        toPlannedBoard.updatedWith(boardNoticeKey.boardPath): maybePlannedBoard =>
-          val plannedBoard = maybePlannedBoard.getOrElse:
-            PlannedBoard(id / boardNoticeKey.boardPath)
-          Some(plannedBoard.addNoticeKey(boardNoticeKey.noticeKey)))
-
-  def removeNoticeKey(boardNoticeKey: BoardNoticeKey): Option[Plan] =
-    val plan =
-      if !containsNoticeKey(boardNoticeKey) then
-        this
-      else
-        copy(toPlannedBoard =
-          toPlannedBoard.updatedWith(boardNoticeKey.boardPath):
-            _.flatMap: plannedBoard =>
-              plannedBoard.deleteNoticeKey(boardNoticeKey.noticeKey))
-    !plan.isEmpty ? plan
+  def plannedBoard(boardPath: BoardPath): PlannedBoard =
+    toPlannedBoard.getOrElse(boardPath, PlannedBoard(id / boardPath))
 
   def containsNoticeKey(boardNoticeKey: BoardNoticeKey): Boolean =
     toPlannedBoard
@@ -72,6 +87,15 @@ final case class Plan(
       noticeIds.map: noticeId =>
         noticeId.boardPath <-: NoticeDeleted(noticeId.plannedNoticeKey)
 
+  def toNotice: MapView[BoardNoticeKey, Notice] =
+    new StandardMapView[BoardNoticeKey, Notice]:
+      override def keySet: Set[BoardNoticeKey] =
+        toPlannedBoard.values.view.flatMap(_.notices).map(_.id.boardNoticeKey).toSet
+
+      def get(boardNoticeKey: BoardNoticeKey): Option[Notice] =
+        toPlannedBoard.get(boardNoticeKey.boardPath).flatMap: plannedBoard =>
+          plannedBoard.maybeNotice(boardNoticeKey.noticeKey)
+
   private def noticeIds: View[NoticeId] =
     toPlannedBoard.values.view.flatMap: plannedBoard =>
       plannedBoard.noticeKeys.view.map: noticeKey =>
@@ -87,19 +111,13 @@ final case class Plan(
   def hasOrders: Boolean =
     orderIds.nonEmpty
 
-  def toStringStream: Stream[Pure, String] =
-    Stream.emit(s"$id${isClosed ?? " CLOSED"}${isDead ?? " ❌DEAD"}") ++
-      Stream.iterable(orderIds.toVector.sorted).append:
-        Stream.iterable(toPlannedBoard.values.toVector.sorted)
-      .map(o => s"  $o")
-
-  override def toString =
-    s"Plan($id${isClosed ?? " CLOSED"} {${orderIds.toVector.sorted.mkString(" ")}} ${
-      toPlannedBoard.values.toVector.sortBy(_.boardPath).mkString(", ")})"
+  def isNoticeAnnounced(boardNoticeKey: BoardNoticeKey): Boolean =
+    toPlannedBoard.get(boardNoticeKey.boardPath).exists(_.isAnnounced(boardNoticeKey.noticeKey))
 
 
 object Plan:
 
+  @TestOnly @throws[RuntimeException]
   def apply(
     planId: PlanId,
     orderIds: Set[OrderId] = Set.empty,
@@ -108,4 +126,27 @@ object Plan:
   : Plan =
     new Plan(planId, orderIds, plannedBoards.toKeyedMap(_.boardPath), isClosed = isClosed)
 
+  def checked(
+    planId: PlanId,
+    orderIds: Set[OrderId] = Set.empty,
+    plannedBoards: Iterable[PlannedBoard] = Nil,
+    isClosed: Boolean)
+  : Checked[Plan] =
+    planId.checked.map: _ =>
+      new Plan(planId, orderIds, plannedBoards.toKeyedMap(_.boardPath), isClosed = isClosed)
+
+
+  def initial(planId: PlanId): Plan =
+    new Plan(planId, Set.empty, Map.empty, false)
+
+
   given Ordering[Plan] = Ordering.by(_.id)
+
+
+  final case class Snapshot(planId: PlanId, isClosed: Boolean = false):
+    export planId.{planSchemaId, planKey}
+
+    override def productPrefix = s"Plan.Snapshot"
+
+  val subtype: Subtype[Snapshot] =
+    Subtype.named[Snapshot](deriveCodecWithDefaults, "Plan")

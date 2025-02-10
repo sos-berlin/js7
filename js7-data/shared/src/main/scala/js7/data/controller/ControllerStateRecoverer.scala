@@ -8,7 +8,8 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.StandardMapView
 import js7.data.agent.{AgentPath, AgentRefState}
-import js7.data.board.{BoardPath, BoardState, NoticeSnapshot}
+import js7.data.board.BoardState.NoticeConsumptionSnapshot
+import js7.data.board.{BoardPath, BoardState, Notice, NoticePlace, PlannedBoard}
 import js7.data.cluster.ClusterStateSnapshot
 import js7.data.event.{JournalState, SnapshotableStateRecoverer, StandardsRecoverer}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeletionMarked}
@@ -18,7 +19,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemKey, Repo,
 import js7.data.job.JobResource
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.{PlanId, PlanSchema, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanSchema, PlanSchemaState}
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemState
 import js7.data.workflow.position.WorkflowPosition
@@ -42,6 +43,8 @@ extends
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
+  private val _noticeSnapshots = mutable.Buffer.empty[Notice | NoticePlace.Snapshot]
+  private val _noticeConsumptionSnapshots = mutable.Buffer.empty[NoticeConsumptionSnapshot]
 
   protected def updateOrderWatchStates(
     orderWatchStates: Seq[OrderWatchState],
@@ -87,22 +90,11 @@ extends
             workflowPositionToBoardPath(order.workflowPosition).flatMap: boardPath =>
               checkedBoardState(boardPath)
             .orThrow
-          val noticeId = PlanId.Global / boardState.path / noticeKey
-          _keyToUnsignedItemState(boardState.path) =
-            boardState.addExpectation(noticeId.plannedNoticeKey, order.id).orThrow
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
-          _idToOrder.update(order.id, order.copy(
+          _idToOrder(order.id) = order.copy(
             state = Order.ExpectingNotices(Vector:
-              PlanId.Global / boardState.path / noticeKey)))
-
-        case Order.ExpectingNotices(noticeIds) =>
-          _keyToUnsignedItemState ++=
-            noticeIds.map: noticeId =>
-              noticeId.boardPath ->
-                checkedBoardState(noticeId.boardPath).flatMap: boardState =>
-                  boardState.addExpectation(noticeId.plannedNoticeKey, order.id)
-                .orThrow
+              PlanId.Global / boardState.path / noticeKey))
 
         case _ =>
 
@@ -116,10 +108,19 @@ extends
       for subagentItem <- maybeSubagentItem do
         _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
 
-    case snapshot: NoticeSnapshot =>
-      _keyToUnsignedItemState(snapshot.boardPath) =
-        checkedBoardState(snapshot.boardPath).orThrow
-          .recover(snapshot).orThrow
+    case o: (Notice | NoticePlace.Snapshot) =>
+      _noticeSnapshots += o
+
+    case o: NoticeConsumptionSnapshot =>
+      _noticeConsumptionSnapshots += o
+
+    case snapshot: Plan.Snapshot =>
+      import snapshot.{planId, planKey, planSchemaId}
+      val planSchemaState = _keyToUnsignedItemState(planSchemaId)
+        .asInstanceOf[PlanSchemaState]
+      val plan = planSchemaState.toPlan.getOrElse(planKey, Plan.initial(planId))
+      _keyToUnsignedItemState(planSchemaId) = planSchemaState.copy(
+        toPlan = planSchemaState.toPlan.updated(planKey, plan.recoverSnapshot(snapshot)))
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
@@ -160,21 +161,43 @@ extends
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow
+    addNoticeSnapshots()
 
     ControllerState(
       eventId = eventId,
       standards,
       controllerMetaState,
-      _keyToUnsignedItemState.view.mapValues:
-        case o: PlanSchemaState => o.copy(toPlan = Map.empty) // finish will recalculate properly
-        case o => o
-      .toMap,
+      _keyToUnsignedItemState.toMap,
       repo,
       pathToSignedSimpleItem.toMap,
       agentAttachments,
       deletionMarkedItems.toSet,
       _idToOrder.toMap
     ).finish.orThrow
+
+  // NoticeSnapshots can only be added after idToOrder has been filled.
+  // To be compatible with versions before v2.7.4, which placed NoticeSnapshot before the
+  // orders in the snapshot, we do it here.
+  private def addNoticeSnapshots(): Unit =
+    _noticeSnapshots.foreach: snapshot =>
+      val planId = snapshot match
+        case o: NoticePlace.Snapshot => o.noticeId.planId
+        case o: Notice => o.planId
+      import planId.{planKey, planSchemaId}
+      import snapshot.boardPath
+      val planSchemaState = _keyToUnsignedItemState(planSchemaId).asInstanceOf[PlanSchemaState]
+      val plan = planSchemaState.plan(planKey).orThrow
+
+      val updatedPlannedBoard = plan.plannedBoard(boardPath).recoverNoticeSnapshot(snapshot).orThrow
+      val updatedPlan = plan.copy(
+        toPlannedBoard = plan.toPlannedBoard.updated(boardPath, updatedPlannedBoard))
+      val updatedPlanSchemaState = planSchemaState.copy(
+        toPlan = planSchemaState.toPlan.updated(planKey, updatedPlan))
+      _keyToUnsignedItemState(planSchemaId) = updatedPlanSchemaState
+
+    _noticeConsumptionSnapshots.foreach: snapshot =>
+      val boardState = _keyToUnsignedItemState(snapshot.boardPath).asInstanceOf[BoardState]
+      _keyToUnsignedItemState(boardState.path) = boardState.recoverConsumption(snapshot)
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match

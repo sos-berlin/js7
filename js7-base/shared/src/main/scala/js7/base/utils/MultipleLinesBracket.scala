@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import cats.Functor
+import cats.syntax.functor.*
 import fs2.Stream
 
 /** A bracket spanning multiple lines. */
@@ -7,9 +9,10 @@ final case class MultipleLinesBracket(first: Char, middle: Char, last: Char, sin
 
 object MultipleLinesBracket:
 
-  val Round = MultipleLinesBracket("⎛⎜⎝")
-  val Square = MultipleLinesBracket("⎡⎢⎣")
-  val SmallSquare = MultipleLinesBracket("┌│└")
+  val Round: MultipleLinesBracket = MultipleLinesBracket("⎛⎜⎝")
+  val Square: MultipleLinesBracket = MultipleLinesBracket("⎡⎢⎣")
+  val SmallSquare: MultipleLinesBracket = MultipleLinesBracket("┌│└")
+  val Space: MultipleLinesBracket = MultipleLinesBracket("   ")
 
   def apply(chars: String): MultipleLinesBracket =
     def f(i: Int) = if chars.length > i then chars(i) else ' '
@@ -45,3 +48,18 @@ object MultipleLinesBracket:
           case (Some(_), o, Some(_)) => o -> br.middle
           case (Some(_), o, None) => o -> br.last
           case (None, o, None) => o -> br.single
+
+    def evalTapWithBracket(bracket: MultipleLinesBracket | String = Square)
+      (body: (O, Char) => F[Unit])
+      (using Functor[F])
+    : Stream[F, O] =
+      zipWithBracket(bracket).evalMap: (o, br) =>
+        body(o, br).as(o)
+
+  extension[O](stream: Stream[fs2.Pure, O])
+    def unsafeTapWithBracket(bracket: MultipleLinesBracket | String = Square)
+      (body: (O, Char) => Unit)
+    : Stream[fs2.Pure, O] =
+      stream.zipWithBracket(bracket).map: (o, br) =>
+        body(o, br)
+        o

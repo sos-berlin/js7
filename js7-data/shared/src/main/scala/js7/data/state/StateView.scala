@@ -4,10 +4,9 @@ import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardNoticeKey, BoardPath, BoardState, NoticeId}
+import js7.data.board.BoardState
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -16,14 +15,13 @@ import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, IsFreshOrReady, Processing}
 import js7.data.order.OrderEvent.LockDemand
 import js7.data.order.{MinimumOrder, Order, OrderId}
-import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NamedValueScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, NoticeInstruction}
 import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import scala.collection.{MapView, View}
+import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
@@ -78,28 +76,6 @@ trait StateView extends ItemContainer, EngineStateFunctions:
       .filter((_, v) => v.item.companion eq A)
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
-
-  /** @return L3.True: Notice exists<br>
-    *         L3.False: Notice doesn't exist but is announced<br>
-    *         L3.Unknown: Notice doesn't exist nor is it announced
-    */
-  final def isNoticeAvailable(noticeId: NoticeId): L3 =
-    keyTo(BoardState).get(noticeId.boardPath)
-      .fold(L3.Unknown/*just in case*/): boardState =>
-        boardState.isNoticeAvailable(noticeId.plannedNoticeKey)
-
-  final def availableNotices(planId: PlanId, boardNoticeKeys: Iterable[BoardNoticeKey])
-  : Set[BoardPath] =
-    boardNoticeKeys.collect:
-      case o if keyTo(BoardState).get(o.boardPath).exists(_.hasNotice(planId / o.noticeKey)) =>
-        o.boardPath
-    .toSet
-
-  final def removeNoticeKeysForPlanSchema(planSchemaId: PlanSchemaId)
-  : View[(BoardPath, BoardState)] =
-    keyTo(BoardState).values.view.flatMap: boardState =>
-      boardState.removeNoticeKeysForPlanSchema(planSchemaId)
-        .map(o => o.path -> o)
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =
     order.isProcessable &&

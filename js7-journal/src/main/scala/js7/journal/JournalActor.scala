@@ -20,7 +20,7 @@ import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.MultipleLinesBracket.Round
+import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.Tests.isTest
@@ -127,6 +127,7 @@ extends Actor, Stash, JournalLogging:
     case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
       committedState = journaledState_.asInstanceOf[S]
       uncommittedState = committedState
+      checkRecovery()
       requireClusterAcknowledgement = committedState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -167,6 +168,7 @@ extends Actor, Stash, JournalLogging:
 
             case Right(updatedState) =>
               uncommittedState = updatedState
+              checkRecovery(stampedEvents)
               eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
               val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
               for o <- lastFileLengthAndEventId do
@@ -609,27 +611,46 @@ extends Actor, Stash, JournalLogging:
           val file = j.file
           assertThat(file != eventWriter.file)
           try delete(file)
-          catch { case NonFatal(t) =>
+          catch case NonFatal(t) =>
             logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")
-          }
 
-  private def assertEqualSnapshotState(what: String, couldBeRecoveredState: S,
-    stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
+  private def checkRecovery(stampedKeyedEvents: Seq[Stamped[AnyKeyedEvent]] = Nil): Unit =
+    if conf.slowCheckState then
+      assertEqualSnapshotState("Recovered", uncommittedState.toRecovered,
+        stampedKeyedEvents)
+
+  private def assertEqualSnapshotState(
+    what: String,
+    couldBeRecoveredState: S,
+    stampedKeyedEvents: Seq[Stamped[AnyKeyedEvent]] = Nil)
   : Unit =
     if couldBeRecoveredState != uncommittedState then
       val msg = s"$what does not match actual '$S'"
       logger.error(msg)
-
-      stampedSeq.foreachWithBracket(Round): (stamped, bracket) =>
-        logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
-      if conf.slowCheckState then
-        SnapshotableState.showDifference(
+      try
+        stampedKeyedEvents.foreachWithBracket(Round): (stamped, bracket) =>
+          logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
+        logger.error("Snapshot objects: ⏎")
+        uncommittedState.toSnapshotStream.zipWithBracket(Square).map: (o, br) =>
+          logger.error(s"$br$o")
+        .compile.drain
+        //couldBeRecoveredState.toSnapshotStream.zipWithBracket(Round).foreach: (o, br) =>
+        //  IO(logger.error(s"$br$o"))
+        //.compile.drain
+        SnapshotableState.logBoth(
           couldBeRecoveredState, s"$what is WRONG?",
           uncommittedState, s"$S is EXPECTED?",
           isTest ? Paths.get("logs/snapshot-error.txt"))
-      end if
+      catch case NonFatal(t) =>
+        stampedKeyedEvents.foreachWithBracket(Round): (stamped, bracket) =>
+          logger.error(s"$bracket${stamped.toString.truncateWithEllipsis(200)}")
+        uncommittedState.emitLineStream(logger.error(_))
+        uncommittedState.toSnapshotStream.zipWithBracket(Square).map: (o, br) =>
+          logger.error(s"$br$o")
+        .compile.drain
+        throw t
       throw new AssertionError(msg)
-
+    end if
 
 object JournalActor:
   private val logger = Logger[this.type]

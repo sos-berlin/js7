@@ -9,6 +9,9 @@ extends NoticeSnapshot:
 
   export id.{boardPath, noticeKey, planId, plannedNoticeKey, boardNoticeKey}
 
+  def plannedBoardId: PlannedBoardId =
+    id.plannedBoardId
+
   override def toString = s"Notice($id${endOfLife.fold("")(o => s" $o")})"
 
 

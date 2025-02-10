@@ -1,16 +1,18 @@
 package js7.data_for_java.plan
 
 import js7.base.annotation.javaApi
-import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.board.{BoardPath, PlannedBoard}
+import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.data.board.BoardPath
 import js7.data.order.OrderId
 import js7.data.plan.{Plan, PlanId}
 import js7.data_for_java.board.JPlannedBoard
+import js7.data_for_java.common.JavaWrapper
+import js7.data_for_java.common.MoreJavaConverters.*
 import scala.jdk.CollectionConverters.*
 
-final case class JPlan(
-  asScala: Plan,
-  private val toPlannedBoard_ : Map[BoardPath, JPlannedBoard]):
+final case class JPlan(asScala: Plan) extends JavaWrapper:
+
+  type AsScala = Plan
 
   def orderIds: java.util.Set[OrderId] =
     asScala.orderIds.asJava
@@ -19,25 +21,22 @@ final case class JPlan(
     asScala.isClosed
 
   def toPlannedBoard: java.util.Map[BoardPath, JPlannedBoard] =
-    toPlannedBoard_.asJava
+    asScala.toPlannedBoard.view.mapValues(JPlannedBoard(_)).asJava
 
 
 object JPlan:
 
-  @javaApi
+  @javaApi @throws[RuntimeException]
   def of(
     id: PlanId,
     orderIds: java.util.Set[OrderId],
     plannedBoards: java.lang.Iterable[JPlannedBoard],
     isClosed: Boolean)
   : JPlan =
-    JPlan(
-      Plan(
+    JPlan:
+      Plan.checked(
         id,
         orderIds.asScala.toSet,
-        plannedBoards.asScala.map:
-          jPlannedBoard => PlannedBoard(
-            jPlannedBoard.id,
-            jPlannedBoard.toNoticePlace.keySet().asScala.toSet),
-        isClosed),
-      plannedBoards.asScala.toKeyedMap(_.id.boardPath))
+        plannedBoards.asScala.view.map(_.asScala),
+        isClosed
+      ).orThrow

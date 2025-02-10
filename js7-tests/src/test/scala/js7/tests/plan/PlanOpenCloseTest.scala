@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
-import js7.data.board.{BoardPath, NoticeKey, PlannableBoard, PlannedBoard}
+import js7.data.board.{BoardPath, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
@@ -84,13 +84,15 @@ final class PlanOpenCloseTest
             todayPlanId,
             orderIds = Set(aTodayOrderId, bTodayOrderId),
             plannedBoards = Seq:
-              PlannedBoard(todayPlanId / board.path, Set(NoticeKey.empty)),
+              PlannedBoard(todayPlanId / board.path, Map(
+                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
             isClosed = false),
           Plan(
             tomorrowPlanId,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
-              PlannedBoard(tomorrowPlanId / board.path, Set(NoticeKey.empty)),
+              PlannedBoard(tomorrowPlanId / board.path, Map(
+                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
             isClosed = false)))
 
         // Close today's Plan //
@@ -106,13 +108,15 @@ final class PlanOpenCloseTest
             todayPlanId,
             orderIds = Set(bTodayOrderId),
             plannedBoards = Seq:
-              PlannedBoard(todayPlanId / board.path, Set(NoticeKey.empty)),
+              PlannedBoard(todayPlanId / board.path, Map(
+                NoticeKey.empty -> NoticePlace(Some(Notice(todayPlanId / board.path / NoticeKey.empty))))),
             isClosed = true),
           Plan(
             tomorrowPlanId,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
-              PlannedBoard(tomorrowPlanId / board.path, Set(NoticeKey.empty)),
+              PlannedBoard(tomorrowPlanId / board.path, Map(
+                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
             isClosed = false)))
 
         // Closed today's Plan will be deleted when the last Order leaves //
