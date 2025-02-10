@@ -152,7 +152,7 @@ final class CollectionsTest extends OurTestSuite:
     intercept[DuplicateKeyException] { List(1, 1).requireUniqueness }
 
   "checkUniqueness" in:
-    def r(o: Seq[A]) = o.checkUniqueness(_.i)
+    def r(o: Seq[A]) = o.checkUniquenessBy(_.i)
 
     assert(r(Seq.empty[A]) == Right(Nil))
     assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 2×1")))

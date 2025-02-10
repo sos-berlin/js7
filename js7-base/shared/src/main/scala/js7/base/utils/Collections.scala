@@ -97,11 +97,7 @@ object Collections:
         underlying.requireUniqueness.toSet
 
       def checkUniqueness: Checked[CC[A]] =
-        checkUniqueness(identity[A])
-
-      @deprecated("Use checkUniquenessBy")
-      def checkUniqueness[K](key: A => K): Checked[CC[A]] =
-        checkUniquenessBy(key)
+        checkUniquenessBy(identity[A])
 
       def checkUniquenessBy[K](key: A => K): Checked[CC[A]] =
         duplicateKeys(key) match

@@ -423,7 +423,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderNoticesConsumptionStarted(noticeIds: Vector[NoticeId])
   extends OrderNoticeEvent:
     def checked: Checked[this.type] =
-      noticeIds.checkUniqueness(_.boardPath).rightAs(this)
+      noticeIds.checkUniquenessBy(_.boardPath).rightAs(this)
 
   object OrderNoticesConsumptionStarted:
     private val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
@@ -782,7 +782,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   object LockDemand:
     def checked(demands: Seq[LockDemand]): Checked[Unit] =
       demands
-        .checkUniqueness(_.lockPath)
+        .checkUniquenessBy(_.lockPath)
         .>>(demands.traverse(_.checked))
         .rightAs(())
 

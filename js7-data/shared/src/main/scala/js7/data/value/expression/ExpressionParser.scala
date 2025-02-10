@@ -122,7 +122,7 @@ object ExpressionParser:
   private val objectExpr: Parser[ObjectExpr] =
     curly(commaSequence(identifier ~ ((w ~ symbol(":") ~ w) *> expression)))
       .flatMap: pairs =>
-        checkedToParser(pairs.checkUniqueness(_._1))
+        checkedToParser(pairs.checkUniquenessBy(_._1))
           .as(ObjectExpr(pairs.toMap))
 
   def dollarNamedValue: Parser[Expression] =

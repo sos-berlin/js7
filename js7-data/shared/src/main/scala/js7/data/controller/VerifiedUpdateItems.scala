@@ -104,7 +104,7 @@ object VerifiedUpdateItems:
             .view
             .map(_.key)
             .concat(simpleDeletes)
-            .checkUniqueness(identity)
+            .checkUniquenessBy(identity)
             .flatMap(_ =>
               checkVersioned(maybeVersionId, versionedItems, versionedRemoves_.result()))
             .map(maybeVersioned =>
@@ -121,7 +121,7 @@ object VerifiedUpdateItems:
   ): Checked[Option[Versioned]] =
     (maybeVersionId, verifiedVersionedItems, versionedRemoves) match
       case (Some(v), verifiedVersionedItems, remove) =>
-        for _ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniqueness(identity) yield
+        for _ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniquenessBy(identity) yield
           Some(VerifiedUpdateItems.Versioned(v, verifiedVersionedItems, remove))
       case (None, Seq(), Seq()) =>
         Right(None)

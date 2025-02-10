@@ -72,7 +72,7 @@ extends
     checkItemVersions(versionId, changed)
       .flatMap: changed =>
         val addedOrChanged = changed.view.flatMap(toAddedOrChanged).toVector
-        for _ <- addedOrChanged.checkUniqueness(_.path) yield
+        for _ <- addedOrChanged.checkUniquenessBy(_.path) yield
           lazy val addedSet = addedOrChanged.view
             .collect { case a: VersionedItemAdded => a.path }
             .toSet

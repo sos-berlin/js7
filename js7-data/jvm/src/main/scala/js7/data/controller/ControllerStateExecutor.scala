@@ -55,7 +55,7 @@ final case class ControllerStateExecutor private(
 
   def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
   : Checked[Seq[KeyedEvent[OrderAddedEvent]]] =
-    freshOrders.checkUniqueness(_.id) *>
+    freshOrders.checkUniquenessBy(_.id) *>
       freshOrders
         .traverse:
           addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor)

@@ -56,7 +56,7 @@ extends EventDrivenState[Self, Event], StateView:
     if isStrict then
       for
         _ <- addOrders.view.map(_.id).concat(removeOrders).checkUniqueness
-        _ <- externalVanishedOrders.checkUniqueness(_.id)
+        _ <- externalVanishedOrders.checkUniquenessBy(_.id)
         _ <- addItemStates.view.map(_.path).concat(removeUnsignedSimpleItems).checkUniqueness
       yield ()
     else
