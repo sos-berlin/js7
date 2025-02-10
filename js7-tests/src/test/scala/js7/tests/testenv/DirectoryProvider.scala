@@ -73,7 +73,8 @@ final class DirectoryProvider(
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Seq[Int] = Nil,
-  directorEnvToAgentRef: DirectorEnv => AgentRef = a => AgentRef(a.agentPath, Seq(a.localSubagentId)),
+  directorEnvToAgentRef: DirectorEnv => AgentRef =
+    a => AgentRef(a.agentPath, Vector(a.localSubagentId)),
   isBackup: Boolean = false,
   primarySubagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,

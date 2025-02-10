@@ -35,7 +35,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, TestCatsEffect, H
   protected def agentHttps = false
   protected def agentPorts: Seq[Int] = Nil
   protected def directorEnvToToAgentRef(directorEnv: DirectorEnv): AgentRef =
-    AgentRef(directorEnv.agentPath, Seq(directorEnv.localSubagentId))
+    AgentRef(directorEnv.agentPath, Vector(directorEnv.localSubagentId))
 
 
   protected def primarySubagentsDisabled = false
