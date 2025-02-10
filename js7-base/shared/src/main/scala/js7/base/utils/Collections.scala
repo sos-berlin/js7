@@ -99,7 +99,11 @@ object Collections:
       def checkUniqueness: Checked[CC[A]] =
         checkUniqueness(identity[A])
 
+      @deprecated("Use checkUniquenessBy")
       def checkUniqueness[K](key: A => K): Checked[CC[A]] =
+        checkUniquenessBy(key)
+
+      def checkUniquenessBy[K](key: A => K): Checked[CC[A]] =
         duplicateKeys(key) match
           case Some(duplicates) => Left(defaultDuplicatesToProblem(duplicates))
           case None => Right(underlying)
