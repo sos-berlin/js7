@@ -271,8 +271,8 @@ final class ForkListTest
       EmptyJob.execute(agentPath),
       ForkList(
         listExpr,
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         agentPath = Some(agentPath),
         workflow = Workflow.of(
           Fork(Vector.empty)))))
@@ -495,8 +495,8 @@ object ForkListTest:
 
   private val forkList = ForkList(
     expr("$myList"),
-    exprFunction("(element) => $element"),
-    exprFunction("(element) => { element: $element }"),
+    exprFunction("element => $element"),
+    exprFunction("element => { element: $element }"),
     Workflow.anonymous(
       Seq(
         TestJob.execute(agentPath, processLimit = 100_000)),
@@ -528,8 +528,8 @@ object ForkListTest:
       // Each child order starts at bAgentPath. So attach forking order to bAgentPath.
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           If(expr("$element == 'ELEMENT-X'")).Then:
             EmptyJob.execute(agentPath)
@@ -539,8 +539,8 @@ object ForkListTest:
       // Each child order starts at a different Agent. So let forking order detached.
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of:
           If(expr("$element == 'ELEMENT-1'")).Then:
             EmptyJob.execute(agentPath)
@@ -551,8 +551,8 @@ object ForkListTest:
       // Each child order starts at a different Agent. So detach forking order.
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           If(expr("$element == 'ELEMENT-1'")).Then:
             EmptyJob.execute(agentPath)
@@ -563,8 +563,8 @@ object ForkListTest:
       // Each child order starts at bAgentPath. So detach and then attach forking order to bAgentPath.
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           If(expr("$element == 'ELEMENT-X'")).Then:
             EmptyJob.execute(agentPath)
@@ -576,8 +576,8 @@ object ForkListTest:
     Vector(
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           If(expr("$UNKNOWN == 'UNKNOWN'")):
             EmptyJob.execute(agentPath)))))
@@ -587,8 +587,8 @@ object ForkListTest:
     Vector(
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           EmptyJob.execute(agentPath),
           Fail(Some(expr("'TEST FAILURE'")))))))
@@ -598,8 +598,8 @@ object ForkListTest:
     Vector(
       ForkList(
         expr("$myList"),
-        exprFunction("(element) => $element"),
-        exprFunction("(element) => { element: $element }"),
+        exprFunction("element => $element"),
+        exprFunction("element => { element: $element }"),
         Workflow.of(
           EmptyJob.execute(agentPath),
           Fail(Some(expr("'TEST FAILURE'")))),
@@ -622,8 +622,8 @@ object ForkListTest:
     Vector(
       ForkList(
           expr("$myList"),
-          childToId = exprFunction("(element) => $element.id"),
-          childToArguments = exprFunction("(element) => { elementId: $element.id }"),
+          childToId = exprFunction("element => $element.id"),
+          childToArguments = exprFunction("element => { elementId: $element.id }"),
           Workflow.of(
             Execute(WorkflowJob(
               agentPath,

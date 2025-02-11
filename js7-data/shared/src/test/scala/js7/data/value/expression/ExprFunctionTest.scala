@@ -1,5 +1,7 @@
 package js7.data.value.expression
 
+import ExprFunctionTest.*
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
@@ -20,6 +22,13 @@ final class ExprFunctionTest extends OurTestSuite:
     Right:
       ExprFunction():
         NumericConstant(1))
+
+  testEval("a => $a + 1", Scope.empty,
+    args = Seq(NumberValue(2)),
+    result = Right(NumberValue(3)),
+    Right:
+      ExprFunction("a"):
+        Add(NamedValue("a"), NumericConstant(1)))
 
   testEval("(a) => $a + 1", Scope.empty,
     args = Seq(NumberValue(2)),
@@ -72,6 +81,7 @@ final class ExprFunctionTest extends OurTestSuite:
       val checked = parseFunction(exprString)
       assert(checked == checkedFunction)
       for function <- checkedFunction do
+        logger.info(function.toString)
         assert(parseFunction(function.toString) == checkedFunction, " in toString❗")
         assert(function.eval(args)(using scope) == result)
         assert(parseExpressionOrFunction(exprString) == Right(FunctionExpr(function)))
@@ -131,3 +141,6 @@ final class ExprFunctionTest extends OurTestSuite:
 
     assert(eval(1, 2, Seq("A", "B", "C")) == Left(Problem(
     "Number of arguments=3 does not match required number of function parameters=1...2 in 'myFunction' function")))
+
+object ExprFunctionTest:
+  private val logger = Logger[this.type]

@@ -68,8 +68,8 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester:
       Seq(
         ForkList(
           expr("subagentIds($arg)"),
-          exprFunction("(listElement) => $listElement"),
-          exprFunction("(listElement) => { subagentId: $listElement }"),
+          exprFunction("listElement => $listElement"),
+          exprFunction("listElement => { subagentId: $listElement }"),
           Workflow.empty)))
     ) { workflow =>
       val orderId = OrderId("CONTROLLER")
@@ -91,8 +91,8 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester:
       Seq(
         ForkList(
           expr("subagentIds($arg)"),
-          exprFunction("(listElement) => $listElement"),
-          exprFunction("(listElement) => { subagentId: $listElement }"),
+          exprFunction("listElement => $listElement"),
+          exprFunction("listElement => { subagentId: $listElement }"),
           Workflow.of(
             EmptyJob.execute(
               agentPath,
@@ -121,8 +121,8 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester:
       Seq(
         ForkList(
           expr("subagentIds($arg)"),
-          exprFunction("(listElement) => $listElement"),
-          exprFunction("(listElement) => { subagentId: $listElement }"),
+          exprFunction("listElement => $listElement"),
+          exprFunction("listElement => { subagentId: $listElement }"),
           Workflow.of(
             EmptyJob.execute(
               agentPath,
@@ -174,8 +174,8 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester:
       Seq(
         ForkList(
           expr("subagentIds()"),
-          exprFunction("(listElement) => $listElement"),
-          exprFunction("(listElement) => { subagentId: $listElement }"),
+          exprFunction("listElement => $listElement"),
+          exprFunction("listElement => { subagentId: $listElement }"),
           Workflow.of(
             EmptyJob.execute(
               agentPath,

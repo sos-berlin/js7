@@ -104,7 +104,7 @@ final class GlobalToPlannableBoardTest
 
       execCmd:
         ChangeGlobalToPlannableBoard(plannableBoard, dailyPlan.id,
-          exprFunction("(noticeKey) => [ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]"))
+          exprFunction("noticeKey => [ substring($noticeKey, 0, 10), substring($noticeKey, 10) ]"))
 
       assert(controllerState.toNoticePlace.toMap == Map(
         planId / boardPath / NoticeKey("ALPHA") -> NoticePlace(Some(Notice(planId / boardPath / "ALPHA"))),

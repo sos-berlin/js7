@@ -17,8 +17,8 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 final class ForkListTest extends OurTestSuite:
   private val fork = ForkList(
     expr("$children"),
-    exprFunction("(listElement) => $listElement.number"),
-    exprFunction("""(listElement) => {
+    exprFunction("listElement => $listElement.number"),
+    exprFunction("""listElement => {
         myId: $listElement.number,
         myString: $child.string
       }"""),
@@ -31,8 +31,8 @@ final class ForkListTest extends OurTestSuite:
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement) => $$listElement.number",
-        "childToArguments": "(listElement) => {myId:$$listElement.number, myString:$$child.string}",
+        "childToId": "listElement => $$listElement.number",
+        "childToArguments": "listElement => {myId:$$listElement.number, myString:$$child.string}",
         "workflow": {
           "instructions": [
             {
@@ -55,15 +55,15 @@ final class ForkListTest extends OurTestSuite:
     testJson[Instruction.Labeled](
       ForkList(
         expr("$children"),
-        exprFunction("(listElement) => $listElement"),
-        exprFunction("(listElement) => { myId: $listElement }"),
+        exprFunction("listElement => $listElement"),
+        exprFunction("listElement => { myId: $listElement }"),
         Workflow.empty,
         Some(AgentPath("AGENT"))),
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement) => $$listElement",
-        "childToArguments": "(listElement) => {myId:$$listElement}",
+        "childToId": "listElement => $$listElement",
+        "childToArguments": "listElement => {myId:$$listElement}",
         "workflow": {
           "instructions": []
         },
@@ -74,14 +74,14 @@ final class ForkListTest extends OurTestSuite:
     testJsonDecoder[Instruction.Labeled](
       ForkList(
         expr("$children"),
-        exprFunction("(listElement) => $listElement"),
-        exprFunction("(listElement) => { myId: $listElement }"),
+        exprFunction("listElement => $listElement"),
+        exprFunction("listElement => { myId: $listElement }"),
         Workflow.empty),
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement) => $$listElement",
-        "childToArguments": "(listElement) => {myId:$$listElement}",
+        "childToId": "listElement => $$listElement",
+        "childToArguments": "listElement => {myId:$$listElement}",
         "workflow": {
           "instructions": []
         }
@@ -92,7 +92,7 @@ final class ForkListTest extends OurTestSuite:
         "TYPE": "ForkList",
         "children": "$$children",
         "childToId": "() => 1",
-        "childToArguments": "(listElement) => { myId: $$listElement }",
+        "childToArguments": "listElement => { myId: $$listElement }",
         "workflow": {
           "instructions": []
         },
@@ -104,7 +104,7 @@ final class ForkListTest extends OurTestSuite:
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToId": "(listElement) => $$listElement",
+        "childToId": "listElement => $$listElement",
         "childToArguments": "(element, i, x) => {}",
         "workflow": {
           "instructions": []

@@ -218,7 +218,7 @@ final class ControllerCommandTest extends OurTestSuite:
           "postOrderToNoticeKey": "\"\""
         },
         "planSchemaId": "DailyPlan",
-        "splitNoticeKey": "(noticeKey) => [substring($$noticeKey, 0, 10), substring($$noticeKey, 10)]"
+        "splitNoticeKey": "noticeKey => [substring($$noticeKey, 0, 10), substring($$noticeKey, 10)]"
       }""")
 
   "ChangePlannableToGlobalBoard" in:

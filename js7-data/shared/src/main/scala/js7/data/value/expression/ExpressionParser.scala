@@ -55,10 +55,10 @@ object ExpressionParser:
     checkedParse(string, quotedString.surroundedBy(w) <* end)
 
   private val parameterList: Parser[List[String]] =
-    inParentheses(commaSequence(identifier))
+    identifier.map(_ :: Nil) | inParentheses(commaSequence(identifier))
 
   private val functionDefinition: Parser[ExprFunction] =
-    (parameterList.backtrack ~ ((w ~ symbol("=>") ~ w) *> expression))
+    (((parameterList <* (w ~ symbol("=>"))).backtrack <* w) ~ expression)
       .map: (names, expression) =>
         ExprFunction(names*)(expression)
 

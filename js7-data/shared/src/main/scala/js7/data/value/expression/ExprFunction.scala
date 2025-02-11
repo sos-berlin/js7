@@ -62,7 +62,11 @@ final case class ExprFunction(
         parameters.view.map(_.name).zip(arguments).toMap
       expression.eval(argScope |+| scope)
 
-  override def toString = parameters.mkString("(", ",", ")") + " => " + expression
+  override def toString =
+    parameters.match
+      case Seq(VariableDeclaration(name)) => name
+      case _ => parameters.mkString("(", ",", ")")
+    + " => " + expression
 
 
 object ExprFunction:

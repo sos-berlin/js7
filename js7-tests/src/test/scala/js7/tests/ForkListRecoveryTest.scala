@@ -111,8 +111,8 @@ object ForkListRecoveryTest:
     Vector(
       ForkList(
         expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        exprFunction("id => $id"),
+        exprFunction("id => { id: $id }"),
         Workflow.of(
           EmptyJob.execute(agentPath),
           Prompt(expr("'QUESTION'"))))))
