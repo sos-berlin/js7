@@ -11,6 +11,7 @@ import js7.data.parser.Js7Parsers.path
 import org.jetbrains.annotations.TestOnly
 
 object BoardPathExpressionParser:
+  
   @TestOnly
   def boardPathExpr(string: String): BoardPathExpression =
     parse(string).orThrow

@@ -63,10 +63,10 @@ object BoardPathExpression:
     given boardPathToExpr: Conversion[BoardPath, BoardPathExpression] = ExpectNotice(_)
 
     extension (a: BoardPathExpression)
-      def &(b: BoardPathExpression): BoardPathExpression =
+      inline def &(b: BoardPathExpression): BoardPathExpression =
         And(a, b)
 
-      def |(b: BoardPathExpression): BoardPathExpression =
+      inline def |(b: BoardPathExpression): BoardPathExpression =
         Or(a, b)
 
 

@@ -16,7 +16,7 @@ import js7.controller.RunningController
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.BoardPathExpressionParser.boardPathExpr
+import js7.data.board.BoardPathExpression.syntax.{&, boardPathToExpr}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, GlobalBoard, GlobalNoticeKey, Notice, NoticeKey, NoticePlace, PlannedBoard}
 import js7.data.controller.ControllerCommand
@@ -494,6 +494,7 @@ final class GlobalBoardTest
 
 
 object GlobalBoardTest:
+  import scala.language.implicitConversions
 
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
@@ -517,24 +518,16 @@ object GlobalBoardTest:
   private object TestJob extends SemaphoreJob.Companion[TestJob]
 
   private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ "INITIAL", Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}'"))))
+    ExpectNotices(board0.path)))
 
   private val expecting012Workflow = Workflow(WorkflowPath("EXPECTING-0-1-2") ~ "INITIAL", Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}' && " +
-      s"'${board1.path.string}' && " +
-      s"'${board2.path.string}'"))))
+    ExpectNotices(board0.path & board1.path & board2.path)))
 
   private val expecting01Workflow = Workflow(WorkflowPath("EXPECTING-0-1") ~ "INITIAL", Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}' && " +
-      s"'${board1.path.string}'"))))
+    ExpectNotices(board0.path & board1.path)))
 
   private val expecting02Workflow = Workflow(WorkflowPath("EXPECTING-0-2") ~ "INITIAL", Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}' && " +
-      s"'${board2.path.string}'"))))
+    ExpectNotices(board0.path & board2.path)))
 
   private val posting0Workflow = Workflow(WorkflowPath("POSTING-0") ~ "INITIAL", Seq(
     PostNotices(Seq(board0.path))))
@@ -548,4 +541,4 @@ object GlobalBoardTest:
 
   private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    ExpectNotices(boardPathExpr(s"'${board0.path.string}'"))))
+    ExpectNotices(board0.path)))

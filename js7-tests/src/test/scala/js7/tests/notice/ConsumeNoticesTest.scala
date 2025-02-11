@@ -11,8 +11,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
-import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.BoardPathExpressionParser.boardPathExpr
+import js7.data.board.BoardPathExpression.syntax.{boardPathToExpr, &, |}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, GlobalNoticeKey, NoticeKey, NoticePlace}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflow, DeleteNotice, PostNotice, ResumeOrder}
 import js7.data.job.ShellScriptExecutable
@@ -59,7 +58,7 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("CONSUMING-SINGLE"),
       Seq:
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+        ConsumeNotices(aBoard.path | bBoard.path):
           TestJob.execute(agentPath))
 
     withItem(workflow): workflow =>
@@ -118,9 +117,7 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(
         PostNotices(Seq(aBoard.path, myBoard.path)),
-        ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}' && '${myBoard.path.string}'"),
-          subworkflow = Workflow.empty)))
+        ConsumeNotices(aBoard.path & myBoard.path)()))
 
     withItems((myBoard, workflow)): (_, workflow) =>
       val orderId = OrderId("#2022-10-23#X")
@@ -147,7 +144,7 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(
         PostNotices(Seq(aBoard.path)),
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           Prompt(expr("'PROMPT'"))))
 
     withItem(workflow): workflow =>
@@ -186,7 +183,7 @@ final class ConsumeNoticesTest
   "A single Order waiting for one of two Notices, posting one Notice, then the other" in:
     val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+        ConsumeNotices(aBoard.path | bBoard.path):
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
@@ -250,7 +247,7 @@ final class ConsumeNoticesTest
   "PostNotice while consuming an earlier notice" in:
     val workflow = updateItem:
       Workflow(WorkflowPath("POST-WHILE-CONSUMING"), Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
@@ -297,7 +294,7 @@ final class ConsumeNoticesTest
   "Two concurrent ConsumeNotices" in:
     val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-TWO-ORDERS"), Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           TestJob.execute(agentPath)))
 
     val qualifier = qualifiers.next()
@@ -372,9 +369,9 @@ final class ConsumeNoticesTest
       WorkflowPath("CONSUMING-NESTED"),
       Seq(
         ConsumeNotices(
-          boardPathExpr(s"'${aBoard.path.string}'"),
+          aBoard.path,
           subworkflow = Workflow.of(
-            ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}' || '${bBoard.path.string}'")):
+            ConsumeNotices(aBoard.path | bBoard.path):
               Execute(WorkflowJob.Name("JOB")),
             Prompt(expr("'PROMPT'"))))),
       nameToJob = Map(
@@ -439,7 +436,7 @@ final class ConsumeNoticesTest
   "Failing ConsumeNotices block does not consume the Notice" in:
     val workflow = updateItem:
       Workflow(WorkflowPath("CONSUMING-FAILING"), Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           Fail()))
 
     val qualifier = qualifiers.next()
@@ -482,7 +479,7 @@ final class ConsumeNoticesTest
   "Cancel while consuming a Notice and sticking in Promting" in:
     val workflow = updateItem:
       Workflow(WorkflowPath("CANCEL-WHILE-PROMPTING"), Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           Prompt(expr("'PROMPT'"))))
 
     val qualifier = qualifiers.next()
@@ -552,7 +549,7 @@ final class ConsumeNoticesTest
         PostNotices(Seq(aBoard.path)),
         TryInstruction(
           Workflow.of(
-            ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+            ConsumeNotices(aBoard.path):
               FailingJob.execute(agentPath)),
           Workflow.of(
             Retry()),
@@ -605,7 +602,7 @@ final class ConsumeNoticesTest
     val workflow = Workflow(
       WorkflowPath("RESUME-INTO-CONSUME-NOTICES"),
       Seq(
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           EmptyJob.execute(agentPath)))
 
     withItem(workflow): workflow =>
@@ -631,7 +628,7 @@ final class ConsumeNoticesTest
       Seq:
         Options(stopOnFailure = true)(
           PostNotices(Seq(aBoard.path)),
-          ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+          ConsumeNotices(aBoard.path):
             If(expr("true")):
               Fail()))
 
@@ -650,7 +647,7 @@ final class ConsumeNoticesTest
       WorkflowPath("CONSUME-NOTICE-IF-FAIL"),
       Seq(
         PostNotices(Seq(aBoard.path)),
-        ConsumeNotices(boardPathExpr(s"'${aBoard.path.string}'")):
+        ConsumeNotices(aBoard.path):
           If(expr("true")):
             Fail()))
 

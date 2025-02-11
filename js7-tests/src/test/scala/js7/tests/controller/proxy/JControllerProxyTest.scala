@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy
 
+import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createDirectory
 import java.util.concurrent.TimeUnit.SECONDS
@@ -15,7 +16,7 @@ import js7.base.utils.Lazy
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
-import js7.data.board.BoardPathExpressionParser.boardPathExpr
+import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.controller.ControllerState.{inventoryItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{InventoryItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
@@ -26,9 +27,9 @@ import js7.proxy.javaapi.JProxyContext
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 import scala.util.{Failure, Try}
 
 final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScalaTest:
@@ -109,6 +110,6 @@ object JControllerProxyTest:
   val postingBoardWorkflowJson = (postingBoardWorkflow: InventoryItem).asJson.compactPrint
 
   val expectingBoardWorkflow = Workflow(WorkflowPath("EXPECTING-WORKFLOW") ~ boardVersion,
-    Seq(ExpectNotices(boardPathExpr(s"'${boardPath.string}'"))))
+    Seq(ExpectNotices(boardPath)))
 
   val expectingBoardWorkflowJson = (expectingBoardWorkflow: InventoryItem).asJson.compactPrint

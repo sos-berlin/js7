@@ -8,7 +8,7 @@ import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.board.BoardPathExpressionParser.boardPathExpr
+import js7.data.board.BoardPathExpression.syntax.{&, boardPathToExpr, |}
 import js7.data.board.{BoardPath, GlobalBoard, GlobalNoticeKey, Notice, NoticePlace}
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
@@ -22,6 +22,7 @@ import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.concurrent.duration.*
+import scala.language.implicitConversions
 
 final class PostNoticesExecutorTest extends OurTestSuite:
   private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
@@ -188,12 +189,7 @@ object PostNoticesExecutorTest:
     PostNotices(Seq(board2.path))))
 
   private val expecting02or13Workflow = Workflow(WorkflowPath("EXPECTING-0-OR-1-2") ~ versionId, Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}' && " +
-      s"'${board2.path.string}' || " +
-      s"'${board1.path.string}' && " +
-      s"'${board3.path.string}'"))))
+    ExpectNotices(board0.path & board2.path | board1.path & board3.path)))
 
   private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ versionId, Seq(
-    ExpectNotices(boardPathExpr(
-      s"'${board0.path.string}'"))))
+    ExpectNotices(board0.path)))
