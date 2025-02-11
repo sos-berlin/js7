@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.effect.{IO, Resource, ResourceIO}
 
-final class OneTimeTokenProvider private:
+final class OneTimeTokenProvider private():
 
   @volatile private var current: Option[OneTimeToken] = None
 
