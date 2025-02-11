@@ -11,7 +11,6 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichMapView
-import js7.base.utils.StandardMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{BoardPath, BoardState, GlobalBoard, NoticeId}
@@ -30,12 +29,11 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.{JBoardItem, JBoardState, JGlobalBoard, JNotice, JPlannedBoard}
+import js7.data_for_java.board.{JBoardItem, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.common.MoreJavaConverters.asJava
-import js7.data_for_java.controller.JControllerState.*
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
@@ -47,7 +45,6 @@ import js7.data_for_java.subagent.{JSubagentBundle, JSubagentItem, JSubagentItem
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import scala.annotation.nowarn
-import scala.collection.MapView
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*

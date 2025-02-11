@@ -1,6 +1,5 @@
 package js7.data.orderwatch
 
-import cats.effect.IO
 import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}

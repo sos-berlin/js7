@@ -1,6 +1,5 @@
 package js7.agent.data.orderwatch
 
-import cats.effect.IO
 import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}

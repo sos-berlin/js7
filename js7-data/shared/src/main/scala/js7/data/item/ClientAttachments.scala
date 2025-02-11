@@ -1,6 +1,5 @@
 package js7.data.item
 
-import cats.effect.IO
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.log.Logger

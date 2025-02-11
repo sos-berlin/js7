@@ -1,6 +1,5 @@
 package js7.data.item
 
-import cats.effect.IO
 import fs2.Stream
 import js7.base.problem.Checked
 

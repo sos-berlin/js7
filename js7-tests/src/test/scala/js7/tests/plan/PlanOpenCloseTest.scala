@@ -20,7 +20,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderW
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{AddOrder, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.DeleteFileJob
