@@ -823,9 +823,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
         val keyedEvents: Seq[KeyedEvent[OrderActorEvent | NoticeDeleted]] =
           oes.nextEvents(order.id)
         val (orderKeyedEvents, noticeDeletedEvents) =
-          val (a, b) = keyedEvents.partition(_.event.isInstanceOf[OrderActorEvent])
-          a.map(_.asInstanceOf[KeyedEvent[OrderActorEvent]])->
-            b.map(_.asInstanceOf[KeyedEvent[NoticeDeleted]])
+          keyedEvents.partitionMap:
+            case o @ KeyedEvent(_, _: OrderActorEvent) => Left(o.asInstanceOf[KeyedEvent[OrderActorEvent]])
+            case o @ KeyedEvent(_, _: NoticeDeleted) => Right(o.asInstanceOf[KeyedEvent[NoticeDeleted]])
 
         val future = orderKeyedEvents
           .groupMap(_.key)(_.event)

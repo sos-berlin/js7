@@ -31,6 +31,6 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
 
   @javaApi @throws[RuntimeException]
   def of(planKey: String): PlanKey =
-    checked(planKey).orThrow
+    mayThrow(planKey)
 
   given Ordering[PlanKey] = GenericString.ordering

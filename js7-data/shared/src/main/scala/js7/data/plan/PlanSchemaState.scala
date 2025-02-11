@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PlanIsClosedProblem
-import js7.data.board.{BoardNoticeKey, BoardPath, NoticeSnapshot, PlannedBoard}
+import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
 import js7.data.plan.PlanSchemaState.*
@@ -42,12 +42,8 @@ extends UnsignedSimpleItemState:
     planSchema.id
 
   def estimatedSnapshotSize: Int =
-    locally:
-      if isGlobal then
-        0
-      else
-        item.estimatedSnapshotSize + 1
-    + toPlan.values.view.map(_.estimatedSnapshotSize).sum
+    (if isGlobal then 0 else item.estimatedSnapshotSize + 1)
+      + toPlan.values.view.map(_.estimatedSnapshotSize).sum
 
   override def toSnapshotStream
   : Stream[fs2.Pure, PlanSchema | Snapshot | Plan.Snapshot | NoticeSnapshot] =
@@ -165,9 +161,6 @@ extends UnsignedSimpleItemState:
     toPlan.get(planKey).map(Right(_)).getOrElse:
       calculatePlanIsClosed(planKey).flatMap: isClosed =>
         Plan.checked(id / planKey, isClosed = isClosed)
-
-  def containsNoticeKey(planKey: PlanKey, boardNoticeKey: BoardNoticeKey): Boolean =
-    toPlan.get(planKey).exists(_.containsNoticeKey(boardNoticeKey))
 
   def removeBoard(boardPath: BoardPath): PlanSchemaState =
     copy(toPlan =

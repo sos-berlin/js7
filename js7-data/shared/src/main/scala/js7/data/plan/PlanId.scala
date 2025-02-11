@@ -33,7 +33,7 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
   override def toString =
     s"Plan:$shortString"
 
-  def shortString =
+  def shortString: String =
     if isGlobal then
       "Global"
     else

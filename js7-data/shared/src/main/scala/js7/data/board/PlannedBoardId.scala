@@ -9,7 +9,6 @@ import org.jetbrains.annotations.TestOnly
 final case class PlannedBoardId(planId: PlanId, boardPath: BoardPath):
   export planId.{planSchemaId, planKey}
 
-  @TestOnly
   def /(noticeKey: NoticeKey): NoticeId =
     NoticeId(planId, boardPath / noticeKey)
 

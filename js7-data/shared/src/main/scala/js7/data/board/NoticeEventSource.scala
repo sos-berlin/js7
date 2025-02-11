@@ -85,7 +85,7 @@ object NoticeEventSource:
                   boardState.item match
                     case _: GlobalBoard => Right(None)
                     case plannableBoard: PlannableBoard =>
-                      plannableBoard.freshOrderToNoticeKey(planId, order, controllerState)
+                      plannableBoard.freshOrderToNoticeKey(order, controllerState)
                         .map: noticeKey =>
                           !plan.isNoticeAnnounced(boardPath / noticeKey) thenSome:
                             OrderNoticeAnnounced(planId / boardPath / noticeKey)

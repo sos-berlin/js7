@@ -2,7 +2,6 @@ package js7.data.plan
 
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.UnsignedSimpleItemPath
 import js7.data.plan.PlanSchemaId.Global
 import org.jetbrains.annotations.TestOnly
@@ -43,4 +42,4 @@ object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
   @javaApi @throws[RuntimeException]
   def of(planSchemaId: String): PlanSchemaId =
-    checked(planSchemaId).orThrow
+    mayThrow(planSchemaId)

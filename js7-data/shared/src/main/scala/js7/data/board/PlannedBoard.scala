@@ -31,8 +31,8 @@ final case class PlannedBoard(
 
   def toSnapshotStream: Stream[fs2.Pure, NoticeSnapshot] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
-    Stream.iterable:
-      toNoticePlace.view.flatMap((k, v) => v.toSnapshot(id / k))
+    Stream.iterable(toNoticePlace).flatMap: (k, v) =>
+      v.toSnapshotStream(id / k)
 
   def toStringStream: Stream[fs2.Pure, String] =
     Stream.emit(s"$id") ++

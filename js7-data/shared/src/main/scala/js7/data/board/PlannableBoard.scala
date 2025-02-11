@@ -7,7 +7,6 @@ import js7.base.time.Timestamp
 import js7.data.board.PlannableBoard.*
 import js7.data.item.ItemRevision
 import js7.data.order.{FreshOrder, Order}
-import js7.data.plan.PlanId
 import js7.data.state.StateView
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, Scope}
@@ -35,7 +34,7 @@ extends
   def isGlobal: Boolean =
     false
 
-  def freshOrderToNoticeKey(planId: PlanId, order: FreshOrder, state: StateView)
+  def freshOrderToNoticeKey(order: FreshOrder, state: StateView)
   : Checked[NoticeKey] =
     val scope = state.toPlanOrderScope(order)
     postingOrderToNoticeKey(scope)
@@ -48,7 +47,7 @@ extends
     yield
       notice
 
-  def postingOrderToNoticeKey(scope: Scope): Checked[NoticeKey] =
+  private def postingOrderToNoticeKey(scope: Scope): Checked[NoticeKey] =
     for
       noticeKey <- postOrderToNoticeKey.evalAsString(scope)
       noticeKey <- NoticeKey.checked(noticeKey)
@@ -73,7 +72,8 @@ object PlannableBoard extends BoardItem.Companion[PlannableBoard]:
   val Path: BoardPath.type = BoardPath
 
   /** Returns the empty String, the empty NoticeKey. */
-  val DefaultToNoticeExpr = StringConstant("")
+  val DefaultToNoticeExpr: StringConstant =
+    StringConstant("")
 
   def cls: Class[PlannableBoard] =
     classOf[PlannableBoard]

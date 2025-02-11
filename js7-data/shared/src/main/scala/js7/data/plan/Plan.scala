@@ -70,12 +70,6 @@ final case class Plan(
   def plannedBoard(boardPath: BoardPath): PlannedBoard =
     toPlannedBoard.getOrElse(boardPath, PlannedBoard(id / boardPath))
 
-  def containsNoticeKey(boardNoticeKey: BoardNoticeKey): Boolean =
-    toPlannedBoard
-      .get(boardNoticeKey.boardPath)
-      .exists:
-        _.noticeKeys(boardNoticeKey.noticeKey)
-
   def removeBoard(boardPath: BoardPath): Option[Plan] =
     val plan = copy(toPlannedBoard = toPlannedBoard - boardPath)
     !plan.isEmpty ? plan
@@ -102,7 +96,7 @@ final case class Plan(
         id / plannedBoard.boardPath / noticeKey
 
   /** A dead Plan will be deleted immediately and should not exist. */
-  def isDead: Boolean =
+  private def isDead: Boolean =
     isClosed && orderIds.isEmpty
 
   def isEmpty: Boolean =
@@ -134,7 +128,6 @@ object Plan:
   : Checked[Plan] =
     planId.checked.map: _ =>
       new Plan(planId, orderIds, plannedBoards.toKeyedMap(_.boardPath), isClosed = isClosed)
-
 
   def initial(planId: PlanId): Plan =
     new Plan(planId, Set.empty, Map.empty, false)

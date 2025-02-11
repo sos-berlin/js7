@@ -16,6 +16,7 @@ import js7.data.state.StateView
 import js7.data.value.expression.Expression.{MissingConstant, expr}
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.{Expression, Scope}
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** A GlobalBoard is a BoardItem with global NoticeIds.
@@ -88,6 +89,7 @@ object GlobalBoard extends BoardItem.Companion[GlobalBoard]:
     Subtype[GlobalBoard](aliases = Seq("Board"/*until v2.7.2*/))
 
   /** A GlobalBoard with a single, constant Notice. */
+  @TestOnly
   def singleNotice(
     boardPath: BoardPath,
     orderToNoticeId: String = "'NOTICE'",

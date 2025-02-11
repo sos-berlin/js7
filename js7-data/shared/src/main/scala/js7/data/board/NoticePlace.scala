@@ -49,9 +49,9 @@ extends Big:
   def estimatedSnapshotSize: Int =
     (isAnnounced || isInConsumption || consumptionCount != 0).toInt
 
-  def toSnapshot(noticeId: NoticeId): Seq[Snapshot | Notice] =
-    notice.toList :::
-      (isAnnounced || isInConsumption || consumptionCount != 0).thenList:
+  def toSnapshotStream(noticeId: NoticeId): fs2.Stream[fs2.Pure, Snapshot | Notice] =
+    fs2.Stream.fromOption(notice) ++
+      (isAnnounced || isInConsumption || consumptionCount != 0).thenStream:
         Snapshot(noticeId, isAnnounced, isInConsumption, consumptionCount)
 
   def recoverSnapshot(snapshot: Notice | NoticePlace.Snapshot): NoticePlace =

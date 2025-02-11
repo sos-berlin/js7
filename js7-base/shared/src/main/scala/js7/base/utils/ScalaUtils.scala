@@ -722,6 +722,13 @@ object ScalaUtils:
       infix def thenView[A](a: => A): View[A] =
         if underlying then new View.Single(a) else View.empty
 
+      /**
+        * Conditional `fs2.Stream`.
+        * <p>`(true option a) == Stream.emit(a)`
+        * <br>`(false option a) == Stream.emit`
+        */
+      infix def thenStream[A](a: => A): fs2.Stream[fs2.Pure, A] =
+        if underlying then fs2.Stream.emit(a) else fs2.Stream.empty
       /** The string on the right side if true, otherwise the empty string. */
       def ??(string: => String): String =
         if underlying then string else ""
