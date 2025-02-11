@@ -11,8 +11,8 @@ extends GenericString:
 
 
 object NodeId extends GenericString.NonEmpty[NodeId]:
-  val primary: NodeId = NodeId("Primary")
-  val backup: NodeId = NodeId("Backup")
+  val primary: NodeId = NodeId.mayThrow("Primary")
+  val backup: NodeId = NodeId.mayThrow("Backup")
 
   protected def unchecked(string: String): NodeId =
     new NodeId(string)
@@ -23,4 +23,4 @@ object NodeId extends GenericString.NonEmpty[NodeId]:
 
   @javaApi
   def of(nodeId: String): NodeId =
-    apply(nodeId)
+    mayThrow(nodeId)

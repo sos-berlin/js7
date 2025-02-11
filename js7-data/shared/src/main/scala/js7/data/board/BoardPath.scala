@@ -41,8 +41,8 @@ object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]:
 
   protected def unchecked(string: String) = new BoardPath(string)
 
-  @javaApi
+  @javaApi @throws[RuntimeException]
   def of(validName: String): BoardPath =
-    apply(validName)
+    mayThrow(validName)
 
   given Ordering[BoardPath] = GenericString.ordering

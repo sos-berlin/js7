@@ -1,6 +1,7 @@
 package js7.data.calendar
 
 import js7.base.annotation.javaApi
+import js7.data.agent.AgentPath.mayThrow
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class CalendarPath private(string: String)
@@ -18,4 +19,4 @@ object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]:
 
   @javaApi
   def of(validName: String): CalendarPath =
-    apply(validName)
+    mayThrow(validName)

@@ -14,7 +14,7 @@ object ProblemCode extends GenericString.NonEmpty[ProblemCode]:
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(string: String): ProblemCode =
-    apply(string)
+    mayThrow(string)
 
   protected def unchecked(string: String) =
     new ProblemCode(string)

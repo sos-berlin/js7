@@ -32,4 +32,4 @@ extends DelegateId.Companion[AgentPath], UnsignedSimpleItemPath.Companion[AgentP
 
   @javaApi
   def of(validName: String): AgentPath =
-    apply(validName)
+    mayThrow(validName)

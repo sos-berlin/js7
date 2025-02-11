@@ -26,4 +26,4 @@ object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowContro
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validWorkflowControlPath: String): WorkflowControlPath =
-    apply(validWorkflowControlPath)
+    mayThrow(validWorkflowControlPath)

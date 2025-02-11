@@ -19,4 +19,4 @@ object LockPath extends UnsignedSimpleItemPath.Companion[LockPath]:
 
   @javaApi
   def of(validName: String): LockPath =
-    apply(validName)
+    mayThrow(validName)

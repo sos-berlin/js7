@@ -11,6 +11,7 @@ import js7.data.workflow.position.BranchId.{NoTryBarrierBranchid, nextTryBranchI
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position.*
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
@@ -175,4 +176,5 @@ object Label extends GenericString.Checked_[Label]:
   protected def unchecked(string: String) = new Label(string)
 
   import scala.language.implicitConversions
+  @TestOnly
   implicit def fromString(label: String): Label = super.apply(label)

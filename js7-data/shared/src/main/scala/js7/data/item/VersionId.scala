@@ -57,6 +57,6 @@ object VersionId extends GenericString.NonEmpty[VersionId]:
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validVersionId: String): VersionId =
-    apply(validVersionId)
+    mayThrow(validVersionId)
 
   implicit val versionedIdOrdering: Ordering[VersionId] = GenericString.ordering

@@ -17,4 +17,4 @@ object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]
 
   @javaApi
   def of(validName: String): JobResourcePath =
-    apply(validName)
+    mayThrow(validName)

@@ -16,6 +16,7 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Fork.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Map.Map1
 import scala.language.implicitConversions
 
@@ -161,5 +162,6 @@ final case class ForkBranchId(string: String) extends GenericString:
 object ForkBranchId extends GenericString.Checked_[ForkBranchId]:
   def unchecked(string: String) = new ForkBranchId(string)
 
+  @TestOnly
   implicit def fromString(string: String): ForkBranchId =
     apply(string)

@@ -59,6 +59,11 @@ object GenericString:
 
     @TestOnly @throws[RuntimeException]
     final def apply(string: String): A =
+      mayThrow(string)
+
+    /** @throws RuntimeException. */
+    @throws[RuntimeException]
+    final def mayThrow(string: String): A =
       checked(string).orThrow
 
     implicit val jsonEncoder: Encoder[A] = o =>

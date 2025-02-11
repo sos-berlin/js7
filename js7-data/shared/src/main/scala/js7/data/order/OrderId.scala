@@ -47,7 +47,7 @@ final case class OrderId private(string: String) extends GenericString:
   def root: OrderId =
     string.indexOf(ChildSeparator) match
       case -1 => this
-      case n => OrderId(string take n)
+      case n => mayThrow(string take n)
 
   def isRoot: Boolean =
     string.indexOf(ChildSeparator) == -1
@@ -72,7 +72,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]:
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validOrderId: String): OrderId =
-    apply(validOrderId)
+    mayThrow(validOrderId)
 
   final case class ChildId private(string: String) extends GenericString
   object ChildId extends GenericString.NonEmpty[ChildId]:
