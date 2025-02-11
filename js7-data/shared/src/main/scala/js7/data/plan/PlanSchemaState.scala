@@ -28,7 +28,7 @@ extends UnsignedSimpleItemState:
   protected type Self = PlanSchemaState
 
   val companion: PlanSchemaState.type = PlanSchemaState
-  private lazy val namedValuesScope = NamedValueScope(namedValues)
+  private lazy val namedValuesScope = NamedValueScope.simple(namedValues orElse item.namedValues)
 
   export item.isGlobal
 

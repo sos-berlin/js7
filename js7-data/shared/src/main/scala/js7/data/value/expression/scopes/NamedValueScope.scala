@@ -19,7 +19,7 @@ object NamedValueScope:
     apply(namedValue.map((k, v) => k -> Right(v)).toMap)
 
   /**
-   * @param nameToValue: Value is expected to be constant.
+   * @param nameToValue Value is expected to be constant.
    */
   def simple(nameToValue: PartialFunction[String, Value]): Scope =
     apply:
@@ -27,7 +27,7 @@ object NamedValueScope:
         nameToValue.lift(k).map(Right(_))
 
   /**
-   * @param nameToValue: Value is expected to be constant.
+   * @param nameToValue Value is expected to be constant.
    */
   def simpleJava(nameToValue: PartialFunction[String, Value.SimpleJava]): Scope =
     apply:
@@ -36,13 +36,13 @@ object NamedValueScope:
           Value.ofSimpleJava
 
   /**
-   * @param nameToValue: Value is expected to be constant.
+   * @param nameToValue Value is expected to be constant.
    */
   def apply(nameToValue: Map[String, Value]): Scope =
     apply(nameToValue.view)
 
   /**
-   * @param nameToValue: Value is expected to be constant.
+   * @param nameToValue Value is expected to be constant.
    */
   def apply(nameToValue: MapView[String, Value]): Scope =
     apply:

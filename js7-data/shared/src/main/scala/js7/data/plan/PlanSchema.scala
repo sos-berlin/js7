@@ -1,13 +1,14 @@
 package js7.data.plan
 
 import cats.syntax.traverse.*
-import io.circe.derivation.{ConfiguredDecoder, ConfiguredEncoder}
+import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
 import js7.data.value.expression.Expression.{MissingConstant, expr}
+import js7.data.value.expression.ExpressionParser.exprFunction
 import js7.data.value.expression.{ExprFunction, Expression, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
@@ -53,6 +54,7 @@ final case class PlanSchema(
   id: PlanSchemaId,
   planKeyExpr: Expression,
   planIsClosedFunction: Option[ExprFunction] = None,
+  namedValues: NamedValues = NamedValues.empty,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
 
@@ -112,11 +114,12 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
 
   /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
-  def joc(id: PlanSchemaId, planIsClosedFunction: Option[ExprFunction] = None): PlanSchema =
+  def joc(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
       planKeyExpr = PlanKey.jocPlanKeyExpr,
-      planIsClosedFunction = planIsClosedFunction)
+      planIsClosedFunction = Some(exprFunction("day => $day < $openingDay")),
+      Map("openingDay" -> StringValue.empty))
 
   /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
   @TestOnly
@@ -132,5 +135,15 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   val cls: Class[PlanSchema] = classOf[PlanSchema]
 
   override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
-  override given jsonDecoder: Decoder[PlanSchema] = ConfiguredDecoder.derive(useDefaults = true)
+
+  override given jsonDecoder: Decoder[PlanSchema] = c =>
+    for
+      id <- c.get[PlanSchemaId]("id")
+      planKeyExpr <- c.get[Expression]("planKeyExpr")
+      planIsClosedFunction <- c.get[Option[ExprFunction]]("planIsClosedFunction")
+      namedValues <- c.getOrElse[NamedValues]("namedValues")(NamedValues.empty)
+      itemRevision <- c.get[Option[ItemRevision]]("itemRevision")  // May be omitted only in 2.7-4-SNAPSHOT
+    yield
+      PlanSchema(id, planKeyExpr, planIsClosedFunction, namedValues, itemRevision)
+
   given jsonCodec: Codec.AsObject[PlanSchema] = Codec.AsObject.from(jsonDecoder, jsonEncoder)

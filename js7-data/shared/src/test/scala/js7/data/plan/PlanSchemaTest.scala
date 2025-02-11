@@ -9,7 +9,7 @@ import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{MissingValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class PlanSchemaTest extends OurTestSuite:
 
@@ -20,17 +20,33 @@ final class PlanSchemaTest extends OurTestSuite:
       PlanSchema(
         PlanSchemaId("DailyPlan"),
         planKeyExpr = expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?"),
-        planIsClosedFunction = Some(exprFunction("(testPlanKey) => false")),
+        planIsClosedFunction = Some(exprFunction("planKey => false")),
+        Map("NAME" -> StringValue("VALUE")),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
         "planKeyExpr": "match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1')?",
-        "planIsClosedFunction": "(testPlanKey) => false",
+        "planIsClosedFunction": "planKey => false",
+        "namedValues": {
+          "NAME": "VALUE"
+        },
         "itemRevision": 1
       }""")
 
     testJson[InventoryItem](
+      PlanSchema(
+        PlanSchemaId("DailyPlan"),
+        planKeyExpr = expr("match(orderId, '#(.+)#.*', '$1') ?")),
+      json"""{
+        "TYPE": "PlanSchema",
+        "id": "DailyPlan",
+        "planKeyExpr": "match(orderId, '#(.+)#.*', '$$1')?",
+        "namedValues": {}
+      }""")
+
+    // COMPATIBLE with v2.7.4-SNAPSHOT
+    testJsonDecoder[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
         planKeyExpr = expr("match(orderId, '#(.+)#.*', '$1') ?")),

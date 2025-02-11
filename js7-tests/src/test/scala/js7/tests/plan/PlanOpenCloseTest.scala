@@ -52,19 +52,24 @@ final class PlanOpenCloseTest
         Prompt(expr("'PROMPT'")),
         PostNotices(Vector(board.path)))
 
-      withItems((board, workflow, dailyPlan)): (board, workflow, dailyPlan) =>
+      withItems(
+        (board, workflow, Workflow.empty, dailyPlan)
+      ): (board, workflow, emptyWorkflow, dailyPlan) =>
         eventWatch.resetLastWatchedEventId()
 
-        val today = "2024-01-03"
+        controller.runOrder:
+          FreshOrder(OrderId("#2025-01-02#"), emptyWorkflow.path, deleteWhenTerminated = true)
+
+        val today = "2025-01-03"
         val todayPlanId = dailyPlan.id / today
         val aTodayOrderId = OrderId(s"#$today#A")
         val bTodayOrderId = OrderId(s"#$today#B")
 
-        val tomorrow = "2024-01-04"
+        val tomorrow = "2025-01-04"
         val tomorrowPlanId = dailyPlan.id / tomorrow
         val tomorrowOrderId = OrderId(s"#$tomorrow#")
 
-        val dayAfterTomorrow = "2024-01-05"
+        val dayAfterTomorrow = "2025-01-05"
 
         // Close yesterday's Plan //
         execCmd:
@@ -239,6 +244,4 @@ final class PlanOpenCloseTest
 object PlanOpenCloseTest:
   private val agentPath = AgentPath("AGENT")
 
-  private val dailyPlan = PlanSchema.joc(
-    PlanSchemaId("DailyPlan"),
-    planIsClosedFunction = Some(exprFunction("(day) => $day < $openingDay")))
+  private val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
