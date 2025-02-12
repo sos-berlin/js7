@@ -70,14 +70,13 @@ object DirectoryWatch:
           import options.directory
           // BasicDirectoryWatch has been started before reading directory,
           // so that no directory change will be overlooked.
-          val readDirectory = repeatWhileIOException(
-            options,
+          val readDirectory = repeatWhileIOException(options):
             IO.interruptible:
-              DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))
+              DirectoryStateJvm.readDirectory(directory, options.isRelevantFile)
           Stream
             .resource(basicWatch.streamResource)
             .flatMap: stream =>
-              new DirectoryWatch(readDirectory, stream, hotLoopBrake = options.retryDelays.head)
+              DirectoryWatch(readDirectory, stream, hotLoopBrake = options.delayConf.delays.head)
                 .readDirectoryThenStreamForever(state)
                 .map(_._1)
                 .map(Chunk.from)

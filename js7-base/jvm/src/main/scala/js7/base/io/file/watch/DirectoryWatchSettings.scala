@@ -1,22 +1,21 @@
 package js7.base.io.file.watch
 
-import cats.data.NonEmptySeq
 import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
-import js7.base.problem.Checked.catchNonFatal
-import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.DelayConf
+import js7.base.utils.DelayConf.delayConf
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 final case class DirectoryWatchSettings(
   watchDelay: FiniteDuration,
   pollTimeout: FiniteDuration,
-  retryDelays: NonEmptySeq[FiniteDuration],
+  delayConf: DelayConf,
   directorySilence: FiniteDuration,
-  logDelays: NonEmptySeq[FiniteDuration]):
+  logDelayConf: DelayConf):
 
   def toWatchOptions(directory: Path, isRelevantFile: Path => Boolean): WatchOptions =
     WatchOptions(
@@ -24,7 +23,7 @@ final case class DirectoryWatchSettings(
       isRelevantFile = isRelevantFile,
       watchDelay = watchDelay,
       pollTimeout = pollTimeout,
-      retryDelays = retryDelays)
+      delayConf = delayConf)
 
 
 object DirectoryWatchSettings:
@@ -32,24 +31,16 @@ object DirectoryWatchSettings:
     for
       watchDelay <- config.finiteDuration("js7.directory-watch.watch-delay")
       pollTimeout <- config.finiteDuration("js7.directory-watch.poll-timeout")
-      retryDelays <- catchNonFatal(NonEmptySeq
-        .fromSeq(config
-          .getDurationList("js7.directory-watch.retry-delays")
-          .asScala.map(_.toFiniteDuration).toVector)
-        .getOrElse(NonEmptySeq.one(10.s)))
+      delayConf <- config.delayConf("js7.directory-watch.retry-delays")
       directorySilence <- config.finiteDuration("js7.directory-watch.directory-silence")
-      logDelays <- catchNonFatal(NonEmptySeq
-        .fromSeq(config
-          .getDurationList("js7.directory-watch.log-delays")
-          .asScala.map(_.toFiniteDuration).toVector)
-        .getOrElse(NonEmptySeq.one(10.s)))
+      logDelayConf <- config.delayConf("js7.directory-watch.log-delays")
     yield
-      DirectoryWatchSettings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays)
+      DirectoryWatchSettings(watchDelay, pollTimeout, delayConf, directorySilence, logDelayConf)
 
   def forTest(pollTimeout: FiniteDuration = 60.s): DirectoryWatchSettings =
     DirectoryWatchSettings(
       watchDelay = 0.s,
       pollTimeout = pollTimeout,
-      retryDelays = NonEmptySeq.one(100.ms),
+      delayConf = DelayConf(100.ms),
       directorySilence = 100.ms,
-      logDelays = NonEmptySeq.of(0.s, 10.s))
+      logDelayConf = DelayConf(0.s, 10.s))

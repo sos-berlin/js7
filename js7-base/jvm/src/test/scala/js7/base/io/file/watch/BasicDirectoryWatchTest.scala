@@ -1,6 +1,5 @@
 package js7.base.io.file.watch
 
-import cats.data.NonEmptySeq
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.createDirectory
@@ -13,6 +12,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
+import js7.base.utils.DelayConf
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 
@@ -58,7 +58,7 @@ final class BasicDirectoryWatchTest extends OurAsyncTestSuite:
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE),
             pollTimeout = 50.ms,
-            retryDurations = NonEmptySeq.one(50.ms)))
+            delayConf = DelayConf(50.ms)))
         .use(watcher => IO.defer:
           val _events = mutable.Buffer.empty[DirectoryEvent]
           watcher.streamResource

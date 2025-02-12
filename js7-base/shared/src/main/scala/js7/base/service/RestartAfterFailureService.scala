@@ -46,7 +46,7 @@ extends Service:
       .toAllocated
       .pipeMaybe(startDelayConf):
         _.onFailureRestartWithDelayer(_,
-          onFailure = t => IO:
+          onFailure = (_, t) => IO:
             logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
             for st <- t.ifStackTrace do
               logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st),

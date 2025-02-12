@@ -3,18 +3,26 @@ package js7.base.utils
 import cats.data.NonEmptyList
 import cats.effect.{Async, IO}
 import cats.syntax.flatMap.*
-import fs2.{Pure, Stream}
+import com.typesafe.config.Config
+import fs2.Stream
+import js7.base.configutils.Configs.RichConfig
+import js7.base.fs2utils.StreamExtensions.PureStream
+import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, repeatLast}
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 final case class DelayConf(
   delays: NonEmptyList[FiniteDuration],
   resetWhen: FiniteDuration = FiniteDuration.MaxValue):
 
-  def stream: Stream[Pure, FiniteDuration] =
+  def stream: PureStream[FiniteDuration] =
     Stream.iterable(delays.toList) ++ Stream.constant(delays.last)
+
+  def iterator(): Iterator[FiniteDuration] =
+    delays.iterator ++ Iterator.continually(delays.last)
 
   def lazyList: LazyList[FiniteDuration] =
     delays.iterator.repeatLast
@@ -37,7 +45,7 @@ final case class DelayConf(
 
   private def argString: String =
     delays.toList.view.map(_.pretty).mkString(" ") +
-      ((resetWhen != FiniteDuration.MaxValue) ?? " resetWhen=%s".format(resetWhen.pretty))
+      ((resetWhen != FiniteDuration.MaxValue) ?? s" resetWhen=${resetWhen.pretty}")
 
 
 object DelayConf:
@@ -50,3 +58,8 @@ object DelayConf:
 
   def maybe(delays: Seq[FiniteDuration]): Option[DelayConf] =
     NonEmptyList.fromSeq(delays).map(DelayConf(_))
+
+  extension (config: Config)
+    def delayConf(path: String): Checked[DelayConf] =
+      config.nonEmptyFiniteDurations(path).map: nonEmptyList =>
+        DelayConf(nonEmptyList)

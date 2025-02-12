@@ -15,9 +15,9 @@ import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable, continueWithLast}
+import js7.base.utils.Delayer.extensions.onFailureRestartWithDelayer
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import scala.annotation.nowarn
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 
@@ -50,9 +50,11 @@ extends Service.StoppableByRequest:
   private def directoryWatchResource: ResourceIO[WatchKey] =
     Resource.make(
       acquire =
-        failWhenStopRequested(repeatWhileIOException(options, IO:
-          logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
-          directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)))
+        failWhenStopRequested:
+          repeatWhileIOException(options):
+            IO:
+              logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
+              directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
         .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
       release = watchKey => IO:
         logger.debug(s"watchKey.cancel() $directory")
@@ -123,15 +125,10 @@ object BasicDirectoryWatch:
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"
 
-  def repeatWhileIOException[A](options: WatchOptions, body: IO[A]): IO[A] =
-    IO.defer:
-      val delayIterator = options.retryDelays.iterator.continueWithLast
-      body
-        .onErrorRestartLoop(now):
-          case (t @ (_: IOException | _: NotDirectoryException), since, restart) =>
-            IO.defer:
-              val delay = (since + delayIterator.next()).timeLeftOrZero
-              logger.warn(
-                s"${options.directory}: delay ${delay.pretty} after error: ${t.toStringWithCauses}")
-              IO.sleep(delay) >> restart(now)
-          case (t, _, _) => IO.raiseError(t)
+  def repeatWhileIOException[A](options: WatchOptions)(body: IO[A]): IO[A] =
+    body.onFailureRestartWithDelayer(options.delayConf):
+      case (delayer, t @ (_: IOException | _: NotDirectoryException)) =>
+        delayer.peekNextDelay.flatMap: delay =>
+          IO(logger.warn:
+            s"${options.directory}: delay ${delay.pretty} after error: ${t.toStringWithCauses}")
+      case (_, t) => IO.raiseError(t)

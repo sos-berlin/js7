@@ -1,6 +1,5 @@
 package js7.base.io.file.watch
 
-import cats.data.NonEmptySeq
 import cats.effect.IO
 import cats.effect.std.Queue
 import cats.effect.testkit.TestControl
@@ -16,6 +15,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.test.TestControlExtensions.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.DelayConf
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
@@ -128,7 +128,7 @@ final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterA
                 case e: watch.DirectoryEvent => e
               .through(
                 DirectoryEventDelayer(Paths.get("/tmp"), delay = 2.s,
-                  logDelays = NonEmptySeq.one(0.s)))
+                  delayConf = DelayConf(0.s)))
               .foreach(event => IO:
                 buffer += event)
               .compile
@@ -151,7 +151,7 @@ final class DirectoryEventDelayerTest extends OurAsyncTestSuite, BeforeAndAfterA
       streaming <- Stream.fromQueueNoneTerminated(queue, limit = 2)
         .through(
           DirectoryEventDelayer(Paths.get("/tmp/?"), delay = 100.ms,
-            logDelays = NonEmptySeq.one(0.ms)))
+            delayConf = DelayConf(0.s)))
         .foreach(event => IO:
           buffer += event)
         .compile.drain.start

@@ -24,6 +24,8 @@ object StreamExtensions:
   val DefaultBatchSizeMin = 256
   private object Beat
 
+  type PureStream[A] = Stream[fs2.Pure, A]
+
   extension [A](chunk: Chunk[A])
     def grouped(size: Int): Iterator[Chunk[A]] =
       if size <= 0 then

@@ -1,6 +1,5 @@
 package js7.base.io.file.watch
 
-import cats.data.NonEmptySeq
 import cats.effect
 import cats.effect.std.{AtomicCell, Queue}
 import cats.effect.{Deferred, IO, Outcome}
@@ -19,7 +18,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.ScalaUtils.syntax.{RichThrowable, continueWithLast}
+import js7.base.utils.DelayConf
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.collection.immutable.TreeMap
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -35,7 +35,7 @@ import scala.util.Try
 private final class DirectoryEventDelayer(
   directory: Path,
   delay: FiniteDuration,
-  logDelays: NonEmptySeq[FiniteDuration])
+  delayConf: DelayConf)
 extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
 
   import Operation.*
@@ -227,7 +227,7 @@ extends Pipe[IO, DirectoryEvent, DirectoryEvent]:
 
   private final class Entry(val fileAdded: FileAdded, since: CatsDeadline):
     var delayUntil = since + delay
-    private val logDelayIterator = logDelays.iterator.continueWithLast
+    private val logDelayIterator = delayConf.iterator()
     private var lastLoggedAt = since
     private var lastLoggedSize = Try(size(directory.resolve(path))) getOrElse 0L
     private var logDelay = delay + logDelayIterator.next()
@@ -268,10 +268,10 @@ object DirectoryEventDelayer:
   def apply(
     directory: Path,
     delay: FiniteDuration,
-    logDelays: NonEmptySeq[FiniteDuration])
+    delayConf: DelayConf)
   : Pipe[IO, DirectoryEvent, DirectoryEvent] =
     if delay.isPositive then
-      new DirectoryEventDelayer(directory, delay, logDelays)
+      new DirectoryEventDelayer(directory, delay, delayConf)
     else
       identity
 
@@ -280,9 +280,9 @@ object DirectoryEventDelayer:
     extension(self: Stream[IO, DirectoryEvent])
       @deprecated("Use .through(DirectoryEventDelayer.pipe(...))", "v2.7")
       def delayFileAdded(
-        directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
+        directory: Path, delay: FiniteDuration, delayConf: DelayConf)
       : Stream[IO, DirectoryEvent] =
-        self.through(DirectoryEventDelayer(directory, delay, logDelays))
+        self.through(DirectoryEventDelayer(directory, delay, delayConf))
 
 
   private sealed trait Operation

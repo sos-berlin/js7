@@ -15,18 +15,18 @@ import js7.base.utils.Delayer.*
 import scala.concurrent.duration.*
 
 // Stateful
-final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, conf: DelayConf):
+final class Delayer[F[_]] private(using F: Async[F])(val since: CatsDeadline, conf: DelayConf):
 
   import conf.{delays, resetWhen}
 
-  private val _state = Atomic(State(initialNow, conf.lazyList))
+  private val _state = Atomic(State(since, conf.lazyList))
   private val sym = BlockingSymbol()
 
   export sym.{logLevel, symbol, relievedLogLevel, used as escalated}
 
   def reset: F[Unit] =
     F.delay:
-      _state := State(initialNow, conf.lazyList)
+      _state := State(since, conf.lazyList)
       sym.clear()
 
   def sleep(using sourcecode.Enclosing): F[Unit] =
@@ -53,6 +53,10 @@ final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, c
           val (elapsed, delay, next) = _state.get().next(now)
           val ok = _state.compareAndSet(state, next)
           if !ok then Left(()) else Right(elapsed -> delay)
+
+  def peekNextDelay: IO[FiniteDuration] =
+    CatsDeadline.now.map: now =>
+      _state.get().next(now)._2
 
   override def toString =
     s"Delayer(${_state.get()} $conf)"
@@ -93,9 +97,15 @@ object Delayer:
 
   object extensions:
     extension[A](io: IO[A])
+      def onFailureRestartWithDelayer(conf: DelayConf)
+        (onFailure: (Delayer[IO], Throwable) => IO[Unit])
+        (using sourcecode.Enclosing)
+      : IO[A] =
+        onFailureRestartWithDelayer(conf, onFailure)
+
       def onFailureRestartWithDelayer(
         conf: DelayConf,
-        onFailure: Throwable => IO[Unit] = _ => IO.unit,
+        onFailure: (Delayer[IO], Throwable) => IO[Unit] = (_, _) => IO.unit,
         onSleep: FiniteDuration => IO[Unit] = _ => IO.unit)
         (using sourcecode.Enclosing)
       : IO[A] =
@@ -103,6 +113,6 @@ object Delayer:
           ().tailRecM: _ =>
             io.attempt.flatMap:
               case Left(throwable) =>
-                onFailure(throwable) *> delayer.sleep(onSleep).as(Left(()))
+                onFailure(delayer, throwable) *> delayer.sleep(onSleep).as(Left(()))
               case Right(a) =>
                 IO.right(a)

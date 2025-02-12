@@ -20,12 +20,12 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryEventDelayer, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.Delayer.extensions.onFailureRestartWithDelayer
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -41,7 +41,6 @@ import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.Journal
 import scala.collection.View
-import scala.concurrent.duration.Deadline.now
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
@@ -153,10 +152,7 @@ final class FileWatchManager(
       .flatMap(string =>
         catchNonFatal(Paths.get(string)))
       .map: directory =>
-        val delayIterator = settings.retryDelays.iterator ++
-          Iterator.continually(settings.retryDelays.last)
         var directoryState = fileWatchState.directoryState
-
         DirectoryWatch
           .stream(
             directory, directoryState,
@@ -168,7 +164,7 @@ final class FileWatchManager(
           .interruptWhen(stop)
           // Buffers without limit all incoming events
           .through:
-            DirectoryEventDelayer(directory, fileWatch.delay, settings.logDelays)
+            DirectoryEventDelayer(directory, fileWatch.delay, settings.logDelayConf)
           .chunks
           .evalMap: chunk =>
             lockKeeper.lock(fileWatch.path):
@@ -178,11 +174,10 @@ final class FileWatchManager(
             case Right((_, agentState)) => IO:
               directoryState = agentState.keyTo(FileWatchState)(fileWatch.path).directoryState
           .compile.drain
-          .onErrorRestartLoop(now): (throwable, since, restart) =>
-            val delay = (since + delayIterator.next()).timeLeftOrZero
-            logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
-            for t <- throwable.ifStackTrace do logger.debug(t.toString, t)
-            IO.sleep(delay) *> restart(now)
+          .onFailureRestartWithDelayer(settings.delayConf): (delayer, throwable) =>
+            delayer.peekNextDelay.map: delay =>
+              logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
+              for t <- throwable.ifStackTrace do logger.debug(t.toString, t)
           .guaranteeCase(exitCase => IO:
             logger.debug(s"${fileWatch.path} watching $exitCase - $directory"))
 
