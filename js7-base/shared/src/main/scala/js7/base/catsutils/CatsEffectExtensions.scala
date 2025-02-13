@@ -209,6 +209,11 @@ object CatsEffectExtensions:
     : Resource[F, A] =
       Resource.makeCaseFull[F, A](poll => poll(acquire))(release)
 
+    def fromAutoCloseableCancelable[F[_], A <: AutoCloseable](acquire: F[A])(using F: Sync[F])
+    : Resource[F, A] =
+      makeCancelable(acquire)(a => F.blocking(a.close()))
+
+
   extension[F[_]](clock: Clock[F])
     def monotonicTime(using Functor[F]): F[CatsDeadline] =
       clock.monotonic.map(CatsDeadline.fromMonotonic)

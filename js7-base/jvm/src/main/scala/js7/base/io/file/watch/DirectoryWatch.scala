@@ -71,8 +71,7 @@ object DirectoryWatch:
           // BasicDirectoryWatch has been started before reading directory,
           // so that no directory change will be overlooked.
           val readDirectory = repeatWhileIOException(options):
-            IO.interruptible:
-              DirectoryStateJvm.readDirectory(directory, options.isRelevantFile)
+            DirectoryStateJvm.readDirectory(directory, options.isRelevantFile)
           Stream
             .resource(basicWatch.streamResource)
             .flatMap: stream =>

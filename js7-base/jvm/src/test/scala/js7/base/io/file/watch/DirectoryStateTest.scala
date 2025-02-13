@@ -1,26 +1,32 @@
 package js7.base.io.file.watch
 
+import cats.effect.IO
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
-import js7.base.test.OurTestSuite
+import js7.base.test.OurAsyncTestSuite
 
-final class DirectoryStateTest extends OurTestSuite:
-  "readDirectory" in:
-    withTemporaryDirectory("DirectoryStateTest-") { dir =>
-      assert(DirectoryStateJvm.readDirectory(dir).isEmpty)
-      dir / "TEST-1" := ""
-      dir / "IGNORE" := ""
-      dir / "TEST-2" := ""
-      assert(DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-")) ==
-        DirectoryState.fromIterable(Seq(
-          Entry(Paths.get("TEST-1")),
-          Entry(Paths.get("TEST-2")))))
-    }
+final class DirectoryStateTest extends OurAsyncTestSuite:
 
-  "applyAndReduceEvents" in:
+  "readDirectory" in :
+    temporaryDirectoryResource[IO]("DirectoryStateTest-").use: dir =>
+      for
+        directoryState <- DirectoryStateJvm.readDirectory(dir)
+        _ = assert(directoryState.isEmpty)
+        _ = dir / "TEST-1" := ""
+        _ = dir / "IGNORE" := ""
+        _ = dir / "TEST-2" := ""
+        directoryState <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
+        _ = assert(directoryState ==
+          DirectoryState.fromIterable(Seq(
+            Entry(Paths.get("TEST-1")),
+            Entry(Paths.get("TEST-2")))))
+      yield
+        succeed
+
+  "applyAndReduceEvents" in :
     assert(DirectoryState.empty.applyAndReduceEvents(Nil) == (Nil, DirectoryState.empty))
 
     var (events, state) = DirectoryState.empty.applyAndReduceEvents(Seq(

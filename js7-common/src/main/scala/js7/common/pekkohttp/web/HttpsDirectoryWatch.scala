@@ -40,20 +40,16 @@ extends Service.StoppableByRequest:
 
   private def observeDirectory(directory: Path, files: Set[Path])
   : IO[Unit] =
-    IO
-      .defer:
-        val directoryState = DirectoryStateJvm.readDirectory(directory, files) // throws
-        DirectoryWatch
-          .stream(
-            directory, directoryState, settings, files)
-          .takeUntilEval(untilStopRequested)
-          .debounce(settings.directorySilence) // Löscht DirectoryEvents! Sie werden nicht gebraucht
-          .tapEachChunk(events => logger.debug(s"HTTPS keys or certificates change signaled: ${
-            events.toArraySeq.distinct.mkString(", ")}"))
-          .evalTap: _ =>
-            onHttpsKeyOrCertChanged
-          .compile.drain
-      .onErrorTap(t => IO(logger.error(t.toStringWithCauses, t)))
+    DirectoryStateJvm.readDirectory(directory, files).flatMap: directoryState =>
+      DirectoryWatch.stream(directory, directoryState, settings, files)
+        .takeUntilEval(untilStopRequested)
+        .debounce(settings.directorySilence) // Löscht DirectoryEvents! Sie werden nicht gebraucht
+        .tapEachChunk(events => logger.debug(s"HTTPS keys or certificates change signaled: ${
+          events.toArraySeq.distinct.mkString(", ")}"))
+        .evalTap: _ =>
+          onHttpsKeyOrCertChanged
+        .compile.drain
+    .onErrorTap(t => IO(logger.error(t.toStringWithCauses, t)))
 
 private object HttpsDirectoryWatch:
   private val logger = Logger[this.type]

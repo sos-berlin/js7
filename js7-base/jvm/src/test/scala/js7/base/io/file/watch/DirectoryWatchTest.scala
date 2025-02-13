@@ -9,7 +9,7 @@ import js7.base.fs2utils.Fs2PubSub
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile, withTemporaryDirectory}
+import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.io.file.watch.DirectoryWatchTest.*
@@ -18,7 +18,6 @@ import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
-import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.math.Ordering.Int
 
@@ -27,20 +26,21 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   "readDirectory, readDirectoryAsEvents" in:
-    withTemporaryDirectory("DirectoryWatchTest-"): dir =>
+    temporaryDirectoryResource[IO]("DirectoryWatchTest-").use: dir =>
       touchFile(dir / "TEST-1")
       touchFile(dir / "IGNORED")
       touchFile(dir / "TEST-2")
-      val state = DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
-      assert(state == DirectoryState(Map(
-        Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
-        Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
-
-      touchFile(dir / "TEST-A")
-      touchFile(dir / "TEST-1")
-
-      assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))).toSet ==
-        Set(FileAdded(Paths.get("TEST-A"))))
+      for
+        state <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
+        _ = assert(state ==
+          DirectoryState(Map(
+            Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
+            Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
+        _ = touchFile(dir / "TEST-A")
+        _ = touchFile(dir / "TEST-1")
+        state2 <- DirectoryStateJvm.readDirectory(dir, _.toString.startsWith("TEST-"))
+      yield
+        assert(state.diffTo(state2).toSet == Set(FileAdded(Paths.get("TEST-A"))))
 
   "readDirectoryThenStream" in:
     Fs2PubSub
