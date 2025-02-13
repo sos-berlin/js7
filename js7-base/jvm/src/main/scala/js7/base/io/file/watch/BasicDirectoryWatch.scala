@@ -9,7 +9,7 @@ import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, raceFold}
+import js7.base.monixlike.MonixLikeExtensions.raceFold
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
@@ -48,13 +48,14 @@ extends Service.StoppableByRequest:
         .map(_.asInstanceOf[Seq[DirectoryEvent]])
 
   private def directoryWatchResource: ResourceIO[WatchKey] =
-    Resource.make(
-      acquire =
-        failWhenStopRequested:
-          repeatWhileIOException(options):
-            IO:
-              logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
-              directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
+    Resource.makeFull[IO, WatchKey](
+      acquire = poll =>
+        poll:
+          failWhenStopRequested:
+            repeatWhileIOException(options):
+              IO.blocking:
+                logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
+                directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
         .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
       release = watchKey => IO:
         logger.debug(s"watchKey.cancel() $directory")
