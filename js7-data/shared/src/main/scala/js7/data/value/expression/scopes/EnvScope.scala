@@ -18,36 +18,38 @@ trait EnvScope extends Scope:
   : Option[Checked[Value]] =
     functionCall match
       case FunctionCall("env", arguments) =>
-        Some(arguments match {
-          case Some(Seq(Argument(nameExpr, None | Some("name")))) =>
-            for
-              name <- nameExpr.evalAsString
-              string <- get(name) !! UnknownKeyProblem("environment variable", name)
-            yield StringValue(string)
+        Some:
+          arguments match
+            case Some(Seq(Argument(nameExpr, None | Some("name")))) =>
+              for
+                name <- nameExpr.evalAsString
+                string <- get(name) !! UnknownKeyProblem("environment variable", name)
+              yield
+                StringValue(string)
 
-          case Some(Seq(
-          Argument(nameExpr, None | Some("name")),
-          Argument(defaultExpr, None | Some("default")))) =>
-            for
-              name <- nameExpr.evalAsString
-              result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
-            yield result
+            case Some(Seq(
+            Argument(nameExpr, None | Some("name")),
+            Argument(defaultExpr, None | Some("default")))) =>
+              for
+                name <- nameExpr.evalAsString
+                result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
+              yield
+                result
 
-          case _ =>
-            Left(InvalidFunctionArgumentsProblem(functionCall))
-        })
+            case _ => Left(InvalidFunctionArgumentsProblem(functionCall))
 
-      case _ =>
-        super.evalFunctionCall(functionCall)
+      case _ => super.evalFunctionCall(functionCall)
 
   override def toString = "EnvScope"
 
 
 object EnvScope extends EnvScope:
-  def get(name: String): Option[String] =
-    Option(testEnv.get(name)).orElse(sys.env.get(name))
 
   private val testEnv = new ConcurrentHashMap[String, String]
+
+  def get(name: String): Option[String] =
+    Option(testEnv.get(name)).orElse:
+      sys.env.get(name)
 
   @TestOnly
   private[js7] def putForTest(name: String, value: String): Unit =

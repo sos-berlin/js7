@@ -225,7 +225,7 @@ object FileUtils:
         deleteDirectoryRecursively(dir)
       body(dir)
 
-  def temporaryDirectoryResource[F[_]](using F: Sync[F])(prefix: String): Resource[F, Path] =
+  def temporaryDirectoryResource[F[_]](prefix: String)(using F: Sync[F]): Resource[F, Path] =
     Resource.make(
       acquire = F.delay(Files.createTempDirectory(prefix)))(
       release = dir => F.delay(deleteDirectoryRecursively(dir)))
