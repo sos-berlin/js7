@@ -132,33 +132,32 @@ final class FileWatchManager(
                     .start
                     .map: fiber =>
                       // Register the stopper, a joining task for the next update:
-                      logger.debugIO("stop watching", id):
+                      logger.debugIO("Stop watching", id):
                         stop.set(true) *>
                           fiber.joinStd
-                            .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
+                            .logWhenItTakesLonger(s"$id: stopping previous watcher")
               .void
           .logWhenItTakesLonger(s"startWatching $id")
 
   private def stopWatching(id: OrderWatchPath): IO[Unit] =
-    idToStopper
-      .remove(id)
-      .flatMap(_ getOrElse IO.unit)
+    logger.debugIO("stopWatching", id):
+      idToStopper
+        .remove(id)
+        .flatMap(_ getOrElse IO.unit)
 
   private def watch(fileWatchState: FileWatchState, stop: Signal[IO, Boolean]): Checked[IO[Unit]] =
     import fileWatchState.fileWatch
-
     fileWatch.directoryExpr
       .evalAsString(EnvScope)
-      .flatMap(string =>
-        catchNonFatal(Paths.get(string)))
+      .flatMap: string =>
+        catchNonFatal(Paths.get(string))
       .map: directory =>
         var directoryState = fileWatchState.directoryState
         DirectoryWatch
           .stream(
-            directory, directoryState,
-            settings,
+            directory, directoryState, settings,
             isRelevantFile = relativePath =>
-              fileWatch.matchFilename(relativePath.toString).matches())
+              fileWatch.matchFilename(relativePath.toString).matches)
           .onStart(IO:
             logger.debug(s"${fileWatch.path} watching started - $directory"))
           .interruptWhen(stop)
