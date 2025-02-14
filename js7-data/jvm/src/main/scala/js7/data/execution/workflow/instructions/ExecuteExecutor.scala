@@ -8,7 +8,7 @@ import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
@@ -32,7 +32,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
     order
       .ifState[IsFreshOrReady].map: order =>
         state.workflowJob(order.workflowPosition).flatMap: job =>
-          skippedReason(order, job, state)
+          skippedReason(order, job)
           .map: reason =>
             // If order should start, change nextMove function, too!
             //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
@@ -92,7 +92,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
 
   def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
     for job <- state.workflowJob(order.workflowPosition) yield
-      for reason <- skippedReason(order, job, state) yield
+      for reason <- skippedReason(order, job) yield
         OrderMoved(order.position.increment, Some(reason))
 
   override def toObstacles(
@@ -107,7 +107,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
     yield
       if order.isState[IsFreshOrReady] && !order.forceJobAdmission then
         val admissionObstacles = job.admissionTimeScheme
-          .filterNot(_ => skippedReason(order, job, calculator.stateView).isDefined)
+          .filterNot(_ => skippedReason(order, job).isDefined)
           .flatMap(_
             .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
           .map(interval => WaitingForAdmission(interval.start))
@@ -118,7 +118,7 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
       else
         Set.empty
 
-  private def skippedReason(order: Order[Order.State], job: WorkflowJob, state: StateView)
+  private def skippedReason(order: Order[Order.State], job: WorkflowJob)
   : Option[OrderMoved.Reason] =
     isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
       OrderMoved.NoAdmissionPeriodStart
@@ -129,11 +129,11 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
   : Boolean =
     !order.forceJobAdmission &&
       job.skipIfNoAdmissionStartForOrderDay &&
-      job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
+      job.admissionTimeScheme.fold(false): admissionTimeScheme =>
         orderIdToDate(order.id)
           .fold(false): localDate =>
             !admissionTimeScheme
-              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset))
+              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)
 
 
 object ExecuteExecutor:
