@@ -34,7 +34,7 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
     problem: Problem)
   extends OrderWatchEvent:
     override def toString =
-      s"ExternalOrderRejected(${externalOrderName.string}, $orderId, ⛔️$problem)"
+      s"ExternalOrderRejected(${externalOrderName.string}, $orderId, ⛔️ $problem)"
 
   /** External Order vanished, Controller should remove the added order. */
   final case class ExternalOrderVanished(externalOrderName: ExternalOrderName)
