@@ -84,12 +84,7 @@ extends PositionOrLabel:
     splitBranchAndNr match
       case None => Left(NoTryBlockProblem)
       case Some((parent, TryCatchBranchId(_), _)) => Right(parent)
-      case Some((parent, NoTryBarrierBranchid(()), _)) =>
-        parent.tryPosition
-      case _ =>
-        // Everything else is a barrier. For example, Fork.
-        // Retry may not be emitted inside a Fork for a Try outside the Fork
-        Left(NoTryBlockProblem)
+      case Some((parent, _, _)) => parent.tryPosition
 
   def isInFork: Boolean =
     branchPath.exists(_.branchId.isFork)
