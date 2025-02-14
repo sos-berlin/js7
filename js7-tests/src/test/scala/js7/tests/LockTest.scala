@@ -207,24 +207,22 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   "Multiple orders with count=1 and count=2 finish" in:
     val workflow1 = updateItem(Workflow.of(workflow1Path,
-      LockInstruction(
-        Seq(LockDemand(limit2LockPath, count = Some(1))),
-        Workflow.of(
+      LockInstruction(Seq(LockDemand(limit2LockPath, count = Some(1)))):
+        Workflow.of:
           SleepJob.execute(
             agentPath,
             arguments = Map(
               "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
-            processLimit = 99)))))
+            processLimit = 99)))
 
     val workflow2 = updateItem(Workflow.of(workflow2Path,
-      LockInstruction(
-        Seq(LockDemand(limit2LockPath, count = Some(2))),
-        Workflow.of(
+      LockInstruction(Seq(LockDemand(limit2LockPath, count = Some(2)))):
+        Workflow.of:
           SleepJob.execute(
             agentPath,
             arguments = Map(
               "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
-            processLimit = 99)))))
+            processLimit = 99)))
 
     val orders = Random.shuffle(
       for workflow <- Seq(workflow1, workflow2); i <- 1 to 100 yield
@@ -538,22 +536,16 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       val aWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-A"),
         Seq(
-          LockInstruction(
-            Seq(
-              LockDemand(lockPath),
-              LockDemand(lock2Path)),
-            lockedWorkflow = Workflow.of(
-              ASemaphoreJob.execute(agentPath))))))
+          LockInstruction(Seq(LockDemand(lockPath), LockDemand(lock2Path))):
+            Workflow.of:
+              ASemaphoreJob.execute(agentPath))))
 
       val bWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-B"),
         Seq(
-          LockInstruction(
-            Seq(
-              LockDemand(lock2Path),
-              LockDemand(lockPath)),
-            lockedWorkflow = Workflow.of(
-              EmptyJob.execute(agentPath))))))
+          LockInstruction(Seq(LockDemand(lock2Path), LockDemand(lockPath))):
+            Workflow.of:
+              EmptyJob.execute(agentPath))))
 
       val aOrderId = OrderId("🔸")
       val bOrderId = OrderId("🔹")
@@ -622,31 +614,24 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
       val aWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-A"),
-        Seq(
-          LockInstruction(
-            Seq(
-              LockDemand(lockPath)),
-            lockedWorkflow = Workflow.of(
-              ASemaphoreJob.execute(agentPath))))))
+        Seq:
+          LockInstruction(Seq(LockDemand(lockPath))):
+            Workflow.of:
+              ASemaphoreJob.execute(agentPath)))
 
       val bWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-B"),
-        Seq(
-          LockInstruction(
-            Seq(
-              LockDemand(lockPath),
-              LockDemand(lock2Path)),
-            lockedWorkflow = Workflow.of(
-              EmptyJob.execute(agentPath))))))
+        Seq:
+          LockInstruction(Seq(LockDemand(lockPath), LockDemand(lock2Path))):
+            Workflow.of:
+              EmptyJob.execute(agentPath)))
 
       val cWorkflow = updateItem(Workflow(
         WorkflowPath("MULTIPLE-C"),
-        Seq(
-          LockInstruction(
-            Seq(
-              LockDemand(lock2Path)),
-            lockedWorkflow = Workflow.of(
-              BSemaphoreJob.execute(agentPath))))))
+        Seq:
+          LockInstruction(Seq(LockDemand(lock2Path))):
+            Workflow.of:
+              BSemaphoreJob.execute(agentPath)))
 
       val aOrderId = OrderId("♣️️")
       ASemaphoreJob.reset()
@@ -1194,16 +1179,15 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
     val aWorkflow = Workflow.of(
       WorkflowPath("A-TRANSFER-ORDERS"),
-      LockInstruction(
-        Seq(LockDemand(lock1.path), LockDemand(lock2.path)),
-        lockedWorkflow = Workflow.of(Prompt(expr("'PROMPT'")))))
+      LockInstruction(Seq(LockDemand(lock1.path), LockDemand(lock2.path))):
+        Workflow.of:
+          Prompt(expr("'PROMPT'")))
 
     val bWorkflow1 = Workflow(
       WorkflowPath("B-TRANSFER-ORDERS"),
       Seq:
-        LockInstruction(
-          Seq(LockDemand(lock1.path)),
-          lockedWorkflow = Workflow.empty))
+        LockInstruction(Seq(LockDemand(lock1.path))):
+          Workflow.empty)
 
     withItems((lock1, lock2, aWorkflow, bWorkflow1)): (lock1, lock2, workflow, bWorkflow1) =>
       val aOrderId = OrderId("TRANSFER-ORDERS-A")
@@ -1219,9 +1203,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       val bWorkflow2 = updateItem(Workflow(
         bWorkflow1.path,
         Seq:
-          LockInstruction(
-            Seq(LockDemand(lock2.path)),
-            lockedWorkflow = Workflow.empty)))
+          LockInstruction(Seq(LockDemand(lock2.path))):
+            Workflow.empty))
 
       execCmd(TransferOrders(bWorkflow1.id))
 

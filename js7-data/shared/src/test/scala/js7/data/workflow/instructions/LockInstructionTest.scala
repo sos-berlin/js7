@@ -42,10 +42,8 @@ final class LockInstructionTest extends OurTestSuite:
       }""")
 
     testJson[Instruction.Labeled](
-      LockInstruction(
-        List(
-          LockDemand(LockPath("LOCK"))),
-        lockedWorkflow = Workflow.of()),
+      LockInstruction(List(LockDemand(LockPath("LOCK")))):
+        Workflow.empty,
       json"""{
         "TYPE": "Lock",
         "demands": [
@@ -60,10 +58,10 @@ final class LockInstructionTest extends OurTestSuite:
 
     testJson[Instruction.Labeled](
       LockInstruction(
-        List(
-          LockDemand(LockPath("LOCK"), count = Some(3))),
-        lockedWorkflow = Workflow.of(),
-        sourcePos = Some(SourcePos(1, 2))),
+        List(LockDemand(LockPath("LOCK"), count = Some(3))),
+        sourcePos = Some(SourcePos(1, 2))
+      ):
+        Workflow.empty,
       json"""{
         "TYPE": "Lock",
         "demands": [

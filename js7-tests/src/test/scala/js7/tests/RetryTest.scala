@@ -29,8 +29,8 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.RetryTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import org.scalatest.Assertion
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
@@ -96,13 +96,13 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   "Nested try catch with outer non-failing catch" in:
     val workflowNotation = s"""
        |define workflow {
-       |  try {                                                   // :0
-       |    try {                                                 // :0/try:0
+       |  try {                                                  // :0
+       |    try {                                                // :0/try:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:0
-       |      try {                                               // :0/try:0/try:1
+       |      try {                                              // :0/try:0/try:1
        |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCaught
        |        execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
-       |      } catch if (tryCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
+       |      } catch if (tryCount < 3) retry else fail;         // :0/try:0/try:1/catch:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:2
        |    } catch if (tryCount < 2) retry else fail;
        |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0

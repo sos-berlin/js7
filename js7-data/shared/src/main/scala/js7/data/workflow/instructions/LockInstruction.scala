@@ -65,8 +65,8 @@ object LockInstruction:
   @TestOnly
   def apply(
     demands: Seq[LockDemand],
-    lockedWorkflow: Workflow,
     sourcePos: Option[SourcePos] = None)
+    (lockedWorkflow: Workflow)
   : LockInstruction =
     new LockInstruction(demands.toList, lockedWorkflow, sourcePos)
       .checked.orThrow

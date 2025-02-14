@@ -508,8 +508,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
           Cycle(Schedule.continuous(0.s, limit = Some(1))):
             Workflow.of:
               If(expr("true")):
-                LockInstruction(
-                  List(LockDemand(lock.path)),
+                LockInstruction(List(LockDemand(lock.path))):
                   Workflow.of:
                     TryInstruction(
                       Workflow.of(
@@ -518,7 +517,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
                           Break(),
                         Fail()),
                       Workflow.of:
-                        Fail()))))
+                        Fail())))
 
       withItem(workflow): workflow =>
         val orderId = OrderId("#2023-03-21#BREAK")
