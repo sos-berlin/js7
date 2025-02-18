@@ -32,5 +32,4 @@ private object Settings:
     Settings(
       args.as[WorkflowPath]("--workflow="),
       args.as[Int]("--count=", 1),
-      Nel.unsafe(
-        args.seqAs[Uri]("--controller=").map(Admission(_, Some(userAndPassword)))))
+      args.nelAs[Uri]("--controller=").map(Admission(_, Some(userAndPassword))))

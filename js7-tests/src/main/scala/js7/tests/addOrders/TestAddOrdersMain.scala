@@ -13,14 +13,13 @@ object TestAddOrdersMain extends ServiceApp:
           "Usage: testAddOrders --workflow=WORKFLOWPATH --count=1 --user=USER:PASSWORD"
         ExitCode.Success
     else
-      runService(args, Settings.fromCommandLine):
-        conf =>
-          programAsService:
-            TestAddOrders.run(conf, logToStdout = true).flatMap:
-              case Left(problem) =>
-                IO:
-                  println(problem.toString)
-                  ExitCode.Error
+      runService(args, Settings.fromCommandLine): conf =>
+        programAsService:
+          TestAddOrders.run(conf, logToStdout = true).flatMap:
+            case Left(problem) =>
+              IO:
+                println(problem.toString)
+                ExitCode.Error
 
-              case Right(statistics) =>
-                IO.pure(ExitCode.Success)
+            case Right(statistics) =>
+              IO.pure(ExitCode.Success)

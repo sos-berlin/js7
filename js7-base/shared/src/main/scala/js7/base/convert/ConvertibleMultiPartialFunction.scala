@@ -1,6 +1,8 @@
 package js7.base.convert
 
+import cats.data.NonEmptyList
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
+
 /**
   * Provides methods for convertion of the Iterable result of a PartialFunction (for example a Map).
   *
@@ -35,9 +37,21 @@ trait ConvertibleMultiPartialFunction[K, V]:
   private def throwNotUnique(key: K): Nothing =
     throw new IllegalArgumentException(s"Only one value is allowed for ${renderKey(key)}")
 
-  def seqAs[W](key: K)(implicit convert: As[V, W]): Seq[W] =
+  def nelAs[W](key: K)(implicit convert: As[V, W]): NonEmptyList[W] =
     lift(key) match
-      case None => Nil  // Missing is equivalent to empty
+      case None => throw new NoSuchElementException(s"Missing ${renderKey(key)}")
+      case Some(seq) =>
+        if seq.isEmpty then throw new NoSuchElementException(s"${renderKey(key)} must not be empty")
+        val c = wrappedConvert(convert.apply, renderKey(key))
+        NonEmptyList.fromList(seq.map(c).toList) getOrElse:
+          throw new IllegalArgumentException(s"${renderKey(key)} must not be empty")
+
+  def seqAs[W](key: K)(implicit convert: As[V, W]): Seq[W] =
+    vectorAs[W](key)
+
+  def vectorAs[W](key: K)(implicit convert: As[V, W]): Vector[W] =
+    lift(key) match
+      case None => Vector.empty  // Missing is equivalent to empty
       case Some(seq) =>
         val c = wrappedConvert(convert.apply, renderKey(key))
         seq.map(c).toVector
