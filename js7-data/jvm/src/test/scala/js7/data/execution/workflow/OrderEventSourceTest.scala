@@ -769,7 +769,7 @@ final class OrderEventSourceTest extends OurTestSuite:
             assert(controller.resume(order.id, None, Nil, false) == Right(Nil))
 
           testAgent(readyOrder, attached): (order, agent) =>
-            assert(agent     .resume(order.id, None, Nil, false) == Right(Nil))
+            assert(agent     .resume(order.id, None, Nil, false) == Right(OrderResumed() :: Nil))
 
           testController(readyOrder, attached): (order, controller) =>
             assert(controller.resume(order.id, Some(Position(1)), Nil, false) == Left(CannotResumeOrderProblem))

@@ -415,12 +415,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                 Left(CannotResumeOrderProblem)
 
               case Some(OrderMark.Resuming(`position`, `historyOperations`, asSucceeded)) =>
-                Right(order.isDetached.thenList:
-                  // should already have happened
-                  OrderResumed(
-                    position,
-                    historyOperations,
-                    asSucceeded))
+                Right:
+                  tryResume(order, position, historyOperations, asSucceeded).toList
 
               case Some(OrderMark.Resuming(_, _, _)) =>
                 Left(CannotResumeOrderProblem)
