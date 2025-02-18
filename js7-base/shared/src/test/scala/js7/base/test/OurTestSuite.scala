@@ -8,7 +8,7 @@ abstract class OurTestSuite extends AnyFreeSpec, LoggingAnyFreeSpec, TestMixin:
 
   protected final def unixOnly(body: => Unit): Unit =
     if !isUnix then
-      info("Unix only")
+      info("❗️This test requires Unix")
     else
       body
 

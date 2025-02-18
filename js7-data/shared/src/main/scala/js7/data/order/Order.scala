@@ -396,8 +396,8 @@ extends
                 for pos <- maybePosition do
                   if !positionFound && (h.position == pos || h.position.normalized == pos) then
                     positionFound = true
-                new Entry(!positionFound ? h)
-              .concat(new Entry(None) :: Nil)
+                Entry(!positionFound ? h)
+              .appended(Entry(None))
               .toArray
             val append = mutable.Buffer.empty[HistoricOutcome]
             val pToi = historicOutcomes.view
@@ -437,7 +437,7 @@ extends
 
         updatedHistoryOutcomes.flatMap: updatedHistoricOutcomes =>
           val maybeSucceeded =
-            (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
+            (asSucceeded && !lastOutcome.isSucceeded) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
           check(isResumableNow,
             withPosition(maybePosition getOrElse position)

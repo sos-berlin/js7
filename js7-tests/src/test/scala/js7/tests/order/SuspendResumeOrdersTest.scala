@@ -31,7 +31,7 @@ import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHist
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderCycleFinished, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderGoMarked, OrderGoes, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Cycle, EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, Schedule, TryInstruction}
@@ -221,7 +221,7 @@ final class SuspendResumeOrdersTest
     "Order.Prompting, with resetState" in:
       eventWatch.resetLastWatchedEventId()
       val workflow = Workflow.of(WorkflowPath("DELAYED-AFTER-ERROR-PROMPTING"),
-        Prompt(expr("'PROMPT'")))
+        Prompt(expr"'PROMPT'"))
 
       withItem(workflow): workflow =>
         val orderId = OrderId(workflow.path.string)
@@ -863,7 +863,7 @@ final class SuspendResumeOrdersTest
     val workflow = Workflow(
       WorkflowPath("SUSPEND-AT-END"),
       Seq(
-        Prompt(expr("'PROMPT'"))))
+        Prompt(expr"'PROMPT'")))
 
     withItem(workflow): workflow =>
       val orderId = OrderId("SUSPEND-AT-END")
@@ -898,15 +898,15 @@ final class SuspendResumeOrdersTest
         Workflow(
           WorkflowPath("SUSPEND-THEN-CANCEL"),
           Seq(
-            Prompt(expr("'PROMPT'")),
+            Prompt(expr"'PROMPT'"),
             EmptyInstruction()))
 
     "Suspend at end of workflow, then cancel" in:
       testSuspendAndCancel:
         Workflow(
           WorkflowPath("SUSPEND-AT-END-THEN-CANCEL"),
-          Seq(
-            Prompt(expr("'PROMPT'"))))
+          Seq:
+            Prompt(expr"'PROMPT'"))
 
     def testSuspendAndCancel(workflow: Workflow): Unit =
       withItem(workflow): workflow =>
@@ -1191,7 +1191,7 @@ object SuspendResumeOrdersTest:
     executeJob,
     TryInstruction(
       Workflow.of(
-        Fail(Some(expr("'FAILURE'")))),
+        Fail(Some(expr"'FAILURE'"))),
       Workflow.of(
         Retry()),
       maxTries = Some(2)))
