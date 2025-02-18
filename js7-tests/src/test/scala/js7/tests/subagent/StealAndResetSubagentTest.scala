@@ -74,8 +74,7 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
       eventWatch.await[OrderAttached](_.key == thieveOrderId)
 
       // STEAL THE SUBAGENT
-      controller.api.executeCommand(ResetSubagent(stolenSubagentItem.id, force = true))
-        .await(99.s).orThrow
+      execCmd(ResetSubagent(stolenSubagentItem.id, force = true))
       eventWatch.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
 
       // The stolen orders are canceled (and its processes have been killed)
@@ -93,8 +92,7 @@ final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
     }
 
     // Reset and delete bareSubagentId to give the thieve a change to dedicate the Subagent
-    controller.api.executeCommand(ResetSubagent(bareSubagentId, force = true))
-      .await(99.s).orThrow
+    execCmd(ResetSubagent(bareSubagentId, force = true))
     eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
     controller.api.updateItems(Stream(DeleteSimple(bareSubagentId))).await(99.s).orThrow
     eventWatch.await[ItemDeleted](_.event.key == bareSubagentId)

@@ -93,7 +93,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(FreshOrder(cycleOrderId, cycleWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderCyclingPrepared](_.key == cycleOrderId)
 
-    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    execCmd(ResetAgent(agentPath))
     myAgent.untilTerminated.await(99.s)
 
     eventWatch.await[OrderTerminated](_.key == lockingOrderId)
@@ -166,7 +166,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
 
-    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    execCmd(ResetAgent(agentPath))
     myAgent.untilTerminated.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
@@ -214,7 +214,7 @@ final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
     eventWatch.await[AgentCoupled](after = eventId)
 
     eventId = eventWatch.lastAddedEventId
-    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    execCmd(ResetAgent(agentPath))
     myAgent.untilTerminated.await(99.s)
 
     // Create some file to let it look like the Agent could not delete the journal

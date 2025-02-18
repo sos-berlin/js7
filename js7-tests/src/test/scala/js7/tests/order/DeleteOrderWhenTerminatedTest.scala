@@ -1,9 +1,7 @@
 package js7.tests.order
 
 import cats.effect.unsafe.IORuntime
-import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.agent.AgentPath
@@ -35,7 +33,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
     val order = FreshOrder(OrderId("🟦"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(order.id)))
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),
@@ -55,7 +53,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite, ControllerAgentF
     val order = FreshOrder(OrderId("🟧"), slowWorkflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(order.id)))
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(controller.eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.arguments, scheduledFor = order.scheduledFor),

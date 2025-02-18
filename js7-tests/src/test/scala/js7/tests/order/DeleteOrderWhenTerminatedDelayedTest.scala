@@ -1,9 +1,7 @@
 package js7.tests.order
 
 import js7.base.configutils.Configs.*
-import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
@@ -33,7 +31,7 @@ final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite, Controlle
     val order = FreshOrder(OrderId("🔻"), workflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderStarted](_.key == order.id)
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(order.id)))
     val finished = eventWatch.await[OrderFinished](_.key == order.id).head
     val removed = eventWatch.await[OrderDeleted](_.key == order.id).head
     assert(removed.timestamp - finished.timestamp > 500.ms)

@@ -97,11 +97,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     assert(orderObstacles == Right(Seq(
       aOrderId -> Set[OrderObstacle](OrderObstacle.WaitingForCommand))))
 
-    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    execCmd(ResumeOrder(aOrderId))
     eventId = eventWatch.await[OrderPrompted](_.key == aOrderId, after = eventId)
       .last.eventId
 
-    controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(aOrderId))
 
     // Breakpoint at Position(1) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
@@ -113,12 +113,12 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       ItemRevision(1),
       UnsignedItemChanged.apply)
 
-    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    execCmd(ResumeOrder(aOrderId))
 
     // Breakpoint at Position(3) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
 
-    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    execCmd(ResumeOrder(aOrderId))
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
     assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
@@ -189,7 +189,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
       assert(controllerState.idToOrder(orderId).position == Position(1) / try_(0) % 0)
 
-      controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+      execCmd(ResumeOrder(orderId))
       eventWatch.await[OrderFinished](_.key == orderId)
 
   "Breakpoint at a Try block" in:
@@ -211,7 +211,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
       assert(controllerState.idToOrder(orderId).position == Position(1))
 
-      controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+      execCmd(ResumeOrder(orderId))
       eventWatch.await[OrderFinished](_.key == orderId)
 
   "Breakpoint at an If instruction" in:
@@ -242,7 +242,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       for position <- positions do
         eventId = eventWatch.await[OrderSuspended](_.key == orderId, after = eventId).last.eventId
         assert(controllerState.idToOrder(orderId).position == position)
-        controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+        execCmd(ResumeOrder(orderId))
 
       eventWatch.await[OrderFinished](_.key == orderId)
 

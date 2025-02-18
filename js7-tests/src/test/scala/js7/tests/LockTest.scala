@@ -180,18 +180,18 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
         .await(99.s).orThrow
       controller.eventWatch.awaitNext[OrderLocksQueued](_.key == orderId)
 
-    controller.api.executeCommand(AnswerOrderPrompt(order2Id)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(order2Id))
     controller.eventWatch.awaitNext[OrderLocksReleased](_.key == order2Id)
 
     controller.eventWatch.await[OrderLocksAcquired](_.key == aOrderId)
     controller.eventWatch.await[OrderLocksAcquired](_.key == bOrderId)
     controller.eventWatch.await[OrderPrompted](_.key == aOrderId)
     controller.eventWatch.await[OrderPrompted](_.key == bOrderId)
-    controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
-    controller.api.executeCommand(AnswerOrderPrompt(bOrderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(aOrderId))
+    execCmd(AnswerOrderPrompt(bOrderId))
 
     controller.eventWatch.awaitNext[OrderLocksAcquired](_.key == cOrderId)
-    controller.api.executeCommand(AnswerOrderPrompt(cOrderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(cOrderId))
 
     controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
     controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
@@ -228,7 +228,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       for workflow <- Seq(workflow1, workflow2); i <- 1 to 100 yield
         FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
     controller.api.addOrders(Stream.iterable(orders)).await(99.s).orThrow
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(orders.map(_.id))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(orders.map(_.id)))
     val terminated = for order <- orders yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     val terminatedX = controller.eventWatch.awaitKeys[OrderTerminated](orders.map(_.id))
     for keyedEvent <- terminated.map(_.last.value) do  assert(keyedEvent.event == OrderFinished(), s"- ${keyedEvent.key}")
@@ -262,7 +262,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == orderId)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -362,8 +362,8 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(orderId)))
+    execCmd(CancelOrders(Seq(orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -401,8 +401,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId / "BRANCH")
-    controller.api.executeCommand(CancelOrders(Seq(orderId / "BRANCH", orderId)))
-      .await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId / "BRANCH", orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -515,7 +514,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -751,7 +750,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
     controller.eventWatch.await[OrderLocksQueued](_.key == orderId)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     controller.eventWatch.await[OrderCancelled](_.key == orderId)
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -762,7 +761,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderCancelled,
       OrderDeleted))
 
-    controller.api.executeCommand(AnswerOrderPrompt(lockingOrderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(lockingOrderId))
     controller.eventWatch.await[OrderDeleted](_.key == lockingOrderId)
     assert(controller.eventWatch.eventsByKey[OrderEvent](lockingOrderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
@@ -793,7 +792,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -836,11 +835,11 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       controller.api.addOrder(bOrder).await(99.s).orThrow
       eventWatch.await[OrderLocksQueued](_.key == bOrder.id)
 
-      controller.api.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      execCmd(AnswerOrderPrompt(aOrder.id))
       eventWatch.await[OrderFinished](_.key == aOrder.id)
 
       eventWatch.await[OrderPrompted](_.key == bOrder.id)
-      controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      execCmd(AnswerOrderPrompt(bOrder.id))
       eventWatch.await[OrderFinished](_.key == bOrder.id)
 
     locally:
@@ -855,12 +854,12 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
       controller.api.addOrder(bOrder).await(99.s).orThrow
       eventWatch.await[OrderLocksQueued](_.key == bOrder.id)
 
-      controller.api.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      execCmd(AnswerOrderPrompt(aOrder.id))
       eventWatch.await[OrderFinished](_.key == aOrder.id)
       eventWatch.await[OrderDeleted](_.key == aOrder.id)
 
       eventWatch.await[OrderPrompted](_.key == bOrder.id)
-      controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      execCmd(AnswerOrderPrompt(bOrder.id))
       eventWatch.await[OrderFinished](_.key == bOrder.id)
       eventWatch.await[OrderDeleted](_.key == bOrder.id)
 
@@ -918,7 +917,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         OrderFailed(Position(0) / "try+1" % 0)))
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
 
@@ -975,7 +974,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         OrderFailed(Position(0) / "try+1" % 0)))
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
 
@@ -1008,7 +1007,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
 
-        controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(aOrderId))
         eventWatch.awaitNext[OrderLocksReleased](_.key == aOrderId)
         eventWatch.await[OrderTerminated](_.key == aOrderId, after = eventId)
 
@@ -1026,7 +1025,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
             OrderDeleted))
 
         eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
-        controller.api.executeCommand(AnswerOrderPrompt(bOrderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(bOrderId))
         eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
 
         locally:
@@ -1072,7 +1071,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
 
-        controller.api.executeCommand(CancelOrders(Seq(aOrderId))).await(99.s).orThrow
+        execCmd(CancelOrders(Seq(aOrderId)))
         eventWatch.awaitNext[OrderLocksReleased](_.key == aOrderId)
 
         locally:
@@ -1088,7 +1087,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
             OrderDeleted))
 
         eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
-        controller.api.executeCommand(CancelOrders(Seq(bOrderId))).await(99.s).orThrow
+        execCmd(CancelOrders(Seq(bOrderId)))
 
         eventWatch.await[OrderTerminated](_.key == aOrderId, after = eventId)
         eventWatch.await[OrderTerminated](_.key == bOrderId, after = eventId)
@@ -1135,7 +1134,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderLocksQueued](_.key == bOrderId)
 
-        controller.api.executeCommand(CancelOrders(Seq(aOrderId))).await(99.s).orThrow
+        execCmd(CancelOrders(Seq(aOrderId)))
         eventWatch.awaitNext[OrderTerminated](_.key == aOrderId)
 
         locally:
@@ -1153,7 +1152,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderLocksAcquired](_.key == bOrderId)
         eventWatch.awaitNext[OrderStopped](_.key == bOrderId)
-        controller.api.executeCommand(CancelOrders(Seq(bOrderId))).await(99.s).orThrow
+        execCmd(CancelOrders(Seq(bOrderId)))
         eventWatch.awaitNext[OrderTerminated](_.key == bOrderId)
 
         locally:
@@ -1266,7 +1265,7 @@ final class LockTest extends OurTestSuite, ControllerAgentForScalaTest:
     assert(removeWorkflowAndLock() == Left:
       ItemIsStillReferencedProblem(lockPath, workflow.id, " with Order:DELETING"))
 
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
     removeWorkflowAndLock().orThrow
 

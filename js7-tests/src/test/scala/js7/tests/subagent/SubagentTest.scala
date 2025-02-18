@@ -4,9 +4,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.Js7Version
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -75,8 +73,7 @@ final class SubagentTest extends OurTestSuite, SubagentTester:
         .head.value.event
       assert(started == OrderStdoutWritten("TestSemaphoreJob\n"))
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId), CancellationMode.kill()))
-        .await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId), CancellationMode.kill()))
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event

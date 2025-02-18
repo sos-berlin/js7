@@ -6,7 +6,6 @@ import js7.base.test.OurTestSuite
 import js7.base.test.TestExtensions.autoSome
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
@@ -64,7 +63,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
         aAgentPath,
         Some(aSubagentBundle.id),
         stuckSubagentId = Some(aSubagentId))))
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
 
     enableSubagents(aSubagentId -> true, a1SubagentId -> true, a2SubagentId -> true)
 
@@ -152,7 +151,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
     val eventId = eventWatch.lastAddedEventId
     stopBareSubagent(a1SubagentId)
 
-    controller.api.executeCommand(AnswerOrderPrompt(childOrderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(childOrderId))
     eventWatch.await[SubagentCouplingFailed](_.key == a1SubagentId, after = eventId)
 
     val a1SubagentRelease = startBareSubagent(a1SubagentId)._2
@@ -206,7 +205,7 @@ final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest
         aAgentPath,
         Some(aSubagentBundle.id),
         stuckSubagentId = Some(aSubagentId))))
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
 
     enableSubagents(aSubagentId -> true, a1SubagentId -> true, a2SubagentId -> true)
 

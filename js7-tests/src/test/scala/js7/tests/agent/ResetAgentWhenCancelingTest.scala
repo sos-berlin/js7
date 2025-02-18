@@ -53,13 +53,13 @@ final class ResetAgentWhenCancelingTest
     // May wait forever and fail when second job has been started while terminating !!!
     agentTerminated.await(99.s)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
 
     // Delete Agent's journal
     deleteDirectoryContentRecursively(directoryProvider.agentEnvs.head.stateDir)
 
     val freshAgent = directoryProvider.startAgent(agentPath).await(99.s)
-    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    execCmd(ResetAgent(agentPath))
     eventWatch.await[OrderTerminated](_.key == orderId)
 
     // TODO 💥While resetting, the order may start the second job, but the test does not expect this

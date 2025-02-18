@@ -94,7 +94,7 @@ final class ResetAgentClusterTest
           controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
           controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-          controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+          execCmd(ResetAgent(agentPath))
           primaryDirector.untilTerminated.await(99.s)
           backupDirector.untilTerminated.await(99.s)
 

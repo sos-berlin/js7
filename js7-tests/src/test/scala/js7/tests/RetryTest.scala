@@ -403,11 +403,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         .await(99.s).orThrow
       eventWatch.await[OrderRetrying](_.key == orderId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(SuspendOrders(Seq(orderId)))
       eventWatch.await[OrderDetached](_.key == orderId)
       //eventWatch.await[OrderSuspended](_.key == orderId)
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)
@@ -493,28 +493,28 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
       /// Suspend, then resume before retry time as elapsed ///
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(SuspendOrders(Seq(orderId)))
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
 
-      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(ResumeOrders(Seq(orderId)))
       eventWatch.await[OrderResumptionMarked](_.key == orderId)
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
 
       /// Suspend, wait until retry time as elapsed, await OrderSuspended ///
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(SuspendOrders(Seq(orderId)))
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
       eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
 
-      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(ResumeOrders(Seq(orderId)))
       eventWatch.await[OrderResumed](_.key == orderId)
       eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
 
       /// Suspend, then cancel ///
 
-      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(SuspendOrders(Seq(orderId)))
       eventWatch.await[OrderSuspensionMarked](_.key == orderId, after = eventId)
       eventWatch.await[OrderDetached](_.key == orderId, after = eventId)
 

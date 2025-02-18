@@ -128,8 +128,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
       awaitAndAssert:
         val order = controllerState.idToOrder(orderId)
         order.isState[Order.Fresh] && order.isAttached
-      controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
-        .await(99.s).orThrow
+      execCmd(GoOrder(orderId, position = Position(0)))
       eventId = eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
         .head.eventId
 

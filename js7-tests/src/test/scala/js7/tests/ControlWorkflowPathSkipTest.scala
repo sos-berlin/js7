@@ -313,10 +313,10 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderPrompted](_.key == orderId)
         skipInstruction(workflow.path)
-        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(orderId))
 
         eventWatch.awaitNext[OrderPrompted](_.key == orderId)
-        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(orderId))
 
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
@@ -340,10 +340,10 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         eventWatch.awaitNext[OrderPrompted](_.key == orderId)
         skipInstruction(workflow.path)
-        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(orderId))
 
         eventWatch.awaitNext[OrderPrompted](_.key == orderId)
-        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        execCmd(AnswerOrderPrompt(orderId))
 
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 

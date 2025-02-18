@@ -174,7 +174,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-    controller.api.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
+    execCmd(CancelOrders(orderId :: Nil))
     eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
 
     TestJob.continue()

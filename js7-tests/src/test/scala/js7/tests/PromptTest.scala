@@ -44,7 +44,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(FreshOrder(orderId, failingWorkflow.path))
       .await(99.s).orThrow
     eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(failingWorkflow.id),
@@ -65,7 +65,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(order)
       .await(99.s).orThrow
     eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflowId),
@@ -82,15 +82,15 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
     eventWatch.await[OrderPrompted](_.key == orderId)
 
-    controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(SuspendOrders(Seq(orderId)))
     eventWatch.await[OrderSuspensionMarked](_.key == orderId)
 
     val eventId = eventWatch.lastAddedEventId
-    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    execCmd(AnswerOrderPrompt(orderId))
     eventWatch.await[OrderPromptAnswered](_.key == orderId)
     eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
 
-    controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+    execCmd(ResumeOrder(orderId))
     eventWatch.await[OrderFinished](_.key == orderId)
 
   "Order.Prompting is cancelable" in:
@@ -99,7 +99,7 @@ final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
       .await(99.s).orThrow
     eventWatch.await[OrderPrompted](_.key == orderId)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     eventWatch.await[OrderCancelled](_.key == orderId)
 
 

@@ -5,7 +5,6 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Stdout
 import js7.base.log.Logger
-import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -40,7 +39,7 @@ final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
       OrderAdded(emptyWorkflow.path ~ "INITIAL"),
       OrderStarted,
       OrderFinished()))
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(orderId)))
     eventWatch.await[OrderDeleted](_.key == orderId)
 
   "An unknown argument detected at Agent lets the order fail" in:

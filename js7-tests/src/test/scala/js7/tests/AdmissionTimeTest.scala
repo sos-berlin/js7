@@ -216,7 +216,7 @@ final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest:
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
     }
 
     val startingWorkflow2 = Workflow(WorkflowPath("forceJobAdmission-2"), Seq(

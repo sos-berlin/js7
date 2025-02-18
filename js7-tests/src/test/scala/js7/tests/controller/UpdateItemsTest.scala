@@ -96,7 +96,7 @@ final class UpdateItemsTest
     assert(controller.api.addOrder(FreshOrder(OrderId("🟧"), workflowPath)).await(99.s) ==
       Left(VersionedItemRemovedProblem(workflowPath)))
 
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(orderIds)).await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(orderIds))
 
     withClue("Tampered with configuration: "):
       assert(controller.api.updateItems(Stream(

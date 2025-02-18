@@ -46,7 +46,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite, SubagentTester:
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
       // RESET
-      controller.api.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
+      execCmd(ResetSubagent(bareSubagentItem.id))
       eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
 
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head

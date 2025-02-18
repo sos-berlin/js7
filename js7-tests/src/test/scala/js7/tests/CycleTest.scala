@@ -228,7 +228,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
 
-    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(orderId)))
     eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
       .map(_.value.event)
 
@@ -315,7 +315,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         Timestamp("2021-03-28T02:00:00Z"),
         Timestamp("2021-03-28T02:30:00Z")))
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
 
     "Summer to winter" in:
       clock.resetTo(Timestamp("2021-10-31T00:00:00Z"))
@@ -355,7 +355,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         Timestamp("2021-10-31T00:30:00Z"),
         Timestamp("2021-10-31T02:00:00Z"))) // 01:00 is skipped!!
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
   }
 
   "ScheduleTester standard example" - {
@@ -831,7 +831,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
         .await(99.s).orThrow
       eventWatch.await[OrderBroken](_.key == orderId)
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderTerminated](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 
@@ -908,7 +908,7 @@ with ControllerAgentForScalaTest with ScheduleTester:
           .await(99.s).orThrow
         eventWatch.await[OrderCycleFinished](_.key == orderId)
 
-        controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+        execCmd(CancelOrders(Seq(orderId)))
         eventWatch.await[OrderTerminated](_.key == orderId)
         eventWatch.await[OrderDeleted](_.key == orderId)
 
@@ -949,12 +949,11 @@ with ControllerAgentForScalaTest with ScheduleTester:
         var eventId = eventWatch.await[OrderCycleFinished](_.key == orderId).head.eventId
         assert(controllerState.idToOrder(orderId).isState[Order.BetweenCycles])
 
-        controller.api.executeCommand(GoOrder(orderId, position = Position(0)))
-          .await(99.s).orThrow
+        execCmd(GoOrder(orderId, position = Position(0)))
         eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId)
           .head.eventId
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderCancelled](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 
@@ -1007,12 +1006,11 @@ with ControllerAgentForScalaTest with ScheduleTester:
 
       for _ <- 1 to 3 do
         eventId = eventWatch.lastAddedEventId
-        controller.api.executeCommand(GoOrder(orderId, position = cyclePosition))
-          .await(99.s).orThrow
+        execCmd(GoOrder(orderId, position = cyclePosition))
         eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
           .head.eventId
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderCancelled](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 

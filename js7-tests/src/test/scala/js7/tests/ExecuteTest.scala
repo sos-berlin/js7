@@ -513,7 +513,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest:
       assert(orderToObstacles(extraOrderId)(WallClock) ==
         Right(Set(jobProcessLimitReached)))
 
-      controller.api.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
+      execCmd(CancelOrders(extraOrderId :: Nil))
       eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
 
       controller.api

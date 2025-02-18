@@ -58,8 +58,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
         "CITRON" -> NumberValue(21)))),
       HistoricOutcome(Position(4), OrderOutcome.succeeded)))
 
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
-      .await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
 
   "failingResultWorkflow" in:
     val events = controller.runOrder(FreshOrder(OrderId("💥"), failingResultWorkflow.id.path))
@@ -100,7 +99,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == childOrderId)
 
-    controller.api.executeCommand(CancelOrders(Seq(childOrderId))).await(99.s).orThrow
+    execCmd(CancelOrders(Seq(childOrderId)))
     controller.eventWatch.await[OrderCancelled](_.key == childOrderId)
     controller.eventWatch.await[OrderFailed](_.key == orderId)
 
@@ -121,7 +120,7 @@ final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
     val expectedFailed = OrderFailed(Position(0))
     assert(eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
-    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
+    execCmd(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(workflow.id, order.arguments),

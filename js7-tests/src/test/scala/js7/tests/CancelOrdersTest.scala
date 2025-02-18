@@ -83,8 +83,8 @@ final class CancelOrdersTest
       scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderAttached](_.key == order.id)
-    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), CancellationMode.FreshOnly)
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(onlyRelevantEvents(eventWatch.eventsByKey[OrderEvent](order.id)) == Vector(
       OrderCancellationMarked(CancellationMode.FreshOnly),
@@ -94,8 +94,8 @@ final class CancelOrdersTest
     val order = FreshOrder(OrderId("🔸"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())
     assert(eventWatch.await[OrderTerminated](_.key == order.id).head.value.event == OrderFinished())
 
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
@@ -126,8 +126,8 @@ final class CancelOrdersTest
     val order = FreshOrder(OrderId("♣️"), twoJobsWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())
     eventWatch.await[OrderCancelled](_.key == order.id)
 
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
@@ -212,8 +212,8 @@ final class CancelOrdersTest
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
 
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
-    controller.api.executeCommand(CancelOrders(Set(order.id), mode))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), mode)
     eventWatch.await[OrderCancelled](_.key == order.id)
 
     assert(controller.eventWatch
@@ -244,8 +244,8 @@ final class CancelOrdersTest
     sleep(100.ms)  // Try to avoid "killed before start"
 
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
-    controller.api.executeCommand(CancelOrders(Set(order.id  / "🥕"), mode))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id  / "🥕"), mode)
     eventWatch.await[OrderCancelled](_.key == order.id / "🥕")
 
     assert(controller.eventWatch
@@ -294,7 +294,8 @@ final class CancelOrdersTest
       val orderId = OrderId("🔔")
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
       controller.eventWatch.await[OrderSuspended](_.key == orderId / "🥕")
-      controller.api.executeCommand(CancelOrders(Set(orderId / "🥕"))).await(99.s).orThrow
+      execCmd:
+        CancelOrders(Set(orderId / "🥕"))
 
       val events = controller.eventWatch.await[OrderTerminated](_.key == orderId)
       assert(events.head.value.event.isInstanceOf[OrderFailed])
@@ -307,7 +308,8 @@ final class CancelOrdersTest
     controller.addOrderBlocking(order)
     eventWatch.await[OrderPrompted](_.key == order.id)
 
-    controller.api.executeCommand(CancelOrders(Seq(order.id))).await(99.s).orThrow
+    execCmd:
+      CancelOrders(Seq(order.id))
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controllerState.idToOrder(order.id).isState[Order.Cancelled])
 
@@ -341,8 +343,8 @@ final class CancelOrdersTest
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,
       workflowPosition)))
-    controller.api.executeCommand(CancelOrders(Set(order.id), mode))
-      .await(99.seconds).orThrow
+    execCmd:
+      CancelOrders(Set(order.id), mode)
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(onlyRelevantEvents(
       eventWatch.eventsByKey[OrderEvent](order.id)
@@ -362,9 +364,8 @@ final class CancelOrdersTest
         singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for o <- orders do controller.addOrderBlocking(o)
     for o <- orders do eventWatch.await[OrderAttached](_.key == o.id)
-    val response = controller.api.executeCommand(
+    val response = execCmd:
       CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)
-    ).await(99.seconds).orThrow
     assert(response == Response.Accepted)
     for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id)
 
@@ -726,7 +727,8 @@ final class CancelOrdersTest
         .await(99.s).orThrow
       eventWatch.await[OrderBroken](_.key == orderId)
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd:
+        CancelOrders(Seq(orderId))
       eventWatch.await[OrderTerminated](_.key == orderId)
       eventWatch.await[OrderDeleted](_.key == orderId)
 
@@ -761,7 +763,8 @@ final class CancelOrdersTest
         .await(99.s).orThrow
       eventWatch.await[OrderRetrying](_.key == orderId)
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd:
+        CancelOrders(Seq(orderId))
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)
@@ -919,9 +922,8 @@ final class CancelOrdersTest
               if toBeKilledByTrapPids(event.pid) then
                 terminatedBeforeSigkill.updateAndGet(_ + event.pid)
 
-            controller.api.executeCommand:
+            execCmd:
               CancelOrders(Seq(orderId), CancellationMode.kill())
-            .await(99.s).orThrow
 
             val t = Deadline.now
 
@@ -936,14 +938,12 @@ final class CancelOrdersTest
             assert(eventWatch.eventsByKey[OrderTerminated](orderId, after = eventId).isEmpty)
 
             // Now let kill the remembered child processes (despite the main process has terminated)
-            controller.api.executeCommand:
+            execCmd:
               CancelOrders(Seq(orderId), CancellationMode.kill(immediately = true))
-            .await(99.s).orThrow
 
           case SIGKILL =>
-            controller.api.executeCommand:
+            execCmd:
               CancelOrders(Seq(orderId), CancellationMode.kill(immediately = signal == SIGKILL))
-            .await(99.s).orThrow
         end match
 
         val event = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
@@ -1016,9 +1016,8 @@ final class CancelOrdersTest
       .await(99.s).orThrow
       eventWatch.awaitNext[OrderStdoutWritten](_.key == orderId)
 
-      controller.api.executeCommand:
+      execCmd:
         SuspendOrders(Seq(orderId), SuspensionMode.kill)
-      .await(99.s).orThrow
       eventWatch.awaitNext[OrderSuspended](_.key == orderId)
 
       controller.api.executeCommand:

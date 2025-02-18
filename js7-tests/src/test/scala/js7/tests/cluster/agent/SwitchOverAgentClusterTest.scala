@@ -118,7 +118,7 @@ final class SwitchOverAgentClusterTest
           /// SwitchOver ///
 
           val directorEventId = primaryDirector.eventWatch.lastAddedEventId
-          controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s).orThrow
+          execCmd(ClusterSwitchOver(Some(agentPath)))
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
           val termination = primaryDirector.untilTerminated.await(99.s)
           assert(termination == DirectorTermination(restartDirector = true))

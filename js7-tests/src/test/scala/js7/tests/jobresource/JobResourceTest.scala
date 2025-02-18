@@ -243,8 +243,7 @@ class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.api
       .executeCommand(CancelOrders(orderIds, mode = CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
-    controller.api.executeCommand(DeleteOrdersWhenTerminated(orderIds))
-      .await(99.s).orThrow
+    execCmd(DeleteOrdersWhenTerminated(orderIds))
 
     // Remove workflows
     controller.api

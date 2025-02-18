@@ -4,9 +4,7 @@ import cats.effect.unsafe.IORuntime
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -22,8 +20,8 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FinishTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SleepJob}
-import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.reflect.ClassTag
 
 final class FinishTest
@@ -243,8 +241,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         sleep(100.ms)
         assert(controllerState.idToOrder(orderId).isState[Order.Forked])
 
-        controller.api.executeCommand(CancelOrders(Seq(orderId, orderId / "🥕", orderId / "🍋")))
-          .await(99.s).orThrow
+        execCmd(CancelOrders(Seq(orderId, orderId / "🥕", orderId / "🍋")))
         controller.eventWatch.await[OrderCancelled](_.key == orderId)
 
         val events = eventWatch
@@ -326,7 +323,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         HistoricOutcome(Position(0) / "fork+🥕" % 1 / "then" % 0,
           OrderOutcome.Failed(Some("FAIL WITH FINISH")))))
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId / "🥕"))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId / "🥕")))
       eventWatch.await[OrderFailed](_.key == orderId)
       val events = eventWatch
         .allKeyedEvents[OrderEvent]

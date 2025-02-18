@@ -2,10 +2,8 @@ package js7.tests.notice
 
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, NoticeKey}
 import js7.data.controller.ControllerCommand
@@ -61,8 +59,7 @@ final class NoticeEndOfLifeTest
       val consumeOrderId = OrderId("#2023-06-23#🔶")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
-        .await(99.s).orThrow
+      execCmd(CancelOrders(Set(consumeOrderId)))
   }
 
   "PostNotice command" - {
@@ -81,8 +78,7 @@ final class NoticeEndOfLifeTest
       val consumeOrderId = OrderId("#2023-06-24#🔕")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
-        .await(99.s).orThrow
+      execCmd(CancelOrders(Set(consumeOrderId)))
   }
 
   "PostNotice command with immediately expired endOfLife" - {
@@ -94,7 +90,7 @@ final class NoticeEndOfLifeTest
       val consumeOrderId = OrderId("#2023-06-25#🟪")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.api.executeCommand(CancelOrders(Set(consumeOrderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Set(consumeOrderId)))
   }
 
 

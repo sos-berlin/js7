@@ -294,7 +294,7 @@ final class GlobalBoardTest
         .await(99.s) ==
           Left(UnknownKeyProblem("BoardPath", "Board:UNKNOWN"))
 
-      controller.api.executeCommand(DeleteNotice(notice.id)).await(99.s).orThrow
+      execCmd(DeleteNotice(notice.id))
       assert(eventWatch.await[NoticeDeleted](_.key == board0.path, after = eventId).head.value.event ==
         NoticeDeleted(notice.plannedNoticeKey))
 
@@ -335,7 +335,7 @@ final class GlobalBoardTest
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == expectingOrderId)
 
-      controller.api.executeCommand(SuspendOrders(Seq(expectingOrderId))).await(99.s).orThrow
+      execCmd(SuspendOrders(Seq(expectingOrderId)))
       eventWatch.await[OrderSuspensionMarked](_.key == expectingOrderId)
 
       val eventId = eventWatch.lastAddedEventId
@@ -345,7 +345,7 @@ final class GlobalBoardTest
       eventWatch.await[OrderMoved](_.key == expectingOrderId, after = eventId)
       eventWatch.await[OrderSuspended](_.key == expectingOrderId, after = eventId)
 
-      controller.api.executeCommand(ResumeOrder(expectingOrderId)).await(99.s).orThrow
+      execCmd(ResumeOrder(expectingOrderId))
       eventWatch.await[OrderFinished](_.key == expectingOrderId)
 
     "Order.ExpectingNotice is cancelable" in:
@@ -371,7 +371,7 @@ final class GlobalBoardTest
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == orderId, after = eventId)
 
-      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      execCmd(CancelOrders(Seq(orderId)))
       eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId, eventId) == Seq(

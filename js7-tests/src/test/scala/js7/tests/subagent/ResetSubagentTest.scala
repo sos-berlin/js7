@@ -46,7 +46,7 @@ final class ResetSubagentTest extends OurTestSuite, SubagentTester:
 
     eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId)
 
-    controller.api.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
+    execCmd(ResetSubagent(bareSubagentItem.id))
     val processed1 = eventWatch.await[OrderProcessed](_.key == orderId).head
     assert(processed1.value.event == OrderProcessed.processLostDueToReset)
 
