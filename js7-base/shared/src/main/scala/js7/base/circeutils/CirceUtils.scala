@@ -94,11 +94,11 @@ object CirceUtils:
                 jsonObject.toMap.map: (k, v) =>
                   rename.getOrElse(k, k) -> v
 
-  def enumCodec[E <: scala.reflect.Enum](valueOf: String => E, values: Array[E]): Codec[E] =
-    Codec.from(enumDecoder(valueOf), enumEncoder(values))
+  def enumCodec[E <: scala.reflect.Enum](valueOf: String => E, asString: E => String = (_: E).toString): Codec[E] =
+    Codec.from(enumDecoder(valueOf), enumEncoder(asString))
 
-  def enumEncoder[E <: scala.reflect.Enum](values: Array[E]): Encoder[E] =
-    e => Json.fromString(e.toString)
+  def enumEncoder[E <: scala.reflect.Enum](asString: E => String = (_: E).toString): Encoder[E] =
+    e => Json.fromString(asString(e))
 
   def enumDecoder[E <: scala.reflect.Enum](valueOf: String => E): Decoder[E] =
     c => c.as[String].flatMap: string =>

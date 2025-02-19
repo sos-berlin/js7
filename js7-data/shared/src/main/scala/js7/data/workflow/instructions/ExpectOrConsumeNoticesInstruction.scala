@@ -62,4 +62,4 @@ object ExpectOrConsumeNoticesInstruction:
     case DontWait
 
   object WhenNotAnnounced:
-    given Codec[WhenNotAnnounced] = enumCodec(valueOf, values)
+    given Codec[WhenNotAnnounced] = enumCodec(valueOf)
