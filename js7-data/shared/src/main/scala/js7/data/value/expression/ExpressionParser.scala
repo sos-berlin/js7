@@ -335,8 +335,7 @@ object ExpressionParser:
 
   private val wordOperation: Parser[Expression] =
     leftRecurseParsers(or, keyword("in" :: "matches" :: Nil), or):
-      case (a, ("in", list: ListExpr)) => pure(In(a, list))
-      case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
+      case (a, ("in", b: Expression)) => pure(In(a, b))
       case (a, ("matches", b)) => pure(Matches(a, b))
       case (a, (op, b)) => failWith(s"Unknown operator '$op': " +
         Precedence.toString(a, op, Precedence.Or, b))

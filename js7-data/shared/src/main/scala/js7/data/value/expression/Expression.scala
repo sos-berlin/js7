@@ -334,7 +334,7 @@ object Expression:
     override def toString: String = makeString(a, "-", b)
 
 
-  final case class In(a: Expression, b: ListExpr)
+  final case class In(a: Expression, b: Expression)
   extends BooleanExpr, IsPureIfSubexpressionsArePure:
     def precedence: Int = Precedence.WordOperator
     def subexpressions: Iterable[Expression] = View(a, b)

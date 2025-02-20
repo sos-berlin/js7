@@ -14,6 +14,7 @@ import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, Objec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
+import org.scalatest.Assertions.assert
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
 import scala.language.implicitConversions
@@ -1275,6 +1276,27 @@ final class ExpressionTest extends OurTestSuite:
       result = Right(true),
       In(LastReturnCode, ListExpr(List(1, 2, 3))))
 
+    testEval("$a in $list",
+      result = Right(true),
+      In(NamedValue("a"), NamedValue("list")),
+      NamedValueScope(
+        "a" -> NumberValue(1),
+        "list" -> ListValue(Seq(1, 2, 3))))
+
+    testEval("$a in $alienList",
+      result = Right(false),
+      In(NamedValue("a"), NamedValue("alienList")),
+      NamedValueScope(
+        "a" -> NumberValue(1),
+        "alienList" -> ListValue(Seq(99))))
+
+    testEval("$a in $number",
+      result = Left(UnexpectedValueTypeProblem(ListValue, NumberValue(1))),
+      In(NamedValue("a"), NamedValue("number")),
+      NamedValueScope(
+        "a" -> NumberValue(1),
+        "number" -> NumberValue(1)))
+
     "In" in:
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
         In(a, ListExpr(List(b, c, d))).eval
@@ -1437,11 +1459,16 @@ final class ExpressionTest extends OurTestSuite:
       assert(parseExpression(exprString) == Left(problem))
 
   private def testEval(exprString: String, result: Checked[Value], expression: Expression)
-    (using scope: Scope, pos: source.Position)
+    (using pos: source.Position, scope: Scope)
+  : Unit =
+    testEval(exprString, result, expression, scope)
+
+  private def testEval(exprString: String, result: Checked[Value], expression: Expression, scope: Scope)
+    (using pos: source.Position)
   : Unit =
     exprString in:
       val checked = parseExpressionOrFunction(exprString.trim)
-      assert(checked == Right(expression) && expression.eval == result)
+      assert(checked == Right(expression) && expression.eval(using scope) == result)
 
   private def testEqual(exprString1: String, exprString2: String, result: Checked[Value], expression: Expression)
     (using scope: Scope, pos: source.Position)
