@@ -11,10 +11,11 @@ import js7.data.order.OrderId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{expr, exprFun}
+import js7.base.time.ScalaTime.*
 
 final class PlanSchemaStateTest extends OurTestSuite:
 
-  "toSnapshotStream JSON" in :
+  "toSnapshotStream JSON" in:
     val planSchemaState = PlanSchemaState(
       PlanSchema(
         PlanSchemaId("DailyPlan"),
@@ -23,6 +24,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
         namedValues = Map(
           "openingDay" -> StringValue("")),
         Some(ItemRevision(1))),
+      finishedPlanLifeTime = 3600.s,
       namedValues = Map(
         "openingDay" -> StringValue("2025-02-20")),
       toPlan = Map(
@@ -56,6 +58,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE" : "PlanSchemaState",
         "id" : "DailyPlan",
+        "finishedPlanLifeTime": 3600,
         "namedValues" : {
           "openingDay" : "2025-02-20"
         }

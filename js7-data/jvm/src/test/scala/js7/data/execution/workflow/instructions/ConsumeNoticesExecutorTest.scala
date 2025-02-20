@@ -25,6 +25,7 @@ import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import org.scalactic.source
 import scala.language.implicitConversions
 import scala.runtime.stdLibPatches.Predef.assert
+import js7.base.time.ScalaTime.*
 
 final class ConsumeNoticesExecutorTest extends OurTestSuite:
 
@@ -357,6 +358,7 @@ object ConsumeNoticesExecutorTest:
         .appended:
           PlanSchemaState(
             dailyPlan,
+            finishedPlanLifeTime = 0.s,
             namedValues = Map.empty,
             toPlan = Map(
               planId.planKey -> Plan(

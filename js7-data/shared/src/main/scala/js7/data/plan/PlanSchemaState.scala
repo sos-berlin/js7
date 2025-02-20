@@ -3,6 +3,7 @@ package js7.data.plan
 import cats.syntax.traverse.*
 import fs2.Stream
 import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.fs2utils.StreamExtensions.:+
 import js7.base.problem.Checked.RichCheckedIterable
@@ -18,9 +19,11 @@ import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
 import scala.collection.immutable.Map.Map1
 import scala.collection.{View, immutable}
+import scala.concurrent.duration.FiniteDuration
 
 final case class PlanSchemaState(
   item: PlanSchema,
+  finishedPlanLifeTime: FiniteDuration,
   namedValues: NamedValues,
   toPlan: Map[PlanKey, Plan])
 extends UnsignedSimpleItemState:
@@ -48,7 +51,7 @@ extends UnsignedSimpleItemState:
   override def toSnapshotStream
   : Stream[fs2.Pure, PlanSchema | Snapshot | Plan.Snapshot | NoticeSnapshot] =
     Stream.fromOption(!isGlobal ? ()).flatMap: _ =>
-      item.toSnapshotStream :+ Snapshot(path, namedValues)
+      item.toSnapshotStream :+ Snapshot(path, finishedPlanLifeTime, namedValues)
     .append:
       Stream.iterable(toPlan.values).flatMap(_.toSnapshotStream)
 
@@ -65,7 +68,9 @@ extends UnsignedSimpleItemState:
     })"
 
   def recover(snapshot: Snapshot): PlanSchemaState =
-    copy(namedValues = snapshot.namedValues)
+    copy(
+      finishedPlanLifeTime = snapshot.finishedPlanLifeTime,
+      namedValues = snapshot.namedValues)
 
   def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
     copy(namedValues = namedValues).recalculateIsClosedValues
@@ -275,7 +280,11 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
           toPlanSchemaState(planSchemaId).map(_ -> planKeyToOrderIds)
 
 
-  final case class Snapshot(id: PlanSchemaId, namedValues: NamedValues):
+  final case class Snapshot(
+    id: PlanSchemaId,
+    finishedPlanLifeTime: FiniteDuration,
+    namedValues: NamedValues):
+
     override def productPrefix = s"PlanSchemaState.Snapshot"
 
   val subtype: Subtype[Snapshot] =

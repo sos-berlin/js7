@@ -4,6 +4,7 @@ import cats.syntax.traverse.*
 import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
@@ -72,7 +73,11 @@ extends UnsignedSimpleItem:
       !isGlobal ? this
 
   def toInitialItemState: PlanSchemaState =
-    PlanSchemaState(this, namedValues = NamedValues.empty, toPlan = Map.empty)
+    PlanSchemaState(
+      this,
+      finishedPlanLifeTime = 0.s,
+      namedValues = NamedValues.empty,
+      toPlan = Map.empty)
 
   def isGlobal: Boolean =
     this eq Global

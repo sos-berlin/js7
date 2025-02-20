@@ -99,6 +99,7 @@ private object JControllerStateTest:
         PlanSchemaState(
           PlanSchema(PlanSchemaId("DailyPlan"), StringConstant.empty),
           namedValues = Map.empty,
+          finishedPlanLifeTime = 3600.s,
           toPlan = Map(
             planId.planKey -> Plan(
               planId,

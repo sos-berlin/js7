@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.*
 import js7.base.test.OurAsyncTestSuite
@@ -152,7 +153,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
 
-  "fromIterator is the reverse of toSnapshotStream" in:
+  "fromStream is the reverse of toSnapshotStream" in:
     ControllerState
       .fromStream(controllerState.toSnapshotStream)
       .map(expectedState => assertEqual(controllerState, expectedState))
@@ -350,12 +351,11 @@ final class ControllerStateTest extends OurAsyncTestSuite:
     ]"""
 
   "toSnapshotStream JSON" in:
-    implicit val x = ControllerState.snapshotObjectJsonCodec
     val jsonArray = controllerState.toSnapshotStream.compile.toVector
+    given TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
     testJson(jsonArray, expectedSnapshotJsonArray)
 
   "ControllerStateRecoverer.addSnapshotObject" in:
-    ControllerState.snapshotObjectJsonCodec
     val recoverer = new ControllerStateRecoverer
     expectedSnapshotJsonArray.asArray.get
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
@@ -520,6 +520,7 @@ object ControllerStateTest:
       PlanSchemaId.Global -> PlanSchemaState(
         PlanSchema.Global,
         namedValues = Map.empty,
+        finishedPlanLifeTime = 0.s, // Unused in global PlanSchema
         Map(
           PlanKey.Global -> Plan(
             PlanId.Global,
