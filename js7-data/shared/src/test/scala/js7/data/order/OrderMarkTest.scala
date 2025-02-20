@@ -7,6 +7,7 @@ import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class OrderMarkTest extends OurTestSuite:
+
   "Cancelling" in:
     testJson[OrderMark](OrderMark.Cancelling(CancellationMode.FreshOnly), json"""
       {
@@ -47,12 +48,17 @@ final class OrderMarkTest extends OurTestSuite:
       }""")
 
   "Resuming" in:
-    testJson[OrderMark](OrderMark.Resuming(Some(Position(1)), asSucceeded = true), json"""
-      {
+    testJson[OrderMark](
+      OrderMark.Resuming(
+        Some(Position(1)),
+        asSucceeded = true,
+        restartKilledJob = true),
+      json"""{
         "TYPE": "Resuming",
         "position": [ 1 ],
         "historicOperations": [],
-        "asSucceeded": true
+        "asSucceeded": true,
+        "restartKilledJob": true
       }""")
 
     testJsonDecoder[OrderMark](OrderMark.Resuming(Some(Position(1))), json"""

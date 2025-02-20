@@ -271,8 +271,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       case OrderMark.Suspending(mode) =>
         trySuspendNow(order, mode)
 
-      case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
-        tryResume(order, position, historyOperations, asSucceeded)
+      case OrderMark.Resuming(position, historyOperations, asSucceeded, restartKilledJob) =>
+        tryResume(order, position, historyOperations, asSucceeded, restartKilledJob)
           .toList
 
       case OrderMark.Go(_) =>
@@ -291,8 +291,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
         case OrderMark.Suspending(mode) =>
           suspend(orderId, mode)
 
-        case OrderMark.Resuming(position, historicOutcomes, asSucceeded) =>
-          resume(orderId, position, historicOutcomes, asSucceeded)
+        case OrderMark.Resuming(position, historicOutcomes, asSucceeded, restartKilledJob) =>
+          resume(orderId, position, historicOutcomes, asSucceeded, Some(restartKilledJob))
 
         case OrderMark.Go(position/*dynamic*/) =>
           go(orderId, position)
@@ -391,7 +391,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     orderId: OrderId,
     position: Option[Position],
     historyOperations: Seq[OrderResumed.HistoryOperation],
-    asSucceeded: Boolean)
+    asSucceeded: Boolean,
+    restartKilledJob: Option[Boolean])
   : Checked[List[OrderResumed | OrderResumptionMarked]] =
     catchNonFatalFlatten:
       withOrder(orderId): order =>
@@ -414,11 +415,11 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
               case Some(_: OrderMark.Cancelling) =>
                 Left(CannotResumeOrderProblem)
 
-              case Some(OrderMark.Resuming(`position`, `historyOperations`, asSucceeded)) =>
+              case Some(OrderMark.Resuming(`position`, `historyOperations`, asSucceeded, restartKilledJob)) =>
                 Right:
-                  tryResume(order, position, historyOperations, asSucceeded).toList
+                  tryResume(order, position, historyOperations, asSucceeded, restartKilledJob).toList
 
-              case Some(OrderMark.Resuming(_, _, _)) =>
+              case Some(OrderMark.Resuming(_, _, _, _)) =>
                 Left(CannotResumeOrderProblem)
 
               case Some(OrderMark.Go(_)) =>
@@ -438,10 +439,13 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                 if !okay then
                   Left(CannotResumeOrderProblem)
                 else
+                  val restart = restartKilledJob.getOrElse:
+                    order.lastOutcome.isInstanceOf[OrderOutcome.Killed]
+                      && state.workflowJob(order.workflowPosition).exists(_.isRestartable)
                   Right:
-                    tryResume(order, position, historyOperations, asSucceeded)
+                    tryResume(order, position, historyOperations, asSucceeded, restart)
                       .getOrElse:
-                        OrderResumptionMarked(position, historyOperations, asSucceeded)
+                        OrderResumptionMarked(position, historyOperations, asSucceeded, restart)
                       :: Nil
 
   /** Retrieve the Order, check if calculated event is applicable. */
@@ -457,10 +461,11 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     order: Order[Order.State],
     position: Option[Position],
     historyOperations: Seq[OrderResumed.HistoryOperation],
-    asSucceeded: Boolean)
+    asSucceeded: Boolean,
+    restartKilledJob: Boolean)
   : Option[OrderResumed] =
     (weHave(order) && order.isResumableNow) ?
-      OrderResumed(position, historyOperations, asSucceeded)
+      OrderResumed(position, historyOperations, asSucceeded, restartKilledJob)
 
   def answerPrompt(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     catchNonFatalFlatten:

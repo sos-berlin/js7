@@ -1,7 +1,7 @@
 package js7.data.order
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.parameterListToString
@@ -29,10 +29,13 @@ object OrderMark:
     position: Option[Position] = None,
     // TODO rename as historyOperations like in OrderResumed
     historicOperations: Seq[OrderResumed.HistoryOperation] = Nil,
-    asSucceeded: Boolean = false)
+    asSucceeded: Boolean = false,
+    restartKilledJob: Boolean = false)
   extends OrderMark, Big:
     override def toString = "Resuming" +
-      parameterListToString(position.view, historicOperations, asSucceeded ? "asSucceeded")
+      parameterListToString(position.view, historicOperations,
+        asSucceeded ? "asSucceeded",
+        restartKilledJob ? "restartKilledJob")
 
   /** Order shall no longer wait but resume, if at the requested Position.
    * @param position is the dynamic Order Position (with arguments).
@@ -43,5 +46,5 @@ object OrderMark:
   implicit val jsonCodec: TypedJsonCodec[OrderMark] = TypedJsonCodec(
     Subtype(deriveCodec[Cancelling]),
     Subtype(deriveCodec[Suspending]),
-    Subtype(deriveConfiguredCodec[Resuming]),
+    Subtype(deriveCodecWithDefaults[Resuming]),
     Subtype(deriveCodec[Go]))

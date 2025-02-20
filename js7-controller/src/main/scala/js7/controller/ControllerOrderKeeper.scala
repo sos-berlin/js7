@@ -721,9 +721,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         executeOrderMarkCommands(Vector(orderId)):
           orderEventSource.go(_, position)
 
-      case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded) =>
+      case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded, restartJob) =>
         executeOrderMarkCommands(Vector(orderId)):
-          orderEventSource.resume(_, position, historicOps, asSucceeded)
+          orderEventSource.resume(_, position, historicOps, asSucceeded, restartJob)
 
       case cmd: ControllerCommand.TransferOrders =>
         executeTransferOrders(cmd)
@@ -737,9 +737,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case cmd: ControllerCommand.ControlWorkflow =>
         controlWorkflow(cmd)
 
-      case ControllerCommand.ResumeOrders(orderIds, asSucceeded) =>
+      case ControllerCommand.ResumeOrders(orderIds, asSucceeded, restartKilledJob) =>
         executeOrderMarkCommands(orderIds.toVector):
-          orderEventSource.resume(_, None, Nil, asSucceeded)
+          orderEventSource.resume(_, None, Nil, asSucceeded, restartKilledJob)
 
       case cmd: ControllerCommand.PostNotice =>
         NoticeEventSource(alarmClock).executePostNoticeCommand(cmd, _controllerState) match

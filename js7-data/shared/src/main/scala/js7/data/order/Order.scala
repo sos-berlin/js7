@@ -360,15 +360,15 @@ extends
         else
           inapplicable
 
-      case OrderResumptionMarked(position, historyOperations, asSucceeded) =>
+      case OrderResumptionMarked(position, historyOperations, asSucceeded, restartKilledJob) =>
         if !isMarkable then
           inapplicable
         else if isSuspended then
           Right(copy(
-            mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded)),
+            mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded, restartKilledJob)),
             isResumed = true))
         else if position.isDefined || historyOperations.nonEmpty then
-            // Inhibited because we cannot be sure whether order will pass a fork barrier
+          // Inhibited because we cannot be sure whether order will pass a fork barrier
           inapplicable
         else if !isSuspended && isSuspending then
           Right(copy(
@@ -379,11 +379,16 @@ extends
             mark = Some(OrderMark.Resuming()),
             isResumed = true))
 
-      case OrderResumed(maybePosition, historyOps, asSucceeded) =>
+      case OrderResumed(maybePosition, historyOps, asSucceeded, restartKilledJob) =>
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
+
+        var outcomes = historicOutcomes
+        if restartKilledJob && outcomes.lastOption.exists(_.outcome.isInstanceOf[OrderOutcome.Killed]) then
+          outcomes = outcomes.dropRight(1)
+
         val updatedHistoryOutcomes =
           if maybePosition.isEmpty && historyOps.isEmpty then
-            Right(historicOutcomes)
+            Right(outcomes)
           else
             // historyOutcomes positions should be unique, but is this sure?
             final class Entry(h: Option[HistoricOutcome]):
@@ -391,7 +396,7 @@ extends
               var current = h
               def result = inserted.view ++ current
             var positionFound = false
-            val array = historicOutcomes.view
+            val array = outcomes.view
               .map: h =>
                 for pos <- maybePosition do
                   if !positionFound && (h.position == pos || h.position.normalized == pos) then
@@ -400,7 +405,7 @@ extends
               .appended(Entry(None))
               .toArray
             val append = mutable.Buffer.empty[HistoricOutcome]
-            val pToi = historicOutcomes.view
+            val pToi = outcomes.view
               .zipWithIndex
               .map { (h, i) => h.position -> i }
               .toMap
@@ -429,6 +434,7 @@ extends
               case DeleteHistoricOutcome(pos) =>
                 for i <- get(pos) do
                   array(i).current = None
+
             checked.map: _ =>
               array.view
                 .flatMap(_.result)

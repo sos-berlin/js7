@@ -9,10 +9,11 @@ import java.time.LocalDate
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.touchFile
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.system.OperatingSystem.{isUnix, isWindows}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -180,7 +181,6 @@ final class SuspendResumeOrdersTest
           GoOrder(orderId, controllerState.idToOrder(orderId).position)
         eventWatch.awaitNext[OrderGoes](_.key == orderId)
         eventWatch.awaitNext[OrderSuspended](_.key == orderId)
-
 
         execCmd:
           ResumeOrders(Set(orderId))
@@ -410,7 +410,7 @@ final class SuspendResumeOrdersTest
           OrderDetachable,
           OrderDetached,
           OrderSuspended,
-          OrderResumed(asSucceeded = true),
+          OrderResumed(restartKilledJob = true, asSucceeded = true),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
@@ -422,53 +422,169 @@ final class SuspendResumeOrdersTest
           OrderFinished(),
           OrderDeleted))
 
-    "Suspend with kill, trapped with exit 0" in:
-      if !isUnix then
-        info("❗️Unix-only test")
-      else
-        val name = "TRAP-EXIT-0"
+    "Suspend with kill, trapped with exit 0" in unixOnly:
+      val eventId = eventWatch.resetLastWatchedEventId()
+      val name = "TRAP-EXIT-0"
+      val workflow = Workflow(
+        WorkflowPath(name),
+        Seq(
+          Execute(WorkflowJob(
+            agentPath,
+            ShellScriptExecutable:
+              """#!/usr/bin/env bash
+                |set -euo pipefail
+                |
+                |trap "exit 0" SIGTERM
+                |echo SLEEP
+                |for i in {0..999}; do
+                |  sleep 0.1
+                |done
+                |""".stripMargin)),
+          EmptyJob.execute(agentPath)))
+
+      withItem(workflow): workflow =>
+        val orderId = OrderId(name)
+        controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+
+        execCmd:
+          SuspendOrders(Seq(orderId), SuspensionMode.kill)
+        eventWatch.awaitNextKey[OrderSuspended](orderId)
+
+        execCmd:
+          ResumeOrder(orderId, restartKilledJob = Some(false))
+
+        val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+          .map(_.event)
+        assert(onlyRelevantEvents(events) == Seq(
+          OrderProcessingStarted(subagentId),
+          OrderStdoutWritten("SLEEP\n"),
+          OrderSuspensionMarked(SuspensionMode.kill),
+          OrderSuspensionMarkedOnAgent,
+          OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
+          OrderProcessingKilled,
+          OrderSuspended,
+          OrderResumed(),
+          OrderFailed(Position(0))))
+
+    "Respect isNotRestartable" - {
+      "Suspend with kill, then resume, isRestartable" in unixOnly:
+        val eventId = eventWatch.resetLastWatchedEventId()
+        val name = "KILL-RESUME-RESTARTABLE"
         val workflow = Workflow(
           WorkflowPath(name),
           Seq(
             Execute(WorkflowJob(
               agentPath,
-              ShellScriptExecutable(
+              ShellScriptExecutable:
                 """#!/usr/bin/env bash
                   |set -euo pipefail
                   |
-                  |trap "exit 0" SIGTERM
                   |echo SLEEP
-                  |for i in {0..99}; do
+                  |for i in {0..999}; do
                   |  sleep 0.1
                   |done
-                  |""".stripMargin))),
-            EmptyJob.execute(agentPath)))
+                  |""".stripMargin,
+              isNotRestartable = false)),
+            EmptyInstruction()))
 
         withItem(workflow): workflow =>
-          val eventId = eventWatch.lastAddedEventId
+          eventWatch.lastAddedEventId
           val orderId = OrderId(name)
-          controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-          eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+          controller.addOrderBlocking:
+            FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+          eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
 
           execCmd:
             SuspendOrders(Seq(orderId), SuspensionMode.kill)
-          eventWatch.await[OrderSuspended](_.key == orderId, after = eventId)
+          eventWatch.awaitNextKey[OrderSuspended](orderId)
 
           execCmd:
-            ResumeOrders(Seq(orderId))
+            // Without asSucceeded, the Order would fail because the job failed due to kill
+            ResumeOrder(orderId)
+          eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+
+          execCmd:
+            SuspendOrders(Seq(orderId), SuspensionMode.kill)
+          eventWatch.awaitNextKey[OrderSuspended](orderId)
+
+          execCmd:
+            ResumeOrder(orderId, restartKilledJob = Some(false))
+          eventWatch.awaitNextKey[OrderTerminated](orderId)
 
           val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
-            .collect { case KeyedEvent(`orderId`, event) => event }
+            .map(_.event)
           assert(onlyRelevantEvents(events) == Seq(
             OrderProcessingStarted(subagentId),
             OrderStdoutWritten("SLEEP\n"),
             OrderSuspensionMarked(SuspensionMode.kill),
             OrderSuspensionMarkedOnAgent,
-            OrderProcessed(OrderOutcome.Killed(OrderOutcome.succeededRC0)),
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
             OrderProcessingKilled,
             OrderSuspended,
+
+            OrderResumed(restartKilledJob = true),
+            OrderProcessingStarted(subagentId),
+            OrderStdoutWritten("SLEEP\n"),
+            OrderSuspensionMarked(SuspensionMode.kill),
+            OrderSuspensionMarkedOnAgent,
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
+            OrderProcessingKilled,
+            OrderSuspended,
+
             OrderResumed(),
             OrderFailed(Position(0))))
+
+      "Suspend with kill, then resume, isNotRestartable" in unixOnly:
+        val eventId = eventWatch.resetLastWatchedEventId()
+        val name = "KILL-RESUME-NOT-RESTARTABLE"
+        val workflow = Workflow(
+          WorkflowPath(name),
+          Seq(
+            Execute(WorkflowJob(
+              agentPath,
+              ShellScriptExecutable:
+                """#!/usr/bin/env bash
+                  |set -euo pipefail
+                  |
+                  |echo SLEEP
+                  |for i in {0..999}; do
+                  |  sleep 0.1
+                  |done
+                  |""".stripMargin,
+              isNotRestartable = true)),
+            EmptyInstruction()))
+
+        withItem(workflow): workflow =>
+          eventWatch.lastAddedEventId
+          val orderId = OrderId(name)
+          controller.addOrderBlocking:
+            FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+          eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
+
+          execCmd:
+            SuspendOrders(Seq(orderId), SuspensionMode.kill)
+          eventWatch.awaitNextKey[OrderSuspended](orderId)
+
+          execCmd:
+            // Without asSucceeded, the Order would fail because the job failed due to kill
+            ResumeOrder(orderId)
+          eventWatch.awaitNextKey[OrderTerminated](orderId)
+
+          val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+            .map(_.event)
+          assert(onlyRelevantEvents(events) == Seq(
+            OrderProcessingStarted(subagentId),
+            OrderStdoutWritten("SLEEP\n"),
+            OrderSuspensionMarked(SuspensionMode.kill),
+            OrderSuspensionMarkedOnAgent,
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
+            OrderProcessingKilled,
+            OrderSuspended,
+
+            OrderResumed(),
+            OrderFailed(Position(0))))
+    }
 
     "Suspend and resume orders between two jobs" in:
       deleteIfExists(triggerFile)
@@ -934,7 +1050,7 @@ final class SuspendResumeOrdersTest
           OrderSuspended,
           OrderCancelled,
           OrderDeleted))
-          
+
     "Suspend a processing Order that will fail" in :
       // The failed order will not be suspended, because it failed.
       val workflow = Workflow.of(WorkflowPath("FAIL"),

@@ -1020,9 +1020,8 @@ final class CancelOrdersTest
         SuspendOrders(Seq(orderId), SuspensionMode.kill)
       eventWatch.awaitNext[OrderSuspended](_.key == orderId)
 
-      controller.api.executeCommand:
-        ResumeOrder(orderId)
-      .await(99.s).orThrow
+      execCmd:
+        ResumeOrder(orderId, restartKilledJob = Some(false))
       eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
       val events = eventWatch.eventsByKey[OrderEvent](orderId)

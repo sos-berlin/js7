@@ -236,11 +236,15 @@ object ControllerCommand extends CommonCommand.Companion:
     orderId: OrderId,
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
-    asSucceeded: Boolean = false)
+    asSucceeded: Boolean = false,
+    restartKilledJob: Option[Boolean] = None)
   extends ControllerCommand, Big:
     type Response = Response.Accepted
 
-  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], asSucceeded: Boolean = false)
+  final case class ResumeOrders(
+    orderIds: immutable.Iterable[OrderId],
+    asSucceeded: Boolean = false,
+    restartKilledJob: Option[Boolean] = None)
   extends ControllerCommand, Big:
     type Response = Response.Accepted
 

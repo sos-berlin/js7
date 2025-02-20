@@ -659,7 +659,8 @@ final class OrderEventTest extends OurTestSuite:
       Some(Position(1)),
       Seq(
         OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.succeeded)),
-      asSucceeded = true),
+      asSucceeded = true,
+      restartKilledJob = true),
       json"""
         {
           "TYPE": "OrderResumptionMarked",
@@ -673,7 +674,8 @@ final class OrderEventTest extends OurTestSuite:
               }
             }
           ],
-          "asSucceeded": true
+          "asSucceeded": true,
+          "restartKilledJob": true
         }""")
 
     testJsonDecoder[OrderEvent](OrderResumptionMarked(),
@@ -690,7 +692,8 @@ final class OrderEventTest extends OurTestSuite:
         InsertHistoricOutcome(Position(2), Position(1) / BranchId.Then % 0, OrderOutcome.succeeded),
         DeleteHistoricOutcome(Position(3)),
         AppendHistoricOutcome(Position(4), OrderOutcome.succeeded)),
-      asSucceeded = true),
+      asSucceeded = true,
+      restartKilledJob = true),
       json"""{
         "TYPE": "OrderResumed",
         "position": [ 1 ],
@@ -714,7 +717,8 @@ final class OrderEventTest extends OurTestSuite:
             "outcome": { "TYPE": "Succeeded" }
           }
         ],
-        "asSucceeded": true
+        "asSucceeded": true,
+        "restartKilledJob": true
       }""")
 
     testJsonDecoder[OrderEvent](OrderResumed(), json"""

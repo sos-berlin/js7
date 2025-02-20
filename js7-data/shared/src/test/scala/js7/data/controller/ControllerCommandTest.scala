@@ -378,7 +378,8 @@ final class ControllerCommandTest extends OurTestSuite:
         Seq(
           OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(0))),
           OrderResumed.ReplaceHistoricOutcome(Position(1), OrderOutcome.Failed(NamedValues.rc(1)))),
-        asSucceeded = true),
+        asSucceeded = true,
+        restartKilledJob = Some(false)),
       json"""{
         "TYPE": "ResumeOrder",
         "orderId": "ORDER",
@@ -404,7 +405,8 @@ final class ControllerCommandTest extends OurTestSuite:
             }
           }
         ],
-        "asSucceeded": true
+        "asSucceeded": true,
+        "restartKilledJob": false
       }""")
 
     testJsonDecoder[ControllerCommand](
@@ -417,11 +419,13 @@ final class ControllerCommandTest extends OurTestSuite:
   "ResumeOrders" in:
     testJson[ControllerCommand](ResumeOrders(
       Seq(OrderId("A"), OrderId("B")),
-      asSucceeded = true),
+      asSucceeded = true,
+      restartKilledJob = Some(true)),
       json"""{
         "TYPE": "ResumeOrders",
         "orderIds": [ "A", "B" ],
-        "asSucceeded": true
+        "asSucceeded": true,
+        "restartKilledJob": true
       }""")
 
     testJsonDecoder[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B"))), json"""

@@ -679,17 +679,21 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderResumptionMarked(
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
-    asSucceeded: Boolean = false)
+    asSucceeded: Boolean = false,
+    restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big
 
 
   final case class OrderResumed(
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
-    asSucceeded: Boolean = false)
+    asSucceeded: Boolean = false,
+    restartKilledJob: Boolean = false)
   extends OrderActorEvent, Big:
     override def toString = "OrderResumed" +
-      parameterListToString(position.view, historyOperations, asSucceeded ? "asSucceeded")
+      parameterListToString(position.view, historyOperations,
+        asSucceeded ? "asSucceeded",
+        restartKilledJob ? "restartKilledJob")
 
   object OrderResumed:
     sealed trait HistoryOperation:
