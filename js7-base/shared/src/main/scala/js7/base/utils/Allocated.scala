@@ -37,6 +37,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
 
 
 object Allocated:
+
   def apply[F[_]: UnsafeMemoizable, A: Tag](allocatedThing: A, release: F[Unit]) =
     new Allocated(allocatedThing, release)
 
@@ -45,3 +46,6 @@ object Allocated:
 
   def unapply[F[_], A](allocated: Allocated[F, A]): Some[(A, F[Unit])] =
     Some(allocated.allocatedThing -> allocated.release)
+
+  def empty[F[_]: UnsafeMemoizable](using F: Applicative[F]): Allocated[F, Unit] =
+    new Allocated((), F.pure(()), "Allocated.empty")
