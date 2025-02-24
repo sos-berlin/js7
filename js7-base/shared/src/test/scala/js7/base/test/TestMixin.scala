@@ -8,7 +8,7 @@ trait TestMixin extends TestCatsEffect:
   this: Suite =>
 
   /** For use as AdHocLogger. */
-  protected final val Logger = js7.base.log.Logger
+  protected final inline def Logger = js7.base.log.Logger
 
   protected final given Monoid[Assertion] = assertionMonoid
 
