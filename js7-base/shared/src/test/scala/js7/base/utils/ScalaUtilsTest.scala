@@ -405,6 +405,13 @@ final class ScalaUtilsTest extends OurTestSuite:
 
       assert((List.empty.takeThrough(_ < 3): List[Int]) == List.empty)
       assert((List(1, 2, 3, 4, 5).takeThrough(_ < 3): List[Int]) == List(1, 2, 3))
+
+    "mkStringLimited" in:
+      assert(List[Int]().mkStringLimited(3) == "")
+      assert(List(1, 2, 3).mkStringLimited(3) == "1, 2, 3")
+      assert(List(1, 2, 3, 4).mkStringLimited(3) == "1, 2, 3, and 1 more")
+      assert(List(1, 2, 3, 4).mkStringLimited(3, " ") == "1 2 3 and 1 more")
+      assert(List(1, 2, 3, 4).mkStringLimited(3, "") == "123and 1 more")
   }
 
   "IterableOnce" - {

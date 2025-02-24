@@ -320,6 +320,19 @@ object ScalaUtils:
         new View.Single(b) ++ view
 
 
+    extension [A](iterable: Iterable[A])
+      /** Like mkString but limits the number of shown elements.
+        *
+        * With a dynamically calculated Iterable of unknown size,
+        * the first n elements may be calculated twice.
+        */
+      def mkStringLimited(n: Int, separator: String = ", "): String =
+        val size = iterable.size
+        if size <= n then
+          iterable.mkString(separator)
+        else
+          s"${iterable.take(n).mkString("", separator, separator)}and ${size - n} more"
+
     extension [CC[a] <: Iterable[a], A](iterable: CC[A])(using C: Factory[A, CC[A]])
       def takeUntil(predicate: A => Boolean): CC[A] =
         takeThrough(a => !predicate(a))
