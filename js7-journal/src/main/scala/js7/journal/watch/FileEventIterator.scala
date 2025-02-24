@@ -1,7 +1,9 @@
 package js7.journal.watch
 
 import java.nio.file.Path
-import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
+import js7.base.metering.CallMeter
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ByteUnits.toKBGB
@@ -48,22 +50,22 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
     * @return false iff `after` is unknown
     */
   final def skipToEventAfter(journalIndex: JournalIndex, after: EventId): Boolean =
-    eventId <= after &&
-      (eventId == after ||
+    eventId <= after && (
+      eventId == after ||
         // After timeout a client may try again. We synchronize these probably
         // idempotent calls (multiple FileEventIterators share the JournalIndex)
-        journalIndex.synchronizeBuilding {
-          // May take a long time !!!
-          val watch = new TimeWatch(after)
-          while eventId < after && hasNext do {
-            next()
-            val PositionAnd(position, eventId) = positionAndEventId
-            journalIndex.tryAddAfter(eventId, position)
-            watch.onSkipped()
-          }
-          watch.end()
-          eventId == after
-        })
+        meterSkip:
+          journalIndex.synchronizeBuilding:
+            // May take a long time !!!
+            val watch = TimeWatch(after)
+            while eventId < after && hasNext do
+              next()
+              val PositionAnd(position, eventId) = positionAndEventId
+              journalIndex.tryAddAfter(eventId, position)
+              watch.onSkipped()
+            watch.end()
+            eventId == after
+      )
 
   final def hasNext = nextEvent != null ||
     journalReader.position < committedLength() && {
@@ -98,23 +100,23 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
       skipped += 1
       val duration = runningSince.elapsed
       if !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s) then
-        logger.debug(s"⏳ $skipped events (${toKBGB(position - startPosition)}) skipped" +
-          s" since ${duration.pretty} while searching " +
-          s"${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)}" +
-          " in journal, ")
+        logger.debug:
+          s"⏳ $skipped events (${toKBGB(position - startPosition)
+          }) skipped since ${duration.pretty} ago: ${EventId.toDateTimeString(startEventId)
+          }..${EventId.toDateTimeString(after)} in journal file"
         debugIssued = true
 
     def end(): Unit =
       val skippedSize = position - startPosition
       val duration = runningSince.elapsed
-      if skipped > 0 then
-        logger.trace(s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} " +
-          s"for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
-      if skippedSize >= InfoSkippedSize || duration >= InfoDuration then
-        logger.info(s"⏳ $skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
-          s"in search of event '${EventId.toString(startEventId)}'")
+      val logLevel = if skipped == 0 then LogLevel.None
+        else if skippedSize >= InfoSkippedSize || duration >= InfoDuration then LogLevel.Info
+        else LogLevel.Trace
+      logger.log(logLevel, s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${
+        duration.pretty}: ${EventId.toString(startEventId)}..${EventId.toString(after)}")
 
 
 object FileEventIterator:
   private val InfoSkippedSize = 10*1000*1000
   private val InfoDuration = 3.s
+  private val meterSkip = CallMeter("FileEventIterator.skipToEventAfter")

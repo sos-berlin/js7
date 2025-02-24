@@ -2,7 +2,6 @@ package js7.common.system.startup
 
 import cats.effect.{ExitCode, IO, ResourceIO}
 import cats.syntax.apply.*
-import com.typesafe.config.Config
 import izumi.reflect.Tag
 import js7.base.catsutils.OurApp
 import js7.base.metering.CallMeter
@@ -39,13 +38,9 @@ trait ServiceApp extends OurApp:
         suppressTerminationLogging = suppressTerminationLogging,
         suppressLogShutdown = suppressLogShutdown)(
       cnf =>
-        meteringService(cnf.config) *>
+        CallMeter.loggingService(cnf.config) *>
           program(cnf),
       use)
-
-  private def meteringService(config: Config): ResourceIO[Unit] =
-    CallMeter.loggingService(CallMeter.Conf.fromConfig(config))
-      .map(_ => ())
 
   protected final def programAsService(program: IO[ExitCode | Unit])
   : ResourceIO[SimpleMainService] =

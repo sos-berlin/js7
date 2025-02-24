@@ -9,6 +9,7 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.metering.CallMeter
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
@@ -98,11 +99,13 @@ extends AutoCloseable:
   def flush(sync: Boolean): Unit =
     if !jsonWriter.isFlushed then
       statistics.beforeFlush()
-      jsonWriter.flush()
+      meterFlush:
+        jsonWriter.flush()
       statistics.afterFlush()
     if sync && !isSynced then
       statistics.beforeSync()
-      jsonWriter.sync()
+      meterSync:
+        jsonWriter.sync()
       statistics.afterSync()
 
   final def isFlushed = jsonWriter.isFlushed
@@ -117,3 +120,6 @@ extends AutoCloseable:
 object JournalWriter:
   private val JsonBatchSize = 256
   private val JsonParallelizationThreshold = 3 * JsonBatchSize
+
+  private val meterFlush = CallMeter("JournalWriter.flush")
+  private val meterSync = CallMeter("JournalWriter.sync")

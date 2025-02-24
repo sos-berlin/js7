@@ -5,7 +5,6 @@ import com.typesafe.config.Config
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.As
 import js7.base.convert.As.StringAsPercentage
-import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.metering.CallMeter.*
@@ -14,6 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.MultipleLinesBracket.Square
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.quoted.{Expr, Quotes, Type}
 import sourcecode.Enclosing
@@ -159,7 +159,7 @@ object CallMeter:
         .foreachWithBracket(Square): (callMeter, bracket) =>
           logger.trace(s"$bracket ${callMeter.asStringAndReset}")
 
-  def logAndResetAbove(minimumQuote: Double): Unit =
+  private def logAndResetAbove(minimumQuote: Double): Unit =
     if logger.isTraceEnabled then
       val callMeters = _callMeters.get().view
         .filter(_.quote >= minimumQuote)
@@ -168,8 +168,12 @@ object CallMeter:
       for callMeter <- callMeters do
         logger.trace(s"${callMeter.asStringAndReset}")
 
+  def loggingService(config: Config): ResourceIO[LoggingService] =
+    loggingService(Conf.fromConfig(config))
+
   def loggingService(conf: Conf): ResourceIO[LoggingService] =
     Service.resource(IO(LoggingService(conf)))
+
 
   final class LoggingService private[CallMeter](conf: Conf)
   extends Service.StoppableByRequest:
@@ -183,7 +187,7 @@ object CallMeter:
             else
               // TODO Start of period is random. Count short and period separately!
               logAndResetAbove(conf.shortMinimumQuote)
-        .interruptWhenF(untilStopRequested)
+        .interruptWhen(untilStopRequested.attempt)
         .compile.drain
         .guarantee:
           IO(logAndResetAll())
@@ -195,7 +199,14 @@ object CallMeter:
     shortPeriod: FiniteDuration,
     shortMinimumQuote: Double,
     longPeriod: FiniteDuration)
+
   object Conf:
+    @TestOnly
+    val forTesting: Conf = Conf(
+      shortPeriod = 1.minute,
+      shortMinimumQuote = 0.1,
+      longPeriod = 1.minute)
+
     def fromConfig(config: Config): Conf =
       Conf(
         shortPeriod =
