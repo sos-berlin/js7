@@ -58,18 +58,18 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   def of(
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull scheduledFor: java.util.Optional[Instant],
-    @Nonnull arguments: java.util.Map[String, Value])
+    @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull scheduledFor: java.util.Optional[Instant])
   : JFreshOrder =
-    of(id, workflowPath, scheduledFor, arguments, deleteWhenTerminated = false)
+    of(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated = false)
 
   @Nonnull
   @throws[RuntimeException]("on invalid syntax")
   def of(
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean)
   : JFreshOrder =
     JFreshOrder(FreshOrder(
@@ -84,8 +84,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   def of(
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull startPosition: Optional[JPositionOrLabel],
     @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
@@ -104,8 +104,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   def of(
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
     @Nonnull startPosition: Optional[JPositionOrLabel],
@@ -126,8 +126,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   def of(
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
     @Nonnull innerBlock: JBranchPath,

@@ -38,8 +38,8 @@ class JControllerApiOrderTester
         boolean added = await(api.addOrder(JFreshOrder.of(
             orderId,
             workflowPath,
-            Optional.of(scheduledFor),
-            new java.util.HashMap<>())));
+            Map.of(),
+            Optional.of(scheduledFor))));
         assertThat(added, equalTo(true));
 
 

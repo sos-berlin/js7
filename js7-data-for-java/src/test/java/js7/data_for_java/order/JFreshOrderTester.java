@@ -37,7 +37,7 @@ final class JFreshOrderTester {
             JLabel.of("LABEL")));
         JFreshOrder order = JFreshOrder.of(
             OrderId.of("ORDER"), WorkflowPath.of("WORKFLOW"),
-            Optional.empty(), emptyMap(), false,
+            emptyMap(), Optional.empty(), false,
             startPosition, stopPositions);
         assertThat(order.startPosition(), equalTo(startPosition));
         assertThat(order.stopPositions(), equalTo(stopPositions));

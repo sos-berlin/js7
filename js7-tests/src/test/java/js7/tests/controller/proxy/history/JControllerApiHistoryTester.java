@@ -72,8 +72,9 @@ final class JControllerApiHistoryTester
                 .toFuture();
             JControllerState state;
             try {
-                JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
-                    singletonMap("KEY", StringValue.of("VALUE")));
+                JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath,
+                    singletonMap("KEY", StringValue.of("VALUE")),
+                    Optional.empty());
                 await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
                 assertThat(
@@ -132,8 +133,9 @@ final class JControllerApiHistoryTester
                     .last()
                     .toFuture();
 
-            JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath, Optional.empty(),
-                singletonMap("KEY", StringValue.of("VALUE")));
+            JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath,
+                singletonMap("KEY", StringValue.of("VALUE")),
+                Optional.empty());
             await(api.addOrder(freshOrder));
             Event lastEvent = whenFirstFluxTerminated.get(99, SECONDS).stampedEvent().value().event();
             assertThat(
