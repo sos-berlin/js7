@@ -41,7 +41,7 @@ object Problems:
 
 
   case object ShuttingDownProblem extends Problem.ArgumentlessCoded:
-    override val httpStatusCode = 503  // Service Unavailable
+    override val httpStatusCode = 503 // Service Unavailable
 
 
   case object WebServiceStillNotAvailableProblem extends Problem.ArgumentlessCoded:
