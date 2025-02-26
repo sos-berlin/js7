@@ -45,7 +45,7 @@ import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderN
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
@@ -395,6 +395,15 @@ extends
         copy(keyToUnsignedItemState_ =
           keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
 
+    case KeyedEvent(planId: PlanId, event: PlanEvent) =>
+      import planId.{planKey, planSchemaId}
+      for
+        planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
+        planSchemaState <- planSchemaState.applyPlanEvent(planKey, event)
+      yield
+        copy(keyToUnsignedItemState_ =
+          keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
+
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
 
@@ -423,7 +432,7 @@ extends
           planSchemaState <- planSchemaState.addOrder(planId.planKey, orderId)
           self <- self.update(
             addItemStates =
-              globalPlanSchemaState.removeOrderId(PlanKey.Global, orderId)
+              globalPlanSchemaState.removeOrder(PlanKey.Global, orderId)
                 :: planSchemaState
                 :: Nil)
         yield
@@ -604,10 +613,10 @@ extends
   def orderToStillExpectedNotices(orderId: OrderId): Seq[NoticeId] =
     idToOrder.get(orderId).toVector.flatMap: order =>
       orderToExpectedNotices(order).filter: noticeId =>
-        import noticeId.{boardPath, planId, planKey, planSchemaId}
+        import noticeId.{boardPath, planKey, planSchemaId}
         keyTo(PlanSchemaState).get(planSchemaId).exists: planSchemaState =>
-          val plan = planSchemaState.toPlan.getOrElse(planKey, Plan.initial(planId))
-          !plan.toPlannedBoard.get(boardPath).fold(false)(_.hasNotice(noticeId.noticeKey))
+          planSchemaState.toPlan.get(planKey).exists: plan =>
+            !plan.toPlannedBoard.get(boardPath).fold(false)(_.hasNotice(noticeId.noticeKey))
 
   private def orderToExpectedNotices(order: Order[Order.State]): Seq[NoticeId] =
     order.ifState[Order.ExpectingNotices]
@@ -875,7 +884,7 @@ extends
 
   def finish: Checked[ControllerState] =
     PlanSchemaState
-      .recoverPlanSchemaStatesFromOrders(orders, keyTo(PlanSchemaState))
+      .recoverPlanSchemaStatesFromOrders(orders, keyTo(PlanSchemaState).checked)
       .map: planSchemaStates =>
         copy(
           workflowToOrders = calculateWorkflowToOrders,
@@ -970,6 +979,7 @@ extends
       KeyedSubtype[OrderEvent],
       KeyedSubtype[NoticeEvent],
       KeyedSubtype[PlanSchemaEvent],
+      KeyedSubtype[PlanEvent],
       KeyedSubtype.singleEvent[ServerMeteringEvent])
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")

@@ -4,8 +4,12 @@ import js7.base.test.OurTestSuite
 import js7.data.controller.ControllerCommand.ShutDown
 
 final class JControllerCommandTest extends OurTestSuite:
+
   "fromJson" in:
     val command = JControllerCommand
       .fromJson("""{ "TYPE": "ShutDown" }""")
       .getOrElseThrow(_.throwable)
     assert(command == JControllerCommand(ShutDown()))
+
+  "Java" in:
+    JControllerCommandTester.test()

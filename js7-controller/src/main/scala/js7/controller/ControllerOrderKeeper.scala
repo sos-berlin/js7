@@ -52,7 +52,7 @@ import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, NoticeEventSource, NoticeId, PlannedNoticeKey}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
-import js7.data.controller.ControllerCommand.{ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
+import js7.data.controller.ControllerCommand.{ChangePlan, ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerEventColl, ControllerState, ControllerStatePlanFunctions, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -71,8 +71,9 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemA
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.plan.PlanEvent.PlanStatusEvent
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{PlanId, PlanSchemaId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
@@ -731,6 +732,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       case cmd: ControllerCommand.ChangePlanSchema =>
         changePlanSchema(cmd)
 
+      case cmd: ControllerCommand.ChangePlan =>
+        changePlan(cmd)
+
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
 
@@ -750,9 +754,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
       case ControllerCommand.DeleteNotice(noticeId) =>
         (for
-          plan <- _controllerState.toPlan.checked(noticeId.planId);
+          plan <- _controllerState.plan(noticeId.planId);
           plannedBoard <- plan.toPlannedBoard.checked(noticeId.boardPath)
-          notice <- plannedBoard.checkedNotice(noticeId.noticeKey)
+          notice <- plannedBoard.notice(noticeId.noticeKey)
           keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey)
         yield keyedEvent)
         match
@@ -814,7 +818,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           .flatten
           .traverse(_
             .filterNot(_.deleteWhenTerminated)
-            .traverse(orderEventSource.orderDeletedEvent))
+            .traverse(orderEventSource.orderDeletionEvent))
           .flatten
           .map(_.flatten)
           .traverse(keyedEvents =>
@@ -1018,23 +1022,27 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     if planSchemaId.isGlobal then
       Future.successful(Left(Problem("Global PlanSchema cannot be changed")))
     else
-      ControllerEventColl.keyedEvents[PlanSchemaChanged | NoticeDeleted](_controllerState): coll =>
-        for
-          coll <- coll.add:
-            planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues)
-          planSchemaState <-
-            coll.aggregate.keyTo(PlanSchemaState).checked(planSchemaId)
-          coll <- coll.add:
-            planSchemaState.planIds.view.flatMap: planKey =>
-              coll.aggregate.deadPlanNoticeDeleted(planSchemaId / planKey)
-        yield
-          coll
+      ControllerEventColl.keyedEvents(_controllerState):
+        _.add(planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues))
       match
         case Left(problem) => Future.successful(Left(problem))
         case Right(keyedEvents) =>
           persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
             handleEvents(stamped, updated)
             Right(ControllerCommand.Response.Accepted)
+
+  private def changePlan(cmd: ChangePlan): Future[Checked[ControllerCommand.Response]] =
+    ControllerEventColl.keyedEvents[NoticeDeleted | PlanStatusEvent](_controllerState): coll =>
+      for
+        plan <- coll.aggregate.plan(cmd.planId)
+        coll <- coll.addChecked(plan.planStatusEvent(cmd.status))
+      yield coll
+    match
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(keyedEvents) =>
+        persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
+          handleEvents(stamped, updated)
+          Right(ControllerCommand.Response.Accepted)
 
   private def controlWorkflowPath(cmd: ControlWorkflowPath)
   : Future[Checked[ControllerCommand.Response]] =

@@ -6,7 +6,8 @@ import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.fs2utils.StreamExtensions.:+
-import js7.base.problem.Checked.RichCheckedIterable
+import js7.base.log.Logger
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -14,6 +15,7 @@ import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
+import js7.data.plan.Plan.Status.{Closed, Deleted, Finished, Open}
 import js7.data.plan.PlanSchemaState.*
 import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
@@ -67,82 +69,47 @@ extends UnsignedSimpleItemState:
       toPlan.values.toVector.sorted.mkString("{", ", ", "}")
     })"
 
+  def updateItem(item: PlanSchema): Checked[PlanSchemaState] =
+    if isGlobal then
+      Left(Problem("The Global PlanSchema cannot be changed"))
+    else
+      copy(item = item).removeRemovablePlans
+
   def recover(snapshot: Snapshot): PlanSchemaState =
     copy(
       finishedPlanLifeTime = snapshot.finishedPlanLifeTime,
       namedValues = snapshot.namedValues)
 
-  def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
-    copy(namedValues = namedValues).recalculateIsClosedValues
-
-  private def recalculateIsClosedValues: Checked[PlanSchemaState] =
-    toPlan.values.map: plan =>
-      calculatePlanIsClosed(plan.id.planKey).map: isClosed =>
-        plan.copy(isClosed = isClosed)
-    .combineProblems
-    .map: updatedPlans =>
-      copy(
-        toPlan = toPlan ++ updatedPlans.toKeyedMap(_.id.planKey))
-
-  /** Returns Right(()) iff this PlanSchema is unused. */
-  def checkIsDeletable: Checked[Unit] =
-    val usedPlans = toPlan.values.filter(_.hasOrders)
-    usedPlans.isEmpty !!
-      Problem:
-        s"$id cannot be deleted because it is in use by ${
-          usedPlans.toVector.sorted.map: plan =>
-            if plan.orderIds.size == 1 then
-              s"${plan.id.planKey} with ${plan.orderIds.head}"
-            else
-              s"${plan.id.planKey} with ${plan.orderIds.size} orders"
-          .mkString(", ")
-        }"
-
-  def checkIsOpen(planKey: PlanKey): Checked[Unit] =
+  def applyPlanEvent(planKey: PlanKey, event: PlanEvent): Checked[PlanSchemaState] =
     for
-      isClosed <- isClosed(planKey)
-      _ <- !isClosed !! PlanIsClosedProblem(planSchema.id / planKey)
+      plan <- plan(planKey)
+      plan <- plan.applyEvent(event)
     yield
-      ()
+      updatePlans(plan :: Nil)
 
-  private def isClosed(planKey: PlanKey): Checked[Boolean] =
-    toPlan.get(planKey) match
-      case Some(plan) => Right(plan.isClosed)
-      case None => calculatePlanIsClosed(planKey)
-
-  private def calculatePlanIsClosed(planKey: PlanKey): Checked[Boolean] =
-    planSchema.isClosed(planKey, namedValuesScope)
+  def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
+    copy(namedValues = namedValues).removeRemovablePlans
 
   def orderIds: View[OrderId] =
     toPlan.values.view.flatMap(_.orderIds)
 
-  def updateItem(item: PlanSchema): Checked[PlanSchemaState] =
-    if isGlobal then
-      Left(Problem("The Global PlanSchema cannot be changed"))
-    else
-      Right(copy(item = item))
-
   def addOrder(planKey: PlanKey, orderId: OrderId): Checked[PlanSchemaState] =
-    addOrderIds(Map1(planKey, Set(orderId)))
+    addOrders(Map1(planKey, Set(orderId)))
 
-  def removeOrderId(planKey: PlanKey, orderId: OrderId): PlanSchemaState =
-    removeOrderIds(Map1(planKey, Set(orderId)))
-
-  private def addOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanSchemaState] =
+  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanSchemaState] =
     planToOrders.toVector.traverse: (planKey, orderIds) =>
-      plan(planKey).map:
+      plan(planKey).flatMap:
         _.addOrders(orderIds)
-    .map: plans =>
-      copy(toPlan = toPlan ++ plans.toKeyedMap(_.id.planKey))
+    .map(updatePlans)
 
-  private def removeOrderIds(planToOrders: Map[PlanKey, Set[OrderId]]): PlanSchemaState =
-    val plans = planToOrders.flatMap: (planKey, orderIds) =>
-      toPlan.get(planKey).map: plan =>
-        plan.removeOrders(orderIds)
-    val (emptyPlans, nonEmptyPlans) = plans.partition(_.isEmpty)
-    copy(toPlan = toPlan
-      -- emptyPlans.map(_.id.planKey)
-      ++ nonEmptyPlans.map(o => o.id.planKey -> o))
+  def removeOrder(planKey: PlanKey, orderId: OrderId): PlanSchemaState =
+    removeOrders(Map1(planKey, Set(orderId)))
+
+  private def removeOrders(planToOrders: Map[PlanKey, Set[OrderId]]): PlanSchemaState =
+    updatePlans:
+      planToOrders.flatMap: (planKey, orderIds) =>
+        toPlan.get(planKey).map: plan =>
+          plan.removeOrders(orderIds)
 
   def updatePlannedBoard(planKey: PlanKey, boardPath: BoardPath)
     (updateItemStates: PlannedBoard => Checked[PlannedBoard])
@@ -155,24 +122,87 @@ extends UnsignedSimpleItemState:
           plan.toPlannedBoard.updatedWith(boardPath): _ =>
             !plannedBoard.isEmpty ? plannedBoard)
     yield
-      copy(
-        toPlan = toPlan.updatedWith(planKey): _ =>
-          !updatedPlan.isEmpty ? updatedPlan)
+      updatePlans(updatedPlan :: Nil)
 
-  /** Creates an empty Plan if it does not exist.
+  private def isRemovableIgnoringProblem(plan: Plan): Boolean =
+    isRemovable(plan).onProblemHandle: problem =>
+      logger.error(s"${plan.id} planIsClosedFunction failed: $problem")
+      false
+
+  private def isRemovable(plan: Plan): Checked[Boolean] =
+    import plan.id.planKey
+    plan.status match
+      case Open | Deleted =>
+        // Check whether we may forget the Plan.
+        // evalPlanIsClosed returns the default Open/Deleted Status for forgotten Plans.
+        if !plan.isRemovableCandidate then
+          Right(false)
+        else
+          evalPlanIsClosed(planKey).map(_ == (plan.status == Deleted))
+      case Closed | Finished => Right(false)
+
+  /** Returns Right(()) iff this PlanSchema is unused. */
+  def checkIsDeletable: Checked[Unit] =
+    val usedPlans = toPlan.values.filter(_.hasOrders)
+    usedPlans.isEmpty !! Problem:
+      s"$id cannot be deleted because it is in use by ${
+        usedPlans.toVector.sorted.map: plan =>
+          if plan.orderIds.size == 1 then
+            s"${plan.id.planKey} with ${plan.orderIds.head}"
+          else
+            s"${plan.id.planKey} with ${plan.orderIds.size} orders"
+        .mkString(", ")
+      }"
+
+  def checkIsOpen(planKey: PlanKey): Checked[Unit] =
+    for
+      isClosed <- isClosed(planKey)
+      _ <- !isClosed !! PlanIsClosedProblem(planSchema.id / planKey)
+    yield
+      ()
+
+  private def isClosed(planKey: PlanKey): Checked[Boolean] =
+    plan(planKey).map(_.isClosed)
+
+  /** Creates an empty Plan with status computed by planIsClosedFunction, if Plan does not exist.
     *
     * @return Left(problem) if `PlanSchema.planIsClosedFunction` fails. */
   def plan(planKey: PlanKey): Checked[Plan] =
     toPlan.get(planKey).map(Right(_)).getOrElse:
-      calculatePlanIsClosed(planKey).flatMap: isClosed =>
-        Plan.checked(id / planKey, isClosed = isClosed)
+      evalPlanIsClosed(planKey).flatMap: isClosed =>
+        Plan.checked(id / planKey, if isClosed then Deleted else Open)
+
+  private def evalPlanIsClosed(planKey: PlanKey): Checked[Boolean] =
+    planSchema.evalPlanIsClosed(planKey, namedValuesScope)
 
   def removeBoard(boardPath: BoardPath): PlanSchemaState =
-    copy(toPlan =
-      toPlan.values.flatMap: plan =>
+    updatePlans:
+      toPlan.values.map: plan =>
         plan.removeBoard(boardPath)
-      .map(o => o.id.planKey -> o)
-      .toMap)
+
+  private def removeRemovablePlans: Checked[PlanSchemaState] =
+    toPlan.values.toVector.traverse: plan =>
+      isRemovable(plan).map: isRemovable =>
+        if isRemovable then logRemovedPlan(plan)
+        !isRemovable ? plan
+    .map(_.flatten)
+    .map: plans =>
+      copy(toPlan = plans.toKeyedMap(_.id.planKey))
+
+  private def updatePlans(plans: Iterable[Plan]): PlanSchemaState =
+    val (removablePlans, updatedPlans) = plans.partition(isRemovableIgnoringProblem)
+    removablePlans.foreach(logRemovedPlan)
+    logger.whenTraceEnabled(updatedPlans.foreach(logUpdatedPlan))
+    copy(toPlan = toPlan
+      -- removablePlans.map(_.planKey)
+      ++ updatedPlans.map(o => o.id.planKey -> o))
+
+  private def logUpdatedPlan(plan: Plan): Unit =
+    if !toPlan.contains(plan.planKey) then
+      logger.trace(s"Add $plan")
+
+  private def logRemovedPlan(plan: Plan): Unit =
+    logger.trace(s"Remove $plan")
 
   def planIds: Iterable[PlanKey] =
     toPlan.keys
@@ -186,62 +216,66 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
   type Key = PlanSchemaId
   type Item = PlanSchema
 
+  private val logger = Logger[this.type ]
+
   def initialGlobal: PlanSchemaState =
     PlanSchema.Global.toInitialItemState
 
   def recoverPlanSchemaStatesFromOrders(
     orders: Iterable[Order[Order.State]],
-    toPlanSchemaState: PlanSchemaId => PlanSchemaState)
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[PlanSchemaState]] =
     for
       planSchemaStates1 <- recoverPlannedOrdersFromOrders(orders, toPlanSchemaState)
-      planSchemaStates2 <- recoverExpectedNoticesFromOrders(orders,
-        planSchemaStates1.toKeyedMap(_.id) orElse (o => toPlanSchemaState(o)))
+      toPlanSchemaState1 = planSchemaStates1.toKeyedMap(_.id)
+      planSchemaStates2 <- recoverExpectedNoticesFromOrders(
+        orders,
+        planSchemaId => toPlanSchemaState1.get(planSchemaId)
+          .fold(toPlanSchemaState(planSchemaId))(Right(_)))
     yield
       (planSchemaStates2 ++ planSchemaStates1).distinctBy(_.id)
 
   private def recoverPlannedOrdersFromOrders(
     orders: Iterable[Order[Order.State]],
-    toPlanSchemaState: PlanSchemaId => PlanSchemaState)
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[PlanSchemaState]] =
     orders.toVector
       .groupBy(_.planId.planSchemaId)
       .toVector
       .traverse: (planSchemaId, orders) =>
-        val planSchemaState = toPlanSchemaState(planSchemaId)
-        orders.groupBy(_.planId.planKey).toVector.traverse: (planKey, orders) =>
-          planSchemaState.plan(planKey).map: plan =>
-            plan.copy(orderIds = plan.orderIds ++ orders.map(_.id))
-        .map: plans =>
-          planSchemaState.copy(
-            toPlan = planSchemaState.toPlan ++ plans.toKeyedMap(_.id.planKey))
+        toPlanSchemaState(planSchemaId).flatMap: planSchemaState =>
+          orders.groupBy(_.planId.planKey).toVector.traverse: (planKey, orders) =>
+            planSchemaState.plan(planKey).map: plan =>
+              plan.copy(orderIds = plan.orderIds ++ orders.map(_.id))
+          .map: plans =>
+            planSchemaState.copy(
+              toPlan = planSchemaState.toPlan ++ plans.toKeyedMap(_.id.planKey))
 
   private def recoverExpectedNoticesFromOrders(
     orders: Iterable[Order[Order.State]],
-    toPlanSchemaState: PlanSchemaId => PlanSchemaState)
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
   : Checked[Seq[PlanSchemaState]] =
     orders.view
       .flatMap(_.ifState[Order.ExpectingNotices])
       .flatMap(o => o.state.noticeIds.map(_ -> o.id))
       .toVector.groupBy(_._1.planSchemaId)
       .toVector.traverse: (planSchemaId, noticeToOrder) =>
-        val planSchemaState = toPlanSchemaState(planSchemaId)
-        noticeToOrder.groupBy(_._1.planKey)
-          .toVector.traverse: (planKey, noticeToOrder) =>
-            planSchemaState.plan(planKey).map: plan =>
-              val plannedBoards =
-              noticeToOrder.groupBy(_._1.boardPath)
-                .toVector.map: (boardPath, noticeToOrder) =>
-                    noticeToOrder.view
-                      .scanLeft(plan.plannedBoard(boardPath)):
+        toPlanSchemaState(planSchemaId).flatMap: planSchemaState =>
+          noticeToOrder.groupBy(_._1.planKey).toVector
+            .traverse: (planKey, noticeToOrder) =>
+              planSchemaState.plan(planKey).map: plan =>
+                val plannedBoards =
+                  noticeToOrder.groupBy(_._1.boardPath).toVector
+                    .map: (boardPath, noticeToOrder) =>
+                      noticeToOrder.view.scanLeft(plan.plannedBoard(boardPath)):
                         case (plannedBoard, (noticeId, orderId)) =>
                           plannedBoard.addExpectation(noticeId.noticeKey, orderId)
                       .last
-              plan.copy(
-                toPlannedBoard = plan.toPlannedBoard ++ plannedBoards.map(o => o.boardPath -> o))
-          .map: plans =>
-            planSchemaState.copy(toPlan = planSchemaState.toPlan ++
-              plans.map(plan => plan.planKey -> plan))
+                plan.copy(toPlannedBoard = plan.toPlannedBoard ++
+                  plannedBoards.map(o => o.boardPath -> o))
+            .map: plans =>
+              planSchemaState.copy(toPlan = planSchemaState.toPlan ++
+                plans.map(plan => plan.planKey -> plan))
 
   def addOrderIds(
     orders: Iterable[Order[Order.State]],
@@ -250,7 +284,7 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
     updatedSchemaStates(orders, toPlanSchemaState)
       .flatMap:
         _.traverse: (planSchemaState, planToOrders) =>
-          planSchemaState.addOrderIds(planToOrders)
+          planSchemaState.addOrders(planToOrders)
 
   def removeOrderIds(
     orders: Iterable[Order[Order.State]],
@@ -258,7 +292,7 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
   : Checked[Seq[PlanSchemaState]] =
     updatedSchemaStates(orders, toPlanSchemaState)
       .map(_.map: (planSchemaState, planToOrders) =>
-        planSchemaState.removeOrderIds(planToOrders))
+        planSchemaState.removeOrders(planToOrders))
 
   private def updatedSchemaStates(
     orders: Iterable[Order[Order.State]],

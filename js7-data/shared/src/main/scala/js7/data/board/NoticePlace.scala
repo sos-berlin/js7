@@ -33,6 +33,15 @@ extends Big:
   def checked: Checked[this.type] =
     Right(this)
 
+  //def checkNoticeIsDeletable(ownNoticeId: NoticeId): Checked[Unit] =
+  //  if expectingOrderIds.nonEmpty then
+  //    Left(Problem(s"$ownNoticeId is not deletable because it is being expected by ${
+  //      expectingOrderIds.mkStringLimited(3)}"))
+  //  else if isInConsumption || consumptionCount != 0 then
+  //    Left(Problem(s"$ownNoticeId is not deletable because it is being consumed"))
+  //  else
+  //    Checked.unit
+
   def isEmpty: Boolean =
     notice.isEmpty &&
       expectingOrderIds.isEmpty &&

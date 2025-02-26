@@ -43,8 +43,6 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem
 import js7.data.agent.AgentRef
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
-import js7.data.board.NoticeEvent
-import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
@@ -58,6 +56,7 @@ import js7.data.order.Order.InapplicableOrderEventProblem
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.plan.PlanFinishedEvent
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
@@ -820,12 +819,13 @@ extends MainJournalingActor[AgentState, Event], Stash:
           logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
 
-        val keyedEvents: Seq[KeyedEvent[OrderActorEvent | NoticeDeleted]] =
+        val keyedEvents: Seq[KeyedEvent[OrderActorEvent | PlanFinishedEvent]] =
           oes.nextEvents(order.id)
-        val (orderKeyedEvents, noticeDeletedEvents) =
-          keyedEvents.partitionMap:
-            case o @ KeyedEvent(_, _: OrderActorEvent) => Left(o.asInstanceOf[KeyedEvent[OrderActorEvent]])
-            case o @ KeyedEvent(_, _: NoticeDeleted) => Right(o.asInstanceOf[KeyedEvent[NoticeDeleted]])
+        val (orderKeyedEvents, noticeDeletedEvents) = keyedEvents.partitionMap:
+          case o @ KeyedEvent(_, _: OrderActorEvent) =>
+            Left(o.asInstanceOf[KeyedEvent[OrderActorEvent]])
+          case o @ KeyedEvent(_, _: PlanFinishedEvent) =>
+            Right(o.asInstanceOf[KeyedEvent[PlanFinishedEvent]])
 
         val future = orderKeyedEvents
           .groupMap(_.key)(_.event)

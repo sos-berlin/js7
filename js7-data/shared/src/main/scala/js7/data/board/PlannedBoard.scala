@@ -121,13 +121,16 @@ final case class PlannedBoard(
     toNoticePlace.getOrElse(noticeKey, NoticePlace.empty)
 
   def deleteNoticeEvent(noticeKey: NoticeKey): Checked[KeyedEvent[NoticeDeleted]] =
-    for _ <- checkDelete(noticeKey) yield
+    checkNoticeIsDeletable(noticeKey).rightAs:
       boardPath <-: NoticeDeleted(id.planId / noticeKey)
 
   def removeNotice(noticeKey: NoticeKey): Checked[PlannedBoard] =
-    for _ <- checkDelete(noticeKey) yield
+    checkNoticeIsDeletable(noticeKey).rightAs:
       toNoticePlace.get(noticeKey).fold(this): noticePlace =>
         updateNoticePlace(noticeKey, noticePlace.removeNotice)
+
+  private def checkNoticeIsDeletable(noticeKey: NoticeKey): Checked[Unit] =
+    toNoticePlace.checked(noticeKey).map(_ => ())
 
   /** For NoticeMoved event, delete the NoticeKey. */
   def moveFromNoticePlace(noticeKey: NoticeKey): Checked[PlannedBoard] =
@@ -175,35 +178,8 @@ final case class PlannedBoard(
       else
         toNoticePlace.updated(noticeKey, noticePlace))
 
-  private def checkDelete(noticeKey: NoticeKey): Checked[Unit] =
-    for _ <- checkedNotice(noticeKey) yield ()
-
   def maybeNotice(noticeKey: NoticeKey): Option[Notice] =
     toNoticePlace.get(noticeKey).flatMap(_.notice)
-
-  def checkedNotice(noticeKey: NoticeKey): Checked[Notice] =
-    for
-      noticePlace <- toNoticePlace.checked(noticeKey)
-      notice <- noticePlace.notice match
-        case None => Left(Problem:
-          s"$noticeKey does not denote a Notice (but a Notice expectation)")
-        case Some(notice) => Right(notice)
-    yield
-      notice
-
-  //def addNoticePlace(noticeKey: NoticeKey): PlannedBoard =
-  //  if noticeKeys(noticeKey) then
-  //    this
-  //  else
-  //    copy(noticeKeys = noticeKeys + noticeKey)
-  //
-  //def deleteNoticeKey(noticeKey: NoticeKey): Option[PlannedBoard] =
-  //  val plannedBoard =
-  //    if !noticeKeys(noticeKey) then
-  //      this
-  //    else
-  //      copy(noticeKeys = noticeKeys - noticeKey)
-  //  !plannedBoard.isEmpty ? plannedBoard
 
   def planId: PlanId =
     id.planId
@@ -212,10 +188,7 @@ final case class PlannedBoard(
     id.boardPath
 
   def isEmpty: Boolean =
-    noticeKeys.isEmpty
-
-  def noticeKeys: Set[NoticeKey] =
-    toNoticePlace.keySet
+    toNoticePlace.isEmpty
 
   override def toString =
     s"PlannedBoard($id ${

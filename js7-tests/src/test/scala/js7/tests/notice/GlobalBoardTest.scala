@@ -101,6 +101,7 @@ final class GlobalBoardTest
           Map:
             PlanId.Global -> Plan(
               PlanId.Global,
+              Plan.Status.Open,
               orderIds = Set(posting0OrderId, posting12OrderId) ++ expecting01OrderIds,
               Seq(
                 PlannedBoard(PlanId.Global / board0.path, Map(
@@ -108,8 +109,7 @@ final class GlobalBoardTest
                 PlannedBoard(PlanId.Global / board1.path, Map(
                   notice1.noticeKey -> NoticePlace(Some(notice1)))),
                 PlannedBoard(PlanId.Global / board2.path, Map(
-                  notice2.noticeKey -> NoticePlace(Some(notice2))))),
-              isClosed = false)
+                  notice2.noticeKey -> NoticePlace(Some(notice2))))))
 
       for orderId <- expecting01OrderIds do
         eventWatch.await[OrderFinished](_.key == orderId)

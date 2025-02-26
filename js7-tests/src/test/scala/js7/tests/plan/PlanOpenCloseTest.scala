@@ -12,11 +12,12 @@ import js7.base.utils.SimplePattern
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlanSchema}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlan, ChangePlanSchema}
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.plan.Plan.Status.{Closed, Deleted, Open}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.StringConstant
@@ -57,8 +58,10 @@ final class PlanOpenCloseTest
       ): (board, workflow, emptyWorkflow, dailyPlan) =>
         eventWatch.resetLastWatchedEventId()
 
+        val yesterday = "2025-01-02"
+        val yesterdayOrderId = OrderId(s"#$yesterday#")
         controller.runOrder:
-          FreshOrder(OrderId("#2025-01-02#"), emptyWorkflow.path, deleteWhenTerminated = true)
+          FreshOrder(yesterdayOrderId, emptyWorkflow.path, deleteWhenTerminated = true)
 
         val today = "2025-01-03"
         val todayPlanId = dailyPlan.id / today
@@ -71,11 +74,17 @@ final class PlanOpenCloseTest
 
         val dayAfterTomorrow = "2025-01-05"
 
+        assert(controllerState.toPlan.isEmpty)
+
         // Close yesterday's Plan //
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+          ChangePlan(dailyPlan.id / yesterday, Closed)
+        assert(controllerState.toPlan.values.toSeq == Seq:
+          Plan(dailyPlan.id / yesterday, Deleted))
 
-        // No Plan
+        // Remove deleted plan
+        execCmd:
+          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
         assert(controllerState.toPlan.isEmpty)
 
         // Add Orders //
@@ -84,25 +93,25 @@ final class PlanOpenCloseTest
             FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
 
         // Now we have Plans for today and tomorrow
-        assert(controllerState.toPlan.values.toVector.sorted == Vector(
+        assert(controllerState.toPlan.values.toSeq.sorted == Seq(
           Plan(
             todayPlanId,
+            Open,
             orderIds = Set(aTodayOrderId, bTodayOrderId),
             plannedBoards = Seq:
               PlannedBoard(todayPlanId / board.path, Map(
-                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
-            isClosed = false),
+                NoticeKey.empty -> NoticePlace(isAnnounced = true)))),
           Plan(
             tomorrowPlanId,
+            Open,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
               PlannedBoard(tomorrowPlanId / board.path, Map(
-                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
-            isClosed = false)))
+                NoticeKey.empty -> NoticePlace(isAnnounced = true))))))
 
         // Close today's Plan //
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> tomorrow))
+          ChangePlan(todayPlanId, Closed)
 
         execCmd:
           AnswerOrderPrompt(aTodayOrderId)
@@ -111,25 +120,30 @@ final class PlanOpenCloseTest
         assert(controllerState.toPlan.values.toVector.sorted == Vector(
           Plan(
             todayPlanId,
+            Closed,
             orderIds = Set(bTodayOrderId),
             plannedBoards = Seq:
               PlannedBoard(todayPlanId / board.path, Map(
-                NoticeKey.empty -> NoticePlace(Some(Notice(todayPlanId / board.path / NoticeKey.empty))))),
-            isClosed = true),
+                NoticeKey.empty -> NoticePlace(Some(Notice(todayPlanId / board.path / NoticeKey.empty)))))),
           Plan(
             tomorrowPlanId,
+            Open,
             orderIds = Set(tomorrowOrderId),
             plannedBoards = Seq:
               PlannedBoard(tomorrowPlanId / board.path, Map(
-                NoticeKey.empty -> NoticePlace(isAnnounced = true))),
-            isClosed = false)))
+                NoticeKey.empty -> NoticePlace(isAnnounced = true))))))
 
         // Closed today's Plan will be deleted when the last Order leaves //
         assert(controllerState.toPlan.contains(todayPlanId))
         execCmd:
           AnswerOrderPrompt(bTodayOrderId)
         eventWatch.awaitNextKey[OrderTerminated](bTodayOrderId)
-        assert(!controllerState.toPlan.contains(todayPlanId))
+        assert(controllerState.toPlan.values.toSet == Set(
+          Plan(todayPlanId, Deleted),
+          Plan(tomorrowPlanId, Open,
+            Set(tomorrowOrderId),
+            Seq(PlannedBoard(tomorrowPlanId / board.path, Map(
+              NoticeKey.empty -> NoticePlace(isAnnounced = true)))))))
 
         // Terminate tomorrow's Orders //
         execCmd:
@@ -138,9 +152,17 @@ final class PlanOpenCloseTest
 
         // Close tomorrow's Plan //
         execCmd:
+          ChangePlan(tomorrowPlanId, Closed)
+
+        // Tomorrow's Plan is Deleted
+        assert(controllerState.toPlan.values.toSeq == Seq(
+          Plan(todayPlanId, Deleted),
+          Plan(tomorrowPlanId, Deleted)))
+
+        execCmd:
           ChangePlanSchema(dailyPlan.id, Map("openingDay" -> dayAfterTomorrow))
 
-        // Tomorrow's Plan has been deleted
+        // Tomorrow's Plan as been removed
         assert(controllerState.toPlan.isEmpty)
 
     "No order can be added via web service to a closed Plan" in:
@@ -149,11 +171,12 @@ final class PlanOpenCloseTest
         eventWatch.resetLastWatchedEventId()
 
         val yesterday = "2024-12-02"
+        val yesterdayOrderId = OrderId(s"#$yesterday#")
         val today = "2024-12-03"
+        val todayOrderId = OrderId(s"#$today#")
+
         execCmd:
           ChangePlanSchema(planSchema.id, Map("openingDay" -> today))
-        val yesterdayOrderId = OrderId(s"#$yesterday#")
-        val todayOrderId = OrderId(s"#$today#")
 
         assert:
           controller.api.addOrder:
@@ -240,6 +263,7 @@ final class PlanOpenCloseTest
         execCmd:
           CancelOrders(todayOrderId :: Nil)
   }
+
 
 object PlanOpenCloseTest:
   private val agentPath = AgentPath("AGENT")

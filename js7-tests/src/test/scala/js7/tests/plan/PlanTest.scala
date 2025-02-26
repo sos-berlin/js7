@@ -11,11 +11,14 @@ import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchCh
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, PostNotice}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlan, PostNotice}
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.plan.PlanEvent.{PlanClosed, PlanDeleted, PlanFinished}
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.ExpressionParser.expr
@@ -45,33 +48,46 @@ final class PlanTest
   protected def items = Nil
 
   "When a PlanSchemas is added, matching planless Orders are attached to the new Plans" in :
-    eventWatch.resetLastWatchedEventId()
     val day = "2024-12-03"
     val orderId = OrderId(s"#$day#")
 
     withItem(Workflow.of(Prompt(expr("'PROMPT'")))): workflow =>
+      var eventId = eventWatch.resetLastWatchedEventId()
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNext[OrderPrompted](_.key == orderId)
+      eventWatch.awaitNextKey[OrderPrompted](orderId)
       assert(controllerState.idToOrder(orderId).planId == PlanId.Global)
 
-      withItem(PlanSchema.joc(PlanSchemaId("DailyPlan"))): dailyPlan =>
-        val planId = dailyPlan.id / day
-
+      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+      val planId = dailyPlan.id / day
+      withItem(dailyPlan) { dailyPlan =>
         // Order is attached to our DailyPlan //
         assert(controllerState.idToOrder(orderId).planId == planId)
 
         execCmd:
           CancelOrders(Seq(orderId))
-        eventWatch.awaitNext[OrderTerminated](_.key == orderId)
+        eventWatch.awaitNextKey[OrderTerminated](orderId)
 
-        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-          OrderAdded(workflow.id, deleteWhenTerminated = true),
-          OrderStarted,
-          OrderPrompted("PROMPT"),
-          OrderPlanAttached(planId),
-          OrderStateReset,
-          OrderCancelled,
-          OrderDeleted))
+        execCmd: // Close the plan, so it can be deleted
+          ChangePlan(planId, Plan.Status.Closed)
+        eventWatch.awaitNextKey[PlanDeleted](planId)
+
+        assert(eventWatch.keyedEvents(after = eventId) == Seq(
+          orderId <-: OrderAdded(workflow.id, deleteWhenTerminated = true),
+          orderId <-: OrderStarted,
+          orderId <-: OrderPrompted("PROMPT"),
+          NoKey <-: UnsignedSimpleItemAdded(dailyPlan),
+          orderId <-: OrderPlanAttached(planId),
+          orderId <-: OrderStateReset,
+          orderId <-: OrderCancelled,
+          orderId <-: OrderDeleted,
+          planId <-: PlanClosed,
+          planId <-: PlanFinished,
+          planId <-: PlanDeleted))
+
+        eventId = eventWatch.lastWatchedEventId
+      }
+      assert(eventWatch.keyedEvents(after = eventId) == Seq(
+        NoKey <-: ItemDeleted(dailyPlan.path)))
 
   "Adding a PlanSchemas is rejected when a planless Order is attached to an Agent" in:
     // It's recommended to SuspendOrders(resetState) all Orders before
@@ -128,6 +144,9 @@ final class PlanTest
           OrderFinished(),
           OrderDeleted))
 
+        execCmd: // Close the plan, so it can be deleted
+          ChangePlan(dailyPlan.id / "2024-12-05", Plan.Status.Closed)
+
   "Adding a PlanSchemas is rejected when a planless Orders is in a ConsumeNotices block" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
@@ -155,18 +174,21 @@ final class PlanTest
       execCmd(CancelOrders(Seq(orderId)))
       eventWatch.awaitNextKey[OrderTerminated](orderId)
 
+      //execCmd: // Close the plan, so it can be deleted
+      //  ChangePlanSchema(dailyPlan.id, Map("openingDay" -> "2025-01-30"))
+
   "Update a PlanSchema and check existing Orders" in:
     eventWatch.resetLastWatchedEventId()
-    val templateId = PlanSchemaId("DailyPlan")
+    val planSchemaId = PlanSchemaId("DailyPlan")
 
-    val aPlanSchema = PlanSchema.joc(templateId)
+    val aPlanSchema = PlanSchema.joc(planSchemaId)
     val aKey = "2024-12-06"
     val aOrderId = OrderId(s"#$aKey#")
-    val aPlanId = templateId / aKey
+    val aPlanId = planSchemaId / aKey
 
     val bKey = "2024w49"
     val bOrderId = OrderId(s"#$bKey#")
-    val bPlanId = templateId / bKey
+    val bPlanId = planSchemaId / bKey
     val workflow = Workflow.of:
       Prompt(expr("'PROMPT'"))
 
@@ -202,6 +224,9 @@ final class PlanTest
 
       execCmd(CancelOrders(Seq(bOrderId)))
 
+      execCmd: // Close the plan, so it can be deleted
+        ChangePlan(bPlanId, Plan.Status.Closed)
+
   "Delete a PlanSchema" - {
     def tryDeletePlan(planSchemaId: PlanSchemaId): Checked[Unit] =
       controller.api.updateItems(Stream:
@@ -226,10 +251,13 @@ final class PlanTest
           CancelOrders(Seq(postingOrderId))
         eventWatch.awaitNextKey[OrderTerminated](postingOrderId)
 
+        execCmd: // Close the plan, so it can be deleted
+          ChangePlan(planSchema.id / day, Plan.Status.Closed)
+
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)
 
-    "When a PlanSchema is being deleted, all its PlannedBoards and NoticePlaces are deleted" in:
+    "When a PlanSchema is being deleted, all its Plans are deleted" in:
       val day = "2024-11-27"
       val aBoard = PlannableBoard(BoardPath("A-BOARD"))
       val bBoard = PlannableBoard(BoardPath("B-BOARD"),
@@ -263,13 +291,13 @@ final class PlanTest
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
             planId,
+            Plan.Status.Open,
             Set(postingOrderId),
             Seq(
               PlannedBoard(planId / aBoard.path, Map(
                 aNoticeKey -> NoticePlace(isAnnounced = true))),
               PlannedBoard(planId / bBoard.path, Map(
-                bNoticeKey -> NoticePlace(isAnnounced = true)))),
-            isClosed = false))
+                bNoticeKey -> NoticePlace(isAnnounced = true))))))
 
         val consumingOrderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
@@ -279,13 +307,13 @@ final class PlanTest
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
             planId,
+            Plan.Status.Open,
             Set(postingOrderId, consumingOrderId),
             Seq(
               PlannedBoard(planId / aBoard.path, Map(
                 aNoticeKey -> NoticePlace(isAnnounced = true, expectingOrderIds = Set(consumingOrderId)))),
               PlannedBoard(planId / bBoard.path, Map(
-                bNoticeKey -> NoticePlace(isAnnounced = true)))),
-            isClosed = false))
+                bNoticeKey -> NoticePlace(isAnnounced = true))))))
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
           s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with 2 orders"))
@@ -306,14 +334,17 @@ final class PlanTest
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).toSet ==
           Set(
             Plan(planId,
+              Plan.Status.Open,
               plannedBoards = Seq(
                 PlannedBoard(planId / aBoard.path, Map(
                   aNoticeKey -> NoticePlace(Some(Notice(planId / aBoard.path / aNoticeKey))))),
                 PlannedBoard(planId / bBoard.path, Map(
-                  bNoticeKey -> NoticePlace(isAnnounced = true)))),
-              isClosed = false)))
+                  bNoticeKey -> NoticePlace(isAnnounced = true)))))))
 
         // When PlanSchema is being deleted, its NoticePlaces are deleted, too //
+
+        execCmd: // Close the plan, so it can be deleted
+          ChangePlan(planId, Plan.Status.Closed)
 
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)

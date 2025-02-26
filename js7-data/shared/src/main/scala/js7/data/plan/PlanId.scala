@@ -1,7 +1,7 @@
 package js7.data.plan
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.circeutils.CirceUtils.toDecoderResult
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.orderingBy
@@ -48,8 +48,18 @@ object PlanId:
   given Ordering[PlanId] = orderingBy(_.planSchemaId, _.planKey)
 
   given Encoder[PlanId] =
+    case PlanId.Global => Json.fromValues(Nil)
     case PlanId(planSchemaId, planKey) => Json.arr(planSchemaId.asJson, planKey.asJson)
 
   given Decoder[PlanId] = c =>
-    c.as[(PlanSchemaId, PlanKey)].flatMap: (planSchemaId, planKey) =>
-      PlanId(planSchemaId, planKey).checked.toDecoderResult(c.history)
+    c.as[Vector[String]].flatMap:
+      case Vector() => Right(PlanId.Global)
+      case Vector(planSchemaId, planKey) =>
+        toDecoderResult(c.history):
+          for
+            planSchemaId <- PlanSchemaId.checked(planSchemaId)
+            planKey <- PlanKey.checked(planKey)
+          yield
+            PlanId(planSchemaId, planKey)
+      case _ =>
+        Left(DecodingFailure("Invalid PlanId", c.history))

@@ -115,12 +115,11 @@ extends
       _noticeConsumptionSnapshots += o
 
     case snapshot: Plan.Snapshot =>
-      import snapshot.{planId, planKey, planSchemaId}
+      import snapshot.{planKey, planSchemaId}
       val planSchemaState = _keyToUnsignedItemState(planSchemaId)
         .asInstanceOf[PlanSchemaState]
-      val plan = planSchemaState.toPlan.getOrElse(planKey, Plan.initial(planId))
       _keyToUnsignedItemState(planSchemaId) = planSchemaState.copy(
-        toPlan = planSchemaState.toPlan.updated(planKey, plan.recoverSnapshot(snapshot)))
+        toPlan = planSchemaState.toPlan.updated(planKey, Plan.fromSnapshot(snapshot)))
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)

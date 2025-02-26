@@ -53,9 +53,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   "estimatedSnapshotSize" in:
-    assert(controllerState.estimatedSnapshotSize == 21)
-    val n = controllerState.toSnapshotStream.compile.count
-    assert(controllerState.estimatedSnapshotSize == n)
+    assert(controllerState.estimatedSnapshotSize == controllerState.toSnapshotStream.compile.count)
 
   "pathToSimpleItem" in:
     val sum =
@@ -87,10 +85,11 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         controllerState.keyTo(SubagentItemState).values ++
         controllerState.pathToUnsignedSimple(SubagentBundle).values ++
         controllerState.keyTo(LockState).values ++
-        Seq(notice) ++
-        Seq(board) ++
-        Seq(calendar) ++
         Seq(
+          Plan.Snapshot(PlanId.Global, Plan.Status.Open),
+          notice,
+          board,
+          calendar,
           UnsignedSimpleItemAdded(FileWatch(
             fileWatch.path,
             workflow.path,
@@ -103,8 +102,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
             HasOrder(OrderId("ORDER"), Some(Vanished))),
           SignedItemAdded(signedJobResource),
           VersionAdded(versionId),
-          VersionedItemAdded(signedWorkflow)) ++
-        Seq(
+          VersionedItemAdded(signedWorkflow),
           ItemAttachable(jobResource.path, agentRef.path),
           ItemDeletionMarked(fileWatch.path)) ++
         controllerState.idToOrder.values)
@@ -245,6 +243,10 @@ final class ControllerStateTest extends OurAsyncTestSuite:
           "TYPE": "Available"
         },
         "queue": []
+      }, {
+        "TYPE": "Plan",
+        "planId": [],
+        "status": "Open"
       }, {
         "TYPE": "Notice",
         "id": [ "BOARD", "NOTICE-1" ],
@@ -524,14 +526,14 @@ object ControllerStateTest:
         Map(
           PlanKey.Global -> Plan(
             PlanId.Global,
+            Plan.Status.Open,
             Set(),
             Map(
               board.path -> PlannedBoard(
                 PlanId.Global / board.path,
                 Map(
                   notice.noticeKey -> NoticePlace(Some(notice)),
-                  expectedNoticeId.noticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))),
-            isClosed = false)))),
+                  expectedNoticeId.noticeKey -> NoticePlace(None, Set(expectingNoticeOrderId))))))))),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

@@ -146,7 +146,7 @@ final class JControllerStateTester
                 PlanId.Global(),
                 Set.of(OrderId.of("A-ORDER")),
                 asList(),
-                false),
+                JPlan.Open),
             PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
             JPlan.of(
                 PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
@@ -169,7 +169,7 @@ final class JControllerStateTester
                                 Optional.empty(),
                                 Set.of(OrderId.of("B-ORDER")),
                                 false, false, 0)))),
-                false));
+                JPlan.Open));
 
         assertThat(toPlan, equalTo(expected));
     }

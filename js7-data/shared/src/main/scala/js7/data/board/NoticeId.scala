@@ -23,7 +23,7 @@ final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):
     planId / noticeKey
 
   override def toString =
-    s"NoticeKey:${planId.shortString}╱${boardNoticeKey.toShortString}"
+    s"Notice:${planId.shortString}╱${boardNoticeKey.toShortString}"
 
 
 object NoticeId:

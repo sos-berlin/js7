@@ -883,7 +883,7 @@ extends
     else
       Right(OrderDeletionMarked)
 
-  def tryDelete: Option[OrderDeleted] =
+  def maybeDeleted: Option[OrderDeleted] =
     (isState[IsTerminated]
       && (deleteWhenTerminated || externalOrder.exists(_.vanished))
       && parent.isEmpty

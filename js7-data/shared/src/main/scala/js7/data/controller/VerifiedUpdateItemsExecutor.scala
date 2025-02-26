@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.syntax.foldable.*
+import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
@@ -11,9 +12,10 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFun
 import js7.data.Problems.OrderWouldNotMatchChangedPlanSchemaProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardItem
+import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{KeyedEvent, NoKeyEvent}
+import js7.data.event.{AnyKeyedEvent, KeyedEvent, NoKeyEvent}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
@@ -22,6 +24,7 @@ import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, Invento
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent
 import js7.data.order.OrderEvent.{OrderPlanAttached, OrderStateReset}
+import js7.data.plan.PlanEvent.PlanDeleted
 import js7.data.plan.{PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
@@ -49,23 +52,23 @@ object VerifiedUpdateItemsExecutor:
     verifiedUpdateItems: VerifiedUpdateItems,
     controllerState: ControllerState,
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
-  : Checked[Seq[KeyedEvent[NoKeyEvent | OrderStateReset | OrderPlanAttached]]] =
-    def result: Checked[Seq[KeyedEvent[NoKeyEvent | OrderStateReset | OrderPlanAttached]]] =
+  : Checked[Seq[AnyKeyedEvent]] =
+    def result: Checked[Seq[AnyKeyedEvent]] =
       (for
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyKeyedEvents(versionedEvents)
         simpleItemEvents <- simpleItemEvents(updatedState)
         updatedState <- updatedState.applyKeyedEvents(simpleItemEvents)
-        updatedState <- updatedState.applyKeyedEvents(
+        updatedState <- updatedState.applyKeyedEvents:
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
-            .flatMap(deleteRemovedVersionedItem(_, updatedState)))
-        updatedState <- updatedState.applyKeyedEvents(
+            .flatMap(deleteRemovedVersionedItem(_, updatedState))
+        updatedState <- updatedState.applyKeyedEvents:
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemChanged) => e.path }
             .flatMap(controllerState.repo.pathToId)
             .filterNot(controllerState.isInUse)
-            .map(previousItemId => NoKey <-: ItemDeleted(previousItemId)))
+            .map(previousItemId => NoKey <-: ItemDeleted(previousItemId))
         derivedWorkflowPathControlEvents = toDerivedWorkflowPathControlEvents(updatedState)
         updatedState <- updatedState.applyKeyedEvents(derivedWorkflowPathControlEvents)
         derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
@@ -102,7 +105,7 @@ object VerifiedUpdateItemsExecutor:
             .map(_.map(NoKey <-: _))
 
     def simpleItemEvents(controllerState: ControllerState)
-    : Checked[View[KeyedEvent[InventoryItemEvent]]] =
+    : Checked[View[KeyedEvent[NoticeDeleted | PlanDeleted | InventoryItemEvent]]] =
       import verifiedUpdateItems.simple
       simple.verifiedSimpleItems
         .traverse:
@@ -118,9 +121,10 @@ object VerifiedUpdateItemsExecutor:
                 .traverse:
                   simpleItemDeletionEvents(_, deletedAgents, controllerState)
                 .map: events =>
-                  events.flatten ++ signedEvents ++ unsignedEvents
+                  events.flatten ++
+                    (signedEvents ++ unsignedEvents).map(NoKey <-: _)
           .flatten
-          .map(_.view.map(NoKey <-: _))
+          .map(_.view)
 
     def toDerivedWorkflowPathControlEvents(controllerState: ControllerState)
     : View[KeyedEvent[InventoryItemEvent]] =
@@ -245,19 +249,22 @@ object VerifiedUpdateItemsExecutor:
       path: SimpleItemPath,
       isDeleted: Set[AgentPath],
       controllerState: ControllerState)
-    : Checked[View[BasicItemEvent.ForClient]] =
+    : Checked[View[KeyedEvent[NoticeDeleted | PlanDeleted | BasicItemEvent.ForClient]]] =
       path match
         case path: InventoryItemPath.AttachableToAgent
           if controllerState.itemToAgentToAttachedState.contains(path)
             && !isAttachedToDeletedAgentsOnly(path, isDeleted, controllerState) =>
           Right:
-            (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
-              controllerState.detach(path)
+            (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view
+              .concat:
+                controllerState.detach(path)
+              .map(NoKey <-: _)
 
         case planSchemaId: PlanSchemaId =>
-          controllerState.checkPlanSchemaIsDeletable(planSchemaId).rightAs:
-            View.Single:
-              ItemDeleted(path)
+          controllerState.keyTo(PlanSchemaState).checked(planSchemaId)
+            .flatMap(_.checkIsDeletable)
+            .as:
+              View.Single(NoKey <-: ItemDeleted(path))
 
         case _ =>
           Right(View.Single:
@@ -275,6 +282,7 @@ object VerifiedUpdateItemsExecutor:
         .forall(isDeleted)
 
     result
+  end execute
 
   private def deleteRemovedVersionedItem(path: VersionedItemPath, controllerState: ControllerState)
   : Option[KeyedEvent[ItemDeleted]] =

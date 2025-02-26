@@ -100,20 +100,20 @@ private object JControllerStateTest:
           PlanSchema(PlanSchemaId("DailyPlan"), StringConstant.empty),
           namedValues = Map.empty,
           finishedPlanLifeTime = 3600.s,
-          toPlan = Map(
+          toPlan = Map:
             planId.planKey -> Plan(
               planId,
+              Plan.Status.Open,
               orderIds = Set.empty,
               toPlannedBoard = Map(
                 BoardPath("BOARD") -> PlannedBoard(
                   planId / BoardPath("BOARD"),
-                  toNoticePlace = Map(
-                    NoticeKey("NOTICE") -> NoticePlace(isAnnounced = true))),
+                  toNoticePlace = Map:
+                    NoticeKey("NOTICE") -> NoticePlace(isAnnounced = true)),
                 BoardPath("BOARD-2") -> PlannedBoard(
                   planId / BoardPath("BOARD-2"),
-                  toNoticePlace = Map(
-                    NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(OrderId("B-ORDER")))))),
-              isClosed = false))),
+                  toNoticePlace = Map:
+                    NoticeKey("NOTICE") -> NoticePlace(expectingOrderIds = Set(OrderId("B-ORDER"))))))),
         BoardState(
           PlannableBoard(BoardPath("BOARD"))),
         BoardState(

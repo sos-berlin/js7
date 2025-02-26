@@ -15,12 +15,12 @@ import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.plan.PlanSchemaId
-import js7.data.value.NamedValues
+import js7.data.plan.{Plan, PlanSchemaId}
 import js7.data.value.expression.ExprFunction.testing.|=>
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -241,6 +241,29 @@ final class ControllerCommandTest extends OurTestSuite:
         },
         "planSchemaId": "DailyPlan",
         "makeNoticeKey": "(planKey,noticeKey) => \"$$planKey$$noticeKey\""
+      }""")
+
+  "ChangePlan" in:
+    testJson[ControllerCommand](
+      ChangePlan(PlanSchemaId("DailyPlan") / "2025-02-26", Plan.Status.Closed),
+      json"""{
+        "TYPE": "ChangePlan",
+        "planId": [ "DailyPlan", "2025-02-26" ],
+        "status": "Closed"
+      }""")
+
+  "ChangePlanSchema" in:
+    testJson[ControllerCommand](
+      ChangePlanSchema(
+        PlanSchemaId("DailyPlan"),
+        NamedValues(
+          "openeningDay" -> StringValue("2025-02-26"))),
+      json"""{
+        "TYPE": "ChangePlanSchema",
+        "planSchemaId": "DailyPlan",
+        "namedValues": {
+          "openeningDay": "2025-02-26"
+        }
       }""")
 
   "DeleteOrdersWhenTerminated" in:

@@ -20,6 +20,8 @@ import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, OrderOutcome}
+import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
+import js7.data.plan.PlanFinishedEvent
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{ControllerTestStateView, OrderEventHandler, TestStateView}
@@ -1426,7 +1428,7 @@ object OrderEventSourceTest:
 
   private val executeScript = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("executable")))
 
-  private def step(workflow: Workflow, outcome: OrderOutcome): Seq[OrderEvent | NoticeDeleted] =
+  private def step(workflow: Workflow, outcome: OrderOutcome): Seq[OrderEvent | PlanFinishedEvent] =
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
     process.transferToAgent(TestAgentPath)
@@ -1448,7 +1450,7 @@ object OrderEventSourceTest:
     def jobStep(outcome: OrderOutcome = OrderOutcome.Succeeded(NamedValues.rc(0))) =
       process.jobStep(orderId, outcome)
 
-    def step(): Seq[OrderEvent | NoticeDeleted] =
+    def step(): Seq[OrderEvent | NoticeDeleted | PlanFinished  | PlanDeleted] =
       process.step(orderId).map(_.event)
 
     def update(event: OrderEvent) =
@@ -1470,18 +1472,19 @@ object OrderEventSourceTest:
       update(orderId <-: OrderProcessingStarted(subagentId))
       update(orderId <-: OrderProcessed(outcome))
 
-    def run(orderId: OrderId): List[KeyedEvent[OrderEvent | NoticeDeleted]] =
+    def run(orderId: OrderId): List[KeyedEvent[OrderEvent | PlanFinishedEvent]] =
       step(orderId) match
         case keyedEvents if keyedEvents.nonEmpty =>
           keyedEvents.toList ::: (if idToOrder contains orderId then run(orderId) else Nil)
         case _ => Nil
 
-    def step(orderId: OrderId): Seq[KeyedEvent[OrderEvent | NoticeDeleted]] =
+    def step(orderId: OrderId): Seq[KeyedEvent[OrderEvent | PlanFinishedEvent]] =
       val keyedEvents = nextEvents(orderId)
       keyedEvents foreach update
       keyedEvents
 
-    private def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderEvent | NoticeDeleted]] =
+    private def nextEvents(orderId: OrderId)
+    : Seq[KeyedEvent[OrderEvent | PlanFinishedEvent]] =
       val order = idToOrder(orderId)
       if order.detaching.isRight then
         Seq(order.id <-: OrderDetached)
@@ -1501,7 +1504,7 @@ object OrderEventSourceTest:
           case _ =>
             eventSource(isAgent = order.isAttached).nextEvents(orderId)
 
-    def update(keyedEvent: KeyedEvent[OrderEvent | NoticeDeleted]): Unit =
+    def update(keyedEvent: KeyedEvent[OrderEvent | PlanFinishedEvent]): Unit =
       keyedEvent match
         case KeyedEvent(orderId: OrderId, event: OrderAdded) =>
           idToOrder.insert(orderId, Order.fromOrderAdded(orderId, event))
@@ -1514,7 +1517,8 @@ object OrderEventSourceTest:
         case _ =>
           sys.error(s"Unhandled: $keyedEvent")
 
-    private def processEvent(keyedEvent: KeyedEvent[OrderEvent | NoticeDeleted]): Unit =
+    private def processEvent(keyedEvent: KeyedEvent[OrderEvent | PlanFinishedEvent])
+    : Unit =
       keyedEvent match
         case KeyedEvent(orderId: OrderId, OrderProcessingStarted(_, _, _)) =>
           inProcess += orderId

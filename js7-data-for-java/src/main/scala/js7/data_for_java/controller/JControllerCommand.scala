@@ -4,6 +4,7 @@ import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.Optional
+import java.util.Map as JMap
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.log.{CorrelId, CorrelIdWrapped}
@@ -12,10 +13,11 @@ import js7.base.time.JavaTimestamp
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
+import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangePlan, ChangePlanSchema, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
-import js7.data.plan.{PlanId, PlanSchemaId}
+import js7.data.plan.{Plan, PlanId, PlanSchemaId}
+import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.data_for_java.common.JJsonable
@@ -85,7 +87,7 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   def controlWorkflowPath(
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull suspend: Optional[Boolean],
-    @Nonnull skip: java.util.Map[Label, java.lang.Boolean])
+    @Nonnull skip: JMap[Label, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
       ControlWorkflowPath(
@@ -96,7 +98,7 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   @Nonnull
   def controlWorkflow(
     @Nonnull workflowId: JWorkflowId,
-    @Nonnull breakpoints: java.util.Map[JPosition, java.lang.Boolean])
+    @Nonnull breakpoints: JMap[JPosition, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
       ControlWorkflow(
@@ -145,6 +147,14 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   : ChangePlannableToGlobalBoard =
     ChangePlannableToGlobalBoard(globalBoard, planSchemaId, makeNoticeKey.asScala)
 
+  @Nonnull
+  def changePlanSchema(planSchemaId: PlanSchemaId, namedValues: JMap[String, Value])
+  : ChangePlanSchema =
+    ChangePlanSchema(planSchemaId, namedValues.asScala.toMap)
+
+  @Nonnull
+  def changePlan(planId: PlanId, status: Plan.Status): ChangePlan =
+    ChangePlan(planId, status)
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =

@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.data.board.BoardPathExpression.syntax.*
@@ -25,7 +26,6 @@ import js7.data.workflow.{Instruction, Workflow, WorkflowPath}
 import org.scalactic.source
 import scala.language.implicitConversions
 import scala.runtime.stdLibPatches.Predef.assert
-import js7.base.time.ScalaTime.*
 
 final class ConsumeNoticesExecutorTest extends OurTestSuite:
 
@@ -363,6 +363,7 @@ object ConsumeNoticesExecutorTest:
             toPlan = Map(
               planId.planKey -> Plan(
                 planId,
+                Plan.Status.Open,
                 Set(orderId),
                 boardPaths.map: boardPath =>
                   PlannedBoard(
@@ -370,8 +371,7 @@ object ConsumeNoticesExecutorTest:
                     boardToNoticeState.getOrElse(boardPath, Unknown) match
                       case Announced => Map(noticeKey -> NoticePlace(isAnnounced = true))
                       case Posted => Map(noticeKey -> NoticePlace(Some(Notice(boardPath / plannedNoticeKey))))
-                      case Unknown => Map.empty),
-                isClosed = false))))
+                      case Unknown => Map.empty)))))
 
     ConsumeNoticesExecutor:
       InstructionExecutorService(TestWallClock(ts"2024-11-25T12:00:00Z"))

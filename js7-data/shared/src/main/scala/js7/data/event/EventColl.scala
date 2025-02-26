@@ -91,5 +91,17 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
 
 
 object EventColl:
+
   def apply[S <: EventDrivenState[S, E], E <: Event](a: S): EventColl[S, E] =
     new EventColl[S, E](a, Vector.empty, a)
+
+  def checkEvents[S <: EventDrivenState[S, E], E <: Event](state: S)
+    (keyedEvents: IterableOnce[KeyedEvent[E]])
+  : Checked[Vector[KeyedEvent[E]]] =
+    EventColl.keyedEvents(state)(_.add(keyedEvents))
+
+  def keyedEvents[S <: EventDrivenState[S, E], E <: Event](
+    state: S)
+    (body: EventColl[S, E] => Checked[EventColl[S, E]])
+  : Checked[Vector[KeyedEvent[E]]] =
+    body(EventColl[S, E](state)).map(_.keyedEvents)

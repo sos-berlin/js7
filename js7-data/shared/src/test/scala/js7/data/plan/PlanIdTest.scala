@@ -13,6 +13,9 @@ final class PlanIdTest extends OurTestSuite:
         PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-20")),
         json""" [ "DailyPlan", "2024-11-20" ] """)
 
+    "Global" in:
+      testJson(PlanId.Global, json""" [] """)
+
     //"PlanId.Global must not be encoded like any other PlanId" in:
     //  intercept[IllegalArgumentException]:
     //    PlanId.Global.asJson
@@ -24,7 +27,10 @@ final class PlanIdTest extends OurTestSuite:
     //    "DecodingFailure at [0]: PlanSchemaId:Global is a reserved name")
   }
 
-  "toString" in:
+  "Global" in:
+    assert(PlanId.Global == PlanSchemaId("Global") / "Global")
     assert(PlanId.Global.toString == "Plan:Global")
+
+  "toString" in:
     assert(PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-22")).toString ==
       "Plan:DailyPlan╱2024-11-22")

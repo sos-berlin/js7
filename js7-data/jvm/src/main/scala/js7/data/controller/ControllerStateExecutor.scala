@@ -11,7 +11,6 @@ import js7.base.utils.Tests.isTest
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
-import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.NoticeEventSource
 import js7.data.controller.ControllerStateExecutor.*
 import js7.data.event.KeyedEvent.NoKey
@@ -29,7 +28,7 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
-import js7.data.plan.PlanId
+import js7.data.plan.{PlanFinishedEvent, PlanId}
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -508,7 +507,7 @@ final case class ControllerStateExecutor private(
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor =
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
-    val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | NoticeDeleted]]
+    val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent | PlanFinishedEvent]]
 
     @tailrec def loop(): Unit =
       queue.removeHeadOption() match

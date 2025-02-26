@@ -3,6 +3,7 @@ package js7.data.plan
 import cats.syntax.traverse.*
 import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
+import js7.base.metering.CallMeter
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -80,7 +81,7 @@ extends UnsignedSimpleItem:
       toPlan = Map.empty)
 
   def isGlobal: Boolean =
-    this eq Global
+    id.isGlobal
 
   def rename(id: PlanSchemaId): PlanSchema =
     copy(id = id)
@@ -101,15 +102,21 @@ extends UnsignedSimpleItem:
       _.missingToNone.traverse:
         _.toStringValueString.flatMap(PlanKey.checked)
 
-  private[plan] def isClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
-    planIsClosedFunction.fold(Checked(false)): function =>
-      function.eval(StringValue(planKey.string))(using scope)
-        .flatMap(_.asBoolean)
+  private[plan] def evalPlanIsClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
+    meterPlanIsClosedFunction:
+      planIsClosedFunction.fold(Checked(false)): function =>
+        function.eval(StringValue(planKey.string))(using scope)
+          .flatMap(_.asBoolean)
 
 
 object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
 
+  type Key = PlanSchemaId
   type ItemState = PlanSchemaState
+
+  val Key: PlanSchemaId.type = PlanSchemaId
+  val Path: PlanSchemaId.type = PlanSchemaId
+  val cls: Class[PlanSchema] = classOf[PlanSchema]
 
   final val Global: PlanSchema =
     PlanSchema(
@@ -131,13 +138,11 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planKeyExpr = expr""" match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$$1') ? """)
+      planKeyExpr = expr""" match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$$1') ? """,
+      planIsClosedFunction = Some(exprFunction("week => $week < $openingWeek")),
+      Map("openingWeek" -> StringValue.empty))
 
-  type Key = PlanSchemaId
-
-  val Key: PlanSchemaId.type = PlanSchemaId
-  val Path: PlanSchemaId.type = PlanSchemaId
-  val cls: Class[PlanSchema] = classOf[PlanSchema]
+  private val meterPlanIsClosedFunction = CallMeter("PlanSchmea.planIsClosedFunction")
 
   override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
 

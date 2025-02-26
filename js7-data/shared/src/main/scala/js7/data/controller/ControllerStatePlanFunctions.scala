@@ -3,7 +3,7 @@ package js7.data.controller
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{L3, StandardMapView}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved}
 import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedBoardId, PlannedNoticeKey}
@@ -13,6 +13,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.OrderStateReset
 import js7.data.order.{Order, OrderEvent}
+import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished}
 import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import org.jetbrains.annotations.TestOnly
@@ -83,13 +84,10 @@ extends EventDrivenStateView[Self]:
     keyTo(PlanSchemaState).values.view.map:
       _.removeBoard(boardPath)
 
-  /** Return NoticeDeleted events if Plan isDead. */
-  final def deadPlanNoticeDeleted(planId: PlanId): View[KeyedEvent[NoticeDeleted]] =
-    toPlan.get(planId).view.flatMap(_.deadNoticeDeleted)
-
-  /** Returns Right(()) iff the denoted PlanSchema is unused. */
-  final def checkPlanSchemaIsDeletable(planSchemaId: PlanSchemaId): Checked[Unit] =
-    keyTo(PlanSchemaState).checked(planSchemaId).flatMap(_.checkIsDeletable)
+  /** Return PlanFinished event if Plan should be finished. */
+  final def maybePlanFinished(planId: PlanId): View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]] =
+    toPlan.get(planId).fold(View.empty): plan =>
+      plan.maybePlanFinished
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>
@@ -103,6 +101,10 @@ extends EventDrivenStateView[Self]:
     toPlan.get(plannedBoardId.planId).flatMap:
       _.toPlannedBoard.get(plannedBoardId.boardPath)
 
+  def plan(planId: PlanId): Checked[Plan] =
+    keyTo(PlanSchemaState).checked(planId.planSchemaId).flatMap:
+      _.plan(planId.planKey)
+
   final def toPlan: MapView[PlanId, Plan] =
     val toPlanSchemaState = keyTo(PlanSchemaState)
     new StandardMapView[PlanId, Plan]:
@@ -114,53 +116,39 @@ extends EventDrivenStateView[Self]:
       final def get(planId: PlanId) =
         toPlanSchemaState.get(planId.planSchemaId).flatMap(_.toPlan.get(planId.planKey))
 
-  @TestOnly @deprecated
-  final def schemaToKeyToPlan: MapView[PlanSchemaId, Map[PlanKey, Plan]] =
-    val toPlanSchemaState = keyTo(PlanSchemaState)
-    new StandardMapView[PlanSchemaId, Map[PlanKey, Plan]]:
-      override def keySet = toPlanSchemaState.keySet
-
-      def get(planSchemaId: PlanSchemaId) =
-        toPlanSchemaState.get(planSchemaId).map(_.toPlan)
-
-  def toNotice: MapView[NoticeId, Notice] =
-    new StandardMapView[NoticeId, Notice]:
-      override def keySet: Set[NoticeId] =
-        allNotices.map(_.id).toSet
-
-      def get(noticeId: NoticeId): Option[Notice] =
-        keyTo(PlanSchemaState).get(noticeId.planSchemaId).flatMap: planSchema =>
-          planSchema.toPlan.get(noticeId.planKey).flatMap: plan =>
-            plan.toPlannedBoard.get(noticeId.boardPath).flatMap: plannedBoard =>
-              plannedBoard.toNoticePlace.get(noticeId.noticeKey).flatMap: noticePlace =>
-                noticePlace.notice
-
   @TestOnly
   def toNoticePlace: MapView[NoticeId, NoticePlace] =
     new StandardMapView[NoticeId, NoticePlace]:
       override def keySet: Set[NoticeId] =
-        allNoticeIds.toSet
+        allNoticePlaceIds.toSet
 
       def get(noticeId: NoticeId): Option[NoticePlace] =
         maybeNoticePlace(noticeId)
 
-  private def allNoticeIds: View[NoticeId] =
-    toPlan.values.view.flatMap: plan =>
-      plan.toPlannedBoard.values.view.flatMap: plannedBoard =>
-        plannedBoard.toNoticePlace.keys.map: noticeKey =>
-          plannedBoard.id / noticeKey
+  private def allNoticePlaceIds: View[NoticeId] =
+    for
+      plan <- toPlan.values.view
+      plannedBoard <- plan.toPlannedBoard.values.view
+      noticeKey <- plannedBoard.toNoticePlace.keys
+    yield
+      plannedBoard.id / noticeKey
 
   private def allNoticePlaces: View[(NoticeId, NoticePlace)] =
-    toPlan.values.view.flatMap: plan =>
-      plan.toPlannedBoard.values.view.flatMap: plannedBoard =>
-        plannedBoard.toNoticePlace.view.map: (noticeKey, noticePlace) =>
-          plannedBoard.id / noticeKey -> noticePlace
+    for
+      plan <- toPlan.values.view
+      plannedBoard <- plan.toPlannedBoard.values.view
+      (noticeKey, noticePlace) <- plannedBoard.toNoticePlace.view
+    yield
+      plannedBoard.id / noticeKey -> noticePlace
 
   def allNotices: View[Notice] =
-    toPlan.values.view.flatMap: plan =>
-      plan.toPlannedBoard.values.view.flatMap: plannedBoard =>
-        plannedBoard.toNoticePlace.values.view.flatMap: noticePlace =>
-          noticePlace.notice
+    for
+      plan <- toPlan.values.view
+      plannedBoard <- plan.toPlannedBoard.values.view
+      noticePlace <- plannedBoard.toNoticePlace.values.view
+      notice <- noticePlace.notice
+    yield
+      notice
 
   def maybeNoticePlace(noticeId: NoticeId): Option[NoticePlace] =
     for

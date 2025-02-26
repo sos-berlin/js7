@@ -153,18 +153,27 @@ extends JJournaledState[JControllerState, ControllerState]:
       .mapValues(JBoardState.apply)
       .asJava
 
+  @Nonnull
   def orderToAvailableNotices(@Nonnull orderId: OrderId): java.util.List[JNotice] =
     asScala.orderToAvailableNotices(orderId)
       .map(JNotice(_))
       .asJava
 
+  @Nonnull
   def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[NoticeId] =
     asScala.orderToStillExpectedNotices(orderId)
       .asJava
 
+  @Nonnull
   def toPlanSchemaState: JMap[PlanSchemaId, JPlanSchemaState] =
     asScala.keyTo(PlanSchemaState).mapValues(JPlanSchemaState(_)).asJava
 
+  /** Returns the requested Plan (even if it is not in memory). */
+  @Nonnull
+  def plan(@Nonnull planId: PlanId): VEither[Problem, JPlan] =
+    asScala.plan(planId).map(JPlan(_)).toVavr
+
+  /** All Plans excluding empty Plans which are computed on-the-fly. */
   @Nonnull
   lazy val toPlan: JMap[PlanId, JPlan] =
     asScala.toPlan.mapValues(JPlan(_)).asJava
