@@ -141,9 +141,9 @@ final class JControllerStateTester
         var toPlan = controllerState.toPlan();
 
         var expected = Map.of(
-            PlanId.Global(),
+            PlanId.Global,
             JPlan.of(
-                PlanId.Global(),
+                PlanId.Global,
                 Set.of(OrderId.of("A-ORDER")),
                 asList(),
                 JPlan.Open),

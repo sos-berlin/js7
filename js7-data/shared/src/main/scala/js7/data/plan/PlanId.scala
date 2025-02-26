@@ -7,6 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
+import scala.annotation.static
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
 final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
@@ -42,7 +43,7 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
 
 object PlanId:
 
-  final val Global: PlanId =
+  @static final val Global: PlanId =
     PlanSchemaId.Global / PlanKey.Global
 
   given Ordering[PlanId] = orderingBy(_.planSchemaId, _.planKey)

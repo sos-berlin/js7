@@ -5,6 +5,7 @@ import js7.base.generic.GenericString
 import js7.data.item.UnsignedSimpleItemPath
 import js7.data.plan.PlanSchemaId.Global
 import org.jetbrains.annotations.TestOnly
+import scala.annotation.static
 
 /** A template for Plans-
   *
@@ -34,7 +35,7 @@ object PlanSchemaId extends UnsignedSimpleItemPath.Companion[PlanSchemaId]:
 
   type Item = PlanSchema
 
-  final val Global: PlanSchemaId =
+  @static final val Global: PlanSchemaId =
     new PlanSchemaId("Global")
 
   protected def unchecked(string: String) =
