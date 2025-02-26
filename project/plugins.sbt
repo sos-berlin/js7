@@ -12,4 +12,4 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
 libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.24.3"
 libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % "2.24.3"
 libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.24.3"
-libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.16"
+libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.17"

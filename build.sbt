@@ -787,7 +787,7 @@ lazy val `js7-service-pgp` = project
   .settings(commonSettings)
   .settings {
     import Dependencies.*
-    libraryDependencies += bouncyCastle
+    libraryDependencies ++= bouncyCastle
   }
 
 lazy val `js7-tests` = project
