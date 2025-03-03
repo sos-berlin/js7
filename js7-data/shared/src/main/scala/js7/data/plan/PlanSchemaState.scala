@@ -147,10 +147,7 @@ extends UnsignedSimpleItemState:
     usedPlans.isEmpty !! Problem:
       s"$id cannot be deleted because it is in use by ${
         usedPlans.toVector.sorted.map: plan =>
-          if plan.orderIds.size == 1 then
-            s"${plan.id.planKey} with ${plan.orderIds.head}"
-          else
-            s"${plan.id.planKey} with ${plan.orderIds.size} orders"
+          s"${plan.id.planKey} with ${plan.orderIds.mkStringLimited(3)}"
         .mkString(", ")
       }"
 

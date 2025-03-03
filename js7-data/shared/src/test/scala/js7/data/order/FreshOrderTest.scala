@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
+import js7.data.plan.PlanSchemaId
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath.syntax.*
@@ -18,7 +19,8 @@ final class FreshOrderTest extends OurTestSuite:
       FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")),
       json"""{
         "id": "ORDER-ID",
-        "workflowPath": "WORKFLOW"
+        "workflowPath": "WORKFLOW",
+        "planId": []
       }""")
 
     testJson(
@@ -28,6 +30,7 @@ final class FreshOrderTest extends OurTestSuite:
           "number" -> NumberValue(BigDecimal("-111222333444555666777888999000111222333444555666777888999000.123")),
           "string" -> StringValue("STRING"),
           "list" -> ListValue(Seq(BooleanValue.True, NumberValue(123), StringValue("string")))),
+        PlanSchemaId("DailyPlan") / "2025-02-26",
         Some(Timestamp.parse("2017-03-07T12:00:00Z")),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
@@ -37,13 +40,14 @@ final class FreshOrderTest extends OurTestSuite:
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "WORKFLOW",
-        "scheduledFor": 1488888000000,
+        "planId" : [ "DailyPlan", "2025-02-26" ],
         "arguments": {
           "boolean": true,
           "number": -111222333444555666777888999000111222333444555666777888999000.123,
           "string": "STRING",
           "list": [ true, 123, "string" ]
         },
+        "scheduledFor": 1488888000000,
         "deleteWhenTerminated": true,
         "forceJobAdmission": true,
         "innerBlock": [ 1, "then" ],

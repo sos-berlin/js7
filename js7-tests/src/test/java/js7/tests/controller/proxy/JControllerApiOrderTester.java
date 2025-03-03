@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import js7.data.event.Event;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
+import js7.data.plan.PlanId;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.command.JCancellationMode;
 import js7.data_for_java.controller.JControllerState;
@@ -39,6 +40,7 @@ class JControllerApiOrderTester
             orderId,
             workflowPath,
             Map.of(),
+            PlanId.Global,
             Optional.of(scheduledFor))));
         assertThat(added, equalTo(true));
 

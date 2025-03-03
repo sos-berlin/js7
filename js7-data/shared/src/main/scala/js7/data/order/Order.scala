@@ -1,6 +1,5 @@
 package js7.data.order
 
-import cats.syntax.option.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
@@ -43,7 +42,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
-  maybePlanId: Option[PlanId] = None,
+  planId: PlanId = PlanId.Global,
   scheduledFor: Option[Timestamp] = None,
   externalOrder: Option[ExternalOrderLink] = None,
   historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
@@ -74,16 +73,13 @@ extends
           child.branchId.fold(BranchId.ForkList)(_.toBranchId) % InstructionNr.First),
         Ready,
         arguments ++ child.arguments,
-        maybePlanId,
+        planId,
         scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,
         parent = Some(id),
         stickySubagents = stickySubagents,
         forceJobAdmission = forceJobAdmission)
-
-  def planId: PlanId =
-    maybePlanId getOrElse PlanId.Global
 
   def workflowId: WorkflowId =
     workflowPosition.workflowId
@@ -616,7 +612,7 @@ extends
           Left(OrderCannotAttachedToPlanProblem(id, reason))
         else
           Right(copy(
-            maybePlanId = planId.some))
+            planId = planId))
 
   /** An Order being transferred back to Controller, should fail after failure. */
   def shouldFail: Boolean =
@@ -907,7 +903,7 @@ extends
           Right(OrderAttachedToAgent(
             workflowPosition,
             order.state,
-            maybePlanId,
+            planId,
             arguments,
             scheduledFor,
             externalOrder,
@@ -1368,7 +1364,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "arguments" -> order.arguments.??.asJson,
-      "planId" -> order.maybePlanId.asJson,
+      "planId" -> (!order.planId.isGlobal ? order.planId).asJson,
       "scheduledFor" -> order.scheduledFor.asJson,
       "externalOrder" -> order.externalOrder.asJson,
       "attachedState" -> order.attachedState.asJson,
@@ -1389,7 +1385,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
-      planId <- cursor.get[Option[PlanId]]("planId")
+      planId <- cursor.getOrElse[PlanId]("planId")(PlanId.Global)
       scheduledFor <- cursor.get[Option[Timestamp]]("scheduledFor")
       externalOrder <- cursor.get[Option[ExternalOrderLink]]("externalOrder")
         .flatMap:

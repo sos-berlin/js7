@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import js7.data.order.OrderId;
+import js7.data.plan.PlanId;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.workflow.position.JLabel;
 import js7.data_for_java.workflow.position.JPosition;
@@ -37,7 +38,7 @@ final class JFreshOrderTester {
             JLabel.of("LABEL")));
         JFreshOrder order = JFreshOrder.of(
             OrderId.of("ORDER"), WorkflowPath.of("WORKFLOW"),
-            emptyMap(), Optional.empty(), false,
+            emptyMap(), PlanId.Global, Optional.empty(), false,
             startPosition, stopPositions);
         assertThat(order.startPosition(), equalTo(startPosition));
         assertThat(order.stopPositions(), equalTo(stopPositions));

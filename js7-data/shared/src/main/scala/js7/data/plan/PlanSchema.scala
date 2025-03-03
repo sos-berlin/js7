@@ -54,6 +54,7 @@ import org.jetbrains.annotations.TestOnly
   */
 final case class PlanSchema(
   id: PlanSchemaId,
+  @deprecated("Order.planId is no longer derived from OrderId")
   planKeyExpr: Expression,
   planIsClosedFunction: Option[ExprFunction] = None,
   namedValues: NamedValues = NamedValues.empty,
@@ -91,12 +92,14 @@ extends UnsignedSimpleItem:
 
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
+  @deprecated("Order.planId is no longer derived from OrderId")
   def evalOrderToPlanId(scope: Scope): Checked[Option[PlanId]] =
     evalPlanKeyExpr(scope).flatMap: maybePlanKey =>
       maybePlanKey.traverse(PlanId(id, _).checked)
 
   /** @param scope is expected to contain the Order Scope.
     * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
+  @deprecated("Order.planId is no longer derived from OrderId")
   private def evalPlanKeyExpr(scope: Scope): Checked[Option[PlanKey]] =
     planKeyExpr.eval(using scope).flatMap:
       _.missingToNone.traverse:
@@ -110,6 +113,9 @@ extends UnsignedSimpleItem:
 
 
 object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
+
+  @deprecated("Order.planId is no longer derived from OrderId")
+  inline val DerivePlanFromOrderId = false
 
   type Key = PlanSchemaId
   type ItemState = PlanSchemaState

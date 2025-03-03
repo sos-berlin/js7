@@ -11,6 +11,7 @@ import js7.data.workflow.{Instruction, WorkflowPath}
 final case class AddOrder(
   orderId: Expression,
   workflowPath: WorkflowPath,
+  planId: Option[Expression] = None,
   arguments: Map[String, Expression] = Map.empty,
   innerBlock: BranchPath = BranchPath.empty,
   startPosition: Option[Position] = None,

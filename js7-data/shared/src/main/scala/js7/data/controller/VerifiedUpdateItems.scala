@@ -27,6 +27,7 @@ final case class VerifiedUpdateItems private[controller](
       simple.verifiedSimpleItems.view.map(_.item.key) ++
       maybeVersioned.view.flatMap(_.verifiedItems.view.map(_.item.id))
 
+  @deprecated("Order.planId is no longer derived from OrderId")
   def hasPlanSchema: Boolean =
     simple.unsignedSimpleItems.exists(_.isInstanceOf[PlanSchema])
 

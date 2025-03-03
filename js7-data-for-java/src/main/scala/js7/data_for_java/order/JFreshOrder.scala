@@ -8,6 +8,7 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.plan.PlanId
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath
@@ -59,9 +60,10 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull planId: PlanId,
     @Nonnull scheduledFor: java.util.Optional[Instant])
   : JFreshOrder =
-    of(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated = false)
+    of(id, workflowPath, arguments, planId, scheduledFor, deleteWhenTerminated = false)
 
   @Nonnull
   @throws[RuntimeException]("on invalid syntax")
@@ -69,6 +71,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull planId: PlanId,
     @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean)
   : JFreshOrder =
@@ -76,6 +79,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       id,
       workflowPath,
       arguments.asScala.toMap,
+      planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated))
 
@@ -85,6 +89,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull planId: PlanId,
     @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull startPosition: Optional[JPositionOrLabel],
@@ -94,6 +99,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       id,
       workflowPath,
       arguments.asScala.toMap,
+      planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       startPosition = startPosition.toScala.map(_.asScala),
@@ -105,6 +111,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull planId: PlanId,
     @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
@@ -115,6 +122,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       id,
       workflowPath,
       arguments.asScala.toMap,
+      planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
@@ -128,6 +136,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull arguments: java.util.Map[String, Value],
     @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull planId: PlanId,
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
     @Nonnull innerBlock: JBranchPath,
@@ -138,6 +147,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
       id,
       workflowPath,
       arguments.asScala.toMap,
+      planId,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,

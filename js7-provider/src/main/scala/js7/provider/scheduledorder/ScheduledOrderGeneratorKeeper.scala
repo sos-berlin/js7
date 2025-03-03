@@ -4,6 +4,7 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.plan.PlanId
 import js7.provider.scheduledorder.ScheduledOrderGeneratorKeeper.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
 
@@ -24,6 +25,7 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
         toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,
         orderGenerator.arguments,
+        PlanId.Global,
         Some(instant.toTimestamp)))
     .toVector.sortBy(_.scheduledFor)
 

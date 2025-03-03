@@ -233,8 +233,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$aDirectory${separator}1"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("1")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("1")))),
       NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}1\n"),
@@ -245,8 +244,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$aDirectory${separator}2"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("2")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("2")))),
       orderId2 <-: OrderStarted,
       orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}2\n"),
       orderId2 <-: OrderFinished(),
@@ -256,8 +254,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$aDirectory${separator}3"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("3")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("3")))),
       orderId3 <-: OrderStarted,
       orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}3\n"),
       orderId3 <-: OrderFinished(),
@@ -267,8 +264,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$aDirectory${separator}4"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
       NoKey <-: UnsignedSimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
@@ -281,8 +277,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$bDirectory${separator}5"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("5")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("5")))),
       orderId5 <-: OrderStarted,
       orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}5\n"),
       orderId5 <-: OrderFinished(),
@@ -292,8 +287,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$bDirectory${separator}6"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
@@ -303,8 +297,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$bDirectory${separator}6"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
@@ -314,8 +307,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
         Map(
           FileArgumentName -> StringValue(s"$bDirectory${separator}7"),
           "var" -> StringValue("VAR")),
-        None, None,
-        Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("7")))),
+        externalOrderKey = Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("7")))),
       orderId7 <-: OrderStarted,
       orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}7\n"),
       orderId7 <-: OrderFinished(),

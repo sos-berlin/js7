@@ -95,7 +95,7 @@ public class JGlobalBoardTester
 
     private void testPostedNotice() throws ExecutionException, InterruptedException, TimeoutException {
         PlannedNoticeKey postedPlannedNoticeKey = PlannedNoticeKey.of("2021-01-01");
-        NoticeId postedNoticeId = NoticeId.of(PlanId.Global(), board.path(), NoticeKey.of("2021-01-01"));
+        NoticeId postedNoticeId = NoticeId.of(PlanId.Global, board.path(), NoticeKey.of("2021-01-01"));
         OrderId posterOrderId = OrderId.of("#2021-01-01#POSTER");
         CompletableFuture<JEventAndControllerState<Event>> whenPosted =
             awaitEvent(keyedEvent ->
@@ -116,7 +116,7 @@ public class JGlobalBoardTester
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {
         PlannedNoticeKey expectedPlannedNoticeKey = PlannedNoticeKey.of("2021-07-20");
-        NoticeId expectedNoticeId = NoticeId.of(PlanId.Global(), board.path(), NoticeKey.of("2021-07-20"));
+        NoticeId expectedNoticeId = NoticeId.of(PlanId.Global, board.path(), NoticeKey.of("2021-07-20"));
         OrderId expectingOrderId = OrderId.of("#2021-07-20#READER");
 
         CompletableFuture<JEventAndControllerState<Event>> whenWaiting =

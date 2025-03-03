@@ -136,7 +136,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
   "addOrders" in:
     val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path,
       Map("A" -> StringValue("*" * 800)),
-      Some(ts"2100-01-01T00:00:00Z"))
+      scheduledFor = Some(ts"2100-01-01T00:00:00Z"))
     val n = calculateNumberOf(500_000,
       Stamped(0L,
         bigOrder.toOrderAdded(workflow.id.versionId, bigOrder.arguments): KeyedEvent[OrderEvent]))

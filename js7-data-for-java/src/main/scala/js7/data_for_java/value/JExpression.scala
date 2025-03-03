@@ -26,6 +26,11 @@ object JExpression extends JJsonable.Companion[JExpression]:
 
   @Nonnull
   @throws[RuntimeException]
+  def of(expression: String): JExpression =
+    apply(expression)
+
+  @Nonnull
+  @throws[RuntimeException]
   def apply(expression: String): JExpression =
     parseExpression(expression)
       .map(JExpression(_))

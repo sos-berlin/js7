@@ -2,6 +2,7 @@ package js7.data.order
 
 import js7.base.time.Timestamp
 import js7.data.controller.ControllerId
+import js7.data.plan.PlanId
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.OrderScopes
@@ -27,6 +28,8 @@ trait OrderDetails:
 trait MinimumOrder extends OrderDetails:
 
   def id: OrderId
+
+  def planId: PlanId
 
   /** A Scope that does not change in the Order's lifetime. */
   def minimumScope(controllerId: ControllerId): Scope =

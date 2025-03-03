@@ -199,7 +199,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
     "POST" - {
       val orderWithMissingWorkflow = json"""{
         "id": "ORDER-ID",
-        "workflowPath": "MISSING"
+        "workflowPath": "MISSING",
+        "planId": []
       }"""
 
       "Order with missing workflow is rejected (single order)" in:
@@ -221,7 +222,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
 
       "Invalid OrderId is rejected (single order)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-        val order = json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }"""
+        val order = json"""{ "id": "ORDER|ID", "workflowPath": "MISSING", "planId": [] }"""
         val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), order, headers).await(99.s)
         assert(exception.status.intValue == 400/*BadRequest*/)
@@ -230,7 +231,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
 
       "Invalid OrderId is rejected (order array)" in:
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-        val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }""":: Nil)
+        val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "MISSING", "planId": [] }""":: Nil)
         val exception = intercept[HttpException]:
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers).await(99.s)
         assert(exception.status.intValue == 400/*BadRequest*/)
@@ -239,7 +240,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
 
       val order = json"""{
         "id": "ORDER-ID",
-        "workflowPath": "WORKFLOW"
+        "workflowPath": "WORKFLOW",
+        "planId": []
       }"""
 
       "First" in:
@@ -259,7 +261,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
       "Bad OrderId" in:
         val order = json"""{
           "id": "A|B",
-          "workflowPath": "WORKFLOW"
+          "workflowPath": "WORKFLOW",
+          "planId": []
         }"""
 
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -274,7 +277,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
           [
             {
               "id": "ORDER-ID",
-              "workflowPath": "WORKFLOW"
+              "workflowPath": "WORKFLOW",
+              "planId": []
             }
           ]"""
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -288,7 +292,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
           [
             {
               "id": "A|B",
-              "workflowPath": "WORKFLOW"
+              "workflowPath": "WORKFLOW",
+              "planId": []
             }
           ]"""
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil

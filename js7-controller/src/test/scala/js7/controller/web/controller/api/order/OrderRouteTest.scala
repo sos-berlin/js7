@@ -78,7 +78,7 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
   "POST new order" in:
     val order = FreshOrder(OrderId("ORDER-🔷"), WorkflowPath("WORKFLOW"),
       Map("KEY" -> StringValue("VALUE")),
-      Some(Timestamp.parse("2017-03-07T12:00:00Z")))
+      scheduledFor = Some(Timestamp.parse("2017-03-07T12:00:00Z")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check:
       assert(status == Created)  // New order
       assert(response.header3[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B7"))

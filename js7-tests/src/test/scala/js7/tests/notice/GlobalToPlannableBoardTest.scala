@@ -66,7 +66,8 @@ final class GlobalToPlannableBoardTest
       // Post a Notice via Order //
       val postingOrderId = OrderId(s"#$day#ALPHA")
       controller.addOrderBlocking:
-        FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(postingOrderId, postingWorkflow.path, planId = planId,
+          deleteWhenTerminated = true)
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
@@ -79,7 +80,8 @@ final class GlobalToPlannableBoardTest
       val otherPlanId = dailyPlan.id / otherDay
       val consumingOrderId = OrderId(s"#$otherDay#NOTICE")
       controller.addOrderBlocking:
-        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(consumingOrderId, consumingWorkflow.path, planId = otherPlanId,
+          deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       assert(controllerState.toNoticePlace.toMap == Map(
@@ -119,7 +121,8 @@ final class GlobalToPlannableBoardTest
 
       val events = eventWatch.keyedEvents(after = startEventId)
       assert(events.dropWhile(ke => !ke.event.isInstanceOf[OrderAdded]) == Seq(
-        postingOrderId <-: OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
+        postingOrderId <-: OrderAdded(postingWorkflow.id, planId = planId,
+          deleteWhenTerminated = true),
         postingOrderId <-: OrderStarted,
         postingOrderId <-: OrderNoticePosted(boardPath \ "2025-01-20ALPHA", endOfLife = Some(ts"2099-01-01T01:00:00Z")),
         postingOrderId <-: OrderMoved(Position(1)),
@@ -128,7 +131,8 @@ final class GlobalToPlannableBoardTest
 
         boardPath <-: NoticePosted(PlanId.Global / NoticeKey("2025-01-20BETA"), Some(ts"2099-01-01T01:00:00Z")),
 
-        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(otherPlanId), deleteWhenTerminated = true),
+        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = otherPlanId,
+          deleteWhenTerminated = true),
         consumingOrderId <-: OrderStarted,
         consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ "2025-01-21NOTICE")),
 
@@ -160,7 +164,8 @@ final class GlobalToPlannableBoardTest
       // Expect a notice //
       val consumingOrderId = OrderId(s"#$day#B")
       controller.addOrderBlocking:
-        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(consumingOrderId, consumingWorkflow.path, planId = planId,
+          deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       assert(controllerState.toNoticePlace.toMap == Map(
@@ -202,7 +207,8 @@ final class GlobalToPlannableBoardTest
       assert(events.dropWhile(ke => !ke.event.isInstanceOf[NoticePosted]) == Seq(
         boardPath <-: NoticePosted(PlanId.Global / NoticeKey("2025-01-22A"), Some(ts"2099-01-01T01:00:00Z")),
 
-        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
+        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = planId,
+          deleteWhenTerminated = true),
         consumingOrderId <-: OrderStarted,
         consumingOrderId <-: OrderNoticesExpected(Vector(boardPath \ "2025-01-22B")),
 

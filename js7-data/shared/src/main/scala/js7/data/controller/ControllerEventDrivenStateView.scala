@@ -22,7 +22,7 @@ extends EventDrivenStateView[Self]:
         val addedOrderId = orderAdded.ownOrderId getOrElse orderId
         for
           _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          _ <- checkPlanIsOpen(orderAdded.planId getOrElse PlanId.Global)
+          _ <- checkPlanIsOpen(orderAdded.planId)
           r <- update(addOrders =
             Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil)
         yield
@@ -33,6 +33,7 @@ extends EventDrivenStateView[Self]:
 
   /** @return None for global PlanId.
     */
+  @deprecated("Order.planId is no longer derived from OrderId")
   final def evalOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
     val scope = toPlanOrderScope(order)
     keyToItem(PlanSchema).values.toVector.map:

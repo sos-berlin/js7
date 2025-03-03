@@ -146,14 +146,6 @@ trait StateView extends ItemContainer, EngineStateFunctions:
     OrderScopes.minimumOrderScope(order.id, order, controllerId)
       |+| NamedValueScope(order.arguments)
 
-  ///** Scope to calculate PlanId and NoticeKey of a PlannableBoard.  */
-  //private def toPlanOrderScopeXX(order: MinimumOrder): Checked[Scope] =
-  //  keyToItem(Workflow).checked(order.workflowId).flatMap: workflow =>
-  //    workflow.orderParameterList
-  //    // TODO Add final Workflow defined named values ?
-  //    OrderScopes.minimumOrderScope(order.id, order, controllerId)
-  //      |+| NamedValueScope(arguments)
-
   /** A pure (stable, repeatable) Scope. */
   final def toOrderScope(order: Order[Order.State]): Checked[Scope] =
     toOrderScopes(order).map(_.pureOrderScope)

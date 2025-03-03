@@ -84,7 +84,8 @@ final class ControllerCommandTest extends OurTestSuite:
           "TYPE": "AddOrder",
           "order": {
             "id": "ORDER",
-            "workflowPath": "WORKFLOW"
+            "workflowPath": "WORKFLOW",
+            "planId": []
           }
         }""")
 

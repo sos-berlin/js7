@@ -74,24 +74,26 @@ object NoticeEventSource:
     innerBlock: Workflow,
     controllerState: ControllerState)
   : Checked[List[OrderNoticeAnnounced]] =
-    assertThat(!planId.isGlobal)
-    innerBlock.instructions.view.collect:
-      case postNotices: PostNotices =>
-        controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
-          .flatMap: planSchemaState =>
-            planSchemaState.plan(planId.planKey).flatMap: plan =>
-              postNotices.boardPaths.traverse: boardPath =>
-                controllerState.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
-                  boardState.item match
-                    case _: GlobalBoard => Right(None)
-                    case plannableBoard: PlannableBoard =>
-                      plannableBoard.freshOrderToNoticeKey(order, controllerState)
-                        .map: noticeKey =>
-                          !plan.isNoticeAnnounced(boardPath / noticeKey) thenSome:
-                            OrderNoticeAnnounced(planId / boardPath / noticeKey)
-        .map(_.flatten)
-    .toList.sequence
-    .map(_.flatten.distinct)
+    if planId.isGlobal then
+      Right(Nil)
+    else
+      innerBlock.instructions.view.collect:
+        case postNotices: PostNotices =>
+          controllerState.keyTo(PlanSchemaState).checked(planId.planSchemaId)
+            .flatMap: planSchemaState =>
+              planSchemaState.plan(planId.planKey).flatMap: plan =>
+                postNotices.boardPaths.traverse: boardPath =>
+                  controllerState.keyTo(BoardState).checked(boardPath).flatMap: boardState =>
+                    boardState.item match
+                      case _: GlobalBoard => Right(None)
+                      case plannableBoard: PlannableBoard =>
+                        plannableBoard.freshOrderToNoticeKey(order, controllerState)
+                          .map: noticeKey =>
+                            !plan.isNoticeAnnounced(boardPath / noticeKey) thenSome:
+                              OrderNoticeAnnounced(planId / boardPath / noticeKey)
+          .map(_.flatten)
+      .toList.sequence
+      .map(_.flatten.distinct)
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderNoticePosted | OrderMoved]] =

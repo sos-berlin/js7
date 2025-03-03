@@ -61,7 +61,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def ownOrderId: Option[OrderId]
     def workflowId: WorkflowId
     def arguments: NamedValues
-    def planId: Option[PlanId]
+    def planId: PlanId
     def scheduledFor: Option[Timestamp]
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
@@ -86,7 +86,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderAdded(
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
-    planId: Option[PlanId] = None,
+    planId: PlanId = PlanId.Global,
     scheduledFor: Option[Timestamp] = None,
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
@@ -122,7 +122,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
-        planId <- c.get[Option[PlanId]]("planId")
+        planId <- c.getOrElse[PlanId]("planId")(PlanId.Global/*COMPATIBLE with v2.7.3*/)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
@@ -139,7 +139,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     orderId: OrderId,
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
-    planId: Option[PlanId] = None,
+    planId: PlanId = PlanId.Global,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
@@ -162,7 +162,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         "orderId" -> o.orderId.asJson,
         "workflowId" -> o.workflowId.asJson,
         "arguments" -> o.arguments.??.asJson,
-        "planId" -> o.planId.asJson,
+        "planId" -> (!o.planId.isGlobal ? o.planId).asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
         "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
@@ -174,7 +174,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
         orderId <- c.get[OrderId]("orderId")
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
-        planId <- c.get[Option[PlanId]]("planId")
+        planId <- c.getOrElse[PlanId]("planId")(PlanId.Global)
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
@@ -190,7 +190,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   final case class OrderAttachedToAgent(
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
-    planId: Option[PlanId] = None,
+    planId: PlanId = PlanId.Global,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     externalOrder: Option[ExternalOrderLink] = None,

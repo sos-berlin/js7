@@ -123,6 +123,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
     expr(s"'${separator}DIRECTORY'"),
     Some(SimplePattern("""\.csv""".r.pattern.pattern)),
     Some(Expression.NamedValue("0")),
+    Some(expr(s"""[ 'DailyPlan', now(format='yyyy-MM-dd') ]""")),
     3.s,
     Some(ItemRevision(7)))
 
@@ -249,6 +250,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
           "agentPath": "AGENT",
           "directoryExpr": "'${separator}DIRECTORY'",
           "pattern": "\\.csv",
+          "planIdExpr" : "['DailyPlan', now(format='yyyy-MM-dd')]",
           "delay": 3,
           "orderIdExpression": "$$0",
           "itemRevision": 7

@@ -46,6 +46,7 @@ final class FileWatchTest extends OurTestSuite:
           Some(SimplePattern("[a-z]+.csv")),
           Some(expr(
             """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$js7EpochSecond-$orderWatchPath:$1"""")),
+          Some(expr(s"""['DailyPlan', now(format='yyyy-MM-dd')]""")),
           2.s),
         json"""{
           "TYPE": "FileWatch",
@@ -55,6 +56,7 @@ final class FileWatchTest extends OurTestSuite:
           "directoryExpr": "'/DIRECTORY'",
           "pattern": "[a-z]+.csv",
           "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$js7EpochSecond-$$orderWatchPath:$$1\"",
+          "planIdExpr": "['DailyPlan', now(format='yyyy-MM-dd')]",
           "delay": 2
         }""")
   }

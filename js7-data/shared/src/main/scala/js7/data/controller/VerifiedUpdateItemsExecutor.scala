@@ -75,7 +75,7 @@ object VerifiedUpdateItemsExecutor:
         updatedState <- updatedState.applyKeyedEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
         (orderPlanAttached, updatedState) <-
-          if verifiedUpdateItems.hasPlanSchema then
+          if PlanSchema.DerivePlanFromOrderId && verifiedUpdateItems.hasPlanSchema then
             attachPlanlessOrders(updatedState)
           else
             Right(Nil -> controllerState)
@@ -200,16 +200,21 @@ object VerifiedUpdateItemsExecutor:
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
                 item.match
-                  case item: PlanSchema =>
-                    controllerState.keyTo(PlanSchemaState).checked(item.id)
-                      .flatMap: planSchemaState =>
-                        checkOrdersMatchStillItsPlan(controllerState,
-                          planSchemaState.copy(item = item))
+                  case item: PlanSchema if PlanSchema.DerivePlanFromOrderId =>
+                    checkOrderPlanIds(item, controllerState)
                   case _ => Checked.unit
                 .map: _ =>
                   UnsignedSimpleItemChanged:
                     item.withRevision(Some(existing.nextRevision))
 
+    @deprecated("Order.planId is no longer derived from OrderId")
+    def checkOrderPlanIds(item: PlanSchema, controllerState: ControllerState): Checked[Unit] =
+      controllerState.keyTo(PlanSchemaState).checked(item.id)
+        .flatMap: planSchemaState =>
+          checkOrdersMatchStillItsPlan(controllerState,
+            planSchemaState.copy(item = item))
+
+    @deprecated("Order.planId is no longer derived from OrderId")
     def checkOrdersMatchStillItsPlan(
       controllerState: ControllerState,
       planSchemaState: PlanSchemaState)
@@ -220,11 +225,12 @@ object VerifiedUpdateItemsExecutor:
           _.flatMap: order =>
             planSchemaState.item.evalOrderToPlanId(controllerState.toPlanOrderScope(order))
               .flatMap: maybePlanId =>
-                (order.maybePlanId == maybePlanId) !!
+                ((!order.planId.isGlobal ? order.planId) == maybePlanId) !!
                   OrderWouldNotMatchChangedPlanSchemaProblem(order.id, order.planId)
         .sequence
         .map(_.combineAll)
 
+    @deprecated("Order.planId is no longer derived from OrderId")
     def attachPlanlessOrders(controllerState: ControllerState)
     : Checked[(Vector[KeyedEvent[OrderStateReset | OrderPlanAttached]], ControllerState)] =
       controllerState.orders.view
@@ -233,13 +239,12 @@ object VerifiedUpdateItemsExecutor:
           controllerState.evalOrderToPlanId(order).flatMap:
             case None => Right(Vector.empty)
             case Some(planId) =>
-              order.maybePlanId match
-                case Some(orderPlanId) =>
-                  Left(Problem(s"${order.id} is in already in $orderPlanId"))
-                case None =>
-                  Right:
-                    order.isState[ExpectingNotices].thenList(order.id <-: OrderStateReset)
-                      ::: (order.id <-: OrderPlanAttached(planId)) :: Nil
+              if !order.planId.isGlobal then
+                Left(Problem(s"${order.id} is in already in ${order.planId}"))
+              else
+                Right:
+                  order.isState[ExpectingNotices].thenList(order.id <-: OrderStateReset)
+                    ::: (order.id <-: OrderPlanAttached(planId)) :: Nil
         .map(_.flatten)
         .flatMap: events =>
           controllerState.applyKeyedEvents(events)

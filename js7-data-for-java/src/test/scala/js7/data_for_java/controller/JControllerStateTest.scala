@@ -20,7 +20,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
-import js7.data.plan.{Plan, PlanId, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
@@ -137,7 +137,7 @@ private object JControllerStateTest:
         arguments = Map(
           "key1" -> StringValue("value1"),
           "key2" -> StringValue("value2")),
-        maybePlanId = Some(planId),
+        planId = planId,
         deleteWhenTerminated = true)
     ).toKeyedMap(_.id))
     .finish.orThrow

@@ -47,6 +47,7 @@ final class PlanTest
 
   protected def items = Nil
 
+  if PlanSchema.DerivePlanFromOrderId then
   "When a PlanSchemas is added, matching planless Orders are attached to the new Plans" in :
     val day = "2024-12-03"
     val orderId = OrderId(s"#$day#")
@@ -89,7 +90,8 @@ final class PlanTest
       assert(eventWatch.keyedEvents(after = eventId) == Seq(
         NoKey <-: ItemDeleted(dailyPlan.path)))
 
-  "Adding a PlanSchemas is rejected when a planless Order is attached to an Agent" in:
+  if PlanSchema.DerivePlanFromOrderId then
+  "Adding a PlanSchema is rejected when a matching Order is attached to an Agent" in:
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
 
@@ -109,6 +111,7 @@ final class PlanTest
       ASemaphoreJob.continue()
       eventWatch.awaitNextKey[OrderFinished](orderId)
 
+  if PlanSchema.DerivePlanFromOrderId then
   "When adding a PlanSchema, Orders expecting a Notice are state-reset" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
@@ -147,7 +150,8 @@ final class PlanTest
         execCmd: // Close the plan, so it can be deleted
           ChangePlan(dailyPlan.id / "2024-12-05", Plan.Status.Closed)
 
-  "Adding a PlanSchemas is rejected when a planless Orders is in a ConsumeNotices block" in :
+  if PlanSchema.DerivePlanFromOrderId then
+  "Adding a PlanSchemas is rejected when a matching Orders is in a ConsumeNotices block" in :
     // It's recommended to SuspendOrders(resetState) all Orders before
     // adding or changing a PlanSchema.
 
@@ -177,6 +181,7 @@ final class PlanTest
       //execCmd: // Close the plan, so it can be deleted
       //  ChangePlanSchema(dailyPlan.id, Map("openingDay" -> "2025-01-30"))
 
+  if PlanSchema.DerivePlanFromOrderId then
   "Update a PlanSchema and check existing Orders" in:
     eventWatch.resetLastWatchedEventId()
     val planSchemaId = PlanSchemaId("DailyPlan")
@@ -217,7 +222,7 @@ final class PlanTest
       // Now, bOrderId is attached to the updated PlanSchema
       assert(controllerState.idToOrder(bOrderId).planId == bPlanId)
       assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
-        OrderAdded(workflow.id, planId = None, deleteWhenTerminated = true),
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderPrompted("PROMPT"),
         OrderPlanAttached(bPlanId)))
@@ -234,14 +239,16 @@ final class PlanTest
       .rightAs(()).await(99.s)
 
     "PlanSchema is only deletable if no Order is associated" in:
+      val planSchemaId = PlanSchemaId("DailyPlan")
       val day = "2024-11-08"
+      val planId = planSchemaId / day
       withItem(Workflow.of(Prompt(expr("'PROMPT'")))): workflow =>
         eventWatch.resetLastWatchedEventId()
 
         val planSchema = updateItem(PlanSchema.joc(PlanSchemaId("DailyPlan")))
         val postingOrderId = OrderId(s"#$day#POST")
         controller.addOrderBlocking:
-          FreshOrder(postingOrderId, workflow.path, deleteWhenTerminated = true)
+          FreshOrder(postingOrderId, workflow.path, planId = planId, deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
@@ -282,7 +289,8 @@ final class PlanTest
 
         val postingOrderId = OrderId(s"#$day#POST")
         controller.addOrderBlocking:
-          FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+          FreshOrder(postingOrderId, postingWorkflow.path, planId = planId,
+            deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
         val aNoticeKey = NoticeKey.empty
@@ -301,7 +309,8 @@ final class PlanTest
 
         val consumingOrderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
-          FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+          FreshOrder(consumingOrderId, consumingWorkflow.path, planId = planId,
+            deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
         assert(controllerState.toPlan(planSchema.id / planKey) ==
@@ -316,7 +325,7 @@ final class PlanTest
                 bNoticeKey -> NoticePlace(isAnnounced = true))))))
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
-          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with 2 orders"))
+          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with Order:#2024-11-27#POST, Order:#2024-11-27#CONSUME"))
 
         execCmd:
           AnswerOrderPrompt(postingOrderId)
@@ -325,7 +334,7 @@ final class PlanTest
         eventWatch.awaitNextKey[OrderPrompted](consumingOrderId)
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
-          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with 2 orders"))
+          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with Order:#2024-11-27#POST, Order:#2024-11-27#CONSUME"))
 
         for orderId <- Seq(postingOrderId, consumingOrderId) do
           execCmd(CancelOrders(Seq(orderId)))

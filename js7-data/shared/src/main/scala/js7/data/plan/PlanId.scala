@@ -7,6 +7,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
+import js7.data.value.expression.Expression.{ListExpr, StringConstant}
+import js7.data.value.{ListValue, StringValue}
+import js7.data.value.expression.{Expression, Scope}
 import scala.annotation.static
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
@@ -31,6 +34,12 @@ final case class PlanId(planSchemaId: PlanSchemaId, planKey: PlanKey):
     else
       Right(this)
 
+  def toExpression: Expression =
+    if isGlobal then
+      ListExpr.empty
+    else
+      ListExpr(StringConstant(planSchemaId.string) :: StringConstant(planKey.string) :: Nil)
+
   override def toString =
     s"Plan:$shortString"
 
@@ -45,6 +54,7 @@ object PlanId:
 
   @static final val Global: PlanId =
     PlanSchemaId.Global / PlanKey.Global
+  @static val GlobalPlanIdExpr: Expression = PlanId.Global.toExpression
 
   given Ordering[PlanId] = orderingBy(_.planSchemaId, _.planKey)
 
@@ -64,3 +74,15 @@ object PlanId:
             PlanId(planSchemaId, planKey)
       case _ =>
         Left(DecodingFailure("Invalid PlanId", c.history))
+
+  /** @param scope is expected to contain an Order Scope. */
+  def evalPlanIdExpr(expr: Expression, scope: Scope): Checked[PlanId] =
+    expr.eval(using scope).flatMap:
+      case ListValue(Vector()) => Right(PlanId.Global)
+      case ListValue(Vector(StringValue(planSchemaId), StringValue(planKey))) =>
+        for
+          planSchemaId <- PlanSchemaId.checked(planSchemaId)
+          planKey <- PlanKey.checked(planKey)
+        yield planSchemaId / planKey
+      case other => Left(Problem.pure:
+        s"""Invalid PlanId expression result (something like ["planSchema", "planKey"] was expected): $other""")

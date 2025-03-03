@@ -49,7 +49,8 @@ final class JFileWatchTester
                         AgentPath.of("AGENT"),
                         JExpression.fromString(directory.toString()),
                         Optional.of("file-(.+)\\.txt"),
-                        Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\""),
+                        Optional.of(JExpression.of(("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\""))),
+                        Optional.of(JExpression.of("['Global', 'Global']")), // Equivalent to [] and Optional.empty
                         Duration.ofSeconds(0)))))));
 
             Path file = directory.resolve("file-TEST.txt");

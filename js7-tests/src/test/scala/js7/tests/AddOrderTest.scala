@@ -179,7 +179,7 @@ object AddOrderTest:
       AddOrder(
         orderId = expr("'🟦'"),
         bWorkflow.path,
-        Map(
+        arguments = Map(
           "year" -> expr("now('yyyy')")),
         deleteWhenTerminated = true)))
 

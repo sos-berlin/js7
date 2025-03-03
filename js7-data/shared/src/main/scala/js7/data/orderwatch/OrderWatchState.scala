@@ -1,11 +1,13 @@
 package js7.data.orderwatch
 
+import cats.syntax.semigroup.*
 import fs2.Stream
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.Tests.isStrict
@@ -16,7 +18,8 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExtern
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, ToOrderAdded, Vanished, logger}
-import js7.data.value.NamedValues
+import js7.data.value.expression.scopes.{ArgumentlessFunctionScope, NamedValueScope, NowScope}
+import js7.data.value.{NamedValues, StringValue}
 import scala.collection.View
 
 /**
@@ -188,17 +191,24 @@ extends
   private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
   : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected]] =
     orderAddedQueue.view.flatMap: externalOrderName =>
+      val externalOrderKey = ExternalOrderKey(path, externalOrderName)
       externalToState.get(externalOrderName)
         .toList.flatMap: arised =>
           val Arised(orderId, arguments) = arised: @unchecked
-          val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
-          val externalOrderKey = ExternalOrderKey(path, externalOrderName)
-          toOrderAdded(freshOrder, Some(externalOrderKey)) match
+          orderWatch.evalPlanIdExpr:
+            ArgumentlessFunctionScope(Map("orderId" -> Right(StringValue(orderId.string)))) |+|
+              NamedValueScope(arguments) |+|
+              NowScope(Timestamp.now)
+          .flatMap: planId =>
+            val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments, planId)
+            toOrderAdded(freshOrder, Some(externalOrderKey))
+              .map(freshOrder -> _)
+          match
             case Left(problem) =>
-              // Happens when the Order's Plan is closed
+              // Happens when evalPlanIdExpr failed or the Order's Plan is closed
               (path <-: ExternalOrderRejected(externalOrderName, orderId, problem)) :: Nil
 
-            case Right(Left(existingOrder)) =>
+            case Right((freshOrder, Left(existingOrder))) =>
               val vanished = existingOrder.externalOrder
                 .filter(_.externalOrderKey == externalOrderKey)
                 .exists(_.vanished)
@@ -207,7 +217,7 @@ extends
                   existingOrder.externalOrder.fold("")(o => s" and is linked to $o")}")
               Nil
 
-            case Right(Right(orderAddedEvents)) =>
+            case Right((freshOrder, Right(orderAddedEvents))) =>
               orderAddedEvents.toKeyedEvents
 
   private def nextOrderExternalVanishedEvents: View[KeyedEvent[OrderExternalVanished]] =
@@ -250,8 +260,7 @@ with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
   override type ItemState = OrderWatchState
 
   type ToOrderAdded =
-    (FreshOrder, Option[ExternalOrderKey]) =>
-      Checked[Either[Order[Order.State], OrderAddedEvents]]
+    (FreshOrder, Option[ExternalOrderKey]) => Checked[Either[Order[Order.State], OrderAddedEvents]]
 
   private val logger = Logger[this.type]
 
@@ -279,7 +288,7 @@ with EventDriven.Companion[OrderWatchState, OrderWatchEvent]:
   sealed trait VanishedOrArised
 
 
-  // TODO Rename as Appeared
+  // TODO Rename as Appeared, let Controller compute OrderId
   final case class Arised(orderId: OrderId, arguments: NamedValues)
   extends ArisedOrHasOrder, VanishedOrArised:
     override def toString = s"Arised($orderId)"

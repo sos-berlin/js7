@@ -75,14 +75,16 @@ final class PlannableBoardTest
       // Wait for notice, post notice, consume notice //
       val consumingOrderId = OrderId(s"#$day#CONSUME")
       controller.addOrderBlocking:
-        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true,
+        FreshOrder(consumingOrderId, consumingWorkflow.path, planId = planId,
+          deleteWhenTerminated = true,
           arguments = Map("ARG" -> "🔸"))
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       // Post a Notice //
       val postingOrderId = OrderId(s"#$day#POST")
       controller.addOrderBlocking:
-        FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+        FreshOrder(postingOrderId, postingWorkflow.path, planId = planId,
+          deleteWhenTerminated = true,
           arguments = Map("ARG" -> "🔸"))
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
@@ -93,7 +95,7 @@ final class PlannableBoardTest
       val noticeId = planId / board.path / NoticeKey("🔸")
 
       assert(eventWatch.eventsByKey[OrderEvent](postingOrderId) == Seq(
-        OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true,
+        OrderAdded(postingWorkflow.id, planId = planId, deleteWhenTerminated = true,
           arguments = Map("ARG" -> "🔸")),
         OrderNoticeAnnounced(noticeId),
         OrderStarted,
@@ -103,7 +105,7 @@ final class PlannableBoardTest
         OrderDeleted))
 
       assert(eventWatch.eventsByKey[OrderEvent](consumingOrderId) == Seq(
-        OrderAdded(consumingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true,
+        OrderAdded(consumingWorkflow.id, planId = planId, deleteWhenTerminated = true,
           arguments = Map("ARG" -> "🔸")),
         OrderStarted,
         OrderNoticesExpected(Vector(
@@ -135,10 +137,12 @@ final class PlannableBoardTest
       consumingWorkflow),
     ): (_, weeklyPlan, _, postingWorkflow, consumingWorkflow) =>
       eventWatch.resetLastWatchedEventId()
+      val weeklyPlanId = weeklyPlan.id / "2024w47"
       locally:
         val postingOrderId = OrderId("#2024w47#POST")
         controller.addOrderBlocking:
-          FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+          FreshOrder(postingOrderId, postingWorkflow.path, planId = weeklyPlanId,
+            deleteWhenTerminated = true,
             arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
         eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
@@ -146,6 +150,7 @@ final class PlannableBoardTest
       locally:
         val consumingOrderId = OrderId("#2024w47#CONSUME")
         val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path,
+          planId = weeklyPlanId,
           arguments = Map("ARG" -> "🔸"))
         assert(controllerState.evalOrderToPlanId(consumingOrder) ==
           Right(Some(weeklyPlan.id / "2024w47")))
@@ -155,8 +160,7 @@ final class PlannableBoardTest
         eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
         eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
-        assert(controllerState.idToOrder(consumingOrderId).maybePlanId ==
-          Some(PlanSchemaId("WeeklyPlan") / "2024w47"))
+        assert(controllerState.idToOrder(consumingOrderId).planId == weeklyPlanId)
         execCmd(DeleteOrdersWhenTerminated(consumingOrderId :: Nil))
 
       //locally:
@@ -173,6 +177,7 @@ final class PlannableBoardTest
       //  eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
       //  eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
 
+  if PlanSchema.DerivePlanFromOrderId then
   "Two PlanSchemas with overlapping OrderId patterns" in:
     withItems((
       PlanSchema(
@@ -216,14 +221,15 @@ final class PlannableBoardTest
 
     val boardPathExpr = board.path & bBoard.path & cBoard.path
 
-    def announcingTest[A](boardPath: BoardPath, day: String)(body: OrderId => A): A =
+    def announcingTest[A](boardPath: BoardPath, planId: PlanId)(body: OrderId => A): A =
       val postingWorkflow = Workflow(WorkflowPath("POSTING"), Seq(
         Prompt(expr("'PROMPT'")),
         PostNotices(Seq(boardPath))))
       withItem(postingWorkflow): postingWorkflow =>
-        val announcingOrderId = OrderId(s"#$day#POST")
+        val announcingOrderId = OrderId(s"#${planId.planKey.toString}#POST")
         controller.addOrderBlocking:
-          FreshOrder(announcingOrderId, postingWorkflow.path, deleteWhenTerminated = true,
+          FreshOrder(announcingOrderId, postingWorkflow.path, planId = planId,
+            deleteWhenTerminated = true,
             arguments = Map("ARG" -> "🔸"))
         try
           body(announcingOrderId)
@@ -236,23 +242,22 @@ final class PlannableBoardTest
     "WhenNotAnnounced.Wait" - {
       "ConsumeNotices" in:
         eventWatch.resetLastWatchedEventId()
-        val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+        val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
         val day = "2024-11-22"
+        val planId = dailyPlan.id / day
         val workflow = Workflow(WorkflowPath("EXPECTING"), Seq(
           ConsumeNotices(boardPathExpr, whenNotAnnounced = Wait):
             EmptyInstruction()))
         withItems(
-          (planSchema, board, bBoard, cBoard, workflow)
+          (dailyPlan, board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
-          announcingTest(bBoard.path, day): announcingOrderId =>
+          announcingTest(bBoard.path, planId): announcingOrderId =>
+            val plannedNoticeKey = planId / NoticeKey("🔸")
             val orderId = OrderId(s"#$day#CONSUME")
             controller.addOrderBlocking:
-              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+              FreshOrder(orderId, workflow.path, planId = planId, deleteWhenTerminated = true,
                 arguments = Map("ARG" -> "🔸"))
             eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
-
-            val planId = dailyPlan.id / day
-            val plannedNoticeKey = planId / NoticeKey("🔸")
 
             // Post board and cBoard
             execCmd:
@@ -268,7 +273,7 @@ final class PlannableBoardTest
 
             eventWatch.awaitNextKey[OrderTerminated](orderId)
             assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-              OrderAdded(workflow.id, planId = Some(dailyPlan.id / day),
+              OrderAdded(workflow.id, planId = planId,
                 deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
               OrderStarted,
               OrderNoticesExpected(Vector(
@@ -286,23 +291,23 @@ final class PlannableBoardTest
 
       "ExpectNotices" in:
         eventWatch.resetLastWatchedEventId()
-        val planSchema = PlanSchema.joc(PlanSchemaId("DailyPlan"))
+        val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
         val day = "2024-11-23"
-        val planId = planSchema.id / day
+        val planId = dailyPlan.id / day
         val workflow =
           Workflow(WorkflowPath("CONSUMING"), Seq(
             ExpectNotices(boardPathExpr, whenNotAnnounced = Wait)))
         withItems(
-          (planSchema, board, bBoard, cBoard, workflow)
+          (dailyPlan, board, bBoard, cBoard, workflow)
         ): (dailyPlan, _, _, _, workflow) =>
-          announcingTest(bBoard.path, day): announcingOrderId =>
+          announcingTest(bBoard.path, planId): announcingOrderId =>
             val orderId = OrderId(s"#$day#EXPECT")
             controller.addOrderBlocking:
-              FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+              FreshOrder(orderId, workflow.path, planId = planId, deleteWhenTerminated = true,
                 arguments = Map("ARG" -> "🔸"))
             eventWatch.awaitNext[OrderNoticesExpected](_.key == orderId)
 
-            val plannedNoticeKey = dailyPlan.id / day / NoticeKey("🔸")
+            val plannedNoticeKey = planId / NoticeKey("🔸")
 
             // Post board and cBoard
             execCmd(ControllerCommand.PostNotice(board.path / plannedNoticeKey))
@@ -314,7 +319,7 @@ final class PlannableBoardTest
 
             eventWatch.awaitNext[OrderTerminated](_.key == orderId)
             assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-              OrderAdded(workflow.id, planId = Some(dailyPlan.id / day),
+              OrderAdded(workflow.id, planId = planId,
                 deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
               OrderStarted,
               OrderNoticesExpected(Vector(
@@ -348,12 +353,12 @@ final class PlannableBoardTest
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+          FreshOrder(orderId, workflow.path, planId = planId, deleteWhenTerminated = true,
             arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-          OrderAdded(workflow.id, planId = Some(planId),
+          OrderAdded(workflow.id, planId = planId,
             deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
           OrderStarted,
           OrderNoticesRead,
@@ -388,12 +393,12 @@ final class PlannableBoardTest
 
         val orderId = OrderId(s"#$day#CONSUME")
         controller.addOrderBlocking:
-          FreshOrder(orderId, workflow.path, deleteWhenTerminated = true,
+          FreshOrder(orderId, workflow.path, planId = planId, deleteWhenTerminated = true,
             arguments = Map("ARG" -> "🔸"))
         eventWatch.awaitNext[OrderTerminated](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-          OrderAdded(workflow.id, planId = Some(planId),
+          OrderAdded(workflow.id, planId = planId,
             deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸")),
           OrderStarted,
           OrderNoticesRead,

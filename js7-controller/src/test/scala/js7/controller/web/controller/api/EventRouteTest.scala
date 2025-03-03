@@ -90,8 +90,8 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute:
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/x-ndjson`))
       assert(response.utf8String.await(99.s) ==
-        """{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
-        """{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
+        """{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"},"planId":[]}""" + '\n' +
+        """{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"},"planId":[]}""" + '\n')
 
       //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport

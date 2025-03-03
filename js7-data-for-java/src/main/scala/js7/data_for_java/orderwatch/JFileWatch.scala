@@ -61,17 +61,18 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
     @Nonnull agentPath: AgentPath,
     @Nonnull directory: JExpression,
     @Nonnull pattern: Optional[String],
-    @Nonnull orderIdExpression: Optional[String],
+    @Nonnull orderIdExpression: Optional[JExpression],
+    @Nonnull planIdExpr: Optional[JExpression],
     @Nonnull delay: java.time.Duration)
   : VEither[Problem, JFileWatch] =
     (for
       pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
-      orderIdExpression <- orderIdExpression.toScala.traverse(parseExpression(_))
     yield
       JFileWatch(FileWatch(
         id, workflowPath, agentPath,
         directory.asScala, pattern,
-        orderIdExpression,
+        orderIdExpression.asScala.map(_.asScala),
+        planIdExpr.asScala.map(_.asScala),
         delay.toFiniteDuration))
       ).toVavr
 

@@ -343,7 +343,7 @@ object ConsumeNoticesExecutorTest:
   : Checked[List[OrderEvent.OrderActorEvent]] =
     val instr = ConsumeNotices(boardExpr, whenNotAnnounced = whenNotAnnounced, Workflow.empty)
     val workflow = Workflow.of(WorkflowPath("WORKFLOW"), instr)
-    val order = Order(orderId, workflow.id /: Position(0), Order.Ready, maybePlanId = Some(planId),
+    val order = Order(orderId, workflow.id /: Position(0), Order.Ready, planId = planId,
       arguments = Map("ARG" -> StringValue("🔸")))
     val controllerState = ControllerTestStateView.of(
       workflows = Some(Seq(workflow)),

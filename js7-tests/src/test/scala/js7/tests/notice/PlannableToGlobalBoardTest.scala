@@ -67,7 +67,7 @@ final class PlannableToGlobalBoardTest
       // Post a Notice via Order //
       val postingOrderId = OrderId(s"#$day#ALPHA")
       controller.addOrderBlocking:
-        FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(postingOrderId, postingWorkflow.path, planId = planId, deleteWhenTerminated = true)
       eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
@@ -80,7 +80,7 @@ final class PlannableToGlobalBoardTest
       val otherPlanId = dailyPlan.id / otherDay
       val consumingOrderId = OrderId(s"#$otherDay#NOTICE")
       controller.addOrderBlocking:
-        FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(consumingOrderId, consumingWorkflow.path, planId = otherPlanId, deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
       // Expect a weekly notice — should be be changed //
@@ -88,7 +88,7 @@ final class PlannableToGlobalBoardTest
       val weekPlanId = weeklyPlan.id / week
       val weekConsumingOrderId = OrderId(s"#$week#NOTICE")
       controller.addOrderBlocking:
-        FreshOrder(weekConsumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
+        FreshOrder(weekConsumingOrderId, consumingWorkflow.path, planId = weekPlanId, deleteWhenTerminated = true)
       eventWatch.awaitNextKey[OrderNoticesExpected](weekConsumingOrderId)
 
       execCmd:
@@ -136,7 +136,7 @@ final class PlannableToGlobalBoardTest
 
       val events = eventWatch.keyedEvents(after = startEventId)
       assert(events.dropWhile(ke => !ke.event.isInstanceOf[OrderAdded]) == Seq(
-        postingOrderId <-: OrderAdded(postingWorkflow.id, planId = Some(planId), deleteWhenTerminated = true),
+        postingOrderId <-: OrderAdded(postingWorkflow.id, planId = planId, deleteWhenTerminated = true),
         postingOrderId <-: OrderNoticeAnnounced(planId / boardPath / "ALPHA"),
         postingOrderId <-: OrderStarted,
         postingOrderId <-: OrderNoticePosted(planId / boardPath / "ALPHA"),
@@ -146,12 +146,12 @@ final class PlannableToGlobalBoardTest
 
         boardPath <-: NoticePosted(planId / NoticeKey("BETA")),
 
-        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(otherPlanId),
+        consumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = otherPlanId,
           deleteWhenTerminated = true),
         consumingOrderId <-: OrderStarted,
         consumingOrderId <-: OrderNoticesExpected(Vector(otherPlanId / boardPath / "NOTICE")),
 
-        weekConsumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = Some(weekPlanId),
+        weekConsumingOrderId <-: OrderAdded(consumingWorkflow.id, planId = weekPlanId,
           deleteWhenTerminated = true),
         weekConsumingOrderId <-: OrderStarted,
         weekConsumingOrderId <-: OrderNoticesExpected(Vector(weekPlanId / boardPath / "NOTICE")),

@@ -88,9 +88,12 @@ final class PlanOpenCloseTest
         assert(controllerState.toPlan.isEmpty)
 
         // Add Orders //
-        for orderId <- Seq(aTodayOrderId, bTodayOrderId, tomorrowOrderId) do
-          controller.addOrderBlocking:
-            FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        controller.addOrderBlocking:
+          FreshOrder(aTodayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
+        controller.addOrderBlocking:
+          FreshOrder(bTodayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
+        controller.addOrderBlocking:
+          FreshOrder(tomorrowOrderId, workflow.path, planId = tomorrowPlanId, deleteWhenTerminated = true)
 
         // Now we have Plans for today and tomorrow
         assert(controllerState.toPlan.values.toSeq.sorted == Seq(
@@ -172,7 +175,9 @@ final class PlanOpenCloseTest
 
         val yesterday = "2024-12-02"
         val yesterdayOrderId = OrderId(s"#$yesterday#")
+        val yesterdayPlanId = dailyPlan.id / yesterday
         val today = "2024-12-03"
+        val todayPlanId = dailyPlan.id / today
         val todayOrderId = OrderId(s"#$today#")
 
         execCmd:
@@ -180,12 +185,12 @@ final class PlanOpenCloseTest
 
         assert:
           controller.api.addOrder:
-            FreshOrder(yesterdayOrderId, workflow.path, deleteWhenTerminated = true)
+            FreshOrder(yesterdayOrderId, workflow.path, planId = yesterdayPlanId, deleteWhenTerminated = true)
           .await(99.s)
             == Left(PlanIsClosedProblem(planSchema.id / yesterday))
 
         controller.addOrderBlocking:
-          FreshOrder(todayOrderId, workflow.path, deleteWhenTerminated = true)
+          FreshOrder(todayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
         assert(controllerState.idToOrder(todayOrderId).isState[Order.Prompting])
 
         execCmd:
@@ -201,7 +206,8 @@ final class PlanOpenCloseTest
           val fileWatch = FileWatch(OrderWatchPath("FILEWATCH"), workflow.path, agentPath,
             directoryExpr = StringConstant(dir.toString),
             pattern = Some(SimplePattern("(.+)")),
-            orderIdExpression = Some(expr(""" "#$1#" """)))
+            orderIdExpression = Some(expr(""" "#$1#" """)),
+            planIdExpr = Some(FileWatch.todayPlanIdExpr))
           withItem(fileWatch, awaitDeletion = true): fileWatch =>
             val yesterday = "2025-01-07"
             val yesterdayExternalName = ExternalOrderName(yesterday)
@@ -245,9 +251,11 @@ final class PlanOpenCloseTest
       val yesterdayPlanId = dailyPlan.id / yesterday
       val today = "2025-01-10"
       val todayOrderId = OrderId(s"#$today#")
+      val todayPlanId = dailyPlan.id / today
       val workflowPath = WorkflowPath("WORKFLOW")
       val workflow = Workflow.of(workflowPath,
-        AddOrder(orderId = expr(s"'#$yesterday#'"), workflowPath))
+        AddOrder(orderId = expr(s"'#$yesterday#'"), workflowPath,
+          planId = Some(yesterdayPlanId.toExpression)))
 
       withItems((workflow, dailyPlan)): (workflow, planSchema) =>
         // Close yesterday's Plan
@@ -255,7 +263,7 @@ final class PlanOpenCloseTest
           ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
 
         controller.addOrderBlocking:
-          FreshOrder(todayOrderId, workflow.path, deleteWhenTerminated = true)
+          FreshOrder(todayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderFailed](todayOrderId)
 
         assert(controllerState.idToOrder(todayOrderId).lastOutcome ==

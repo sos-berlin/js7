@@ -1,11 +1,14 @@
 package js7.data.execution.workflow.instructions
 
 import cats.syntax.semigroup.*
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils
 import js7.base.utils.ScalaUtils.checkedCast
+import js7.base.utils.ScalaUtils.syntax.RichOption
 import js7.data.controller.{ControllerEventColl, ControllerState}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
 import js7.data.order.{Order, OrderId, OrderOutcome}
+import js7.data.plan.PlanId
 import js7.data.state.{StateView, UniqueOrderIdScope}
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.workflow.instructions.AddOrder
@@ -27,21 +30,23 @@ extends EventInstructionExecutor:
               controllerState <- checkedCast[ControllerState](state)
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
+              planId <- addOrder.planId.fold_(Checked(None), PlanId.evalPlanIdExpr(_, scope).map(Some(_)))
               addedOrderId <- addOrder.orderId.evalAsString:
                 scope |+| UniqueOrderIdScope(controllerState.idToOrder.keySet)
               addedOrderId <- OrderId.checked(addedOrderId)
               args <- evalExpressionMap(addOrder.arguments, scope)
-              planlessOrderAdded = OrderOrderAdded(addedOrderId, workflowId, args,
-                planId = None,
+              //computedPlanId <- controllerState.evalOrderToPlanId(Order.fromOrderAdded(addedOrderId, orderAdded))
+              orderAdded = OrderOrderAdded(addedOrderId, workflowId,
+                args,
+                planId = planId getOrElse order.planId,
                 innerBlock = addOrder.innerBlock,
                 startPosition = addOrder.startPosition,
                 stopPositions = addOrder.stopPositions,
                 deleteWhenTerminated = addOrder.deleteWhenTerminated,
                 forceJobAdmission = addOrder.forceJobAdmission)
-              planId <- controllerState.evalOrderToPlanId(Order.fromOrderAdded(addedOrderId, planlessOrderAdded))
               keyedEvents <-
-                ControllerEventColl[OrderActorEvent](controllerState).add:
-                  order.id <-: planlessOrderAdded.copy(planId = planId)
+                ControllerEventColl[OrderOrderAdded | OrderMoved](controllerState).add:
+                  order.id <-: orderAdded
                 .match
                   case Left(problem) =>
                     Right(List(order.id <-:

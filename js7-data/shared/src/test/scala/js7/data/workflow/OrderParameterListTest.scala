@@ -9,6 +9,7 @@ import js7.data.Problems.{EvaluationFailedProblem, RecursiveEvaluationProblem}
 import js7.data.controller.ControllerId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.Scope
@@ -270,6 +271,7 @@ private object OrderParameterListTest:
   =
     orderParameterList.prepareOrderArguments(
       FreshOrder(OrderId("ORDER"), WorkflowPath("WORKFLOW"), freshOrderArguments,
+        PlanId.Global,
         Some(Timestamp("2021-12-12T12:00:00Z"))),
       ControllerId("CONTROLLER"),
       View(

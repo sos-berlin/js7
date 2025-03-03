@@ -58,6 +58,7 @@ object Problems:
       "orderId", orderId.string,
       "reason", reason)
 
+  @deprecated
   final case class OrderWouldNotMatchChangedPlanSchemaProblem(orderId: OrderId, planId: PlanId)
   extends Problem.Coded:
     def arguments: Map[String, String] = Map2(

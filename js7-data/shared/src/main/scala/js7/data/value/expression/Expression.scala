@@ -433,6 +433,9 @@ object Expression:
 
     override def toString: String = subexpressions.mkString("[", ", ", "]")
 
+  object ListExpr:
+    val empty: ListExpr = ListExpr(Nil)
+
 
   final case class ObjectExpr(nameToExpr: Map[String, Expression])
   extends IsPureIfSubexpressionsArePure:

@@ -28,7 +28,7 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
-import js7.data.plan.{PlanFinishedEvent, PlanId}
+import js7.data.plan.{PlanFinishedEvent, PlanId, PlanSchema}
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -88,22 +88,25 @@ final case class ControllerStateExecutor private(
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-          maybePlanId <- controllerState.evalOrderToPlanId(freshOrder)
-          _ <- controllerState.checkPlanIsOpen(maybePlanId getOrElse PlanId.Global)
+          planId <-
+            if PlanSchema.DerivePlanFromOrderId then
+              controllerState.evalOrderToPlanId(freshOrder).map(_ getOrElse PlanId.Global)
+            else
+              Right(freshOrder.planId)
+          _ <- controllerState.checkPlanIsOpen(planId)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
           _ <- freshOrder.stopPositions.toSeq.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
-          orderNoticeAnnounced <- maybePlanId.fold(Checked(Nil)): planId =>
-            NoticeEventSource.planToNoticeAnnounced(planId, freshOrder, innerBlock, controllerState)
-              .map(_.map(freshOrder.id <-: _))
+          orderNoticeAnnounced <- NoticeEventSource
+            .planToNoticeAnnounced(planId, freshOrder, innerBlock, controllerState)
+            .map(_.map(freshOrder.id <-: _))
         yield
           Right:
             OrderAddedEvents(
               freshOrder.toOrderAdded(
-                workflow.id.versionId, preparedArguments, externalOrderKey, maybePlanId,
-                startPosition),
+                workflow.id.versionId, preparedArguments, externalOrderKey, startPosition),
               orderNoticeAnnounced)
 
   private def checkStartAndStopPositionAndInnerBlock(

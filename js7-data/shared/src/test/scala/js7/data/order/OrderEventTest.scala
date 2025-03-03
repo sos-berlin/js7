@@ -38,7 +38,7 @@ final class OrderEventTest extends OurTestSuite:
       OrderAdded(
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
-        Some(PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-20"))),
+        PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-20")),
         Some(ts"2021-01-01T00:00:00Z"),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
@@ -136,7 +136,7 @@ final class OrderEventTest extends OurTestSuite:
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
-        PlanId(PlanSchemaId("PLAN"), PlanKey("TODAY")).some,
+        PlanId(PlanSchemaId("PLAN"), PlanKey("TODAY")),
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
         Some(ExternalOrderLink(

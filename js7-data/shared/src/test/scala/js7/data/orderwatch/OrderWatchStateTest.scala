@@ -27,6 +27,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
         expr("'DIRECTORY'"),
         Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
         Some(NamedValue("1")),
+        Some(expr(s"""['DailyPlan', '2025-02-28']""")),
         delay = 2.s,
         Some(ItemRevision(7))),
       Map( // Not in snapshot, because its duplicate to Order.externalOrder
@@ -198,6 +199,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
             "directoryExpr": "'DIRECTORY'",
             "pattern": "PATTERN.*\\.csv",
             "orderIdExpression": "$$1",
+            "planIdExpr": "['DailyPlan', '2025-02-28']",
             "delay": 2,
             "itemRevision": 7
           }

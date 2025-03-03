@@ -31,6 +31,7 @@ extends JJsonable[JPlanSchema], JUnsignedSimpleItem:
   @Nonnull def id: PlanSchemaId =
     asScala.id
 
+  @deprecated("Order.planId is no longer derived from OrderId")
   @Nonnull def planKeyExpr: JExpression =
     JExpression(asScala.planKeyExpr)
 
