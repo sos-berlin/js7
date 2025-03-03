@@ -29,9 +29,8 @@ object JavaTime:
   def bigDecimalToDuration(o: BigDecimal): Duration =
     val (seconds, fraction) = o /% 1
     try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
-    catch { case t: ArithmeticException =>
+    catch case t: ArithmeticException =>
       throw new ArithmeticException(s"Value '$o' is not a Duration: ${Option(t.getMessage) getOrElse t}")
-    }
 
   implicit final class RichDuration(private val delegate: Duration)
   extends AnyVal, Ordered[RichDuration]:
@@ -79,6 +78,7 @@ object JavaTime:
 
     def compare(o: RichDuration): Int = delegate.compareTo(o.delegate)
 
+
   implicit final class RichInstant(private val delegate: Instant) extends AnyVal, Ordered[RichInstant]:
     def +(o: Duration): Instant =
       delegate.plus(o)
@@ -108,9 +108,11 @@ object JavaTime:
     override def toString: String =
       delegate.toString  // For ScalaTest
 
+
   implicit final class RichLocalTime(private val delegate: LocalTime) extends AnyVal, Ordered[RichLocalTime]:
     def compare(o: RichLocalTime): Int =
       delegate.compareTo(o.delegate)
+
 
   implicit final class RichLocalDateTime(private val localDateTime: LocalDateTime)
   extends AnyVal, Ordered[RichLocalDateTime]:
@@ -138,11 +140,10 @@ object JavaTime:
     def toInstant(zone: ZoneId): Instant =
       ZonedDateTime.of(localDateTime, zone).toInstant
 
+
   implicit final class JavaTimeZone(private val timeZone: Timezone) extends AnyVal:
     def toZoneId: Checked[ZoneId] =
       Checked.catchExpected[RuntimeException](ZoneId.of(timeZone.string))
-
-  def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
   implicit val JavaUtilDateShow: Show[Date] =
     Show[java.util.Date](o =>
