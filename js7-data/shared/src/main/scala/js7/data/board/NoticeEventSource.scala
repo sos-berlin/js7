@@ -4,7 +4,6 @@ import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.WallClock
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}

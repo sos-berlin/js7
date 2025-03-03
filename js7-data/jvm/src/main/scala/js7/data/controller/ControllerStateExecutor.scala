@@ -28,7 +28,7 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderBroken
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderOutcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderRejected
-import js7.data.plan.{PlanFinishedEvent, PlanId, PlanSchema}
+import js7.data.plan.PlanFinishedEvent
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
@@ -88,19 +88,14 @@ final case class ControllerStateExecutor private(
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-          planId <-
-            if PlanSchema.DerivePlanFromOrderId then
-              controllerState.evalOrderToPlanId(freshOrder).map(_ getOrElse PlanId.Global)
-            else
-              Right(freshOrder.planId)
-          _ <- controllerState.checkPlanIsOpen(planId)
+          _ <- controllerState.checkPlanIsOpen(freshOrder.planId)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
           _ <- freshOrder.stopPositions.toSeq.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)
           orderNoticeAnnounced <- NoticeEventSource
-            .planToNoticeAnnounced(planId, freshOrder, innerBlock, controllerState)
+            .planToNoticeAnnounced(freshOrder.planId, freshOrder, innerBlock, controllerState)
             .map(_.map(freshOrder.id <-: _))
         yield
           Right:

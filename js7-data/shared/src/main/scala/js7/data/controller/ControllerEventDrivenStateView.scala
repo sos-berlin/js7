@@ -1,13 +1,12 @@
 package js7.data.controller
 
-import js7.base.problem.Checked.RichCheckedIterable
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.L3
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.NoticeId
 import js7.data.order.OrderEvent.OrderAddedX
-import js7.data.order.{MinimumOrder, Order, OrderEvent, OrderId}
-import js7.data.plan.{PlanId, PlanSchema, PlanSchemaState}
+import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.plan.{PlanId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 
 trait ControllerEventDrivenStateView[Self <: ControllerEventDrivenStateView[Self]]
@@ -30,23 +29,6 @@ extends EventDrivenStateView[Self]:
 
       case _ =>
         super.applyOrderEvent(orderId, event)
-
-  /** @return None for global PlanId.
-    */
-  @deprecated("Order.planId is no longer derived from OrderId")
-  final def evalOrderToPlanId(order: MinimumOrder): Checked[Option[PlanId]] =
-    val scope = toPlanOrderScope(order)
-    keyToItem(PlanSchema).values.toVector.map:
-      _.evalOrderToPlanId(scope)
-    .combineProblems
-    .map(_.flatten)
-    .flatMap: planIds =>
-      planIds.length match
-        case 0 => Right(None)
-        case 1 => Right(Some(planIds.head))
-        case n => Left(Problem:
-          s"${order.id} fits $n Plans: ${planIds.sorted.mkString(", ")
-          } — An Order must not fit multiple Plans")
 
   def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
     for

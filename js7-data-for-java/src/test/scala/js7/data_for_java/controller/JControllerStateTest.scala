@@ -23,7 +23,6 @@ import js7.data.order.{Order, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.controller.JControllerStateTest.*
@@ -97,7 +96,7 @@ private object JControllerStateTest:
           None, None, DelegateCouplingState.Reset.fresh, EventId(7), None,
           ClusterState.Empty, Map.empty, None),
         PlanSchemaState(
-          PlanSchema(PlanSchemaId("DailyPlan"), StringConstant.empty),
+          PlanSchema(PlanSchemaId("DailyPlan")),
           namedValues = Map.empty,
           finishedPlanLifeTime = 3600.s,
           toPlan = Map:

@@ -12,7 +12,6 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
@@ -71,8 +70,8 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
       JFileWatch(FileWatch(
         id, workflowPath, agentPath,
         directory.asScala, pattern,
-        orderIdExpression.asScala.map(_.asScala),
-        planIdExpr.asScala.map(_.asScala),
+        orderIdExpression.toScala.map(_.asScala),
+        planIdExpr.toScala.map(_.asScala),
         delay.toFiniteDuration))
       ).toVavr
 

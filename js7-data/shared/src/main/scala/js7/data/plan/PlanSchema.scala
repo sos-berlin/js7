@@ -1,6 +1,5 @@
 package js7.data.plan
 
-import cats.syntax.traverse.*
 import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.metering.CallMeter
@@ -9,9 +8,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
-import js7.data.value.expression.Expression.{MissingConstant, expr}
 import js7.data.value.expression.ExpressionParser.exprFunction
-import js7.data.value.expression.{ExprFunction, Expression, Scope}
+import js7.data.value.expression.{ExprFunction, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
 
@@ -54,8 +52,6 @@ import org.jetbrains.annotations.TestOnly
   */
 final case class PlanSchema(
   id: PlanSchemaId,
-  @deprecated("Order.planId is no longer derived from OrderId")
-  planKeyExpr: Expression,
   planIsClosedFunction: Option[ExprFunction] = None,
   namedValues: NamedValues = NamedValues.empty,
   itemRevision: Option[ItemRevision] = None)
@@ -90,21 +86,6 @@ extends UnsignedSimpleItem:
   def withRevision(revision: Option[ItemRevision]): PlanSchema =
     copy(itemRevision = revision)
 
-  /** @param scope is expected to contain the Order Scope.
-    * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
-  @deprecated("Order.planId is no longer derived from OrderId")
-  def evalOrderToPlanId(scope: Scope): Checked[Option[PlanId]] =
-    evalPlanKeyExpr(scope).flatMap: maybePlanKey =>
-      maybePlanKey.traverse(PlanId(id, _).checked)
-
-  /** @param scope is expected to contain the Order Scope.
-    * @return None iff `planKeyExpr` expression evaluates to MissingValue (no match). */
-  @deprecated("Order.planId is no longer derived from OrderId")
-  private def evalPlanKeyExpr(scope: Scope): Checked[Option[PlanKey]] =
-    planKeyExpr.eval(using scope).flatMap:
-      _.missingToNone.traverse:
-        _.toStringValueString.flatMap(PlanKey.checked)
-
   private[plan] def evalPlanIsClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
     meterPlanIsClosedFunction:
       planIsClosedFunction.fold(Checked(false)): function =>
@@ -114,9 +95,6 @@ extends UnsignedSimpleItem:
 
 object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
 
-  @deprecated("Order.planId is no longer derived from OrderId")
-  inline val DerivePlanFromOrderId = false
-
   type Key = PlanSchemaId
   type ItemState = PlanSchemaState
 
@@ -125,17 +103,13 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   val cls: Class[PlanSchema] = classOf[PlanSchema]
 
   final val Global: PlanSchema =
-    PlanSchema(
-      PlanSchemaId.Global,
-      // planKeyExpr must not match, despite Global is used as the fallback PlanSchema
-      planKeyExpr = MissingConstant)
+    PlanSchema(PlanSchemaId.Global)
 
   /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
   def joc(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planKeyExpr = PlanKey.jocPlanKeyExpr,
       planIsClosedFunction = Some(exprFunction("day => $day < $openingDay")),
       Map("openingDay" -> StringValue.empty))
 
@@ -144,7 +118,6 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planKeyExpr = expr""" match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$$1') ? """,
       planIsClosedFunction = Some(exprFunction("week => $week < $openingWeek")),
       Map("openingWeek" -> StringValue.empty))
 
@@ -155,11 +128,10 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   override given jsonDecoder: Decoder[PlanSchema] = c =>
     for
       id <- c.get[PlanSchemaId]("id")
-      planKeyExpr <- c.get[Expression]("planKeyExpr")
       planIsClosedFunction <- c.get[Option[ExprFunction]]("planIsClosedFunction")
       namedValues <- c.getOrElse[NamedValues]("namedValues")(NamedValues.empty)
       itemRevision <- c.get[Option[ItemRevision]]("itemRevision")  // May be omitted only in 2.7-4-SNAPSHOT
     yield
-      PlanSchema(id, planKeyExpr, planIsClosedFunction, namedValues, itemRevision)
+      PlanSchema(id, planIsClosedFunction, namedValues, itemRevision)
 
   given jsonCodec: Codec.AsObject[PlanSchema] = Codec.AsObject.from(jsonDecoder, jsonEncoder)

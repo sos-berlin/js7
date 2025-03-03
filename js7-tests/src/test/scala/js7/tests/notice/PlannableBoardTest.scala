@@ -1,10 +1,7 @@
 package js7.tests.notice
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.await
-import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.ExpectNotice
 import js7.data.board.BoardPathExpression.syntax.*
@@ -66,8 +63,6 @@ final class PlannableBoardTest
         val otherConsumingOrder = FreshOrder(otherConsumingOrderId, consumingWorkflow.path,
           deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
         controller.addOrderBlocking(otherConsumingOrder)
-        assert(controllerState.evalOrderToPlanId(otherConsumingOrder) == Right(Some(
-          dailyPlan.id / day0)))
         execCmd(DeleteOrdersWhenTerminated(Set(otherConsumingOrderId)))
         eventWatch.awaitNextKey[OrderNoticesExpected](otherConsumingOrderId)
 
@@ -125,12 +120,8 @@ final class PlannableBoardTest
 
   "Two PlanSchemas" in:
     withItems((
-      PlanSchema(
-        PlanSchemaId("DailyPlan"),
-        expr("match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$1') ?")),
-      PlanSchema(
-        PlanSchemaId("WeeklyPlan"),
-        expr("match(orderId, '#([0-9]{4}w[0-9]{2})#.*', '$1') ?")),
+      PlanSchema(PlanSchemaId("DailyPlan")),
+      PlanSchema(PlanSchemaId("WeeklyPlan")),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
@@ -152,8 +143,6 @@ final class PlannableBoardTest
         val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path,
           planId = weeklyPlanId,
           arguments = Map("ARG" -> "🔸"))
-        assert(controllerState.evalOrderToPlanId(consumingOrder) ==
-          Right(Some(weeklyPlan.id / "2024w47")))
 
         controller.addOrderBlocking(consumingOrder)
         eventWatch.awaitNextKey[OrderAdded](consumingOrderId)
@@ -176,45 +165,6 @@ final class PlannableBoardTest
       //
       //  eventWatch.awaitNextKey[OrderNoticesConsumed](consumingOrderId)
       //  eventWatch.awaitNextKey[OrderTerminated](consumingOrderId)
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "Two PlanSchemas with overlapping OrderId patterns" in:
-    withItems((
-      PlanSchema(
-        PlanSchemaId("APlan"),
-        expr("match(orderId, '.*A.*-#(.+)#.*', '$1') ?")),
-      PlanSchema(
-        PlanSchemaId("BPlan"),
-        expr("match(orderId, '.*B.*-#(.+)#.*', '$1') ?")),
-      Workflow(WorkflowPath("POSTING"), Seq(
-        PostNotices(Seq(board.path)))),
-      board),
-    ): (aPlan, bPlan, postingWorkflow, _) =>
-      eventWatch.resetLastWatchedEventId()
-      locally: // No Plan fits --> Global Plan //
-        val order = FreshOrder(OrderId("X-#2#"), WorkflowPath("WORKFLOW"),
-          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
-        assert(controllerState.evalOrderToPlanId(order) == Right(None))
-
-      locally: // Two Plans fit, Order is rejected //
-        val order = FreshOrder(OrderId("AB-#1#"), postingWorkflow.path,
-          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
-        assert(controllerState.evalOrderToPlanId(order) == Left(Problem:
-          "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
-
-        val checked = controller.api.addOrder(order).await(99.s)
-        assert(checked == Left(Problem:
-          "Order:AB-#1# fits 2 Plans: Plan:APlan╱1, Plan:BPlan╱1 — An Order must not fit multiple Plans"))
-
-      locally: // APlan fits //
-        val order = FreshOrder(OrderId("A-#1#"), WorkflowPath("WORKFLOW"),
-          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
-        assert(controllerState.evalOrderToPlanId(order) == Right(Some(aPlan.id / "1")))
-
-      locally: // BPlan fits //
-        val order = FreshOrder(OrderId("B-#2#"), WorkflowPath("WORKFLOW"),
-          deleteWhenTerminated = true, arguments = Map("ARG" -> "🔸"))
-        assert(controllerState.evalOrderToPlanId(order) == Right(Some(bPlan.id / "2")))
 
   "Announced Notices" - {
     // Each test will announce a Notice at bBoard

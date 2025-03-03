@@ -10,7 +10,6 @@ import js7.data.value.Value
 import js7.data.value.expression.ExprFunction
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
-import js7.data_for_java.value.JExpression
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
@@ -31,10 +30,6 @@ extends JJsonable[JPlanSchema], JUnsignedSimpleItem:
   @Nonnull def id: PlanSchemaId =
     asScala.id
 
-  @deprecated("Order.planId is no longer derived from OrderId")
-  @Nonnull def planKeyExpr: JExpression =
-    JExpression(asScala.planKeyExpr)
-
   @Nonnull def planIsClosedFunction: Optional[ExprFunction] =
     asScala.planIsClosedFunction.toJava
 
@@ -48,12 +43,11 @@ object JPlanSchema extends JJsonable.Companion[JPlanSchema]:
   @Nonnull
   def of(
     @Nonnull id: PlanSchemaId,
-    @Nonnull planKeyExpr: JExpression,
     @Nonnull planIsClosedFunction: Optional[ExprFunction],
     @Nonnull namedValues: java.util.Map[String, Value @Nonnull])
   : JPlanSchema =
     JPlanSchema:
-      PlanSchema(id, planKeyExpr.asScala, planIsClosedFunction.toScala, namedValues.asScala.toMap)
+      PlanSchema(id, planIsClosedFunction.toScala, namedValues.asScala.toMap)
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JPlanSchema] =

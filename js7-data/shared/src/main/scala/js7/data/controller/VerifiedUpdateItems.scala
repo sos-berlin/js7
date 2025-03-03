@@ -12,7 +12,6 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{InventoryItemKey, ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
-import js7.data.plan.PlanSchema
 import scala.collection.View
 
 final case class VerifiedUpdateItems private[controller](
@@ -26,10 +25,6 @@ final case class VerifiedUpdateItems private[controller](
     simple.unsignedSimpleItems.view.map(_.key) ++
       simple.verifiedSimpleItems.view.map(_.item.key) ++
       maybeVersioned.view.flatMap(_.verifiedItems.view.map(_.item.id))
-
-  @deprecated("Order.planId is no longer derived from OrderId")
-  def hasPlanSchema: Boolean =
-    simple.unsignedSimpleItems.exists(_.isInstanceOf[PlanSchema])
 
 
 object VerifiedUpdateItems:

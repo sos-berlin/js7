@@ -11,7 +11,7 @@ import js7.data.item.ItemRevision
 import js7.data.order.OrderId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.{expr, exprFun}
+import js7.data.value.expression.Expression.exprFun
 
 final class PlanSchemaStateTest extends OurTestSuite:
 
@@ -19,7 +19,6 @@ final class PlanSchemaStateTest extends OurTestSuite:
     val planSchemaState = PlanSchemaState(
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        expr"1",
         Some(exprFun"day => $$day < $$openingDay"),
         namedValues = Map(
           "openingDay" -> StringValue("")),
@@ -48,7 +47,6 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE" : "PlanSchema",
         "id" : "DailyPlan",
-        "planKeyExpr" : "1",
         "planIsClosedFunction" : "day => $$day < $$openingDay",
         "namedValues" : {
           "openingDay" : ""

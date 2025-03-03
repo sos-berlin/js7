@@ -7,20 +7,15 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.Problems.{OrderCannotAttachedToPlanProblem, OrderWouldNotMatchChangedPlanSchemaProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
-import js7.data.board.{BoardPath, BoardPathExpression, GlobalBoard, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlan, PostNotice}
-import js7.data.event.KeyedEvent.NoKey
+import js7.data.board.{BoardPath, BoardPathExpression, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlan}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
-import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderCancelled, OrderDeleted, OrderFinished, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPlanAttached, OrderPrompted, OrderStarted, OrderStateReset, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.plan.PlanEvent.{PlanClosed, PlanDeleted, PlanFinished}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
-import js7.data.value.Value.convenience.given
+import js7.data.plan.{Plan, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -46,191 +41,6 @@ final class PlanTest
   protected def agentPaths = Seq(agentPath)
 
   protected def items = Nil
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "When a PlanSchemas is added, matching planless Orders are attached to the new Plans" in :
-    val day = "2024-12-03"
-    val orderId = OrderId(s"#$day#")
-
-    withItem(Workflow.of(Prompt(expr("'PROMPT'")))): workflow =>
-      var eventId = eventWatch.resetLastWatchedEventId()
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderPrompted](orderId)
-      assert(controllerState.idToOrder(orderId).planId == PlanId.Global)
-
-      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
-      val planId = dailyPlan.id / day
-      withItem(dailyPlan) { dailyPlan =>
-        // Order is attached to our DailyPlan //
-        assert(controllerState.idToOrder(orderId).planId == planId)
-
-        execCmd:
-          CancelOrders(Seq(orderId))
-        eventWatch.awaitNextKey[OrderTerminated](orderId)
-
-        execCmd: // Close the plan, so it can be deleted
-          ChangePlan(planId, Plan.Status.Closed)
-        eventWatch.awaitNextKey[PlanDeleted](planId)
-
-        assert(eventWatch.keyedEvents(after = eventId) == Seq(
-          orderId <-: OrderAdded(workflow.id, deleteWhenTerminated = true),
-          orderId <-: OrderStarted,
-          orderId <-: OrderPrompted("PROMPT"),
-          NoKey <-: UnsignedSimpleItemAdded(dailyPlan),
-          orderId <-: OrderPlanAttached(planId),
-          orderId <-: OrderStateReset,
-          orderId <-: OrderCancelled,
-          orderId <-: OrderDeleted,
-          planId <-: PlanClosed,
-          planId <-: PlanFinished,
-          planId <-: PlanDeleted))
-
-        eventId = eventWatch.lastWatchedEventId
-      }
-      assert(eventWatch.keyedEvents(after = eventId) == Seq(
-        NoKey <-: ItemDeleted(dailyPlan.path)))
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "Adding a PlanSchema is rejected when a matching Order is attached to an Agent" in:
-    // It's recommended to SuspendOrders(resetState) all Orders before
-    // adding or changing a PlanSchema.
-
-    eventWatch.resetLastWatchedEventId()
-    val orderId = OrderId(s"#2024-12-04#")
-    val workflow = Workflow.of(ASemaphoreJob.execute(agentPath))
-
-    withItem(workflow): workflow =>
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderAttached](orderId)
-
-      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
-      val checked = controller.api.updateItems(fs2.Stream:
-          ItemOperation.AddOrChangeSimple(dailyPlan))
-        .await(99.s)
-      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId, "Order is not detached from any Agent")))
-      ASemaphoreJob.continue()
-      eventWatch.awaitNextKey[OrderFinished](orderId)
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "When adding a PlanSchema, Orders expecting a Notice are state-reset" in :
-    // It's recommended to SuspendOrders(resetState) all Orders before
-    // adding or changing a PlanSchema.
-
-    val eventId = eventWatch.resetLastWatchedEventId()
-    val orderId = OrderId(s"#2024-12-05#")
-    val board = GlobalBoard.joc(BoardPath("BOARD"))
-    val workflow = Workflow.of:
-      ConsumeNotices(board.path)()
-
-    withItems((workflow, board)): (workflow, board) =>
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderNoticesExpected](orderId)
-
-      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
-      withItem(dailyPlan): dailyPlan =>
-        val noticeId = PlanId.Global / board.path / "2024-12-05"
-        execCmd:
-          PostNotice(noticeId)
-        eventWatch.awaitNextKey[OrderTerminated](orderId)
-
-        assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
-          OrderAdded(workflow.id, deleteWhenTerminated =  true),
-          OrderStarted,
-          OrderNoticesExpected(Vector(noticeId)),
-
-          OrderStateReset, // <-- automatic state reset
-          OrderPlanAttached(dailyPlan.id / "2024-12-05"),
-
-          OrderNoticesExpected(Vector(noticeId)),
-          OrderNoticesConsumptionStarted(Vector(noticeId)),
-          OrderNoticesConsumed(),
-          OrderFinished(),
-          OrderDeleted))
-
-        execCmd: // Close the plan, so it can be deleted
-          ChangePlan(dailyPlan.id / "2024-12-05", Plan.Status.Closed)
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "Adding a PlanSchemas is rejected when a matching Orders is in a ConsumeNotices block" in :
-    // It's recommended to SuspendOrders(resetState) all Orders before
-    // adding or changing a PlanSchema.
-
-    eventWatch.resetLastWatchedEventId()
-    val orderId = OrderId(s"#2025-01-29#")
-    val board = GlobalBoard.joc(BoardPath("BOARD"))
-    val workflow = Workflow.of:
-      ConsumeNotices(board.path):
-        Prompt(expr("'PROMPT'"))
-
-    withItems((workflow, board)): (workflow, board) =>
-      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-      val noticeId = PlanId.Global / board.path / "2025-01-29"
-      execCmd(PostNotice(noticeId))
-      eventWatch.awaitNextKey[OrderPrompted](orderId)
-
-      val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))
-      val checked = controller.api.updateItems(fs2.Stream:
-          ItemOperation.AddOrChangeSimple(dailyPlan))
-        .await(99.s)
-
-      assert(checked == Left(OrderCannotAttachedToPlanProblem(orderId, "Order is consuming notices")))
-
-      execCmd(CancelOrders(Seq(orderId)))
-      eventWatch.awaitNextKey[OrderTerminated](orderId)
-
-      //execCmd: // Close the plan, so it can be deleted
-      //  ChangePlanSchema(dailyPlan.id, Map("openingDay" -> "2025-01-30"))
-
-  if PlanSchema.DerivePlanFromOrderId then
-  "Update a PlanSchema and check existing Orders" in:
-    eventWatch.resetLastWatchedEventId()
-    val planSchemaId = PlanSchemaId("DailyPlan")
-
-    val aPlanSchema = PlanSchema.joc(planSchemaId)
-    val aKey = "2024-12-06"
-    val aOrderId = OrderId(s"#$aKey#")
-    val aPlanId = planSchemaId / aKey
-
-    val bKey = "2024w49"
-    val bOrderId = OrderId(s"#$bKey#")
-    val bPlanId = planSchemaId / bKey
-    val workflow = Workflow.of:
-      Prompt(expr("'PROMPT'"))
-
-    withItems((aPlanSchema, workflow)): (aPlanSchema, workflow) =>
-      // aOrderId is in the plan
-      controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderPrompted](aOrderId)
-
-      // aOrderId is not in a plan (that means, in the global plan)
-      controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path, deleteWhenTerminated = true))
-      eventWatch.awaitNextKey[OrderPrompted](bOrderId)
-
-      // Change planSchema such that aOrderId no longer match, but bOrderId match
-      val bPlanSchema = PlanSchema.weekly(aPlanSchema.id)
-      val checked = controller.api.updateItems(fs2.Stream:
-          ItemOperation.AddOrChangeSimple(bPlanSchema))
-        .await(99.s)
-      assert(checked == Left(OrderWouldNotMatchChangedPlanSchemaProblem(aOrderId, aPlanId)))
-
-      // Me must delete aOrderId to change the PlanSchema
-      execCmd(CancelOrders(Seq(aOrderId)))
-      eventWatch.awaitNextKey[OrderTerminated](aOrderId)
-
-      updateItem(bPlanSchema)
-
-      // Now, bOrderId is attached to the updated PlanSchema
-      assert(controllerState.idToOrder(bOrderId).planId == bPlanId)
-      assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
-        OrderAdded(workflow.id, deleteWhenTerminated = true),
-        OrderStarted,
-        OrderPrompted("PROMPT"),
-        OrderPlanAttached(bPlanId)))
-
-      execCmd(CancelOrders(Seq(bOrderId)))
-
-      execCmd: // Close the plan, so it can be deleted
-        ChangePlan(bPlanId, Plan.Status.Closed)
 
   "Delete a PlanSchema" - {
     def tryDeletePlan(planSchemaId: PlanSchemaId): Checked[Unit] =
