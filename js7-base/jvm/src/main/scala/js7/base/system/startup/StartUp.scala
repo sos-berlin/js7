@@ -68,10 +68,12 @@ object StartUp:
   def printlnWithClock(line: String): Unit =
     System.err.println(s"$nowString $line")
 
-  // Pattern like in log4j2.xml
   def nowString: String =
-    val now = ZonedDateTime.now
-    now.toString
+    zonedDateTimeToString(ZonedDateTime.now)
+
+  // Pattern like in log4j2.xml
+  def zonedDateTimeToString(zonedDateTime: ZonedDateTime): String =
+    zonedDateTime.toString
       .replace('T', ' ')
       .take(23)/*ms*/
-      + now.getOffset.toString.replace(":", "")
+      + zonedDateTime.getOffset.toString.replace(":", "")
