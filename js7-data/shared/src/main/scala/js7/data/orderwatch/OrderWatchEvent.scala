@@ -18,7 +18,7 @@ sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]:
 object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchEvent]:
   implicit def implicitSelf: OrderWatchEvent.type = this
 
-  /** An external Order arose, Controller is expected to add an Order. */
+  /** An external Order appeared, Controller is expected to add an Order. */
   final case class ExternalOrderAppeared(
     externalOrderName: ExternalOrderName,
     arguments: NamedValues = Map.empty,

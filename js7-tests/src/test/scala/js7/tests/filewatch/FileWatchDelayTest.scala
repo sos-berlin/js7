@@ -74,7 +74,7 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
         val file = watchedDirectory / filename
         val externalOrderName = ExternalOrderName(filename)
         val orderId = externalToOrderId(externalOrderName)
-        val whenArised = eventWatch
+        val whenAppeared = eventWatch
           .awaitAsync[ExternalOrderAppeared](
             stamped =>
               stamped.key == orderWatchPath && stamped.event.externalOrderName == externalOrderName,
@@ -88,18 +88,18 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
 
         logger.info(s"""file-$i ++= "A" +${since.elapsed.pretty}""")
         file ++= "A"
-        assert(!whenArised.isCompleted)
+        assert(!whenAppeared.isCompleted)
         val divisor = 4
         for j <- 1 to i * divisor do withClue(s"#$i"):
           sleepUntil(since + systemWatchDelay + j * writeDuration / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}" +${since.elapsed.pretty}""")
           file ++= "+"
-          assert(!whenArised.isCompleted)
-        whenArised.await(99.s)
+          assert(!whenAppeared.isCompleted)
+        whenAppeared.await(99.s)
         val expectedDuration = fileWatch.delay + i * writeDuration
         val duration = since.elapsed
-        // TODO On macOS, files arise 3s or 4s later then expected
-        logger.info(s"file-$i arised ⭐️ after ${duration.pretty}, " +
+        // TODO On macOS, files appear 3s or 4s later then expected
+        logger.info(s"file-$i appeared ⭐️ after ${duration.pretty}, " +
           s"${(duration - expectedDuration).pretty} later than expected")
         assert(duration >= expectedDuration)
         await[OrderFinished](_.key == orderId)
