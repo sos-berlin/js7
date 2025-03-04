@@ -1,7 +1,6 @@
 package js7.tests.filewatch
 
 import java.nio.file.Files.createDirectory
-import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
@@ -14,7 +13,7 @@ import js7.data.event.EventId
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -43,13 +42,13 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
     agentPath,
     StringConstant(sourceDirectory.toString))
 
-  private def fileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+  private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    fileWatch.externalToOrderId(externalOrderName).orThrow
 
   private val aFile = sourceDirectory / "A"
-  private val aOrderId = fileToOrderId("A")
+  private val aOrderId = externalToOrderId(ExternalOrderName("A"))
   private val bFile = sourceDirectory / "NARROW-B"
-  private val bOrderId = fileToOrderId("NARROW-B")
+  private val bOrderId = externalToOrderId(ExternalOrderName("NARROW-B"))
 
   "Add two files" in:
     createDirectory(sourceDirectory)
@@ -58,11 +57,11 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobDriverStarvationTest)
     aFile := ""
-    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("A"))
+    eventWatch.await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("A"))
     eventWatch.await[OrderStarted](_.key == aOrderId)
 
     bFile := ""
-    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
+    eventWatch.await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
     eventWatch.await[OrderStarted](_.key == bOrderId)
 
   "Narrow the pattern" in:

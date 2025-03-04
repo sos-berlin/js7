@@ -1,11 +1,15 @@
 package js7.data.orderwatch
 
+import java.time.format.DateTimeFormatter
+import java.time.{ZoneId, ZonedDateTime}
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
+import js7.data.order.OrderId
+import js7.data.orderwatch.FileWatch.FileWatchPatternDoesntMatchProblem
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
@@ -60,3 +64,24 @@ final class FileWatchTest extends OurTestSuite:
           "delay": 2
         }""")
   }
+
+  private lazy val fileWatch = FileWatch(
+    OrderWatchPath("FILE-WATCH"),
+    WorkflowPath("WORKFLOW"),
+    AgentPath("AGENT"),
+    expr("'DIRECTORY'"),
+    Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
+    Some(expr(
+      """"#" ++ now(format="yyyy-MM-dd", timezone="Pacific/Tahiti") ++ "#F-$orderWatchPath:$1"""")))
+
+  private lazy val yyyymmdd = ZonedDateTime.now
+    .withZoneSameInstant(ZoneId.of("Pacific/Tahiti"))
+    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+
+  "relativePathToOrderId" in :
+    assert(fileWatch.externalToOrderId(ExternalOrderName("X")) ==
+      Left(FileWatchPatternDoesntMatchProblem(fileWatch.path / ExternalOrderName("X"))))
+
+    // Test may fail at midnight, Tahiti time, due to date change
+    assert(fileWatch.externalToOrderId(ExternalOrderName("file-ORDER.csv")) ==
+      Right(OrderId(s"#$yyyymmdd#F-FILE-WATCH:ORDER")))

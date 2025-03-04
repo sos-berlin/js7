@@ -16,7 +16,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExternalVanished}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, ToOrderAdded, Vanished, logger}
 import js7.data.value.expression.scopes.{ArgumentlessFunctionScope, NamedValueScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
@@ -69,8 +69,8 @@ extends
 
   def applyEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
     event match
-      case ExternalOrderArised(externalOrderName, orderId, arguments) =>
-        onExternalOrderArised(externalOrderName, orderId, arguments)
+      case ExternalOrderAppeared(externalOrderName, arguments, legacyOrderId) =>
+        onExternalOrderAppeared(externalOrderName, arguments, legacyOrderId)
 
       case ExternalOrderRejected(externalOrderName, orderId, problem) =>
         onExternalOrderRejected(externalOrderName, orderId, problem)
@@ -78,26 +78,28 @@ extends
       case ExternalOrderVanished(externalOrderName) =>
         onExternalOrderVanished(externalOrderName)
 
-  private def onExternalOrderArised(
+  private def onExternalOrderAppeared(
     externalOrderName: ExternalOrderName,
-    orderId: OrderId,
-    arguments: NamedValues)
+    arguments: NamedValues,
+    legacyOrderId: Option[OrderId])
   : Checked[OrderWatchState] =
-    externalToState.get(externalOrderName) match
-      case None =>
-        Right(copy(
-          externalToState = externalToState.updated(externalOrderName,
-            Arised(orderId, arguments)),
-          orderAddedQueue = orderAddedQueue + externalOrderName))
+    legacyOrderId.fold(item.externalToOrderId(externalOrderName))(Checked(_)).flatMap: orderId =>
+      externalToState.get(externalOrderName) match
+        case None =>
+          Right(copy(
+            externalToState = externalToState.updated(externalOrderName,
+              Arised(orderId, arguments)),
+            orderAddedQueue = orderAddedQueue + externalOrderName))
 
-      case Some(HasOrder(orderId, Some(Vanished))) =>
-        // Queue for an additional Order (with same OrderId)
-        Right(copy(
-          externalToState = externalToState.updated(externalOrderName,
-            HasOrder(orderId, Some(Arised(orderId, arguments))))))
+        case Some(HasOrder(orderId, Some(Vanished))) =>
+          // Queue for an additional Order (with same OrderId)
+          Right(copy(
+            externalToState = externalToState.updated(externalOrderName,
+              HasOrder(orderId, Some(Arised(orderId, arguments))))))
 
-      case Some(state @ (Arised(_, _) | Rejected(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
-        unexpected(s"Duplicate ExternalOrderArised(${externalOrderName.string}, $arguments): $state")
+        case Some(state @ (Arised(_, _) | Rejected(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
+          unexpected:
+            s"Duplicate ExternalOrderAppeared(${externalOrderName.string}, $arguments): $state"
 
   private def onExternalOrderRejected(
     externalOrderName: ExternalOrderName,
@@ -105,7 +107,16 @@ extends
     problem: Problem)
   : Checked[OrderWatchState] =
     Right(copy(
-      externalToState = externalToState.updated(externalOrderName,
+      externalToState =
+        if problem.is(FileWatch.FileWatchPatternDoesntMatchProblem) then
+          // The Agent matched the filename, but the Controller didn't.
+          // This may happen when Controller and Agent have different revisions of the FileWatch.
+          // Because the filename does not match at the Agent, the Agent never will emit an
+          // ExternalOrderVanished.
+          // Therefore, we remove the externalOrderName.
+          externalToState - externalOrderName
+        else
+          externalToState.updated(externalOrderName,
         Rejected(orderId, problem)),
       orderAddedQueue = orderAddedQueue - externalOrderName))
 

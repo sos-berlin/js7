@@ -12,7 +12,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
 import js7.data.event.{EventDriven, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderRejected, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import scala.collection.{View, mutable}
 
@@ -36,7 +36,7 @@ extends
   def applyEvent(event: OrderWatchEvent): Right[Nothing, FileWatchState] =
     Right:
       event match
-        case ExternalOrderArised(ExternalOrderName(filename_), _, _) =>
+        case ExternalOrderAppeared(ExternalOrderName(filename_), _, _) =>
           val filename = Paths.get(filename_)
           copy(
             directoryState =

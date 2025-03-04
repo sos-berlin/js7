@@ -1,4 +1,4 @@
-package js7.agent.scheduler.order
+package js7.data.orderwatch
 
 import cats.syntax.semigroup.*
 import java.time.format.DateTimeFormatter
@@ -6,7 +6,6 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.Scope

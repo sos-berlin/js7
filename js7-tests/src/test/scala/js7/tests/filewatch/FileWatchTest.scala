@@ -4,7 +4,6 @@ import fs2.Stream
 import java.io.File
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import java.nio.file.Paths
-import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
@@ -28,7 +27,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancellationMarkedOnAgent, OrderDeleted, OrderExternalVanished, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.HasOrder
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.value.StringValue
@@ -70,11 +69,11 @@ extends OurTestSuite, ControllerAgentForScalaTest:
     aAgentPath,
     expr(s"${StringConstant.quote(watchPrefix)} ++ env('$envName')"))
 
-  private def fileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+  private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    fileWatch.externalToOrderId(externalOrderName).orThrow
 
-  private def waitingFileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
+  private def waitingFileToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    waitingFileWatch.externalToOrderId(externalOrderName).orThrow
 
   private lazy val waitingWatchDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files-waiting"
   private lazy val waitingFileWatch = FileWatch(
@@ -109,7 +108,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       StringConstant(myDirectory.toString))
     updateItems(myFileWatch)
 
-    val orderId = FileWatchManager.relativePathToOrderId(myFileWatch, "1").get.orThrow
+    val orderId = myFileWatch.externalToOrderId(ExternalOrderName("1")).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
     assert(controllerState.idToOrder(orderId).namedValues(waitingWorkflow).toMap == Map(
       "file" -> StringValue(file.toString),
@@ -125,7 +124,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   "Add a file" in:
     val file = watchDirectory / "2"
-    val orderId = fileToOrderId("2")
+    val orderId = externalToOrderId(ExternalOrderName("2"))
     file := ""
     eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
@@ -133,7 +132,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   "Add many files, forcing an overflow" in:
     val since = Deadline.now
     val filenames = (1 to 1).map(_.toString).toVector
-    val orderIds = filenames.map(fileToOrderId).toSet
+    val orderIds = filenames.map(ExternalOrderName(_)).map(externalToOrderId).toSet
     val whenAllRemoved = eventWatch
       .stream(EventRequest.singleClass[OrderDeleted](
         after = eventWatch.lastAddedEventId,
@@ -151,7 +150,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   "DeleteOrdersWhenTerminated is rejected" in:
     val file = waitingWatchDirectory / "REMOVE"
-    val orderId = waitingFileToOrderId("REMOVE")
+    val orderId = waitingFileToOrderId(ExternalOrderName("REMOVE"))
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
@@ -170,7 +169,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
   "CancelOrder does not delete the order until the file has vanished" in:
     val file = waitingWatchDirectory / "CANCEL"
-    val orderId = waitingFileToOrderId("CANCEL")
+    val orderId = waitingFileToOrderId(ExternalOrderName("CANCEL"))
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
@@ -195,7 +194,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
   "Change FileWatch while an order is running" in:
     TestJob.reset()
     val longFile = waitingWatchDirectory / "AGAIN-LONG"
-    val longOrderId = waitingFileToOrderId("AGAIN-LONG")
+    val longOrderId = waitingFileToOrderId(ExternalOrderName("AGAIN-LONG"))
     longFile := ""
     TestJob.continue()
 
@@ -212,7 +211,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
           NoKey <-: ItemAttached(changedFileWatch.path, Some(itemRevision), aAgentPath)))
 
       val iFile = waitingWatchDirectory / s"AGAIN-$i"
-      val iOrderId = waitingFileToOrderId(s"AGAIN-$i")
+      val iOrderId = waitingFileToOrderId(ExternalOrderName(s"AGAIN-$i"))
       iFile := ""
       TestJob.continue()
       eventWatch.await[OrderFinished](_.key == iOrderId)
@@ -238,7 +237,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       // A file only in the old directory
       val singletonName = "CHANGE-DIRECTORY-SINGLETON"
       val singletonFile = waitingWatchDirectory / singletonName
-      val singletonOrderId = waitingFileToOrderId(singletonName)
+      val singletonOrderId = waitingFileToOrderId(ExternalOrderName(singletonName))
       singletonFile := ""
 
       eventWatch.await[OrderFinished](_.key == singletonOrderId)
@@ -249,7 +248,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         // A file only in the newDirectory
         val newFile = newDirectory / "CHANGE-DIRECTORY-NEW"
-        val newOrderId = waitingFileToOrderId("CHANGE-DIRECTORY-NEW")
+        val newOrderId = waitingFileToOrderId(ExternalOrderName("CHANGE-DIRECTORY-NEW"))
         newFile := ""
 
         /// Change directory ///
@@ -281,7 +280,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
 
         assert(eventWatch
-          .keyedEvents[ExternalOrderArised](after = eventId)
+          .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet ==
           Set(newFile.toString))
@@ -315,7 +314,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       val name = "BOTH"
       val oldFile = waitingWatchDirectory / name
       val externalOrderName = ExternalOrderName(name)
-      val orderId = waitingFileToOrderId(name)
+      val orderId = waitingFileToOrderId(externalOrderName)
       oldFile := ""
 
       eventWatch.await[OrderFinished](_.key == orderId)
@@ -342,23 +341,21 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         eventWatch.await[ItemAttached](after = eventId)
 
         /// Files are considered deleted (due to directory change — they still exists) ///
-        eventWatch.await[OrderExternalVanished](_.key == orderId, after = eventId)
-        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+        eventWatch.awaitKey[OrderExternalVanished](orderId, after = eventId)
+        eventWatch.awaitKey[OrderDeleted](orderId, after = eventId)
 
         // orderId has been started again because its filename duplicates in newDirectory
 
-        eventWatch.await[ExternalOrderArised](
-          ke => ke.key == waitingFileWatch.path && ke.event.orderId == orderId,
-          after = eventId)
-        eventWatch.await[OrderAdded](_.key == orderId, after = eventId)
+        eventWatch.awaitKey[ExternalOrderAppeared](waitingFileWatch.path, after = eventId)
+        eventWatch.awaitKey[OrderAdded](orderId, after = eventId)
 
         TestJob.continue(1)
 
-        eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-        eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+        eventWatch.awaitKey[OrderFinished](orderId, after = eventId)
+        eventWatch.awaitKey[OrderDeleted](orderId, after = eventId)
 
         assert(eventWatch
-          .keyedEvents[ExternalOrderArised](after = eventId)
+          .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet == Set(newFile.toString))
 
