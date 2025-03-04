@@ -40,7 +40,7 @@ final class OrderEventTest extends OurTestSuite:
         Map("VAR" -> StringValue("VALUE")),
         PlanId(PlanSchemaId("DailyPlan"), PlanKey("2024-11-20")),
         Some(ts"2021-01-01T00:00:00Z"),
-        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
+        Some(OrderWatchPath("ORDER-WATCH") / ExternalOrderName("ORDER-NAME")),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
         innerBlock = Position(1) / "then",

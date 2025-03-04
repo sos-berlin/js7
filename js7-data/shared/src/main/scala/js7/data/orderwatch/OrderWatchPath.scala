@@ -10,6 +10,9 @@ extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:
 
   val companion: OrderWatchPath.type = OrderWatchPath
 
+  inline def /(externalOrderName: ExternalOrderName): ExternalOrderKey =
+    ExternalOrderKey(this, externalOrderName)
+
 
 object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]:
   type Item = OrderWatch

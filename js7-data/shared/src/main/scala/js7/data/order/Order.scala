@@ -1441,7 +1441,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
     vanished: Boolean = false):
 
     def externalOrderKey: ExternalOrderKey =
-      ExternalOrderKey(orderWatchPath, name)
+      orderWatchPath / name
 
     override def toString =
       if vanished then

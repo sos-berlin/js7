@@ -191,7 +191,7 @@ extends
   private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
   : View[KeyedEvent[OrderAddedEvent | ExternalOrderRejected]] =
     orderAddedQueue.view.flatMap: externalOrderName =>
-      val externalOrderKey = ExternalOrderKey(path, externalOrderName)
+      val externalOrderKey = path / externalOrderName
       externalToState.get(externalOrderName)
         .toList.flatMap: arised =>
           val Arised(orderId, arguments) = arised: @unchecked

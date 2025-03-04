@@ -245,10 +245,10 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     aOrderWatch.path <-: ExternalOrderVanished(ExternalOrderName(name))
 
   private def aExternalOrderKey(name: String) =
-    ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))
+    aOrderWatch.path / ExternalOrderName(name)
 
   private def bExternalOrderKey(name: String) =
-    ExternalOrderKey(bOrderWatch.path, ExternalOrderName(name))
+    bOrderWatch.path / ExternalOrderName(name)
 
   private def orderId(name: String) =
     OrderId(s"file:A-SOURCE:$name")
@@ -256,7 +256,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
   private def orderAdded(name: String) =
     orderId(name) <-:
       OrderAdded(workflowId,Map("file" -> StringValue(s"/DIR/$name")),
-        externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
+        externalOrderKey = Some(aOrderWatch.path / ExternalOrderName(name)))
 
   private def toOrder(name: String) =
     Order(
