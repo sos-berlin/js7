@@ -31,7 +31,7 @@ extends JJsonable[JPlanSchema], JUnsignedSimpleItem:
     asScala.id
 
   @Nonnull def planIsClosedFunction: Optional[ExprFunction] =
-    asScala.planIsClosedFunction.toJava
+    asScala.unknownPlanIsClosedFunction.toJava
 
   @Nonnull def namedValues: java.util.Map[String, Value] =
     asScala.namedValues.asJava

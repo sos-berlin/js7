@@ -47,7 +47,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE" : "PlanSchema",
         "id" : "DailyPlan",
-        "planIsClosedFunction" : "day => $$day < $$openingDay",
+        "unknownPlanIsClosedFunction" : "day => $$day < $$openingDay",
         "namedValues" : {
           "openingDay" : ""
         },
