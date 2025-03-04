@@ -14,45 +14,15 @@ import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
 
 /** Item for (daily) plans.
-  *
-  * Live states of a Plan
-  *
-  * <dl>
-  *   <dt>Dead or non-existent closed
-  *   <dd>"Dead Plan" is synonymous to "non-existing closed Plan".
-  *   <br>A dead Plan is a closed Plan without Orders (and thus without Notices)
-  *   <p>
-  *     There is no way to add an Order to a dead Plan.
-  *   <p>
-  *     A dead Plan
-  *     <ul>
-  *     <li>has never exist, or
-  *     <li>has been closed and all Orders (and thus Notices) have been deleted.
-  *     </ul>
-  *
-  *   <dt>Closed
-  *   <dd>iff `planIsClosedFunction` returns true for the PlanId.
-  *   <p>
-  *     A closed Plan does not accept external Orders, i.e. Order fed via web service or FileWatch.
-  *     But as long as the closed Plan is not dead (i.e. contains an Order), Orders may be added
-  *     via instruction: AddOrder, Fork, ForkList.
-  *     (For Fork and ForkList, the Plan cannot be dead,
-  *     because the forking Order is in the same Plan).
-  *   <p>
-  *     When the last Order of a closed Plan has been deleted,
-  *     the Engine deletes all Notices of the Plan, too.
-  *     The Plan gets empty and thus non-existent.
-  *     An empty closed Plan is equal to a non-existent closed Plan and called dead.
-  * </dl>
-  *
-  * @param planIsClosedFunction A function expression with a PlanId as argument,
+  **
+  * @param unknownPlanIsClosedFunction A function expression with a PlanId as argument,
   *                             returns true when the corresponding Plan is closed.
   * #@param startOffset When the plan starts (for example 6h for 06:00 local time)
   * #@param lifetime How long a daily plan is kept after the day is over
   */
 final case class PlanSchema(
   id: PlanSchemaId,
-  planIsClosedFunction: Option[ExprFunction] = None,
+  unknownPlanIsClosedFunction: Option[ExprFunction] = None,
   namedValues: NamedValues = NamedValues.empty,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
@@ -86,9 +56,9 @@ extends UnsignedSimpleItem:
   def withRevision(revision: Option[ItemRevision]): PlanSchema =
     copy(itemRevision = revision)
 
-  private[plan] def evalPlanIsClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
+  private[plan] def evalUnknownPlanIsClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
     meterPlanIsClosedFunction:
-      planIsClosedFunction.fold(Checked(false)): function =>
+      unknownPlanIsClosedFunction.fold(Checked(false)): function =>
         function.eval(StringValue(planKey.string))(using scope)
           .flatMap(_.asBoolean)
 
@@ -110,7 +80,7 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def joc(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planIsClosedFunction = Some(exprFunction("day => $day < $openingDay")),
+      unknownPlanIsClosedFunction = Some(exprFunction("day => $day < $openingDay")),
       Map("openingDay" -> StringValue.empty))
 
   /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
@@ -118,17 +88,17 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      planIsClosedFunction = Some(exprFunction("week => $week < $openingWeek")),
+      unknownPlanIsClosedFunction = Some(exprFunction("week => $week < $openingWeek")),
       Map("openingWeek" -> StringValue.empty))
 
-  private val meterPlanIsClosedFunction = CallMeter("PlanSchmea.planIsClosedFunction")
+  private val meterPlanIsClosedFunction = CallMeter("PlanSchmea.unknownPlanIsClosedFunction")
 
   override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
 
   override given jsonDecoder: Decoder[PlanSchema] = c =>
     for
       id <- c.get[PlanSchemaId]("id")
-      planIsClosedFunction <- c.get[Option[ExprFunction]]("planIsClosedFunction")
+      planIsClosedFunction <- c.get[Option[ExprFunction]]("unknownPlanIsClosedFunction")
       namedValues <- c.getOrElse[NamedValues]("namedValues")(NamedValues.empty)
       itemRevision <- c.get[Option[ItemRevision]]("itemRevision")  // May be omitted only in 2.7-4-SNAPSHOT
     yield

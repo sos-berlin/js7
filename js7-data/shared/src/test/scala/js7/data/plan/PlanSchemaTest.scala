@@ -16,13 +16,13 @@ final class PlanSchemaTest extends OurTestSuite:
     testJson[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        planIsClosedFunction = Some(exprFunction("planKey => false")),
+        unknownPlanIsClosedFunction = Some(exprFunction("planKey => false")),
         Map("NAME" -> StringValue("VALUE")),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "planIsClosedFunction": "planKey => false",
+        "unknownPlanIsClosedFunction": "planKey => false",
         "namedValues": {
           "NAME": "VALUE"
         },
