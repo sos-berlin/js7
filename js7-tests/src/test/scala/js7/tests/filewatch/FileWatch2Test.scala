@@ -210,8 +210,8 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
 
   private def checkControllerEvents(keyedEvents: Seq[AnyKeyedEvent]): Unit =
     val filteredLeyedEvents = keyedEvents
-      .filter(_
-        .event match {
+      .filter:
+        _.event match
           case _: ControllerShutDown => true
           case e: ItemAttachedStateEvent =>
             !e.key.isInstanceOf[AgentPath] && !e.key.isInstanceOf[SubagentId]
@@ -223,7 +223,6 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
           case _: OrderFinished => true
           case _: OrderDeleted => true
           case _ => false
-        })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: UnsignedSimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
@@ -322,14 +321,13 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
       .orThrow
       .map(_.value)
       .flatMap(ke => Stream.emit(ke.event)
-        .collect {
+        .collect:
           case e: AgentReady => e.copy(
             timezone = "Europe/Berlin",
             totalRunningTime = 1.s,
             platformInfo = Some(PlatformInfo.test))
           case e: InventoryItemEvent if e.key.isInstanceOf[OrderWatchPath] => e
           case e: OrderWatchEvent => e
-        }
         .map(e => ke.key <~: e))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
@@ -337,44 +335,36 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
       NoKey <-: ItemAttachedToMe(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("1"),
-        OrderId("file:FILE-WATCH:1"),
         Map("file" -> StringValue(s"$aDirectory${separator}1"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("1")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("2"),
-        OrderId("file:FILE-WATCH:2"),
         Map("file" -> StringValue(s"$aDirectory${separator}2"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("2")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("3"),
-        OrderId("file:FILE-WATCH:3"),
         Map("file" -> StringValue(s"$aDirectory${separator}3"))),
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),
-        OrderId("file:FILE-WATCH:4"),
         Map("file" -> StringValue(s"$aDirectory${separator}4"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("4")),
       NoKey <-: ItemAttachedToMe(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("5"),
-        OrderId("file:FILE-WATCH:5"),
         Map("file" -> StringValue(s"$bDirectory${separator}5"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("5")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
-        OrderId("file:FILE-WATCH:6"),
         Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
       // and again
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
-        OrderId("file:FILE-WATCH:6"),
         Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("7"),
-        OrderId("file:FILE-WATCH:7"),
         Map("file" -> StringValue(s"$bDirectory${separator}7"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("7"))))
 

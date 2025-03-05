@@ -226,13 +226,12 @@ final class PlanOpenCloseTest
               .head.value
             assert(orderRejected == fileWatch.path <-: ExternalOrderRejected(
               yesterdayExternalName,
-              yesterdayOrderId,
               PlanIsClosedProblem(yesterdayPlanId)))
 
             assert(controllerState.keyTo(OrderWatchState)(fileWatch.path) == OrderWatchState(
               fileWatch,
               Map(yesterdayExternalName ->
-                OrderWatchState.Rejected(yesterdayOrderId, PlanIsClosedProblem(yesterdayPlanId)))))
+                OrderWatchState.Rejected(PlanIsClosedProblem(yesterdayPlanId)))))
 
             delete(dir / yesterday)
             eventWatch.awaitNextKey[ExternalOrderVanished](fileWatch.path,

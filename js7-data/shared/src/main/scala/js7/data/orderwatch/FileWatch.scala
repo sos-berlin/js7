@@ -1,21 +1,27 @@
 package js7.data.orderwatch
 
+import cats.syntax.semigroup.*
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.{Matcher, Pattern}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItemPath, ItemRevision}
+import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.*
 import js7.data.plan.PlanId
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.expr
+import js7.data.value.expression.scopes.{ArgumentlessFunctionScope, EnvScope, NowScope}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.workflow.WorkflowPath
 import scala.collection.View
+import scala.collection.immutable.Map.Map2
 import scala.concurrent.duration.FiniteDuration
 
 final case class FileWatch(
@@ -45,12 +51,36 @@ extends OrderWatch:
   def evalPlanIdExpr(scope: Scope): Checked[PlanId] =
     PlanId.evalPlanIdExpr(planIdExpr getOrElse PlanId.GlobalPlanIdExpr, scope)
 
-  def matchFilename(filename: String): Matcher =
-    pattern.fold(defaultPattern)(_.pattern)
-      .matcher(filename)
+  def externalToOrderAndPlanId(
+    externalOrderName: ExternalOrderName,
+    legacyOrderId: Option[OrderId],
+    now: Timestamp)
+  : Checked[(OrderId, PlanId)] =
+    val relativePath = externalOrderName.string
+    val matcher = matchFilename(relativePath)
+    if !matcher.matches() then
+      Left(FileWatch.FileWatchPatternDoesntMatchProblem(path / externalOrderName))
+    else
+      val scope = FileWatchScope(path, matcher) |+| EnvScope |+| NowScope(now)
+      for
+        orderId <- legacyOrderId.map(Checked(_)).getOrElse:
+          val default = OrderId.checked(s"file:${path.string}:$relativePath")
+          orderIdExpression.fold(default): expr =>
+            expr.evalAsString(scope).flatMap(OrderId.checked)
+        planId <- PlanId.evalPlanIdExpr(planIdExpr getOrElse PlanId.GlobalPlanIdExpr,
+          scope |+| ArgumentlessFunctionScope(Map("orderId" -> Right(StringValue(orderId.string)))))
+      yield
+        orderId -> planId
+
+  def matchesFilename(filename: String): Boolean =
+    matchFilename(filename).matches()
+
+  private def matchFilename(filename: String): Matcher =
+    pattern.fold(defaultPattern)(_.pattern).matcher(filename)
 
 
 object FileWatch extends OrderWatch.Companion[FileWatch]:
+
   val cls: Class[FileWatch] = classOf[FileWatch]
 
   override type Path = OrderWatchPath
@@ -83,3 +113,11 @@ object FileWatch extends OrderWatch.Companion[FileWatch]:
       deriveEncoder[FileWatch])
 
   intelliJuseImport(FiniteDurationJsonEncoder)
+
+  final case class FileWatchPatternDoesntMatchProblem(externalOrderKey: ExternalOrderKey)
+  extends Problem.Coded:
+    def arguments = Map2(
+      "orderWatchPath", externalOrderKey.orderWatchPath.string,
+      "externalOrderName", externalOrderKey.name.string)
+
+  object FileWatchPatternDoesntMatchProblem extends Problem.Coded.Companion

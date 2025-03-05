@@ -3,14 +3,12 @@ package js7.agent.scheduler.order
 import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.foldable.*
-import cats.syntax.monoid.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import fs2.Chunk
 import fs2.concurrent.{Signal, SignallingRef}
 import java.nio.file.{Path, Paths}
-import java.util.regex.Matcher
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
 import js7.agent.scheduler.order.FileWatchManager.*
@@ -32,12 +30,11 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
-import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.value.expression.Expression
-import js7.data.value.expression.scopes.{EnvScope, NowScope}
+import js7.data.value.expression.scopes.EnvScope
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.Journal
 import scala.collection.View
@@ -157,7 +154,7 @@ final class FileWatchManager(
           .stream(
             directory, directoryState, settings,
             isRelevantFile = relativePath =>
-              fileWatch.matchFilename(relativePath.toString).matches)
+              fileWatch.matchesFilename(relativePath.toString))
           .onStart(IO:
             logger.debug(s"${fileWatch.path} watching started - $directory"))
           .interruptWhen(stop)
@@ -191,7 +188,7 @@ final class FileWatchManager(
       else
         journal.persist: agentState =>
           Right:
-            agentState.keyTo(FileWatchState)
+              agentState.keyTo(FileWatchState)
               .get(fileWatch.path)
               // Ignore late events after FileWatch has been removed
               .toVector
@@ -202,14 +199,11 @@ final class FileWatchManager(
                   .asSeq
                   .flatMap: dirEvent =>
                     dirEvent match
-                      case fileAdded @ FileAdded(path) if !fileWatchState.containsPath(path) =>
-                        val maybeOrderId = pathToOrderId(fileWatch, path)
-                        if maybeOrderId.isEmpty then logger.debug(s"Ignore $fileAdded (no OrderId)")
-                        for orderId <- maybeOrderId yield
-                          ExternalOrderArised(
-                            ExternalOrderName(path.toString),
-                            orderId,
-                            toOrderArguments(directory, path))
+                      case FileAdded(path)
+                        if !fileWatchState.containsPath(path) =>
+                        Some(ExternalOrderArised(
+                          ExternalOrderName(path.toString),
+                          toOrderArguments(directory, path)))
 
                       case FileDeleted(path) if fileWatchState.containsPath(path) =>
                         Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
@@ -219,29 +213,9 @@ final class FileWatchManager(
                         None
               .map(fileWatch.path <-: _)
 
-  private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
-    relativePathToOrderId(fileWatch, relativePath.toString)
-      .flatMap: checkedOrderId =>
-        for problem <- checkedOrderId.left do logger.error(s"${fileWatch.path} $relativePath: $problem")
-        checkedOrderId.toOption
-
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
 
 
 object FileWatchManager:
   private val logger = Logger[this.type]
-
-  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
-    lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
-    val matcher = fileWatch.matchFilename(relativePath)
-    matcher.matches() ?
-      fileWatch.orderIdExpression.match
-        case None => default
-        case Some(expr) =>
-          evalAsString(fileWatch.path, expr, matcher)
-            .flatMap(OrderId.checked)
-
-  private def evalAsString(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
-    expression.evalAsString:
-      FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope

@@ -8,8 +8,8 @@ import js7.base.utils.ScalaUtils.orderingBy
 import js7.data.board.{BoardNoticeKey, BoardPath, NoticeId, NoticeKey, PlannedBoardId, PlannedNoticeKey}
 import js7.data.plan.PlanId.*
 import js7.data.value.expression.Expression.{ListExpr, StringConstant}
-import js7.data.value.{ListValue, StringValue}
 import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{ListValue, StringValue}
 import scala.annotation.static
 
 /** Identifies a 'Plan', a thought thing which exists only as this `PlanId`. */
@@ -85,4 +85,4 @@ object PlanId:
           planKey <- PlanKey.checked(planKey)
         yield planSchemaId / planKey
       case other => Left(Problem.pure:
-        s"""Invalid PlanId expression result (something like ["planSchema", "planKey"] was expected): $other""")
+        s"""Invalid PlanId expression result (something like ["PlanSchemaId", "PlanKey"] was expected): $other""")

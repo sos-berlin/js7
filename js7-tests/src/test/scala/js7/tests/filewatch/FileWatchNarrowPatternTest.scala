@@ -1,13 +1,13 @@
 package js7.tests.filewatch
 
 import java.nio.file.Files.createDirectory
-import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
@@ -16,6 +16,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchNarrowPatternTest.*
@@ -43,13 +44,16 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
     agentPath,
     StringConstant(sourceDirectory.toString))
 
-  private def fileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+  private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    val (orderId, planId) =
+      fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global)
+    orderId
 
   private val aFile = sourceDirectory / "A"
-  private val aOrderId = fileToOrderId("A")
+  private val aOrderId = externalToOrderId(ExternalOrderName("A"))
   private val bFile = sourceDirectory / "NARROW-B"
-  private val bOrderId = fileToOrderId("NARROW-B")
+  private val bOrderId = externalToOrderId(ExternalOrderName("NARROW-B"))
 
   "Add two files" in:
     createDirectory(sourceDirectory)

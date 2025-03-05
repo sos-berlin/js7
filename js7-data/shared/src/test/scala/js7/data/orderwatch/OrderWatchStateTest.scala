@@ -2,6 +2,7 @@ package js7.data.orderwatch
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
@@ -9,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Vanished}
+import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, Vanished}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
@@ -31,11 +32,11 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
         delay = 2.s,
         Some(ItemRevision(7))),
       Map( // Not in snapshot, because its duplicate to Order.externalOrder
-        ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
+        ExternalOrderName("A-NAME") -> Arised(NamedValues("K" -> StringValue("V")), Some(OrderId("A-ORDER"))),
         ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), None),
         ExternalOrderName("C-NAME") -> HasOrder(OrderId("C-ORDER"), Some(Vanished)),
         ExternalOrderName("C2-NAME") -> HasOrder(OrderId("C2-ORDER"), Some(Vanished)),
-        ExternalOrderName("D-NAME") -> HasOrder(OrderId("D-ORDER"), Some(Arised(OrderId("D-ORDER"), NamedValues("K" -> StringValue("V2")))))),
+        ExternalOrderName("D-NAME") -> HasOrder(OrderId("D-ORDER"), Some(Arised(NamedValues("K" -> StringValue("V2")), Some(OrderId("D-ORDER")))))),
       orderAddedQueue = Set(ExternalOrderName("B-NAME")),
       orderExternalVanishedQueue = Set(ExternalOrderName("C2-NAME")))
 
@@ -45,7 +46,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
 
   "JSON" - {
     "ArisedOrHasOrder" in:
-      testJson[ArisedOrHasOrder](Arised(OrderId("ORDER"), Map("file" -> StringValue("FILE"))),
+      testJson[ArisedOrHasOrder](Arised(Map("file" -> StringValue("FILE")), Some(OrderId("ORDER"))),
         json"""{
           "TYPE": "Arised",
           "orderId": "ORDER",
@@ -76,7 +77,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
       testJson[ArisedOrHasOrder](
         HasOrder(
           OrderId("ORDER"),
-          Some(Arised(OrderId("ORDER"), Map("file" -> StringValue("FILE"))))),
+          Some(Arised(Map("file" -> StringValue("FILE")), Some(OrderId("ORDER"))))),
         json"""{
           "TYPE": "HasOrder",
           "orderId": "ORDER",
@@ -89,12 +90,21 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           }
         }""")
 
+      testJson[ArisedOrHasOrder](
+        Rejected(Problem("PROBLEM")),
+        json"""{
+          "TYPE": "Rejected",
+          "problem": {
+            "message": "PROBLEM"
+          }
+        }""")
+
     "ExternalOrderSnapshot" in:
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
           OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
-          Arised(OrderId("ORDER"), NamedValues("file" -> StringValue("FILE")))),
+          Arised(NamedValues("file" -> StringValue("FILE")), Some(OrderId("ORDER")))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
@@ -163,9 +173,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
           ExternalOrderName("FILE"),
           HasOrder(
             OrderId("ORDER"),
-            Some(Arised(
-              OrderId("NEXT"),
-              NamedValues("file" -> StringValue("FILE")))))),
+            Some(Arised(NamedValues("file" -> StringValue("FILE")), Some(OrderId("NEXT")))))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",

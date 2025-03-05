@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, exists}
-import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
@@ -14,12 +13,14 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDelayTest.*
@@ -58,8 +59,11 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
     StringConstant(watchedDirectory.toString),
     delay = writeDuration + 1.s)
 
-  private def fileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+  private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    val (orderId, planId) =
+      fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global)
+    orderId
 
   import eventWatch.await
 
@@ -74,7 +78,7 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
       withClue(filename):
         val file = watchedDirectory / filename
         val externalOrderName = ExternalOrderName(filename)
-        val orderId = fileToOrderId(filename)
+        val orderId = externalToOrderId(externalOrderName)
         val whenArised = eventWatch
           .awaitAsync[ExternalOrderArised](
             stamped =>

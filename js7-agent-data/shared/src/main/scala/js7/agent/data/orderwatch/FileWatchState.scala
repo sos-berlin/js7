@@ -44,7 +44,7 @@ extends
                 fileToEntry = directoryState.fileToEntry +
                   (filename -> DirectoryState.Entry(filename))))
 
-        case ExternalOrderRejected(externalOrderName, _, _) =>
+        case ExternalOrderRejected(externalOrderName, _) =>
           this
 
         case ExternalOrderVanished(ExternalOrderName(filename_)) =>

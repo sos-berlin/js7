@@ -15,27 +15,38 @@ final class OrderWatchEventTest extends OurTestSuite:
       testJson[OrderWatchEvent](
         ExternalOrderArised(
           ExternalOrderName("NAME"),
-          OrderId("ORDER"),
           NamedValues("file" -> StringValue("FILE"))),
         json"""{
           "TYPE": "ExternalOrderArised",
           "externalOrderName": "NAME",
-          "orderId": "ORDER",
           "arguments": {
             "file": "FILE"
           }
+        }""")
+
+    "ExternalOrderArised <v2.7.4" in: // COMPATIBLE with v2.7.3
+      testJson[OrderWatchEvent](
+        ExternalOrderArised(
+          ExternalOrderName("NAME"),
+          NamedValues("file" -> StringValue("FILE")),
+          Some(OrderId("ORDER"))),
+        json"""{
+          "TYPE": "ExternalOrderArised",
+          "externalOrderName": "NAME",
+          "arguments": {
+            "file": "FILE"
+          },
+          "orderId": "ORDER"
         }""")
 
     "ExternalOrderRejected" in:
       testJson[OrderWatchEvent](
         ExternalOrderRejected(
           ExternalOrderName("NAME"),
-          OrderId("ORDER"),
           Problem("PROBLEM")),
         json"""{
           "TYPE": "ExternalOrderRejected",
           "externalOrderName": "NAME",
-          "orderId": "ORDER",
           "problem": {
             "message": "PROBLEM"
           }

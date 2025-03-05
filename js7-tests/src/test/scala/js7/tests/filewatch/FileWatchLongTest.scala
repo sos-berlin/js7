@@ -2,7 +2,6 @@ package js7.tests.filewatch
 
 import fs2.Stream
 import java.nio.file.Files.{createDirectory, exists}
-import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
@@ -10,12 +9,14 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.order.OrderId
-import js7.data.orderwatch.{FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest.*
@@ -46,14 +47,17 @@ final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
     agentPath,
     StringConstant(sourceDirectory.toString))
 
-  private def fileToOrderId(filename: String): OrderId =
-    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+  private def externalToOrderId(externalOrderName: ExternalOrderName): OrderId =
+    val (orderId, planId) =
+      fileWatch.externalToOrderAndPlanId(externalOrderName, None, Timestamp.now).orThrow
+    assert(planId == PlanId.Global)
+    orderId
 
   "Start with a file" in:
     createDirectory(sourceDirectory)
     controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     val file = sourceDirectory / "1"
-    val orderId = fileToOrderId("1")
+    val orderId = externalToOrderId(ExternalOrderName("1"))
     file := ""
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
     eventWatch.await[OrderDeleted](_.key == orderId)

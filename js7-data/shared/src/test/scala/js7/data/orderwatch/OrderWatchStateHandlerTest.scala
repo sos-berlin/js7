@@ -37,11 +37,11 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     events foreach:
       case KeyedEvent(orderId: OrderId, _: OrderAdded) =>
         update:
-          state.ow.onOrderAdded(aExternalOrderKey(orderId.string.stripPrefix("file:A-SOURCE:")), orderId).orThrow
+          state.ow.onOrderAdded(aExternalOrderKey(orderId.string.stripPrefix("file:A-WATCH:")), orderId).orThrow
             .copy(isExternalNotVanished = state.isExternalNotVanished + orderId)
       case KeyedEvent(orderId: OrderId, OrderExternalVanished) =>
         update:
-          state.ow.onOrderExternalVanished(aExternalOrderKey(orderId.string.stripPrefix("file:A-SOURCE:"))).orThrow
+          state.ow.onOrderExternalVanished(aExternalOrderKey(orderId.string.stripPrefix("file:A-WATCH:"))).orThrow
             .copy(isExternalNotVanished = state.isExternalNotVanished - orderId)
       case KeyedEvent(externalOrderName, ExternalOrderRejected) =>
         throw new NotImplementedError
@@ -71,7 +71,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     assert(all1.pathToOrderWatchStateMap(a1.path) == OrderWatchState(a1))
 
   "Events on the happy path" - {
-    "X arises and vanishes before an order could be added" in:
+    "X appears and vanishes before an order could be added" in:
       update(state.ow.onOrderWatchEvent(externalOrderArised("X")).orThrow)
       assert(state("X") == Some(arised("X")))
 
@@ -117,8 +117,8 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
                 ExternalOrderName("B") -> HasOrder(orderId("B")))),
           bOrderWatch.path -> OrderWatchState(bOrderWatch)),
         isExternalNotVanished = Set(
-          OrderId("file:A-SOURCE:A"),
-          OrderId("file:A-SOURCE:B"))))
+          OrderId("file:A-WATCH:A"),
+          OrderId("file:A-WATCH:B"))))
 
     "ExternalOrderVanished A => OrderExternalVanished" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
@@ -200,7 +200,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
 
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
       assert(state.ow.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
-        """Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): Arised(Order:file:A-SOURCE:A)""")))
+        """Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): Arised""")))
 
     "Double early ExternalOrderVanished fails" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
@@ -212,14 +212,14 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
       assert(applyNextEvents() == Seq(orderAdded("A")))
 
       assert(state.ow.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
-        "Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): HasOrder(Order:file:A-SOURCE:A,None)")))
+        "Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): HasOrder(Order:file:A-WATCH:A,None)")))
 
     "Vanished before OrderDeleted" in:
       update(state.ow.onOrderWatchEvent(externalOrderVanished("A")).orThrow)
       assert(state("A") == Some(HasOrder(orderId("A"), Some(Vanished))))
 
       assert(state.ow.onOrderWatchEvent(externalOrderVanished("A")) == Left(Problem(
-        """Duplicate ExternalOrderVanished(A), state=HasOrder(Order:file:A-SOURCE:A,Some(Vanished))""")))
+        """Duplicate ExternalOrderVanished(A), state=HasOrder(Order:file:A-WATCH:A,Some(Vanished))""")))
 
       update(state.ow.onOrderDeleted(aExternalOrderKey("A"), orderId("A")).orThrow)
       assert(state("A") == None)
@@ -233,12 +233,11 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
         Nil))
 
   private def arised(name: String) =
-    Arised(orderId(name), NamedValues("file" -> StringValue(s"/DIR/$name")))
+    Arised(NamedValues("file" -> StringValue(s"/DIR/$name")))
 
   private def externalOrderArised(name: String) =
     aOrderWatch.path <-: ExternalOrderArised(
       ExternalOrderName(name),
-      orderId(name),
       NamedValues("file" -> StringValue(s"/DIR/$name")))
 
   private def externalOrderVanished(name: String) =
@@ -251,7 +250,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite:
     bOrderWatch.path / ExternalOrderName(name)
 
   private def orderId(name: String) =
-    OrderId(s"file:A-SOURCE:$name")
+    OrderId(s"file:${aOrderWatch.path.string}:$name")
 
   private def orderAdded(name: String) =
     orderId(name) <-:

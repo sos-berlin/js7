@@ -1,14 +1,13 @@
-package js7.agent.scheduler.order
+package js7.data.orderwatch
 
 import java.util.regex.Matcher
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.expression.Scope
 import js7.data.value.{StringValue, Value}
 import scala.collection.MapView
 import scala.util.Try
 
-private[order] final class FileWatchScope(
+private[orderwatch] final class FileWatchScope(
   orderWatchPath: OrderWatchPath,
   matchedMatcher: Matcher)
 extends Scope:
