@@ -14,7 +14,7 @@ import js7.data.event.EventId
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.StringConstant
@@ -62,11 +62,11 @@ final class FileWatchNarrowPatternTest extends OurTestSuite, ControllerAgentForS
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobDriverStarvationTest)
     aFile := ""
-    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("A"))
+    eventWatch.await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("A"))
     eventWatch.await[OrderStarted](_.key == aOrderId)
 
     bFile := ""
-    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
+    eventWatch.await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
     eventWatch.await[OrderStarted](_.key == bOrderId)
 
   "Narrow the pattern" in:

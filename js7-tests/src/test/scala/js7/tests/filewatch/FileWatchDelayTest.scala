@@ -18,7 +18,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderAppeared
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.plan.PlanId
 import js7.data.value.expression.Expression.StringConstant
@@ -79,8 +79,8 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
         val file = watchedDirectory / filename
         val externalOrderName = ExternalOrderName(filename)
         val orderId = externalToOrderId(externalOrderName)
-        val whenArised = eventWatch
-          .awaitAsync[ExternalOrderArised](
+        val whenAppeared = eventWatch
+          .awaitAsync[ExternalOrderAppeared](
             stamped =>
               stamped.key == orderWatchPath && stamped.event.externalOrderName == externalOrderName,
             after = eventWatch.lastAddedEventId)
@@ -93,18 +93,18 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
 
         logger.info(s"""file-$i ++= "A" +${since.elapsed.pretty}""")
         file ++= "A"
-        assert(!whenArised.isCompleted)
+        assert(!whenAppeared.isCompleted)
         val divisor = 4
         for j <- 1 to i * divisor do withClue(s"#$i"):
           sleepUntil(since + systemWatchDelay + j * writeDuration / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}" +${since.elapsed.pretty}""")
           file ++= "+"
-          assert(!whenArised.isCompleted)
-        whenArised.await(99.s)
+          assert(!whenAppeared.isCompleted)
+        whenAppeared.await(99.s)
         val expectedDuration = fileWatch.delay + i * writeDuration
         val duration = since.elapsed
-        // TODO On macOS, files arise 3s or 4s later then expected
-        logger.info(s"file-$i arised ⭐️ after ${duration.pretty}, " +
+        // TODO On macOS, files appears 3s or 4s later then expected
+        logger.info(s"file-$i appeared ⭐️ after ${duration.pretty}, " +
           s"${(duration - expectedDuration).pretty} later than expected")
         assert(duration >= expectedDuration)
         await[OrderFinished](_.key == orderId)

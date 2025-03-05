@@ -31,7 +31,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.EnvScope
@@ -71,7 +71,7 @@ final class FileWatchManager(
               if watchState.fileWatch == fileWatch then
                 Nil
               else
-                // If the directory changes, all arisen files vanish now.
+                // If the directory changes, all appeared files vanish now.
                 // Note that directory is an (EnvScope-only) Expression.
                 val vanished =
                   def reduce(fw: FileWatch) = fw.copy(
@@ -99,7 +99,7 @@ final class FileWatchManager(
             agentState.keyTo(FileWatchState).get(fileWatchPath) match
               case None => Nil
               case Some(fileWatchState) =>
-                // When a FileWatch is detached, all arisen files vanish now,
+                // When a FileWatch is detached, all appeared files vanish now,
                 // to allow proper removal of the Controller's orders (after OrderFinished), and
                 // to allow the Controller to move the FileWatch to a different Agent,
                 // because the other Agent will start with an empty FileWatchState.
@@ -201,7 +201,7 @@ final class FileWatchManager(
                     dirEvent match
                       case FileAdded(path)
                         if !fileWatchState.containsPath(path) =>
-                        Some(ExternalOrderArised(
+                        Some(ExternalOrderAppeared(
                           ExternalOrderName(path.toString),
                           toOrderArguments(directory, path)))
 

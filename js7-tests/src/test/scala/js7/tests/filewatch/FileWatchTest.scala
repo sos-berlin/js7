@@ -28,7 +28,7 @@ import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancellationMarkedOnAgent, OrderDeleted, OrderExternalVanished, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.HasOrder
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanId
@@ -287,7 +287,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         eventWatch.await[OrderDeleted](_.key == newOrderId, after = eventId)
 
         assert(eventWatch
-          .keyedEvents[ExternalOrderArised](after = eventId)
+          .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet ==
           Set(newFile.toString))
@@ -353,7 +353,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
 
         // orderId has been started again because its filename duplicates in newDirectory
 
-        eventWatch.awaitKey[ExternalOrderArised](waitingFileWatch.path, after = eventId)
+        eventWatch.awaitKey[ExternalOrderAppeared](waitingFileWatch.path, after = eventId)
         eventWatch.awaitKey[OrderAdded](orderId, after = eventId)
 
         TestJob.continue(1)
@@ -362,7 +362,7 @@ extends OurTestSuite, ControllerAgentForScalaTest:
         eventWatch.awaitKey[OrderDeleted](orderId, after = eventId)
 
         assert(eventWatch
-          .keyedEvents[ExternalOrderArised](after = eventId)
+          .keyedEvents[ExternalOrderAppeared](after = eventId)
           .map(_.event.arguments(FileWatch.FileArgumentName).asString.orThrow)
           .toSet == Set(newFile.toString))
 

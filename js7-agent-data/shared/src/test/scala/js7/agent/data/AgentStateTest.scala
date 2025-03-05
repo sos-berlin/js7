@@ -28,7 +28,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
-import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderAppeared
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
 import js7.data.value.expression.Expression
@@ -156,8 +156,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
       ItemAttachedToMe(subagentItem),
       ItemAttachedToMe(subagentBundle),
       ItemAttachedToMe(fileWatch),
-      fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/1.csv")),
-      fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/2.csv")),
+      fileWatch.key <-: ExternalOrderAppeared(ExternalOrderName("/DIRECTORY/1.csv")),
+      fileWatch.key <-: ExternalOrderAppeared(ExternalOrderName("/DIRECTORY/2.csv")),
       SignedItemAttachedToMe(signedJobResource),
       ItemAttachedToMe(calendar),
       SignedItemAttachedToMe(signedWorkflow),

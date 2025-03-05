@@ -18,14 +18,14 @@ sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]:
 object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchEvent]:
   implicit def implicitSelf: OrderWatchEvent.type = this
 
-  /** An external Order arose, Controller is expected to add an Order. */
-  final case class ExternalOrderArised(
+  /** An external Order appeared, Controller is expected to add an Order. */
+  final case class ExternalOrderAppeared(
     externalOrderName: ExternalOrderName,
     arguments: NamedValues = Map.empty,
     orderId: Option[OrderId] = None/*COMPATIBLE with v2.7.3*/)
     extends OrderWatchEvent:
     override def toString =
-      s"ExternalOrderArised(${externalOrderName.string}, ${
+      s"ExternalOrderAppeared(${externalOrderName.string}, ${
         arguments.map((k, v) => s"$k=$v").mkStringLimited(3)
       })"
 
@@ -43,6 +43,7 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
 
 
   implicit val jsonCodec: TypedJsonCodec[OrderWatchEvent] = TypedJsonCodec(
-    Subtype(deriveCodec[ExternalOrderArised]),
+    Subtype(deriveCodec[ExternalOrderAppeared], aliases = Seq(
+      "ExternalOrderArised"/*COMPATIBLE with v2.7.3*/)),
     Subtype(deriveCodec[ExternalOrderRejected]),
     Subtype(deriveCodec[ExternalOrderVanished]))

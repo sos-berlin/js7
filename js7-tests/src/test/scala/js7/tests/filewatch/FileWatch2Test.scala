@@ -27,7 +27,7 @@ import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, Unsigned
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderStarted, OrderStderrWritten}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
@@ -134,7 +134,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
             val orderId = orderId4
             val file = aDirectory / "4"
             file := ""
-            await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("4"))
+            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("4"))
             await[OrderStarted](_.key == orderId)
             createDirectory(bDirectory)
             val beforeAttached = eventWatch.lastAddedEventId
@@ -163,7 +163,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
             val orderId = orderId6
             val file = bDirectory / "6"
             file := ""
-            await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"))
+            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"))
             await[OrderStarted](_.key == orderId)
 
             TestJob.continue(2)
@@ -171,7 +171,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
               .head.eventId
 
             file := ""
-            await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"), after = vanished)
+            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("6"), after = vanished)
 
             TestJob.continue(2)
             val firstRemoved = await[OrderDeleted](_.key == orderId).head.eventId
@@ -191,7 +191,7 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
             sleep(500.ms)
             createDirectory(bDirectory)
             file := ""
-            await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
+            await[ExternalOrderAppeared](_.event.externalOrderName == ExternalOrderName("7"))
             TestJob.continue(2)
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
@@ -334,37 +334,37 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
       NoKey <-: ItemAttachedToMe(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("1"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("1"),
         Map("file" -> StringValue(s"$aDirectory${separator}1"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("1")),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("2"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("2"),
         Map("file" -> StringValue(s"$aDirectory${separator}2"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("2")),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("3"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("3"),
         Map("file" -> StringValue(s"$aDirectory${separator}3"))),
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("4"),
         Map("file" -> StringValue(s"$aDirectory${separator}4"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("4")),
       NoKey <-: ItemAttachedToMe(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("5"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("5"),
         Map("file" -> StringValue(s"$bDirectory${separator}5"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("5")),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("6"),
         Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
       // and again
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("6"),
         Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
 
-      orderWatchPath <-: ExternalOrderArised(ExternalOrderName("7"),
+      orderWatchPath <-: ExternalOrderAppeared(ExternalOrderName("7"),
         Map("file" -> StringValue(s"$bDirectory${separator}7"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("7"))))
 

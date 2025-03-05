@@ -37,7 +37,7 @@ Die Funktion scheitert, wenn die Umgebungsvariable unbekannt ist und kein defaul
 
 ### Funktion now(format=FORMAT, timezone=TIMEZONE)
 (Wie schon für FileWatch.)
-Liefert den aktuellen Zeitpunkt (also bei Entstehung des Events ExternalOrderArised),
+Liefert den aktuellen Zeitpunkt (also bei Entstehung des Events ExternalOrderAppeared),
 formatiert mit DateTimeFormatter und übersetzt in die angegebene Zeitzone (UTC, wenn nicht angegeben).
 
 Der Ausdruck im JSON-Beispiel
