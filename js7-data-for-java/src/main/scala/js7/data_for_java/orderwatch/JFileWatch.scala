@@ -12,6 +12,7 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
@@ -74,6 +75,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
         delay.toFiniteDuration))
       ).toVavr
 
+  @Deprecated
   @Nonnull
   def legacyWithoutPlan(
     @Nonnull id: OrderWatchPath,
@@ -81,17 +83,18 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
     @Nonnull agentPath: AgentPath,
     @Nonnull directory: JExpression,
     @Nonnull pattern: Optional[String],
-    @Nonnull orderIdExpression: Optional[JExpression],
+    @Nonnull orderIdExpression: Optional[String],
     @Nonnull delay: java.time.Duration)
   : VEither[Problem, JFileWatch] =
     (for
       pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
+      orderIdExpression <- orderIdExpression.toScala.traverse(parseExpression(_))
     yield
       JFileWatch(FileWatch(
         id, workflowPath, agentPath,
         directory.asScala, pattern,
         orderExpr = None,
-        orderIdExpression = orderIdExpression.toScala.map(_.asScala),
+        orderIdExpression = orderIdExpression,
         delay.toFiniteDuration))
       ).toVavr
 
