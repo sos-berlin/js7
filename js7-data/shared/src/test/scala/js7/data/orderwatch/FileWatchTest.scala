@@ -48,10 +48,32 @@ final class FileWatchTest extends OurTestSuite:
           OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
           StringConstant("/DIRECTORY"),
           Some(SimplePattern("[a-z]+.csv")),
-          Some:
+          orderExpr = Some:
+            expr"""{
+              orderId: "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1",
+              planId: [ "DailyPlan", now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ]
+            }""",
+          delay = 2.s),
+        json"""{
+          "TYPE": "FileWatch",
+          "path": "PATH",
+          "workflowPath": "WORKFLOW",
+          "agentPath": "AGENT",
+          "directoryExpr": "'/DIRECTORY'",
+          "pattern": "[a-z]+.csv",
+          "orderExpr": "{orderId:'#' ++ now(format='yyyy-MM-dd', timezone='Europe/Mariehamn') ++ \"#F-$$orderWatchPath:$$1\", planId:['DailyPlan', now(format='yyyy-MM-dd', timezone='Europe/Mariehamn')]}",
+          "delay": 2
+        }""")
+
+    "FileWatch complete <v2.7.4" in:
+      testJson[OrderWatch](
+        FileWatch(
+          OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
+          StringConstant("/DIRECTORY"),
+          Some(SimplePattern("[a-z]+.csv")),
+          orderIdExpression = Some:
             expr"""'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$$js7EpochSecond-$$orderWatchPath:$$1" """,
-          Some(expr"""['DailyPlan', now(format='yyyy-MM-dd')]"""),
-          2.s),
+          delay = 2.s),
         json"""{
           "TYPE": "FileWatch",
           "path": "PATH",
@@ -60,22 +82,22 @@ final class FileWatchTest extends OurTestSuite:
           "directoryExpr": "'/DIRECTORY'",
           "pattern": "[a-z]+.csv",
           "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$js7EpochSecond-$$orderWatchPath:$$1\"",
-          "planIdExpr": "['DailyPlan', now(format='yyyy-MM-dd')]",
           "delay": 2
         }""")
   }
 
-  "externalToOrderAndPlanId" in :
+  "externalToOrderAndPlanId" in:
     val fileWatch = FileWatch(
       OrderWatchPath("FILE-WATCH"),
       WorkflowPath("WORKFLOW"),
       AgentPath("AGENT"),
       expr"'DIRECTORY'",
       Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
-      orderIdExpression = Some:
-        expr""" "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1" """,
-      planIdExpr = Some:
-        expr""" [ 'DailyPlan', now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ]""")
+      orderExpr = Some:
+        expr"""{
+          orderId: "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1",
+          planId: [ "DailyPlan", now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ]
+        }""")
 
     val timestamp = ts"2025-03-05T12:00:00Z"
     assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("X"), None, timestamp) ==
@@ -83,3 +105,21 @@ final class FileWatchTest extends OurTestSuite:
 
     assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
       Right(OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER") -> PlanSchemaId("DailyPlan") / "2025-03-05"))
+
+  "externalToOrderAndPlanId <v2.7.4" in:
+    // COMPATIBLE with v2.7.3
+    val fileWatch = FileWatch(
+      OrderWatchPath("FILE-WATCH"),
+      WorkflowPath("WORKFLOW"),
+      AgentPath("AGENT"),
+      expr"'DIRECTORY'",
+      Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
+      orderIdExpression = Some:
+        expr""" "#" ++ now(format="yyyy-MM-dd", timezone="Europe/Mariehamn") ++ "#F-$$orderWatchPath:$$1" """)
+
+    val timestamp = ts"2025-03-05T12:00:00Z"
+    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("X"), None, timestamp) ==
+      Left(FileWatchPatternDoesntMatchProblem(fileWatch.path / ExternalOrderName("X"))))
+
+    assert(fileWatch.externalToOrderAndPlanId(ExternalOrderName("file-ORDER.csv"), None, timestamp) ==
+      Right(OrderId(s"#2025-03-05#F-FILE-WATCH:ORDER") -> PlanId.Global))

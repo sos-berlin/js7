@@ -1,5 +1,15 @@
 package js7.tests.controller.proxy;
 
+import static java.nio.file.Files.createTempDirectory;
+import static java.nio.file.Files.delete;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
+import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSimple;
+import static js7.data_for_java.vavr.VavrUtils.await;
+import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -19,16 +29,6 @@ import js7.proxy.javaapi.JControllerProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import static java.nio.file.Files.createTempDirectory;
-import static java.nio.file.Files.delete;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toList;
-import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSimple;
-import static js7.data_for_java.vavr.VavrUtils.await;
-import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 final class JFileWatchTester
 {
@@ -49,8 +49,7 @@ final class JFileWatchTester
                         AgentPath.of("AGENT"),
                         JExpression.fromString(directory.toString()),
                         Optional.of("file-(.+)\\.txt"),
-                        Optional.of(JExpression.of(("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\""))),
-                        Optional.of(JExpression.of("['Global', 'Global']")), // Equivalent to [] and Optional.empty
+                        Optional.of(JExpression.of(("{ orderId: '#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\" }"))),
                         Duration.ofSeconds(0)))))));
 
             Path file = directory.resolve("file-TEST.txt");

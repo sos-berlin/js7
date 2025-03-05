@@ -31,9 +31,8 @@ import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderAppeared
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentId, SubagentItem}
-import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.NumericConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{NumericConstant, expr}
+import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
@@ -120,10 +119,14 @@ final class AgentStateTest extends OurAsyncTestSuite:
     OrderWatchPath("FILE-WATCH-ID"),
     WorkflowPath("WORKFLOW"),
     AgentPath("AGENT"),
-    expr(s"'${separator}DIRECTORY'"),
+    ExpressionParser.parseExpression(s"'${separator}DIRECTORY'").orThrow,
     Some(SimplePattern("""\.csv""".r.pattern.pattern)),
-    Some(Expression.NamedValue("0")),
-    Some(expr(s"""[ 'DailyPlan', now(format='yyyy-MM-dd') ]""")),
+    orderExpr = Some:
+      expr"""{
+         orderId: "#$$0#",
+         planId: [ 'DailyPlan', now(format='yyyy-MM-dd') ]
+      }""",
+    None,
     3.s,
     Some(ItemRevision(7)))
 
@@ -250,9 +253,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
           "agentPath": "AGENT",
           "directoryExpr": "'${separator}DIRECTORY'",
           "pattern": "\\.csv",
-          "planIdExpr" : "['DailyPlan', now(format='yyyy-MM-dd')]",
+          "orderExpr": "{orderId:\"#$$0#\", planId:['DailyPlan', now(format='yyyy-MM-dd')]}",
           "delay": 3,
-          "orderIdExpression": "$$0",
           "itemRevision": 7
         }
       }""",

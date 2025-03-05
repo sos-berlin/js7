@@ -18,8 +18,7 @@ import js7.data.order.OrderEvent.{OrderAddedEvent, OrderAddedEvents, OrderExtern
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderAppeared, ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Appeared, AppearedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, ToOrderAdded, Vanished, logger}
-import js7.data.value.expression.scopes.{ArgumentlessFunctionScope, NamedValueScope, NowScope}
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.value.NamedValues
 import scala.collection.View
 
 /**

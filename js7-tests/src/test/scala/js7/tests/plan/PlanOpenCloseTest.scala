@@ -20,8 +20,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderW
 import js7.data.plan.Plan.Status.{Closed, Deleted, Open}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
-import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.{StringConstant, expr}
 import js7.data.workflow.instructions.{AddOrder, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.DeleteFileJob
@@ -50,7 +49,7 @@ final class PlanOpenCloseTest
     "When the last Order of a Plan is deleted, all Notices of the Plan are deleted and the Plan is dead" in:
       val board = PlannableBoard(BoardPath("BOARD"))
       val workflow = Workflow.of(
-        Prompt(expr("'PROMPT'")),
+        Prompt(expr"'PROMPT'"),
         PostNotices(Vector(board.path)))
 
       withItems(
@@ -169,7 +168,7 @@ final class PlanOpenCloseTest
         assert(controllerState.toPlan.isEmpty)
 
     "No order can be added via web service to a closed Plan" in:
-      val workflow = Workflow.of(Prompt(expr("'PROMPT'")))
+      val workflow = Workflow.of(Prompt(expr"'PROMPT'"))
       withItems((workflow, dailyPlan)): (workflow, planSchema) =>
         eventWatch.resetLastWatchedEventId()
 
@@ -206,12 +205,13 @@ final class PlanOpenCloseTest
           val fileWatch = FileWatch(OrderWatchPath("FILEWATCH"), workflow.path, agentPath,
             directoryExpr = StringConstant(dir.toString),
             pattern = Some(SimplePattern("(.+)")),
-            orderIdExpression = Some(expr(""" "#$1#" """)),
-            planIdExpr = Some(FileWatch.todayPlanIdExpr))
+            orderExpr = Some(expr"""{
+              orderId: "#$$1#",
+              planId: [ 'DailyPlan', "$$1" ]
+            }"""))
           withItem(fileWatch, awaitDeletion = true): fileWatch =>
             val yesterday = "2025-01-07"
             val yesterdayExternalName = ExternalOrderName(yesterday)
-            val yesterdayOrderId = OrderId(s"#$yesterday#")
             val yesterdayPlanId = dailyPlan.id / yesterday
             val today = "2025-01-08"
             val todayOrderId = OrderId(s"#$today#")
@@ -246,14 +246,13 @@ final class PlanOpenCloseTest
 
     "No other order can be added via AddOrder instruction to a closed Plan" in:
       eventWatch.resetLastWatchedEventId()
-      val yesterday = "2025-01-09"
-      val yesterdayPlanId = dailyPlan.id / yesterday
+      val yesterdayPlanId = dailyPlan.id / "2025-01-09"
       val today = "2025-01-10"
       val todayOrderId = OrderId(s"#$today#")
       val todayPlanId = dailyPlan.id / today
       val workflowPath = WorkflowPath("WORKFLOW")
       val workflow = Workflow.of(workflowPath,
-        AddOrder(orderId = expr(s"'#$yesterday#'"), workflowPath,
+        AddOrder(orderId = expr"'#2025-01-09#'", workflowPath,
           planId = Some(yesterdayPlanId.toExpression)))
 
       withItems((workflow, dailyPlan)): (workflow, planSchema) =>

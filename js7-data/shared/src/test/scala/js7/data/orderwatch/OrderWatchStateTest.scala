@@ -11,8 +11,7 @@ import js7.data.controller.ControllerState
 import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Appeared, AppearedOrHasOrder, ExternalOrderSnapshot, HasOrder, Rejected, Vanished}
-import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.Expression.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -25,10 +24,10 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
         OrderWatchPath("FILE-WATCH"),
         WorkflowPath("WORKFLOW"),
         AgentPath("AGENT"),
-        expr("'DIRECTORY'"),
+        expr"'DIRECTORY'",
         Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
-        Some(NamedValue("1")),
-        Some(expr(s"""['DailyPlan', '2025-02-28']""")),
+        orderExpr = Some(expr"""{ orderId: "#$$1#" }"""),
+        None,
         delay = 2.s,
         Some(ItemRevision(7))),
       Map( // Not in snapshot, because its duplicate to Order.externalOrder
@@ -273,8 +272,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite:
             "agentPath": "AGENT",
             "directoryExpr": "'DIRECTORY'",
             "pattern": "PATTERN.*\\.csv",
-            "orderIdExpression": "$$1",
-            "planIdExpr": "['DailyPlan', '2025-02-28']",
+            "orderExpr": "{ orderId: \"#$$1#\" }",
             "delay": 2,
             "itemRevision": 7
           }

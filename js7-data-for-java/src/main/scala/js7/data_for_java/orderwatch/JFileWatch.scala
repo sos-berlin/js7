@@ -60,8 +60,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
     @Nonnull agentPath: AgentPath,
     @Nonnull directory: JExpression,
     @Nonnull pattern: Optional[String],
-    @Nonnull orderIdExpression: Optional[JExpression],
-    @Nonnull planIdExpr: Optional[JExpression],
+    @Nonnull orderExpr: Optional[JExpression],
     @Nonnull delay: java.time.Duration)
   : VEither[Problem, JFileWatch] =
     (for
@@ -70,8 +69,29 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]:
       JFileWatch(FileWatch(
         id, workflowPath, agentPath,
         directory.asScala, pattern,
-        orderIdExpression.toScala.map(_.asScala),
-        planIdExpr.toScala.map(_.asScala),
+        orderExpr = orderExpr.toScala.map(_.asScala),
+        orderIdExpression = None,
+        delay.toFiniteDuration))
+      ).toVavr
+
+  @Nonnull
+  def legacyWithoutPlan(
+    @Nonnull id: OrderWatchPath,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull agentPath: AgentPath,
+    @Nonnull directory: JExpression,
+    @Nonnull pattern: Optional[String],
+    @Nonnull orderIdExpression: Optional[JExpression],
+    @Nonnull delay: java.time.Duration)
+  : VEither[Problem, JFileWatch] =
+    (for
+      pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
+    yield
+      JFileWatch(FileWatch(
+        id, workflowPath, agentPath,
+        directory.asScala, pattern,
+        orderExpr = None,
+        orderIdExpression = orderIdExpression.toScala.map(_.asScala),
         delay.toFiniteDuration))
       ).toVavr
 
