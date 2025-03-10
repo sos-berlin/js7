@@ -1,6 +1,8 @@
 package js7.base.stream
 
+import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.implicits.catsSyntaxFlatMapIdOps
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
 import js7.base.stream.IncreasingNumberSyncTest.*
@@ -8,6 +10,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -71,6 +74,27 @@ final class IncreasingNumberSyncTest extends OurTestSuite:
       assert(result forall identity)
       logger.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)
+
+  if sys.runtime.maxMemory <= 20*1024*1024 then
+    "No OutOfMemoryError" in:
+      // In practice, OutOfMemoryError does not occur, because clients will not cancel
+      // whenAvailable often (as in v2.5).
+      // However, IncreasingNumberSync should avoid Promise and return an Cats Effect IO
+      val n = 10_000_000
+      val since = Deadline.now
+      val initial = 0L
+      val sync = IncreasingNumberSync(initial = 0L, _.toString)
+      IO(false).start.flatMap: initialFiber =>
+        (initialFiber, 0).tailRecM: (lastFiber, i) =>
+          IO.defer:
+            logger.trace(s"—————————————————————————— $i")
+            lastFiber.cancel *>
+              sync.whenAvailable(after = initial + 1, until = None).start.map: fiber =>
+                if i < n then Left((fiber, i + 1)) else Right(fiber)
+      .flatMap(_.cancel)
+      .unsafeRunSync()
+      assert(sync.waitingCount == 1)
+      logger.info(itemsPerSecondString(since.elapsed, n, "whenAvailable"))
 
 
 object IncreasingNumberSyncTest:
