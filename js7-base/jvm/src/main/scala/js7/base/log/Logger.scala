@@ -74,6 +74,9 @@ object Logger
   object syntax {
     implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal
     {
+      def infoCall[A](functionName: String, args: => Any = "")(body: => A): A =
+        logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).unsafeRunSync()
+
       def infoTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Info, functionName, args)(task)
 
