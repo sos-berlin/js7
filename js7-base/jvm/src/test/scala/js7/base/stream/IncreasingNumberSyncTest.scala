@@ -6,8 +6,8 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.schedulers.TestScheduler
+import monix.execution.{CancelableFuture, Scheduler}
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
@@ -103,5 +103,26 @@ final class IncreasingNumberSyncTest extends OurTestSuite
       scribe.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)
     }
+  }
+
+  if (sys.runtime.maxMemory < 60_000_000)
+  "OutOfMemoryError" in {
+    import Scheduler.Implicits.global
+
+    val sync = new IncreasingNumberSync(initial = 0L, _.toString)
+    sync.onAdded(1)
+    val future: CancelableFuture[Boolean] = {
+      var future: CancelableFuture[Boolean] = CancelableFuture.never
+      for (i <- 1 to 20_000_000) {
+        future.cancel()
+        future = Task.defer(sync.whenAvailable(after = 1, until = Some(now + 99.seconds)))
+          .runToFuture
+        sleep(10.µs)
+      }
+      future
+    }
+    sync.onAdded(2)
+    future await 99.s
+    assert(sync.waitingCount == 0)
   }
 }

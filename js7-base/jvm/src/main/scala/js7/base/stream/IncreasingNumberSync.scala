@@ -7,9 +7,9 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.stream.IncreasingNumberSync.*
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
+import monix.execution.CancelablePromise
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
-import scala.concurrent.Promise
 import scala.concurrent.duration.*
 
 /**
@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
 final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
 {
   // TODO Watch size of valueToPromise (for example via an inspection web service)
-  private val valueToPromise = mutable.TreeMap[Long, Promise[Unit]]()
+  private val valueToPromise = mutable.TreeMap[Long, CancelablePromise[Unit]]()
   @volatile private var _last = initial
 
   def onAdded(a: Long): Unit = {
@@ -66,7 +66,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
         if (after < _last)
           RightTrue
         else {
-          val promise = valueToPromise.getOrElseUpdate(after, Promise())
+          val promise = valueToPromise.getOrElseUpdate(after, CancelablePromise())
           Task.fromFuture(promise.future)
             .as(Left(()))  // Check again
         }
