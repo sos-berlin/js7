@@ -7,14 +7,12 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.Event
 import js7.data.value.NamedValues
 
-sealed trait PlanSchemaEvent extends Event:
-  type KeyBase = PlanSchemaEvent
+sealed trait PlanSchemaEvent extends Event.IsKeyBase[PlanSchemaEvent]:
 
   val keyCompanion: PlanSchemaEvent.type = PlanSchemaEvent
 
 
-object PlanSchemaEvent extends Event.KeyCompanion[PlanSchemaEvent]:
-  type Key = PlanSchemaId
+object PlanSchemaEvent extends Event.CompanionForKey[PlanSchemaId, PlanSchemaEvent]:
 
   given implicitSelf: PlanSchemaEvent.type = this
 

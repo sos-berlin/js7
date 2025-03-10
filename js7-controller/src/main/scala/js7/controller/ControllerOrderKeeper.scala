@@ -1035,7 +1035,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     ControllerEventColl.keyedEvents[NoticeDeleted | PlanStatusEvent](_controllerState): coll =>
       for
         plan <- coll.aggregate.plan(cmd.planId)
-        coll <- coll.addChecked(plan.planStatusEvent(cmd.status))
+        coll <- coll.addChecked(plan.planStatusEvents(cmd.status))
       yield coll
     match
       case Left(problem) => Future.successful(Left(problem))

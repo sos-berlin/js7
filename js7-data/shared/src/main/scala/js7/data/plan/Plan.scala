@@ -97,7 +97,7 @@ final case class Plan(
   def removeBoard(boardPath: BoardPath): Plan =
     copy(toPlannedBoard = toPlannedBoard - boardPath)
 
-  def planStatusEvent(newStatus: Status): Checked[View[KeyedEvent[NoticeDeleted | PlanStatusEvent]]] =
+  def planStatusEvents(newStatus: Status): Checked[View[KeyedEvent[NoticeDeleted | PlanStatusEvent]]] =
     checkStatusChange(newStatus).map: _ =>
       if newStatus == status then
         View.empty
