@@ -19,7 +19,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addEvent" in:
     val coll =
-      val coll = EventColl[TestState, TestEvent](TestState(""))
+      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -34,7 +34,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addEvent with failing event" in :
     val checked =
-      val coll = EventColl[TestState, TestEvent](TestState(""))
+      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -46,7 +46,7 @@ final class EventCollTest extends OurTestSuite:
 
   "addEvents" in:
     val coll =
-      val coll = EventColl[TestState, TestEvent](TestState(""))
+      val coll = EventColl[TestState, TestEvent, Unit](TestState(""), ())
       locally:
         for
           coll <- coll.addEvents(Seq(Added("A"), Added(",B")))
@@ -62,7 +62,7 @@ final class EventCollTest extends OurTestSuite:
     val orderId = OrderId("ORDER")
     val workflow = Workflow.of(WorkflowPath("W") ~ "1")
     val coll =
-      val coll = EventColl[ControllerState, Event](ControllerState.empty)
+      val coll = EventColl[ControllerState, Event, Unit](ControllerState.empty, ())
       val signer = ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
       locally:
         for
@@ -84,7 +84,7 @@ final class EventCollTest extends OurTestSuite:
 
   "append" in:
     val aColl =
-      val coll = EventColl[TestState, TestEvent](TestState("START:"))
+      val coll = EventColl[TestState, TestEvent, Unit](TestState("START:"), ())
       locally:
         for
           coll <- coll.addEvent(Added("A"))
@@ -92,7 +92,7 @@ final class EventCollTest extends OurTestSuite:
           coll
       .orThrow
     val bColl =
-      val coll = EventColl[TestState, TestEvent](aColl.aggregate)
+      val coll = EventColl[TestState, TestEvent, Unit](aColl.aggregate, ())
       locally:
         for
           coll <- coll.addEvent(Added(",B"))

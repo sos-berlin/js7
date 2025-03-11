@@ -12,55 +12,56 @@ import scala.reflect.ClassTag
   * <p>
   * Collects KeyedEvents while applying them to an EventDrivenState `S`.
   */
-final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
+final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private(
   originalAggregate: S,
   keyedEvents: Vector[KeyedEvent[E]],
-  aggregate: S):
+  aggregate: S,
+  context: Ctx):
 
-  type Aggregate = S
+  private type Self = EventColl[S, E, Ctx]
 
-  def computeEvent(toEvent: S => Checked[KeyedEvent[E]]): Checked[EventColl[S, E]] =
+  def computeEvent(toEvent: S => Checked[KeyedEvent[E]]): Checked[Self] =
     toEvent(aggregate).flatMap(addEvent)
 
-  def computeEvents(toEvents: S => Checked[IterableOnce[KeyedEvent[E]]]): Checked[EventColl[S, E]] =
+  def computeEvents(toEvents: S => Checked[IterableOnce[KeyedEvent[E]]]): Checked[Self] =
     toEvents(aggregate).flatMap(addEvents)
 
-  def addChecked(keyedEvents: Checked[IterableOnce[KeyedEvent[E]]]): Checked[EventColl[S, E]] =
+  def addChecked(keyedEvents: Checked[IterableOnce[KeyedEvent[E]]]): Checked[Self] =
     keyedEvents.flatMap(addEvents)
 
-  inline def add(keyedEvent: KeyedEvent[E]): Checked[EventColl[S, E]] =
+  inline def add(keyedEvent: KeyedEvent[E]): Checked[Self] =
     addEvent(keyedEvent)
 
-  inline def add(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[EventColl[S, E]] =
+  inline def add(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     addEvents(keyedEvents)
 
   inline def add[K, E1 <: E](key: K)(events: Iterable[E1])
     (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
     (using /*erased*/ ev: K =:= E1.Key)
-  : Checked[EventColl[S, E]] =
+  : Checked[Self] =
     addWithKey[K, E1](key)(events)
 
   def addWithKey[K, E1 <: E](key: K)(events: Iterable[E1])
     (using /*erased*/ E1: Event.KeyCompanion[? >: E1])
     (using /*erased*/ ev: K =:= E1.Key)
-  : Checked[EventColl[S, E]] =
+  : Checked[Self] =
     addEvents:
       events.view.map: event =>
         KeyedEvent.any(key, event).asInstanceOf[KeyedEvent[E]]
 
   def addNoKey[K, E1 <: E](events: Iterable[E1])(using E1 <:< NoKeyEvent)
-  : Checked[EventColl[S, E]] =
+  : Checked[Self] =
     addEvents:
       events.view.map: event =>
         KeyedEvent.any(NoKey, event).asInstanceOf[KeyedEvent[E]]
 
-  def addEvent[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[EventColl[S, E]] =
+  def addEvent[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[Self] =
     aggregate.applyKeyedEvent(keyedEvent).map: updated =>
       copy(
         keyedEvents = keyedEvents :+ keyedEvent,
         aggregate = updated)
 
-  def addEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[EventColl[S, E]] =
+  def addEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
     val keyedEventsV = Vector.from(keyedEvents)
     if keyedEventsV.isEmpty then
       Right(this)
@@ -70,7 +71,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
           keyedEvents = this.keyedEvents ++ keyedEventsV,
           aggregate = updated)
 
-  def append(b: EventColl[S, E]): Checked[EventColl[S, E]] =
+  def append(b: Self): Checked[Self] =
     if isStrict && /*slow*/aggregate != b.originalAggregate then
       Left(Problem.pure("EventColl.append: Aggregates don't match"))
     else
@@ -79,12 +80,12 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
           keyedEvents = keyedEvents ++ b.keyedEvents,
           aggregate = b.aggregate)
 
-  def ifIs[S1 <: EventDrivenState[S1, E]](using S1: ClassTag[S1]): Option[EventColl[S1, E]] =
+  def ifIs[S1 <: EventDrivenState[S1, E]](using S1: ClassTag[S1]): Option[EventColl[S1, E, Ctx]] =
     implicitClass[S1].isAssignableFrom(aggregate.getClass) ?
-      this.asInstanceOf[EventColl[S1, E]]
+      this.asInstanceOf[EventColl[S1, E, Ctx]]
 
-  private def widen[S1  <: EventDrivenState[S1, E1], E1 >: E <: Event]: EventColl[S1, E1] =
-    this.asInstanceOf[EventColl[S1, E1]]
+  private def widen[S1  <: EventDrivenState[S1, E1], E1 >: E <: Event]: EventColl[S1, E1, Ctx] =
+    this.asInstanceOf[EventColl[S1, E1, Ctx]]
 
   override def toString =
     s"EventColl[${aggregate.companion.name}](${keyedEvents.map(_.toShortString).mkString(", ")})"
@@ -92,16 +93,18 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event] private(
 
 object EventColl:
 
-  def apply[S <: EventDrivenState[S, E], E <: Event](a: S): EventColl[S, E] =
-    new EventColl[S, E](a, Vector.empty, a)
+  def apply[S <: EventDrivenState[S, E], E <: Event, Ctx](a: S, context: Ctx)
+  : EventColl[S, E, Ctx] =
+    new EventColl[S, E, Ctx](a, Vector.empty, a, context)
 
-  def checkEvents[S <: EventDrivenState[S, E], E <: Event](state: S)
+  def checkEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](state: S, context: Ctx)
     (keyedEvents: IterableOnce[KeyedEvent[E]])
   : Checked[Vector[KeyedEvent[E]]] =
-    EventColl.keyedEvents(state)(_.add(keyedEvents))
+    EventColl.keyedEvents(state, context)(_.add(keyedEvents))
 
-  def keyedEvents[S <: EventDrivenState[S, E], E <: Event](
-    state: S)
-    (body: EventColl[S, E] => Checked[EventColl[S, E]])
+  def keyedEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](
+    state: S,
+    context: Ctx)
+    (body: EventColl[S, E, Ctx] => Checked[EventColl[S, E, Ctx]])
   : Checked[Vector[KeyedEvent[E]]] =
-    body(EventColl[S, E](state)).map(_.keyedEvents)
+    body(EventColl[S, E, Ctx](state, context)).map(_.keyedEvents)
