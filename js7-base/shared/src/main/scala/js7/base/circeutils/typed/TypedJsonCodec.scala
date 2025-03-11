@@ -61,7 +61,7 @@ extends Codec.AsObject[A]:
     decode(c)
 
   def encodeObject(a: A): JsonObject =
-    classToEncoder(a.getClass).asInstanceOf[Encoder.AsObject[A]].encodeObject(a)
+    classToEncoder(a.getClass).encodeObject(a)
 
   def decode(c: HCursor): Decoder.Result[A] =
     c.get[String](TypeFieldName)

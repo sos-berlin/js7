@@ -99,7 +99,7 @@ final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
   journalAllocated: Allocated[IO, FileJournal[ControllerState]],
   clusterNode: WorkingClusterNode[ControllerState],
-  alarmClock: AlarmClock,
+  clock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
   (implicit protected val ioRuntime: IORuntime)
@@ -118,7 +118,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   protected def journalActor = journal.journalActor
 
   private implicit val instructionExecutorService: InstructionExecutorService =
-    new InstructionExecutorService(alarmClock)
+    new InstructionExecutorService(clock)
   private val agentDriverConfiguration = AgentDriverConfiguration
     .fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
@@ -141,7 +141,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def schedule(noticeId: NoticeId, endOfLife: Timestamp): Unit =
       noticeToSchedule += noticeId ->
-        alarmClock.scheduleAt(endOfLife, s"NoticeIsDue($noticeId)"):
+        clock.scheduleAt(endOfLife, s"NoticeIsDue($noticeId)"):
           self ! Internal.NoticeIsDue(noticeId)
 
     def deleteSchedule(noticeId: NoticeId): Unit =
@@ -582,7 +582,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         notice <- plannedBoard.maybeNotice(noticeId.noticeKey)
         keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey).toOption
       do
-        if notice.endOfLife.exists(alarmClock.now() < _) then
+        if notice.endOfLife.exists(clock.now() < _) then
           notices.maybeSchedule(noticeId, notice.endOfLife)
         else
           logger.debug(s"Notice lifetime expired: $noticeId")
@@ -746,7 +746,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           orderEventSource.resume(_, None, Nil, asSucceeded, restartKilledJob)
 
       case cmd: ControllerCommand.PostNotice =>
-        NoticeEventSource(alarmClock).executePostNoticeCommand(cmd, _controllerState) match
+        NoticeEventSource(clock).executePostNoticeCommand(cmd, _controllerState) match
           case Left(problem) => Future.successful(Left(problem))
           case Right(events) =>
             persistTransactionAndSubsequentEvents(events)(handleEvents)
@@ -786,7 +786,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
       case cmd: ControllerCommand.ChangePlannableToGlobalBoard =>
         import cmd.{globalBoard, planSchemaId}
-        globalBoard.evalEndOfLife(NowScope(alarmClock.now())).flatMap: endOfLife =>
+        globalBoard.evalEndOfLife(NowScope(clock.now())).flatMap: endOfLife =>
           ControllerStatePlanFunctions.changeBoardType(
             globalBoard,
             fromPlanSchemaId = planSchemaId,
@@ -1418,13 +1418,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     for order <- _controllerState.idToOrder.get(orderId) do
       if order.isDetached then
         for until <- order.maybeDelayedUntil do
-          alarmClock.lock:
-            if until <= alarmClock.now() then
+          clock.lock:
+            if until <= clock.now() then
               orderQueue.enqueue(orderId :: Nil)
             else
               for entry <- orderRegister.get(orderId) do
                 // TODO Cancel timer when unused
-                entry.timer := alarmClock.scheduleAt(until, s"OrderIsDue($orderId)"):
+                entry.timer := clock.scheduleAt(until, s"OrderIsDue($orderId)"):
                   self ! Internal.OrderIsDue(orderId)
 
       for mark <- order.mark do
@@ -1624,6 +1624,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     agentRegister.values.count(o => !o.actorTerminated)
 
   override def toString = "ControllerOrderKeeper"
+
 
 private[controller] object ControllerOrderKeeper:
   private val logger = Logger[this.type]
