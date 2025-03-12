@@ -140,9 +140,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         schedule(noticeId, _)
 
     def schedule(noticeId: NoticeId, endOfLife: Timestamp): Unit =
-      noticeToSchedule += noticeId ->
+      noticeToSchedule.update(
+        noticeId,
         clock.scheduleAt(endOfLife, s"NoticeIsDue($noticeId)"):
-          self ! Internal.NoticeIsDue(noticeId)
+          self ! Internal.NoticeIsDue(noticeId))
 
     def deleteSchedule(noticeId: NoticeId): Unit =
       noticeToSchedule.remove(noticeId).foreach(_.cancel())
@@ -1216,10 +1217,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
           orderIds += orderId
           orderIds ++= handleOrderEvent(keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
-          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
 
         case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
           itemKeys += event.key
           handleItemEvent(event)
 
@@ -1227,7 +1228,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           val noticeId = boardPath / noticePosted.plannedNoticeKey
           notices.deleteSchedule(noticeId)
           notices.maybeSchedule(noticeId, noticePosted.endOfLife)
-          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
           notices.deleteSchedule(boardPath / plannedNoticeKey)
