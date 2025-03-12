@@ -387,10 +387,13 @@ extends
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
 
-    case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(namedValues)) =>
+    case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(finishedPlanRetentionPeriod, namedValues)) =>
       for
         planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
-        planSchemaState <- planSchemaState.updateNamedValues(namedValues)
+        planSchemaState <- namedValues.fold(Checked(planSchemaState)):
+          planSchemaState.updateNamedValues
+        planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
+          planSchemaState.updatefinishedPlanRetentionPeriod
       yield
         copy(keyToUnsignedItemState_ =
           keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))
@@ -953,7 +956,7 @@ extends
       GlobalBoard.subtype,
       PlannableBoard.subtype,
       PlanSchema.subtype,
-      PlanSchemaState.subtype,
+      PlanSchemaState.Snapshot.subtype,
       Plan.subtype,
       Calendar.subtype,
       Subtype[Notice],

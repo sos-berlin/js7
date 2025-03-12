@@ -1,11 +1,13 @@
 package js7.data.plan
 
 import fs2.Stream
-import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, enumCodec}
+import io.circe.{Decoder, Encoder}
+import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
 import js7.base.circeutils.typed.Subtype
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -15,11 +17,12 @@ import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderId
-import js7.data.plan.Plan.Status.{Closed, Deleted, Finished, Open}
-import js7.data.plan.Plan.{Snapshot, Status}
+import js7.data.plan.Plan.Snapshot
 import js7.data.plan.PlanEvent.{PlanClosed, PlanDeleted, PlanFinished, PlanOpened, PlanStatusEvent}
+import js7.data.plan.PlanStatus.{Closed, Deleted, Finished, Open}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{MapView, View}
+import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordered.orderingToOrdered
 
 /** Plan, mirrors OrderIds and NoticeKeys that belong to this PlanId.
@@ -31,7 +34,7 @@ import scala.math.Ordered.orderingToOrdered
   */
 final case class Plan(
   id: PlanId,
-  status: Status,
+  status: PlanStatus,
   orderIds: Set[OrderId],
   toPlannedBoard: Map[BoardPath, PlannedBoard]):
 
@@ -97,42 +100,46 @@ final case class Plan(
   def removeBoard(boardPath: BoardPath): Plan =
     copy(toPlannedBoard = toPlannedBoard - boardPath)
 
-  def planStatusEvents(newStatus: Status): Checked[View[KeyedEvent[NoticeDeleted | PlanStatusEvent]]] =
-    checkStatusChange(newStatus).map: _ =>
+  /** For ChangePlan command. */
+  def changePlanStatusEvents(newStatus: PlanStatus, now: Timestamp, finishedPlanRetentionPeriod: FiniteDuration)
+  : Checked[View[KeyedEvent[NoticeDeleted | PlanStatusEvent]]] =
+    checkStatusChange(newStatus).flatMap: _ =>
       if newStatus == status then
-        View.empty
+        Right(View.empty)
       else
         newStatus match
-          case Open => View.Single(id <-: PlanOpened)
-          case Closed => (id <-: PlanClosed) +: copy(status = Closed).maybePlanFinished
-          case Finished => View.Single(id <-: PlanFinished)
-          case Deleted => uncheckedPlanDeleted
+          case Open => Right(View.Single(id <-: PlanOpened))
+          case Closed => Right((id <-: PlanClosed) +: copy(status = Closed).maybePlanFinished(now, finishedPlanRetentionPeriod))
+          case _: Finished => Left(Problem("A Plan finishes itself, it cannot be finished by command"))
+          case Deleted => Right(uncheckedPlanDeleted)
 
-  def maybePlanFinished: View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]] =
-    if status != Closed || orderIds.nonEmpty then
-      View.empty
-    else
-      (id <-: PlanFinished) +: copy(status = Finished).uncheckedPlanDeleted
-
-  private def checkStatusChange(newStatus: Status): Checked[Unit] =
+  private[plan] def checkStatusChange(newStatus: PlanStatus): Checked[Unit] =
     (this.status, newStatus) match
       case (Open, Closed) => Checked.unit
-      case (Closed, Finished) => Checked.unit
-      case (Closed, Deleted) => Left(Problem:
-        s"$id cannot be deleted because it is not finished due ${orderIds.mkStringLimited(3)}")
-      case (Finished, Deleted) => Checked.unit
-      case (Closed | Finished | Deleted, Open) => Checked.unit
+      case (Closed, _: Finished) => Checked.unit
+      case (Closed, Deleted) =>
+        Left(Problem:
+          s"$id cannot be deleted because it is not finished due to ${orderIds.mkStringLimited(3)}")
+      case (_: Finished, Deleted) => Checked.unit
+      case (Closed | _: Finished | Deleted, Open) => Checked.unit
       case (a, b) =>
         if a != b then
-          Left(Problem(s"Plan.Status cannot be changed from $a to $b"))
+          Left(Problem:
+            s"PlanStatus cannot be changed from ${a.getClass.simpleScalaName} to ${
+              b.getClass.simpleScalaName}")
         else
           !isStrict !! Problem(s"$id is already $newStatus")
 
-  def maybePlanDeleted: View[KeyedEvent[NoticeDeleted | PlanDeleted]] =
-    if status == Finished then
-      uncheckedPlanDeleted
-    else
+  def maybePlanFinished(now: Timestamp, finishedPlanRetentionPeriod: FiniteDuration)
+  : View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]] =
+    if status != Closed || orderIds.nonEmpty then
       View.empty
+    else
+      (id <-: PlanFinished(now)) +: locally:
+        if finishedPlanRetentionPeriod.isPositive then
+          View.empty
+        else
+          uncheckedPlanDeleted
 
   private def uncheckedPlanDeleted: View[KeyedEvent[NoticeDeleted | PlanDeleted]] =
     noticeIds.map: noticeId =>
@@ -160,13 +167,13 @@ final case class Plan(
   private def isEmpty: Boolean =
     orderIds.isEmpty && toPlannedBoard.isEmpty
 
-  /** Closed, Finished or Deleted. */
+  /** Plan is Closed, Finished or Deleted. */
   def isClosed: Boolean =
     status >= Closed
 
-  /** Finished or Deleted. */
+  /** Plan is Finished or Deleted. */
   def isFinished: Boolean =
-    status >= Finished
+    status.ordinal >= Finished.ordinal
 
   def hasOrders: Boolean =
     orderIds.nonEmpty
@@ -178,12 +185,12 @@ final case class Plan(
 object Plan:
 
   val Global: Plan =
-    Plan(PlanId.Global, Status.Open, Set.empty, Map.empty)
+    Plan(PlanId.Global, Open, Set.empty, Map.empty)
 
   @TestOnly @throws[RuntimeException]
   def apply(
     planId: PlanId,
-    status: Status,
+    status: PlanStatus,
     orderIds: Set[OrderId] = Set.empty,
     plannedBoards: Iterable[PlannedBoard] = Nil)
   : Plan =
@@ -191,7 +198,7 @@ object Plan:
 
   def checked(
     planId: PlanId,
-    status: Status,
+    status: PlanStatus,
     orderIds: Set[OrderId] = Set.empty,
     plannedBoards: Iterable[PlannedBoard] = Nil)
   : Checked[Plan] =
@@ -204,30 +211,11 @@ object Plan:
 
   given Ordering[Plan] = Ordering.by(_.id)
 
-
-  enum Status:
-    /** Orders may be added. */
-    case Open
-
-    /** No externals Orders may be added.
-      *
-      * Internal orders may still be added via workflow instruction. */
-    case Closed
-
-    /** Like Closed, but has no Orders. */
-    case Finished
-
-    /** Plan is closed and deleted. */
-    case Deleted
-
-  object Status:
-    given Codec[Status] = enumCodec(valueOf)
-    given Ordering[Status] = Ordering.by(_.ordinal)
-
-  final case class Snapshot(planId: PlanId, status: Status):
-    export planId.{planSchemaId, planKey}
-
-    override def productPrefix = s"Plan.Snapshot"
-
   val subtype: Subtype[Snapshot] =
     Subtype.named[Snapshot](deriveCodecWithDefaults, "Plan")
+
+
+  final case class Snapshot(planId: PlanId, status: PlanStatus):
+    export planId.{planSchemaId, planKey}
+
+    override def productPrefix = "Plan.Snapshot"

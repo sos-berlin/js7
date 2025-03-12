@@ -71,9 +71,9 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemA
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.plan.PlanEvent.PlanStatusEvent
+import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished, PlanStatusEvent}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
-import js7.data.plan.{PlanId, PlanSchemaId}
+import js7.data.plan.{PlanId, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
@@ -147,6 +147,19 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def deleteSchedule(noticeId: NoticeId): Unit =
       noticeToSchedule.remove(noticeId).foreach(_.cancel())
+
+  private object plans:
+    private val planToSchedule = mutable.Map.empty[PlanId, SyncCancelable]
+
+    def schedule(planId: PlanId, ts: Timestamp): Unit =
+      planToSchedule.update(
+        planId,
+        clock.scheduleAt(ts, s"PlanIsDue($planId)"):
+          self ! Internal.PlanIsDue(planId))
+
+    def deleteSchedule(planId: PlanId): Unit =
+      planToSchedule.remove(planId).foreach(_.cancel())
+
 
   private object shutdown:
     var delayUntil = scheduler.now()
@@ -295,6 +308,15 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       ).throwable
     this._controllerState = controllerState
     //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
+
+    for
+      planSchemaState <- controllerState.keyTo(PlanSchemaState).values
+      plan <- planSchemaState.plans
+    do
+      plan.status match
+        case PlanStatus.Finished(at) =>
+          plans.schedule(plan.id, at + planSchemaState.finishedPlanRetentionPeriod)
+        case _ =>
 
     controllerState.allNotices.foreach: notice =>
       notices.maybeSchedule(notice.id, notice.endOfLife)
@@ -588,6 +610,19 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         else
           logger.debug(s"Notice lifetime expired: $noticeId")
           persistMultiple(keyedEvent :: Nil)(handleEvents)
+
+    case Internal.PlanIsDue(planId) =>
+      plans.deleteSchedule(planId)
+      for
+        planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId)
+        plan <- planSchemaState.plan(planId.planKey)
+        keyedEvents = plan.status match
+          case PlanStatus.Finished(at) => (at + planSchemaState.finishedPlanRetentionPeriod <= clock.now()).thenList(planId <-: PlanDeleted)  // FIXME Event hier?
+          case _ => Nil
+      do
+        if keyedEvents.nonEmpty then
+          logger.debug(s"Finished $planId expired: $planId")
+          persistMultiple(keyedEvents)(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = scheduler.now() + config.getDuration("js7.web.server.delay-shutdown")
@@ -1019,24 +1054,33 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private def changePlanSchema(cmd: ChangePlanSchema)
   : Future[Checked[ControllerCommand.Response]] =
-    val planSchemaId = cmd.planSchemaId
-    if planSchemaId.isGlobal then
-      Future.successful(Left(Problem("Global PlanSchema cannot be changed")))
-    else
-      ControllerEventColl.keyedEvents(_controllerState):
-        _.add(planSchemaId <-: PlanSchemaChanged(namedValues = cmd.namedValues))
-      match
-        case Left(problem) => Future.successful(Left(problem))
-        case Right(keyedEvents) =>
-          persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
-            handleEvents(stamped, updated)
-            Right(ControllerCommand.Response.Accepted)
+    import cmd.planSchemaId
+    locally:
+      for
+        _ <- !planSchemaId.isGlobal !! Problem("The global PlanSchema cannot be changed")
+        planSchema <- _controllerState.keyTo(PlanSchemaState).checked(planSchemaId)
+        keyedEvents <- ControllerEventColl.keyedEvents(_controllerState):
+          _.add(planSchemaId <-: PlanSchemaChanged(
+            namedValues =
+              cmd.namedValues.flatMap(o => (o != planSchema.namedValues) ? o),
+            finishedPlanRetentionPeriod =
+              cmd.finishedPlanRetentionPeriod.flatMap(o => (o != planSchema.finishedPlanRetentionPeriod) ? o)))
+      yield
+        keyedEvents
+    match
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(keyedEvents) =>
+        persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
+          handleEvents(stamped, updated)
+          Right(ControllerCommand.Response.Accepted)
 
   private def changePlan(cmd: ChangePlan): Future[Checked[ControllerCommand.Response]] =
     ControllerEventColl.keyedEvents[NoticeDeleted | PlanStatusEvent](_controllerState): coll =>
       for
-        plan <- coll.aggregate.plan(cmd.planId)
-        coll <- coll.addChecked(plan.planStatusEvents(cmd.status))
+        planSchemaState <- coll.aggregate.keyTo(PlanSchemaState).checked(cmd.planId.planSchemaId)
+        plan <- planSchemaState.plan(cmd.planId.planKey)
+        coll <- coll.addChecked:
+          plan.changePlanStatusEvents(cmd.status, clock.now(), planSchemaState.finishedPlanRetentionPeriod)
       yield coll
     match
       case Left(problem) => Future.successful(Left(problem))
@@ -1232,10 +1276,31 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(plannedNoticeKey)) =>
           notices.deleteSchedule(boardPath / plannedNoticeKey)
-          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+
+        case KeyedEvent(planId: PlanId, event: PlanStatusEvent) =>
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          event match
+            case PlanFinished(at) =>
+              for
+                planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planId.planSchemaId)
+              do
+                plans.schedule(planId, at + planSchemaState.finishedPlanRetentionPeriod)
+            case _ =>
+              plans.deleteSchedule(planId)
+
+        case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(Some(finishedPlanRetentionPeriod), _)) =>
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
+          for
+            planSchemaState <- _controllerState.keyTo(PlanSchemaState).get(planSchemaId).toSeq
+            plan <- planSchemaState.plans
+          do
+            plan.status match
+              case PlanStatus.Finished(at) => plans.schedule(plan.id, at + finishedPlanRetentionPeriod)
+              case _ => plans.deleteSchedule(plan.id)
 
         case _ =>
-          _controllerState = _controllerState.applyKeyedEvents(keyedEvent :: Nil).orThrow
+          _controllerState = _controllerState.applyKeyedEvent(keyedEvent).orThrow
     _controllerState = updatedState  // Reduce memory usage (they are equal)
     itemKeys foreach proceedWithItem
     proceedWithOrders(orderIds)
@@ -1644,6 +1709,7 @@ private[controller] object ControllerOrderKeeper:
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class NoticeIsDue(noticeId: NoticeId) extends DeadLetterSuppression
+    final case class PlanIsDue(planId: PlanId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Unit])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]])
       extends DeadLetterSuppression

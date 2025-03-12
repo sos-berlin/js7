@@ -20,7 +20,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
-import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
@@ -98,11 +98,11 @@ private object JControllerStateTest:
         PlanSchemaState(
           PlanSchema(PlanSchemaId("DailyPlan")),
           namedValues = Map.empty,
-          finishedPlanLifeTime = 3600.s,
+          finishedPlanRetentionPeriod = 3600.s,
           toPlan = Map:
             planId.planKey -> Plan(
               planId,
-              Plan.Status.Open,
+              PlanStatus.Open,
               orderIds = Set.empty,
               toPlannedBoard = Map(
                 BoardPath("BOARD") -> PlannedBoard(

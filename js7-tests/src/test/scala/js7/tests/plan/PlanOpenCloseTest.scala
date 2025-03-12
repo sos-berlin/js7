@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderFinished, Orde
 import js7.data.order.{FreshOrder, Order, OrderId, OrderOutcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderRejected, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.Plan.Status.{Closed, Deleted, Open}
+import js7.data.plan.PlanStatus.{Closed, Deleted, Open}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
 import js7.data.value.expression.Expression.{StringConstant, expr}
@@ -83,7 +83,7 @@ final class PlanOpenCloseTest
 
         // Remove deleted plan
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
         assert(controllerState.toPlan.isEmpty)
 
         // Add Orders //
@@ -162,7 +162,7 @@ final class PlanOpenCloseTest
           Plan(tomorrowPlanId, Deleted)))
 
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> dayAfterTomorrow))
+          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> dayAfterTomorrow)))
 
         // Tomorrow's Plan as been removed
         assert(controllerState.toPlan.isEmpty)
@@ -180,7 +180,7 @@ final class PlanOpenCloseTest
         val todayOrderId = OrderId(s"#$today#")
 
         execCmd:
-          ChangePlanSchema(planSchema.id, Map("openingDay" -> today))
+          ChangePlanSchema(planSchema.id, Some(Map("openingDay" -> today)))
 
         assert:
           controller.api.addOrder:
@@ -218,7 +218,7 @@ final class PlanOpenCloseTest
 
             // Close yesterday's Plan
             execCmd:
-              ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+              ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
 
             // ExternalOrderRejected //
             touchFile(dir / yesterday)
@@ -258,7 +258,7 @@ final class PlanOpenCloseTest
       withItems((workflow, dailyPlan)): (workflow, planSchema) =>
         // Close yesterday's Plan
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Map("openingDay" -> today))
+          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
 
         controller.addOrderBlocking:
           FreshOrder(todayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
@@ -273,5 +273,4 @@ final class PlanOpenCloseTest
 
 object PlanOpenCloseTest:
   private val agentPath = AgentPath("AGENT")
-
   private val dailyPlan = PlanSchema.joc(PlanSchemaId("DailyPlan"))

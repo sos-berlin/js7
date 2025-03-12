@@ -85,9 +85,13 @@ extends EventDrivenStateView[Self]:
       _.removeBoard(boardPath)
 
   /** Return PlanFinished event if Plan should be finished. */
-  final def maybePlanFinished(planId: PlanId): View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]] =
-    toPlan.get(planId).fold(View.empty): plan =>
-      plan.maybePlanFinished
+  final def maybePlanFinished(planId: PlanId, now: Timestamp)
+  : Checked[View[KeyedEvent[PlanFinished | NoticeDeleted | PlanDeleted]]] =
+    for
+      planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
+      plan <- planSchemaState.plan(planId.planKey)
+    yield
+      plan.maybePlanFinished(now, planSchemaState.finishedPlanRetentionPeriod)
 
   /** @return L3.True: Notice exists<br>
     *         L3.False: Notice doesn't exist but is announced<br>

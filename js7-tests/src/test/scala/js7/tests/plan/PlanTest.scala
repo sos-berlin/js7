@@ -15,7 +15,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.plan.{Plan, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -69,7 +69,7 @@ final class PlanTest
         eventWatch.awaitNextKey[OrderTerminated](postingOrderId)
 
         execCmd: // Close the plan, so it can be deleted
-          ChangePlan(planSchema.id / day, Plan.Status.Closed)
+          ChangePlan(planSchema.id / day, PlanStatus.Closed)
 
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)
@@ -109,7 +109,7 @@ final class PlanTest
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
             planId,
-            Plan.Status.Open,
+            PlanStatus.Open,
             Set(postingOrderId),
             Seq(
               PlannedBoard(planId / aBoard.path, Map(
@@ -126,7 +126,7 @@ final class PlanTest
         assert(controllerState.toPlan(planSchema.id / planKey) ==
           Plan(
             planId,
-            Plan.Status.Open,
+            PlanStatus.Open,
             Set(postingOrderId, consumingOrderId),
             Seq(
               PlannedBoard(planId / aBoard.path, Map(
@@ -153,7 +153,7 @@ final class PlanTest
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).toSet ==
           Set(
             Plan(planId,
-              Plan.Status.Open,
+              PlanStatus.Open,
               plannedBoards = Seq(
                 PlannedBoard(planId / aBoard.path, Map(
                   aNoticeKey -> NoticePlace(Some(Notice(planId / aBoard.path / aNoticeKey))))),
@@ -163,7 +163,7 @@ final class PlanTest
         // When PlanSchema is being deleted, its NoticePlaces are deleted, too //
 
         execCmd: // Close the plan, so it can be deleted
-          ChangePlan(planId, Plan.Status.Closed)
+          ChangePlan(planId, PlanStatus.Closed)
 
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)

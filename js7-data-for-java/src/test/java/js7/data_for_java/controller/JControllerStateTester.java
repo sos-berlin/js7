@@ -23,6 +23,7 @@ import js7.data_for_java.cluster.JClusterState;
 import js7.data_for_java.order.JOrder;
 import js7.data_for_java.order.JOrderTester;
 import js7.data_for_java.plan.JPlan;
+import js7.data_for_java.plan.JPlanStatus;
 import js7.data_for_java.workflow.JWorkflowId;
 import js7.data_for_java.workflow.JWorkflowTester;
 import static java.util.Arrays.asList;
@@ -146,7 +147,7 @@ final class JControllerStateTester
                 PlanId.Global,
                 Set.of(OrderId.of("A-ORDER")),
                 asList(),
-                JPlan.Open),
+                JPlanStatus.Open()),
             PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
             JPlan.of(
                 PlanId.apply(PlanSchemaId.of("DailyPlan"), PlanKey.of("2025-01-29")),
@@ -169,7 +170,7 @@ final class JControllerStateTester
                                 Optional.empty(),
                                 Set.of(OrderId.of("B-ORDER")),
                                 false, false, 0)))),
-                JPlan.Open));
+                JPlanStatus.Open()));
 
         assertThat(toPlan, equalTo(expected));
     }

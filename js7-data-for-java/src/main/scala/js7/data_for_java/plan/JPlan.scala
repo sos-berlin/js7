@@ -4,11 +4,10 @@ import js7.base.annotation.javaApi
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardPath
 import js7.data.order.OrderId
-import js7.data.plan.{Plan, PlanId}
+import js7.data.plan.{Plan, PlanId, PlanStatus}
 import js7.data_for_java.board.JPlannedBoard
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.common.MoreJavaConverters.*
-import scala.annotation.static
 import scala.jdk.CollectionConverters.*
 
 final case class JPlan(asScala: Plan) extends JavaWrapper:
@@ -18,7 +17,7 @@ final case class JPlan(asScala: Plan) extends JavaWrapper:
   def orderIds: java.util.Set[OrderId] =
     asScala.orderIds.asJava
 
-  def state: Plan.Status =
+  def state: PlanStatus =
     asScala.status
 
   /** Closed, Finished or Deleted. */
@@ -36,17 +35,12 @@ object JPlan:
     id: PlanId,
     orderIds: java.util.Set[OrderId],
     plannedBoards: java.lang.Iterable[JPlannedBoard],
-    status: Plan.Status)
+    status: PlanStatus)
   : JPlan =
     JPlan:
       Plan.checked(
-        id,
-        status,
+        id.nn,
+        status.nn,
         orderIds.asScala.toSet,
         plannedBoards.asScala.view.map(_.asScala)
       ).orThrow
-
-  @static val Open: Plan.Status = Plan.Status.Open
-  @static val Closed: Plan.Status = Plan.Status.Closed
-  @static val Finished: Plan.Status = Plan.Status.Finished
-  @static val Deleted: Plan.Status = Plan.Status.Deleted

@@ -2,21 +2,25 @@ package js7.data.plan
 
 import cats.syntax.traverse.*
 import fs2.Stream
-import js7.base.circeutils.CirceUtils.deriveCodecWithDefaults
+import io.circe.generic.semiauto
+import io.circe.generic.semiauto.deriveEncoder
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.fs2utils.StreamExtensions.:+
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
-import js7.data.plan.Plan.Status.{Closed, Deleted, Finished, Open}
 import js7.data.plan.PlanSchemaState.*
+import js7.data.plan.PlanStatus.{Closed, Deleted, Finished, Open}
 import js7.data.value.NamedValues
 import js7.data.value.expression.scopes.NamedValueScope
 import scala.collection.immutable.Map.Map1
@@ -25,7 +29,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class PlanSchemaState(
   item: PlanSchema,
-  finishedPlanLifeTime: FiniteDuration,
+  finishedPlanRetentionPeriod: FiniteDuration,
   namedValues: NamedValues,
   toPlan: Map[PlanKey, Plan])
 extends UnsignedSimpleItemState:
@@ -53,7 +57,7 @@ extends UnsignedSimpleItemState:
   override def toSnapshotStream
   : Stream[fs2.Pure, PlanSchema | Snapshot | Plan.Snapshot | NoticeSnapshot] =
     Stream.fromOption(!isGlobal ? ()).flatMap: _ =>
-      item.toSnapshotStream :+ Snapshot(path, finishedPlanLifeTime, namedValues)
+      item.toSnapshotStream :+ Snapshot(path, finishedPlanRetentionPeriod, namedValues)
     .append:
       Stream.iterable(toPlan.values).flatMap(_.toSnapshotStream)
 
@@ -77,7 +81,7 @@ extends UnsignedSimpleItemState:
 
   def recover(snapshot: Snapshot): PlanSchemaState =
     copy(
-      finishedPlanLifeTime = snapshot.finishedPlanLifeTime,
+      finishedPlanRetentionPeriod = snapshot.finishedPlanRetentionPeriod,
       namedValues = snapshot.namedValues)
 
   def applyPlanEvent(planKey: PlanKey, event: PlanEvent): Checked[PlanSchemaState] =
@@ -89,6 +93,9 @@ extends UnsignedSimpleItemState:
 
   def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
     copy(namedValues = namedValues).removeRemovablePlans
+
+  def updatefinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
+    Right(copy(finishedPlanRetentionPeriod = duration))
 
   def orderIds: View[OrderId] =
     toPlan.values.view.flatMap(_.orderIds)
@@ -139,7 +146,7 @@ extends UnsignedSimpleItemState:
           Right(false)
         else
           evalUnknownPlanIsClosed(planKey).map(_ == (plan.status == Deleted))
-      case Closed | Finished => Right(false)
+      case Closed | _: Finished => Right(false)
 
   /** Returns Right(()) iff this PlanSchema is unused. */
   def checkIsDeletable: Checked[Unit] =
@@ -313,10 +320,19 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
 
   final case class Snapshot(
     id: PlanSchemaId,
-    finishedPlanLifeTime: FiniteDuration,
+    finishedPlanRetentionPeriod: FiniteDuration,
     namedValues: NamedValues):
 
     override def productPrefix = s"PlanSchemaState.Snapshot"
 
-  val subtype: Subtype[Snapshot] =
-    Subtype.named[Snapshot](deriveCodecWithDefaults, "PlanSchemaState")
+  object Snapshot:
+    private val jsonDecoder: Decoder[Snapshot] = c =>
+      for
+        id <- c.get[PlanSchemaId]("id")
+        finishedPlanRetentionPeriod <- c.getOrElse[FiniteDuration]("finishedPlanRetentionPeriod")(ZeroDuration)
+        namedValues <- c.get[NamedValues]("namedValues")
+      yield
+        Snapshot(id, finishedPlanRetentionPeriod, namedValues)
+
+    val subtype: Subtype[Snapshot] =
+      Subtype.named[Snapshot](Codec.AsObject.from(jsonDecoder, deriveEncoder), "PlanSchemaState")

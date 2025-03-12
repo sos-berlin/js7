@@ -3,20 +3,20 @@ package js7.data_for_java.controller
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
-import java.util.Optional
-import java.util.Map as JMap
+import java.util.{Optional, Map as JMap}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
+import js7.base.time.ScalaTime.DurationRichLong
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, GlobalBoard, NoticeId, NoticeKey, PlannableBoard}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, Batch, ChangeGlobalToPlannableBoard, ChangePlan, ChangePlanSchema, ChangePlannableToGlobalBoard, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, GoOrder, PostNotice, TransferOrders}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
-import js7.data.plan.{Plan, PlanId, PlanSchemaId}
+import js7.data.plan.{PlanId, PlanSchemaId, PlanStatus}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
@@ -26,7 +26,7 @@ import js7.data_for_java.value.JExprFunction
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.JPosition
 import scala.jdk.CollectionConverters.*
-import scala.jdk.OptionConverters.RichOptional
+import scala.jdk.OptionConverters.*
 
 @javaApi
 final case class JControllerCommand(asScala: ControllerCommand)
@@ -148,12 +148,18 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
     ChangePlannableToGlobalBoard(globalBoard, planSchemaId, makeNoticeKey.asScala)
 
   @Nonnull
-  def changePlanSchema(planSchemaId: PlanSchemaId, namedValues: JMap[String, Value])
+  def changePlanSchema(
+    planSchemaId: PlanSchemaId,
+    namedValues: Optional[JMap[String, Value]],
+    finishedPlanRetentionPeriod: Optional[java.time.Duration])
   : ChangePlanSchema =
-    ChangePlanSchema(planSchemaId, namedValues.asScala.toMap)
+    ChangePlanSchema(
+      planSchemaId,
+      namedValues.toScala.map(_.asScala.toMap),
+      finishedPlanRetentionPeriod.toScala.map(_.toNanos.ns))
 
   @Nonnull
-  def changePlan(planId: PlanId, status: Plan.Status): ChangePlan =
+  def changePlan(planId: PlanId, status: PlanStatus): ChangePlan =
     ChangePlan(planId, status)
 
   @Nonnull

@@ -2,9 +2,9 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
-import js7.base.time.ScalaTime.*
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{TestWallClock, Timestamp}
+import js7.base.time.{ScalaTime, TestWallClock, Timestamp}
 import js7.data.board.BoardPathExpression.syntax.*
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, BoardState, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
@@ -14,7 +14,7 @@ import js7.data.execution.workflow.instructions.ConsumeNoticesExecutorTest.Notic
 import js7.data.order.OrderEvent.OrderMoved.NoNotice
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.state.ControllerTestStateView
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -358,12 +358,12 @@ object ConsumeNoticesExecutorTest:
         .appended:
           PlanSchemaState(
             dailyPlan,
-            finishedPlanLifeTime = 0.s,
+            finishedPlanRetentionPeriod = ZeroDuration,
             namedValues = Map.empty,
             toPlan = Map(
               planId.planKey -> Plan(
                 planId,
-                Plan.Status.Open,
+                PlanStatus.Open,
                 Set(orderId),
                 boardPaths.map: boardPath =>
                   PlannedBoard(

@@ -2,6 +2,7 @@ package js7.data.plan
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
+import js7.base.time.TimestampForTests.ts
 import js7.data.event.KeyedEvent
 import js7.data.plan.PlanEvent.{PlanClosed, PlanDeleted, PlanFinished, PlanOpened}
 import js7.tester.CirceJsonTester.testJson
@@ -27,10 +28,11 @@ final class PlanEventTest extends OurTestSuite:
 
     "PlanFinished" in:
       testJson[KeyedEvent[PlanEvent]](
-        PlanSchemaId("DailyPlan") / "2025-02-11" <-: PlanFinished,
+        PlanSchemaId("DailyPlan") / "2025-02-11" <-: PlanFinished(ts"2025-03-10T12:00:00Z"),
         json"""{
           "TYPE": "PlanFinished",
-          "Key": [ "DailyPlan", "2025-02-11" ]
+          "Key": [ "DailyPlan", "2025-02-11" ],
+          "at": 1741608000000
         }""")
 
     "PlanDeleted" in:

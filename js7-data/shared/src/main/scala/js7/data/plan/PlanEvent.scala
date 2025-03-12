@@ -1,6 +1,8 @@
 package js7.data.plan
 
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.time.Timestamp
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.event.Event
 import js7.data.plan.PlanEvent.*
@@ -12,38 +14,33 @@ trait PlanEvent extends Event.IsKeyBase[PlanEvent]:
 object PlanEvent extends Event.CompanionForKey[PlanId, PlanEvent]:
   given implicitSelf: PlanEvent.type = this
 
-  sealed trait PlanStatusEvent extends PlanEvent:
-    def status: Plan.Status
+  sealed trait PlanStatusEvent(val status: PlanStatus) extends PlanEvent
 
   object PlanStatusEvent:
-    inline def unapply(event: PlanStatusEvent): Some[Plan.Status] =
+    inline def unapply(event: PlanStatusEvent): Some[PlanStatus] =
       Some(event.status)
 
 
-  type PlanReopened = PlanOpened.type
-  case object PlanOpened extends PlanStatusEvent:
-    def status = Plan.Status.Open
+  type PlanOpened = PlanOpened.type
+  case object PlanOpened extends PlanStatusEvent(PlanStatus.Open)
 
 
   type PlanClosed = PlanClosed.type
-  case object PlanClosed extends PlanStatusEvent:
-    def status = Plan.Status.Closed
+  case object PlanClosed extends PlanStatusEvent(PlanStatus.Closed)
 
 
-  type PlanFinished = PlanFinished.type
-  case object PlanFinished extends PlanStatusEvent:
-    def status = Plan.Status.Finished
+  final case class PlanFinished(at: Timestamp)
+  extends PlanStatusEvent(PlanStatus.Finished(at))
 
 
   type PlanDeleted = PlanDeleted.type
-  case object PlanDeleted extends PlanStatusEvent:
-    def status = Plan.Status.Deleted
+  case object PlanDeleted extends PlanStatusEvent(PlanStatus.Deleted)
 
 
   given TypedJsonCodec[PlanEvent] = TypedJsonCodec[PlanEvent](
     Subtype(PlanOpened),
     Subtype(PlanClosed),
-    Subtype(PlanFinished),
+    Subtype(deriveCodec[PlanFinished]),
     Subtype(PlanDeleted))
 
 

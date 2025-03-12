@@ -15,7 +15,7 @@ import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanSchemaId}
+import js7.data.plan.{Plan, PlanSchemaId, PlanStatus}
 import js7.data.value.expression.ExprFunction.testing.|=>
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser
@@ -246,7 +246,7 @@ final class ControllerCommandTest extends OurTestSuite:
 
   "ChangePlan" in:
     testJson[ControllerCommand](
-      ChangePlan(PlanSchemaId("DailyPlan") / "2025-02-26", Plan.Status.Closed),
+      ChangePlan(PlanSchemaId("DailyPlan") / "2025-02-26", PlanStatus.Closed),
       json"""{
         "TYPE": "ChangePlan",
         "planId": [ "DailyPlan", "2025-02-26" ],
@@ -257,14 +257,16 @@ final class ControllerCommandTest extends OurTestSuite:
     testJson[ControllerCommand](
       ChangePlanSchema(
         PlanSchemaId("DailyPlan"),
-        NamedValues(
+        namedValues = Some(NamedValues(
           "openeningDay" -> StringValue("2025-02-26"))),
+        finishedPlanRetentionPeriod = Some(0.s)),
       json"""{
         "TYPE": "ChangePlanSchema",
         "planSchemaId": "DailyPlan",
         "namedValues": {
           "openeningDay": "2025-02-26"
-        }
+        },
+        "finishedPlanRetentionPeriod": 0
       }""")
 
   "DeleteOrdersWhenTerminated" in:

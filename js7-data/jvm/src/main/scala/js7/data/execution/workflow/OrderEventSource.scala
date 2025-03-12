@@ -252,7 +252,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           ControllerEventColl.keyedEvents[OrderDeleted | PlanFinishedEvent](controllerState): coll =>
             for
               coll <- coll.add(order.id <-: orderDeleted)
-              coll <- coll.add(coll.aggregate.maybePlanFinished(order.planId))
+              coll <- coll.addChecked(coll.aggregate.maybePlanFinished(order.planId, clock.now()))
             yield coll
           match
             case Left(problem) =>

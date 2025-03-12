@@ -34,7 +34,7 @@ import js7.data.order.Order.ExternalOrderLink
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState}
+import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
 import js7.data.subagent.{SubagentBundle, SubagentBundleId, SubagentBundleState, SubagentId, SubagentItem, SubagentItemState}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -86,7 +86,7 @@ final class ControllerStateTest extends OurAsyncTestSuite:
         controllerState.pathToUnsignedSimple(SubagentBundle).values ++
         controllerState.keyTo(LockState).values ++
         Seq(
-          Plan.Snapshot(PlanId.Global, Plan.Status.Open),
+          Plan.Snapshot(PlanId.Global, PlanStatus.Open),
           notice,
           board,
           calendar,
@@ -522,11 +522,11 @@ object ControllerStateTest:
       PlanSchemaId.Global -> PlanSchemaState(
         PlanSchema.Global,
         namedValues = Map.empty,
-        finishedPlanLifeTime = 0.s, // Unused in global PlanSchema
+        finishedPlanRetentionPeriod = 0.s, // Unused in global PlanSchema
         Map(
           PlanKey.Global -> Plan(
             PlanId.Global,
-            Plan.Status.Open,
+            PlanStatus.Open,
             Set(),
             Map(
               board.path -> PlannedBoard(

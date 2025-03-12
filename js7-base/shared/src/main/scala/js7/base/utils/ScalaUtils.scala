@@ -746,8 +746,8 @@ object ScalaUtils:
       def ??(string: => String): String =
         if underlying then string else ""
 
-      def !!(problem: => Problem): Checked[Unit] =
-        orLeft(problem)
+      inline def !![L](left: => L): Either[L, Unit] =
+        orLeft(left)
 
       def orLeft[L](left: => L): Either[L, Unit] =
         if !underlying then Left(left)

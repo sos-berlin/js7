@@ -23,13 +23,13 @@ final class PlanSchemaStateTest extends OurTestSuite:
         namedValues = Map(
           "openingDay" -> StringValue("")),
         Some(ItemRevision(1))),
-      finishedPlanLifeTime = 3600.s,
+      finishedPlanRetentionPeriod = 3600.s,
       namedValues = Map(
         "openingDay" -> StringValue("2025-02-20")),
       toPlan = Map(
         PlanKey("2025-02-20") -> Plan(
           PlanSchemaId("DailyPlan") / "2025-02-20",
-          Plan.Status.Closed,
+          PlanStatus.Closed,
           Set(OrderId("#2025-02-20#")),
           Map(
             BoardPath("BOARD") -> PlannedBoard(
@@ -56,7 +56,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE" : "PlanSchemaState",
         "id" : "DailyPlan",
-        "finishedPlanLifeTime": 3600,
+        "finishedPlanRetentionPeriod": 3600,
         "namedValues" : {
           "openingDay" : "2025-02-20"
         }

@@ -26,7 +26,7 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStateReset, OrderSuspended, OrderSuspensionMarked, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanId}
+import js7.data.plan.{Plan, PlanId, PlanStatus}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
@@ -101,7 +101,7 @@ final class GlobalBoardTest
           Map:
             PlanId.Global -> Plan(
               PlanId.Global,
-              Plan.Status.Open,
+              PlanStatus.Open,
               orderIds = Set(posting0OrderId, posting12OrderId) ++ expecting01OrderIds,
               Seq(
                 PlannedBoard(PlanId.Global / board0.path, Map(

@@ -23,7 +23,7 @@ import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.plan.{Plan, PlanId, PlanKey, PlanSchemaId}
+import js7.data.plan.{PlanId, PlanKey, PlanSchemaId, PlanStatus}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.{ExprFunction, Scope}
 import js7.data.value.{NamedValues, StringValue}
@@ -263,11 +263,12 @@ object ControllerCommand extends CommonCommand.Companion:
 
   final case class ChangePlanSchema(
     planSchemaId: PlanSchemaId,
-    namedValues: NamedValues)
+    namedValues: Option[NamedValues] = None,
+    finishedPlanRetentionPeriod: Option[FiniteDuration] = None)
   extends ControllerCommand:
     type Response = Response.Accepted
 
-  final case class ChangePlan(planId: PlanId, status: Plan.Status)
+  final case class ChangePlan(planId: PlanId, status: PlanStatus)
   extends ControllerCommand:
     type Response = Response.Accepted
 

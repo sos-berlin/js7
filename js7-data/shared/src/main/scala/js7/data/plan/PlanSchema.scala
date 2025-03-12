@@ -4,7 +4,7 @@ import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.metering.CallMeter
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.*
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
@@ -43,7 +43,7 @@ extends UnsignedSimpleItem:
   def toInitialItemState: PlanSchemaState =
     PlanSchemaState(
       this,
-      finishedPlanLifeTime = 0.s,
+      finishedPlanRetentionPeriod = ZeroDuration,
       namedValues = NamedValues.empty,
       toPlan = Map.empty)
 
