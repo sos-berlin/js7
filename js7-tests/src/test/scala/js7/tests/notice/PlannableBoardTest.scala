@@ -130,7 +130,7 @@ final class PlannableBoardTest
       eventWatch.resetLastWatchedEventId()
       val weeklyPlanId = weeklyPlan.id / "2024w47"
       locally:
-        val postingOrderId = OrderId("#2024w47#POST")
+        val postingOrderId = OrderId("POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, postingWorkflow.path, planId = weeklyPlanId,
             deleteWhenTerminated = true,
@@ -139,7 +139,7 @@ final class PlannableBoardTest
         eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
 
       locally:
-        val consumingOrderId = OrderId("#2024w47#CONSUME")
+        val consumingOrderId = OrderId("CONSUME")
         val consumingOrder = FreshOrder(consumingOrderId, consumingWorkflow.path,
           planId = weeklyPlanId,
           arguments = Map("ARG" -> "🔸"))
@@ -153,13 +153,13 @@ final class PlannableBoardTest
         execCmd(DeleteOrdersWhenTerminated(consumingOrderId :: Nil))
 
       //locally:
-      //  val postingOrderId = OrderId("#2024w47#POST")
+      //  val postingOrderId = OrderId("POST")
       //  controller.addOrderBlocking:
       //    FreshOrder(postingOrderId, postingWorkflow.path, deleteWhenTerminated = true)
       //  eventWatch.awaitNext[OrderNoticePosted](_.key == postingOrderId)
       //  eventWatch.awaitNext[OrderTerminated](_.key == postingOrderId)
       //
-      //  val consumingOrderId = OrderId("#2024w47#CONSUME")
+      //  val consumingOrderId = OrderId("CONSUME")
       //  controller.addOrderBlocking:
       //    FreshOrder(consumingOrderId, consumingWorkflow.path, deleteWhenTerminated = true)
       //

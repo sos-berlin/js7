@@ -16,13 +16,15 @@ import js7.data.value.expression.Expression.exprFun
 final class PlanSchemaStateTest extends OurTestSuite:
 
   "toSnapshotStream JSON" in:
+    val planSchema = PlanSchema(
+      PlanSchemaId("DailyPlan"),
+      Some(exprFun"day => $$day < $$openingDay"),
+      namedValues = Map(
+        "openingDay" -> StringValue("")),
+      Some(ItemRevision(1)))
+
     val planSchemaState = PlanSchemaState(
-      PlanSchema(
-        PlanSchemaId("DailyPlan"),
-        Some(exprFun"day => $$day < $$openingDay"),
-        namedValues = Map(
-          "openingDay" -> StringValue("")),
-        Some(ItemRevision(1))),
+      planSchema,
       finishedPlanRetentionPeriod = 3600.s,
       namedValues = Map(
         "openingDay" -> StringValue("2025-02-20")),
@@ -30,7 +32,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
         PlanKey("2025-02-20") -> Plan(
           PlanSchemaId("DailyPlan") / "2025-02-20",
           PlanStatus.Closed,
-          Set(OrderId("#2025-02-20#")),
+          Set(OrderId("ORDER")),
           Map(
             BoardPath("BOARD") -> PlannedBoard(
               PlanSchemaId("DailyPlan") / "2025-02-20" / BoardPath("BOARD"),

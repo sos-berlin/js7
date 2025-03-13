@@ -15,7 +15,7 @@ import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, OrderOutcome}
-import js7.data.plan.{Plan, PlanSchemaId, PlanStatus}
+import js7.data.plan.{PlanSchemaId, PlanStatus}
 import js7.data.value.expression.ExprFunction.testing.|=>
 import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser

@@ -16,12 +16,10 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.plan.{Plan, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
-import js7.data.value.StringValue
-import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
+import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.jobs.SemaphoreJob
 import js7.tests.plan.PlanTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.language.implicitConversions
@@ -52,32 +50,30 @@ final class PlanTest
 
     "PlanSchema is only deletable if no Order is associated" in:
       val planSchemaId = PlanSchemaId("DailyPlan")
-      val day = "2024-11-08"
-      val planId = planSchemaId / day
+      val planId = planSchemaId / "2024-11-08"
       withItem(Workflow.of(Prompt(expr("'PROMPT'")))): workflow =>
         eventWatch.resetLastWatchedEventId()
 
-        val planSchema = updateItem(PlanSchema.joc(PlanSchemaId("DailyPlan")))
-        val postingOrderId = OrderId(s"#$day#POST")
+        val planSchema = updateItem(PlanSchema.joc(planSchemaId))
+        val postingOrderId = OrderId("POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, workflow.path, planId = planId, deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
 
         assert(tryDeletePlan(planSchema.path) == Left(Problem:
-          s"PlanSchema:DailyPlan cannot be deleted because it is in use by Plan:$day with Order:#$day#POST"))
+          s"PlanSchema:DailyPlan cannot be deleted because it is in use by Plan:2024-11-08 with Order:POST"))
 
         execCmd:
           CancelOrders(Seq(postingOrderId))
         eventWatch.awaitNextKey[OrderTerminated](postingOrderId)
 
         execCmd: // Close the plan, so it can be deleted
-          ChangePlan(planSchema.id / day, PlanStatus.Closed)
+          ChangePlan(planId, PlanStatus.Closed)
 
         deleteItems(planSchema.path)
         eventWatch.awaitNext[ItemDeleted](_.event.key == planSchema.path)
 
     "When a PlanSchema is being deleted, all its Plans are deleted" in:
-      val day = "2024-11-27"
       val aBoard = PlannableBoard(BoardPath("A-BOARD"))
       val bBoard = PlannableBoard(BoardPath("B-BOARD"),
         postOrderToNoticeKey = expr("'🔸'"),
@@ -96,10 +92,9 @@ final class PlanTest
         eventWatch.resetLastWatchedEventId()
 
         val planSchema = updateItem(PlanSchema.joc(PlanSchemaId("DailyPlan-2")))
-        val planKey = PlanKey(day)
-        val planId = planSchema.id / planKey
+        val planId = planSchema.id / "2024-11-27"
 
-        val postingOrderId = OrderId(s"#$day#POST")
+        val postingOrderId = OrderId("POST")
         controller.addOrderBlocking:
           FreshOrder(postingOrderId, postingWorkflow.path, planId = planId,
             deleteWhenTerminated = true)
@@ -108,7 +103,7 @@ final class PlanTest
         val aNoticeKey = NoticeKey.empty
         val bNoticeKey = NoticeKey("🔸")
 
-        assert(controllerState.toPlan(planSchema.id / planKey) ==
+        assert(controllerState.toPlan(planId) ==
           Plan(
             planId,
             PlanStatus.Open,
@@ -119,13 +114,13 @@ final class PlanTest
               PlannedBoard(planId / bBoard.path, Map(
                 bNoticeKey -> NoticePlace(isAnnounced = true))))))
 
-        val consumingOrderId = OrderId(s"#$day#CONSUME")
+        val consumingOrderId = OrderId("CONSUME")
         controller.addOrderBlocking:
           FreshOrder(consumingOrderId, consumingWorkflow.path, planId = planId,
             deleteWhenTerminated = true)
         eventWatch.awaitNextKey[OrderNoticesExpected](consumingOrderId)
 
-        assert(controllerState.toPlan(planSchema.id / planKey) ==
+        assert(controllerState.toPlan(planId) ==
           Plan(
             planId,
             PlanStatus.Open,
@@ -136,8 +131,8 @@ final class PlanTest
               PlannedBoard(planId / bBoard.path, Map(
                 bNoticeKey -> NoticePlace(isAnnounced = true))))))
 
-        assert(tryDeletePlan(planSchema.path) == Left(Problem:
-          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with Order:#2024-11-27#POST, Order:#2024-11-27#CONSUME"))
+        assert(tryDeletePlan(planSchema.path) == Left(Problem(s"${planSchema.id} cannot be deleted" +
+          s" because it is in use by ${planId.planKey} with $postingOrderId, $consumingOrderId")) )
 
         execCmd:
           AnswerOrderPrompt(postingOrderId)
@@ -145,8 +140,8 @@ final class PlanTest
         eventWatch.awaitNextKey[OrderPrompted](postingOrderId)
         eventWatch.awaitNextKey[OrderPrompted](consumingOrderId)
 
-        assert(tryDeletePlan(planSchema.path) == Left(Problem:
-          s"PlanSchema:DailyPlan-2 cannot be deleted because it is in use by Plan:$day with Order:#2024-11-27#POST, Order:#2024-11-27#CONSUME"))
+        assert(tryDeletePlan(planSchema.path) == Left(Problem(s"${planSchema.id} cannot be deleted" +
+          s" because it is in use by ${planId.planKey} with $postingOrderId, $consumingOrderId")))
 
         for orderId <- Seq(postingOrderId, consumingOrderId) do
           execCmd(CancelOrders(Seq(orderId)))
@@ -176,8 +171,7 @@ final class PlanTest
   "unknownPlanIsClosedFunction returns always true — all unknown Plans are deleted" in:
     val dailyPlan = PlanSchema(
       PlanSchemaId("DailyPlan"),
-      unknownPlanIsClosedFunction = Some(exprFunction("planKey => true")),
-      Map("openingDay" -> StringValue.empty))
+      unknownPlanIsClosedFunction = Some(PlanSchema.UnknownsPlanAreDeleted))
     val planId = dailyPlan.id / "2025-03-12"
 
     withItems((dailyPlan, Workflow.empty)): (dailyPlan, workflow) =>
@@ -204,6 +198,3 @@ final class PlanTest
 object PlanTest:
 
   private val agentPath = AgentPath("AGENT")
-
-  private final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
-  private object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]

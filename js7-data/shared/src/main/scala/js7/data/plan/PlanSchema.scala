@@ -75,6 +75,10 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   final val Global: PlanSchema =
     PlanSchema(PlanSchemaId.Global)
 
+  @TestOnly
+  final val UnknownsPlanAreDeleted: ExprFunction =
+    exprFunction("planKey => true")
+
   /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
   def joc(id: PlanSchemaId): PlanSchema =
