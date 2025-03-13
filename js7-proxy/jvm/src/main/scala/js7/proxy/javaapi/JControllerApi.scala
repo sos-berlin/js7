@@ -218,20 +218,26 @@ final class JControllerApi(val asScala: ControllerApi, val config: Config)
     @Nonnull orderId: OrderId,
     @Nonnull position: Optional[JPosition],
     @Nonnull historyOperations: java.util.List[JHistoryOperation],
-    asSucceeded: Boolean)
+    asSucceeded: Boolean,
+    @Nonnull restartKilledJob: Optional[Boolean])
   : CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrder(
-      requireNonNull(orderId),
+      orderId.nn,
       position.toScala.map(_.asScala),
       historyOperations.asScala.view.map(_.asScala).toVector,
-      asSucceeded = asSucceeded))
+      asSucceeded = asSucceeded,
+      restartKilledJob = restartKilledJob.toScala))
 
   @Nonnull
-  def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], asSucceeded: Boolean)
+  def resumeOrders(
+    @Nonnull orderIds: java.lang.Iterable[OrderId],
+    asSucceeded: Boolean,
+    @Nonnull restartKilledJob: Optional[Boolean])
   : CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrders(
       orderIds.asScala.toVector,
-      asSucceeded = asSucceeded))
+      asSucceeded = asSucceeded,
+      restartKilledJob = restartKilledJob.toScala))
 
   @Nonnull
   def deleteOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId])
