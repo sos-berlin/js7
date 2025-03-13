@@ -7,16 +7,18 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.data.Problems.PlanIsClosedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ChangePlan}
+import js7.data.controller.ControllerCommand.{AddOrder, AnswerOrderPrompt, CancelOrders, ChangePlan}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanKey, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.StringValue
+import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -170,6 +172,33 @@ final class PlanTest
 
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).isEmpty)
   }
+
+  "unknownPlanIsClosedFunction returns always true — all unknown Plans are deleted" in:
+    val dailyPlan = PlanSchema(
+      PlanSchemaId("DailyPlan"),
+      unknownPlanIsClosedFunction = Some(exprFunction("planKey => true")),
+      Map("openingDay" -> StringValue.empty))
+    val planId = dailyPlan.id / "2025-03-12"
+
+    withItems((dailyPlan, Workflow.empty)): (dailyPlan, workflow) =>
+      eventWatch.resetLastWatchedEventId()
+
+      val freshOrder =
+        FreshOrder(OrderId("ORDER"), workflow.path, planId = planId, deleteWhenTerminated = true)
+      val checked = controller.api.executeCommand:
+        AddOrder(freshOrder)
+      .await(99.s)
+      assert(checked == Left(PlanIsClosedProblem(planId)))
+
+      execCmd: // Open the Plan
+        ChangePlan(planId, PlanStatus.Open)
+
+      controller.runOrder(freshOrder)
+
+      assert(controllerState.keyTo(PlanSchemaState)(dailyPlan.id).plans.size == 1)
+      execCmd: // Close the plan, so it can be deleted
+        ChangePlan(planId, PlanStatus.Closed)
+      assert(controllerState.keyTo(PlanSchemaState)(dailyPlan.id).plans.isEmpty)
 
 
 object PlanTest:

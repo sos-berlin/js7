@@ -12,7 +12,6 @@ import js7.data.plan.PlanEvent.PlanDeleted
 import js7.data.plan.PlanStatus.{Closed, Deleted, Finished}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId}
 import js7.data.value.Value.convenience.given
-import js7.tester.ScalaTestUtils
 import js7.tests.plan.PlanDeletedTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import scala.concurrent.duration.DurationInt
@@ -45,9 +44,8 @@ final class PlanDeletedTest
     withItem(dailyPlan): dailyPlan =>
       eventWatch.resetLastWatchedEventId()
 
-      val day = "2025-03-11"
       val tomorrow = "2025-03-12"
-      val planId = dailyPlan.id / day
+      val planId = dailyPlan.id / "2025-03-11"
 
       execCmd:
         ChangePlan(planId, Closed)
@@ -83,9 +81,8 @@ final class PlanDeletedTest
 
       clock.tick(1.s)
       eventWatch.awaitNextKey[PlanDeleted](planId)
-      ScalaTestUtils.awaitAndAssert:
+      assert:
         controllerState.toPlan.values.toSeq == Seq(Plan(planId, Deleted))
-
 
   "ChangePlanSchema(finishedPlanRetentionPeriod) changes PlanDeleted timers" in:
     withItem(dailyPlan): dailyPlan =>
@@ -94,9 +91,7 @@ final class PlanDeletedTest
       execCmd:
         ChangePlanSchema(dailyPlan.id, finishedPlanRetentionPeriod = Some(1.h))
 
-      val day = "2025-03-11"
-      val tomorrow = "2025-03-12"
-      val planId = dailyPlan.id / day
+      val planId = dailyPlan.id / "2025-03-11"
 
       execCmd:
         ChangePlan(planId, Closed)
@@ -110,7 +105,7 @@ final class PlanDeletedTest
       clock.tick() // PlanDeleted events are scheduled
 
       eventWatch.awaitNextKey[PlanDeleted](planId)
-      ScalaTestUtils.awaitAndAssert:
+      assert:
         controllerState.toPlan.values.toSeq == Seq(Plan(planId, Deleted))
 
 
@@ -138,7 +133,7 @@ final class PlanDeletedTest
 
       clock.tick(1.h)
       controller.eventWatch.awaitKey[PlanDeleted](planId)
-      ScalaTestUtils.awaitAndAssert:
+      assert:
         controller.controllerState().toPlan.values.toSeq == Seq(Plan(planId, Deleted))
 
 
