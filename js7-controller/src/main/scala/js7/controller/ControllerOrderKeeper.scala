@@ -60,7 +60,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
@@ -1059,7 +1059,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
       for
         _ <- !planSchemaId.isGlobal !! Problem("The global PlanSchema cannot be changed")
         planSchema <- _controllerState.keyTo(PlanSchemaState).checked(planSchemaId)
-        keyedEvents <- ControllerEventColl.keyedEvents(_controllerState):
+        keyedEvents <- EventColl.keyedEvents(_controllerState):
           _.add(planSchemaId <-: PlanSchemaChanged(
             namedValues =
               cmd.namedValues.flatMap(o => (o != planSchema.namedValues) ? o),

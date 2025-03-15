@@ -5,7 +5,8 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichOption
-import js7.data.controller.{ControllerEventColl, ControllerState}
+import js7.data.controller.ControllerState
+import js7.data.event.EventColl
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
 import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.plan.PlanId
@@ -45,7 +46,7 @@ extends EventInstructionExecutor:
                 deleteWhenTerminated = addOrder.deleteWhenTerminated,
                 forceJobAdmission = addOrder.forceJobAdmission)
               keyedEvents <-
-                ControllerEventColl[OrderOrderAdded | OrderMoved](controllerState).add:
+                EventColl(controllerState).add[OrderOrderAdded | OrderMoved]:
                   order.id <-: orderAdded
                 .match
                   case Left(problem) =>

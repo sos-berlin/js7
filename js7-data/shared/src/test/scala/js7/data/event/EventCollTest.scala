@@ -82,7 +82,7 @@ final class EventCollTest extends OurTestSuite:
     assert(coll.aggregate.idToOrder.values.toSeq == Seq:
       Order(orderId, workflow.id /: Position(0), Order.Finished))
 
-  "append" in:
+  "combine" in:
     val aColl =
       val coll = EventColl[TestState, TestEvent, Unit](TestState("START:"), ())
       locally:
@@ -99,7 +99,7 @@ final class EventCollTest extends OurTestSuite:
         yield
           coll
       .orThrow
-    val abColl = aColl.append(bColl).orThrow
+    val abColl = aColl.combine(bColl).orThrow
     assert(abColl.originalAggregate == TestState("START:"))
     assert(abColl.aggregate == TestState("START:A,B"))
     assert(abColl.keyedEvents == Vector(

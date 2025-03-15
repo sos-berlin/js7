@@ -8,7 +8,7 @@ import js7.base.utils.{L3, StandardMapView}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticeMoved}
 import js7.data.board.{BoardItem, BoardPath, BoardState, GlobalBoard, Notice, NoticeEvent, NoticeId, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard, PlannedBoardId, PlannedNoticeKey}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, KeyedEvent}
+import js7.data.event.{Event, EventColl, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.OrderStateReset
@@ -177,7 +177,7 @@ object ControllerStatePlanFunctions:
       (convertNoticeKey: PlannedNoticeKey => Checked[Option[PlannedNoticeKey]])
     : Checked[Seq[KeyedEvent[Event]]] =
       val boardPath = newBoard.path
-      ControllerEventColl.keyedEvents(controllerState): coll =>
+      EventColl.keyedEvents(controllerState): coll =>
         for
           boardState <- controllerState.keyTo(BoardState).checked(boardPath)
           _ <- checkIsOtherBoardType(boardState.item, newBoard)
