@@ -12,7 +12,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, repeatLast}
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 
 final case class DelayConf(
   delays: NonEmptyList[FiniteDuration],

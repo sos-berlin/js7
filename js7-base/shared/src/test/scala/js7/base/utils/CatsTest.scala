@@ -2,7 +2,6 @@ package js7.base.utils
 
 import cats.syntax.traverse.*
 import js7.base.test.OurTestSuite
-import js7.base.utils.ScalaUtils.syntax.*
 
 final class CatsTest extends OurTestSuite:
 

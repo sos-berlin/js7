@@ -8,7 +8,6 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.data_for_java.workflow.position.JPosition
-import scala.jdk.CollectionConverters.*
 
 final class JWorkflowTest extends OurTestSuite:
 

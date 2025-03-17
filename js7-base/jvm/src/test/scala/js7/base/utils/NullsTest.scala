@@ -40,10 +40,11 @@ final class NullsTest extends OurTestSuite:
 
     "NonNull(null)" in:
       val a: String | Null = null
-      (a: @unchecked) match
+      (a) match
         // "match might not exhaustive" due to NonNull
-        case NonNull(_) => fail()
-        case null => succeed
+        case NonNull(_: String) => fail()
+        //Before 3.6.4: case null => succeed
+        case _ => succeed
   }
 
   //"IsNull" - {

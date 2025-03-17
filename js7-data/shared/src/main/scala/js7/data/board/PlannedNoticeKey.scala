@@ -11,7 +11,6 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.ifNonEmpty
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
-import scala.jdk.OptionConverters.*
 
 /** A pair of PlanId and NoticeKey.
   *

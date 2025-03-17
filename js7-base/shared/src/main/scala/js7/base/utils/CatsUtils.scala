@@ -4,7 +4,6 @@ import cats.data.{NonEmptyList, NonEmptySeq, NonEmptyVector, Validated}
 import cats.effect.{Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import cats.syntax.traverse.*
 import cats.{Applicative, FlatMap, Traverse}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}

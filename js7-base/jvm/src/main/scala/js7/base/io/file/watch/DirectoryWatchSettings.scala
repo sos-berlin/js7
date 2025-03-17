@@ -8,7 +8,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.DelayConf
 import js7.base.utils.DelayConf.delayConf
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 
 final case class DirectoryWatchSettings(
   watchDelay: FiniteDuration,

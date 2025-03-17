@@ -8,7 +8,6 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.orderingBy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
-import scala.jdk.OptionConverters.*
 
 /** Globally unique NoticeId. */
 final case class NoticeId(planId: PlanId, boardNoticeKey: BoardNoticeKey):

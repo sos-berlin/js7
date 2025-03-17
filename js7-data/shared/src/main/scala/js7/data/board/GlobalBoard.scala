@@ -4,7 +4,6 @@ import cats.syntax.traverse.*
 import io.circe.Codec
 import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.CirceUtils.deriveRenamingCodec
-import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt

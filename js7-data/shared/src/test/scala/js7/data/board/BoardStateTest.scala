@@ -10,7 +10,6 @@ import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardState.NoticeConsumptionSnapshot
-import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.plan.{PlanId, PlanKey, PlanSchemaId}
