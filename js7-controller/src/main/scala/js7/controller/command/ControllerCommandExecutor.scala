@@ -8,16 +8,17 @@ import js7.base.system.startup.Halt
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.command.ControllerCommandExecutor.*
-import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
+import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, EmergencyStop}
 
-/**
-  * @author Joacim Zschimmer
-  */
+trait IControllerCommandExecutor:
+  def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]]
+
+
 private[controller] final class ControllerCommandExecutor(
-  otherCommandExecutor: CommandExecutor[ControllerCommand])
-extends CommandExecutor[ControllerCommand]:
+  otherCommandExecutor: IControllerCommandExecutor)
+extends IControllerCommandExecutor:
 
   private val register = new CommandRegister[ControllerCommand]
 

@@ -1,33 +1,23 @@
 package js7.controller
 
-import cats.effect.unsafe.Scheduler
-import cats.effect.{Resource, ResourceIO, Sync, SyncIO}
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.{IO, Resource, ResourceIO, Sync, SyncIO}
 import cats.syntax.traverse.*
-import js7.base.catsutils.OurIORuntime
-import js7.base.catsutils.UnsafeMemoizable.memoize
-import js7.base.log.Log4j
-import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
-import js7.base.utils.CatsBlocking.BlockingIOResource
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.SyncResource.syntax.RichSyncResource
-import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import scala.concurrent.ExecutionContext
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.auth.SimpleUser
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.OurIORuntime
+import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{CorrelId, Log4j, Logger}
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
@@ -38,7 +28,10 @@ import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.utils.CatsBlocking.BlockingIOResource
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
@@ -48,12 +41,12 @@ import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.controller.RunningController.logger
 import js7.controller.client.PekkoHttpControllerApi
-import js7.controller.command.ControllerCommandExecutor
+import js7.controller.command.{ControllerCommandExecutor, IControllerCommandExecutor}
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
 import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.web.ControllerWebServer
-import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.agent.AgentPath
@@ -70,9 +63,12 @@ import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Try}
 
 /**
@@ -410,7 +406,7 @@ object RunningController:
     clusterNode: ClusterNode[ControllerState],
     orderKeeperActor: IO[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
-  extends CommandExecutor[ControllerCommand]:
+  extends IControllerCommandExecutor:
     def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
       command.match
         case command: ControllerCommand.ShutDown =>

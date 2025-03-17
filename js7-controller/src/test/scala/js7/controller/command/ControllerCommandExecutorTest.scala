@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.core.command.CommandMeta
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, NoOperation, ReleaseEvents, Response}
@@ -25,7 +25,7 @@ final class ControllerCommandExecutorTest extends OurTestSuite:
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private var cancelled = 0
-  private val otherCommandExecutor = new CommandExecutor[ControllerCommand]:
+  private val otherCommandExecutor = new IControllerCommandExecutor:
     def executeCommand(command: ControllerCommand, meta: CommandMeta)
     : IO[Checked[command.Response]] =
       (command, meta) match
