@@ -5,18 +5,6 @@ import js7.data.event.{Event, EventColl, KeyedEvent}
 
 object ControllerEventColl:
 
-  //private def apply[E <: Event](aggregate: ControllerState): EventColl[ControllerState, E, Any] =
-  //  EventColl(aggregate, ())
-  //
-  //private def apply[E <: Event](aggregate: ControllerState, now: => Timestamp)
-  //: EventColl[ControllerState, E, TimeCtx] =
-  //  EventColl(aggregate, TimeCtx(now))
-
-  def tryEvents[E <: Event](controllerState: ControllerState)
-    (keyedEvents: IterableOnce[KeyedEvent[E]])
-  : Checked[Vector[KeyedEvent[E]]] =
-    ControllerEventColl.keyedEvents(controllerState)(_.add(keyedEvents))
-
   inline def keyedEvents[E <: Event](controllerState: ControllerState)
     (body: EventColl[ControllerState, E, Any] => Checked[EventColl[ControllerState, E, Any]])
   : Checked[Vector[KeyedEvent[E]]] =

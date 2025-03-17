@@ -5,7 +5,7 @@ import cats.instances.list.*
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
-import js7.base.problem.Checked.catchNonFatalFlatten
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
@@ -32,7 +32,6 @@ import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosi
 import js7.data.workflow.{Instruction, Workflow, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
-
 /**
   * @author Joacim Zschimmer
   */
@@ -254,11 +253,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
               coll <- coll.add(order.id <-: orderDeleted)
               coll <- coll.addChecked(coll.aggregate.maybePlanFinished(order.planId, clock.now()))
             yield coll
-          match
-            case Left(problem) =>
-              logger.error(s"maybeOrderDeleted: ${order.id}: $problem")
-              Vector.empty
-            case Right(keyedEvents) => keyedEvents
+          .onProblemHandle: problem =>
+            logger.error(s"maybeOrderDeleted: ${order.id}: $problem")
+            Vector.empty
         case _ => Vector.empty
 
   private def orderMarkKeyedEvent(order: Order[Order.State]): List[KeyedEvent[OrderActorEvent]] =

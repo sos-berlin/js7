@@ -50,6 +50,7 @@ extends EventInstructionExecutor:
                   order.id <-: orderAdded
                 .match
                   case Left(problem) =>
+                    // OrderFailedIntermediate_ is not applicable, it is intermediate only
                     Right(List(order.id <-:
                       OrderFailedIntermediate_(Some(OrderOutcome.Failed.fromProblem(problem)))))
                   case Right(coll) =>
