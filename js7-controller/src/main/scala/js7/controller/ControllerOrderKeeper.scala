@@ -3,7 +3,6 @@ package js7.controller
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.either.*
-import cats.instances.future.*
 import cats.instances.vector.*
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
@@ -31,7 +30,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.{AlarmClock, Timestamp, Timezone}
 import js7.base.utils.CatsUtils.syntax.*
-import js7.base.utils.Collections.implicits.{InsertableMutableMap, RichIterable}
+import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -41,35 +40,34 @@ import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.startup.ServiceMain
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
+import js7.controller.command.ControllerCommandToEventCalc
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttingDownProblem, ControllerIsSwitchingOverProblem}
 import js7.core.command.CommandMeta
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, ClusterModuleShuttingDownProblem, UnknownOrderProblem}
+import js7.data.Problems.{ClusterModuleShuttingDownProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.NoticeEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{BoardPath, NoticeEventSource, NoticeId, PlannedNoticeKey}
+import js7.data.board.{BoardPath, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.cluster.ClusterEvent
-import js7.data.controller.ControllerCommand.{ChangePlan, ChangePlanSchema, ControlWorkflow, ControlWorkflowPath, TransferOrders}
-import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
+import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerEventColl, ControllerState, ControllerStatePlanFunctions, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventColl, EventId, KeyedEvent, Stamped, TimeCtx}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
-import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
-import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedItem, UnsignedItemKey}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderGoes, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.plan.PlanEvent.{PlanDeleted, PlanFinished, PlanStatusEvent}
 import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
@@ -79,7 +77,6 @@ import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentBundle, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
-import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.state.FileJournal
@@ -119,14 +116,13 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
+  private val controllerCommandToEventCalc = ControllerCommandToEventCalc(config)
   private val agentDriverConfiguration = AgentDriverConfiguration
     .fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
 
   private val agentRegister = mutable.Map[AgentPath, AgentEntry]()
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
-  private val suppressOrderIdCheckFor = config
-    .optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
   private val deleteOrderDelay = config.getDuration("js7.order.delete-delay").toFiniteDuration
   private val testAddOrderDelay = config
     .optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(IO.unit)(IO.sleep)
@@ -728,138 +724,47 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   private def executeControllerCommand(command: ControllerCommand, commandMeta: CommandMeta)
   : Future[Checked[ControllerCommand.Response]] =
     command match
-      case ControllerCommand.AddOrder(order) =>
-        if shuttingDown then
-          Future.successful(Left(ControllerIsShuttingDownProblem))
-        else if switchover.isDefined then
-          Future.successful(Left(ControllerIsSwitchingOverProblem))
-        else
-          addOrder(order)
-            .map(_.map(added => ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
+      case cmd: (
+        ControllerCommand.AnswerOrderPrompt |
+          ControllerCommand.CancelOrders |
+          ControllerCommand.ChangePlan |
+          ControllerCommand.ChangePlanSchema |
+          ControllerCommand.DeleteNotice |
+          ControllerCommand.DeleteOrdersWhenTerminated |
+          ControllerCommand.ChangeGlobalToPlannableBoard |
+          ControllerCommand.ChangePlannableToGlobalBoard |
+          ControllerCommand.EmitTestEvent |
+          ControllerCommand.GoOrder |
+          ControllerCommand.PostNotice |
+          ControllerCommand.ResumeOrder |
+          ControllerCommand.ResumeOrders |
+          ControllerCommand.SuspendOrders |
+          ControllerCommand.TransferOrders) =>
+        executeCommandAndPersist(cmd)
 
-      case ControllerCommand.AddOrders(orders) =>
-        if shuttingDown then
-          Future.successful(Left(ControllerIsShuttingDownProblem))
-        else if switchover.isDefined then
-          Future.successful(Left(ControllerIsSwitchingOverProblem))
-        else
-          addOrders(orders).map(_.map(eventId =>
-            ControllerCommand.AddOrders.Response(eventId)))
+      case cmd: ControllerCommand.AddOrder =>
+        executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
+          if stamped.isEmpty then
+            logger.debug(s"Discarding duplicate added Order: ${cmd.order}")
+            Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = true))
+          else
+            handleEvents(stamped, updated)
+            Right(ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = false))
+        .flatMap: o =>
+          testAddOrderDelay.unsafeToFuture().map(_ => o) // test only
 
-      case ControllerCommand.CancelOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector):
-          orderEventSource.cancel(_, mode)
-
-      case ControllerCommand.SuspendOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector):
-          orderEventSource.suspend(_, mode)
-
-      case ControllerCommand.GoOrder(orderId, position) =>
-        executeOrderMarkCommands(Vector(orderId)):
-          orderEventSource.go(_, position)
-
-      case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded, restartJob) =>
-        executeOrderMarkCommands(Vector(orderId)):
-          orderEventSource.resume(_, position, historicOps, asSucceeded, restartJob)
-
-      case cmd: ControllerCommand.TransferOrders =>
-        executeTransferOrders(cmd)
-
-      case cmd: ControllerCommand.ChangePlanSchema =>
-        changePlanSchema(cmd)
-
-      case cmd: ControllerCommand.ChangePlan =>
-        changePlan(cmd)
+      case cmd: ControllerCommand.AddOrders =>
+        executeCommandAndPersistAndHandle(cmd): (stamped, updatedState) =>
+          handleEvents(stamped, updatedState)
+          // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
+          orderQueue.enqueue(cmd.orders.view.map(_.id))
+          Right(ControllerCommand.AddOrders.Response(updatedState.eventId))
 
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
 
       case cmd: ControllerCommand.ControlWorkflow =>
         controlWorkflow(cmd)
-
-      case ControllerCommand.ResumeOrders(orderIds, asSucceeded, restartKilledJob) =>
-        executeOrderMarkCommands(orderIds.toVector):
-          orderEventSource.resume(_, None, Nil, asSucceeded, restartKilledJob)
-
-      case cmd: ControllerCommand.PostNotice =>
-        NoticeEventSource(clock).executePostNoticeCommand(cmd, _controllerState) match
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(events) =>
-            persistTransactionAndSubsequentEvents(events)(handleEvents)
-              .map(_ => Right(ControllerCommand.Response.Accepted))
-
-      case ControllerCommand.DeleteNotice(noticeId) =>
-        (for
-          plan <- _controllerState.plan(noticeId.planId);
-          plannedBoard <- plan.toPlannedBoard.checked(noticeId.boardPath)
-          notice <- plannedBoard.notice(noticeId.noticeKey)
-          keyedEvent <- plannedBoard.deleteNoticeEvent(noticeId.noticeKey)
-        yield keyedEvent)
-        match
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(keyedEvent) =>
-            persistTransactionAndSubsequentEvents(keyedEvent :: Nil)(handleEvents)
-             .map(_ => Right(ControllerCommand.Response.Accepted))
-
-      case cmd: ControllerCommand.ChangeGlobalToPlannableBoard =>
-        import cmd.{planSchemaId, plannableBoard}
-        ControllerStatePlanFunctions
-          .changeBoardType(
-            plannableBoard,
-            fromPlanSchemaId = PlanSchemaId.Global,
-            toPlanSchemaId = planSchemaId,
-            endOfLife = None,
-            _controllerState
-          ):
-            plannedNoticeKey =>
-              cmd.evalSplitNoticeKey(plannedNoticeKey.noticeKey).map: (planKey, noticeKey) =>
-                Some(planSchemaId / planKey / noticeKey)
-        match
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(keyedEvents) =>
-            persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
-              .map(_ => Right(ControllerCommand.Response.Accepted))
-
-      case cmd: ControllerCommand.ChangePlannableToGlobalBoard =>
-        import cmd.{globalBoard, planSchemaId}
-        globalBoard.evalEndOfLife(NowScope(clock.now())).flatMap: endOfLife =>
-          ControllerStatePlanFunctions.changeBoardType(
-            globalBoard,
-            fromPlanSchemaId = planSchemaId,
-            toPlanSchemaId = PlanSchemaId.Global,
-            endOfLife,
-            _controllerState
-          ):
-            case PlannedNoticeKey(PlanId(`planSchemaId`, planKey), noticeKey) =>
-              cmd.evalMakeNoticeKey(planKey, noticeKey).map: noticeKey =>
-                Some(PlanId.Global / noticeKey)
-            case _ => Right(None) // Alien planSchemaId
-        match
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(keyedEvents) =>
-            persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
-              .map(_ => Right(ControllerCommand.Response.Accepted))
-
-      case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>
-        orderIds.toVector
-          .traverse(_controllerState.idToOrder.checked)
-          .traverse(orders =>
-            orders.traverse(order =>
-              if order.parent.isDefined then
-                Left(CannotDeleteChildOrderProblem(order.id): Problem)
-              else if order.hasNonVanishedExternalOrder then
-                Left(CannotDeleteWatchingOrderProblem(order.id): Problem)
-              else
-                Right(order)))
-          .flatten
-          .traverse(_
-            .filterNot(_.deleteWhenTerminated)
-            .traverse(orderEventSource.orderDeletionEvent))
-          .flatten
-          .map(_.flatten)
-          .traverse(keyedEvents =>
-            persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
-              .map(_ => ControllerCommand.Response.Accepted))
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id
@@ -913,12 +818,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 case _ => IO.unit
               .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
               .unsafeToFuture()
-
-      case ControllerCommand.EmitTestEvent =>
-        persist(ControllerTestEvent, async = true) { (_, updatedState) =>
-          _controllerState = updatedState
-          Right(ControllerCommand.Response.Accepted)
-        }
 
       case ControllerCommand.ResetAgent(agentPath, force) =>
         agentRegister.checked(agentPath) match
@@ -984,14 +883,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 proceedWithItem(subagentId)
               }.map(_ => Right(ControllerCommand.Response.Accepted))
 
-      case ControllerCommand.AnswerOrderPrompt(orderId) =>
-        orderEventSource.answerPrompt(orderId) match
-          case Left(problem) =>
-            Future.successful(Left(problem))
-          case Right(events) =>
-            persistTransactionAndSubsequentEvents(events)(handleEvents)
-              .map(_ => Right(ControllerCommand.Response.Accepted))
-
       case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
         agentRegister.checked(agentPath)
           .map(_.agentDriver)
@@ -1017,137 +908,55 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 .unsafeToFuture()
 
       case _ =>
-        // Handled by ControllerCommandExecutor
+        // Handled by ControllerCommandToEventCalc
         Future.failed(new NotImplementedError)
 
-  private def executeOrderMarkCommands(orderIds: Vector[OrderId])
-    (toEvents: OrderId => Checked[List[OrderActorEvent]])
+  private def controlWorkflowPath(cmd: ControllerCommand.ControlWorkflowPath)
   : Future[Checked[ControllerCommand.Response]] =
-    if !orderIds.areUnique then
-      Future.successful(Left(Problem.pure("OrderIds must be unique")))
-    else
-      orderIds.traverse(_controllerState.idToOrder.checked) match
-        case Left(problem) =>
-          Future.successful(Left(problem))
+    val path = WorkflowPathControlPath(cmd.workflowPath)
+    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
+      // Continue even if WorkflowPathControl is not changed.
+      // This allows the caller to force the redistribution of the WorkflowPathControl.
+      handleEvents(stamped, updated)
+      proceedWithItem(path)
+      val workflowPathControl = updated.keyTo(WorkflowPathControl)(path)
+      if !workflowPathControl.item.suspended then
+        orderQueue.enqueue(
+          updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
+      Right(ControllerCommand.Response.Accepted)
 
-        case Right(orders) =>
-          orders
-            .flatTraverse: order =>
-              toEvents(order.id)
-                .map(_.toVector.map(order.id <-: _))
-            .traverse: keyedEvents =>
-              // Event may be inserted between events coming from Agent
-              persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
-            .map(_.map(_ => ControllerCommand.Response.Accepted))
-
-  private def executeTransferOrders(cmd: TransferOrders)
+  private def controlWorkflow(cmd: ControllerCommand.ControlWorkflow)
   : Future[Checked[ControllerCommand.Response]] =
-    new TransferOrderEventSource(_controllerState)
-      .transferOrders(cmd)
-      .match
-        case Left(problem) => Future.successful(Left(problem))
-        case Right(events) =>
-          persistTransaction(events ++ subsequentEvents(events)) { (stamped, updatedState) =>
-            handleEvents(stamped, updatedState)
-            Right(ControllerCommand.Response.Accepted)
-          }
+    val workflowControlId = WorkflowControlId(cmd.workflowId)
+    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
+      handleEvents(stamped, updated)
+      proceedWithItem(workflowControlId)
+      Right(ControllerCommand.Response.Accepted)
 
-  private def changePlanSchema(cmd: ChangePlanSchema)
-  : Future[Checked[ControllerCommand.Response]] =
-    import cmd.planSchemaId
-    locally:
-      for
-        _ <- !planSchemaId.isGlobal !! Problem("The global PlanSchema cannot be changed")
-        planSchema <- _controllerState.keyTo(PlanSchemaState).checked(planSchemaId)
-        keyedEvents <- EventColl.keyedEvents(_controllerState):
-          _.add(planSchemaId <-: PlanSchemaChanged(
-            namedValues =
-              cmd.namedValues.flatMap(o => (o != planSchema.namedValues) ? o),
-            finishedPlanRetentionPeriod =
-              cmd.finishedPlanRetentionPeriod.flatMap(o => (o != planSchema.finishedPlanRetentionPeriod) ? o)))
-      yield
-        keyedEvents
-    match
+  private def executeCommandAndPersist(cmd: ControllerCommand)
+  : Future[Checked[ControllerCommand.Response.Accepted]] =
+    executeCommandAndPersistAndHandle(cmd): (stamped, updated) =>
+      handleEvents(stamped, updated)
+      Right(ControllerCommand.Response.Accepted)
+
+  private def executeCommandAndPersistAndHandle[R <: ControllerCommand.Response](
+    cmd: ControllerCommand)
+    (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
+  : Future[Checked[R]] =
+    executeCommandAndPersistAndHandle2[Event, R](coll =>
+      controllerCommandToEventCalc.commandToEventCalc(cmd).calculate(coll)
+    )(handle)
+
+  private def executeCommandAndPersistAndHandle2[E <: Event, R <: ControllerCommand.Response](
+    computeEvents: EventColl[ControllerState, E, TimeCtx] =>
+      Checked[EventColl[ControllerState, E, TimeCtx]])
+    (handle: (Seq[Stamped[AnyKeyedEvent]], ControllerState) => Checked[R])
+  : Future[Checked[R]] =
+    EventColl.keyedEvents(_controllerState, TimeCtx(clock.now()))(computeEvents) match
       case Left(problem) => Future.successful(Left(problem))
       case Right(keyedEvents) =>
         persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
-          handleEvents(stamped, updated)
-          Right(ControllerCommand.Response.Accepted)
-
-  private def changePlan(cmd: ChangePlan): Future[Checked[ControllerCommand.Response]] =
-    ControllerEventColl.keyedEvents[NoticeDeleted | PlanStatusEvent](_controllerState): coll =>
-      for
-        planSchemaState <- coll.aggregate.keyTo(PlanSchemaState).checked(cmd.planId.planSchemaId)
-        plan <- planSchemaState.plan(cmd.planId.planKey)
-        coll <- coll.addChecked:
-          plan.changePlanStatusEvents(cmd.status, clock.now(), planSchemaState.finishedPlanRetentionPeriod)
-      yield coll
-    match
-      case Left(problem) => Future.successful(Left(problem))
-      case Right(keyedEvents) =>
-        persistTransactionAndSubsequentEvents(keyedEvents): (stamped, updated) =>
-          handleEvents(stamped, updated)
-          Right(ControllerCommand.Response.Accepted)
-
-  private def controlWorkflowPath(cmd: ControlWorkflowPath)
-  : Future[Checked[ControllerCommand.Response]] =
-    _controllerState.repo.pathToItems(Workflow).checked(cmd.workflowPath) match
-      case Left(problem) => Future.successful(Left(problem))
-      case Right(_) =>
-        val path = WorkflowPathControlPath(cmd.workflowPath)
-        val (itemState, isNew) = _controllerState
-          .pathToUnsignedSimple(WorkflowPathControl)
-          .get(path) match
-            case None => WorkflowPathControl(path) -> true
-            case Some(o) => o -> false
-        var item = itemState.item
-        item = item.incrementRevision.copy(
-          suspended = cmd.suspend.fold(item.suspended)(identity),
-          skip = item.skip
-            -- cmd.skip.filterNot(_._2).keys
-            ++ cmd.skip.filter(_._2).keys)
-        val event = if isNew then UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
-
-        val keyedEvents = Vector(event)
-          .concat(_controllerState.updatedWorkflowPathControlAttachedEvents(item))
-          .map(NoKey <-: _)
-
-        // Continue even if WorkflowPathControl is not changed.
-        // This allows the caller to force the redistribution of the WorkflowPathControl.
-        persistTransactionAndSubsequentEvents(keyedEvents) { (stamped, updated) =>
-          handleEvents(stamped, updated)
-          proceedWithItem(path)
-          val workflowPathControl = updated.keyTo(WorkflowPathControl)(path)
-          if !workflowPathControl.item.suspended then
-            orderQueue.enqueue(
-              updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
-          Right(ControllerCommand.Response.Accepted)
-        }
-
-  private def controlWorkflow(cmd: ControlWorkflow)
-  : Future[Checked[ControllerCommand.Response]] =
-    _controllerState.repo.idTo(Workflow)(cmd.workflowId) match
-      case Left(problem) => Future.successful(Left(problem))
-      case Right(_) =>
-        val workflowControlId = WorkflowControlId(cmd.workflowId)
-        val (item0, isNew) = _controllerState
-          .keyTo(WorkflowControl)
-          .get(workflowControlId) match
-            case None => WorkflowControl(workflowControlId) -> true
-            case Some(o) => o -> false
-        val item = item0.nextRevision.copy(
-          breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints)
-
-        val event = if isNew then UnsignedItemAdded(item) else UnsignedItemChanged(item)
-        val keyedEvents = Vector(event)
-          .concat(_controllerState.updatedWorkflowControlAttachedEvents(item))
-          .map(NoKey <-: _)
-
-        persistTransactionAndSubsequentEvents(keyedEvents) { (stamped, updated) =>
-          handleEvents(stamped, updated)
-          proceedWithItem(workflowControlId)
-          Right(ControllerCommand.Response.Accepted)
-        }
+          handle(stamped, updated)
 
   private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry =
     val allocated = AgentDriver
@@ -1204,34 +1013,6 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
   //      .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
   //      .foreach(tryAttachOrderToAgent)
   //  }
-
-  private def addOrder(freshOrder: FreshOrder): Future[Checked[Boolean]] =
-    _controllerState.addOrder(freshOrder, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-    match
-      case Left(problem) => Future.successful(Left(problem))
-      case Right(Left(existing)) =>
-        logger.debug(s"Discarding duplicate added Order: $freshOrder")
-        Future.successful(Right(false))
-
-      case Right(Right(orderAddedEvents)) =>
-        val events = orderAddedEvents.toKeyedEvents
-        persistTransactionAndSubsequentEvents(events): (stamped, updatedState) =>
-          handleEvents(stamped, updatedState)
-          Right(true)
-        .flatMap: o =>
-          testAddOrderDelay.unsafeToFuture().map(_ => o) // test only
-
-  private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
-    _controllerState.addOrders(freshOrders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
-    match
-      case Left(problem) => Future.successful(Left(problem))
-      case Right(events) =>
-        persistTransaction(events) { (stamped, updatedState) =>
-          handleEvents(stamped, updatedState)
-          // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
-          orderQueue.enqueue(freshOrders.view.map(_.id))
-          Right(updatedState.eventId)
-        }
 
   private def persistTransactionAndSubsequentEvents[A](keyedEvents: Seq[KeyedEvent[Event]])
     (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)
