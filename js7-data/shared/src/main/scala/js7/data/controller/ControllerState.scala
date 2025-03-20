@@ -44,7 +44,6 @@ import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.{OrderNoticeAnnounced, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderPlanAttached, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
-import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
 import js7.data.plan.{Plan, PlanEvent, PlanId, PlanKey, PlanSchema, PlanSchemaEvent, PlanSchemaId, PlanSchemaState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
@@ -387,13 +386,10 @@ extends
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
 
-    case KeyedEvent(planSchemaId: PlanSchemaId, PlanSchemaChanged(finishedPlanRetentionPeriod, namedValues)) =>
+    case KeyedEvent(planSchemaId: PlanSchemaId, event: PlanSchemaEvent) =>
       for
         planSchemaState <- keyTo(PlanSchemaState).checked(planSchemaId)
-        planSchemaState <- namedValues.fold(Checked(planSchemaState)):
-          planSchemaState.updateNamedValues
-        planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
-          planSchemaState.updatefinishedPlanRetentionPeriod
+        planSchemaState <- planSchemaState.applyEvent(event)
       yield
         copy(keyToUnsignedItemState_ =
           keyToUnsignedItemState_.updated(planSchemaId, planSchemaState))

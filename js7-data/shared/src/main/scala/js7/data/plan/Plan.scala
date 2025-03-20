@@ -94,11 +94,14 @@ final case class Plan(
     else
       copy(orderIds = this.orderIds -- orderIds)
 
-  def plannedBoard(boardPath: BoardPath): PlannedBoard =
-    toPlannedBoard.getOrElse(boardPath, PlannedBoard(id / boardPath))
+  def addBoard(plannedBoard: PlannedBoard): Plan =
+    copy(toPlannedBoard = toPlannedBoard.updated(plannedBoard.boardPath, plannedBoard))
 
   def removeBoard(boardPath: BoardPath): Plan =
     copy(toPlannedBoard = toPlannedBoard - boardPath)
+
+  def plannedBoard(boardPath: BoardPath): PlannedBoard =
+    toPlannedBoard.getOrElse(boardPath, PlannedBoard(id / boardPath))
 
   /** For ChangePlan command. */
   def changePlanStatusEvents(newStatus: PlanStatus, now: Timestamp, finishedPlanRetentionPeriod: FiniteDuration)

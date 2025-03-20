@@ -19,6 +19,7 @@ import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
+import js7.data.plan.PlanSchemaEvent.PlanSchemaChanged
 import js7.data.plan.PlanSchemaState.*
 import js7.data.plan.PlanStatus.{Closed, Deleted, Finished, Open}
 import js7.data.value.NamedValues
@@ -84,15 +85,25 @@ extends UnsignedSimpleItemState:
       finishedPlanRetentionPeriod = snapshot.finishedPlanRetentionPeriod,
       namedValues = snapshot.namedValues)
 
+  def applyEvent(event: PlanSchemaEvent): Checked[PlanSchemaState] =
+    event match
+      case PlanSchemaChanged(finishedPlanRetentionPeriod, namedValues) =>
+        val planSchemaState = this
+        for
+          planSchemaState <- namedValues.fold(Checked(planSchemaState)): namedValues =>
+            planSchemaState.copy(namedValues = namedValues)
+              .removeRemovablePlans
+          planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
+            planSchemaState.updatefinishedPlanRetentionPeriod
+        yield
+          planSchemaState
+
   def applyPlanEvent(planKey: PlanKey, event: PlanEvent): Checked[PlanSchemaState] =
     for
       plan <- plan(planKey)
       plan <- plan.applyEvent(event)
     yield
       updatePlans(plan :: Nil)
-
-  def updateNamedValues(namedValues: NamedValues): Checked[PlanSchemaState] =
-    copy(namedValues = namedValues).removeRemovablePlans
 
   def updatefinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
     Right(copy(finishedPlanRetentionPeriod = duration))

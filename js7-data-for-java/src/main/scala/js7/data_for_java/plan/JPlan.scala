@@ -17,7 +17,11 @@ final case class JPlan(asScala: Plan) extends JavaWrapper:
   def orderIds: java.util.Set[OrderId] =
     asScala.orderIds.asJava
 
+  @Deprecated @deprecated("Use `state` instead.", "2.7.3")
   def state: PlanStatus =
+    asScala.status
+
+  def status: PlanStatus =
     asScala.status
 
   /** Closed, Finished or Deleted. */

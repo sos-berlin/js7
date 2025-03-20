@@ -173,9 +173,8 @@ extends JJournaledState[JControllerState, ControllerState]:
   def plan(@Nonnull planId: PlanId): VEither[Problem, JPlan] =
     asScala.plan(planId).map(JPlan(_)).toVavr
 
-  /** All Plans excluding empty Plans which are computed on-the-fly. */
   @Nonnull
-  lazy val toPlan: JMap[PlanId, JPlan] =
+  def toPlan: JMap[PlanId, JPlan] =
     asScala.toPlan.mapValues(JPlan(_)).asJava
 
   @Nonnull
@@ -289,7 +288,7 @@ extends JJournaledState[JControllerState, ControllerState]:
     orderObstacleCalculator
       .waitingForAdmissionOrderCount(now.toTimestamp)
 
-  private lazy val orderObstacleCalculator =
+  private def orderObstacleCalculator =
     new OrderObstacleCalculator(asScala)
 
 
