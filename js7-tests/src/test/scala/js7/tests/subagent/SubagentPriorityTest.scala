@@ -44,8 +44,8 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester:
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
   private lazy val subagentItems = List(aSubagentItem, bSubagentItem)
 
-  private val nextOrderId: () => OrderId = 
-    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next 
+  private val nextOrderId: () => OrderId =
+    Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next
 
   private lazy val idToRelease = subagentItems.zipWithIndex
     .traverse: (subagentItem, i) =>
@@ -189,7 +189,7 @@ final class SubagentPriorityTest extends OurTestSuite, SubagentTester:
         .await(99.s).orThrow
       eventWatch.awaitNext[OrderAttached](_.key == cOrderId)
       sleep(100.ms)
-      assert(controllerState.idToOrder(cOrderId).state == Order.Fresh) // Process not started
+      assert(controllerState.idToOrder(cOrderId).state == Order.Fresh()) // Process not started
 
       ASemaphoreJob.continue(3)
       eventWatch.await[OrderTerminated](_.key == aOrderId)

@@ -41,7 +41,7 @@ final class FailExecutorTest extends OurTestSuite:
 
   "toEvents" - {
     "Fresh order will be started" in:
-      assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh), stateView) ==
+      assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), stateView) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
 
     "Catchable Fail" - {
@@ -60,7 +60,7 @@ object FailExecutorTest:
 
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
 
-  private val TestOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Ready)
+  private val TestOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Ready())
 
   private val ForkedOrder = Order(OrderId("FORKED"), TestWorkflowId /: Position(1),
     Order.Forked(Vector(
@@ -71,4 +71,4 @@ object FailExecutorTest:
     Order.FailedInFork, parent = Some(ForkedOrder.id))
 
   private val Lemon  = Order(ForkedOrder.id / "🍋", TestWorkflowId /: (Position(1) / "fork+🍋" % 4),
-    Order.Ready, parent = Some(ForkedOrder.id))
+    Order.Ready(), parent = Some(ForkedOrder.id))

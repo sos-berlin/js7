@@ -543,7 +543,7 @@ object ControllerStateTest:
       jobResource.path -> Map(agentRef.path -> Attachable))),
     deletionMarkedItems = Set(fileWatch.path),
     Seq(
-      Order(orderId, workflow.id /: Position(0), Order.Fresh,
+      Order(orderId, workflow.id /: Position(0), Order.Fresh(),
         externalOrder = Some(ExternalOrderLink(
           fileWatch.path,
           ExternalOrderName("ORDER-NAME"),

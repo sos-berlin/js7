@@ -104,7 +104,7 @@ final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
 object OrderRouteTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
-    Order(OrderId("/PATH/ORDER-1"), TestWorkflowId /: Position(0), Order.Fresh),
+    Order(OrderId("/PATH/ORDER-1"), TestWorkflowId /: Position(0), Order.Fresh()),
     Order(OrderId("ORDER-2"), TestWorkflowId /: Position(2), Order.Finished)
   ).toKeyedMap(_.id)
   private val DuplicateOrderId = OrderId("DUPLICATE")

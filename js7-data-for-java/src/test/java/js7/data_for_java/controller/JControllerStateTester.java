@@ -112,7 +112,7 @@ final class JControllerStateTester
         testOrdersBy(not(by(aOrder.workflowId().path())),
             List.of(bOrder));
 
-        testOrdersBy(byOrderState(Order.Fresh$.class),
+        testOrdersBy(byOrderState(Order.Fresh.class),
             List.of(aOrder));
 
         testOrdersBy(byOrderIdPredicate(orderId -> orderId.string().startsWith("B-")),
@@ -126,15 +126,15 @@ final class JControllerStateTester
         Map<Class<? extends Order.State>,Integer> allCounters = controllerState.orderStateToCount();
         assertThat(allCounters, equalTo(
             new HashMap<Class<? extends Order.State>, Integer>() {{
-                put(Order.Fresh$.class, 1);
-                put(Order.Ready$.class, 1);
+                put(Order.Fresh.class, 1);
+                put(Order.Ready.class, 1);
             }}));
 
         Map<Class<? extends Order.State>,Integer> workflowCounters =
             controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("A-WORKFLOW")));
         assertThat(workflowCounters, equalTo(
             new HashMap<Class<? extends Order.State>, Integer>() {{
-                put(Order.Fresh$.class, 1);
+                put(Order.Fresh.class, 1);
             }}));
     }
 

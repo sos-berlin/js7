@@ -12,7 +12,7 @@ final class SubagentKeeperTest extends OurTestSuite:
 
   private val agentPath = AgentPath("AGENT")
   private val otherAgentPath = AgentPath("OTHER")
-  private val rawOrder = Order(OrderId("A"), WorkflowPath("W") ~ "1" /: Position(1), Order.Ready)
+  private val rawOrder = Order(OrderId("A"), WorkflowPath("W") ~ "1" /: Position(1), Order.Ready())
   private val aSubagentBundleId = SubagentBundleId("A")
   private val bSubagentBundleId = SubagentBundleId("B")
   private val subagentId = SubagentId("SUBAGENT")

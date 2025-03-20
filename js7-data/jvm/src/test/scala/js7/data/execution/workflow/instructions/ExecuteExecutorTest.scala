@@ -93,19 +93,19 @@ object ExecuteExecutorTest:
       skipIfNoAdmissionStartForOrderDay = true))))
 
   private val orders = Seq(
-    Order(OrderId("#2021-09-03#0-Fresh"), workflow.id /: Position(0), Order.Fresh),
-    Order(OrderId("#2021-09-03#0-Ready"), workflow.id /: Position(0), Order.Ready),
-    Order(OrderId("#2021-09-02#0-Fresh"), workflow.id /: Position(0), Order.Fresh),
-    Order(OrderId("#2021-09-02#0-Ready"), workflow.id /: Position(0), Order.Ready),
+    Order(OrderId("#2021-09-03#0-Fresh"), workflow.id /: Position(0), Order.Fresh()),
+    Order(OrderId("#2021-09-03#0-Ready"), workflow.id /: Position(0), Order.Ready()),
+    Order(OrderId("#2021-09-02#0-Fresh"), workflow.id /: Position(0), Order.Fresh()),
+    Order(OrderId("#2021-09-02#0-Ready"), workflow.id /: Position(0), Order.Ready()),
 
-    Order(OrderId("#2021-09-03#1-Fresh"), workflow.id /: Position(1), Order.Fresh),
-    Order(OrderId("#2021-09-03#1-Ready"), workflow.id /: Position(1), Order.Ready),
-    Order(OrderId("#2021-09-02#1-Fresh"), workflow.id /: Position(1), Order.Fresh),
-    Order(OrderId("#2021-09-02#1-Ready"), workflow.id /: Position(1), Order.Ready),
+    Order(OrderId("#2021-09-03#1-Fresh"), workflow.id /: Position(1), Order.Fresh()),
+    Order(OrderId("#2021-09-03#1-Ready"), workflow.id /: Position(1), Order.Ready()),
+    Order(OrderId("#2021-09-02#1-Fresh"), workflow.id /: Position(1), Order.Fresh()),
+    Order(OrderId("#2021-09-02#1-Ready"), workflow.id /: Position(1), Order.Ready()),
 
-    Order(OrderId("#2021-09-03#2-Fresh"), workflow.id /: Position(2), Order.Fresh),
-    Order(OrderId("#2021-09-03#2-Ready"), workflow.id /: Position(2), Order.Ready),
-    Order(OrderId("#2021-09-02#2-Fresh"), workflow.id /: Position(2), Order.Fresh),
-    Order(OrderId("#2021-09-02#2-Ready"), workflow.id /: Position(2), Order.Ready),
+    Order(OrderId("#2021-09-03#2-Fresh"), workflow.id /: Position(2), Order.Fresh()),
+    Order(OrderId("#2021-09-03#2-Ready"), workflow.id /: Position(2), Order.Ready()),
+    Order(OrderId("#2021-09-02#2-Fresh"), workflow.id /: Position(2), Order.Fresh()),
+    Order(OrderId("#2021-09-02#2-Ready"), workflow.id /: Position(2), Order.Ready()),
 
-    Order(OrderId("#2021-09-04#2-Ready"), workflow.id /: Position(2), Order.Ready))
+    Order(OrderId("#2021-09-04#2-Ready"), workflow.id /: Position(2), Order.Ready()))

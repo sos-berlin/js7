@@ -97,7 +97,7 @@ final class OrderAgentTest extends OurTestSuite:
             .await(99.s).orThrow
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id /: Position(0),
-            Order.Ready, Map(
+            Order.Ready(), Map(
               "x" -> StringValue("X")))
 
           def attachOrder(signedWorkflow: Signed[SignableItem])
@@ -166,7 +166,7 @@ final class OrderAgentTest extends OurTestSuite:
               .await(99.s).isRight)
 
           val orders = for i <- 1 to n yield
-            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id /: Position(0), Order.Ready,
+            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id /: Position(0), Order.Ready(),
               Map("x" -> StringValue("X")),
               attachedState = Some(Order.Attached(AgentPath("AGENT"))))
 

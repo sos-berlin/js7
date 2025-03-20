@@ -79,7 +79,7 @@ final class AgentTest extends OurTestSuite, AgentTester:
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val order = Order(OrderId("TEST"), TestWorkflow.id /: Position(0), Order.Ready)
+            val order = Order(OrderId("TEST"), TestWorkflow.id /: Position(0), Order.Ready())
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event

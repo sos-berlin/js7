@@ -63,7 +63,7 @@ object RetryExecutorTest:
   private val retryExecutor = new RetryExecutor(new InstructionExecutorService(WallClock.fixed(now)))
 
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) =
-    val order = Order(orderId, workflowId /: position, Order.Ready,
+    val order = Order(orderId, workflowId /: position, Order.Ready(),
       historicOutcomes = Vector:
         HistoricOutcome(Position(0), OrderOutcome.Succeeded(NamedValues.rc(1))))
     val stateView =

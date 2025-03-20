@@ -44,7 +44,7 @@ final class OrderTest extends OurTestSuite:
   private val testOrder = Order(
     OrderId("ID"),
     WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
-    Ready,
+    Ready(),
     arguments = Map(
       "key1" -> StringValue("value1"),
       "key2" -> StringValue("value2")),
@@ -58,7 +58,7 @@ final class OrderTest extends OurTestSuite:
       "Minimum" in:
         testJson[Order[Order.State]](
           Order(OrderId("ID"), (WorkflowPath("WORKFLOW") ~ "v1") /: Position(0),
-            Order.Ready),
+            Order.Ready()),
           json"""{
             "id": "ID",
             "state": {
@@ -140,7 +140,7 @@ final class OrderTest extends OurTestSuite:
           Order(
             OrderId("ID"),
             WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
-            Ready,
+            Ready(),
             externalOrder = Some(Order.ExternalOrderLink(
               OrderWatchPath("ORDER-WATCH"),
               ExternalOrderName("EXTERNAL"))),
@@ -212,7 +212,7 @@ final class OrderTest extends OurTestSuite:
 
       "mark" in:
         check(
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Fresh,
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Fresh(),
             mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)),
             isSuspended = true,
             isResumed = true),
@@ -243,13 +243,13 @@ final class OrderTest extends OurTestSuite:
 
     "State" - {
       "Fresh immediately" in:
-        testJson[State](Fresh,
+        testJson[State](Fresh(),
           json"""{
             "TYPE": "Fresh"
           }""")
 
       "Ready" in:
-        testJson[State](Ready,
+        testJson[State](Ready(),
           json"""{
             "TYPE": "Ready"
           }""")
@@ -281,7 +281,7 @@ final class OrderTest extends OurTestSuite:
           }""")
 
       "DelayedAfterError" in:
-        testJson[State](DelayedAfterError(Timestamp("2019-03-07T12:00:00Z")),
+        testJson[State](DelayedAfterError(ts"2019-03-07T12:00:00Z"),
           json"""{
             "TYPE": "DelayedAfterError",
             "until": 1551960000000
@@ -367,11 +367,11 @@ final class OrderTest extends OurTestSuite:
       "BetweenCycles" in:
         testJson[State](
           BetweenCycles(Some(CycleState(
-            end = Timestamp("2021-10-01T00:00:00Z"),
+            end = ts"2021-10-01T00:00:00Z",
             schemeIndex = 1,
             periodIndex = 2,
             index = 3,
-            next = Timestamp("2021-10-01T12:00:00Z")))),
+            next = ts"2021-10-01T12:00:00Z"))),
           json"""{
             "TYPE": "BetweenCycles",
             "cycleState": {
@@ -451,7 +451,7 @@ final class OrderTest extends OurTestSuite:
       OrderDeleted,
 
       OrderAttachable(agentPath),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh, PlanId.Global, Map.empty, None, None,
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), PlanId.Global, Map.empty, None, None,
         Vector.empty, agentPath, None, None, false, false),
       OrderAttached(agentPath),
 
@@ -550,7 +550,7 @@ final class OrderTest extends OurTestSuite:
       def unapply(order: Order[Order.State]) = Some(order.parent.nonEmpty)
 
     "Fresh" in:
-      checkAllEvents(Order(orderId, workflowId /: Position(0), Fresh),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Fresh()),
         markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse
@@ -573,7 +573,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken])
 
     "Ready" in:
-      checkAllEvents(Order(orderId, workflowId /: Position(0), Ready),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Ready()),
         markable[Ready] orElse
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
@@ -759,7 +759,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderBroken          , _             , _, _         ) => _.isInstanceOf[Broken])
 
     "DelayingRetry" in:
-      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayingRetry(Timestamp("2024-09-26T12:00:00Z"))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayingRetry(ts"2024-09-26T12:00:00Z")),
         detachingAllowed[DelayingRetry] orElse
         markable[DelayingRetry] orElse
         cancelMarkedAllowed[DelayingRetry] orElse
@@ -775,7 +775,7 @@ final class OrderTest extends OurTestSuite:
           case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken])
 
     "DelayedAfterError" in:
-      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(ts"2019-03-07T12:00:00Z")),
         detachingAllowed[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
@@ -834,14 +834,14 @@ final class OrderTest extends OurTestSuite:
 
     "attachedState" - {
       "attachedState=None" in:
-        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = None)
+        val order = Order(orderId, workflowId /: Position(0), Ready(), attachedState = None)
         assert(order.applyEvent(OrderAttachable(agentPath)) == Right(order.copy(attachedState = Some(Attaching(agentPath)))))
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
 
       "attachedState=Attaching" in:
-        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attaching(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready(), attachedState = Some(Attaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)) == Right(order.copy(attachedState = Some(Attached(agentPath)))))
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -849,7 +849,7 @@ final class OrderTest extends OurTestSuite:
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
 
       "attachedState=Attached" in:
-        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attached(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready(), attachedState = Some(Attached(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -857,7 +857,7 @@ final class OrderTest extends OurTestSuite:
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
 
       "attachedState=Detaching" in:
-        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Detaching(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready(), attachedState = Some(Detaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -956,7 +956,7 @@ final class OrderTest extends OurTestSuite:
       assert(testOrder.ifState[Processed] == None)
 
     "isAttaching" in:
-      val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
+      val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready(),
         attachedState = Some(Detaching(AgentPath("AGENT"))))
       assert(order.detaching == Right(AgentPath("AGENT")))
 
@@ -971,7 +971,7 @@ final class OrderTest extends OurTestSuite:
     "OrderResumed" - {
       import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, HistoryOperation, InsertHistoricOutcome, ReplaceHistoricOutcome}
 
-      lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
+      lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready(),
         historicOutcomes = Vector(
           HistoricOutcome(Position(0), OrderOutcome.succeeded),
           HistoricOutcome(Position(1), OrderOutcome.succeeded),
@@ -1081,7 +1081,7 @@ final class OrderTest extends OurTestSuite:
     assert(order.historicJobExecutionCount(JobKey(workflow.id, jobName), workflow) == 2)
 
   if sys.props contains "test.speed" then "Speed" in:
-    val order = Order(OrderId("ORDER-1"), (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(1), Ready,
+    val order = Order(OrderId("ORDER-1"), (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(1), Ready(),
       attachedState = Some(Attached(AgentPath("AGENT"))))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])

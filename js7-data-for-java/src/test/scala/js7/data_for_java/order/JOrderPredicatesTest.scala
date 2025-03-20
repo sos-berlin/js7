@@ -11,6 +11,6 @@ import js7.data.workflow.position.Position
 final class JOrderPredicatesTest extends OurTestSuite:
   "JOrderPredicates" in:
     new JOrderPredicatesTester(
-      Order(OrderId("A-ORDER"), WorkflowPath("WORKFLOW") ~ "0.1" /: Position(0), Order.Fresh),
-      Order(OrderId("B-ORDER"), WorkflowPath("WORKFLOW") ~ "0.1" /: Position(0), Order.Fresh)
+      Order(OrderId("A-ORDER"), WorkflowPath("WORKFLOW") ~ "0.1" /: Position(0), Order.Fresh()),
+      Order(OrderId("B-ORDER"), WorkflowPath("WORKFLOW") ~ "0.1" /: Position(0), Order.Fresh())
     ).test()

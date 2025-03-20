@@ -135,7 +135,7 @@ final class OrderEventTest extends OurTestSuite:
     testJson[OrderEvent](
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
-        Order.Ready,
+        Order.Ready(),
         PlanId(PlanSchemaId("PLAN"), PlanKey("TODAY")),
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
@@ -209,7 +209,7 @@ final class OrderEventTest extends OurTestSuite:
     testJsonDecoder[OrderEvent](
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
-        Order.Ready,
+        Order.Ready(),
         externalOrder = Some(ExternalOrderLink(
           OrderWatchPath("ORDER-WATCH"),
           ExternalOrderName("ORDER-NAME"))),

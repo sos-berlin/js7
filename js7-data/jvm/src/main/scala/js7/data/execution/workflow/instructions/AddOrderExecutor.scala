@@ -26,7 +26,7 @@ extends EventInstructionExecutor:
         start(order)
       .getOrElse:
         order.state match
-          case Order.Ready =>
+          case _: Order.Ready =>
             for
               controllerState <- checkedCast[ControllerState](state)
               workflowId <- state.workflowPathToId(addOrder.workflowPath)

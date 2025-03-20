@@ -235,9 +235,9 @@ final class ControllerStateExecutorTest extends OurTestSuite:
         FreshOrder(bOrderId, bWorkflow.path, Map("required" -> NumberValue(7))))))
 
       assert(executor.controllerState.idToOrder.values.toSet == Set(
-        Order(aOrderId, aWorkflow.id /: Position(0), Order.Fresh,
+        Order(aOrderId, aWorkflow.id /: Position(0), Order.Fresh(),
           attachedState = Some(Order.Attaching(aAgentRef.path))),
-        Order(bOrderId, bWorkflow.id /: (Position(0) / "lock" % 0), Order.Ready,
+        Order(bOrderId, bWorkflow.id /: (Position(0) / "lock" % 0), Order.Ready(),
           arguments = Map(
             "required" -> NumberValue(7),
             "variable" -> StringValue("VARIABLE-VALUE")),

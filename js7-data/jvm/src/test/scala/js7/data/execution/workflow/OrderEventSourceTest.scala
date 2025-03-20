@@ -201,7 +201,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     val historicOps = Seq(OrderResumed.ReplaceHistoricOutcome(Position(0), OrderOutcome.failed))
 
     "Order.mark.isEmpty" - {
-      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh)
+      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh())
 
       "Fresh" - {
         val freshOrder = unmarkedOrder
@@ -321,7 +321,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       }
 
       "Ready" - {
-        val readyOrder = unmarkedOrder.copy(state = Order.Ready)
+        val readyOrder = unmarkedOrder.copy(state = Order.Ready())
 
         "Detached" in:
           testController(readyOrder, attachedState = detached): (order, controller) =>
@@ -461,7 +461,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     }
 
     "OrderMark.Cancelling(FreshOnly)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh,
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh(),
         mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
 
       "Fresh" - {
@@ -511,10 +511,11 @@ final class OrderEventSourceTest extends OurTestSuite:
     }
 
     "OrderMark.Cancelling(FreshOrStarted)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh, mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh(),
+        mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
 
       "Ready" - {
-        val readyOrder = cancellingOrder.copy(state = Order.Ready)
+        val readyOrder = cancellingOrder.copy(state = Order.Ready())
 
         "Detached" in:
           testController(readyOrder, detached): (order, controller) =>
@@ -599,7 +600,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     }
 
     "OrderMark.Suspending" - {
-      val suspendingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Ready, mark = Some(OrderMark.Suspending()))
+      val suspendingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Ready(), mark = Some(OrderMark.Suspending()))
 
       "Ready" - {
         val readyOrder = suspendingOrder
@@ -725,7 +726,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     "OrderMark.Resuming isSuspended" - {
       val resumingOrder = Order(OrderId("ORDER"),
         TestWorkflowId /: Position(0),
-        Order.Ready,
+        Order.Ready(),
         mark = Some(OrderMark.Resuming()),
         isSuspended = true)
 
@@ -791,7 +792,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     }
 
     "Order.isSuspended" - {
-      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh, isSuspended = true)
+      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh(), isSuspended = true)
 
       "Fresh" - {
         val freshOrder = suspendedOrder
@@ -937,7 +938,7 @@ final class OrderEventSourceTest extends OurTestSuite:
       }
 
       "Ready" - {
-        val readyOrder = suspendedOrder.copy(state = Order.Ready)
+        val readyOrder = suspendedOrder.copy(state = Order.Ready())
 
         "Detached" in:
           testController(readyOrder, detached): (order, controller) =>
@@ -1173,7 +1174,7 @@ final class OrderEventSourceTest extends OurTestSuite:
 
       def testResume(workflow: Workflow, from: Position, to: Position)
       : Checked[List[OrderEvent.OrderActorEvent]] =
-        val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
+        val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready(), isSuspended = true)
         def eventSource = new OrderEventSource(ControllerTestStateView.of(
           orders = Some(Seq(order)),
           workflows = Some(Seq(workflow)),
@@ -1223,7 +1224,7 @@ final class OrderEventSourceTest extends OurTestSuite:
     val failed7 = OrderOutcome.Failed(NamedValues.rc(7))
 
     "fail" in:
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh())
       def failToPosition(position: Position, uncatchable: Boolean = false) =
         eventSource(order).fail(workflow, order.withPosition(position), outcome = None, uncatchable = uncatchable)
 
@@ -1252,12 +1253,12 @@ final class OrderEventSourceTest extends OurTestSuite:
         Right(OrderFailed(Position(1)) :: Nil))
 
     "Fresh at try instruction -> OrderMoved" in:
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh())
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
 
     "Ready at instruction -> OrderMoved" in:
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Ready)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Ready())
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
 
@@ -1324,7 +1325,7 @@ final class OrderEventSourceTest extends OurTestSuite:
           parent = Some(OrderId("ORDER")))
       var bChild: Order[Order.State] =
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 1   // End
-        Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Ready,
+        Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Ready(),
           historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       val forkingOrder = Order(OrderId("ORDER"),

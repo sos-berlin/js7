@@ -87,8 +87,8 @@ private object PekkoHttpControllerApiTest:
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(agentRef.path, PathExecutable("MISSING"))))
-  private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id /: Position(0), Order.Fresh)
-  private val SecondOrder = Order(OrderId("SECOND-ORDER"), workflow.id /: Position(0), Order.Fresh)
+  private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id /: Position(0), Order.Fresh())
+  private val SecondOrder = Order(OrderId("SECOND-ORDER"), workflow.id /: Position(0), Order.Fresh())
 
   private val attachedOrders = Set(TestOrder, SecondOrder)
     .map(_.copy(attachedState = Some(Order.Attaching(agentRef.path))))

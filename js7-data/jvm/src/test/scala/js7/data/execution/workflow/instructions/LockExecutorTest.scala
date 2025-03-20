@@ -18,7 +18,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 
 final class LockExecutorTest extends OurTestSuite:
-  
+
   private lazy val stateView = ControllerTestStateView.of(
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
     workflows = Some(Seq(workflow)),
@@ -56,7 +56,7 @@ final class LockExecutorTest extends OurTestSuite:
     val order = Order(
       OrderId("MULTIPLE-NOT-AVAILABLE"),
       workflow.id /: Position(4),
-      Order.Ready)
+      Order.Ready())
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Right(Seq(
         order.id <-: OrderLocksQueued(List(
@@ -67,7 +67,7 @@ final class LockExecutorTest extends OurTestSuite:
     val order = Order(
       OrderId("MULTIPLE"),
       workflow.id /: Position(5),
-      Order.Ready)
+      Order.Ready())
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Right(Seq(
         order.id <-: OrderLocksAcquired(List(
@@ -78,7 +78,7 @@ final class LockExecutorTest extends OurTestSuite:
     val order = Order(
       OrderId("MULTIPLE"),
       workflow.id /: (Position(5) / BranchId.Lock % 1),
-      Order.Ready)
+      Order.Ready())
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Right(Seq(
         order.id <-: OrderLocksReleased(List(
@@ -118,24 +118,24 @@ object LockExecutorTest:
   private val freeLockOrder = Order(
     OrderId("ORDER-A"),
     workflow.id /: Position(0),
-    Order.Ready)
+    Order.Ready())
 
   private val freeLockedOrder = Order(
     OrderId("ORDER-B"),
     workflow.id /: (Position(0) / BranchId.Lock % 1),
-    Order.Ready)
+    Order.Ready())
 
   private val occupiedLockOrder = Order(
     OrderId("ORDER-C"),
     workflow.id /: Position(2),
-    Order.Ready)
+    Order.Ready())
 
   private val exclusiveLockOrder = Order(
     OrderId("ORDER-D"),
     workflow.id /: Position(3),
-    Order.Ready)
+    Order.Ready())
 
   private val freeExclusiveLockedOrder = Order(
     OrderId("ORDER-D"),
     workflow.id /: (Position(3) / BranchId.Lock % 1),
-    Order.Ready)
+    Order.Ready())

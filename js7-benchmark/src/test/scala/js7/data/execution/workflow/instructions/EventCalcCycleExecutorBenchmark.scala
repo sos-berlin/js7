@@ -53,7 +53,7 @@ class EventCalcCycleExecutorBenchmark extends OurBenchmark:
     calendarPath = Some(calendar.path))
 
   private val order =
-    Order(orderId, workflow.id /: Position(0), Order.Ready)
+    Order(orderId, workflow.id /: Position(0), Order.Ready())
 
   private val controllerState =
     ControllerState.empty

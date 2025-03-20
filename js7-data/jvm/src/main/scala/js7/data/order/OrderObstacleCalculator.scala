@@ -52,7 +52,7 @@ final class OrderObstacleCalculator(val stateView: StateView):
   private def orderStateToObstacles(order: Order[Order.State]): Set[OrderObstacle] =
     val result = mutable.Set.empty[OrderObstacle]
     order.state match
-      case Order.Fresh =>
+      case _: Order.Fresh =>
         result ++= order.scheduledFor.map(WaitingForOtherTime(_))
 
       case Order.FailedWhileFresh | Order.Failed | Order.Cancelled =>

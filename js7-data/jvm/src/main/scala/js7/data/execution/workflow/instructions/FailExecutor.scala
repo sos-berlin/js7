@@ -14,7 +14,7 @@ extends EventInstructionExecutor:
     start(order)
       .getOrElse:
         order.state match
-          case Order.Ready =>
+          case _: Order.Ready =>
             val msg = fail.message
               .map(messageExpr => state
                 .toImpureOrderExecutingScope(order, clock.now())

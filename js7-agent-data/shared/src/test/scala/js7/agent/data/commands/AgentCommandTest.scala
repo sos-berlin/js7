@@ -269,7 +269,7 @@ final class AgentCommandTest extends OurTestSuite:
         Order(
           OrderId("ORDER-ID"),
           SimpleTestWorkflow.id /: Position(3),
-          Order.Ready,
+          Order.Ready(),
           Map("KEY" -> StringValue("VALUE"))),
         AgentPath("AGENT")),
         json"""{

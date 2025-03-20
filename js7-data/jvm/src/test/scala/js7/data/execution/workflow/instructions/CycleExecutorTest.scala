@@ -42,7 +42,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
 
     assert(stepper.step() == Seq(OrderMoved(Position(1))))
     assert(stepper.order == stepper.initialOrder.copy(
-      state = Ready,
+      state = Ready(),
       workflowPosition = workflowId /: Position(1)))
 
   "Endless empty loop" in:
@@ -122,7 +122,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0) /
           s"cycle+end=${initialCycleState.end.toEpochMilli},i=$i$nextString" % 0)
-        .copy(state = Order.Ready))
+        .copy(state = Order.Ready()))
 
       assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
         next = clock.now() + 60.s,
@@ -202,7 +202,7 @@ final class CycleExecutorTest extends OurTestSuite, ScheduleTester:
     assert(stepper.step() == Seq(OrderMoved(Position(1))))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(1))
-      .copy(state = Order.Ready))
+      .copy(state = Order.Ready()))
 
   "Mariehamn daylight saving time (to be sure)" in:
     assert(local("2020-10-25T00:00") == ts"2020-10-24T21:00:00Z")
@@ -435,7 +435,7 @@ object CycleExecutorTest:
     val initialOrder: Order[Order.State] = Order(
       orderId,
       workflow.id /: Position(0),
-      Ready)
+      Ready())
 
     var order: Order[Order.State] = initialOrder
 

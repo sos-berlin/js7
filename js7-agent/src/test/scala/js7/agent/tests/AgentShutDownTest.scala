@@ -82,7 +82,7 @@ final class AgentShutDownTest
             Order(
               orderId,
               SimpleTestWorkflow.id /: Position(0),
-              Order.Ready,
+              Order.Ready(),
               Map("a" -> StringValue("A"))),
             TestAgentPath))
         ).await(99.s)

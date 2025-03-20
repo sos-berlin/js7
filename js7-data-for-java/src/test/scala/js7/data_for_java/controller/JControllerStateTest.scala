@@ -128,11 +128,11 @@ private object JControllerStateTest:
       Order(
         OrderId("A-ORDER"),
         (WorkflowPath("A-WORKFLOW") ~ v1) /: Position(0),
-        Order.Fresh),
+        Order.Fresh()),
       Order(
         OrderId("B-ORDER"),
         (WorkflowPath("B-WORKFLOW") ~ v2) /: Position(0),
-        Order.Ready,
+        Order.Ready(),
         arguments = Map(
           "key1" -> StringValue("value1"),
           "key2" -> StringValue("value2")),

@@ -1,10 +1,11 @@
 package js7.data.order
 
+import io.circe
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils
-import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfiguredCodec, deriveRenamingCodec, deriveRenamingDecoder}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import js7.base.circeutils.CirceUtils.{deriveCodecWithDefaults, deriveConfiguredCodec, deriveDecoderWithDefaults, deriveRenamingCodec, deriveRenamingDecoder}
+import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -71,7 +72,7 @@ extends
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position /
           child.branchId.fold(BranchId.ForkList)(_.toBranchId) % InstructionNr.First),
-        Ready,
+        Ready(),
         arguments ++ child.arguments,
         planId,
         scheduledFor = scheduledFor,
@@ -126,7 +127,7 @@ extends
 
       case OrderStarted =>
         check(isState[Fresh] && !isSuspendedOrStopped && isDetachedOrAttached,
-          copy(state = Ready))
+          copy(state = Ready()))
 
       case OrderProcessingStarted(subagentId, subagentBundleId, stick) =>
         check(isState[Ready] && !isSuspendedOrStopped && isAttached
@@ -190,7 +191,7 @@ extends
           !isSuspendedOrStopped &&
           isDetachedOrAttached,
           copy(
-            state = Ready,
+            state = Ready(),
             workflowPosition = workflowPosition.copy(position = movedTo),
             isResumed = false,
             historicOutcomes = outcome.fold(historicOutcomes): outcome =>
@@ -206,7 +207,7 @@ extends
             if !h.lastOption.exists(_.outcome.isSucceeded) then
               h :+= HistoricOutcome(movedTo, OrderOutcome.Caught)
             copy(
-              state = Ready,
+              state = Ready(),
               workflowPosition = workflowPosition.copy(position = movedTo),
               isResumed = false,
               historicOutcomes = h))
@@ -224,7 +225,7 @@ extends
           (isState[Sleeping] || isState[DelayingRetry] || isState[DelayedAfterError])
             && !isSuspendedOrStopped
             && isDetachedOrAttached,
-          copy(state = Ready))
+          copy(state = Ready()))
 
       case OrderForked(children) =>
         check(isState[Ready] && !isSuspendedOrStopped && isDetachedOrAttached,
@@ -244,7 +245,7 @@ extends
             && isDetachedOrAttached,
           withPosition(to).copy(
             isResumed = false,
-            state = if isState[Fresh] then state else Ready))
+            state = if isState[Fresh] then state else Ready()))
 
       case OrderFinished(maybeOutcome) =>
         check(isState[Ready] && isDetached && !isSuspendedOrStopped,
@@ -311,7 +312,7 @@ extends
         // maybe before some block-leaving events which rely on state == Ready.
         check(state.isInstanceOf[IsResettable],
           copy(
-            state = Ready,
+            state = Ready(),
             mark = None))
 
       case OrderCancelled =>
@@ -333,7 +334,7 @@ extends
           copy(
             isSuspended = true,
             mark = None,
-            state = if isSuspendingWithKill && isState[ProcessingKilled] then Ready else state))
+            state = if isSuspendingWithKill && isState[ProcessingKilled] then Ready() else state))
 
       case OrderStopped =>
         check(isFailable && isDetached,
@@ -449,9 +450,9 @@ extends
                 mark = None,
                 state =
                   if /*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh] then // ???
-                    Fresh
+                    Fresh()
                   else if isState[Failed] || isState[Stopped] || isState[Broken] then
-                    Ready
+                    Ready()
                   else
                     state,
                 historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
@@ -461,7 +462,7 @@ extends
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),
           withPosition(position / BranchId.Lock % 0)
             .copy(
-              state = Ready))
+              state = Ready()))
 
       case _: OrderLocksReleased =>
         // LockState handles this event, too
@@ -504,20 +505,20 @@ extends
       case OrderNoticesRead =>
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
           copy(
-            state = Ready))
+            state = Ready()))
 
       case OrderNoticesConsumptionStarted(_) =>
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspendedOrStopped,
           withPosition(position / BranchId.ConsumeNotices % 0)
             .copy(
-              state = Ready))
+              state = Ready()))
 
       case OrderNoticesConsumed(_) =>
         check(isDetached,
           position.checkedParent.map: parentPos =>
             withPosition(parentPos.increment)
               .copy(
-                state = Ready)
+                state = Ready())
         ).flatten
 
       case OrderStickySubagentEntered(agentPath, subagentBundleId) =>
@@ -547,7 +548,7 @@ extends
       case OrderPromptAnswered() =>
         check(isDetached && isState[Prompting],
           copy(
-            state = Ready))
+            state = Ready()))
             //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case _: OrderOrderAdded =>
@@ -571,7 +572,7 @@ extends
             check(isDetachedOrAttached & !isSuspendedOrStopped,
               withPosition(position / branchId % 0)
                 .copy(
-                  state = Ready))
+                  state = Ready()))
 
           case _ => inapplicable
 
@@ -656,8 +657,8 @@ extends
   /** Whether WorkflowPathControl skip is applicable. */
   def isSkippable(now: Timestamp): Boolean =
     state.match
-      case Fresh => !isDelayed(now)
-      case Ready => true
+      case _: Fresh => !isDelayed(now)
+      case _: Ready => true
       case _: DelayingRetry | _: DelayedAfterError => !isDelayed(now)
       case _ => false
     && !isSuspended
@@ -994,7 +995,7 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
-      Fresh,
+      Fresh(),
       event.arguments,
       event.planId,
       event.scheduledFor,
@@ -1166,7 +1167,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   /** OrderStarted occurred. */
   sealed trait IsStarted extends State
 
-  sealed trait IsFreshOrReady extends State
+  sealed trait IsFreshOrReady extends State:
+    def ignoreAdmissionTime: Boolean
 
   /** Terminal state — the order can only be removed. */
   sealed trait IsTerminated extends IsControllerOnly
@@ -1174,8 +1176,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
   sealed trait IsFailed extends IsControllerOnly
 
 
-  type Fresh = Fresh.type
-  case object Fresh extends IsFreshOrReady, IsDetachable, IsGoCommandable, IsTransferable:
+  final case class Fresh(ignoreAdmissionTime: Boolean = false)
+  extends IsFreshOrReady, IsDetachable, IsGoCommandable, IsTransferable:
     type Self = Fresh
 
     def go(order: Order[Fresh])
@@ -1186,9 +1188,39 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
       else
         Left(GoOrderInapplicableProblem(order.id))
 
+  object Fresh:
+    private val fresh = new Fresh()
+    private val freshIgnoreAdmissionTime = Fresh(ignoreAdmissionTime = true)
 
-  type Ready = Ready.type
-  case object Ready extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable
+    def apply(ignoreAdmissionTime: Boolean = false): Fresh =
+      if ignoreAdmissionTime then freshIgnoreAdmissionTime else fresh
+
+    given Encoder.AsObject[Fresh] =
+      case Fresh(false) =>
+        JsonObject(TypeFieldName -> "Fresh".asJson)
+      case Fresh(true) =>
+        JsonObject(TypeFieldName -> "Fresh".asJson, "freshIgnoreAdmissionTime" -> Json.True)
+
+    given Decoder[Fresh] = deriveDecoderWithDefaults
+
+
+  final case class Ready(ignoreAdmissionTime: Boolean = false)
+  extends IsStarted, IsFreshOrReady, IsDetachable, IsTransferable
+
+  object Ready:
+    private val ready = new Ready()
+    private val readyIgnoreAdmissionTime = Ready(ignoreAdmissionTime = true)
+
+    def apply(ignoreAdmissionTime: Boolean = false): Ready =
+      if ignoreAdmissionTime then readyIgnoreAdmissionTime else ready
+
+    given Encoder.AsObject[Ready] =
+      case Ready(false) =>
+        JsonObject(TypeFieldName -> "Ready".asJson)
+      case Ready(true) =>
+        JsonObject(TypeFieldName -> "Ready".asJson, "freshIgnoreAdmissionTime" -> Json.True)
+
+    given Decoder[Ready] = deriveDecoderWithDefaults
 
 
   // COMPATIBLE with v2.7.1
@@ -1355,8 +1387,8 @@ object Order extends EventDriven.Companion[Order[Order.State], OrderCoreEvent]:
 
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
-    Subtype(Fresh),
-    Subtype(Ready))
+    Subtype[Fresh],
+    Subtype[Ready])
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(

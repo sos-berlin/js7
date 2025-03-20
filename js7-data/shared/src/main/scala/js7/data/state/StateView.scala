@@ -125,7 +125,7 @@ trait StateView extends ItemContainer, EngineStateFunctions:
       labeled.maybeLabel
 
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
-    lazy val endReached = order.state == Order.Ready &&
+    lazy val endReached = order.isState[Order.Ready] &&
       order.position.parent.contains(parent.position) &&
       instruction(order.workflowPosition).isInstanceOf[End]
     order.isDetachedOrAttached &&

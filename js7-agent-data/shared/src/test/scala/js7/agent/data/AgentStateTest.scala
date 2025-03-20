@@ -170,7 +170,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
       ItemAttachedToMe(unsignedWorkflow),
 
       OrderId("ORDER") <-:
-        OrderAttachedToAgent(workflow.id /: Position(0), Order.Fresh, agentPath = AgentPath("AGENT")))
+        OrderAttachedToAgent(workflow.id /: Position(0), Order.Fresh(), agentPath = AgentPath("AGENT")))
     ).orThrow
 
   "isDedicated, isFreshlyDedicated" - {
@@ -386,7 +386,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
     agentState = agentState.applyKeyedEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyKeyedEvent(orderId <-:
       OrderAttachedToAgent(
-        workflow.id /: Position(0), Order.Ready, agentPath = agentPath))
+        workflow.id /: Position(0), Order.Ready(), agentPath = agentPath))
       .orThrow
     agentState = agentState.applyKeyedEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow
@@ -401,7 +401,7 @@ final class AgentStateTest extends OurAsyncTestSuite:
           Order(orderId, workflow.id /: Position(0), Forked(Vector(Forked.Child("BRANCH", childOrderId))),
             attachedState = Some(Order.Attached(agentPath))),
         childOrderId ->
-          Order(childOrderId, workflow.id /: (Position(0) / "fork+BRANCH" % 0), Ready,
+          Order(childOrderId, workflow.id /: (Position(0) / "fork+BRANCH" % 0), Ready(),
             attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
       Map(
         workflow.id -> workflow),

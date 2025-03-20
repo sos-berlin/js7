@@ -35,5 +35,5 @@ private[js7] object TestSetting:
   val TestOrder = Order(
     OrderId("TEST"),
     SimpleTestWorkflow.id /: Position(0),
-    Order.Ready,
+    Order.Ready(),
     arguments = Map("KEY" -> StringValue("VALUE")))
