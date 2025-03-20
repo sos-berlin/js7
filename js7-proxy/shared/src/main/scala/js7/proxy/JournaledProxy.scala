@@ -25,7 +25,6 @@ import js7.data.Problems.OldEventIdProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.data.problems.UnknownEventIdProblem
-import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
