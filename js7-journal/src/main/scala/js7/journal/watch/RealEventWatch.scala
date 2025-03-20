@@ -295,14 +295,15 @@ trait RealEventWatch extends EventWatch:
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  final def await[E <: Event: ClassTag: Tag](
+  final def await[E <: Event: {ClassTag, Tag}](
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
-    timeout: FiniteDuration)
+    timeout: FiniteDuration,
+    dontLog: Boolean = false)
     (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] =
     awaitAsync[E](predicate, after, timeout)
-      .await(timeout + 1.s)
+      .await(timeout + 1.s, dontLog = dontLog)
 
   @TestOnly
   final def awaitAsync[E <: Event: ClassTag](

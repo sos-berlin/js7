@@ -76,7 +76,8 @@ trait EventWatch:
   def await[E <: Event: ClassTag: Tag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
-    timeout: FiniteDuration = 99.s)
+    timeout: FiniteDuration = 99.s,
+    dontLog: Boolean = false)
     (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]]
 

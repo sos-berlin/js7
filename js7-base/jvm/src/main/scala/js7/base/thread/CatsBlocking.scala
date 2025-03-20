@@ -9,7 +9,6 @@ import java.util.concurrent.ArrayBlockingQueue
 import js7.base.catsutils.CatsEffectExtensions.timeoutAndFail
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowableEither}
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -24,34 +23,37 @@ object CatsBlocking:
 
   object syntax:
     extension [A](io: IO[A])
-      def await(duration: Duration)
+      def await(duration: Duration, dontLog: Boolean = false)
         (using A: Tag[A], rt: IORuntime,
           src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : A =
-        inline def name = makeBlockingWaitingString[A]("IO", duration)
+        inline def name = makeBlockingWaitingString[A]
         try
           io.pipeIf(duration != Duration.Inf):
             _.timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
           .syncStep(Int.MaxValue)
           .unsafeRunSync() match
-            case Left(io) => io.logWhenItTakesLonger(name).unsafeRunSyncX()
+            case Left(io) =>
+              io
+                .pipeIf(!dontLog):
+                  _.logWhenItTakesLonger(name)
+                .unsafeRunSyncX()
             case Right(a) => a
         catch case NonFatal(t) =>
           if t.getStackTrace.forall(_.getClassName != getClass.getName) then
             t.appendCurrentStackTrace
           throw t
 
-      def awaitInfinite(using A: Tag[A], rt: IORuntime, src: sourcecode.Enclosing,
-        file: sourcecode.FileName, line: sourcecode.Line)
+      def awaitInfinite(using
+        Tag[A], IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
       : A =
         await(Duration.Inf)
 
     extension [F[_], A](iterable: F[IO[A]])
-      def await(duration: FiniteDuration)
-        (using rt: IORuntime, t: Traverse[F], fTag: Tag[F], A: Tag[A],
-          enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+      def await(duration: FiniteDuration)(using
+        rt: IORuntime, t: Traverse[F], A: Tag[A], file: sourcecode.FileName, line: sourcecode.Line)
       : F[A] =
-        inline def name = makeBlockingWaitingString(fTag.tag.toString, duration)
+        inline def name = makeBlockingWaitingString
         iterable
           .sequence
           .timeoutAndFail(duration)(new TimeoutException(name + " timed out"))

@@ -92,7 +92,7 @@ object Futures:
       // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
       def awaitInfinite(using Tag[A], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
       : A =
-        logger.traceCall[A](makeBlockingWaitingString[A]("Future", Duration.Inf)):
+        logger.traceCall[A](makeBlockingWaitingString[A]):
           Await.ready(delegate, Duration.Inf).value.get match
             case Success(o) => o
             case Failure(t) => throw t.appendCurrentStackTrace
@@ -101,7 +101,7 @@ object Futures:
       def await(duration: FiniteDuration)
         (using A: Tag[A], enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : A =
-        inline def name = makeBlockingWaitingString[A]("Future", duration)
+        inline def name = makeBlockingWaitingString[A]
         logger.traceCall[A](name):
           try Await.ready(delegate, duration)
           catch case _: TimeoutException =>
@@ -132,13 +132,13 @@ object Futures:
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal:
       def successValue: A = delegate.future.successValue
 
-  inline def makeBlockingWaitingString[A](inline typ: String, inline duration: Duration)(using
+  inline def makeBlockingWaitingString[A](using
     inline A: Tag[A],
     inline src: sourcecode.Enclosing,
     inline file: sourcecode.FileName,
     inline line: sourcecode.Line)
   : String =
-    s"${file.value}:${line.value} ${src.value}:$typ[${A.tag}] await ${duration.pretty}"
+    s"${A.tag} at ${file.value}:${line.value}"
 
   final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 

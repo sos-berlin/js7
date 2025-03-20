@@ -122,13 +122,13 @@ final class StrictEventWatch(val underlying: FileEventWatch):
               E.isAssignableFrom(ke.event.getClass)
                 && predicate(ke.asInstanceOf[KeyedEvent[E]])
                 || ke.event.isInstanceOf[OrderTerminated]))
-        .await(timeout + 1.s)
+        .await(timeout + 1.s, dontLog = true)
       if stamped.head.value.event.isInstanceOf[OrderTerminated] then
         sys.error(s"await[${E.shortClassName}]: got ${stamped.head}")
       stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
         .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
     else
-      underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout)
+      underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout, dontLog = true)
 
   @TestOnly
   def awaitAsync[E <: Event: ClassTag](
