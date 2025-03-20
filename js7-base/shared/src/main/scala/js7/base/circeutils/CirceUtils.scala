@@ -65,7 +65,7 @@ object CirceUtils:
   inline final def deriveCodecWithDefaults[A: Mirror.Of]: ConfiguredCodec[A] =
     ConfiguredCodec.derive[A](useDefaults = true)
 
-  inline final def deriveConfiguredDecoder[A: Mirror.Of]: ConfiguredDecoder[A] =
+  inline final def deriveDecoderWithDefaults[A: Mirror.Of]: ConfiguredDecoder[A] =
     ConfiguredDecoder.derive[A](useDefaults = true)
 
   inline final def deriveRenamingCodec[A: Mirror.Of](rename: Map[String, String])
