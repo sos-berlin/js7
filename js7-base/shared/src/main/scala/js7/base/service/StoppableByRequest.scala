@@ -43,14 +43,15 @@ trait StoppableByRequest:
   protected def stop: IO[Unit] =
     memoizedStop
 
-  protected final def failWhenStopRequested[A](body: IO[A]): IO[A] =
-    body.raceFold:
+  /** When stop is being requested, cancel the body and throw. */
+  protected final def cancelOnStopRequest[A](body: IO[A]): IO[A] =
+    body.raceMerge:
       untilStopRequested *>
         IO.raiseError_(new IllegalStateException(s"$toString is being stopped"))
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
     IO:
-      !isStopping !! Problem(s"$toString is stopping")
+      !isStopping !! StoppedProblem(toString)
 
 
 object StoppableByRequest:

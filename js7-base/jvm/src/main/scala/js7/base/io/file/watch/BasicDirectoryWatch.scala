@@ -51,11 +51,11 @@ extends Service.StoppableByRequest:
     Resource.makeFull[IO, WatchKey](
       acquire = poll =>
         poll:
-          failWhenStopRequested:
+          cancelOnStopRequest:
             repeatWhileIOException(options):
               IO.blocking:
                 logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
-                directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
+                directory.register(watchService, kinds.toArray[WatchEvent.Kind[?]], modifiers*)
         .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
       release = watchKey => IO:
         logger.debug(s"watchKey.cancel() $directory")
