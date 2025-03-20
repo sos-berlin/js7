@@ -13,14 +13,14 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
 
   "IO" - {
-    "raceFold" - {
+    "raceMerge" - {
       "canceled" in:
         @volatile var canceled = false
         IO.never
           .onCancel(IO:
             canceled = true
-            logger.info(s"raceFold canceled"))
-          .raceFold(IO.sleep(100.ms)/*Wait for .onCancel*/)
+            logger.info(s"raceMerge canceled"))
+          .raceMerge(IO.sleep(100.ms)/*Wait for .onCancel*/)
           .map(result =>
             assert(result.getClass == classOf[Unit] && canceled))
     }

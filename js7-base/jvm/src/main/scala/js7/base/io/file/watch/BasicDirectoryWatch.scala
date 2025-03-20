@@ -9,7 +9,7 @@ import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.raceFold
+import js7.base.monixlike.MonixLikeExtensions.raceMerge
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor.env.interruptibleVirtualThread
@@ -43,7 +43,7 @@ extends Service.StoppableByRequest:
         .evalMap(isFirst => IO
           .unlessA(isFirst)(IO.sleep(options.watchDelay)/*collect more events per context switch*/)
           .*>(poll)
-          .raceFold(untilStopRequested.as(Nil)))
+          .raceMerge(untilStopRequested.as(Nil)))
         .takeWhile(events => !events.contains(Overflow))
         .map(_.asInstanceOf[Seq[DirectoryEvent]])
 

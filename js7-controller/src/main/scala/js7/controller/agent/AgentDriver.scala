@@ -17,7 +17,7 @@ import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.raceFold
+import js7.base.monixlike.MonixLikeExtensions.raceMerge
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -234,7 +234,7 @@ extends Service.StoppableByRequest:
               }
               .handleError(t => logger.error(
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
-              .raceFold(untilStopRequested)
+              .raceMerge(untilStopRequested)
               .startAndForget))
     })
 

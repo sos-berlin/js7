@@ -5,8 +5,8 @@ import js7.base.catsutils.CatsEffectExtensions.{fromOutcome, raiseError_}
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.raceFold
-import js7.base.problem.{Checked, Problem}
+import js7.base.monixlike.MonixLikeExtensions.raceMerge
+import js7.base.problem.Checked
 import js7.base.service.StoppableByRequest.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 

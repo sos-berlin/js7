@@ -110,7 +110,7 @@ object MonixLikeExtensions:
           initial,
           state => underlying.onErrorRestartLoop(state)(onError))
 
-    def raceFold[B >: A, E](canceler: F[B])(using F: GenSpawn[F, E] & Functor[F]): F[B] =
+    def raceMerge[B >: A, E](canceler: F[B])(using F: GenSpawn[F, E] & Functor[F]): F[B] =
       F.race(canceler, underlying)
         .map(_.merge)
 
