@@ -78,7 +78,7 @@ extends UnsignedSimpleItemState:
     if isGlobal then
       Left(Problem("The Global PlanSchema cannot be changed"))
     else
-      copy(item = item).removeRemovablePlans
+      copy(item = item).removeDicardablePlans
 
   def recover(snapshot: Snapshot): PlanSchemaState =
     copy(
@@ -92,7 +92,7 @@ extends UnsignedSimpleItemState:
         for
           planSchemaState <- namedValues.fold(Checked(planSchemaState)): namedValues =>
             planSchemaState.copy(namedValues = namedValues)
-              .removeRemovablePlans
+              .removeDicardablePlans
           planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
             planSchemaState.updatefinishedPlanRetentionPeriod
         yield
@@ -142,18 +142,23 @@ extends UnsignedSimpleItemState:
     yield
       updatePlans(updatedPlan :: Nil)
 
-  private def isRemovableIgnoringProblem(plan: Plan): Boolean =
-    isRemovable(plan).onProblemHandle: problem =>
+  private def isDiscardableIgnoringProblem(plan: Plan): Boolean =
+    isDiscardable(plan).onProblemHandle: problem =>
       logger.error(s"${plan.id} unknownPlanIsClosedFunction failed: $problem")
       false
 
-  private def isRemovable(plan: Plan): Checked[Boolean] =
+  /** Whether the Plan can be removed from toPlan without change of semantics.
+    *
+    * A Plan isDiscardable when it isDiscardableCandidate (empty, and Open or Deleted), and
+    * evalUnknownPlanIsClosed evaluates to an equivalent value.
+    */
+  private[plan] def isDiscardable(plan: Plan): Checked[Boolean] =
     import plan.id.planKey
     plan.status match
       case Open | Deleted =>
         // Check whether we may forget the Plan.
         // evalUnknownPlanIsClosed returns the default Open/Deleted Status for forgotten Plans.
-        if !plan.isRemovableCandidate then
+        if !plan.isDiscardableCandidate then
           Right(false)
         else
           evalUnknownPlanIsClosed(planKey).map(_ == (plan.status == Deleted))
@@ -195,17 +200,17 @@ extends UnsignedSimpleItemState:
       toPlan.values.map: plan =>
         plan.removeBoard(boardPath)
 
-  private def removeRemovablePlans: Checked[PlanSchemaState] =
+  private def removeDicardablePlans: Checked[PlanSchemaState] =
     toPlan.values.toVector.traverse: plan =>
-      isRemovable(plan).map: isRemovable =>
-        if isRemovable then logRemovedPlan(plan)
-        !isRemovable ? plan
+      isDiscardable(plan).map: isDiscardable =>
+        if isDiscardable then logRemovedPlan(plan)
+        !isDiscardable ? plan
     .map(_.flatten)
     .map: plans =>
       copy(toPlan = plans.toKeyedMap(_.id.planKey))
 
   private def updatePlans(plans: Iterable[Plan]): PlanSchemaState =
-    val (removablePlans, updatedPlans) = plans.partition(isRemovableIgnoringProblem)
+    val (removablePlans, updatedPlans) = plans.partition(isDiscardableIgnoringProblem)
     removablePlans.foreach(logRemovedPlan)
     logger.whenTraceEnabled(updatedPlans.foreach(logUpdatedPlan))
     copy(toPlan = toPlan

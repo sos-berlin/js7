@@ -73,6 +73,34 @@ final class PlanSchemaStateTest extends OurTestSuite:
         "status": "Closed"
       }"""))
 
+  "isDiscardable" in:
+    var planSchemaState = PlanSchema(
+      PlanSchemaId("DailyPlan"),
+      Some(exprFun"day => $$day < $$openingDay"),
+      namedValues = Map(
+        "openingDay" -> StringValue("")),
+      Some(ItemRevision(1))
+    ).toInitialItemState
+
+    planSchemaState =
+      planSchemaState.applyEvent:
+        PlanSchemaChanged(
+          namedValues = Some(Map("openingDay" -> StringValue("2025-03-20"))))
+      .orThrow
+
+    planSchemaState = planSchemaState.applyPlanEvent(PlanKey("2025-03-19"), PlanOpened)
+      .orThrow
+
+    assert(planSchemaState.applyPlanEvent(PlanKey("2025-03-20"), PlanOpened) == Left:
+      Problem("Plan:DailyPlan╱2025-03-20 is already Open"))
+
+    assert(planSchemaState.applyPlanEvent(PlanKey("2025-03-21"), PlanOpened) == Left:
+      Problem("Plan:DailyPlan╱2025-03-21 is already Open"))
+
+    assert(!planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-19")).orThrow).orThrow)
+    assert(planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-20")).orThrow).orThrow)
+    assert(planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-21")).orThrow).orThrow)
+
   "Change PlanStatus" - {
     lazy val planSchemaId = PlanSchemaId("DailyPlan")
     lazy val planSchema = PlanSchema(

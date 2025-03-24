@@ -164,7 +164,7 @@ final case class Plan(
         toPlannedBoard.get(boardNoticeKey.boardPath).flatMap: plannedBoard =>
           plannedBoard.maybeNotice(boardNoticeKey.noticeKey)
 
-  def isRemovableCandidate: Boolean =
+  def isDiscardableCandidate: Boolean =
     (status == Open || status == Deleted) && isEmpty
 
   private def isEmpty: Boolean =

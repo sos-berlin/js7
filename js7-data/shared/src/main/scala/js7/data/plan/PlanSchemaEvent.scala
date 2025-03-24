@@ -18,8 +18,8 @@ object PlanSchemaEvent extends Event.CompanionForKey[PlanSchemaId, PlanSchemaEve
   given implicitSelf: PlanSchemaEvent.type = this
 
   final case class PlanSchemaChanged(
-    finishedPlanRetentionPeriod: Option[FiniteDuration],
-    namedValues: Option[NamedValues])
+    finishedPlanRetentionPeriod: Option[FiniteDuration] = None,
+    namedValues: Option[NamedValues] = None)
   extends PlanSchemaEvent
 
   given TypedJsonCodec[PlanSchemaEvent] = TypedJsonCodec(
