@@ -139,7 +139,7 @@ object SnapshotableState:
 
   trait Companion[S <: SnapshotableState[S]]
   extends JournaledState.Companion[S], HasCodec:
-    implicit final val implicitSnapshotableStateCompanion: Companion[S] = this
+    final given snapshotableStateCompanion: Companion[S] = this
 
     def empty: S
 

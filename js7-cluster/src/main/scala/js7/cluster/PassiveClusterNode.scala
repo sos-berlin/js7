@@ -11,9 +11,9 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{exists, move, size}
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
-import java.nio.file.{Path, Paths}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
 import js7.base.catsutils.SyncDeadline
@@ -51,6 +51,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalEvent, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
 
@@ -308,7 +309,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
       val maybeTmpFile = continuation match
         case _: NoLocalJournal | _: NextFile =>
-          val tmp = Paths.get(file.toString + TmpSuffix)
+          val tmp = JournalLocation.toTemporaryFile(file)
           logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
           Some(tmp)
 
@@ -742,7 +743,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
 
 
 object PassiveClusterNode:
-  private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
   private val logger = Logger[this.type]
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")

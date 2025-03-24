@@ -17,3 +17,10 @@ final case class JournalLocation(
 
   def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     S.snapshotObjectJsonCodec
+
+
+object JournalLocation:
+  private val TmpSuffix = ".tmp"
+
+  def toTemporaryFile(file: Path): Path =
+    file.resolveSibling(s"${file.getFileName}$TmpSuffix")

@@ -92,6 +92,9 @@ object JournalFiles:
       def file(after: EventId): Path =
         JournalFile.toFile(journalLocation.fileBase, after)
 
+      def temporaryFile(after: EventId): Path =
+        JournalLocation.toTemporaryFile(file(after = after))
+
       def currentFile: Checked[Path] =
         JournalFiles.currentFile(journalLocation.fileBase)
 

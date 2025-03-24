@@ -31,7 +31,6 @@ import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.JournalHeaders.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
@@ -137,7 +136,8 @@ extends Actor, Stash, JournalLogging:
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
       val sender = this.sender()
       locally:
-        val file = toSnapshotTemporary(journalLocation.file(after = lastWrittenEventId))
+        val file = JournalLocation.toTemporaryFile:
+          journalLocation.file(after = lastWrittenEventId)
         if exists(file) then
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
           delete(file)
@@ -496,7 +496,10 @@ extends Actor, Stash, JournalLogging:
       + (if conf.syncOnCommit then "(using sync)" else "(no sync)"))
     logger.debug(journalHeader.toString)
 
-    snapshotWriter = new SnapshotJournalWriter(journalLocation.S, toSnapshotTemporary(file), after = lastWrittenEventId,
+    snapshotWriter = new SnapshotJournalWriter(
+      journalLocation.S, 
+      JournalLocation.toTemporaryFile(file),
+      after = lastWrittenEventId,
       simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
@@ -654,7 +657,6 @@ extends Actor, Stash, JournalLogging:
 
 object JournalActor:
   private val logger = Logger[this.type]
-  private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
   private val meterPersist = CallMeter("JournalActor")
 
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion](
@@ -667,8 +669,6 @@ object JournalActor:
   : Props =
     Props:
       new JournalActor[S](journalLocation, conf, keyedEventBus, ioRuntime, eventIdGenerator, stopped)
-
-  private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
 
   private[journal] trait CallersItem
 

@@ -22,7 +22,7 @@ final class SnapshotJournalWriter(
   val file: Path,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
-  (implicit protected val ioRuntime: IORuntime)
+  (using protected val ioRuntime: IORuntime)
 extends JournalWriter(S, after = after, append = false):
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
@@ -39,13 +39,15 @@ extends JournalWriter(S, after = after, append = false):
     for o <- statistics.debugString do logger.info(o)
 
   def beginSnapshotSection(): Unit =
-    if snapshotStarted then throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
+    if snapshotStarted then
+      throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
     jsonWriter.write(SnapshotHeader.toByteArray)
     flush(sync = false)
     snapshotStarted = true
 
   def writeSnapshot(json: ByteArray): Unit =
-    if !snapshotStarted then throw new IllegalStateException("SnapshotJournalWriter: writeSnapshots(), but snapshots have not been started")
+    if !snapshotStarted then throw new IllegalStateException(
+      "SnapshotJournalWriter: writeSnapshots(), but snapshots have not been started")
     statistics.countSnapshot()
     jsonWriter.write(json)
     snapshotCount += 1

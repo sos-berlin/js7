@@ -16,8 +16,7 @@ extends EventDrivenState[S, Event]:
 
   def eventId: EventId
 
-  final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]])
-  : Checked[S] =
+  final def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
     if stampedEvents.isEmpty then
       Right(this)
     else
