@@ -28,7 +28,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.watch.JournalEventWatchTest.*
@@ -413,7 +413,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   : Unit =
     autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
       autoClosing(EventJournalWriter.forTest(journalLocation, after = lastEventId, journalId, Some(eventWatch))) { writer =>
-        writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = lastEventId))
+        writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()
         body(writer, eventWatch)

@@ -10,7 +10,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 
@@ -42,7 +42,7 @@ private[watch] object TestData:
   def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any])
     (using IORuntime): Path =
     autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
+      writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
       for o <- snapshotObjects do
         writer.writeSnapshot(ByteArray(journalLocation.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
@@ -57,7 +57,7 @@ private[watch] object TestData:
     (using IORuntime)
   : Path =
     autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
+      writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents take 1)
       writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)

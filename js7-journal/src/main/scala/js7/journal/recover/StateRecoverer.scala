@@ -46,7 +46,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
       for h <- fileRecoverer.fileJournalHeader do
         if journalLocation.file(h.eventId) != file then
           sys.error:
-            s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'"
+            s"JournalHeader's eventId=${h.eventId} does not match the filename '${file.getFileName}'"
       fileRecoverer.logStatistics()
 
   def firstEventPosition = _firstEventPosition.toOption

@@ -8,7 +8,7 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.write.EventJournalWriter
 import org.jetbrains.annotations.TestOnly
@@ -22,11 +22,10 @@ extends AutoCloseable:
 
   private val directory = createTempDirectory("SimpleEventCollector-")
   private val journalLocation = JournalLocation(
-    new SnapshotableState.HasCodec {
+    new SnapshotableState.HasCodec:
       implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = eventTypedJsonCodec
       val name: String = "TestState"
-      val snapshotObjectJsonCodec = TypedJsonCodec()
-    },
+      val snapshotObjectJsonCodec = TypedJsonCodec(),
     directory / "TEST")
   private val journalId = JournalId.random()
   private val tornEventId = EventId.BeforeFirst
@@ -36,7 +35,7 @@ extends AutoCloseable:
     val eventWatch = new JournalEventWatch(journalLocation, config.withFallback(JournalEventWatch.TestConfig))
     val eventWriter =
       val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, Some(eventWatch))
-      w.writeHeader(JournalHeaders.forTest("TestState", journalId, tornEventId))
+      w.writeHeader(JournalHeader.forTest("TestState", journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()
       w

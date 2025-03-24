@@ -14,7 +14,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.pekkoutils.Pekkos.encodeAsActorName
 import js7.data.cluster.ClusterState
-import js7.data.event.{AnyKeyedEvent, Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
 import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
@@ -165,7 +165,7 @@ object FileJournal:
             JournalActor.Input.Start(
               recovered.state,
               Some(recovered.eventWatch),
-              recovered.recoveredJournalFile.fold(JournalHeaders.initial[S](journalId))(_.nextJournalHeader),
+              recovered.recoveredJournalFile.fold(JournalHeader.initial[S](journalId))(_.nextJournalHeader),
               recovered.totalRunningSince)
             )(Timeout(1.h /*???*/)
           ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))

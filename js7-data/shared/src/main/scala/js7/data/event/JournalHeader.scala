@@ -1,8 +1,10 @@
 package js7.data.event
 
+import JournalHeader.*
 import cats.syntax.semigroup.*
 import io.circe.{Encoder, Json}
 import java.nio.file.Path
+import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -31,6 +33,24 @@ final case class JournalHeader(
   js7Version: String,
   buildId: String):
 
+  def nextGeneration[S <: BasicState[S]](
+    eventId: EventId,
+    totalEventCount: Long,
+    totalRunningTime: FiniteDuration,
+    timestamp: Timestamp = Timestamp.now)
+    (using S: BasicState.Companion[S])
+  : JournalHeader =
+    copy(
+      typeName = Some(S.name),
+      eventId = eventId,
+      generation = generation + 1,
+      totalEventCount = totalEventCount,
+      totalRunningTime = totalRunningTime,
+      timestamp = timestamp,
+      version = Version,
+      js7Version = BuildInfo.prettyVersion,
+      buildId = BuildInfo.buildId)
+
   override def toString: String =
     s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
       s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), " +
@@ -51,6 +71,22 @@ object JournalHeader:
         deriveRenamingCodec[JournalHeader](Map(
           "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
         "JS7.Journal"))
+
+  def initial[S <: BasicState[S]](journalId: JournalId = JournalId.random())
+    (using S: BasicState.Companion[S])
+  : JournalHeader =
+    new JournalHeader(
+      typeName = Some(S.name),
+      journalId,
+      eventId = EventId.BeforeFirst,
+      generation = 0,
+      totalEventCount = 0,
+      ZeroDuration,
+      timestamp = Timestamp.now,
+      initiallyStartedAt = Timestamp.now,
+      version = Version,
+      js7Version = BuildInfo.prettyVersion,
+      buildId = BuildInfo.buildId)
 
   def checkedHeader[S <: BasicState[S]](
     json: Json,
@@ -102,12 +138,29 @@ object JournalHeader:
           s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
         Right(())
 
+  def forTest(typeName: String, journalId: JournalId, eventId: EventId = EventId.BeforeFirst)
+  : JournalHeader =
+    new JournalHeader(
+      typeName = Some(typeName),
+      journalId,
+      eventId = eventId,
+      generation = 1,
+      totalEventCount = 0,
+      ZeroDuration,
+      timestamp = Timestamp.now,
+      initiallyStartedAt = Timestamp.now,
+      js7Version = BuildInfo.prettyVersion,
+      version = Version,
+      buildId = BuildInfo.buildId)
+
+
   final case class JournalTypeMismatchProblem(file: Path, expected: String, typeName: String) extends Problem.Coded:
     def arguments: Map[String, String] = Map(
       "file" -> file.getFileName.toString,
       "typeName" -> typeName,
       "expected" -> expected)
   object JournalTypeMismatchProblem extends Problem.Coded.Companion
+
 
   final case class JournalIdMismatchProblem(
     file: Path,
