@@ -42,9 +42,9 @@ final class PlanSchemaTest extends OurTestSuite:
     testJsonDecoder[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        unknownPlanIsOpenFunction = exprFun"day => !($$day < $$openingDay)"),
+        unknownPlanIsOpenFunction = exprFun"day => !($$day < $$unknownPlansAreOpenFrom)"),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "unknownPlanIsClosedFunction": "day => $$day < $$openingDay"
+        "unknownPlanIsClosedFunction": "day => $$day < $$unknownPlansAreOpenFrom"
       }""")

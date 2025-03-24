@@ -55,7 +55,7 @@ final class PlanDeletedTest
         Plan(planId, Deleted)))
 
       execCmd:
-        ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> tomorrow)))
+        ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> tomorrow)))
 
       // Deleted Plan as been removed
       assert(controllerState.toPlan.isEmpty)

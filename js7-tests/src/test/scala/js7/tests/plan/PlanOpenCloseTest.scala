@@ -83,7 +83,7 @@ final class PlanOpenCloseTest
 
         // Remove deleted plan
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
+          ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
         assert(controllerState.toPlan.isEmpty)
 
         // Add Orders //
@@ -162,7 +162,7 @@ final class PlanOpenCloseTest
           Plan(tomorrowPlanId, Deleted)))
 
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> dayAfterTomorrow)))
+          ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> dayAfterTomorrow)))
 
         // Tomorrow's Plan as been removed
         assert(controllerState.toPlan.isEmpty)
@@ -180,7 +180,7 @@ final class PlanOpenCloseTest
         val todayOrderId = OrderId(s"#$today#")
 
         execCmd:
-          ChangePlanSchema(planSchema.id, Some(Map("openingDay" -> today)))
+          ChangePlanSchema(planSchema.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
 
         assert:
           controller.api.addOrder:
@@ -218,7 +218,7 @@ final class PlanOpenCloseTest
 
             // Close yesterday's Plan
             execCmd:
-              ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
+              ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
 
             // ExternalOrderRejected //
             touchFile(dir / yesterday)
@@ -258,7 +258,7 @@ final class PlanOpenCloseTest
       withItems((workflow, dailyPlan)): (workflow, planSchema) =>
         // Close yesterday's Plan
         execCmd:
-          ChangePlanSchema(dailyPlan.id, Some(Map("openingDay" -> today)))
+          ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
 
         controller.addOrderBlocking:
           FreshOrder(todayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)

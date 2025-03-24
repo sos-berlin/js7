@@ -86,8 +86,8 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def joc(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      unknownPlanIsOpenFunction = exprFun"day => $$day >= $$openingDay",
-      Map("openingDay" -> StringValue.empty))
+      unknownPlanIsOpenFunction = exprFun"day => $$day >= $$unknownPlansAreOpenFrom",
+      Map("unknownPlansAreOpenFrom" -> StringValue.empty))
 
   /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
   @TestOnly
