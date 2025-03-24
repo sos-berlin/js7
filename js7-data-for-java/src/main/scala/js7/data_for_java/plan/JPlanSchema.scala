@@ -30,8 +30,8 @@ extends JJsonable[JPlanSchema], JUnsignedSimpleItem:
   @Nonnull def id: PlanSchemaId =
     asScala.id
 
-  @Nonnull def planIsClosedFunction: Optional[ExprFunction] =
-    asScala.unknownPlanIsClosedFunction.toJava
+  @Nonnull def unknownPlanIsOpenFunction: ExprFunction =
+    asScala.unknownPlanIsOpenFunction
 
   @Nonnull def namedValues: java.util.Map[String, Value] =
     asScala.namedValues.asJava
@@ -43,11 +43,11 @@ object JPlanSchema extends JJsonable.Companion[JPlanSchema]:
   @Nonnull
   def of(
     @Nonnull id: PlanSchemaId,
-    @Nonnull planIsClosedFunction: Optional[ExprFunction],
+    @Nonnull unknownPlanIsOpenFunction: ExprFunction,
     @Nonnull namedValues: java.util.Map[String, Value @Nonnull])
   : JPlanSchema =
     JPlanSchema:
-      PlanSchema(id, planIsClosedFunction.toScala, namedValues.asScala.toMap)
+      PlanSchema(id, unknownPlanIsOpenFunction, namedValues.asScala.toMap)
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JPlanSchema] =

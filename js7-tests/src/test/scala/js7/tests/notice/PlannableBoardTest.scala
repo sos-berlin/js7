@@ -120,8 +120,8 @@ final class PlannableBoardTest
 
   "Two PlanSchemas" in:
     withItems((
-      PlanSchema(PlanSchemaId("DailyPlan")),
-      PlanSchema(PlanSchemaId("WeeklyPlan")),
+      PlanSchema(PlanSchemaId("DailyPlan"), PlanSchema.EachUnknownPlanIsOpen),
+      PlanSchema(PlanSchemaId("WeeklyPlan"), PlanSchema.EachUnknownPlanIsOpen),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),

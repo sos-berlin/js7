@@ -1,5 +1,6 @@
 package js7.data.plan
 
+import cats.syntax.traverse.*
 import io.circe.derivation.ConfiguredEncoder
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.metering.CallMeter
@@ -8,21 +9,21 @@ import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.plan.PlanSchema.*
-import js7.data.value.expression.ExpressionParser.exprFunction
+import js7.data.value.expression.Expression.{Not, exprFun}
 import js7.data.value.expression.{ExprFunction, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import org.jetbrains.annotations.TestOnly
 
 /** Item for (daily) plans.
   **
-  * @param unknownPlanIsClosedFunction A function expression with a PlanId as argument,
-  *                             returns true when the corresponding Plan is closed.
+  * @param unknownPlanIsOpenFunction A function expression with a PlanId as argument,
+  *                             returns true when the named unknown Plan should be open.
   * #@param startOffset When the plan starts (for example 6h for 06:00 local time)
   * #@param lifetime How long a daily plan is kept after the day is over
   */
 final case class PlanSchema(
   id: PlanSchemaId,
-  unknownPlanIsClosedFunction: Option[ExprFunction] = None,
+  unknownPlanIsOpenFunction: ExprFunction,
   namedValues: NamedValues = NamedValues.empty,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
@@ -56,11 +57,10 @@ extends UnsignedSimpleItem:
   def withRevision(revision: Option[ItemRevision]): PlanSchema =
     copy(itemRevision = revision)
 
-  private[plan] def evalUnknownPlanIsClosed(planKey: PlanKey, scope: Scope): Checked[Boolean] =
-    meterPlanIsClosedFunction:
-      unknownPlanIsClosedFunction.fold(Checked(false)): function =>
-        function.eval(StringValue(planKey.string))(using scope)
-          .flatMap(_.asBoolean)
+  private[plan] def evalUnknownPlanIsOpen(planKey: PlanKey, scope: Scope): Checked[Boolean] =
+    meterUnknownPlanIsOpenFunction:
+      unknownPlanIsOpenFunction.eval(StringValue(planKey.string))(using scope)
+        .flatMap(_.asBoolean)
 
 
 object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
@@ -72,19 +72,21 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   val Path: PlanSchemaId.type = PlanSchemaId
   val cls: Class[PlanSchema] = classOf[PlanSchema]
 
-  final val Global: PlanSchema =
-    PlanSchema(PlanSchemaId.Global)
+  final val EachUnknownPlanIsOpen: ExprFunction =
+    exprFun"planKey => true"
 
-  @TestOnly
-  final val UnknownsPlanAreDeleted: ExprFunction =
-    exprFunction("planKey => true")
+  final val EachUnknownPlanIsClosed: ExprFunction =
+    exprFun"planKey => false"
+
+  final val Global: PlanSchema =
+    PlanSchema(PlanSchemaId.Global, unknownPlanIsOpenFunction = EachUnknownPlanIsOpen)
 
   /** A PlanSchema for JOC-style daily plan OrderIds. */
   @TestOnly
   def joc(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      unknownPlanIsClosedFunction = Some(exprFunction("day => $day < $openingDay")),
+      unknownPlanIsOpenFunction = exprFun"day => $$day >= $$openingDay",
       Map("openingDay" -> StringValue.empty))
 
   /** A PlanSchema for weekly Plan Orders "#YYYYwWW#...". */
@@ -92,20 +94,24 @@ object PlanSchema extends UnsignedSimpleItem.Companion[PlanSchema]:
   def weekly(id: PlanSchemaId): PlanSchema =
     PlanSchema(
       id,
-      unknownPlanIsClosedFunction = Some(exprFunction("week => $week < $openingWeek")),
+      unknownPlanIsOpenFunction = exprFun"week => $$week >= $$openingWeek",
       Map("openingWeek" -> StringValue.empty))
 
-  private val meterPlanIsClosedFunction = CallMeter("PlanSchmea.unknownPlanIsClosedFunction")
+  private val meterUnknownPlanIsOpenFunction = CallMeter("PlanSchmea.unknownPlanIsOpenFunction")
 
   override given jsonEncoder: Encoder.AsObject[PlanSchema] = ConfiguredEncoder.derive()
 
   override given jsonDecoder: Decoder[PlanSchema] = c =>
     for
       id <- c.get[PlanSchemaId]("id")
-      planIsClosedFunction <- c.get[Option[ExprFunction]]("unknownPlanIsClosedFunction")
+      planIsOpenFunction <-
+        c.get[ExprFunction]("unknownPlanIsOpenFunction")
+          .orElse: // COMPATIBLE with 2.7.4
+            c.get[ExprFunction]("unknownPlanIsClosedFunction").map: fun =>
+              fun.copy(expression = Not(fun.expression))
       namedValues <- c.getOrElse[NamedValues]("namedValues")(NamedValues.empty)
-      itemRevision <- c.get[Option[ItemRevision]]("itemRevision")  // May be omitted only in 2.7-4-SNAPSHOT
+      itemRevision <- c.get[Option[ItemRevision]]("itemRevision")
     yield
-      PlanSchema(id, planIsClosedFunction, namedValues, itemRevision)
+      PlanSchema(id, planIsOpenFunction, namedValues, itemRevision)
 
   given jsonCodec: Codec.AsObject[PlanSchema] = Codec.AsObject.from(jsonDecoder, jsonEncoder)

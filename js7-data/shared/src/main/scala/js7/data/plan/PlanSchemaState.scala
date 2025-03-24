@@ -144,24 +144,24 @@ extends UnsignedSimpleItemState:
 
   private def isDiscardableIgnoringProblem(plan: Plan): Boolean =
     isDiscardable(plan).onProblemHandle: problem =>
-      logger.error(s"${plan.id} unknownPlanIsClosedFunction failed: $problem")
+      logger.error(s"${plan.id} unknownPlanIsOpenFunction failed: $problem")
       false
 
   /** Whether the Plan can be removed from toPlan without change of semantics.
     *
     * A Plan isDiscardable when it isDiscardableCandidate (empty, and Open or Deleted), and
-    * evalUnknownPlanIsClosed evaluates to an equivalent value.
+    * evalUnknownPlanIsOpen evaluates to an equivalent value.
     */
   private[plan] def isDiscardable(plan: Plan): Checked[Boolean] =
     import plan.id.planKey
     plan.status match
       case Open | Deleted =>
         // Check whether we may forget the Plan.
-        // evalUnknownPlanIsClosed returns the default Open/Deleted Status for forgotten Plans.
+        // evalUnknownPlanIsOpen returns the default Open/Deleted Status for forgotten Plans.
         if !plan.isDiscardableCandidate then
           Right(false)
         else
-          evalUnknownPlanIsClosed(planKey).map(_ == (plan.status == Deleted))
+          evalUnknownPlanIsOpen(planKey).map(_ == (plan.status == Open))
       case Closed | _: Finished => Right(false)
 
   /** Returns Right(()) iff this PlanSchema is unused. */
@@ -184,16 +184,16 @@ extends UnsignedSimpleItemState:
   private def isClosed(planKey: PlanKey): Checked[Boolean] =
     plan(planKey).map(_.isClosed)
 
-  /** Creates an empty Plan with status computed by unknownPlanIsClosedFunction, if Plan does not exist.
+  /** Creates an empty Plan with status computed by unknownPlanIsOpenFunction, if Plan does not exist.
     *
-    * @return Left(problem) if `PlanSchema.unknownPlanIsClosedFunction` fails. */
+    * @return Left(problem) if `PlanSchema.unknownPlanIsOpenFunction` fails. */
   def plan(planKey: PlanKey): Checked[Plan] =
     toPlan.get(planKey).map(Right(_)).getOrElse:
-      evalUnknownPlanIsClosed(planKey).flatMap: isClosed =>
-        Plan.checked(id / planKey, if isClosed then Deleted else Open)
+      evalUnknownPlanIsOpen(planKey).flatMap: isOpen =>
+        Plan.checked(id / planKey, if isOpen then Open else Deleted)
 
-  private def evalUnknownPlanIsClosed(planKey: PlanKey): Checked[Boolean] =
-    planSchema.evalUnknownPlanIsClosed(planKey, namedValuesScope)
+  private def evalUnknownPlanIsOpen(planKey: PlanKey): Checked[Boolean] =
+    planSchema.evalUnknownPlanIsOpen(planKey, namedValuesScope)
 
   def removeBoard(boardPath: BoardPath): PlanSchemaState =
     updatePlans:

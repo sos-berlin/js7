@@ -22,7 +22,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
   "toSnapshotStream JSON" in:
     val planSchema = PlanSchema(
       PlanSchemaId("DailyPlan"),
-      Some(exprFun"day => $$day < $$openingDay"),
+      exprFun"day => $$day >= $$openingDay",
       namedValues = Map(
         "openingDay" -> StringValue("")),
       Some(ItemRevision(1)))
@@ -53,7 +53,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "unknownPlanIsClosedFunction": "day => $$day < $$openingDay",
+        "unknownPlanIsOpenFunction": "day => $$day >= $$openingDay",
         "namedValues": {
           "openingDay": ""
         },
@@ -76,7 +76,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
   "isDiscardable" in:
     var planSchemaState = PlanSchema(
       PlanSchemaId("DailyPlan"),
-      Some(exprFun"day => $$day < $$openingDay"),
+      exprFun"day => $$day >= $$openingDay",
       namedValues = Map(
         "openingDay" -> StringValue("")),
       Some(ItemRevision(1))
@@ -105,7 +105,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
     lazy val planSchemaId = PlanSchemaId("DailyPlan")
     lazy val planSchema = PlanSchema(
       planSchemaId,
-      Some(exprFun"day => $$day < $$openingDay"),
+      exprFun"day => $$day >= $$openingDay",
       namedValues = Map(
         "openingDay" -> StringValue("")))
 
