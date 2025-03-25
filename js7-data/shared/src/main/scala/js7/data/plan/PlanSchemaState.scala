@@ -94,7 +94,7 @@ extends UnsignedSimpleItemState:
             planSchemaState.copy(namedValues = namedValues)
               .removeDicardablePlans
           planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
-            planSchemaState.updatefinishedPlanRetentionPeriod
+            planSchemaState.updateFinishedPlanRetentionPeriod
         yield
           planSchemaState
 
@@ -105,7 +105,7 @@ extends UnsignedSimpleItemState:
     yield
       updatePlans(plan :: Nil)
 
-  def updatefinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
+  def updateFinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
     Right(copy(finishedPlanRetentionPeriod = duration))
 
   def orderIds: View[OrderId] =
