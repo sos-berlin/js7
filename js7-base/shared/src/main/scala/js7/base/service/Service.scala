@@ -116,9 +116,12 @@ object Service:
     resource(IO:
       new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource))
 
-  def simple(body: IO[ProgramTermination]): SimpleMainService =
+  def simple(body: IO[ProgramTermination | Unit]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:
-      def run = body
+      def run =
+        body.map:
+          case o: ProgramTermination => o
+          case () => ProgramTermination.Success
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 
