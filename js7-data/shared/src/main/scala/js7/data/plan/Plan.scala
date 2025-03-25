@@ -8,11 +8,10 @@ import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StandardMapView
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{Assertions, StandardMapView}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
@@ -80,12 +79,11 @@ final case class Plan(
           copy(status = status)
 
   def addOrders(orderIds: Iterable[OrderId]): Checked[Plan] =
-    if isFinished then
+    if status != Open then
       Left(Problem(s"$id does not accept orders because it is $status"))
     else if orderIds.isEmpty then
       Right(this)
     else
-      assertThat(status == Open)
       Right(copy(orderIds = this.orderIds ++ orderIds))
 
   def removeOrders(orderIds: Iterable[OrderId]): Plan =
