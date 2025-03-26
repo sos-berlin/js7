@@ -187,3 +187,13 @@ object Problems:
   extends Problem.Coded:
     def arguments: Map[String, String] = Map1(
       "planId", planId.toString)
+
+  final case class PlanIsFinishedProblem(planId: PlanId)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map1(
+      "planId", planId.toString)
+
+  final case class PlanIsDeletedProblem(planId: PlanId)
+  extends Problem.Coded:
+    def arguments: Map[String, String] = Map1(
+      "planId", planId.toString)

@@ -12,6 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StandardMapView
 import js7.base.utils.Tests.isStrict
+import js7.data.Problems.{PlanIsDeletedProblem, PlanIsFinishedProblem}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
@@ -79,12 +80,11 @@ final case class Plan(
           copy(status = status)
 
   def addOrders(orderIds: Iterable[OrderId]): Checked[Plan] =
-    if status != Open then
-      Left(Problem(s"$id does not accept orders because it is $status"))
-    else if orderIds.isEmpty then
-      Right(this)
-    else
-      Right(copy(orderIds = this.orderIds ++ orderIds))
+    checkAcceptOrders.flatMap: _ =>
+      if orderIds.isEmpty then
+        Right(this)
+      else
+        Right(copy(orderIds = this.orderIds ++ orderIds))
 
   def removeOrders(orderIds: Iterable[OrderId]): Plan =
     if orderIds.isEmpty then
@@ -165,6 +165,12 @@ final case class Plan(
   def isDiscardableCandidate: Boolean =
     (status == Open || status == Deleted) && isEmpty
 
+  def checkAcceptOrders: Checked[Unit] =
+    status match
+      case Open | Closed => Checked.unit
+      case _: Finished => Left(PlanIsFinishedProblem(id))
+      case Deleted => Left(PlanIsDeletedProblem(id))
+
   private def isEmpty: Boolean =
     orderIds.isEmpty && toPlannedBoard.isEmpty
 
@@ -172,8 +178,7 @@ final case class Plan(
   def isClosed: Boolean =
     status >= Closed
 
-  /** Plan is Finished or Deleted. */
-  def isFinished: Boolean =
+  def isFinishedOrDeleted: Boolean =
     status.ordinal >= Finished.ordinal
 
   def hasOrders: Boolean =

@@ -7,7 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.Problems.PlanIsClosedProblem
+import js7.data.Problems.PlanIsDeletedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
@@ -184,7 +184,7 @@ final class PlanTest
       val checked = controller.api.executeCommand:
         AddOrder(freshOrder)
       .await(99.s)
-      assert(checked == Left(PlanIsClosedProblem(planId)))
+      assert(checked == Left(PlanIsDeletedProblem(planId)))
 
       execCmd: // Open the Plan
         ChangePlan(planId, PlanStatus.Open)

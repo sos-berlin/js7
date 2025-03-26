@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.semigroup.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichOption
 import js7.data.controller.ControllerState
@@ -31,7 +30,7 @@ extends EventInstructionExecutor:
               controllerState <- checkedCast[ControllerState](state)
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
-              planId <- addOrder.planId.fold_(Checked(None), PlanId.evalPlanIdExpr(_, scope).map(Some(_)))
+              planId <- addOrder.planId.fold_(Checked(order.planId), PlanId.evalPlanIdExpr(_, scope))
               addedOrderId <- addOrder.orderId.evalAsString:
                 scope |+| UniqueOrderIdScope(controllerState.idToOrder.keySet)
               addedOrderId <- OrderId.checked(addedOrderId)
@@ -39,15 +38,22 @@ extends EventInstructionExecutor:
               //computedPlanId <- controllerState.evalOrderToPlanId(Order.fromOrderAdded(addedOrderId, orderAdded))
               orderAdded = OrderOrderAdded(addedOrderId, workflowId,
                 args,
-                planId = planId getOrElse order.planId,
+                planId = planId,
                 innerBlock = addOrder.innerBlock,
                 startPosition = addOrder.startPosition,
                 stopPositions = addOrder.stopPositions,
                 deleteWhenTerminated = addOrder.deleteWhenTerminated,
                 forceJobAdmission = addOrder.forceJobAdmission)
               keyedEvents <-
-                EventColl(controllerState).add[OrderOrderAdded | OrderMoved]:
-                  order.id <-: orderAdded
+                locally:
+                  if planId == order.planId then
+                    // We allow AddOrder to the own closed Plan
+                    controllerState.checkPlanAcceptsOrders(planId)
+                  else
+                    controllerState.checkPlanIsOpen(planId)
+                .flatMap: _ =>
+                  EventColl(controllerState).add[OrderOrderAdded | OrderMoved]:
+                    order.id <-: orderAdded
                 .match
                   case Left(problem) =>
                     // OrderFailedIntermediate_ is not applicable, it is intermediate only

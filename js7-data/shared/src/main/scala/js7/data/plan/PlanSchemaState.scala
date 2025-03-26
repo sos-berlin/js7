@@ -174,15 +174,16 @@ extends UnsignedSimpleItemState:
         .mkString(", ")
       }"
 
-  def checkIsOpen(planKey: PlanKey): Checked[Unit] =
+  def checkPlanIsOpen(planKey: PlanKey): Checked[Unit] =
     for
-      isClosed <- isClosed(planKey)
-      _ <- !isClosed !! PlanIsClosedProblem(planSchema.id / planKey)
+      plan <- plan(planKey)
+      _ <- (plan.status == Open) !! PlanIsClosedProblem(plan.id)
     yield
       ()
 
-  private def isClosed(planKey: PlanKey): Checked[Boolean] =
-    plan(planKey).map(_.isClosed)
+  def checkPlanAcceptsOrders(planKey: PlanKey): Checked[Unit] =
+    plan(planKey).flatMap:
+      _.checkAcceptOrders
 
   /** Creates an empty Plan with status computed by unknownPlanIsOpenFunction, if Plan does not exist.
     *
