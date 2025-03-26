@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
+import cats.effect.{Deferred, ExitCode, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*
@@ -116,12 +116,10 @@ object Service:
     resource(IO:
       new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource))
 
-  def simple(body: IO[ProgramTermination | Unit]): SimpleMainService =
+  def simple(body: IO[Unit | ExitCode | ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:
       def run =
-        body.map:
-          case o: ProgramTermination => o
-          case () => ProgramTermination.Success
+        body.map(ProgramTermination.fromUnitOrExitCode)
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 

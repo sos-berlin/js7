@@ -5,7 +5,7 @@ import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.catsutils.OurApp
 import js7.base.metering.CallMeter
-import js7.base.service.{MainService, SimpleMainService}
+import js7.base.service.{MainService, Service, SimpleMainService}
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.common.commandline.CommandLineArguments
@@ -41,6 +41,22 @@ trait ServiceApp extends OurApp:
         CallMeter.loggingService(cnf.config) *>
           program(cnf),
       use)
+
+  protected final def runSimpleService[Cnf <: BasicConfiguration, Svc <: MainService : Tag](
+    args: List[String],
+    argsToConf: CommandLineArguments => Cnf,
+    useLockFile: Boolean = false,
+    suppressTerminationLogging: Boolean = false,
+    suppressLogShutdown: Boolean = false)
+    (program: Cnf => IO[Unit | ExitCode | ProgramTermination])
+  : IO[ExitCode] =
+    runService(args, argsToConf,
+      useLockFile = useLockFile,
+      suppressTerminationLogging = suppressTerminationLogging,
+      suppressLogShutdown = suppressLogShutdown
+    ): conf =>
+      Service.resource(IO(Service.simple(program(conf))))
+
 
   protected final def programAsService(program: IO[ExitCode | Unit])
   : ResourceIO[SimpleMainService] =
