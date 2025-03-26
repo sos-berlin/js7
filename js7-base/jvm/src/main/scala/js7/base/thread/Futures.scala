@@ -4,7 +4,6 @@ import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.utils.StackTraces.*
 import scala.collection.BuildFrom
 import scala.concurrent.*
