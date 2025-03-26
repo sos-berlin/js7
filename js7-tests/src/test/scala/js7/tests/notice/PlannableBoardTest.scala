@@ -176,7 +176,7 @@ final class PlannableBoardTest
         Prompt(expr("'PROMPT'")),
         PostNotices(Seq(boardPath))))
       withItem(postingWorkflow): postingWorkflow =>
-        val announcingOrderId = OrderId(s"#${planId.planKey.toString}#POST")
+        val announcingOrderId = OrderId("POST")
         controller.addOrderBlocking:
           FreshOrder(announcingOrderId, postingWorkflow.path, planId = planId,
             deleteWhenTerminated = true,
