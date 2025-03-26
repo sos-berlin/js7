@@ -224,7 +224,7 @@ final class PlanOpenCloseTest
             touchFile(dir / yesterday)
             val orderRejected = eventWatch.awaitNextKey[ExternalOrderRejected](fileWatch.path)
               .head.value
-            assert(orderRejected == fileWatch.path <-: ExternalOrderRejected(
+            assert(orderRejected == ExternalOrderRejected(
               yesterdayExternalName,
               PlanIsClosedProblem(yesterdayPlanId)))
 

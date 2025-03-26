@@ -89,10 +89,10 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
-  : Vector[Stamped[KeyedEvent[E]]] =
-    val r = awaitKey(key, predicate, after = after, timeout)
-    _lastWatchedEventId = r.head.eventId
-    r
+  : Vector[Stamped[E]] =
+    val events = awaitKey(key, predicate, after = after, timeout)
+    _lastWatchedEventId = events.head.eventId
+    events
 
   /** TEST ONLY - Blocking.
     * Fails on OrderTerminated when not expected as an Event. */
@@ -104,31 +104,33 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     timeout: FiniteDuration = 99.s)
     (using IORuntime, Tag[E],
       sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
-  : Vector[Stamped[KeyedEvent[E]]] =
+  : Vector[Stamped[E]] =
     val E = implicitClass[E]
-    if classOf[OrderEvent].isAssignableFrom(E)
-      && !classOf[OrderTerminated].isAssignableFrom(E)
-      && E != OrderDeleted.getClass /*TODO Detect a failed Order*/
-    then
-      if implicitClass[E] eq classOf[Nothing] then
-        throw new IllegalArgumentException("await[Nothing]: Missing type parameter?")
-      val stamped = underlying
-        .awaitAsync[E | OrderTerminated](
-          EventRequest[E | OrderTerminated](
-            Set(implicitClass[E], classOf[OrderTerminated]),
-            after, Some(timeout)),
-          ke =>
-            ke.key == key && (
-              E.isAssignableFrom(ke.event.getClass)
-                && predicate(ke.asInstanceOf[KeyedEvent[E]])
-                || ke.event.isInstanceOf[OrderTerminated]))
-        .await(timeout + 1.s, dontLog = true)
-      if stamped.head.value.event.isInstanceOf[OrderTerminated] then
-        sys.error(s"await[${E.shortClassName}]: got ${stamped.head}")
-      stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
-        .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
-    else
-      underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout, dontLog = true)
+    locally:
+      if classOf[OrderEvent].isAssignableFrom(E)
+        && !classOf[OrderTerminated].isAssignableFrom(E)
+        && E != OrderDeleted.getClass /*TODO Detect a failed Order*/
+      then
+        if implicitClass[E] eq classOf[Nothing] then
+          throw new IllegalArgumentException("await[Nothing]: Missing type parameter?")
+        val stamped = underlying
+          .awaitAsync[E | OrderTerminated](
+            EventRequest[E | OrderTerminated](
+              Set(implicitClass[E], classOf[OrderTerminated]),
+              after, Some(timeout)),
+            ke =>
+              ke.key == key && (
+                E.isAssignableFrom(ke.event.getClass)
+                  && predicate(ke.asInstanceOf[KeyedEvent[E]])
+                  || ke.event.isInstanceOf[OrderTerminated]))
+          .await(timeout + 1.s, dontLog = true)
+        if stamped.head.value.event.isInstanceOf[OrderTerminated] then
+          sys.error(s"await[${E.shortClassName}]: got ${stamped.head}")
+        stamped.filterNot(_.value.event.isInstanceOf[OrderTerminated])
+          .asInstanceOf[Vector[Stamped[KeyedEvent[E]]]]
+      else
+        underlying.await[E](ke => ke.key == key && predicate(ke), after, timeout, dontLog = true)
+    .map(stamped => stamped.copy(value = stamped.value.event))
 
   @TestOnly
   def awaitAsync[E <: Event: ClassTag](
