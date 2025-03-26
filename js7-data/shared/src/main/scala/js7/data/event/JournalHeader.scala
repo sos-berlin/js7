@@ -2,6 +2,7 @@ package js7.data.event
 
 import cats.syntax.semigroup.*
 import io.circe.{Encoder, Json}
+import java.io.{BufferedReader, FileInputStream, InputStreamReader}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -11,6 +12,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import scala.concurrent.duration.FiniteDuration
@@ -51,6 +53,12 @@ object JournalHeader:
         deriveRenamingCodec[JournalHeader](Map(
           "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
         "JS7.Journal"))
+
+  def readJournalHeader(file: Path): JournalHeader =
+    autoClosing(
+      new BufferedReader(new InputStreamReader(new FileInputStream(file.toFile)))
+    ): file =>
+      file.readLine().parseJsonAs[JournalHeader].orThrow
 
   def checkedHeader[S <: BasicState[S]](
     json: Json,

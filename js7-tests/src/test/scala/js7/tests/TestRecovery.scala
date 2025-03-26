@@ -1,31 +1,51 @@
 package js7.tests
 
-import cats.effect.{ExitCode, IO, ResourceIO}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{ExitCode, IO}
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Files.createDirectory
+import java.nio.file.{Files, Path, Paths}
+import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.file.FileUtils
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.service.{MainService, Service}
+import js7.base.time.ScalaTime.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
 import js7.common.system.startup.ServiceApp
+import js7.data.agent.AgentRef
 import js7.data.controller.ControllerState
+import js7.data.event.JournalHeader
 import js7.journal.recover.StateRecoverer
+import js7.tests.testenv.DirectoryProvider
 
 object TestRecovery extends ServiceApp:
 
   private lazy val logger = Logger[this.type]
 
   def run(args: List[String]): IO[ExitCode] =
-    runService(args, Conf.fromCommandLine(_)):
-      resource(_)
-
-  private def resource(conf: Conf): ResourceIO[MainService] =
-    Service.resource(IO(Service.simple(program(conf))))
+    runSimpleService(args, Conf.fromCommandLine(_))(program)
 
   private def program(conf: Conf): IO[Unit] =
+    given IORuntime = runtime
     IO:
+      val journalHeader = JournalHeader.readJournalHeader(conf.journalFile)
+      val journalFilename = s"controller--${journalHeader.eventId}.journal"
       val controllerState = StateRecoverer.recoverFile[ControllerState](conf.journalFile)
+
       controllerState.emitLineStream(logger.info(_))
+      val directoryProvider = DirectoryProvider(
+        testName = Some("TestRecovery"),
+        controllerConfig = config"""
+          js7.controller.id = "${controllerState.controllerId.string}"
+          """,
+        agentPaths = Nil/*controllerState.keyToItem(AgentRef).keys.toSeq*/)
+      createDirectory(directoryProvider.controllerEnv.stateDir)
+      Files.copy(
+        conf.journalFile,
+        directoryProvider.controllerEnv.stateDir / journalFilename)
+      directoryProvider.runController(dontWaitUntilReady = true): controller =>
+        sleep(1.s)
 
 
   private final case class Conf(journalFile: Path) extends BasicConfiguration:

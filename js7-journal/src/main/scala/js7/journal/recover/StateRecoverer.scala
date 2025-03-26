@@ -104,8 +104,9 @@ object StateRecoverer:
 
   def recoverFile[S <: SnapshotableState[S]](file: Path)(using S: SnapshotableState.Companion[S])
   : S =
-    val fileRecoverer =
-      new FileSnapshotableStateRecoverer[S](journalFileForInfo = file, expectedJournalId = None)
+    val fileRecoverer = new FileSnapshotableStateRecoverer[S](
+      journalFileForInfo = file,
+      expectedJournalId = None)
     autoClosing(InputStreamJsonSeqReader.open(file)): jsonReader =>
       for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
         fileRecoverer.put(S.decodeJournalJson(json).orThrow)
