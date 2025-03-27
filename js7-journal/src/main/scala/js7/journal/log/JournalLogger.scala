@@ -60,10 +60,10 @@ private[journal] final class JournalLogger(
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (PersistFrame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit =
-    CorrelId.isolate { logCorrelId =>
+    CorrelId.isolate: logCorrelId =>
       var index = 0
       for persist <- persists do
-        logCorrelId := persist.correlId
+        //logCorrelId := persist.correlId
         val stampedSeq = persist.stampedSeq.filter(isLoggable)
         val frame = PersistFrame(persist, stampedSeq.length, index, persists.length, committedAt)
         val stampedIterator = stampedSeq.iterator
@@ -76,7 +76,6 @@ private[journal] final class JournalLogger(
           frame.nr += 1
           frame.isFirstEvent = false
         index += 1
-    }
 
   private def traceLogPersist(ack: Boolean)(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
@@ -152,7 +151,7 @@ object JournalLogger:
   private val spaceArrowSpace = spaceArrow + " "
 
   private[journal] trait Loggable:
-    def correlId: CorrelId
+    //def correlId: CorrelId
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
@@ -160,7 +159,7 @@ object JournalLogger:
     def isLastOfFlushedOrSynced: Boolean
 
   final class SimpleLoggable(
-    val correlId: CorrelId,
+    //val correlId: CorrelId,
     val eventNumber: Long,
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     val isTransaction: Boolean,

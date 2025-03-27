@@ -4,7 +4,7 @@ import cats.effect.std.Semaphore
 import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.left
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic.extensions.*
@@ -137,7 +137,7 @@ extends Journal[S]:
     eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]], since: Deadline)
   : Unit =
     journalLogger.logCommitted(Vector(new SimpleLoggable(
-      CorrelId.current,
+      //CorrelId.current,
       eventNumber = eventNumber,
       stampedEvents,
       isTransaction = false,
