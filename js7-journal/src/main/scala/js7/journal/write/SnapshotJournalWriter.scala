@@ -10,7 +10,7 @@ import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.files.JournalFiles.extensions.file
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -19,11 +19,11 @@ import scala.concurrent.duration.Deadline.now
   */
 final class SnapshotJournalWriter(
   S: SnapshotableState.HasCodec,
-  val file: Path,
+  file: Path,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
   (using protected val ioRuntime: IORuntime)
-extends JournalWriter(S, after = after, append = false):
+extends JournalWriter(S, file, after = after, append = false):
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
@@ -60,6 +60,9 @@ extends JournalWriter(S, after = after, append = false):
 
 
 object SnapshotJournalWriter:
-  def forTest(journalLocation: JournalLocation, after: EventId)(implicit ioRuntime: IORuntime) =
-    new SnapshotJournalWriter(journalLocation.S, journalLocation.file(after), after = after,
-      simulateSync = None)
+
+  def forTest(journalLocation: JournalLocation, after: EventId)(using IORuntime) =
+    new SnapshotJournalWriter(
+      journalLocation.S,
+      journalLocation.file(after),
+      after = after, simulateSync = None)

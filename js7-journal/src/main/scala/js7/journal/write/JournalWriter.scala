@@ -24,11 +24,11 @@ import scala.util.control.NonFatal
   */
 private[journal] abstract class JournalWriter(
   S: JournaledState.HasEventCodec,
+  val file: Path,
   after: EventId,
   append: Boolean)
 extends AutoCloseable:
 
-  def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
   protected def ioRuntime: IORuntime
@@ -91,7 +91,8 @@ extends AutoCloseable:
 
   protected final def eventsStarted = _eventsStarted
 
-  protected final def lastWrittenEventId = _lastEventId
+  protected final def lastWrittenEventId: EventId =
+    _lastEventId
 
   protected final def fileSizeString: String =
     try toMB(Files.size(file)) catch { case NonFatal(t) => t.toString }

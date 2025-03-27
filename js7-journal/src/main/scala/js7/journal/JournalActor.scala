@@ -497,7 +497,7 @@ extends Actor, Stash, JournalLogging:
     logger.debug(journalHeader.toString)
 
     snapshotWriter = new SnapshotJournalWriter(
-      journalLocation.S, 
+      journalLocation.S,
       JournalLocation.toTemporaryFile(file),
       after = lastWrittenEventId,
       simulateSync = conf.simulateSync)
@@ -562,14 +562,12 @@ extends Actor, Stash, JournalLogging:
     val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
     logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
 
-  private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) =
+  private def newEventJsonWriter(after: EventId): EventJournalWriter =
     assertThat(journalHeader != null)
-    val file = journalLocation.file(after = after)
-    val w = new EventJournalWriter(journalLocation.S, file,
-      after = after, journalHeader.journalId,
+    val w = new EventJournalWriter(journalLocation, after = after, journalHeader.journalId,
       journalingObserver.orThrow, simulateSync = conf.simulateSync,
-      withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
-    journalLocation.updateSymbolicLink(file)
+      initialEventCount = 1/*SnapshotTaken*/)
+    journalLocation.updateSymbolicLink(w.file)
     w
 
   private def closeEventWriter(): Unit =

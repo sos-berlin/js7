@@ -309,13 +309,16 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
       autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
         writeJournalSnapshot(journalLocation, after = EventId.BeforeFirst, Nil)
-        autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
+        autoClosing(
+          EventJournalWriter.forTest(
+            journalLocation, after = EventId.BeforeFirst, journalId,
+            Some(eventWatch), append = true)
+        ): writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
           val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
           assert(stream.compile.toList.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
-        }
       }
 
       // --100.journal with some snapshot objects

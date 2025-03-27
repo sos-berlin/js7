@@ -1,7 +1,7 @@
 package js7.controller.web.controller.api
 
-import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
@@ -217,4 +217,4 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
     new SnapshotJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, simulateSync = None)
 
   private def newEventJournalWriter(eventId: EventId) =
-    new EventJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
+    new EventJournalWriter(journalLocation, after = eventId, journalId, Some(eventWatch), simulateSync = None)

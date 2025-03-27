@@ -2,15 +2,14 @@ package js7.journal.write
 
 import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
-import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
 import js7.base.utils.Assertions.assertThat
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
-import js7.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
-import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.files.JournalFiles.extensions.file
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.EventJournalWriter.*
 import scala.concurrent.duration.FiniteDuration
@@ -19,16 +18,20 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 final class EventJournalWriter(
-  S: JournaledState.HasEventCodec,
-  val file: Path,
+  journalLocation: JournalLocation,
   after: EventId,
   journalId: JournalId,
   observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration],
-  withoutSnapshots: Boolean = false,
+  append: Boolean = true,
   initialEventCount: Int = 0)
   (implicit protected val ioRuntime: IORuntime)
-extends JournalWriter(S, after = after, append = !withoutSnapshots),
+extends
+  JournalWriter(
+    journalLocation.S,
+    journalLocation.file(after),
+    after = after,
+    append = append),
   AutoCloseable:
 
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
@@ -109,10 +112,10 @@ private[journal] object EventJournalWriter:
   private val CommitByteArray = Commit.asJson.toByteArray
 
   def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
-    observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
+    observer: Option[JournalingObserver] = None, append: Boolean = false)
     (using IORuntime)
   =
-    new EventJournalWriter(journalLocation.S, journalLocation.file(after), after, journalId, observer,
-      simulateSync = None, withoutSnapshots = withoutSnapshots)
+    new EventJournalWriter(journalLocation, after, journalId, observer,
+      simulateSync = None, append = append)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)

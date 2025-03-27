@@ -33,7 +33,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
   private val stateName = "TestState"
 
   "Journal file without snapshots or events" in:
-    withTestActor() { (_, _ ) => }
+    withTestActor() { (_, _) => }
     val file = currentFile
     val journalId =
       autoClosing(scala.io.Source.fromFile(file.toFile)(UTF_8))(_.getLines().next())
@@ -77,7 +77,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
 
     autoClosing(
-      EventJournalWriter(journalLocation.S, file, after = 1000L, journalId, observer = None, simulateSync = None)
+      EventJournalWriter(journalLocation, after = EventId.BeforeFirst, journalId, observer = None, simulateSync = None)
     ): writer =>
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
@@ -119,10 +119,10 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
     val last = Stamped(1004L, "Z" <-: TestEvent.Removed)
 
     "Committed transaction" in:
-      val file = currentFile
+      val file = journalLocation.file(0L)
       delete(file)  // File of last test
       autoClosing(
-        EventJournalWriter(journalLocation.S, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)
+        EventJournalWriter(journalLocation, after = 0L, journalId, observer = None, simulateSync = None, append = false)
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
@@ -132,14 +132,14 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
         writer.endEventSection(sync = false)
 
       autoClosing(
-        JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
+        JournalReader(journalLocation.S, file, journalId)
       ): journalReader =>
         assert(journalReader.readEvents().toList == first :: ta ::: last :: Nil)
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
 
       autoClosing(
-        JournalReader(journalLocation.S, journalLocation.currentFile.orThrow, journalId)
+        JournalReader(journalLocation.S, file, journalId)
       ): journalReader =>
         assert(journalReader.nextEvent() == Some(first))
         assert(journalReader.eventId == 1000)
@@ -159,8 +159,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(FileJsonWriter(file)): writer =>
-        def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
-        def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
+        def write[A](a: A)(using encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
+        def writeEvent(stamped: Stamped[KeyedEvent[TestEvent]]) = write(stamped)
 
         write(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst).asJson)
         write(JournalSeparators.EventHeader)
