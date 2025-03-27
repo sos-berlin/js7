@@ -348,6 +348,7 @@ extends Actor, Stash, JournalLogging:
       requireClusterAcknowledgement = false
       waitingForAcknowledge = false
       waitingForAcknowledgeTimer := SyncCancelable.empty
+    end if
     commit()
 
   private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit =

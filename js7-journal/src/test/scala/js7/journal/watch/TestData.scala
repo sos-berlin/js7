@@ -41,7 +41,7 @@ private[watch] object TestData:
 
   def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any])
     (using IORuntime): Path =
-    autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)) { writer =>
+    autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)): writer =>
       writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
       for o <- snapshotObjects do
@@ -50,7 +50,6 @@ private[watch] object TestData:
       writer.beginEventSection(sync = false)
       writer.writeEvent(Stamped(after + 1, NoKey <-: SnapshotTaken))
       writer.file
-    }
 
   def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
     journalId: JournalId = this.journalId)
@@ -59,9 +58,9 @@ private[watch] object TestData:
     autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
       writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
-      writer.writeEvents(stampedEvents take 1)
-      writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)
-      writer.writeEvents(stampedEvents drop 3)
+      writer.writeEvents(stampedEvents.take(1))
+      writer.writeEvents(stampedEvents.slice(1, 3), transaction = true)
+      writer.writeEvents(stampedEvents.drop(3))
       writer.endEventSection(sync = false)
       writer.file
     }

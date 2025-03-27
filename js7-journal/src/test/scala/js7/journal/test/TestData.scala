@@ -19,7 +19,7 @@ private[journal] object TestData:
     js7.journal.snapshot.log-actor-limit = 1
     js7.journal.slow-check-state = true
     js7.journal.release-events-delay = 0s
-    js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
+    js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITING FOR OLD EVENTS !
   """.withFallback(Js7Configuration.defaultConfig)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
