@@ -22,7 +22,7 @@ final case class Worry(
   private val (debugLevel, myDurations) =
     val traceAdded = logger.isTraceEnabled && durations.headOption.exists(_ > TraceWorryDuration)
     if traceAdded then
-      (Some(durations.head), TraceWorryDuration :: durations)
+      (Some(durations.head), TraceWorryDuration :: (durations.head - TraceWorryDuration) :: durations.tail)
     else
       (None, durations)
 
