@@ -22,8 +22,16 @@ final class AsyncVariable[V] private(
   def lockedValue: IO[V] =
     lock.lock(value)
 
+  /** Lock and use the value without changing it. */
+  def use[A](body: V => IO[A]): IO[A] =
+    shieldValue:
+      IO.defer(body(_value))
+
   def set(value: V)(using sourcecode.Enclosing): IO[V] =
     update(_ => IO.pure(value))
+
+  def updateDirect(update: V => V)(using sourcecode.Enclosing): IO[V] =
+    this.update(v => IO.pure(update(v)))
 
   def update(update: V => IO[V])(using sourcecode.Enclosing): IO[V] =
     shieldValue:
