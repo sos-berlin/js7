@@ -15,10 +15,16 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 trait AsyncLock:
+  def resource(acquirer: => String): ResourceIO[Unit]
+
+  final def resource(implicit src: sourcecode.Enclosing): ResourceIO[Unit] =
+    resource(src.value)
+
   final def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
     lock(src.value)(io)
 
-  def lock[A](acquirer: => String)(io: IO[A]): IO[A]
+  final def lock[A](acquirer: => String)(body: IO[A]): IO[A] =
+    resource(acquirer).surround(body)
 
 
 object AsyncLock:
@@ -50,8 +56,8 @@ object AsyncLock:
   private final class NoLogging(name: String) extends AsyncLock:
     private val mutex = Mutex[IO].unsafeMemoize
 
-    def lock[A](acquirer: => String)(io: IO[A]): IO[A] =
-      mutex.flatMap(_.lock.surround(io))
+    def resource(acquirer: => String): ResourceIO[Unit] =
+      Resource.eval(mutex).flatMap(_.lock)
 
     override def toString = s"AsyncLock:$name"
 
@@ -68,12 +74,11 @@ object AsyncLock:
     private[utils] def isLocked: Boolean =
       queueLength.get() > 0
 
-    override def lock[A](acquirer: => String)(body: IO[A]): IO[A] =
-      mutex.flatMap: mutex =>
-        logging(acquirer).use: onAcquired =>
-          mutex.lock.surround:
-            onAcquired *> body
-
+    def resource(acquirer: => String): ResourceIO[Unit] =
+      Resource.eval(mutex).flatMap: mutex =>
+        logging(acquirer).flatMap: onAcquired =>
+          mutex.lock.evalMap: _ =>
+            onAcquired
 
     private def logging(acquirer: => String): ResourceIO[IO[Unit]] =
       Resource.defer:
