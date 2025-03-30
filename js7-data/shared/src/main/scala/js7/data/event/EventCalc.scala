@@ -60,7 +60,8 @@ object EventCalc:
     addEvents(keyedEvents)
 
   inline def add[S <: EventDrivenState[S, E], E <: Event, Ctx](
-    keyedEvents: IterableOnce[KeyedEvent[E]]): EventCalc[S, E, Ctx] =
+    keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
+  : EventCalc[S, E, Ctx] =
     addEvents(keyedEvents)
 
   //inline def add[K, E1 <: E](key: K)(events: Iterable[E1])
@@ -78,7 +79,7 @@ object EventCalc:
     EventCalc(_.addEvent(keyedEvent))
 
   private def addEvents[S <: EventDrivenState[S, E], E <: Event, Ctx](
-    keyedEvents: IterableOnce[KeyedEvent[E]])
+    keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]])
   : EventCalc[S, E, Ctx] =
     EventCalc(_.addEvents(keyedEvents))
 

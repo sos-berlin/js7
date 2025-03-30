@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
   */
 final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private(
   originalAggregate: S,
-  keyedEvents: Vector[KeyedEvent[E]],
+  timestampedKeyedEvents: Vector[MaybeTimestampedKeyedEvent[E]],
   aggregate: S,
   context: Ctx):
 
@@ -31,7 +31,7 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   inline def add[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[Self] =
     addEvent(keyedEvent)
 
-  inline def add[E1 <: E](keyedEvents: IterableOnce[KeyedEvent[E1]]): Checked[Self] =
+  inline def add[E1 <: E](keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E1]]): Checked[Self] =
     addEvents(keyedEvents)
 
   inline def add[K, E1 <: E](key: K)(events: Iterable[E1])
@@ -57,17 +57,17 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   def addEvent[E1 <: E](keyedEvent: KeyedEvent[E1]): Checked[Self] =
     aggregate.applyKeyedEvent(keyedEvent).map: updated =>
       copy(
-        keyedEvents = keyedEvents :+ keyedEvent,
+        timestampedKeyedEvents = timestampedKeyedEvents :+ keyedEvent,
         aggregate = updated)
 
-  def addEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] =
+  def addEvents(keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]]): Checked[Self] =
     val keyedEventsV = Vector.from(keyedEvents)
     if keyedEventsV.isEmpty then
       Right(this)
     else
-      aggregate.applyKeyedEvents(keyedEventsV).map: updated =>
+      aggregate.applyKeyedEvents(keyedEventsV.view.map(_.keyedEvent)).map: updated =>
         copy(
-          keyedEvents = this.keyedEvents ++ keyedEventsV,
+          timestampedKeyedEvents = this.timestampedKeyedEvents ++ keyedEventsV,
           aggregate = updated)
 
   def combine(b: Self): Checked[Self] =
@@ -76,8 +76,11 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
     else
       Right:
         copy(
-          keyedEvents = keyedEvents ++ b.keyedEvents,
+          timestampedKeyedEvents = timestampedKeyedEvents ++ b.timestampedKeyedEvents,
           aggregate = b.aggregate)
+
+  def keyedEvents: Vector[KeyedEvent[E]] =
+    timestampedKeyedEvents.map(_.keyedEvent)
 
   def ifIs[S1 <: EventDrivenState[S1, E]](using ClassTag[S1]): Option[EventColl[S1, E, Ctx]] =
     implicitClass[S1].isAssignableFrom(aggregate.getClass) ?
