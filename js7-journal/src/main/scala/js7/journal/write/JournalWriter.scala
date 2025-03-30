@@ -91,7 +91,7 @@ extends AutoCloseable:
 
   protected final def eventsStarted = _eventsStarted
 
-  protected final def lastWrittenEventId: EventId =
+  final def lastWrittenEventId: EventId =
     _lastEventId
 
   protected final def fileSizeString: String =

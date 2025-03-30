@@ -303,6 +303,11 @@ object Logger extends AdHocLogger:
       : Resource[F, A] =
         logResource[F, A](logger, LogLevel.Info, function, args)(resource)
 
+      def infoResource[F[_], A](resource: Resource[F, A])
+        (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
+      : Resource[F, A] =
+        logResource[F, A](logger, LogLevel.Info)(resource)
+
       def debugResource[F[_], A](resource: Resource[F, A])
         (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
       : Resource[F, A] =
