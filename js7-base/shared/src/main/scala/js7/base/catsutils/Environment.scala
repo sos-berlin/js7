@@ -24,6 +24,11 @@ final class Environment:
         register(taggedResource.resource)(using Sync[IO], taggedResource.tag)
       .map(_.combineAll)
 
+  def registerPure[F[_], A](a: A, ignoreDuplicate: Boolean = false)
+    (using F: Sync[F], tag: Tag[A])
+  : Resource[F, Unit] =
+    register(Resource.pure[F, A](a), ignoreDuplicate = ignoreDuplicate)
+
   def register[F[_], A](resource: Resource[F, A], ignoreDuplicate: Boolean = false)
     (using F: Sync[F], tag: Tag[A])
   : Resource[F, Unit] =
@@ -138,6 +143,9 @@ object Environment:
       .flatMap: env =>
         env.registerMultiple(taggedResources)
 
+  def registerPure[A](a: A)(using Tag[A]): ResourceIO[Unit] =
+    register(Resource.pure[IO, A](a))
+
   /** Register a Resource for lazy allocation. */
   def register[A](resource: ResourceIO[A])(using tag: Tag[A]): ResourceIO[Unit] =
     register2(resource, ignoreDuplicate = false)
@@ -164,6 +172,10 @@ object Environment:
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
   def environment[A](using tag: Tag[A]): IO[A] =
     OurIORuntimeRegister.environment.flatMap(_.get[A]())
+
+  /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
+  def environmentOr[A](default: => A)(using tag: Tag[A]): IO[A] =
+    maybe[A].map(_ getOrElse default)
 
   /** Fetches a registered `A` value from the `Environment` of our `IORuntime`. */
   def maybe[A](using tag: Tag[A]): IO[Option[A]] =
