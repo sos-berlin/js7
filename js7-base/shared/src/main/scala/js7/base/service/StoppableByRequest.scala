@@ -7,6 +7,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.raceMerge
 import js7.base.problem.Checked
+import js7.base.service.Problems.ServiceStoppedProblem
 import js7.base.service.StoppableByRequest.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 
@@ -51,7 +52,7 @@ trait StoppableByRequest:
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
     IO:
-      !isStopping !! StoppedProblem(toString)
+      !isStopping !! ServiceStoppedProblem(toString)
 
 
 object StoppableByRequest:

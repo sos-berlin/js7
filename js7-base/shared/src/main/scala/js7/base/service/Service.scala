@@ -3,6 +3,7 @@ package js7.base.service
 import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
@@ -26,11 +27,26 @@ trait Service:
   final def untilStopped: IO[Unit] =
     IO.defer:
       if !started.get() then
-        IO.raiseError(Problem.pure(
-          s"$service.untilStopped but service has not been started").throwable)
+        IO.raiseError:
+          Problem.pure(s"$service.untilStopped but service has not been started").throwable
       else
         stopped.get.flatMap(_
           .fold(IO.raiseError, IO(_)))
+
+  /** When this Service stopps, cancel the body and fail. */
+  final def failWhenStopped[R](body: IO[R]): IO[R] =
+    body.start.flatMap: fiber =>
+      IO
+        .race(
+          service.untilStopped.attempt.flatMap: attempted =>
+            fiber.cancel *>
+              attempted.match
+                case Left(throwable) => IO.raiseError(throwable)
+                case Right(()) => IO.unit,
+          fiber.joinStd)
+        .flatMap:
+          case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
+          case Right(r) => IO.pure(r)
 
   protected final def startServiceAndLog(logger: Logger.Underlying, args: String = "")(run: IO[Unit])
   : IO[Started] =
@@ -77,7 +93,6 @@ object Service:
   private val logger = Logger[this.type]
   private val defaultRestartDelayConf: DelayConf =
     RestartAfterFailureService.defaultRestartConf
-
 
   def resource[Svc <: Service](newService: IO[Svc]): ResourceIO[Svc] =
     Resource.make(

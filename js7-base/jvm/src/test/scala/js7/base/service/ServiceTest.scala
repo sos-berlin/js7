@@ -7,6 +7,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.util.control.NoStackTrace
 
@@ -15,7 +16,7 @@ final class ServiceTest extends OurAsyncTestSuite:
   private val delay = 200.ms
   private val iterations = if isIntelliJIdea then 100 else 10
 
-  "Resource.release does not suppresses exceptions" in:
+  "Resource.release does not suppress exceptions" in:
     Resource
       .make(IO.unit)(_ => IO.raiseError(new IllegalStateException))
       .surround(IO(succeed))
@@ -27,19 +28,19 @@ final class ServiceTest extends OurAsyncTestSuite:
   "Service terminates while still in use" in repeatTest(iterations): _ =>
     var isRunning = false
     MyService.resource(isRunning = _)
-      .use(service =>
+      .use: service =>
         // service fails while in use!
         service.running.get *>
           service.stop *>
           IO(assert(!isRunning))
-            .as(succeed))
+            .as(succeed)
 
   "Service fails while still in use" in repeatTest(iterations): _ =>
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(onFailed = serviceFailed.complete(()).void)
-      //v2.6? .surround(serviceFailed.get.delayBy(delay))
-      .use(service => serviceFailed.get.delayBy(delay) *> service.untilStopped)
+      .use: service =>
+        serviceFailed.get.delayBy(delay) *> service.untilStopped
       .attempt
       .map:
         case Left(FailingService.exception) => succeed
@@ -68,22 +69,21 @@ final class ServiceTest extends OurAsyncTestSuite:
     val failService = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(whenFail = failService.get)
-      .use(_ =>
+      .surround:
         // service fails while in use!
-        failService.complete(()).as(succeed))
+        failService.complete(()).as(succeed)
       .recover:
         case FailingService.exception => succeed
 
   "No failure " in repeatTest(iterations): _ =>
     var isRunning = false
     MyService.resource(isRunning = _)
-      .use(service =>
+      .use: service =>
         service.running.get
           .<*(IO:
-            assert(isRunning)))
+            assert(isRunning))
       .*>(IO:
         assert(!isRunning))
-
 
   "Service.StoppableByCancel" in:
     val started = Deferred.unsafe[IO, Unit]
@@ -100,6 +100,29 @@ final class ServiceTest extends OurAsyncTestSuite:
       .map: _ =>
         assert(canceled.get)
 
+
+  "failWhenStopped" - {
+    "terminating Service cancels the nested body" in:
+      MyService.resource(_ => ())
+        .use: service =>
+          service.failWhenStopped:
+            service.stop *> IO.never
+        .attempt.map:
+          case Left(exception)
+            if exception.toStringWithCauses == "MyService terminated unexpectedly" => succeed
+          case x => fail(x.toString)
+
+    "failing Service cancels the nested body" in:
+      val failService = Deferred.unsafe[IO, Unit]
+      FailingService.resource(whenFail = failService.get)
+        .use: service =>
+          service.failWhenStopped:
+            failService.complete(()) *> IO.never
+        .attempt.map:
+          case Left(FailingService.exception) => succeed
+          case x => fail(x.toString)
+  }
+
   private class MyService(setRunning: Boolean => Unit)
   extends Service.StoppableByRequest:
     val running = Deferred.unsafe[IO, Unit]
@@ -107,17 +130,21 @@ final class ServiceTest extends OurAsyncTestSuite:
     override def stop = super.stop
 
     protected def start =
-      startService(IO.defer {
-        setRunning(true)
-        running
-          .complete(())
-          .*>(untilStopRequested)
-          .guaranteeCase(exitCase => IO:
-            logger.info(s"$exitCase")
-            setRunning(false))
-      })
+      startService:
+        IO.defer:
+          setRunning(true)
+          running
+            .complete(())
+            .productR:
+              untilStopRequested
+            .guaranteeCase: exitCase =>
+              IO:
+               logger.info(s"$exitCase")
+                setRunning(false)
+
 
     override def toString = "MyService"
+
   private object MyService:
     def resource(setRunning: Boolean => Unit): ResourceIO[MyService] =
       Service.resource(IO(new MyService(setRunning)))
@@ -126,13 +153,11 @@ final class ServiceTest extends OurAsyncTestSuite:
 object ServiceTest:
   private val logger = Logger[this.type]
 
-  private class FailingService(
-    whenFail: IO[Unit],
-    onFailed: IO[Unit])
+  private class FailingService(whenFail: IO[Unit], onFailed: IO[Unit])
   extends Service.StoppableByRequest:
     protected def start =
-      startService(
-        IO.race(run2, untilStopRequested).void)
+      startService:
+        IO.race(run2, untilStopRequested).void
 
     private def run2 =
       whenFail *> IO.raiseError(FailingService.exception).guarantee(onFailed)
@@ -145,4 +170,4 @@ object ServiceTest:
     def resource(
       whenFail: IO[Unit] = IO.unit,
       onFailed: IO[Unit] = IO.unit)
-    = Service.resource(IO(new FailingService(whenFail, onFailed)))
+    = Service.resource(IO(FailingService(whenFail, onFailed)))
