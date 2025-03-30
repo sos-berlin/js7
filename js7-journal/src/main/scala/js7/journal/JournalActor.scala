@@ -39,6 +39,7 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.log.JournalLogger.Loggable
+import js7.journal.recover.Recovered
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, SupervisorStrategy}
@@ -80,7 +81,7 @@ extends Actor, Stash, JournalLogging:
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
   private var totalRunningSince = now
-  private val journalingObserver = SetOnce[Option[JournalingObserver]]
+  private val journalingObserver = SetOnce[JournalingObserver]
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
   private var lastSnapshotTakenEventId = EventId.BeforeFirst
@@ -123,16 +124,16 @@ extends Actor, Stash, JournalLogging:
     super.postStop()
 
   def receive =
-    case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
-      committedState = journaledState_.asInstanceOf[S]
+    case Input.Start(recovered) =>
+      committedState = recovered.state.asInstanceOf[S]
       uncommittedState = committedState
       checkRecovery()
       requireClusterAcknowledgement = committedState.clusterState.isInstanceOf[ClusterState.Coupled]
-      journalingObserver := observer_
-      journalHeader = header
-      totalRunningSince = totalRunningSince_
-      lastWrittenEventId = header.eventId
-      totalEventCount = header.totalEventCount
+      journalingObserver := recovered.eventWatch
+      journalHeader = recovered.recoveredJournalFile.fold(JournalHeader.initial[S]())(_.nextJournalHeader)
+      totalRunningSince = recovered.totalRunningSince
+      lastWrittenEventId = journalHeader.eventId
+      totalEventCount = journalHeader.totalEventCount
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
       val sender = this.sender()
       locally:
@@ -604,9 +605,7 @@ extends Actor, Stash, JournalLogging:
   private def releaseObsoleteEventsUntil(untilEventId: EventId): Unit =
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${committedState.journalState}, clusterState=${committedState.clusterState}")
     journalingObserver.orThrow match
-      case Some(o) =>
-        o.releaseEvents(untilEventId)
-      case None =>
+      case JournalingObserver.Dummy =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
         for j <- journalLocation.listJournalFiles if j.fileEventId < until do
@@ -615,6 +614,8 @@ extends Actor, Stash, JournalLogging:
           try delete(file)
           catch case NonFatal(t) =>
             logger.warn(s"Cannot delete obsolete journal file '$file': ${t.toStringWithCauses}")
+      case o =>
+        o.releaseEvents(untilEventId)
 
   private def checkRecovery(stampedKeyedEvents: Seq[Stamped[AnyKeyedEvent]] = Nil): Unit =
     if conf.slowCheckState then
@@ -672,11 +673,7 @@ object JournalActor:
   private[journal] trait CallersItem
 
   object Input:
-    private[journal] final case class Start[S <: SnapshotableState[S]](
-      journaledState: SnapshotableState[S],
-      journalingObserver: Option[JournalingObserver],
-      recoveredJournalHeader: JournalHeader,
-      totalRunningSince: Deadline)
+    private[journal] final case class Start[S <: SnapshotableState[S]](recovered: Recovered[S])
 
     private[journal] final case class Store(
       correlId: CorrelId,
@@ -707,9 +704,6 @@ object JournalActor:
       stamped: Checked[Seq[Stamped[AnyKeyedEvent]]],
       journaledState: S,
       callersItem: CallersItem)
-    extends Output
-
-    private[journal] final case class StoreRejected(problem: Problem, callersItem: CallersItem)
     extends Output
 
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output

@@ -29,3 +29,31 @@ private[journal] trait JournalingObserver:
   : Unit =
     onFileWritten(positionAndEventId.position)
     onEventsCommitted(positionAndEventId, n)
+
+
+private[journal] object JournalingObserver:
+
+  object Dummy extends JournalingObserver:
+    override def toString = "JournalingObserver.Dummy"
+
+    protected[journal] def onJournalingStarted(
+      file: Path,
+      expectedJournalId: JournalId,
+      firstEventPositionAndFileEventId: PositionAnd[EventId],
+      flushedLengthAndEventId: PositionAnd[EventId],
+      isActiveNode: Boolean)
+    : Unit =
+      ()
+
+    protected[journal] def onJournalingEnded(fileLength: EventId): Unit =
+      ()
+
+    protected[journal] def onFileWritten(flushedPosition: EventId): Unit =
+      ()
+
+    protected[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int)
+    : Unit =
+      ()
+
+    protected[journal] def releaseEvents(untilEventId: EventId)(using IORuntime): Unit =
+      ()

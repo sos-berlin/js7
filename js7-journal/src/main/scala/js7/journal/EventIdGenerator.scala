@@ -9,11 +9,11 @@ import scala.collection.AbstractIterator
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGenerator(clock: WallClock)
+final class EventIdGenerator(clock: WallClock, after: EventId = EventId.BeforeFirst)
 extends AbstractIterator[EventId]:
   def this() = this(WallClock)
 
-  private val lastResult = Atomic(EventId.BeforeFirst)
+  private val lastResult = Atomic(after)
 
   def lastUsedEventId: EventId = lastResult.get
 

@@ -35,6 +35,9 @@ private[journal] object TestEvent extends Event.CompanionForKey[String, TestEven
     r: String = "X")
   extends TestEvent
 
+  final case class SimpleAdded(string: String)
+  extends TestEvent
+
   final case class Appended(char: Char) extends TestEvent
 
   case object NothingDone extends TestEvent
@@ -43,6 +46,7 @@ private[journal] object TestEvent extends Event.CompanionForKey[String, TestEven
 
   implicit val jsonFormat: TypedJsonCodec[TestEvent] = TypedJsonCodec(
     Subtype(deriveCodec[Added]),
+    Subtype(deriveCodec[SimpleAdded]),
     Subtype(deriveCodec[Appended]),
     Subtype(NothingDone),
     Subtype(Removed))

@@ -33,7 +33,6 @@ import sourcecode.Enclosing
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
 final class FileJournal[S <: SnapshotableState[S]: Tag] private(
-  val journalId: JournalId,
   val journalHeader: JournalHeader,
   val journalConf: JournalConf,
   val eventWatch: FileEventWatch,
@@ -45,6 +44,8 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   (implicit
     protected val S: SnapshotableState.Companion[S])
 extends Journal[S], FileJournal.PossibleFailover:
+
+  def journalId = journalHeader.journalId
 
   def isHalted: Boolean =
     isHaltedFun()
@@ -146,7 +147,6 @@ object FileJournal:
         given ExecutionContext = ioRuntime.compute
 
         val S = implicitly[SnapshotableState.Companion[S]]
-        val journalId = recovered.journalId getOrElse JournalId.random()
 
         if recovered.recoveredJournalFile.isEmpty then
           logger.info("Starting a new empty journal")
@@ -162,11 +162,7 @@ object FileJournal:
 
         val whenJournalActorReady = IO.fromFuture(IO:
           (journalActor ?
-            JournalActor.Input.Start(
-              recovered.state,
-              Some(recovered.eventWatch),
-              recovered.recoveredJournalFile.fold(JournalHeader.initial[S](journalId))(_.nextJournalHeader),
-              recovered.totalRunningSince)
+            JournalActor.Input.Start(recovered)
             )(Timeout(1.h /*???*/)
           ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))
 
@@ -199,7 +195,7 @@ object FileJournal:
                 .taggedWith[StateJournalingActor.type]
 
               val journal = new FileJournal[S](
-                journalId, journalHeader, journalConf,
+                journalHeader, journalConf,
                 recovered.eventWatch,
                 getCurrentState, isHalted, persistIO, persistLaterIO,
                 journalActor)

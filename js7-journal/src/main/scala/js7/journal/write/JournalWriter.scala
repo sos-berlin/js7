@@ -26,7 +26,8 @@ private[journal] abstract class JournalWriter(
   S: JournaledState.HasEventCodec,
   val file: Path,
   after: EventId,
-  append: Boolean)
+  append: Boolean,
+  initialEventCount: Long = 0)
 extends AutoCloseable:
 
   protected def simulateSync: Option[FiniteDuration]
@@ -35,6 +36,8 @@ extends AutoCloseable:
 
   private var _eventsStarted = append
   private var _lastEventId = after
+  private var _eventCount = initialEventCount
+  //private var _flushedFileLengthAndEventId = PositionAnd(-999999L /*???*/, after)
 
   if !append && Files.exists(file) then sys.error(s"JournalWriter: Unexpected journal file: $file")
   if append && !Files.exists(file) then sys.error(s"JournalWriter: Missing journal file: $file")
@@ -59,6 +62,7 @@ extends AutoCloseable:
     writeEvents_(stamped :: Nil)
 
   protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
+    _eventCount += stampedEvents.size
     for stamped <- stampedEvents do
       if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
         s"JournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
@@ -98,25 +102,38 @@ extends AutoCloseable:
     try toMB(Files.size(file)) catch { case NonFatal(t) => t.toString }
 
   def flush(sync: Boolean): Unit =
-    if !jsonWriter.isFlushed then
-      statistics.beforeFlush()
-      meterFlush:
-        jsonWriter.flush()
-      statistics.afterFlush()
-    if sync && !isSynced then
-      statistics.beforeSync()
-      meterSync:
-        jsonWriter.sync()
-      statistics.afterSync()
+    try
+      if !jsonWriter.isFlushed then
+        statistics.beforeFlush()
+        meterFlush:
+          jsonWriter.flush()
+        statistics.afterFlush()
+      if sync && !isSynced then
+        statistics.beforeSync()
+        meterSync:
+          jsonWriter.sync()
+        statistics.afterSync()
+      //_flushedFileLengthAndEventId = PositionAnd(jsonWriter.bytesWritten, _lastEventId)
+    catch case NonFatal(t) =>
+      throw new RuntimeException(s"Error while writing to journal file", t)
 
-  final def isFlushed = jsonWriter.isFlushed
+  //final def flushedFileLengthAndEventId: PositionAnd[EventId] =
+  //  _flushedFileLengthAndEventId
 
-  final def isSynced = jsonWriter.isSynced
+  final def isFlushed: Boolean =
+    jsonWriter.isFlushed
 
-  final def fileLength = jsonWriter.fileLength
+  final def isSynced: Boolean =
+    jsonWriter.isSynced
 
-  final def bytesWritten = jsonWriter.bytesWritten
+  final def fileLength: Long =
+    jsonWriter.fileLength
 
+  final def bytesWritten: Long =
+    jsonWriter.bytesWritten
+
+  def eventCount: Long =
+    _eventCount
 
 object JournalWriter:
   private val JsonBatchSize = 256

@@ -49,7 +49,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   private given IORuntime = ioRuntime
 
   "JournalId is checked" in:
-    withJournalMeta { journalLocation =>
+    withJournalLocation { journalLocation =>
       val myJournalId = JournalId.random()
       writeJournal(journalLocation, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
       val exception = intercept[IllegalArgumentException]:
@@ -59,7 +59,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
     }
 
   "eventWatch.when" in:
-    withJournalMeta { journalLocation =>
+    withJournalLocation { journalLocation =>
       writeJournal(journalLocation, EventId.BeforeFirst, MyEvents1)
       withJournal(journalLocation, MyEvents1.last.eventId) { (writer, eventWatch) =>
         def when(after: EventId) =
@@ -214,9 +214,11 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
       }
 
     "Second onJournalingStarted (snapshot)" in:
-      withJournalMeta { journalLocation =>
-        autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
-          autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch))) { writer =>
+      withJournalLocation: journalLocation =>
+        autoClosing(JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)): eventWatch =>
+          autoClosing(
+            EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, eventWatch)
+          ): writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
@@ -227,10 +229,11 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
-          }
           assert(eventWatch.fileEventIds == EventId.BeforeFirst :: Nil)
 
-          autoClosing(EventJournalWriter.forTest(journalLocation, after = 3L, journalId, Some(eventWatch))) { writer =>
+          autoClosing(
+            EventJournalWriter.forTest(journalLocation, after = 3L, journalId, eventWatch)
+          ): writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
@@ -240,10 +243,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             writer.flush(sync = false)
             writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
             writer.endEventSection(sync = false)
-          }
           assert(eventWatch.fileEventIds == EventId.BeforeFirst :: 3 :: Nil)
-        }
-      }
 
     "stream" in:
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
@@ -282,7 +282,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
       }
 
     "stream after=(unknown EventId)" in:
-      withJournalMeta { journalLocation =>
+      withJournalLocation { journalLocation =>
         withJournal(journalLocation, lastEventId = EventId(100)) { (writer, eventWatch) =>
           writer.writeEvents(MyEvents1)
           writer.flush(sync = false)
@@ -305,14 +305,14 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   }
 
   "snapshotAfter" in:
-    withJournalMeta { journalLocation =>
+    withJournalLocation { journalLocation =>
       autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
         writeJournalSnapshot(journalLocation, after = EventId.BeforeFirst, Nil)
         autoClosing(
           EventJournalWriter.forTest(
             journalLocation, after = EventId.BeforeFirst, journalId,
-            Some(eventWatch), append = true)
+            eventWatch, append = true)
         ): writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
@@ -401,11 +401,11 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   private def withJournalEventWatch(lastEventId: EventId)
     (body: (EventJournalWriter, JournalEventWatch) => Unit)
   : Unit =
-    withJournalMeta { journalLocation =>
+    withJournalLocation { journalLocation =>
       withJournal(journalLocation, lastEventId)(body)
     }
 
-  private def withJournalMeta(body: JournalLocation => Unit): Unit =
+  private def withJournalLocation(body: JournalLocation => Unit): Unit =
     withTemporaryDirectory("JournalEventWatchTest") { directory =>
       val journalLocation = JournalLocation(TestState, directory / "test")
       body(journalLocation)
@@ -414,15 +414,16 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   private def withJournal(journalLocation: JournalLocation, lastEventId: EventId)
     (body: (EventJournalWriter, JournalEventWatch) => Unit)
   : Unit =
-    autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
-      autoClosing(EventJournalWriter.forTest(journalLocation, after = lastEventId, journalId, Some(eventWatch))) { writer =>
+    autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)): eventWatch =>
+      autoClosing(
+        EventJournalWriter.forTest(journalLocation, after = lastEventId, journalId, eventWatch)
+      ): writer =>
         writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()
         body(writer, eventWatch)
         writer.endEventSection(sync = false)
-      }
-    }
+
 
 private object JournalEventWatchTest:
 

@@ -34,7 +34,7 @@ extends AutoCloseable:
     // Start the other when accessing one.
     val eventWatch = new JournalEventWatch(journalLocation, config.withFallback(JournalEventWatch.TestConfig))
     val eventWriter =
-      val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, Some(eventWatch))
+      val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, eventWatch)
       w.writeHeader(JournalHeader.forTest("TestState", journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()

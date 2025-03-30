@@ -55,7 +55,7 @@ private[watch] object TestData:
     journalId: JournalId = this.journalId)
     (using IORuntime)
   : Path =
-    autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
+    autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)): writer =>
       writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents.take(1))
@@ -63,4 +63,3 @@ private[watch] object TestData:
       writer.writeEvents(stampedEvents.drop(3))
       writer.endEventSection(sync = false)
       writer.file
-    }

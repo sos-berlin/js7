@@ -19,6 +19,7 @@ import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalS
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.extensions.*
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
+import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import org.apache.pekko.pattern.ask
 
@@ -77,7 +78,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
 
     autoClosing(
-      EventJournalWriter(journalLocation, after = EventId.BeforeFirst, journalId, observer = None, simulateSync = None)
+      EventJournalWriter(journalLocation, after = EventId.BeforeFirst, journalId,
+        observer = JournalingObserver.Dummy, simulateSync = None)
     ): writer =>
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
@@ -122,7 +124,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       val file = journalLocation.file(0L)
       delete(file)  // File of last test
       autoClosing(
-        EventJournalWriter(journalLocation, after = 0L, journalId, observer = None, simulateSync = None, append = false)
+        EventJournalWriter(journalLocation, after = 0L, journalId,
+          observer = JournalingObserver.Dummy, simulateSync = None, append = false)
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)

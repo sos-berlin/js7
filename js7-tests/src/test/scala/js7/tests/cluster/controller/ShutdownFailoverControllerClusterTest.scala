@@ -20,8 +20,8 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
   override protected def removeObsoleteJournalFiles = false
 
   "ShutDown active node with failover (for testing)" in:
-    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      backup.runController(dontWaitUntilReady = true) { backupController =>
+    withControllerAndBackup(): (primary, _, backup, _, clusterSetting) =>
+      backup.runController(dontWaitUntilReady = true): backupController =>
         primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
           primaryController.eventWatch.await[ClusterWatchRegistered]()
@@ -41,9 +41,8 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         // the primary Controller wants to start again.
         var restart = true
         while restart do
-          primary.runController(dontWaitUntilReady = true) { primaryController =>
-            IO
-              .race(
+          primary.runController(dontWaitUntilReady = true): primaryController =>
+            IO.race(
                 primaryController.untilTerminated,
                 primaryController.eventWatch.awaitAsync[ClusterCoupled](
                   after = primaryController.eventWatch.lastFileEventId))
@@ -62,6 +61,3 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
 
                   backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
                   backupController.terminated.await(99.s)
-          }
-      }
-    }

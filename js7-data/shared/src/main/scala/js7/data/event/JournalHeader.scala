@@ -1,6 +1,5 @@
 package js7.data.event
 
-import JournalHeader.*
 import cats.syntax.semigroup.*
 import io.circe.{Encoder, Json}
 import java.nio.file.Path
@@ -15,6 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.data.event.JournalHeader.*
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -72,7 +72,9 @@ object JournalHeader:
           "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
         "JS7.Journal"))
 
-  def initial[S <: BasicState[S]](journalId: JournalId = JournalId.random())
+  def initial[S <: BasicState[S]](
+    journalId: JournalId = JournalId.random(),
+    timestamp: Timestamp = Timestamp.now)
     (using S: BasicState.Companion[S])
   : JournalHeader =
     new JournalHeader(
@@ -82,8 +84,8 @@ object JournalHeader:
       generation = 0,
       totalEventCount = 0,
       ZeroDuration,
-      timestamp = Timestamp.now,
-      initiallyStartedAt = Timestamp.now,
+      timestamp = timestamp,
+      initiallyStartedAt = timestamp,
       version = Version,
       js7Version = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId)
