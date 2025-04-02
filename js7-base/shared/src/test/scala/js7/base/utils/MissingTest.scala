@@ -18,3 +18,21 @@ final class MissingTest extends OurTestSuite:
 
     val missing: Int | Missing = Missing
     assert(missing.toOption == None)
+
+  "map" in:
+    val a: Int | Missing = 7
+    assert(a.map(_.toString) == "7")
+
+    val missing: Int | Missing = Missing
+    assert(missing.map(_.toString) == Missing)
+
+  "foreach" in:
+    val a: Int | Missing = 7
+    var result = -1
+    a.foreach: o =>
+      result = o
+    assert(result == 7)
+
+    val missing: Int | Missing = Missing
+    missing.foreach: o =>
+      fail()

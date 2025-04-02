@@ -16,3 +16,13 @@ object Missing:
       underlying match
         case Missing => b
         case a: A @unchecked => a
+
+    def map[B](f: A => B): B | Missing =
+      underlying match
+        case Missing => Missing
+        case a: A @unchecked => f(a)
+
+    def foreach(body: A => Unit): Unit =
+      underlying match
+        case Missing =>
+        case a: A @unchecked => body(a)
