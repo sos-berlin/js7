@@ -82,6 +82,12 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
   def keyedEvents: Vector[KeyedEvent[E]] =
     timestampedKeyedEvents.map(_.keyedEvent)
 
+  def isEmpty: Boolean =
+    timestampedKeyedEvents.isEmpty
+
+  inline def nonEmpty: Boolean =
+    !isEmpty
+
   def ifIs[S1 <: EventDrivenState[S1, E]](using ClassTag[S1]): Option[EventColl[S1, E, Ctx]] =
     implicitClass[S1].isAssignableFrom(aggregate.getClass) ?
       this.asInstanceOf[EventColl[S1,E, Ctx]]

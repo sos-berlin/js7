@@ -23,9 +23,11 @@ extends EventDrivenState[S, Event]:
       // Duplicate with applyEvents to allow to in include EventId in error message
       var state = this
       var problem: Problem | Null = null
+      var lastEventId = EventId.BeforeFirst
 
       boundary:
         for stamped <- stampedEvents.iterator do
+          lastEventId = stamped.eventId
           state.applyKeyedEvent(stamped.value) match
             case Left(prblm) =>
               problem = prblm match
@@ -38,7 +40,7 @@ extends EventDrivenState[S, Event]:
             case Right(s) =>
               state = s
 
-      problem.toLeftOr(state.withEventId(stampedEvents.last.eventId))
+      problem.toLeftOr(state.withEventId(lastEventId))
 
 
 object JournaledState:

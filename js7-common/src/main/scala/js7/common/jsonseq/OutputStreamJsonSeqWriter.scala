@@ -5,7 +5,6 @@ import java.io.{BufferedOutputStream, OutputStream}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.utils.Ascii.RS
 import js7.base.utils.Assertions.assertThat
 import org.jetbrains.annotations.TestOnly
 
@@ -15,29 +14,30 @@ import org.jetbrains.annotations.TestOnly
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false)
+final class OutputStreamJsonSeqWriter(out: OutputStream)
 extends AutoCloseable:
 
-  private val extraLength = if withRS then 2 else 1
-  private var _written = 0L
+  private var _bytesWritten = 0L
 
   private val buffered = out match
     case o: BufferedOutputStream => o
     case o => new BufferedOutputStream(o)
 
-  def close(): Unit = buffered.close()
+  def close(): Unit =
+    buffered.close()
 
   @TestOnly
   private[jsonseq] def writeJson(json: Json): Unit =
     writeJson(json.toByteArray)
 
   def writeJson(byteArray: ByteArray): Unit =
-    if withRS then buffered.write(RS)
     assertThat(byteArray.indexOf('\n') == -1, "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(byteArray.unsafeArray)
     buffered.write('\n')
-    _written += byteArray.length + extraLength
+    _bytesWritten += byteArray.length + 1
 
-  def flush(): Unit = buffered.flush()
+  def flush(): Unit =
+    buffered.flush()
 
-  def bytesWritten: Long = _written
+  def bytesWritten: Long =
+    _bytesWritten

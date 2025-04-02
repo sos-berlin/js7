@@ -30,6 +30,21 @@ private[journal] final class JournalLogger(
   //  logger.trace(
   //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
 
+  def logCommitted(
+    eventNumber: Long,
+    stampedSeq: Seq[Stamped[AnyKeyedEvent]],
+    isTransaction: Boolean,
+    since: Deadline,
+    isLastOfFlushedOrSynced: Boolean,
+    ack: Boolean)
+  : Unit =
+    logCommitted(
+      Array(
+        SimpleLoggable(eventNumber = eventNumber, stampedSeq = stampedSeq,
+          isTransaction = isTransaction, since, isLastOfFlushedOrSynced = isLastOfFlushedOrSynced)
+      ).view,
+      ack = ack)
+
   def logCommitted(persists: IndexedSeqView[Loggable], ack: Boolean = false): Unit =
     if !suppressed then logger.whenInfoEnabled:
       val committedAt = now
@@ -158,7 +173,7 @@ object JournalLogger:
     def since: Deadline
     def isLastOfFlushedOrSynced: Boolean
 
-  final class SimpleLoggable(
+  private final class SimpleLoggable(
     //val correlId: CorrelId,
     val eventNumber: Long,
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],

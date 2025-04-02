@@ -56,13 +56,17 @@ extends AutoCloseable:
         flushed = true
         synced = false
 
-  def isFlushed: Boolean = flushed
+  def isFlushed: Boolean =
+    flushed
 
-  def isSynced: Boolean = synced
+  def isSynced: Boolean =
+    synced
 
-  def fileLength: Long = initialPosition + bytesWritten
+  def fileLength: Long =
+    initialPosition + bytesWritten
 
-  def bytesWritten: Long = writer.bytesWritten
+  def bytesWritten: Long =
+    writer.bytesWritten
 
   protected def wrapException[A](body: => A): A =
     try body

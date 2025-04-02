@@ -531,7 +531,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
               Stream.emit(Right(()))
             else
               if recoverer.isInCommittedEventsSection then
-                // An open transaction may be rolled back, so we do not notify about these
+                // An open transaction may be rolled back, so we do not notify about these events
                 eventWatch.onFileWritten(fileLength)
                 journalRecord match
                   case Stamped(eventId, _, _) => eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)

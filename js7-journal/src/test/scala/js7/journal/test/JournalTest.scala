@@ -271,16 +271,16 @@ object JournalTest:
     json"""{
       "TYPE": "JS7.Journal",
       "typeName": "TestState",
-      "version": "${JournalHeader.Version}",
-      "js7Version": "${BuildInfo.prettyVersion}",
-      "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 1000068,
-      "totalEventCount": 69,
-      "initiallyStartedAt" : "STARTED-AT",
-      "totalRunningTime" : 3600,
       "generation": 3,
-      "timestamp": "TIMESTAMP"
+      "totalEventCount": 69,
+      "totalRunningTime": 3600,
+      "timestamp": "TIMESTAMP",
+      "initiallyStartedAt" : "STARTED-AT",
+      "version": "${JournalHeader.Version}",
+      "js7Version": "${BuildInfo.prettyVersion}",
+      "buildId": "${BuildInfo.buildId}"
     }""",
     json""""-------SNAPSHOT-------"""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",

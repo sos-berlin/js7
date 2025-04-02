@@ -214,7 +214,7 @@ extends AutoCloseable:
                 if eof then
                   Stream.empty
                 else
-                    streamNext(lastPosition)
+                  streamNext(lastPosition)
 
       jsonSeqReader.seek(position)
       streamNext(position)

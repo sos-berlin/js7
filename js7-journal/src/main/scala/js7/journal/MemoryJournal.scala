@@ -16,7 +16,6 @@ import js7.base.utils.{AsyncLock, Atomic, CloseableIterator, Tests}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
 import js7.journal.MemoryJournal.*
 import js7.journal.log.JournalLogger
-import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.Journal
 import js7.journal.watch.RealEventWatch
 import org.jetbrains.annotations.TestOnly
@@ -136,13 +135,14 @@ extends Journal[S]:
   private def log(
     eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]], since: Deadline)
   : Unit =
-    journalLogger.logCommitted(Vector(new SimpleLoggable(
+    journalLogger.logCommitted(
       //CorrelId.current,
       eventNumber = eventNumber,
       stampedEvents,
       isTransaction = false,
       since = since,
-      isLastOfFlushedOrSynced = true)).view)
+      isLastOfFlushedOrSynced = true,
+      ack = false)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueLock.lock(IO.defer:
