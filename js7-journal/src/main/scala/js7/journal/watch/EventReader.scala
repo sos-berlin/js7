@@ -16,6 +16,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.Nulls.nullToNone
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isStrict
 import js7.base.utils.{Atomic, CloseableIterator}
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
@@ -198,9 +199,10 @@ extends AutoCloseable:
               iterator = nullToNone(last).iterator
 
             iterator = iterator
-              .tapEach: o =>
-                if o.value == EndOfJournalFileMarker then
-                  sys.error(s"Journal file must not contain a line like $o")
+              .pipeIf(isStrict):
+                _.tapEach: o =>
+                  if o.value == EndOfJournalFileMarker then
+                    sys.error(s"Journal file must not contain a line like $o")
               .concat:
                 (eof && markEOF).thenIterator:
                   PositionAnd(lastPosition, EndOfJournalFileMarker)
