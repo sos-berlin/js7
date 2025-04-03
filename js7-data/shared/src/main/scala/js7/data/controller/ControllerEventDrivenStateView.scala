@@ -21,10 +21,8 @@ extends EventDrivenStateView[Self]:
         val addedOrderId = orderAdded.ownOrderId getOrElse orderId
         for
           _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          _ <- checkPlanAcceptsOrders(orderAdded.planId,
+          r <- addOrders(Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil,
             allowClosedPlan = true/*the issuer of the event has already checked this*/)
-          r <- update(addOrders =
-            Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil)
         yield
           r
 

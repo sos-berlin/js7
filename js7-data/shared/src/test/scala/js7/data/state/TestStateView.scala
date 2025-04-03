@@ -60,8 +60,12 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
 
       override def values = items
 
+  protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
+  : Checked[Self] =
+    Left(Problem.pure("addOrders is not implemented"))
+
   protected def update_(
-    addOrders: Seq[Order[Order.State]],
+    updateOrders: Seq[Order[Order.State]],
     removeOrders: Seq[OrderId],
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState],
@@ -70,7 +74,7 @@ trait TestStateView[Self <: TestStateView[Self]] extends EventDrivenStateView[Se
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this
     if removeOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder -- removeOrders)
-    if addOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ addOrders.map(o => o.id -> o))
+    if updateOrders.nonEmpty then x = x.copyX(idToOrder = idToOrder ++ updateOrders.map(o => o.id -> o))
     // externalVanishedOrders ???
     if removeUnsignedSimpleItems.nonEmpty then
       x = x.copyX(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeUnsignedSimpleItems)
@@ -116,7 +120,8 @@ extends
       idToOrder = idToOrder,
       keyToUnsignedItemState_ = keyToUnsignedItemState_)
 
-  protected def addOrder(order: Order[Order.State]): Checked[ControllerTestStateView] =
+  protected def addOrder(order: Order[Order.State], allowClosedPlan: Boolean)
+  : Checked[ControllerTestStateView] =
     idToOrder.checkNoDuplicate(order.id).map: _ =>
       copy(idToOrder = idToOrder.updated(order.id, order))
 

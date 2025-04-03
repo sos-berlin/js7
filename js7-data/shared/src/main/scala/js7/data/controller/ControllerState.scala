@@ -417,7 +417,7 @@ extends
           updatedOrder <- previousOrder.applyEvent(event)
           itemStates <- applyOrderNoticeEvent(previousOrder, event)
           controllerState <- update(
-            addOrders = updatedOrder :: Nil,
+            updateOrders = updatedOrder :: Nil,
             addItemStates = itemStates)
         yield
           controllerState
@@ -636,15 +636,19 @@ extends
       addItemStates = orderWatchStates,
       removeUnsignedSimpleItems = remove)
 
+  protected def addOrders(orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
+  : Checked[ControllerState] =
+    ControllerState.addOrders(this, orders, allowClosedPlan = allowClosedPlan)
+
   protected def update_(
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     ControllerState.update(this,
-      addOrders, removeOrders, externalVanishedOrders, addItemStates, removeUnsignedSimpleItems)
+      updateOrders, removeOrders, externalVanishedOrders, addItemStates, removeUnsignedSimpleItems)
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -990,14 +994,14 @@ extends
 
   private def update(
     s: ControllerState,
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[ControllerState] =
     for
-      s <- addOrUpdateOrders(s, addOrders ++ externalVanishedOrders)
+      s <- this.updateOrders(s, updateOrders ++ externalVanishedOrders)
       s <- externalVanishedOrders.foldEithers(s):
         _.ow.onOrderExternalVanished(_)
       s <- removeOrders_(s, removeOrders)
@@ -1008,23 +1012,31 @@ extends
     yield
       s
 
-  private def addOrUpdateOrders(s: ControllerState, orders: Seq[Order[Order.State]])
+  private def addOrders(s: ControllerState, orders: Seq[Order[Order.State]], allowClosedPlan: Boolean)
+  : Checked[ControllerState] =
+    if orders.isEmpty then
+      Right(s)
+    else
+      s.checkOrdersDoNotExist(orders.view.map(_.id)).flatMap: _ =>
+        for
+          s <- orders.foldEithers(s)(addOrUpdateOrder_)
+          updatedPlanSchemaStates <- PlanSchemaState.addOrderIds(
+            orders,
+            s.keyTo(PlanSchemaState).checked,
+            allowClosedPlan = allowClosedPlan)
+        yield
+          s.copy(
+            keyToUnsignedItemState_ = s.keyToUnsignedItemState_
+              ++ updatedPlanSchemaStates.map(o => o.id -> o))
+
+  private def updateOrders(s: ControllerState, orders: Seq[Order[Order.State]])
   : Checked[ControllerState] =
     // TODO Differentiate between add and update?
     if orders.isEmpty then
       Right(s)
     else
-      val newOrders = orders.filterNot(o => s.idToOrder.contains(o.id))
-      for
-        s <- orders.foldEithers(s)(addOrUpdateOrder_)
-        updatedPlanSchemaStates <- PlanSchemaState.addOrderIds(
-          newOrders,
-          s.keyTo(PlanSchemaState).checked,
-          allowClosedPlan = true /*the caller must check !!!*/)
-      yield
-        s.copy(
-          keyToUnsignedItemState_ = s.keyToUnsignedItemState_
-            ++ updatedPlanSchemaStates.map(o => o.id -> o))
+      s.checkOrdersExist(orders.view.map(_.id)).flatMap: _ =>
+        orders.foldEithers(s)(addOrUpdateOrder_)
 
   private def addOrUpdateOrder_(s: ControllerState, order: Order[Order.State])
   : Checked[ControllerState] =
