@@ -11,8 +11,8 @@ extends CommandToEventCalc[ControllerState, Event, TimeCtx]:
 
   protected val cmdExecutors =
     ArraySeq(
-      executors.addOrderExecutor(config),
-      executors.addOrdersExecutor(config),
+      executors.AddOrderExecutor(config),
+      executors.AddOrdersExecutor(config),
       executors.answerOrderPromptExecutor,
       executors.cancelOrdersExecutor,
       executors.changeGlobalToPlannableBoardExecutor,

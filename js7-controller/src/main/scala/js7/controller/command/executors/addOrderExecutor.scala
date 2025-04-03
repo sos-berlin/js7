@@ -4,16 +4,19 @@ import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.log.Logger
-import js7.controller.command.ControllerCommandToEventCalc.ToEventCalc
+import js7.controller.command.ControllerCommandToEventCalc.CommandEventConverter
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders}
 import js7.data.controller.ControllerStateExecutor
 import js7.data.event.EventCalc
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 
-private[command] def addOrderExecutor(config: Config) =
-  val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
-  val logger = Logger("js7.controller.command.executors.addOrderExecutor")
-  ToEventCalc[AddOrder]: cmd =>
+private[command] final class AddOrderExecutor(config: Config)
+extends CommandEventConverter[AddOrder]:
+
+  private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
+  private val logger = Logger[this.type]
+
+  def toEventCalc(cmd: AddOrder) =
     EventCalc: coll =>
       coll.addChecked:
         coll.aggregate.checkPlanIsOpen(cmd.order.planId).flatMap: _ =>
@@ -27,9 +30,12 @@ private[command] def addOrderExecutor(config: Config) =
                 orderAddedEvents.toKeyedEvents
 
 
-private[command] def addOrdersExecutor(config: Config) =
-  val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
-  ToEventCalc[AddOrders]: cmd =>
+private[command] final class AddOrdersExecutor(config: Config)
+extends CommandEventConverter[AddOrders]:
+
+  private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
+
+  def toEventCalc(cmd: AddOrders) =
     EventCalc: coll =>
       coll.addChecked:
         cmd.orders.traverse: order =>
