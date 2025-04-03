@@ -15,7 +15,6 @@ import js7.base.time.ScalaTime
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
@@ -111,13 +110,13 @@ extends UnsignedSimpleItemState:
   def orderIds: View[OrderId] =
     toPlan.values.view.flatMap(_.orderIds)
 
-  def addOrder(planKey: PlanKey, orderId: OrderId): Checked[PlanSchemaState] =
-    addOrders(Map1(planKey, Set(orderId)))
+  def addOrder(planKey: PlanKey, orderId: OrderId, allowClosedPlan: Boolean): Checked[PlanSchemaState] =
+    addOrders(Map1(planKey, Set(orderId)), allowClosedPlan = allowClosedPlan)
 
-  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanSchemaState] =
+  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]], allowClosedPlan: Boolean): Checked[PlanSchemaState] =
     planToOrders.toVector.traverse: (planKey, orderIds) =>
       plan(planKey).flatMap:
-        _.addOrders(orderIds)
+        _.addOrders(orderIds, allowClosedPlan = allowClosedPlan)
     .map(updatePlans)
 
   def removeOrder(planKey: PlanKey, orderId: OrderId): PlanSchemaState =
@@ -174,16 +173,9 @@ extends UnsignedSimpleItemState:
         .mkString(", ")
       }"
 
-  def checkPlanIsOpen(planKey: PlanKey): Checked[Unit] =
-    for
-      plan <- plan(planKey)
-      _ <- (plan.status == Open) !! PlanIsClosedProblem(plan.id)
-    yield
-      ()
-
-  def checkPlanAcceptsOrders(planKey: PlanKey): Checked[Unit] =
+  def checkPlanAcceptsOrders(planKey: PlanKey, allowClosedPlan: Boolean): Checked[Unit] =
     plan(planKey).flatMap:
-      _.checkAcceptOrders
+      _.checkAcceptOrders(allowClosedPlan = allowClosedPlan)
 
   /** Creates an empty Plan with status computed by unknownPlanIsOpenFunction, if Plan does not exist.
     *
@@ -300,12 +292,13 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
 
   def addOrderIds(
     orders: Iterable[Order[Order.State]],
-    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState],
+    allowClosedPlan: Boolean)
   : Checked[Seq[PlanSchemaState]] =
     updatedSchemaStates(orders, toPlanSchemaState)
       .flatMap:
         _.traverse: (planSchemaState, planToOrders) =>
-          planSchemaState.addOrders(planToOrders)
+          planSchemaState.addOrders(planToOrders, allowClosedPlan = allowClosedPlan)
 
   def removeOrderIds(
     orders: Iterable[Order[Order.State]],

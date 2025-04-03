@@ -88,7 +88,7 @@ final case class ControllerStateExecutor private(
           workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
           preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
             freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-          _ <- controllerState.checkPlanAcceptsOrders(freshOrder.planId)
+          _ <- controllerState.checkPlanAcceptsOrders(freshOrder.planId, allowClosedPlan = true)
           innerBlock <- workflow.nestedWorkflow(freshOrder.innerBlock)
           startPosition <- freshOrder.startPosition.traverse:
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock)

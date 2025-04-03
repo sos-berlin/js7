@@ -428,7 +428,8 @@ extends
           // Move Order from GlobalPlan's to PlanId's PlanSchemaState
           planSchemaState <- self.keyTo(PlanSchemaState).checked(planId.planSchemaId)
           globalPlanSchemaState <- self.keyTo(PlanSchemaState).checked(PlanSchemaId.Global)
-          planSchemaState <- planSchemaState.addOrder(planId.planKey, orderId)
+          planSchemaState <-
+            planSchemaState.addOrder(planId.planKey, orderId, allowClosedPlan = true)
           self <- self.update(
             addItemStates =
               globalPlanSchemaState.removeOrder(PlanKey.Global, orderId)
@@ -1009,6 +1010,7 @@ extends
 
   private def addOrUpdateOrders(s: ControllerState, orders: Seq[Order[Order.State]])
   : Checked[ControllerState] =
+    // TODO Differentiate between add and update?
     if orders.isEmpty then
       Right(s)
     else
@@ -1017,7 +1019,8 @@ extends
         s <- orders.foldEithers(s)(addOrUpdateOrder_)
         updatedPlanSchemaStates <- PlanSchemaState.addOrderIds(
           newOrders,
-          s.keyTo(PlanSchemaState).checked)
+          s.keyTo(PlanSchemaState).checked,
+          allowClosedPlan = true /*the caller must check !!!*/)
       yield
         s.copy(
           keyToUnsignedItemState_ = s.keyToUnsignedItemState_

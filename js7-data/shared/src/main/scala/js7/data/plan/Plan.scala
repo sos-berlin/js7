@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StandardMapView
 import js7.base.utils.Tests.isStrict
-import js7.data.Problems.{PlanIsDeletedProblem, PlanIsFinishedProblem}
+import js7.data.Problems.{PlanIsClosedProblem, PlanIsDeletedProblem, PlanIsFinishedProblem}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
@@ -79,8 +79,8 @@ final case class Plan(
         checkStatusChange(status).map: _ =>
           copy(status = status)
 
-  def addOrders(orderIds: Iterable[OrderId]): Checked[Plan] =
-    checkAcceptOrders.flatMap: _ =>
+  def addOrders(orderIds: Iterable[OrderId], allowClosedPlan: Boolean): Checked[Plan] =
+    checkAcceptOrders(allowClosedPlan = allowClosedPlan).flatMap: _ =>
       if orderIds.isEmpty then
         Right(this)
       else
@@ -165,9 +165,10 @@ final case class Plan(
   def isDiscardableCandidate: Boolean =
     (status == Open || status == Deleted) && isEmpty
 
-  def checkAcceptOrders: Checked[Unit] =
+  def checkAcceptOrders(allowClosedPlan: Boolean): Checked[Unit] =
     status match
-      case Open | Closed => Checked.unit
+      case Open => Checked.unit
+      case Closed => allowClosedPlan !! PlanIsClosedProblem(id)
       case _: Finished => Left(PlanIsFinishedProblem(id))
       case Deleted => Left(PlanIsDeletedProblem(id))
 

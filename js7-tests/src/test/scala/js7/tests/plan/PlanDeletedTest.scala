@@ -54,6 +54,8 @@ final class PlanDeletedTest
       assert(controllerState.toPlan.values.toSeq == Seq(
         Plan(planId, Deleted)))
 
+      assert(controllerState.toPlan.toMap == Map(planId -> Plan(planId, Deleted)))
+
       execCmd:
         ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> tomorrow)))
 

@@ -44,13 +44,10 @@ extends EventInstructionExecutor:
                 stopPositions = addOrder.stopPositions,
                 deleteWhenTerminated = addOrder.deleteWhenTerminated,
                 forceJobAdmission = addOrder.forceJobAdmission)
-              keyedEvents <-
-                locally:
-                  if planId == order.planId then
-                    // We allow AddOrder to the own closed Plan
-                    controllerState.checkPlanAcceptsOrders(planId)
-                  else
-                    controllerState.checkPlanIsOpen(planId)
+              keyedEvents <- controllerState
+                .checkPlanAcceptsOrders(
+                  planId,
+                  allowClosedPlan = planId == order.planId)
                 .flatMap: _ =>
                   EventColl(controllerState).add[OrderOrderAdded | OrderMoved]:
                     order.id <-: orderAdded

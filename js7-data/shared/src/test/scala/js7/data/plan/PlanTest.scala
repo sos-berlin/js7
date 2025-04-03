@@ -39,7 +39,8 @@ final class PlanTest extends OurTestSuite:
     val noticeId = planId / boardPath / NoticeKey("NOTICE")
 
     var plan = Plan(planId, Deleted)
-    assert(plan.addOrders(orderId :: Nil) == Left(PlanIsDeletedProblem(planId)))
+    assert(plan.addOrders(orderId :: Nil, allowClosedPlan = true) == Left(PlanIsDeletedProblem(planId)))
+    assert(plan.addOrders(orderId :: Nil, allowClosedPlan = false) == Left(PlanIsDeletedProblem(planId)))
 
     assert(plan.changePlanStatusEvents(Open, now, 1.h).map(_.toList) == Right:
       List(planId <-: PlanOpened))
@@ -60,7 +61,7 @@ final class PlanTest extends OurTestSuite:
         planId <-: PlanDeleted))
 
     assert(plan.status == Open)
-    plan = plan.addOrders(orderId :: Nil).orThrow
+    plan = plan.addOrders(orderId :: Nil, allowClosedPlan = false).orThrow
     plan = plan.addBoard:
       PlannedBoard(planId / boardPath)
         .addNotice(Notice(noticeId)).orThrow

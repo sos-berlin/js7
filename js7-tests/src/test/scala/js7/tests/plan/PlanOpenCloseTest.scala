@@ -59,6 +59,7 @@ final class PlanOpenCloseTest
         eventWatch.resetLastWatchedEventId()
 
         val yesterday = "2025-01-02"
+        val yesterdayPlanId = dailyPlan.id / yesterday
         val yesterdayOrderId = OrderId(s"#$yesterday#")
         controller.runOrder:
           FreshOrder(yesterdayOrderId, emptyWorkflow.path, deleteWhenTerminated = true)
@@ -78,9 +79,9 @@ final class PlanOpenCloseTest
 
         // Close yesterday's Plan //
         execCmd:
-          ChangePlan(dailyPlan.id / yesterday, Closed)
-        assert(controllerState.toPlan.values.toSeq == Seq:
-          Plan(dailyPlan.id / yesterday, Deleted))
+          ChangePlan(yesterdayPlanId, Closed)
+        assert(controllerState.toPlan.toMap == Map:
+          yesterdayPlanId -> Plan(yesterdayPlanId, Deleted))
 
         // Remove deleted plan
         execCmd:
@@ -158,9 +159,9 @@ final class PlanOpenCloseTest
           ChangePlan(tomorrowPlanId, Closed)
 
         // Tomorrow's Plan is Deleted
-        assert(controllerState.toPlan.values.toSeq == Seq(
-          Plan(todayPlanId, Deleted),
-          Plan(tomorrowPlanId, Deleted)))
+        assert(controllerState.toPlan.toMap == Map(
+          todayPlanId -> Plan(todayPlanId, Deleted),
+          tomorrowPlanId -> Plan(tomorrowPlanId, Deleted)))
 
         execCmd:
           ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> dayAfterTomorrow)))
@@ -256,24 +257,34 @@ final class PlanOpenCloseTest
         eventWatch.resetLastWatchedEventId()
 
         val yesterday = "2024-12-02"
-        val yesterdayOrderId = OrderId(s"#$yesterday#")
+        val yesterdayOrderId = OrderId("YESTERDAY")
         val yesterdayPlanId = dailyPlan.id / yesterday
         val today = "2024-12-03"
         val todayPlanId = dailyPlan.id / today
-        val todayOrderId = OrderId(s"#$today#")
+        val todayOrderId = OrderId("TODAY")
 
         execCmd:
           ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
 
         assert:
           controller.api.addOrder:
-            FreshOrder(yesterdayOrderId, workflow.path, planId = yesterdayPlanId, deleteWhenTerminated = true)
+            FreshOrder(yesterdayOrderId, workflow.path, planId = yesterdayPlanId,
+              deleteWhenTerminated = true)
           .await(99.s)
             == Left(PlanIsDeletedProblem(dailyPlan.id / yesterday))
 
         controller.addOrderBlocking:
           FreshOrder(todayOrderId, workflow.path, planId = todayPlanId, deleteWhenTerminated = true)
         assert(controllerState.idToOrder(todayOrderId).isState[Order.Prompting])
+
+        execCmd:
+          ChangePlan(todayPlanId, Closed)
+
+        assert:
+          controller.api.addOrder:
+            FreshOrder(OrderId("OTHER"), workflow.path, planId = todayPlanId,
+              deleteWhenTerminated = true)
+          .await(99.s) == Left(PlanIsClosedProblem(todayPlanId))
 
         execCmd:
           CancelOrders(todayOrderId :: Nil)
@@ -301,7 +312,7 @@ final class PlanOpenCloseTest
 
             // Close yesterday's Plan
             execCmd:
-              ChangePlanSchema(dailyPlan.id, Some(Map("unknownPlansAreOpenFrom" -> today)))
+              ChangePlan(yesterdayPlanId, Closed)
 
             // ExternalOrderRejected //
             touchFile(dir / yesterday)

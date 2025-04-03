@@ -21,7 +21,8 @@ extends EventDrivenStateView[Self]:
         val addedOrderId = orderAdded.ownOrderId getOrElse orderId
         for
           _ <- idToOrder.checkNoDuplicate(addedOrderId)
-          _ <- checkPlanAcceptsOrders(orderAdded.planId)
+          _ <- checkPlanAcceptsOrders(orderAdded.planId,
+            allowClosedPlan = true/*the issuer of the event has already checked this*/)
           r <- update(addOrders =
             Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil)
         yield
@@ -31,15 +32,11 @@ extends EventDrivenStateView[Self]:
         super.applyOrderEvent(orderId, event)
 
   def checkPlanIsOpen(planId: PlanId): Checked[Unit] =
-    for
-      planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
-      _ <- planSchemaState.checkPlanIsOpen(planId.planKey)
-    yield
-      ()
+    checkPlanAcceptsOrders(planId, allowClosedPlan = false)
 
-  def checkPlanAcceptsOrders(planId: PlanId): Checked[Unit] =
+  def checkPlanAcceptsOrders(planId: PlanId, allowClosedPlan: Boolean): Checked[Unit] =
     for
       planSchemaState <- keyTo(PlanSchemaState).checked(planId.planSchemaId)
-      _ <- planSchemaState.checkPlanAcceptsOrders(planId.planKey)
+      _ <- planSchemaState.checkPlanAcceptsOrders(planId.planKey, allowClosedPlan)
     yield
       ()
