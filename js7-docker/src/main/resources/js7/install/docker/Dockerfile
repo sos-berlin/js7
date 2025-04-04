@@ -11,7 +11,7 @@ FROM almalinux:9
 ENV LANG=C.UTF-8
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="$JAVA_HOME/bin:$PATH"
-COPY --from=eclipse-temurin:23 $JAVA_HOME $JAVA_HOME
+COPY --from=eclipse-temurin:24 $JAVA_HOME $JAVA_HOME
 # Own Docker image layer with downloaded microdnf metadata (may take several seconds)
 RUN yum -y install procps git unzip which sudo openssl
 # Until here, same Dockerfile command sequence as in build-with-docker for shorter build time
