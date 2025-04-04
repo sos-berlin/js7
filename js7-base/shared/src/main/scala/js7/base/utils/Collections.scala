@@ -113,14 +113,18 @@ object Collections:
           case None => Right(underlying)
 
       def requireUniqueness: CC[A] =
-        requireUniqueness(identity[A])
+        underlying match
+          case _: collection.Set[?] => underlying
+          case _ => requireUniqueness(identity[A])
 
       def requireUniqueness[K](key: A => K): CC[A] =
         ifNotUnique[K, A](key, keys =>
           throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
       def areUnique: Boolean =
-        areUniqueBy[A](identity)
+        underlying match
+          case _: collection.Set[?] => true
+          case _ => areUniqueBy[A](identity)
 
       def areUniqueBy[K](key: A => K): Boolean =
         duplicateKeys(key).isEmpty
@@ -131,7 +135,11 @@ object Collections:
           case None => underlying
 
       def duplicates: Iterable[A] =
-        underlying groupBy identity collect { case (k, v) if v.sizeIs > 1 => k }
+        underlying match
+          case _: collection.Set[?] => Nil
+          case _ =>
+            underlying.groupBy(identity).collect:
+              case (k, v) if v.sizeIs > 1 => k
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
