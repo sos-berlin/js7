@@ -88,9 +88,10 @@ object Service:
           else
             logger.traceF(s"$service start"):
               service.start
-                .onError: t =>
-                  // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                  IO(logger.error(s"$service start => ${t.toStringWithCauses}")))(
+                .onError:
+                  case t => IO:
+                    // Maybe duplicate, but some tests don't propagate this error and silently deadlock
+                    logger.error(s"$service start => ${t.toStringWithCauses}"))(
       release =
         service => service.stop
           .logWhenItTakesLonger(s"stopping $service"))

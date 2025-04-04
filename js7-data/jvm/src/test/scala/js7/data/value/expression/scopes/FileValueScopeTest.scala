@@ -11,7 +11,6 @@ import java.nio.file.{AccessDeniedException, Path, Paths}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -105,19 +104,17 @@ final class FileValueScopeTest extends OurTestSuite:
         val files: Seq[Path] =
           (1 to n)
             .toVector
-            .parFlatTraverse(_ =>
-              FileValueScope
-                .resource(fileValueState)
-                .use(fileValueScope =>
-                  IO.cede *>
-                    IO
-                      .parTraverse((1 to m).toVector)(_ => IO:
-                        val string = strings(Random.nextInt(stringCount))
-                        toFile(fileValueScope, Seq(string, string)).orThrow)
-                      .flatTap: files =>
-                        IO.cede *>
-                          IO(assert(files
-                            .forall(file => file.contentString == file.getFileName.toString)))))
+            .parFlatTraverse: _ =>
+              FileValueScope.resource(fileValueState).use: fileValueScope =>
+                IO.cede *>
+                  (1 to m).toVector.parTraverse: _ =>
+                    IO:
+                      val string = strings(Random.nextInt(stringCount))
+                      toFile(fileValueScope, Seq(string, string)).orThrow
+                  .flatTap: files =>
+                    IO.cede *>
+                      IO(assert(files
+                        .forall(file => file.contentString == file.getFileName.toString)))
             .await(99.s)
 
         assert(files.size == n * m)

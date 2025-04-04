@@ -402,9 +402,10 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
                 .thenList(subagentId <-: SubagentCouplingFailed(problem)))
         .map(_.orThrow)
         .void
-        .onError(t => IO:
-          // Error isn't logged until stopEventListener is called
-          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses))
+        .onError:
+          case t => IO:
+            // Error isn't logged until stopEventListener has been called
+            logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
 
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit] =
     enqueueCommandAndForget:

@@ -68,8 +68,9 @@ extends IndexedRecordSet[A]:
             s"$toString $name($a) ignored due to previous error $t")
           case None =>
             IO.defer(body)
-              .onError(t => IO:
-                throwable = t.some)
+              .onError:
+                case t => IO:
+                  throwable = t.some
 
 
   override def toString =
