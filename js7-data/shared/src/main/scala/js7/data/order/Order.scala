@@ -379,7 +379,9 @@ extends
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 
         var outcomes = historicOutcomes
-        if restartKilledJob && outcomes.lastOption.exists(_.outcome.isInstanceOf[OrderOutcome.Killed]) then
+
+        val isKilled = lastOutcome.isInstanceOf[OrderOutcome.Killed]
+        if restartKilledJob && isKilled then
           outcomes = outcomes.dropRight(1)
 
         val updatedHistoryOutcomes =
@@ -442,19 +444,21 @@ extends
             (asSucceeded && !lastOutcome.isSucceeded) ?
               HistoricOutcome(position, OrderOutcome.succeeded)
           check(isResumableNow,
-            withPosition(maybePosition getOrElse position)
-              .copy(
-                isSuspended = false,
-                isResumed = true,
-                mark = None,
-                state =
-                  if /*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh] then // ???
-                    Fresh
-                  else if isState[Failed] || isState[Stopped] || isState[Broken] then
-                    Ready
-                  else
-                    state,
-                historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
+            withPosition:
+              maybePosition getOrElse position.pipeIf(!restartKilledJob && asSucceeded && isKilled):
+                _.increment
+            .copy(
+              isSuspended = false,
+              isResumed = true,
+              mark = None,
+              state =
+                if /*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh] then // ???
+                  Fresh
+                else if isState[Failed] || isState[Stopped] || isState[Broken] then
+                  Ready
+                else
+                  state,
+              historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
 
       case _: OrderLocksAcquired =>
         // LockState handles this event, too

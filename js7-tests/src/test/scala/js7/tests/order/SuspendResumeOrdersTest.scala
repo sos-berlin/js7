@@ -46,6 +46,7 @@ import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob}
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
+import org.scalatest.Assertion
 
 final class SuspendResumeOrdersTest
   extends OurTestSuite, ControllerAgentForScalaTest:
@@ -468,29 +469,27 @@ final class SuspendResumeOrdersTest
           OrderFailed(Position(0))))
 
     "Respect isNotRestartable" - {
-      "Suspend with kill, then resume, isRestartable" in unixOnly:
-        val eventId = eventWatch.resetLastWatchedEventId()
-        val name = "KILL-RESUME-RESTARTABLE"
+      def testRestartable(isNotRestartable: Boolean = false)(body: OrderId => Assertion)
+      : Assertion =
         val workflow = Workflow(
-          WorkflowPath(name),
+          WorkflowPath("WORKFLOW"),
           Seq(
             Execute(WorkflowJob(
               agentPath,
               ShellScriptExecutable:
                 """#!/usr/bin/env bash
                   |set -euo pipefail
-                  |
                   |echo SLEEP
                   |for i in {0..999}; do
                   |  sleep 0.1
                   |done
                   |""".stripMargin,
-              isNotRestartable = false)),
+              isNotRestartable = isNotRestartable)),
             EmptyInstruction()))
 
         withItem(workflow): workflow =>
-          eventWatch.lastAddedEventId
-          val orderId = OrderId(name)
+          eventWatch.resetLastWatchedEventId()
+          val orderId = nextOrderId()
           controller.addOrderBlocking:
             FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
           eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
@@ -499,8 +498,13 @@ final class SuspendResumeOrdersTest
             SuspendOrders(Seq(orderId), SuspensionMode.kill)
           eventWatch.awaitNextKey[OrderSuspended](orderId)
 
+          body(orderId)
+
+      "Suspend with kill, then resume !asSucceeded, job isRestartable" in unixOnly:
+        val eventId = eventWatch.resetLastWatchedEventId()
+        testRestartable(): orderId =>
+          // Restart the job despite !asSucceeded
           execCmd:
-            // Without asSucceeded, the Order would fail because the job failed due to kill
             ResumeOrder(orderId)
           eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
 
@@ -508,6 +512,7 @@ final class SuspendResumeOrdersTest
             SuspendOrders(Seq(orderId), SuspensionMode.kill)
           eventWatch.awaitNextKey[OrderSuspended](orderId)
 
+          // Don't restart: the order fails
           execCmd:
             ResumeOrder(orderId, restartKilledJob = Some(false))
           eventWatch.awaitNextKey[OrderTerminated](orderId)
@@ -535,37 +540,50 @@ final class SuspendResumeOrdersTest
             OrderResumed(),
             OrderFailed(Position(0))))
 
-      "Suspend with kill, then resume, isNotRestartable" in unixOnly:
+      "Suspend with kill, then resume asSucceeded, job isRestartable" in unixOnly:
         val eventId = eventWatch.resetLastWatchedEventId()
-        val name = "KILL-RESUME-NOT-RESTARTABLE"
-        val workflow = Workflow(
-          WorkflowPath(name),
-          Seq(
-            Execute(WorkflowJob(
-              agentPath,
-              ShellScriptExecutable:
-                """#!/usr/bin/env bash
-                  |set -euo pipefail
-                  |
-                  |echo SLEEP
-                  |for i in {0..999}; do
-                  |  sleep 0.1
-                  |done
-                  |""".stripMargin,
-              isNotRestartable = true)),
-            EmptyInstruction()))
-
-        withItem(workflow): workflow =>
-          eventWatch.lastAddedEventId
-          val orderId = OrderId(name)
-          controller.addOrderBlocking:
-            FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
+        testRestartable(): orderId =>
+          execCmd:
+            // asSucceeded makes no different
+            ResumeOrder(orderId, asSucceeded = true)
           eventWatch.awaitNextKey[OrderStdoutWritten](orderId)
 
           execCmd:
             SuspendOrders(Seq(orderId), SuspensionMode.kill)
           eventWatch.awaitNextKey[OrderSuspended](orderId)
 
+          execCmd:
+            ResumeOrder(orderId, asSucceeded = true, restartKilledJob = Some(false))
+          eventWatch.awaitNextKey[OrderTerminated](orderId)
+
+          val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+            .map(_.event)
+          assert(onlyRelevantEvents(events) == Seq(
+            OrderProcessingStarted(subagentId),
+            OrderStdoutWritten("SLEEP\n"),
+            OrderSuspensionMarked(SuspensionMode.kill),
+            OrderSuspensionMarkedOnAgent,
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
+            OrderProcessingKilled,
+            OrderSuspended,
+
+            OrderResumed(asSucceeded = true, restartKilledJob = true),
+            OrderProcessingStarted(subagentId),
+            OrderStdoutWritten("SLEEP\n"),
+            OrderSuspensionMarked(SuspensionMode.kill),
+            OrderSuspensionMarkedOnAgent,
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
+            OrderProcessingKilled,
+            OrderSuspended,
+
+            OrderResumed(asSucceeded = true),
+            OrderMoved(Position(2)),
+            OrderFinished(),
+            OrderDeleted))
+
+      "Suspend with kill, then resume !asSucceeded, job isNotRestartable" in unixOnly:
+        val eventId = eventWatch.resetLastWatchedEventId()
+        testRestartable(isNotRestartable = true): orderId =>
           execCmd:
             // Without asSucceeded, the Order would fail because the job failed due to kill
             ResumeOrder(orderId)
@@ -584,6 +602,30 @@ final class SuspendResumeOrdersTest
 
             OrderResumed(),
             OrderFailed(Position(0))))
+
+      "Suspend with kill, then resume asSucceeded, job isNotRestartable" in unixOnly:
+        val eventId = eventWatch.resetLastWatchedEventId()
+        testRestartable(isNotRestartable = true): orderId =>
+          execCmd:
+            // Without asSucceeded, the Order would fail because the job failed due to kill
+            ResumeOrder(orderId, asSucceeded = true)
+          eventWatch.awaitNextKey[OrderTerminated](orderId)
+
+          val events = eventWatch.keyedEvents[OrderEvent](_.key == orderId, after = eventId)
+            .map(_.event)
+          assert(onlyRelevantEvents(events) == Seq(
+            OrderProcessingStarted(subagentId),
+            OrderStdoutWritten("SLEEP\n"),
+            OrderSuspensionMarked(SuspensionMode.kill),
+            OrderSuspensionMarkedOnAgent,
+            OrderProcessed(OrderOutcome.Killed(OrderOutcome.failedWithSignal(SIGTERM))),
+            OrderProcessingKilled,
+            OrderSuspended,
+
+            OrderResumed(asSucceeded = true),
+            OrderMoved(Position(2)),
+            OrderFinished(),
+            OrderDeleted))
     }
 
     "Suspend and resume orders between two jobs" in:
