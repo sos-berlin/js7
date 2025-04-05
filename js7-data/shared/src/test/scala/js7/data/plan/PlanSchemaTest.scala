@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.data.item.{InventoryItem, ItemRevision}
 import js7.data.value.StringValue
-import js7.data.value.expression.ExpressionParser.exprFunction
+import js7.data.value.expression.Expression.exprFun
 import js7.tester.CirceJsonTester
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
@@ -16,13 +16,13 @@ final class PlanSchemaTest extends OurTestSuite:
     testJson[InventoryItem](
       PlanSchema(
         PlanSchemaId("DailyPlan"),
-        unknownPlanIsClosedFunction = Some(exprFunction("planKey => false")),
+        unknownPlanIsOpenFunction = exprFun"planKey => false",
         Map("NAME" -> StringValue("VALUE")),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "unknownPlanIsClosedFunction": "planKey => false",
+        "unknownPlanIsOpenFunction": "planKey => false",
         "namedValues": {
           "NAME": "VALUE"
         },
@@ -30,17 +30,21 @@ final class PlanSchemaTest extends OurTestSuite:
       }""")
 
     testJson[InventoryItem](
-      PlanSchema(PlanSchemaId("DailyPlan")),
+      PlanSchema(PlanSchemaId("DailyPlan"), PlanSchema.EachUnknownPlanIsClosed),
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
+        "unknownPlanIsOpenFunction": "planKey => false",
         "namedValues": {}
       }""")
 
     // COMPATIBLE with v2.7.4-SNAPSHOT
     testJsonDecoder[InventoryItem](
-      PlanSchema(PlanSchemaId("DailyPlan")),
+      PlanSchema(
+        PlanSchemaId("DailyPlan"),
+        unknownPlanIsOpenFunction = exprFun"day => !($$day < $$unknownPlansAreOpenFrom)"),
       json"""{
         "TYPE": "PlanSchema",
-        "id": "DailyPlan"
+        "id": "DailyPlan",
+        "unknownPlanIsClosedFunction": "day => $$day < $$unknownPlansAreOpenFrom"
       }""")

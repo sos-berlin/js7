@@ -258,13 +258,13 @@ final class ControllerCommandTest extends OurTestSuite:
       ChangePlanSchema(
         PlanSchemaId("DailyPlan"),
         namedValues = Some(NamedValues(
-          "openeningDay" -> StringValue("2025-02-26"))),
+          "unknownPlansAreOpenFrom" -> StringValue("2025-02-26"))),
         finishedPlanRetentionPeriod = Some(0.s)),
       json"""{
         "TYPE": "ChangePlanSchema",
         "planSchemaId": "DailyPlan",
         "namedValues": {
-          "openeningDay": "2025-02-26"
+          "unknownPlansAreOpenFrom": "2025-02-26"
         },
         "finishedPlanRetentionPeriod": 0
       }""")

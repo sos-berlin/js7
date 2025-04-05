@@ -37,18 +37,20 @@ object CommandToEventCalc:
 
       private[CommandToEventCalc] final val commandClass: Class[Cmd] = implicitClass[Cmd]
 
-      def toEventCalc: CmdToEventCalc[Cmd]
+      def toEventCalc(cmd: Cmd): EventCalc[S, E, Ctx]
 
     /** A `CommandEventConverter` returning an `EventCalc`. */
     final class ToEventCalc[Cmd <: CommonCommand : ClassTag](
-      val toEventCalc: CmdToEventCalc[Cmd])
-      extends CommandEventConverter[Cmd]
+      cmdToEventCalc: CmdToEventCalc[Cmd])
+    extends CommandEventConverter[Cmd]:
+      def toEventCalc(cmd: Cmd): EventCalc[S, E, Ctx] =
+        cmdToEventCalc(cmd)
 
 
     /** A simple `CommandEventConverter` returning `Seq[KeyedEvent]`. */
     final class ToEventSeq[Cmd <: CommonCommand : ClassTag](
       val commandToEvents: (Cmd, S) => Checked[Seq[KeyedEvent[E]]])
       extends CommandEventConverter[Cmd]:
-      val toEventCalc: CmdToEventCalc[Cmd] =
-        cmd => EventCalc: coll =>
+      def toEventCalc(cmd: Cmd): EventCalc[S, E, Ctx] =
+        EventCalc: coll =>
           coll.addChecked(commandToEvents(cmd, coll.aggregate))

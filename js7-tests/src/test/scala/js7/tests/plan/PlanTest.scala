@@ -7,7 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.Problems.PlanIsClosedProblem
+import js7.data.Problems.PlanIsDeletedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpression.syntax.boardPathToExpr
 import js7.data.board.{BoardPath, BoardPathExpression, Notice, NoticeKey, NoticePlace, PlannableBoard, PlannedBoard}
@@ -17,6 +17,8 @@ import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderPrompted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.plan.{Plan, PlanSchema, PlanSchemaId, PlanSchemaState, PlanStatus}
+import js7.data.value.expression.Expression
+import js7.data.value.expression.Expression.exprFun
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ConsumeNotices, PostNotices, Prompt}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -168,10 +170,10 @@ final class PlanTest
         assert(controllerState.keyTo(PlanSchemaState).values.flatMap(_.plans).isEmpty)
   }
 
-  "unknownPlanIsClosedFunction returns always true — all unknown Plans are deleted" in:
+  "unknownPlanIsOpenFunction returns always false — all unknown Plans are deleted" in:
     val dailyPlan = PlanSchema(
       PlanSchemaId("DailyPlan"),
-      unknownPlanIsClosedFunction = Some(PlanSchema.UnknownsPlanAreDeleted))
+      unknownPlanIsOpenFunction = exprFun"day => false")
     val planId = dailyPlan.id / "2025-03-12"
 
     withItems((dailyPlan, Workflow.empty)): (dailyPlan, workflow) =>
@@ -182,7 +184,7 @@ final class PlanTest
       val checked = controller.api.executeCommand:
         AddOrder(freshOrder)
       .await(99.s)
-      assert(checked == Left(PlanIsClosedProblem(planId)))
+      assert(checked == Left(PlanIsDeletedProblem(planId)))
 
       execCmd: // Open the Plan
         ChangePlan(planId, PlanStatus.Open)

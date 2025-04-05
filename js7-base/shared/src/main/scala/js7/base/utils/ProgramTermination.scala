@@ -26,6 +26,12 @@ object ProgramTermination:
     else
       FromExitCode(exitCode)
 
+  def fromUnitOrExitCode(exitCode: Unit | ExitCode | ProgramTermination): ProgramTermination =
+    exitCode match
+      case () => Success
+      case exitCode: ExitCode => fromExitCode(exitCode)
+      case o: ProgramTermination => o
+
   trait Success extends ProgramTermination:
     def toExitCode: ExitCode =
       ExitCode.Success

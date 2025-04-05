@@ -16,7 +16,7 @@ public class JControllerCommandTester {
         ChangePlanSchema changePlanSchema = JControllerCommand.changePlanSchema(
             PlanSchemaId.of("DailyPlan"),
             Optional.of(
-                java.util.Map.of("openingDay", Value.of("2025-02-26"))),
+                java.util.Map.of("unknownPlansAreOpenFrom", Value.of("2025-02-26"))),
             Optional.of(
                 Duration.ofDays(3)));
 

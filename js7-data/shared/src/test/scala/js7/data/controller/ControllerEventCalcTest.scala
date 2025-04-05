@@ -18,7 +18,8 @@ final class ControllerEventCalcTest extends OurTestSuite:
 
   "Combine two EventCalcs and calculate events and aggregate" in:
     val initiallyStartedAt = ts"2025-03-11T12:00:00Z"
-    val planSchema = PlanSchema(PlanSchemaId("DailyPlan"), itemRevision = Some(ItemRevision(0)))
+    val planSchema = PlanSchema(PlanSchemaId("DailyPlan"), PlanSchema.EachUnknownPlanIsClosed,
+      itemRevision = Some(ItemRevision(0)))
     val board = PlannableBoard(BoardPath("BOARD"), itemRevision = Some(ItemRevision(0)))
 
     // First EventCalc //

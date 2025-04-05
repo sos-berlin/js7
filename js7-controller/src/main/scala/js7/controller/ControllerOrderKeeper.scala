@@ -846,8 +846,9 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                               handleEvents(stampedEvents, updatedState)
                               agentEntry
                                 .agentDriver.reset(force = force)
-                                .onError(t => IO(
-                                  logger.error("ResetAgent: " + t.toStringWithCauses, t)))
+                                .onError:
+                                  case t => IO:
+                                    logger.error("ResetAgent: " + t.toStringWithCauses, t)
                                 .materializeIntoChecked
                                 .flatMapT(_ =>
                                   journal.persist(_

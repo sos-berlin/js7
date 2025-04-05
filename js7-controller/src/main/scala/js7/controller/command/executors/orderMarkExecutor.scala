@@ -15,11 +15,11 @@ import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.order.OrderId
 
 private[command] def cancelOrdersExecutor = ToEventCalc[CancelOrders]: cmd =>
-  executeOrderMarkCommands(cmd.orderIds.toVector):
+  executeOrderMarkCommands(cmd.orderIds):
     _.cancel(_, cmd.mode)
 
 private[command] def suspendOrdersExecutor = ToEventCalc[SuspendOrders]: cmd =>
-  executeOrderMarkCommands(cmd.orderIds.toVector):
+  executeOrderMarkCommands(cmd.orderIds):
     _.suspend(_, cmd.mode)
 
 private[command] def goOrderExecutor = ToEventCalc[GoOrder]: cmd =>
@@ -31,11 +31,11 @@ private[command] def resumeOrderExecutor = ToEventCalc[ResumeOrder]: cmd =>
     _.resume(_, cmd.position, cmd.historyOperations, cmd.asSucceeded, cmd.restartKilledJob)
 
 private[command] def resumeOrdersExecutor = ToEventCalc[ResumeOrders]: cmd =>
-  executeOrderMarkCommands(cmd.orderIds.toVector):
+  executeOrderMarkCommands(cmd.orderIds):
     _.resume(_, None, Nil, cmd.asSucceeded, cmd.restartKilledJob)
 
 private def executeOrderMarkCommands[Cmd <: ControllerCommand](
-  orderIds: Vector[OrderId])
+  orderIds: Iterable[OrderId])
   (toEvents: (OrderEventSource, OrderId) => Checked[List[OrderActorEvent]])
 : EventCalc[ControllerState, Event, TimeCtx] =
   EventCalc: coll =>
@@ -46,7 +46,7 @@ private def executeOrderMarkCommands[Cmd <: ControllerCommand](
       coll.addChecked:
         val instrService = InstructionExecutorService(coll.context.clock)
         val orderEventSource = OrderEventSource(coll.aggregate)(using instrService)
-        orderIds.traverse: orderId =>
+        orderIds.toVector.traverse: orderId =>
           coll.aggregate.idToOrder.rightOr(orderId, UnknownOrderProblem(orderId))
         .map: orders =>
           orders.flatTraverse: order =>

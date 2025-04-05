@@ -22,24 +22,27 @@ trait EventDrivenStateView[Self <: EventDrivenStateView[Self]]
 extends EventDrivenState[Self, Event], StateView:
   this: Self =>
 
+  protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
+  : Checked[Self]
+
   protected final def update(
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
     removeUnsignedSimpleItems: Seq[UnsignedSimpleItemPath] = Nil)
   : Checked[Self] =
     for
-      _ <- precheckUpdate(addOrders, removeOrders, externalVanishedOrders,
+      _ <- precheckUpdate(updateOrders, removeOrders, externalVanishedOrders,
         addItemStates, removeUnsignedSimpleItems)
-      self <- update_(addOrders, removeOrders, externalVanishedOrders,
+      self <- update_(updateOrders, removeOrders, externalVanishedOrders,
         addItemStates, removeUnsignedSimpleItems)
     yield
       self
 
   // Call only via update() !
   protected def update_(
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
@@ -47,7 +50,7 @@ extends EventDrivenState[Self, Event], StateView:
   : Checked[Self]
 
   private def precheckUpdate(
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updatedOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
@@ -55,7 +58,7 @@ extends EventDrivenState[Self, Event], StateView:
   : Checked[Unit] =
     if isStrict then
       for
-        _ <- addOrders.view.map(_.id).concat(removeOrders).checkUniqueness
+        _ <- updatedOrders.view.map(_.id).concat(removeOrders).checkUniqueness
         _ <- externalVanishedOrders.checkUniquenessBy(_.id)
         _ <- addItemStates.view.map(_.path).concat(removeUnsignedSimpleItems).checkUniqueness
       yield ()
@@ -84,11 +87,11 @@ extends EventDrivenState[Self, Event], StateView:
           if isAgent then
             update(removeOrders = orderId :: Nil)
           else
-            update(addOrders = updatedOrder :: Nil)
+            update(updateOrders = updatedOrder :: Nil)
 
         case event: OrderForked =>
-          update(
-            addOrders = updatedOrder +: previousOrder.newForkedOrders(event))
+          update(updatedOrder :: Nil).flatMap:
+            _.addOrders(previousOrder.newForkedOrders(event), allowClosedPlan = true)
 
         case event: OrderJoined =>
           if isAgent then
@@ -97,7 +100,7 @@ extends EventDrivenState[Self, Event], StateView:
             previousOrder.state match
               case forked: Order.Forked =>
                 update(
-                  addOrders = updatedOrder :: Nil,
+                  updateOrders = updatedOrder :: Nil,
                   removeOrders = forked.childOrderIds)
 
               case state =>
@@ -120,7 +123,7 @@ extends EventDrivenState[Self, Event], StateView:
                   _.release(orderId)
             .flatMap: lockStates =>
               update(
-                addOrders = updatedOrder :: Nil,
+                updateOrders = updatedOrder :: Nil,
                 addItemStates = lockStates)
 
         case OrderStateReset =>
@@ -131,27 +134,27 @@ extends EventDrivenState[Self, Event], StateView:
                 lockState.dequeue(orderId)
             .flatMap: lockStates =>
               update(
-                addOrders = updatedOrder :: Nil,
+                updateOrders = updatedOrder :: Nil,
                 addItemStates = lockStates)
           .orElse:
             previousOrder.ifState[ExpectingNotices].map: order =>
               removeNoticeExpectation(order).flatMap: updatedBoardStates =>
                 update(
-                  addOrders = updatedOrder :: Nil,
+                  updateOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
           .getOrElse:
             update(
-              addOrders = updatedOrder :: Nil)
+              updateOrders = updatedOrder :: Nil)
 
         case _: OrderCancelled =>
           previousOrder
             // COMPATIBLE Since v2.7.2 an OrderStateReset is emitted and the
             // following code is superfluous (but still needed for old journals)
             .ifState[ExpectingNotices]
-            .fold(update(addOrders = updatedOrder :: Nil)): order =>
+            .fold(update(updateOrders = updatedOrder :: Nil)): order =>
               removeNoticeExpectation(order).flatMap: updatedBoardStates =>
                 update(
-                  addOrders = updatedOrder :: Nil,
+                  updateOrders = updatedOrder :: Nil,
                   addItemStates = updatedBoardStates)
 
         case OrderExternalVanished =>
@@ -161,7 +164,7 @@ extends EventDrivenState[Self, Event], StateView:
             update(externalVanishedOrders = updatedOrder :: Nil)
 
         case OrderDeletionMarked =>
-          update(addOrders = updatedOrder :: Nil)
+          update(updateOrders = updatedOrder :: Nil)
 
         case OrderDeleted =>
           if isAgent then
@@ -174,7 +177,7 @@ extends EventDrivenState[Self, Event], StateView:
           Left(EventNotHandledHereProblem(event, companion))
 
         case _ =>
-          update(addOrders = updatedOrder :: Nil)
+          update(updateOrders = updatedOrder :: Nil)
     yield
       result
 

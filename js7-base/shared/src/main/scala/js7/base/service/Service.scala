@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, IO, Outcome, Resource, ResourceIO}
+import cats.effect.{Deferred, ExitCode, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.joinStd
@@ -103,9 +103,10 @@ object Service:
           else
             logger.traceF(s"$service start"):
               service.start
-                .onError: t =>
-                  // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                  IO(logger.error(s"$service start => ${t.toStringWithCauses}")))(
+                .onError:
+                  case t => IO:
+                    // Maybe duplicate, but some tests don't propagate this error and silently deadlock
+                    logger.error(s"$service start => ${t.toStringWithCauses}"))(
       release =
         service => service.stop
           .logWhenItTakesLonger(s"stopping $service"))
@@ -131,9 +132,10 @@ object Service:
     resource(IO:
       new RestartAfterFailureService(Some(restartDelayConf), Some(runDelayConf))(serviceResource))
 
-  def simple(body: IO[ProgramTermination]): SimpleMainService =
+  def simple(body: IO[Unit | ExitCode | ProgramTermination]): SimpleMainService =
     new SimpleMainService with StoppableByCancel:
-      def run = body
+      def run =
+        body.map(ProgramTermination.fromUnitOrExitCode)
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 

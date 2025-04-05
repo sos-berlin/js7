@@ -11,7 +11,6 @@ import java.nio.file.{AccessDeniedException, Path, Paths}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -33,17 +32,15 @@ final class FileValueScopeTest extends OurTestSuite:
 
   "IOException" in:
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
-    autoClosing(new FileValueState(dir)) { fileValueState =>
-      FileValueScope.resource(fileValueState).blockingUse(99.s) { fileValueScope =>
-        assert(
+    autoClosing(new FileValueState(dir)): fileValueState =>
+      FileValueScope.resource(fileValueState).blockingUse(99.s): fileValueScope =>
+        assert:
           toFile(fileValueScope, Seq("CONTENT"))
             .left
-            .exists(_.throwable.isInstanceOf[IOException]))
-      }
-    }
+            .exists(_.throwable.isInstanceOf[IOException])
 
   "Arbitrary filename" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       val n = 3
 
       for i <- 1 to n do
@@ -55,10 +52,9 @@ final class FileValueScopeTest extends OurTestSuite:
       val files = (fileValueScope.fileValueState.directory / "0").directoryContents
       assert(files.size == n)
       for f <- files do assert(isRegularFile(f))
-    }
 
   "Fixed filename" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       val file = toFile(fileValueScope, Seq("CONTENT", "FIXED-NAME")).orThrow
       assert(file == fileValueScope.fileValueState.directory / "0" / "FIXED-NAME")
       assert(file.contentString == "CONTENT")
@@ -66,38 +62,33 @@ final class FileValueScopeTest extends OurTestSuite:
       val files = (fileValueScope.fileValueState.directory / "0").directoryContents
       assert(files.size == 1)
       for f <- files do assert(isRegularFile(f))
-    }
 
   "Filename pattern" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       val file = toFile(fileValueScope, Seq("CONTENT", "PREFIX-*.tmp")).orThrow
       assert(file.startsWith(fileValueScope.fileValueState.directory))
       assert(file.getFileName.toString.startsWith("PREFIX-"))
       assert(file.getFileName.toString.endsWith(".tmp"))
       assert(file.contentString == "CONTENT")
       assert(fileValueScope.fileValueState.directory.directoryContents.size == 1)
-    }
 
   "Slash in filenamePattern is rejected" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       assert(toFile(fileValueScope, Seq("CONTENT", "myDir/*")) == Left(Problem(
         "No directory is allowed in toFile function filenamePattern argument")))
-    }
 
   "Multiple * in filenamePattern" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       val file = toFile(fileValueScope, Seq("", "*;*;*")).orThrow
       val filename = file.getFileName.toString
       val star = filename.substring(0, filename.indexOf(';'))
       assert(filename == s"$star;$star;$star")
-    }
 
   "File is read-only" in:
-    check { fileValueScope =>
+    check: fileValueScope =>
       val file = toFile(fileValueScope, Seq("READ-ONLY", "*")).orThrow
       intercept[AccessDeniedException]:
         newOutputStream(file, WRITE, APPEND)
-    }
 
   "toFile is concurrently executable" in:
     // Some different filenames, used multiple times.
@@ -113,19 +104,17 @@ final class FileValueScopeTest extends OurTestSuite:
         val files: Seq[Path] =
           (1 to n)
             .toVector
-            .parFlatTraverse(_ =>
-              FileValueScope
-                .resource(fileValueState)
-                .use(fileValueScope =>
-                  IO.cede *>
-                    IO
-                      .parTraverse((1 to m).toVector)(_ => IO:
-                        val string = strings(Random.nextInt(stringCount))
-                        toFile(fileValueScope, Seq(string, string)).orThrow)
-                      .flatTap: files =>
-                        IO.cede *>
-                          IO(assert(files
-                            .forall(file => file.contentString == file.getFileName.toString)))))
+            .parFlatTraverse: _ =>
+              FileValueScope.resource(fileValueState).use: fileValueScope =>
+                IO.cede *>
+                  (1 to m).toVector.parTraverse: _ =>
+                    IO:
+                      val string = strings(Random.nextInt(stringCount))
+                      toFile(fileValueScope, Seq(string, string)).orThrow
+                  .flatTap: files =>
+                    IO.cede *>
+                      IO(assert(files
+                        .forall(file => file.contentString == file.getFileName.toString)))
             .await(99.s)
 
         assert(files.size == n * m)

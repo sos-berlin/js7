@@ -96,7 +96,7 @@ private object JControllerStateTest:
           None, None, DelegateCouplingState.Reset.fresh, EventId(7), None,
           ClusterState.Empty, Map.empty, None),
         PlanSchemaState(
-          PlanSchema(PlanSchemaId("DailyPlan")),
+          PlanSchema(PlanSchemaId("DailyPlan"), PlanSchema.EachUnknownPlanIsClosed),
           namedValues = Map.empty,
           finishedPlanRetentionPeriod = 3600.s,
           toPlan = Map:

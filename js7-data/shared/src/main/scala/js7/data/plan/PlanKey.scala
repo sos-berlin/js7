@@ -2,9 +2,6 @@ package js7.data.plan
 
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
-import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.expr
 import scala.annotation.static
 
 /** Identifies a Plan of a PlanSchema.
@@ -23,9 +20,6 @@ object PlanKey extends GenericString.NameValidating[PlanKey]:
   /** Used for the one and only Plan in the predefined global PlanSchema.
     */
   @static final val Global: PlanKey = new PlanKey("Global")
-
-  val jocPlanKeyExpr: Expression =
-    expr""" match(orderId, '#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*', '$$1') ? """
 
   protected def unchecked(string: String) =
     new PlanKey(string)

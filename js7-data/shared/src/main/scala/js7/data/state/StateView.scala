@@ -5,6 +5,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isStrict
 import js7.data.agent.AgentPath
 import js7.data.board.BoardState
 import js7.data.controller.ControllerId
@@ -76,6 +77,20 @@ trait StateView extends ItemContainer, EngineStateFunctions:
       .filter((_, v) => v.item.companion eq A)
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
+
+  def checkOrdersDoNotExist(orderIds: Iterable[OrderId]): Checked[Unit] =
+    if isStrict then
+      val known = orderIds.filter(idToOrder.isDefinedAt)
+      known.isEmpty !! Problem(s"Orders already exist: ${known.toArray.sorted.mkString(", ")}")
+    else
+      Checked.unit
+
+  def checkOrdersExist(orderIds: Iterable[OrderId]): Checked[Unit] =
+    if isStrict then
+      val unknown = orderIds.filterNot(idToOrder.isDefinedAt)
+      unknown.isEmpty !! Problem(s"Unknown Orders: ${unknown.toArray.sorted.mkString(", ")}")
+    else
+      Checked.unit
 
   def isOrderProcessable(order: Order[Order.State]): Boolean =
     order.isProcessable &&

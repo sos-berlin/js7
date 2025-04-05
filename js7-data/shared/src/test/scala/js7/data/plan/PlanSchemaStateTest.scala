@@ -22,16 +22,16 @@ final class PlanSchemaStateTest extends OurTestSuite:
   "toSnapshotStream JSON" in:
     val planSchema = PlanSchema(
       PlanSchemaId("DailyPlan"),
-      Some(exprFun"day => $$day < $$openingDay"),
+      exprFun"day => $$day >= $$unknownPlansAreOpenFrom",
       namedValues = Map(
-        "openingDay" -> StringValue("")),
+        "unknownPlansAreOpenFrom" -> StringValue("")),
       Some(ItemRevision(1)))
 
     val planSchemaState = PlanSchemaState(
       planSchema,
       finishedPlanRetentionPeriod = 3600.s,
       namedValues = Map(
-        "openingDay" -> StringValue("2025-02-20")),
+        "unknownPlansAreOpenFrom" -> StringValue("2025-02-20")),
       toPlan = Map(
         PlanKey("2025-02-20") -> Plan(
           PlanSchemaId("DailyPlan") / "2025-02-20",
@@ -53,9 +53,9 @@ final class PlanSchemaStateTest extends OurTestSuite:
       json"""{
         "TYPE": "PlanSchema",
         "id": "DailyPlan",
-        "unknownPlanIsClosedFunction": "day => $$day < $$openingDay",
+        "unknownPlanIsOpenFunction": "day => $$day >= $$unknownPlansAreOpenFrom",
         "namedValues": {
-          "openingDay": ""
+          "unknownPlansAreOpenFrom": ""
         },
         "itemRevision": 1
       }""",
@@ -64,7 +64,7 @@ final class PlanSchemaStateTest extends OurTestSuite:
         "id": "DailyPlan",
         "finishedPlanRetentionPeriod": 3600,
         "namedValues": {
-          "openingDay": "2025-02-20"
+          "unknownPlansAreOpenFrom": "2025-02-20"
         }
       }""",
       json"""{
@@ -73,33 +73,61 @@ final class PlanSchemaStateTest extends OurTestSuite:
         "status": "Closed"
       }"""))
 
+  "isDiscardable" in:
+    var planSchemaState = PlanSchema(
+      PlanSchemaId("DailyPlan"),
+      exprFun"day => $$day >= $$unknownPlansAreOpenFrom",
+      namedValues = Map(
+        "unknownPlansAreOpenFrom" -> StringValue("")),
+      Some(ItemRevision(1))
+    ).toInitialItemState
+
+    planSchemaState =
+      planSchemaState.applyEvent:
+        PlanSchemaChanged(
+          namedValues = Some(Map("unknownPlansAreOpenFrom" -> StringValue("2025-03-20"))))
+      .orThrow
+
+    planSchemaState = planSchemaState.applyPlanEvent(PlanKey("2025-03-19"), PlanOpened)
+      .orThrow
+
+    assert(planSchemaState.applyPlanEvent(PlanKey("2025-03-20"), PlanOpened) == Left:
+      Problem("Plan:DailyPlan╱2025-03-20 is already Open"))
+
+    assert(planSchemaState.applyPlanEvent(PlanKey("2025-03-21"), PlanOpened) == Left:
+      Problem("Plan:DailyPlan╱2025-03-21 is already Open"))
+
+    assert(!planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-19")).orThrow).orThrow)
+    assert(planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-20")).orThrow).orThrow)
+    assert(planSchemaState.isDiscardable(planSchemaState.plan(PlanKey("2025-03-21")).orThrow).orThrow)
+
   "Change PlanStatus" - {
     lazy val planSchemaId = PlanSchemaId("DailyPlan")
     lazy val planSchema = PlanSchema(
       planSchemaId,
-      Some(exprFun"day => $$day < $$openingDay"),
+      exprFun"day => $$day >= $$unknownPlansAreOpenFrom",
       namedValues = Map(
-        "openingDay" -> StringValue("")))
+        "unknownPlansAreOpenFrom" -> StringValue("")))
 
     lazy val planSchemaState0 = planSchema.toInitialItemState.applyEvent:
       PlanSchemaChanged(
         finishedPlanRetentionPeriod = Some(0.s),
         namedValues = Some(Map(
-          "openingDay" -> StringValue("2025-03-20"))))
+          "unknownPlansAreOpenFrom" -> StringValue("2025-03-20"))))
     .orThrow
 
-    "Open (reopen) a Plan before openingDay" in:
-      // Open (reopen) a Plan before openingDay //
+    "Open (reopen) a Plan before unknownPlansAreOpenFrom" in:
+      // Open (reopen) a Plan before unknownPlansAreOpenFrom //
       val planSchemaState = planSchemaState0.applyPlanEvent(PlanKey("2025-03-01"), PlanOpened).orThrow
 
       assert(planSchemaState.toPlan == Map(
         PlanKey("2025-03-01") -> Plan(planSchemaId / PlanKey("2025-03-01"), Open)))
       assert(planSchemaState.toSnapshotStream.compile.toList == List(
         planSchema,
-        PlanSchemaState.Snapshot(planSchemaId, 0.s, Map("openingDay" -> StringValue("2025-03-20"))),
+        PlanSchemaState.Snapshot(planSchemaId, 0.s, Map("unknownPlansAreOpenFrom" -> StringValue("2025-03-20"))),
         Plan.Snapshot(planSchemaId / "2025-03-01", Open)))
 
-    "Open (reopen) a Plan after openingDay" in:
+    "Open (reopen) a Plan after unknownPlansAreOpenFrom" in:
       assert(planSchemaState0.applyPlanEvent(PlanKey("2025-03-31"), PlanOpened) == Left:
         Problem("Plan:DailyPlan╱2025-03-31 is already Open"))
   }

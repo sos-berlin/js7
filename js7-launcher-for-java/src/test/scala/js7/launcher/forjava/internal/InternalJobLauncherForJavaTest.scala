@@ -2,13 +2,13 @@ package js7.launcher.forjava.internal
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
+import cats.syntax.parallel.*
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.parSequence
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
@@ -99,7 +99,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
               case (outcome: OrderOutcome.IsSucceeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
               case (outcome: OrderOutcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
               case (outcome, _, _) => IO(fail(s"UNEXPECTED: $outcome"))
-        assert(IO.parSequence(processes).await(99.s).reduceLeftEither ==
+        assert(processes.toVector.parSequence.await(99.s).reduceLeftEither ==
           Right(indices.map(_ + 1).map(NumberValue(_))))
 
       "Exception is caught and returned as Left" in:

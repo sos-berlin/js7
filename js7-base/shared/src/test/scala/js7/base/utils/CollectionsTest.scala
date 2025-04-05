@@ -104,6 +104,7 @@ final class CollectionsTest extends OurTestSuite:
 
   "uniqueToSet" in:
     List(1, 2, 3).uniqueToSet shouldEqual Set(1, 2, 3)
+    Set(1, 2, 3).uniqueToSet shouldEqual Set(1, 2, 3)
     intercept[DuplicateKeyException] { List(1, 2, 1).uniqueToSet }
 
   "retainOrderGroupBy" in:
@@ -124,6 +125,7 @@ final class CollectionsTest extends OurTestSuite:
     assert(Seq("a", "b", "c").duplicates.isEmpty)
     assert(Seq("a", "b", "a").duplicates.toSet == Set("a"))
     assert(Seq("a", "b", "c", "c", "b" ).duplicates.toSet == Set("b", "c"))
+    assert(Set("a", "b", "c").duplicates.isEmpty)
 
   "duplicateKeys" in:
     def dup(o: Seq[A]) = o.duplicateKeys(_.i)
@@ -137,10 +139,11 @@ final class CollectionsTest extends OurTestSuite:
     assert(dup(Seq(a1, a2, b1)) == Some(Map(1 -> Seq(a1, a2))))
     assert(dup(Seq(a1, a2, b1, c1, c2, c3)) == Some(Map(1 -> Seq(a1, a2), 3 -> Seq(c1, c2, c3))))
 
-  "isUnique" in:
+  "areUnique" in:
     assert(Nil.areUnique)
     assert(Seq(1, 2, 3).areUnique)
     assert(!Seq(1, 1).areUnique)
+    assert(Set(1, 1).areUnique)
 
   "requireUniqueness" in:
     def r(o: Seq[A]) = o.requireUniqueness(_.i)

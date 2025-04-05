@@ -125,7 +125,7 @@ extends SignedItemContainer,
         if idToOrder isDefinedAt orderId then
           Left(Problem.pure(s"Duplicate order attached: $orderId"))
         else
-          update(addOrders = Order.fromOrderAttached(orderId, event) :: Nil)
+          addOrders(Order.fromOrderAttached(orderId, event) :: Nil, allowClosedPlan = true)
 
       case _ =>
         super.applyOrderEvent(orderId, event)
@@ -296,8 +296,15 @@ extends SignedItemContainer,
       addItemStates = fileWatchStates,
       removeUnsignedSimpleItems = remove)
 
+  protected def addOrders(orders: Seq[Order[Order.State]] = Nil, allowClosedPlan: Boolean)
+  : Checked[AgentState] =
+    // allowClosedPlan is ignored because the Agent does not know Plans
+    checkOrdersDoNotExist(orders.view.map(_.id)).flatMap: _ =>
+      Right(copy(
+        idToOrder = idToOrder ++ orders.view.map(o => o.id -> o)))
+
   protected def update_(
-    addOrders: Seq[Order[Order.State]] = Nil,
+    updateOrders: Seq[Order[Order.State]] = Nil,
     removeOrders: Seq[OrderId] = Nil,
     externalVanishedOrders: Seq[Order[Order.State]] = Nil,
     addItemStates: Seq[UnsignedSimpleItemState] = Nil,
@@ -309,7 +316,7 @@ extends SignedItemContainer,
       Right(copy(
         idToOrder = idToOrder
           -- removeOrders
-          ++ addOrders.view.map(o => o.id -> o),
+          ++ updateOrders.view.map(o => o.id -> o),
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeUnsignedSimpleItems
           ++ addItemStates.view.map(o => o.path -> o)))

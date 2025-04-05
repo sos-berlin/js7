@@ -8,11 +8,11 @@ import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StandardMapView
 import js7.base.utils.Tests.isStrict
-import js7.base.utils.{Assertions, StandardMapView}
+import js7.data.Problems.{PlanIsClosedProblem, PlanIsDeletedProblem, PlanIsFinishedProblem}
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardNoticeKey, BoardPath, Notice, NoticeId, NoticeSnapshot, PlannedBoard}
 import js7.data.event.KeyedEvent
@@ -79,14 +79,12 @@ final case class Plan(
         checkStatusChange(status).map: _ =>
           copy(status = status)
 
-  def addOrders(orderIds: Iterable[OrderId]): Checked[Plan] =
-    if isFinished then
-      Left(Problem(s"$id does not accept orders because it is $status"))
-    else if orderIds.isEmpty then
-      Right(this)
-    else
-      assertThat(status == Open)
-      Right(copy(orderIds = this.orderIds ++ orderIds))
+  def addOrders(orderIds: Iterable[OrderId], allowClosedPlan: Boolean): Checked[Plan] =
+    checkAcceptOrders(allowClosedPlan = allowClosedPlan).flatMap: _ =>
+      if orderIds.isEmpty then
+        Right(this)
+      else
+        Right(copy(orderIds = this.orderIds ++ orderIds))
 
   def removeOrders(orderIds: Iterable[OrderId]): Plan =
     if orderIds.isEmpty then
@@ -164,8 +162,15 @@ final case class Plan(
         toPlannedBoard.get(boardNoticeKey.boardPath).flatMap: plannedBoard =>
           plannedBoard.maybeNotice(boardNoticeKey.noticeKey)
 
-  def isRemovableCandidate: Boolean =
+  def isDiscardableCandidate: Boolean =
     (status == Open || status == Deleted) && isEmpty
+
+  def checkAcceptOrders(allowClosedPlan: Boolean): Checked[Unit] =
+    status match
+      case Open => Checked.unit
+      case Closed => allowClosedPlan !! PlanIsClosedProblem(id)
+      case _: Finished => Left(PlanIsFinishedProblem(id))
+      case Deleted => Left(PlanIsDeletedProblem(id))
 
   private def isEmpty: Boolean =
     orderIds.isEmpty && toPlannedBoard.isEmpty
@@ -174,8 +179,7 @@ final case class Plan(
   def isClosed: Boolean =
     status >= Closed
 
-  /** Plan is Finished or Deleted. */
-  def isFinished: Boolean =
+  def isFinishedOrDeleted: Boolean =
     status.ordinal >= Finished.ordinal
 
   def hasOrders: Boolean =

@@ -5,14 +5,12 @@ import cats.effect.{Concurrent, GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
-import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.Stream
 import js7.base.catsutils.CatsExtensions.*
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
-import scala.collection.Factory
 import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.Try
@@ -174,17 +172,6 @@ object MonixLikeExtensions:
 
     def parZip2[A, B](a: IO[A], b: IO[B]): IO[(A, B)] =
       IO.both(a, b)
-
-    def parSequence[A, M[X] <: Iterable[X]](in: M[IO[A]])
-      (using factory: Factory[A, M[A]])
-    : IO[M[A]] =
-      in.toSeq.parSequence.map(_.to(factory))
-
-    def parTraverse[A, B, M[X] <: Iterable[X]](in: M[A])
-      (f: A => IO[B])
-      (using factory: Factory[B, M[B]])
-    : IO[M[B]] =
-      in.toSeq.parTraverse(f).map(_.to(factory))
 
     def deferFuture[A](future: => Future[A]): IO[A] =
       IO.fromFuture(IO(future))

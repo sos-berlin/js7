@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimestampForTests.ts
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.data.Problems.PlanIsDeletedProblem
 import js7.data.board.NoticeEvent.NoticeDeleted
 import js7.data.board.{BoardPath, Notice, NoticeKey, PlannedBoard}
 import js7.data.order.OrderId
@@ -38,8 +39,8 @@ final class PlanTest extends OurTestSuite:
     val noticeId = planId / boardPath / NoticeKey("NOTICE")
 
     var plan = Plan(planId, Deleted)
-    assert(plan.addOrders(orderId :: Nil) == Left:
-      Problem(s"$planId does not accept orders because it is Deleted"))
+    assert(plan.addOrders(orderId :: Nil, allowClosedPlan = true) == Left(PlanIsDeletedProblem(planId)))
+    assert(plan.addOrders(orderId :: Nil, allowClosedPlan = false) == Left(PlanIsDeletedProblem(planId)))
 
     assert(plan.changePlanStatusEvents(Open, now, 1.h).map(_.toList) == Right:
       List(planId <-: PlanOpened))
@@ -60,7 +61,7 @@ final class PlanTest extends OurTestSuite:
         planId <-: PlanDeleted))
 
     assert(plan.status == Open)
-    plan = plan.addOrders(orderId :: Nil).orThrow
+    plan = plan.addOrders(orderId :: Nil, allowClosedPlan = false).orThrow
     plan = plan.addBoard:
       PlannedBoard(planId / boardPath)
         .addNotice(Notice(noticeId)).orThrow

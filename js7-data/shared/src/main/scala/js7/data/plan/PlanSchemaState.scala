@@ -15,7 +15,6 @@ import js7.base.time.ScalaTime
 import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.Problems.PlanIsClosedProblem
 import js7.data.board.{BoardPath, NoticeSnapshot, PlannedBoard}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.{Order, OrderId}
@@ -78,7 +77,7 @@ extends UnsignedSimpleItemState:
     if isGlobal then
       Left(Problem("The Global PlanSchema cannot be changed"))
     else
-      copy(item = item).removeRemovablePlans
+      copy(item = item).removeDicardablePlans
 
   def recover(snapshot: Snapshot): PlanSchemaState =
     copy(
@@ -92,9 +91,9 @@ extends UnsignedSimpleItemState:
         for
           planSchemaState <- namedValues.fold(Checked(planSchemaState)): namedValues =>
             planSchemaState.copy(namedValues = namedValues)
-              .removeRemovablePlans
+              .removeDicardablePlans
           planSchemaState <- finishedPlanRetentionPeriod.fold(Checked(planSchemaState)):
-            planSchemaState.updatefinishedPlanRetentionPeriod
+            planSchemaState.updateFinishedPlanRetentionPeriod
         yield
           planSchemaState
 
@@ -105,19 +104,19 @@ extends UnsignedSimpleItemState:
     yield
       updatePlans(plan :: Nil)
 
-  def updatefinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
+  def updateFinishedPlanRetentionPeriod(duration: FiniteDuration): Checked[PlanSchemaState] =
     Right(copy(finishedPlanRetentionPeriod = duration))
 
   def orderIds: View[OrderId] =
     toPlan.values.view.flatMap(_.orderIds)
 
-  def addOrder(planKey: PlanKey, orderId: OrderId): Checked[PlanSchemaState] =
-    addOrders(Map1(planKey, Set(orderId)))
+  def addOrder(planKey: PlanKey, orderId: OrderId, allowClosedPlan: Boolean): Checked[PlanSchemaState] =
+    addOrders(Map1(planKey, Set(orderId)), allowClosedPlan = allowClosedPlan)
 
-  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]]): Checked[PlanSchemaState] =
+  private def addOrders(planToOrders: Map[PlanKey, Set[OrderId]], allowClosedPlan: Boolean): Checked[PlanSchemaState] =
     planToOrders.toVector.traverse: (planKey, orderIds) =>
       plan(planKey).flatMap:
-        _.addOrders(orderIds)
+        _.addOrders(orderIds, allowClosedPlan = allowClosedPlan)
     .map(updatePlans)
 
   def removeOrder(planKey: PlanKey, orderId: OrderId): PlanSchemaState =
@@ -142,21 +141,26 @@ extends UnsignedSimpleItemState:
     yield
       updatePlans(updatedPlan :: Nil)
 
-  private def isRemovableIgnoringProblem(plan: Plan): Boolean =
-    isRemovable(plan).onProblemHandle: problem =>
-      logger.error(s"${plan.id} unknownPlanIsClosedFunction failed: $problem")
+  private def isDiscardableIgnoringProblem(plan: Plan): Boolean =
+    isDiscardable(plan).onProblemHandle: problem =>
+      logger.error(s"${plan.id} unknownPlanIsOpenFunction failed: $problem")
       false
 
-  private def isRemovable(plan: Plan): Checked[Boolean] =
+  /** Whether the Plan can be removed from toPlan without change of semantics.
+    *
+    * A Plan isDiscardable when it isDiscardableCandidate (empty, and Open or Deleted), and
+    * evalUnknownPlanIsOpen evaluates to an equivalent value.
+    */
+  private[plan] def isDiscardable(plan: Plan): Checked[Boolean] =
     import plan.id.planKey
     plan.status match
       case Open | Deleted =>
         // Check whether we may forget the Plan.
-        // evalUnknownPlanIsClosed returns the default Open/Deleted Status for forgotten Plans.
-        if !plan.isRemovableCandidate then
+        // evalUnknownPlanIsOpen returns the default Open/Deleted Status for forgotten Plans.
+        if !plan.isDiscardableCandidate then
           Right(false)
         else
-          evalUnknownPlanIsClosed(planKey).map(_ == (plan.status == Deleted))
+          evalUnknownPlanIsOpen(planKey).map(_ == (plan.status == Open))
       case Closed | _: Finished => Right(false)
 
   /** Returns Right(()) iff this PlanSchema is unused. */
@@ -169,43 +173,37 @@ extends UnsignedSimpleItemState:
         .mkString(", ")
       }"
 
-  def checkIsOpen(planKey: PlanKey): Checked[Unit] =
-    for
-      isClosed <- isClosed(planKey)
-      _ <- !isClosed !! PlanIsClosedProblem(planSchema.id / planKey)
-    yield
-      ()
+  def checkPlanAcceptsOrders(planKey: PlanKey, allowClosedPlan: Boolean): Checked[Unit] =
+    plan(planKey).flatMap:
+      _.checkAcceptOrders(allowClosedPlan = allowClosedPlan)
 
-  private def isClosed(planKey: PlanKey): Checked[Boolean] =
-    plan(planKey).map(_.isClosed)
-
-  /** Creates an empty Plan with status computed by unknownPlanIsClosedFunction, if Plan does not exist.
+  /** Creates an empty Plan with status computed by unknownPlanIsOpenFunction, if Plan does not exist.
     *
-    * @return Left(problem) if `PlanSchema.unknownPlanIsClosedFunction` fails. */
+    * @return Left(problem) if `PlanSchema.unknownPlanIsOpenFunction` fails. */
   def plan(planKey: PlanKey): Checked[Plan] =
     toPlan.get(planKey).map(Right(_)).getOrElse:
-      evalUnknownPlanIsClosed(planKey).flatMap: isClosed =>
-        Plan.checked(id / planKey, if isClosed then Deleted else Open)
+      evalUnknownPlanIsOpen(planKey).flatMap: isOpen =>
+        Plan.checked(id / planKey, if isOpen then Open else Deleted)
 
-  private def evalUnknownPlanIsClosed(planKey: PlanKey): Checked[Boolean] =
-    planSchema.evalUnknownPlanIsClosed(planKey, namedValuesScope)
+  private def evalUnknownPlanIsOpen(planKey: PlanKey): Checked[Boolean] =
+    planSchema.evalUnknownPlanIsOpen(planKey, namedValuesScope)
 
   def removeBoard(boardPath: BoardPath): PlanSchemaState =
     updatePlans:
       toPlan.values.map: plan =>
         plan.removeBoard(boardPath)
 
-  private def removeRemovablePlans: Checked[PlanSchemaState] =
+  private def removeDicardablePlans: Checked[PlanSchemaState] =
     toPlan.values.toVector.traverse: plan =>
-      isRemovable(plan).map: isRemovable =>
-        if isRemovable then logRemovedPlan(plan)
-        !isRemovable ? plan
+      isDiscardable(plan).map: isDiscardable =>
+        if isDiscardable then logRemovedPlan(plan)
+        !isDiscardable ? plan
     .map(_.flatten)
     .map: plans =>
       copy(toPlan = plans.toKeyedMap(_.id.planKey))
 
   private def updatePlans(plans: Iterable[Plan]): PlanSchemaState =
-    val (removablePlans, updatedPlans) = plans.partition(isRemovableIgnoringProblem)
+    val (removablePlans, updatedPlans) = plans.partition(isDiscardableIgnoringProblem)
     removablePlans.foreach(logRemovedPlan)
     logger.whenTraceEnabled(updatedPlans.foreach(logUpdatedPlan))
     copy(toPlan = toPlan
@@ -294,12 +292,13 @@ object PlanSchemaState extends UnsignedSimpleItemState.Companion[PlanSchemaState
 
   def addOrderIds(
     orders: Iterable[Order[Order.State]],
-    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState])
+    toPlanSchemaState: PlanSchemaId => Checked[PlanSchemaState],
+    allowClosedPlan: Boolean)
   : Checked[Seq[PlanSchemaState]] =
     updatedSchemaStates(orders, toPlanSchemaState)
       .flatMap:
         _.traverse: (planSchemaState, planToOrders) =>
-          planSchemaState.addOrders(planToOrders)
+          planSchemaState.addOrders(planToOrders, allowClosedPlan = allowClosedPlan)
 
   def removeOrderIds(
     orders: Iterable[Order[Order.State]],

@@ -120,8 +120,8 @@ final class PlannableBoardTest
 
   "Two PlanSchemas" in:
     withItems((
-      PlanSchema(PlanSchemaId("DailyPlan")),
-      PlanSchema(PlanSchemaId("WeeklyPlan")),
+      PlanSchema(PlanSchemaId("DailyPlan"), PlanSchema.EachUnknownPlanIsOpen),
+      PlanSchema(PlanSchemaId("WeeklyPlan"), PlanSchema.EachUnknownPlanIsOpen),
       board,
       Workflow(WorkflowPath("POSTING"), Seq(
         PostNotices(Seq(board.path)))),
@@ -176,7 +176,7 @@ final class PlannableBoardTest
         Prompt(expr("'PROMPT'")),
         PostNotices(Seq(boardPath))))
       withItem(postingWorkflow): postingWorkflow =>
-        val announcingOrderId = OrderId(s"#${planId.planKey.toString}#POST")
+        val announcingOrderId = OrderId("POST")
         controller.addOrderBlocking:
           FreshOrder(announcingOrderId, postingWorkflow.path, planId = planId,
             deleteWhenTerminated = true,
