@@ -102,7 +102,7 @@ final class ServiceTest extends OurAsyncTestSuite:
 
 
   "failWhenStopped" - {
-    "terminating Service cancels the nested body" in:
+    "terminating Service cancels the nested body" in repeatTest(iterations): _ =>
       MyService.resource(_ => ())
         .use: service =>
           service.failWhenStopped:
@@ -112,7 +112,7 @@ final class ServiceTest extends OurAsyncTestSuite:
             if exception.toStringWithCauses == "MyService terminated unexpectedly" => succeed
           case x => fail(x.toString)
 
-    "failing Service cancels the nested body" in:
+    "failing Service cancels the nested body" in repeatTest(iterations): _ =>
       val failService = Deferred.unsafe[IO, Unit]
       FailingService.resource(whenFail = failService.get)
         .use: service =>

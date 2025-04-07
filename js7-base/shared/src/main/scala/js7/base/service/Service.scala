@@ -3,7 +3,6 @@ package js7.base.service
 import cats.effect.{Deferred, ExitCode, IO, Outcome, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Problem
@@ -43,7 +42,7 @@ trait Service:
               attempted.match
                 case Left(throwable) => IO.raiseError(throwable)
                 case Right(()) => IO.unit,
-          fiber.joinStd)
+          fiber.joinWithNever)
         .flatMap:
           case Left(()) => IO.raiseError(new RuntimeException(s"$service terminated unexpectedly"))
           case Right(r) => IO.pure(r)
@@ -56,36 +55,34 @@ trait Service:
 
   /** Run the provided service until it terminates. */
   protected final def startService(run: IO[Unit]): IO[Started] =
-    CorrelId
-      .bindNew(logger.debugIO(s"$service run"):
-        CatsDeadline.now.flatMap: since =>
+    CorrelId.bindNew:
+      CatsDeadline.now.flatMap: since =>
+        logger.debugIO(s"$service run"):
           run
-            .guaranteeCase:
-              case Outcome.Errored(t) =>
-                since.elapsed
-                  .flatMap: elapsed =>
-                    IO:
-                      val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
-                      if t.isInstanceOf[MainServiceTerminationException] then
-                        logger.debug(msg)
-                      else
-                        // A service should not die
-                        logger.error(msg, t.nullIfNoStackTrace)
-                  .*>(stopped.complete(Failure(t)))
-                  .void
+        .guaranteeCase:
+          case Outcome.Errored(t) =>
+            since.elapsed
+              .flatMap: elapsed =>
+                IO:
+                  val msg = s"$service died after ${elapsed.pretty}: ${t.toStringWithCauses}"
+                  if !t.isInstanceOf[MainServiceTerminationException] then
+                    // A service should not die. The caller should watch untilStopped!
+                    logger.error(msg, t.nullIfNoStackTrace)
+              .*>(stopped.complete(Failure(t)))
+              .void
 
-              case Outcome.Canceled() =>
-                stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
-                  .void
+          case Outcome.Canceled() =>
+            stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
+              .void
 
-              case Outcome.Succeeded(_) =>
-                stopped.complete(Success(())).void)
-      .start
-      .flatMap: fiber =>
-        service match
-          case service: js7.base.service.StoppableByRequest => service.onFiberStarted(fiber)
-          case _ => IO.unit
-      .as(Started)
+          case Outcome.Succeeded(_) =>
+            stopped.complete(Success(())).void
+    .start
+    .flatMap: fiber =>
+      service match
+        case service: js7.base.service.StoppableByRequest => service.onFiberStarted(fiber)
+        case _ => IO.unit
+    .as(Started)
 
 
 object Service:
@@ -103,10 +100,9 @@ object Service:
           else
             logger.traceF(s"$service start"):
               service.start
-                .onError:
-                  case t => IO:
-                    // Maybe duplicate, but some tests don't propagate this error and silently deadlock
-                    logger.error(s"$service start => ${t.toStringWithCauses}"))(
+                .onError: t =>
+                  // Maybe duplicate, but some tests don't propagate this error and silently deadlock
+                  IO(logger.error(s"$service start => ${t.toStringWithCauses}")))(
       release =
         service => service.stop
           .logWhenItTakesLonger(s"stopping $service"))
