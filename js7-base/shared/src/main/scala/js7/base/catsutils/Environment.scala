@@ -103,29 +103,28 @@ final class Environment:
   private def get2[A](entry: Entry[A], orRegister: Option[ResourceIO[A]])
     (using tag: Tag[A])
   : IO[A] =
-    IO.defer:
-      entry match
-        case pure: Entry.Pure[A] =>
-          IO.pure(pure.a)
+    entry match
+      case pure: Entry.Pure[A] =>
+        IO.pure(pure.a)
 
-        case alloc: Entry.FAlloc[_, A] =>
-          IO.pure(alloc.a)
+      case alloc: Entry.FAlloc[_, A] =>
+        IO.pure(alloc.a)
 
-        case entry: Entry.FResource[_, A @unchecked] =>
-          logger.debugIO(s"get[${tag.tag}] allocate"):
-            import entry.F // F is Sync[IO] or Sync[SyncIO]
-            toIO:
-              entry.resource.allocated.flatMap: allocated =>
-                val (a, release) = allocated
-                val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
-                if !replaced then
-                  logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, releasing it"):
-                    release.as(None)
-                else
-                  F.pure(Some(a))
-            .flatMap:
-              case None => get[A](orRegister)
-              case Some(a) => IO.pure(a)
+      case entry: Entry.FResource[_, A @unchecked] =>
+        logger.debugIO(s"get[${tag.tag}] allocate"):
+          import entry.F // F is Sync[IO] or Sync[SyncIO]
+          toIO:
+            entry.resource.allocated.flatMap: allocated =>
+              val (a, release) = allocated
+              val replaced = tagToEntry.replace(tag, entry, Entry.FAlloc(allocated))
+              if !replaced then
+                logger.debugF(s"get[${tag.tag}] concurrent duplicate allocation, releasing it"):
+                  release.as(None)
+              else
+                F.pure(Some(a))
+          .flatMap:
+            case None => get[A](orRegister)
+            case Some(a) => IO.pure(a)
 
 
 object Environment:
