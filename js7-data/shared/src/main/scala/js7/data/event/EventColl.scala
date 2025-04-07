@@ -61,13 +61,15 @@ final case class EventColl[S <: EventDrivenState[S, E], E <: Event, Ctx] private
         aggregate = updated)
 
   def addEvents(keyedEvents: IterableOnce[MaybeTimestampedKeyedEvent[E]]): Checked[Self] =
-    val keyedEventsV = Vector.from(keyedEvents)
-    if keyedEventsV.isEmpty then
+    val keyedEventsSeq = keyedEvents match
+      case o: Seq[MaybeTimestampedKeyedEvent[E]] => o
+      case _ => Vector.from(keyedEvents)
+    if keyedEventsSeq.isEmpty then
       Right(this)
     else
-      aggregate.applyKeyedEvents(keyedEventsV.view.map(_.keyedEvent)).map: updated =>
+      aggregate.applyKeyedEvents(keyedEventsSeq.view.map(_.keyedEvent)).map: updated =>
         copy(
-          timestampedKeyedEvents = this.timestampedKeyedEvents ++ keyedEventsV,
+          timestampedKeyedEvents = this.timestampedKeyedEvents ++ keyedEventsSeq,
           aggregate = updated)
 
   def combine(b: Self): Checked[Self] =
