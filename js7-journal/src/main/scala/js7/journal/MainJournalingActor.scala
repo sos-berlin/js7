@@ -12,44 +12,29 @@ import scala.concurrent.Future
 trait MainJournalingActor[S <: JournaledState[S], E <: Event]
 extends JournalingActor[S, E]:
 
-  protected final def persistAsync[EE <: E, A](
-    keyedEvent: KeyedEvent[EE])
-    (callback: (Stamped[KeyedEvent[EE]], S) => A)
-  : Future[A] =
-    super.persistKeyedEvent(keyedEvent, async = true)(callback)
-
-  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]])
-    (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
-  : Future[A] =
-    super.persistKeyedEvents(toTimestamped(keyedEvents), async = true)(callback)
-
   protected final def persist[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
-    timestampMillis: Option[Long] = None,
-    async: Boolean = false)
+    timestampMillis: Option[Long] = None)
     (callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    super.persistKeyedEvent(keyedEvent, timestampMillis, async = async)(callback)
+    super.persistKeyedEvent(keyedEvent, timestampMillis)(callback)
 
-  protected final def persistMultiple[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]], async: Boolean = false)
+  protected final def persistMultiple[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]])
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
-    super.persistKeyedEvents(toTimestamped(keyedEvents), async = async)(callback)
+    super.persistKeyedEvents(toTimestamped(keyedEvents))(callback)
 
   protected final def persistTransaction[EE <: E, A](
-    keyedEvents: immutable.Iterable[KeyedEvent[EE]],
-    async: Boolean = false)
+    keyedEvents: immutable.Iterable[KeyedEvent[EE]])
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
-    persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)
+    persistTransactionTimestamped(toTimestamped(keyedEvents))(callback)
 
   protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]],
-    options: CommitOptions = CommitOptions.default,
-    async: Boolean = false)
+    options: CommitOptions = CommitOptions.default)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     super.persistKeyedEvents(
       keyedEvents,
-      options.copy(transaction = true),
-      async = async)(
+      options.copy(transaction = true))(
       callback)
