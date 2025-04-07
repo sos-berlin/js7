@@ -19,7 +19,7 @@ trait StoppableByRequest:
   private val stopRequested = Deferred.unsafe[IO, Unit]
   @volatile private var _isStopping = false
 
-  protected final def isStopping: Boolean =
+  final def isStopping: Boolean =
     _isStopping
 
   private[service] def onFiberStarted(fiber: FiberIO[Unit]): IO[Unit] =

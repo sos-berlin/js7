@@ -67,7 +67,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   protected final lazy val eventWatch = controller.eventWatch
 
   protected final val nextOrderId: () => OrderId =
-    Iterator.from(1).map(i => OrderId(s"🟦-$i")).next
+    Iterator.from(1).map(i => OrderId(s"🔷-$i")).next
 
   private val clusterWatchServiceOnce = SetOnce[Allocated[IO, ClusterWatchService]]
 

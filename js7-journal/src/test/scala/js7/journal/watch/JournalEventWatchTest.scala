@@ -62,8 +62,17 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
     withJournalLocation { journalLocation =>
       writeJournal(journalLocation, EventId.BeforeFirst, MyEvents1)
       withJournal(journalLocation, MyEvents1.last.eventId) { (writer, eventWatch) =>
-        def when(after: EventId) =
-          eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
+
+        //def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]) =
+        //  if stampedEvents.nonEmpty then
+        //    writer.writeEvents(stampedEvents)
+        //    eventWatch.onFileWritten(writer.fileLength)
+        //    eventWatch.onEventsCommitted(writer.lastWrittenEventId, MyEvents2.length)
+
+        def when(after: EventId): TearableEventSeq[Seq, KeyedEvent[MyEvent]] =
+          eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s)))
+            .await(99.s).strict
+
         def observeFile(journalPosition: JournalPosition): List[Json] =
           eventWatch.streamFile(journalPosition, timeout = 0.s.some)
             .await(99.s)
@@ -78,6 +87,8 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           JournalSeparators.EventHeader :: Nil)
 
         writer.writeEvents(MyEvents2)
+        //?eventWatch.onFileWritten(writer.fileLength)
+        //?eventWatch.onEventsCommitted(writer.fileLengthAndEventId, n = MyEvents2.length)
         assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) ==
           JournalSeparators.EventHeader :: Nil)
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
@@ -221,6 +232,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           ): writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
+            eventWatch.onEventsCommitted(writer.lastWrittenEventId)
             val stampedSeq =
               Stamped(1L, "1" <-: A1) ::
               Stamped(2L, "1" <-: B1) ::
@@ -236,6 +248,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
           ): writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
+            eventWatch.onEventsCommitted(writer.lastWrittenEventId)
             val stampedSeq =
               Stamped(4L, "2" <-: A2) ::
               Stamped(5L, "1" <-: B2) :: Nil
@@ -315,6 +328,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
             eventWatch, append = true)
         ): writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
+          eventWatch.onEventsCommitted(writer.lastWrittenEventId)
 
           val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
@@ -414,14 +428,20 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll:
   private def withJournal(journalLocation: JournalLocation, lastEventId: EventId)
     (body: (EventJournalWriter, JournalEventWatch) => Unit)
   : Unit =
-    autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)): eventWatch =>
+    autoClosing(JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)): eventWatch =>
       autoClosing(
         EventJournalWriter.forTest(journalLocation, after = lastEventId, journalId, eventWatch)
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(TestState.name, journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()
+        eventWatch.onEventsCommitted(writer.lastWrittenEventId)
+        //?val n0 = writer.eventCount
         body(writer, eventWatch)
+        //?writer.flush(sync = false)
+        //?eventWatch.onEventsCommitted(
+        //?  writer.fileLengthAndEventId,
+        //?  n = 1/*SnapshotTaken*/ + (writer.eventCount - n0).toInt)
         writer.endEventSection(sync = false)
 
 

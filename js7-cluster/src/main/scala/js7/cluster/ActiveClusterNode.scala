@@ -39,9 +39,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, KeyedEvent, NoKeyEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
-import js7.journal.JournalActor
 import js7.journal.state.FileJournal
-import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.*
 import scala.util.{Failure, Right, Success, Try}
@@ -470,14 +468,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true):
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
-                    IO.fromFuture(IO:
-                      // Release a concurrent persist operation, which waits for the missing acknowledgement and
-                      // blocks the persist lock. Avoid a deadlock.
-                      // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
-                      // because we are leaving ClusterState.Coupled anyway.
-                      logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
-                      journalActor ? JournalActor.Input.PassiveLost(passiveLost)
-                    ) >>
+                    journal.journaler.onPassiveLost(passiveLost) *>
                       persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
@@ -564,12 +555,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
               case Right(eventId) =>
                 Stream.exec:
-                  IO.fromFuture:
-                    IO:
-                      // Possible dead letter when `stopAcknowledging` is detected too late !!!
-                      // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                      journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId)
-                  .void
+                  journal.journaler.onPassiveNodeHasAcknowledged(eventId = eventId)
         .head.compile.last // The first problem, if any
         .map(_.toLeft(Completed))
       .map(_.flatten)

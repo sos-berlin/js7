@@ -19,6 +19,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 final class EventJournalWriter(
   journalLocation: JournalLocation,
+  fileEventId: EventId,
   after: EventId,
   journalId: JournalId,
   observer: JournalingObserver,
@@ -29,7 +30,7 @@ final class EventJournalWriter(
 extends
   JournalWriter(
     journalLocation.S,
-    journalLocation.file(after),
+    journalLocation.file(fileEventId),
     after = after,
     append = append,
     initialEventCount = initialEventCount),
@@ -51,12 +52,12 @@ extends
 
   def onJournalingStarted(fileLengthBeforeEvents: Long = jsonWriter.fileLength): Unit =
     assertThat(fileLengthBeforeEvents <= jsonWriter.fileLength)
-    val firstEventPositionAndFileEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
     observer.onJournalingStarted(file, journalId,
-      firstEventPositionAndFileEventId,
-      firstEventPositionAndFileEventId,
+      firstEventPositionAndFileEventId = PositionAnd(fileLengthBeforeEvents, fileEventId),
+      // Must have been flushed!
+      flushedLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId),
       isActiveNode = true)
-    observer.onFileWritten(jsonWriter.fileLength)
+    //??? DOPPELT: observer.onFileWritten(jsonWriter.fileLength)
 
   ///** For SnapshotTaken event written with SnapshotJournalWriter. */
   //def onInitialEventsWritten(): Unit = {
@@ -71,7 +72,7 @@ extends
     if !eventsStarted then throw new IllegalStateException
     val ta = transaction && stampedEvents.lengthIs > 1
     if ta then jsonWriter.write(TransactionByteArray)
-    writeEvents_(stampedEvents)
+    super.writeEvents(stampedEvents)
     if ta then jsonWriter.write(CommitByteArray)
     statistics.countEventsToBeCommitted(stampedEvents.size)
 
@@ -91,6 +92,8 @@ extends
     assertThat(isFlushed)
     observer.onFileWritten(jsonWriter.fileLength)
 
+  /** @param n estimated number of events
+    */
   def onCommitted(lengthAndEventId: PositionAnd[EventId], n: Int): Unit =
     _committedEventCount = eventCount
     observer.onEventsCommitted(lengthAndEventId, n)
@@ -110,7 +113,7 @@ private[journal] object EventJournalWriter:
     append: Boolean = false)
     (using IORuntime)
   : EventJournalWriter =
-    new EventJournalWriter(journalLocation, after, journalId, observer,
+    new EventJournalWriter(journalLocation, fileEventId = after, after = after, journalId, observer,
       simulateSync = None, append = append)
 
   final class SerializationException(cause: Throwable)

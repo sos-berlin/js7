@@ -4,7 +4,6 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -20,7 +19,7 @@ import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, NoKeyEvent, Stamped}
+import js7.data.event.{ClusterableState, EventId, NoKeyEvent}
 import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.EventIdGenerator
@@ -185,19 +184,17 @@ object WorkingClusterNode:
     recovered: Recovered[S],
     common: ClusterCommon,
     clusterConf: ClusterConf,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]])
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
     (implicit
       nodeNameToPassword: NodeNameToPassword[S],
       ioRuntime: IORuntime,
-      actorRefFactory: ActorRefFactory,
-      timeout: pekko.util.Timeout)
+      actorRefFactory: ActorRefFactory)
   : ResourceIO[WorkingClusterNode[S]] =
     for
       _ <- Resource.eval(IO.unlessA(recovered.clusterState == ClusterState.Empty):
         common.requireValidLicense.map(_.orThrow))
       journalAllocated <- Resource.eval(FileJournal
-        .resource(recovered, clusterConf.journalConf, eventIdGenerator, keyedEventBus)
+        .resource(recovered, clusterConf.journalConf, eventIdGenerator)
         // Not compilable with Scala 3.3.1: .toAllocated
         .toLabeledAllocated(label = s"FileJournal[${implicitly[Tag[S]].tag.shortName}]")
         /* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)

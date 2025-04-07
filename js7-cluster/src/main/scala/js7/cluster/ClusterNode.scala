@@ -1,35 +1,29 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, Outcome, Ref, Resource, ResourceIO}
+import cats.effect.{Deferred, IO, Outcome, Ref, Resource, ResourceIO}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
-import java.util.concurrent.atomic.AtomicReference
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.log.Log4j
-import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
-import org.apache.pekko
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.util.Timeout
-import cats.effect.IO
 import izumi.reflect.Tag
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicReference
 import js7.base.auth.{Admission, UserId}
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.memoize
 import js7.base.eventbus.EventPublisher
-import js7.base.log.Logger
+import js7.base.log.{Log4j, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.{MainServiceTerminationException, Service}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination}
+import js7.base.utils.{Allocated, Atomic, ProgramTermination}
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
@@ -44,6 +38,9 @@ import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
+import org.apache.pekko
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
@@ -159,7 +156,7 @@ extends Service.StoppableByRequest:
   private def startWorkingNode(recovered: Recovered[S]): IO[WorkingClusterNode[S]] =
     logger.traceIO:
       WorkingClusterNode
-        .resource(recovered, common, clusterConf, eventIdGenerator, eventBus)
+        .resource(recovered, common, clusterConf, eventIdGenerator)
         // Not compilable with Scala 3.3.1: .toAllocated
         .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
           .flatTap(allocated => IO {

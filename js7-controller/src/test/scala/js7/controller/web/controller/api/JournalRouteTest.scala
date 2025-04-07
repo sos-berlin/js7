@@ -82,8 +82,8 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
     super.beforeAll()
     eventWatch = new JournalEventWatch(journalLocation, config)
     allocatedWebServer
-    writeSnapshot(EventId.BeforeFirst)
-    eventWriter = newEventJournalWriter(EventId.BeforeFirst)
+    val lastEventId = writeSnapshot(EventId.BeforeFirst)
+    eventWriter = newEventJournalWriter(EventId.BeforeFirst, lastEventId)
     eventWriter.onJournalingStarted()
 
   override def afterAll() =
@@ -152,7 +152,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
            EndOfJournalFileMarker.utf8String)
 
       writeSnapshot(1000L)
-      eventWriter = newEventJournalWriter(1000L)
+      eventWriter = newEventJournalWriter(fileEventId = 1000L, after = 1001L)
       eventWriter.onJournalingStarted()
   }
 
@@ -204,17 +204,19 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute:
       eventWatch.close()
   }
 
-  private def writeSnapshot(eventId: EventId): Unit =
+  private def writeSnapshot(eventId: EventId): EventId =
     autoClosing(newSnapshotJournalWriter(eventId)) { writer =>
       writer.writeHeader(JournalHeader.forTest("TestState", journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
       writer.writeEvent(Stamped(eventId + 1, NoKey <-: SnapshotTaken))
+      writer.lastWrittenEventId
     }
 
   private def newSnapshotJournalWriter(eventId: EventId) =
     new SnapshotJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, simulateSync = None)
 
-  private def newEventJournalWriter(eventId: EventId) =
-    new EventJournalWriter(journalLocation, after = eventId, journalId, eventWatch, simulateSync = None)
+  private def newEventJournalWriter(fileEventId: EventId, after: EventId) =
+    new EventJournalWriter(journalLocation, fileEventId = fileEventId, after = after,
+      journalId, eventWatch, simulateSync = None)

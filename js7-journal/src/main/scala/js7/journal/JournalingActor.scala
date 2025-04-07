@@ -24,6 +24,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
@@ -144,6 +145,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   protected final def defer(callback: => Unit): Unit =
     defer_(async = false, callback)
 
+  @TestOnly
   protected final def deferAsync(callback: => Unit): Unit =
     defer_(async = true, callback)
 

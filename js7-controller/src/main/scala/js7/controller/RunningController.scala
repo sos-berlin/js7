@@ -8,8 +8,8 @@ import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.auth.SimpleUser
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.OurIORuntime
 import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.catsutils.{OurIORuntime, OurIORuntimeRegister}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -24,10 +24,10 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
-import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -54,7 +54,7 @@ import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
 import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
 import js7.data.crypt.SignedItemVerifier
-import js7.data.event.EventId
+import js7.data.event.{AnyKeyedEvent, EventId, Stamped}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.node.NodeNameToPassword
 import js7.data.order.FreshOrder
@@ -253,7 +253,7 @@ object RunningController:
         CorrelId.bindNew:
           itemVerifierResource(config, testEventBus))
 
-    resources.flatMap { case (clusterNode, itemVerifier) =>
+    resources.flatMap { (clusterNode, itemVerifier) =>
       import clusterNode.actorSystem
 
       val orderKeeperStarted: IO[Either[ProgramTermination, OrderKeeperStarted]] =
@@ -354,12 +354,20 @@ object RunningController:
             sessionRegister, conf, testEventBus,
             actorSystem)))
 
+      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       for
+        _ <- env.registerPure[IO, AlarmClock](alarmClock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, WallClock](alarmClock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, EventPublisher[Stamped[AnyKeyedEvent]]](
+          testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]],
+          ignoreDuplicate = true)
+        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
         runningController <- runningControllerResource(webServer, sessionRegister)
-      yield runningController
+      yield
+        runningController
     }
 
   def ioRuntimeResource[F[_]](conf: ControllerConfiguration)(implicit F: Sync[F])

@@ -77,7 +77,9 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll:
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).unsafeRunSync() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
           "FileJournalTest.TestState: Duplicate NumberThing: ONE")))
-      intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() }
+      assert:
+        journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).unsafeRunSync() ==
+          Left(Problem("scala.MatchError: NumberUnhandled (of class js7.journal.state.FileJournalTest$NumberUnhandled$)"))
 
     "persistEvent" in:
       assert(journal

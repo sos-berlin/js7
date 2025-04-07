@@ -78,7 +78,8 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
 
     autoClosing(
-      EventJournalWriter(journalLocation, after = EventId.BeforeFirst, journalId,
+      EventJournalWriter(journalLocation,
+        fileEventId = EventId.BeforeFirst, after = EventId.BeforeFirst, journalId,
         observer = JournalingObserver.Dummy, simulateSync = None)
     ): writer =>
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
@@ -124,7 +125,7 @@ final class JournalReaderTest extends OurTestSuite, TestJournalMixin:
       val file = journalLocation.file(0L)
       delete(file)  // File of last test
       autoClosing(
-        EventJournalWriter(journalLocation, after = 0L, journalId,
+        EventJournalWriter(journalLocation, fileEventId = 0L, after = 0L, journalId,
           observer = JournalingObserver.Dummy, simulateSync = None, append = false)
       ): writer =>
         writer.writeHeader(JournalHeader.forTest(stateName, journalId, eventId = EventId.BeforeFirst))

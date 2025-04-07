@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import java.util.Arrays.binarySearch
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Synchronizer
@@ -27,6 +28,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int):
   logger.debug(s"Building JournalIndex(${EventId.toString(torn.value)})")
 
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
+   logger.traceCall(s"### addAfter", s"eventId=$eventId position=$position n=$n"):
     if !tryAddAfter(eventId, position, n) then
       if eventId == _highestEventId then
         throw new IllegalArgumentException(s"JournalIndex: Duplicate EventId added: ${EventId.toString(eventId)}")

@@ -4,27 +4,22 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
-import js7.base.eventbus.{EventPublisher, StandardEventBus}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.common.pekkoutils.Pekkos.encodeAsActorName
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.cluster.ClusterState
-import js7.data.event.{AnyKeyedEvent, Event, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{Event, EventCalc, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
+import js7.journal.Journaler.Persist
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
-import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
-import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
+import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, Journaler}
 import org.apache.pekko
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import scala.concurrent.{ExecutionContext, Promise}
 import sourcecode.Enclosing
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
@@ -36,10 +31,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   val journalHeader: JournalHeader,
   val journalConf: JournalConf,
   val eventWatch: FileEventWatch,
-  getCurrentState: () => S,
-  isHaltedFun: () => Boolean,
-  persistIO: IO[PersistFunction[S, Event]],
-  persistLaterIO: IO[PersistLaterFunction[Event]],
+  val journaler: Journaler[S],
   val journalActor: ActorRef @@ JournalActor.type)
   (implicit
     protected val S: SnapshotableState.Companion[S])
@@ -48,7 +40,7 @@ extends Journal[S], FileJournal.PossibleFailover:
   def journalId = journalHeader.journalId
 
   def isHalted: Boolean =
-    isHaltedFun()
+    journaler.isHalted
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
     (using enclosing: sourcecode.Enclosing)
@@ -73,7 +65,9 @@ extends Journal[S], FileJournal.PossibleFailover:
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Unit]] =
-    persistLaterIO.flatMap(_(keyedEvents, options))
+    journaler.persist:
+      Persist(EventCalc.add(keyedEvents), options.copy(commitLater = true))
+    .rightAs(())
 
   def persistEvent[E <: Event](using E: Event.KeyCompanion[? >: E])
     (key: E.Key, options: CommitOptions = CommitOptions.default)
@@ -89,16 +83,22 @@ extends Journal[S], FileJournal.PossibleFailover:
     stateToEvent: S => Checked[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistUnlocked(state => stateToEvent(state).map(_ :: Nil), options)
-      .map(_ map: (stampedKeyedEvents, state) =>
-        assertThat(stampedKeyedEvents.lengthIs == 1)
-        stampedKeyedEvents.head -> state)
+    persistUnlocked[E](
+      EventCalc: coll =>
+        coll.addChecked(stateToEvent(coll.aggregate).map(_ :: Nil)),
+      options
+    ).map(_ map : (stampedKeyedEvents, state) =>
+      assertThat(stampedKeyedEvents.lengthIs == 1)
+      stampedKeyedEvents.head -> state)
 
   def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persistUnlocked(stateToEvents, options)
+    persistUnlocked(
+      EventCalc: coll =>
+        coll.addChecked(stateToEvents(coll.aggregate)),
+      options)
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
@@ -106,24 +106,25 @@ extends Journal[S], FileJournal.PossibleFailover:
     stateToEvents =>
       lock(key):
         persistUnlocked(
-          state => stateToEvents(state)
-            .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
+          EventCalc: coll =>
+            coll.addChecked:
+              stateToEvents(coll.aggregate)
+                .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
           CommitOptions(transaction = true))
 
   private def persistUnlocked[E <: Event](
-    stateToEvents: StateToEvents[S, E],
+    eventCalc: EventCalc[S, E, TimeCtx],
     options: CommitOptions)
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persistIO.flatMap:
-      _(stateToEvents, options, CorrelId.current)
-    .map(_.map: (stampedKeyedEvents, state) =>
-      stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state)
+    journaler.persist(Persist(eventCalc, options))
+    .map(_.map: result =>
+      result.stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> result.aggregate)
 
   def clusterState: IO[ClusterState] =
     state.map(_.clusterState)
 
   def unsafeCurrentState(): S =
-    getCurrentState()
+    journaler.unsafeUncommittedAggregate()
 
   override def toString = s"FileJournal[$S]"
 
@@ -131,89 +132,38 @@ extends Journal[S], FileJournal.PossibleFailover:
 object FileJournal:
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: Tag](
+  def resource[S <: SnapshotableState[S]: Tag](
     recovered: Recovered[S],
     journalConf: JournalConf,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
-    (implicit
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    (using
+      S: SnapshotableState.Companion[S],
       ioRuntime: IORuntime,
-      actorRefFactory: ActorRefFactory,
-      timeout: pekko.util.Timeout)
+      actorRefFactory: ActorRefFactory)
   : ResourceIO[FileJournal[S]] =
-    Resource.make(
-      acquire = IO.defer {
-        import recovered.journalLocation
-        given ExecutionContext = ioRuntime.compute
-
-        val S = implicitly[SnapshotableState.Companion[S]]
-
-        if recovered.recoveredJournalFile.isEmpty then
-          logger.info("Starting a new empty journal")
-
-        val journalActorStopped = Promise[JournalActor.Stopped]()
-        val journalActor = actorRefFactory
-          .actorOf(
-            JournalActor.props[S](journalLocation, journalConf, keyedEventBus, ioRuntime,
-              eventIdGenerator, journalActorStopped),
-            "Journal")
-          .taggedWith[JournalActor.type]
-
-
-        val whenJournalActorReady = IO.fromFuture(IO:
-          (journalActor ?
-            JournalActor.Input.Start(recovered)
-            )(Timeout(1.h /*???*/)
-          ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))
-
-        whenJournalActorReady
-          .flatMap { journalHeader =>
-            logger.debug("JournalActor is ready")
-            for
-              getState <- IO
-                .fromFuture(IO:
-                  (journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
-                .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
-              isHalted <-
-                IO.fromFuture(IO:
-                    (journalActor ? JournalActor.Input.GetIsHaltedFunction).mapTo[() => Boolean])
-                  .logWhenItTakesLonger("JournalActor.Input.GetIsHaltedFunction")
-            yield (journalHeader, getState, isHalted)
-          }
-          .flatMap { case (journalHeader, getCurrentState, isHalted) =>
-            IO {
-              val persistPromise = Promise[PersistFunction[S, Event]]()
-              val persistIO = IO.fromFuture(IO.pure(persistPromise.future))
-              val persistLaterPromise = Promise[PersistLaterFunction[Event]]()
-              val persistLaterIO = IO.fromFuture(IO.pure(persistLaterPromise.future))
-
-              val actor = actorRefFactory
-                .actorOf(
-                  StateJournalingActor.props[S, Event](
-                    getCurrentState, journalActor, journalConf, persistPromise, persistLaterPromise),
-                  encodeAsActorName("StateJournalingActor:" + S))
-                .taggedWith[StateJournalingActor.type]
-
-              val journal = new FileJournal[S](
-                journalHeader, journalConf,
-                recovered.eventWatch,
-                getCurrentState, isHalted, persistIO, persistLaterIO,
-                journalActor)
-
-              (journal, journalActor, actor, journalActorStopped)
-            }
-          }
-      })(
-      release = { case (journal, journalActor, actor, journalActorStopped) =>
-        logger.debugIO(s"$journal stop")(
-          IO.defer {
-            actorRefFactory.stop(actor)
-            journalActor ! JournalActor.Input.Terminate
-            IO.fromFuture(IO.pure(journalActorStopped.future)).void
-              .logWhenItTakesLonger("JournalActor.Input.Terminate")
-          })
-      })
-      .map(_._1)
+    for
+      journaler <- Journaler.resource[S](recovered, journalConf, Some(eventIdGenerator))
+      fileJournal <- Resource.make(
+        acquire = IO.defer:
+          val journalActor = actorRefFactory
+            .actorOf(
+              JournalActor.props[S](journalConf, ioRuntime, journaler),
+              "Journal")
+            .taggedWith[JournalActor.type]
+          IO:
+            val journal = new FileJournal[S](
+              journaler.journalHeader, journalConf,
+              recovered.eventWatch,
+              journaler,
+              journalActor)
+            (journal, journalActor))(
+        release = (journal, journalActor) =>
+          logger.debugIO(s"$journal stop"):
+            IO:
+              actorRefFactory.stop(journalActor)
+      ).map(_._1)
+    yield
+      fileJournal
 
   sealed trait PossibleFailover:
     private val tryingPassiveLostSwitch = Switch(false)

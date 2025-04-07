@@ -3,6 +3,7 @@ package js7.journal.watch
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import js7.base.catsutils.CatsDeadline
+import js7.base.log.Logger
 import js7.base.stream.IncreasingNumberSync
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.{Assertions, CloseableIterator}
@@ -10,6 +11,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.watch.CurrentEventReader.*
 
 /**
   * @author Joacim Zschimmer
@@ -31,7 +33,7 @@ extends EventReader:
 
   /** May contain size(file) + 1 to allow EOF detection. */
   private val flushedLengthSync = new IncreasingNumberSync(initial = 0, o => s"position $o")
-  flushedLengthSync.onAdded(flushedLengthAndEventId.position)
+  //??? flushedLengthSync.onAdded(flushedLengthAndEventId.position)
 
   @volatile private var journalingEnded = false
   @volatile private var _committedLength = flushedLengthAndEventId.position
@@ -63,6 +65,9 @@ extends EventReader:
   private[journal] def onFileWritten(flushedPosition: Long): Unit =
     if flushedPosition > flushedLengthSync.last then
       flushedLengthSync.onAdded(flushedPosition)
+    else
+      logger.trace:
+        s"❓Duplicate onFileWritten($flushedPosition) flushedLengthSync.last=${flushedLengthSync.last}"
 
   private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit =
     synchronized:
@@ -82,3 +87,7 @@ extends EventReader:
   def isEnded = journalingEnded
 
   override def toString = s"CurrentEventReader(${journalFile.getFileName})"
+
+
+object CurrentEventReader:
+  private val logger = Logger[this.type]

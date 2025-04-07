@@ -140,6 +140,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     private var terminatingOrders = false
     private var terminatingJobs = false
     private var terminatingJournal = false
+    private var agentShutDownEmitted = false
     val since = SetOnce[Deadline]
 
     def shuttingDown = shutDownCommand.isDefined
@@ -204,9 +205,13 @@ extends MainJournalingActor[AgentState, Event], Stash:
             end if
 
     def finallyShutdown(): Unit =
-      persist(AgentShutDown): (_, _) =>
-        terminatingJournal = true
-        workingClusterNode.journalAllocated.release.unsafeRunAndForget()
+      if agentShutDownEmitted then
+        logger.debug("❓ Duplicate finallyShutdown")
+      else
+        persist(AgentShutDown): (_, _) =>
+          agentShutDownEmitted = true
+          terminatingJournal = true
+          workingClusterNode.journalAllocated.release.unsafeRunAndForget()
 
   import shutdown.shuttingDown
 

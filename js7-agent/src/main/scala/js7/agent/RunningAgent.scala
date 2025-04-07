@@ -17,8 +17,8 @@ import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
-import js7.base.catsutils.Environment
 import js7.base.catsutils.UnsafeMemoizable.memoize
+import js7.base.catsutils.{Environment, OurIORuntimeRegister}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -33,8 +33,8 @@ import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.service.{MainService, Service}
 import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
-import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
@@ -215,7 +215,12 @@ object RunningAgent:
           Right(config.optionAs[SecretString]:
             "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string))
 
+      val env = OurIORuntimeRegister.toEnvironment(ioRuntime)
       for
+        _ <- env.registerPure[IO, AlarmClock](clock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, WallClock](clock, ignoreDuplicate = true)
+        _ <- env.registerPure[IO, EventIdGenerator](eventIdGenerator, ignoreDuplicate = true)
+        //_ <- Environment.registerPure(testEventBus.narrowPublisher[Stamped[AnyKeyedEvent]])
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
           (admission, label, actorSystem) => AgentClient.resource(

@@ -1,7 +1,6 @@
 package js7.journal.test
 
-import org.apache.pekko.Done
-import org.apache.pekko.actor.{ActorRef, Status}
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.@@
 import js7.base.generic.Accepted
 import js7.base.log.Logger
@@ -9,10 +8,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.journal.configuration.JournalConf
 import js7.journal.test.TestAggregateActor.*
 import js7.journal.{JournalActor, KeyedJournalingActor}
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{ActorRef, Status}
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 import scala.language.unsafeNulls
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -85,10 +85,12 @@ extends KeyedJournalingActor[TestState, TestEvent]:
               sender ! Status.Failure(t)
 
         case Command.AppendAsync(string) =>
+          val iterator = string.iterator
           for c <- string do
             val before = persistedEventId
             persist(TestEvent.Appended(c), async = true) { (e, s) =>
               assert(before < persistedEventId)
+              assert(c == iterator.next())
               update(e)
             }
           deferAsync:

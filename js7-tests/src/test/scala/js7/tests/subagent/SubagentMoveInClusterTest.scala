@@ -120,7 +120,7 @@ final class SubagentMoveInClusterTest
 
         newBackupDirectorEnvAllocated.useSync(99.s): newBackupEnv =>
           newBackupEnv.directorResource.useSync(99.s): _ =>
-            // Now, both old and new back node are running
+            // Now, both old and new backup nodes are running
 
             sleep(5.s)
             // While sleeping, the following message should be logged:

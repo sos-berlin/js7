@@ -9,9 +9,11 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.log.Logger
 import js7.base.metering.CallMeter
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.utils.ByteUnits.toMB
+import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
 import js7.journal.write.EventJournalWriter.SerializationException
@@ -34,10 +36,11 @@ extends AutoCloseable:
   protected val statistics: StatisticsCounter
   protected def ioRuntime: IORuntime
 
+  private val logger = Logger.withPrefix[this.type](file.getFileName.toString)
+
   private var _eventsStarted = append
   private var _lastEventId = after
   private var _eventCount = initialEventCount
-  //private var _flushedFileLengthAndEventId = PositionAnd(-999999L /*???*/, after)
 
   if !append && Files.exists(file) then sys.error(s"JournalWriter: Unexpected journal file: $file")
   if append && !Files.exists(file) then sys.error(s"JournalWriter: Missing journal file: $file")
@@ -59,9 +62,10 @@ extends AutoCloseable:
     _eventsStarted = true
 
   def writeEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
-    writeEvents_(stamped :: Nil)
+    writeEvents(stamped :: Nil)
 
-  protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
+  protected final def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
+    for o <- stampedEvents do logger.trace(s"### writeEvents $o")
     _eventCount += stampedEvents.size
     for stamped <- stampedEvents do
       if stamped.eventId <= _lastEventId then throw IllegalArgumentException:
@@ -113,12 +117,8 @@ extends AutoCloseable:
         meterSync:
           jsonWriter.sync()
         statistics.afterSync()
-      //_flushedFileLengthAndEventId = PositionAnd(jsonWriter.bytesWritten, _lastEventId)
     catch case NonFatal(t) =>
       throw new RuntimeException(s"Error while writing to journal file", t)
-
-  //final def flushedFileLengthAndEventId: PositionAnd[EventId] =
-  //  _flushedFileLengthAndEventId
 
   final def isFlushed: Boolean =
     jsonWriter.isFlushed
@@ -128,6 +128,9 @@ extends AutoCloseable:
 
   final def fileLength: Long =
     jsonWriter.fileLength
+
+  final def fileLengthAndEvenId: PositionAnd[EventId] =
+    PositionAnd(jsonWriter.fileLength, lastWrittenEventId)
 
   final def bytesWritten: Long =
     jsonWriter.bytesWritten

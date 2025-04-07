@@ -34,7 +34,7 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.JournalActor.*
+import js7.journal.JournalActor0.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
@@ -53,7 +53,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]] private(
+final class JournalActor0[S <: SnapshotableState[S]] private(
   journalLocation: JournalLocation,
   protected val conf: JournalConf,
   keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
@@ -75,7 +75,7 @@ extends Actor, Stash, JournalLogging:
   private var snapshotSchedule: SyncCancelable = null
 
   private var uncommittedState: S = null.asInstanceOf[S]
-  // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
+  // committedState is being read asynchronously from outside this JournalActor0. Always keep consistent!
   @volatile private var committedState: S = null.asInstanceOf[S]
   private val commitStateSync = new Object
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
@@ -260,7 +260,7 @@ extends Actor, Stash, JournalLogging:
 
     case Input.PassiveLost(passiveLost) =>
       // Side channel for Cluster to circumvent the ClusterEvent synchronization lock
-      // in case of a concurrent open persist operation.
+      // in case of a concurrently running persist operation.
       // Must be followed by a ClusterPassiveLost event.
       commitWithoutAcknowledgement(passiveLost)
       sender() ! Completed
@@ -372,7 +372,7 @@ extends Actor, Stash, JournalLogging:
 
       for persist <- ackWritten.collect { case o: StandardPersist => o } do
         committedState = committedState.applyStampedEvents(persist.stampedSeq)
-          .orThrow /*may crash JournalActor !!!*/
+          .orThrow /*may crash JournalActor0 !!!*/
         continueCallers(persist)
 
       // Update EventId for trailing acceptEarly events
@@ -442,20 +442,20 @@ extends Actor, Stash, JournalLogging:
     replyTo.!(msg)(sender)
 
   private def receiveGet: Receive =
-    case Input.GetJournalActorState =>
-      sender() ! Output.JournalActorState(
+    case Input.GetJournalActor0State =>
+      sender() ! Output.JournalActor0State(
         isFlushed = eventWriter != null && eventWriter.isFlushed,
         isSynced = eventWriter != null && eventWriter.isSynced,
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
 
     case Input.GetJournaledState =>
-      // Allow the caller outside of this JournalActor to read committedState
+      // Allow the caller outside of this JournalActor0 to read committedState
       // asynchronously at any time.
       // Returned function accesses committedState directly and asynchronously !!!
       sender() ! (() => commitStateSync.synchronized(committedState))
 
     case Input.GetIsHaltedFunction =>
-      // Allow the caller outside of this JournalActor to read isHalted
+      // Allow the caller outside of this JournalActor0 to read isHalted
       // asynchronously at any time.
       sender() ! (() => isHalted)
 
@@ -556,7 +556,7 @@ extends Actor, Stash, JournalLogging:
     move(snapshotWriter.file, journalLocation.file(after = fileEventId), ATOMIC_MOVE)
     snapshotWriter = null
 
-    eventWriter = newEventJsonWriter(after = fileEventId)
+    eventWriter = newEventJsonWriter(fileEventId = fileEventId, after = snapshotTaken.eventId)
     eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
 
     onReadyForAcknowledgement()
@@ -564,9 +564,10 @@ extends Actor, Stash, JournalLogging:
     val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
     logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
 
-  private def newEventJsonWriter(after: EventId): EventJournalWriter =
+  private def newEventJsonWriter(fileEventId: EventId, after: EventId): EventJournalWriter =
     assertThat(journalHeader != null)
-    val w = new EventJournalWriter(journalLocation, after = after, journalHeader.journalId,
+    val w = new EventJournalWriter(journalLocation, fileEventId = fileEventId, after = after,
+      journalHeader.journalId,
       journalingObserver.orThrow, simulateSync = conf.simulateSync,
       initialEventCount = 1/*SnapshotTaken*/)
     journalLocation.updateSymbolicLink(w.file)
@@ -655,9 +656,9 @@ extends Actor, Stash, JournalLogging:
       throw new AssertionError(msg)
     end if
 
-object JournalActor:
+object JournalActor0:
   private val logger = Logger[this.type]
-  private val meterPersist = CallMeter("JournalActor")
+  private val meterPersist = CallMeter("JournalActor0")
 
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion](
     journalLocation: JournalLocation,
@@ -668,7 +669,7 @@ object JournalActor:
     stopped: Promise[Stopped] = Promise())
   : Props =
     Props:
-      new JournalActor[S](journalLocation, conf, keyedEventBus, ioRuntime, eventIdGenerator, stopped)
+      new JournalActor0[S](journalLocation, conf, keyedEventBus, ioRuntime, eventIdGenerator, stopped)
 
   private[journal] trait CallersItem
 
@@ -688,7 +689,7 @@ object JournalActor:
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case class PassiveLost(passiveLost: ClusterPassiveLost)
     case object Terminate
-    case object GetJournalActorState
+    case object GetJournalActor0State
     case object GetJournaledState
     case object GetIsHaltedFunction
 
@@ -709,7 +710,7 @@ object JournalActor:
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
     case object SnapshotTaken
-    final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
+    final case class JournalActor0State(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
 
   type Stopped = Stopped.type
   case object Stopped

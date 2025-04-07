@@ -15,7 +15,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
-  // Delay Timesstamp construction for faster JSON deserialization
+  // Delay Timestamp construction for faster JSON deserialization
   def timestamp: Timestamp =
     Timestamp.ofEpochMilli(timestampMillis)
 
@@ -23,7 +23,7 @@ final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
     functor.map(this)(f)
 
   override def toString =
-    s"Stamped($eventId $timestamp $value)"
+    s"Stamped($eventId $value)"
 
 
 object Stamped:
