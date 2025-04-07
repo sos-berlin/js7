@@ -7,10 +7,10 @@ import js7.base.utils.AsyncLock
 import org.jetbrains.annotations.TestOnly
 
 final class AsyncVariable[V] private(
-  initial: V, varName: String, typeName: String, logMinor: Boolean):
+  initial: V, varName: String, typeName: String, suppressLog: Boolean = false, logMinor: Boolean):
 
   @volatile private var _value = initial
-  private val lock = AsyncLock(varName, logMinor = logMinor)
+  private val lock = AsyncLock(varName, suppressLog = suppressLog, logMinor = logMinor)
 
   def get: V =
     _value
@@ -72,6 +72,11 @@ final class AsyncVariable[V] private(
 
 
 object AsyncVariable:
-  def apply[A](initial: A, logMinor: Boolean = false)(using src: sourcecode.Enclosing, tag: Tag[A])
+  def apply[A](
+    initial: A,
+    suppressLog: Boolean = false,
+    logMinor: Boolean = false)
+    (using src: sourcecode.Enclosing, tag: Tag[A])
   : AsyncVariable[A] =
-    new AsyncVariable(initial, src.value, tag.tag.toString, logMinor = logMinor)
+    new AsyncVariable(initial, src.value, tag.tag.toString,
+      suppressLog = suppressLog, logMinor = logMinor)
