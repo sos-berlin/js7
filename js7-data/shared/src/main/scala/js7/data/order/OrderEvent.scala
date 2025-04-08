@@ -242,6 +242,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
 
 
   sealed trait OrderStdWritten extends OrderEvent:
+    override def hasShortString = true
     def stdoutStderr: StdoutOrStderr
     def chunk: String
 

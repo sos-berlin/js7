@@ -18,7 +18,7 @@ object Tests:
     val isTest = (isScalaTest || isSbt)
       && !sys.props.asSwitch("js7.noTest")
       && !sys.props.contains("test.speed")
-    val isStrict = isTest || sys.props.asSwitch("js7.strict")
+    val isStrict = sys.props.asSwitch("js7.strict", ifMissing = isTest)
 
     (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict)
 

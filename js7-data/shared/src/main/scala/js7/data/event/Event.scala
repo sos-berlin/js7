@@ -19,6 +19,8 @@ trait Event:
 
   def toShortString: String = toString
 
+  def hasShortString = false
+
   @targetName("toKeyedEvent")
   final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
     new KeyedEvent(this)(key)
