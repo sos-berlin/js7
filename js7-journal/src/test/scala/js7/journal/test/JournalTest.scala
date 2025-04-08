@@ -145,7 +145,7 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
       }
       assert(journalFileNames.length == 1)
 
-    for (n, coalesceEventLimit) <- Vector(100/*FIXME 1000*/ -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do
+    for (n, coalesceEventLimit) <- Vector(100/*FIXME SLOW! was 1000*/ -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do
       s"$n actors, coalesce-event-limit=$coalesceEventLimit" in:
         run(n = n, coalesceEventLimit = coalesceEventLimit)
   }

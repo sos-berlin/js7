@@ -253,8 +253,7 @@ extends Actor, Stash, JournalLogging:
         // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
         // We take only complete Persist bundles as acknowledged.
         onCommitAcknowledged(
-          n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
-          ack = Some(ack))
+          n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
         if releaseEventIdsAfterClusterCoupledAck.isDefined then
           releaseObsoleteEvents()
 
@@ -357,13 +356,13 @@ extends Actor, Stash, JournalLogging:
       logger.info(s"🟢 $n events until $ackEventId have finally been acknowledged after ${
         waitingForAcknowledgeSince.elapsed.pretty}")
       waitingForAckSym.clear()
-    finishCommitted(n, ack = ack.isDefined)
+    finishCommitted(n/*, ack = ack.isDefined*/)
     if lastAcknowledgedEventId == lastWrittenEventId then
       onAllCommitsFinished()
 
-  private def finishCommitted(n: Int, ack: Boolean): Unit =
+  private def finishCommitted(n: Int): Unit =
     val ackWritten = persistBuffer.view.take(n)
-    journalLogger.logCommitted(ackWritten, ack = ack)
+    journalLogger.logCommitted(ackWritten)
 
     commitStateSync.synchronized:
       for lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption do
@@ -776,6 +775,8 @@ object JournalActor0:
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
       stampedSeq.reverseIterator.buffered.headOption
 
+    def isAcknowledged = ???
+
     /** For logging: last stamped (and all before) has been flushed or synced */
     var isLastOfFlushedOrSynced = false
 
@@ -793,6 +794,7 @@ object JournalActor0:
     def isTransaction = false
     def lastStamped = None
     def isLastOfFlushedOrSynced = false
+    def isAcknowledged = ???
 
   private class Statistics:
     private var eventCount = 0L

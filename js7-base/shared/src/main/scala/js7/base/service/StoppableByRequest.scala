@@ -51,8 +51,10 @@ trait StoppableByRequest:
         IO.raiseError_(new IllegalStateException(s"$toString is being stopped"))
 
   protected final def requireNotStopping: IO[Checked[Unit]] =
-    IO:
-      !isStopping !! ServiceStoppedProblem(toString)
+    IO(checkNotStopping)
+
+  protected final def checkNotStopping: Checked[Unit] =
+    !isStopping !! ServiceStoppedProblem(toString)
 
 
 object StoppableByRequest:

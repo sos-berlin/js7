@@ -38,6 +38,9 @@ object AsyncLock:
   def apply(logMinor: Boolean)(using enclosing: sourcecode.Enclosing): AsyncLock =
     apply(name = enclosing.value, logMinor = logMinor)
 
+  def supressLog()(using enclosing: sourcecode.Enclosing): AsyncLock =
+    apply(name = enclosing.value, suppressLog = true)
+
   def apply(
     name: String,
     logWorryDurations: IterableOnce[FiniteDuration] = Worry.Default.durations,

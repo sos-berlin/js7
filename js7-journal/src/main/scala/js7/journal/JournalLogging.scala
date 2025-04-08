@@ -6,7 +6,7 @@ import js7.journal.log.JournalLogger
 trait JournalLogging:
   protected val conf: JournalConf
 
-  protected final val journalLogger = new JournalLogger(
+  protected final lazy val journalLogger = new JournalLogger(
     syncOrFlushString =
       if !conf.syncOnCommit then
         "flush"

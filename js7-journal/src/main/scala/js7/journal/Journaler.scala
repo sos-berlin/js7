@@ -18,17 +18,18 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.metering.CallMeter
 import js7.base.monixutils.AsyncVariable
-import js7.base.problem.Checked
-import js7.base.problem.Checked.*
+import js7.base.problem.Checked.{catchNonFatalFlatten, *}
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.MultipleLinesBracket.{Round, Square, zipWithBracket}
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, *}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.base.utils.{Assertions, AsyncLock, Tests}
+import js7.base.utils.{Assertions, AsyncLock, Atomic, MultipleLinesBracket, Tests}
 import js7.common.jsonseq.PositionAnd
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
@@ -55,10 +56,10 @@ import scala.util.control.NonFatal
 final class Journaler[S <: SnapshotableState[S]] private(
   recovered: Recovered[S],
   journalingObserver: JournalingObserver,
-  protected val conf: JournalConf,
+  val conf: JournalConf,
   clock: WallClock,
   eventIdGenerator: EventIdGenerator,
-  persistQueue: Queue[IO, Option[QueueEntry[S]]],
+  queue: Queue[IO, Option[QueueEntry[S]]],
   ackSignal: SignallingRef[IO, EventId],
   requireClusterAck: SignallingRef[IO, Boolean])
   (using S: SnapshotableState.Companion[S], sTag: Tag[S], ioRuntime: IORuntime)
@@ -68,38 +69,39 @@ extends
 
   assert(S eq recovered.journalLocation.S)
 
-  if recovered.recoveredJournalFile.isEmpty then
-    logger.info("Starting a new empty journal")
-
-  val journalLocation: JournalLocation = recovered.journalLocation
   private var lastJournalHeader = recovered.recoveredJournalFile match
     case None => JournalHeader.initial[S](timestamp = clock.now())
     case Some(o) => o.nextJournalHeader
   val journalId: JournalId = lastJournalHeader.journalId
-  private val state = AsyncVariable:
-    State.initial(recovered.state, lastJournalHeader.totalEventCount)
   private val totalRunningSince = recovered.totalRunningSince
+  val journalLocation: JournalLocation = recovered.journalLocation
+
+  private val state = AsyncVariable(
+    State.initial(recovered.state, lastJournalHeader.totalEventCount),
+    suppressLog = true)
 
   private var eventWriter: EventJournalWriter = null.asInstanceOf
 
   private val committerFiber = AsyncVariable(none[FiberIO[Unit]])
   private val committerTerminatedUnexpectedly = Deferred.unsafe[IO, Either[Throwable, Unit]]
   private val suspendCommitterLock = AsyncLock()
+  private val processingPassiveLost = Atomic(0)
 
   private var lastSnapshotTakenEventId = EventId.BeforeFirst
-  private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None // TODO
-  private var _isSwitchedOver = false
+  private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
+  private var isSwitchedOver = false
   private val statistics = new Statistics
-  private val enqueueLock = AsyncLock.dontLog() // FIXME Shutdown properly
 
   eventIdGenerator.updateLastEventId(recovered.state.eventId)
 
   def isHalted: Boolean =
-    _isSwitchedOver || isStopping
+    isSwitchedOver || isStopping
 
   protected def start =
     IO.defer:
       for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
+      if lastJournalHeader.eventId == EventId.BeforeFirst then
+        logger.info("Starting a new empty journal")
       logger.whenTraceEnabled:
         logger.debug("Logger isTraceEnabled=true")
       assertIsRecoverable(state.get.uncommitted)
@@ -110,21 +112,38 @@ extends
           logger.warn(s"JournalWriter: Deleting existent file '$tmpFile'")
           delete(tmpFile)
         takeSnapshot(isStarting = true)
-      .productR:
+      *>
         startService:
           val untilCommitterFailed = committerTerminatedUnexpectedly.get.flatMap:
             case Left(t) => IO.raiseError(t)
             case Right(()) => IO.raiseError:
-              new RuntimeException("Journaller committer terminated unexpectedly")
+              new RuntimeException("Journaler committer terminated unexpectedly")
           startCommitter *>
             IO.race(untilCommitterFailed, untilStopRequested)
               .map(_.merge)
-              .guarantee(shutdownCommitter)
+              .guarantee:
+                stopCommitter.void
+              .productR:
+                IO.blocking:
+                  closeEventWriter()
               .guarantee(IO:
                 statistics.logLine.foreach:
                   logger.debug(_))
 
-  def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
+  def persist[E <: Event](keyedEvents: KeyedEvent[E]*): IO[Checked[Persisted[S, E]]] =
+    persist_(Persist(EventCalc.add(keyedEvents)))
+
+  def persist[E <: Event](
+    eventCalc: EventCalc[S, E, TimeCtx],
+    commitOptions: CommitOptions = CommitOptions.default,
+    since: Deadline = Deadline.now)
+  : IO[Checked[Persisted[S, E]]] =
+    persist(Persist(eventCalc, commitOptions, since))
+
+  inline def persist[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
+    persist_(persist)
+
+  private def persist_[E <: Event](persist: Persist[S, E]): IO[Checked[Persisted[S, E]]] =
     enqueue(persist)
       .flatMap: (_, whenPersisted) =>
         whenPersisted.get
@@ -144,13 +163,10 @@ extends
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
       val queueEntry = QueueEntry[S](
         persist.eventCalc.widen[S, Event, TimeCtx],
-        persist.options,
-        persist.since,
-        whenApplied,
-        whenPersisted)
-      enqueueLock.lock:
-        requireNotStopping *>
-          persistQueue.offer(Some(queueEntry))
+        persist.options, persist.since,
+        whenApplied, whenPersisted)
+      requireNotStopping *>
+        queue.offer(Some(queueEntry))
       .as:
         (whenApplied.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]],
           whenPersisted.asInstanceOf[DeferredSource[IO, Checked[Persisted[S, E]]]])
@@ -158,71 +174,98 @@ extends
   private def committer: IO[Unit] =
     logger.debugIO:
       IO.uncancelable: _ =>
-        fs2.Stream.fromQueueNoneTerminated(persistQueue)
-          .evalMap: queueEntry =>
-            IO:
-              !_isSwitchedOver !! ClusterNodeHasBeenSwitchedOverProblem
-            .flatMapT: _ =>
+        fs2.Stream.fromQueueNoneTerminated(queue, conf.coalesceEventLimit)
+          .chunks
+          .flatMap: chunk =>
+            fs2.Stream.suspend:
+              (!isSwitchedOver !! (ClusterNodeHasBeenSwitchedOverProblem: Problem)) >>
+                checkNotStopping
+              match
+                case Left(problem) =>
+                  fs2.Stream.exec:
+                    chunk.traverse: queueEntry =>
+                      queueEntry.whenApplied.complete(Left(problem)) *>
+                        queueEntry.whenPersisted.complete(Left(problem))
+                    .void
+                case Right(()) =>
+                  fs2.Stream.emit(chunk)
+          .evalMap[IO, Chunk[Applied]]/*IntelliJ*/: chunk =>
+            // Try to keep the chunks for faster processing!
+            chunk.flatTraverse: queueEntry =>
               state.updateCheckedWithResult: state =>
-                IO.pure:
+                IO:
                   applyEvents(state, queueEntry).map: (aggregate, n, applied) =>
-                    val updated = state.copy(
+                    val updatedState = state.copy(
                       uncommitted = aggregate,
                       totalEventCount = state.totalEventCount + n)
-                    (updated, applied)
-            .flatTapT: _ =>
-              requireNotStopping
-            .map:
-              case Left(problem) =>
-                fs2.Stream.exec:
+                    (updatedState, applied)
+              .flatMap:
+                case Left(problem) =>
                   queueEntry.whenApplied.complete(Left(problem)) *>
-                  queueEntry.whenPersisted.complete(Left(problem)).void
-              case Right(applied) =>
-                fs2.Stream.eval:
+                    queueEntry.whenPersisted.complete(Left(problem))
+                      .as(Chunk.empty)
+                case Right(applied) =>
                   applied.completeApplied
                     .productR:
                       IO.whenA(applied.commitOptions.commitLater):
                         applied.completePersisted
                     .productR:
-                      applied.stampedKeyedEvents.traverse: stamped =>
-                        stamped.value.event match
-                          case _: ClusterSwitchedOver =>
-                            IO:
-                              logger.debug("SwitchedOver: no more events are accepted")
-                              _isSwitchedOver = true
-
-                          case _ => IO.unit
+                      applied.stampedKeyedEvents.lastOption.map(_.value.event) match
+                        case Some(_: ClusterSwitchedOver) =>
+                          IO:
+                            logger.debug("ClusterSwitchedOver: no more events are accepted")
+                            isSwitchedOver = true
+                        case Some(_: ClusterPassiveLost) =>
+                          logger.debug("ClusterPassiveLost: acknowledgements are no longer required")
+                          processingPassiveLost += 1
+                          requireClusterAck.set(false)
+                        case _ => IO.unit
                     .as:
-                      applied
-          .flatten
-          .chunks
-          // TODO use conf.delay
+                      Chunk.singleton(applied)
+          // TODO use (commitOptions.delay max conf.delay) - options.alreadyDelayed
+          //<editor-fold desc="// ...">
+          //.chunks
+          //.flatTap: chunk =>
+          //  fs2.Stream.sleep:
+          //    chunk.iterator.map: applied =>
+          //      (applied.commitOptions.delay max conf.delay) - applied.commitOptions.alreadyDelayed
+          //    .maxOption.getOrElse(ZeroDuration)
+          //</editor-fold>
           .filter(_.nonEmpty)
+          .prefetch
           .evalMap:
             writeToFile
-          .unchunks
-          .map: flushed =>
-            flushed.pipeIf(flushed.commitOptions.commitLater):
-              // Empty stampedKeyedEvents to reduce heap usage.
-              // The (OrderStdWritten) events will neither be logged nor returned.
-              _.copy(stampedKeyedEvents = Vector.empty)
-          .evalMap: flushed =>
-            flushed.lastStamped.fold(IO.pure(false)): lastStamped =>
-              waitForAck(eventId = flushed.eventId, lastStamped = Some(lastStamped))
-            .flatMap: isAcknowledged =>
-              state.updateDirect:
-                _.copy(committed = flushed.aggregate)
+          .map: chunk =>
+            chunk.map: flushed =>
+              flushed.pipeIf(flushed.commitOptions.commitLater):
+                // Empty stampedKeyedEvents to reduce heap usage.
+                // The (OrderStdWritten) events will neither be logged nor returned.
+                _.copy(stampedKeyedEvents = Vector.empty)
+          .prefetch
+          .evalTap: chunk =>
+            chunk.traverse: flushed =>
+              flushed.lastStamped.fold(IO.pure(false)): lastStamped =>
+                waitForAck(eventId = flushed.eventId, lastStamped = Some(lastStamped))
+              .flatMap: isAcknowledged =>
+                state.updateDirect:
+                  _.copy(committed = flushed.aggregate)
+                .as:
+                  flushed.copy(isAcknowledged = isAcknowledged)
+            .flatTap: chunk =>
+              IO:
+                journalLogger.logCommitted(chunk.asSeq.view)
+                chunk.foreach: flushed =>
+                  statistics.onPersisted(flushed.eventCount, flushed.since)
+                  eventWriter.onCommitted(flushed.flushedPositionAndEventId, n = flushed.eventCount)
               .productR:
-                complete(flushed, isAcknowledged)
-            .productR:
-              IO.unlessA(flushed.commitOptions.commitLater):
-                flushed.completePersisted
-            .as(flushed)
-          .flatMap: flushed =>
-            // flushed.stampedKeyedEvents are dropped when commitOptions.commitLater
-            fs2.Stream.iterable(flushed.stampedKeyedEvents)
+                chunk.traverse: flushed =>
+                  IO.unlessA(flushed.commitOptions.commitLater):
+                    flushed.completePersisted
+          .flatMap: chunk =>
+              // flushed.stampedKeyedEvents are dropped when commitOptions.commitLater
+            fs2.Stream.iterable(chunk.asSeq.flatMap(_.stampedKeyedEvents))
           .evalMap:
-            handleJournalOrClusterEvent
+            handleCommittedJournalOrClusterEvent
           .compile.drain
 
   private def applyEvents(state: State[S], queueEntry: QueueEntry[S]): Checked[(S, Int, Applied)] =
@@ -241,9 +284,9 @@ extends
 
   private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Flushed]] =
     IO.blocking:
-      if chunk.size > 1 then logger.trace(s"### writeToFile #${chunk(0).eventNumber} ${chunk.size}×Applied")
       val flushedChunk = chunk.map: applied =>
         import applied.{aggregate, commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
+        // TODO parallelize serialization properly!
         eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
         val lastStamped = stampedKeyedEvents.lastOption
         Flushed(
@@ -261,70 +304,67 @@ extends
     * On ClusterPassiveLost terminate with false. */
   private def waitForAck(eventId: EventId, lastStamped: Option[Stamped[AnyKeyedEvent]])
   : IO[Boolean] =
-    val passiveLost = lastStamped.exists(_.value.event.isInstanceOf[ClusterPassiveLost])
-    if passiveLost then
-      requireClusterAck.set(false).as(false) // This cancel our own fiber due to IO.race
-    else
-      requireClusterAck.get.flatMap: requireAck =>
-        if !requireAck then
-          IO.pure(false)
-        else
-          IO.race(
-            // Cancel waiting on ClusterPassiveLost
-            requireClusterAck.waitUntil(!_) *> IO:
-              logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
-              false,
-            IO.defer:
-              val sym = new BlockingSymbol
-              //val n = eventWriter.uncommittedEventCount <-- das sind zu viele Events!
-              val since = Deadline.now
-              ackSignal.waitUntil(_ >= eventId)
-                .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
-                  //val lastStampedEvent = persistBuffer.view
-                  //  .collect { case o: StandardPersist => o }
-                  //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
-                  //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
-                  //  .toString.truncateWithEllipsis(200))
-                  ackSignal.get.flatMap: lastAck =>
-                    IO:
-                      sym.onWarn()
-                      val event = lastStamped.fold(""): stamped =>
-                        s" ${stamped.value.event.toShortString}"
-                      logger.warn(s"$sym Waiting for ${elapsed.pretty
-                        } for acknowledgement from passive cluster node of events until $eventId$event, lastAcknowledgedEventId=${
-                        EventId.toString(lastAck)}")
-                .productR:
-                  IO.whenA(sym.warnLogged):
-                    IO:
-                      logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
-                        since.elapsed.pretty}")
-                      sym.clear()
-                .as(true)
-          ).map(_.merge)
+    requireClusterAck.get.flatMap: requireAck =>
+      if !requireAck then
+        IO.pure(false)
+      else
+        IO.race(
+          // Cancel waiting on ClusterPassiveLost
+          requireClusterAck.waitUntil(!_) *> IO:
+            logger.debug("requireClusterAck has become false, now cancel waiting for acknowledgement")
+            false,
+          IO.defer:
+            val sym = new BlockingSymbol
+            //val n = eventWriter.uncommittedEventCount <-- das sind zu viele Events!
+            val since = Deadline.now
+            ackSignal.waitUntil(_ >= eventId)
+              .whenItTakesLonger(conf.ackWarnDurations): elapsed =>
+                //val lastStampedEvent = persistBuffer.view
+                //  .collect { case o: StandardPersist => o }
+                //  .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
+                //  .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
+                //  .toString.truncateWithEllipsis(200))
+                ackSignal.get.flatMap: lastAck =>
+                  IO:
+                    sym.onWarn()
+                    val event = lastStamped.fold(""): stamped =>
+                      s" ${stamped.value.event.toShortString}"
+                    logger.warn(s"$sym Waiting for ${elapsed.pretty
+                      } for acknowledgement from passive cluster node of events until $eventId$event, lastAcknowledgedEventId=${
+                      EventId.toString(lastAck)}")
+              .productR:
+                IO.whenA(sym.warnLogged):
+                  IO:
+                    logger.info(s"🟢 Events until $eventId have finally been acknowledged after ${
+                      since.elapsed.pretty}")
+                    sym.clear()
+              .as(true)
+        ).map(_.merge)
 
-  private def complete[E <: Event](flushed: Flushed, isAcknowledged: Boolean)
-  : IO[Unit] =
-    IO:
-      statistics.onPersisted(flushed.eventCount, flushed.since)
-      if flushed.nonEmpty then
-        journalLogger.logCommitted(Array(flushed).view, ack = isAcknowledged)
-      eventWriter.onCommitted(flushed.flushedPositionAndEventId, n = flushed.eventCount)
-
-  private def handleJournalOrClusterEvent(stamped: Stamped[AnyKeyedEvent]): IO[Unit] =
+  private def handleCommittedJournalOrClusterEvent(stamped: Stamped[AnyKeyedEvent]): IO[Unit] =
     stamped.value.event match
       case SnapshotTaken | _: JournalEventsReleased =>
         // SnapshotTaken does not run through the committer ???
         releaseObsoleteEvents
 
       case _: ClusterCoupled =>
-        logger.info:
-          "Cluster is coupled: Start requiring acknowledgements from passive cluster node"
-        requireClusterAck.set(true)
-          .productR(IO:
-            releaseEventIdsAfterClusterCoupledAck = Some(stamped.eventId))
+        IO.defer:
+          if processingPassiveLost.get() > 0 then
+            IO:
+              logger.warn("ClusterCoupled followed by ClusterPassiveLost")
+          else
+            logger.info:
+              "Cluster is coupled: Start requiring acknowledgements from passive cluster node"
+            requireClusterAck.set(true)
+              .productR(IO:
+                releaseEventIdsAfterClusterCoupledAck = Some(stamped.eventId))
 
       case _: ClusterFailedOver | _: ClusterActiveNodeShutDown | ClusterResetStarted =>
         requireClusterAck.set(false)
+
+      case _: ClusterPassiveLost =>
+        IO:
+          processingPassiveLost -= 1
 
       case _ => IO.unit
 
@@ -356,32 +396,22 @@ extends
           .map(Some(_))
     .void
 
-
-  /** Allows no restart. */
-  private def shutdownCommitter: IO[Unit] =
-    IO.defer:
-      assert(isStopping)
-      enqueueLock.lock:
-        stopCommitter.void
-
-  /** Allows restart. */
   private def stopCommitter: IO[Boolean] =
     committerFiber.updateWithResult:
       case None => IO.pure(None -> false)
       case Some(fiber) =>
         logger.trace("stopCommitter")
-        persistQueue.offer(None) *>
+        queue.offer(None) *>
           fiber.joinStd.as(None -> true)
 
   def onPassiveNodeHasAcknowledged(eventId: EventId): IO[Unit] =
-   logger.traceIO(s"### onPassiveNodeHasAcknowledged", eventId):
     ackSignal.update: lastAck =>
       if eventId < lastAck then
         logger.warn(s"Passive cluster node acknowledgded old $eventId EventId after $lastAck")
         lastAck
       else
-        val lastEventId = eventWriter.lastWrittenEventId
-        if _isSwitchedOver && lastEventId < eventId then
+        val lastEventId = state.get.uncommitted.eventId
+        if isSwitchedOver && lastEventId < eventId then
           // The other cluster node may already have become active (uncoupled),
           // generating new EventIds whose last one we may receive here.
           // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
@@ -462,13 +492,12 @@ extends
               journalLogger.logCommitted(
                 eventNumber = state.totalEventCount,
                 snapshotTaken :: Nil,
-                isTransaction = false, since, isLastOfFlushedOrSynced = true,
-                ack = isAcknowledged)
+                isTransaction = false, isAcknowledged = isAcknowledged,
+                isLastOfFlushedOrSynced = true,
+                since)
               eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
           .productR:
             IO:
-              //??? onReadyForAcknowledgement()
-
               val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
               logger.debug(s"Snapshot written $how to journal file ${file.getFileName}")
 
@@ -490,7 +519,7 @@ extends
 
   private def closeEventWriter(): Unit =
     if eventWriter != null then
-      if _isSwitchedOver then
+      if isSwitchedOver then
         eventWriter.flush(sync = conf.syncOnCommit)
         eventWriter.close()
       else
@@ -545,32 +574,31 @@ extends
         o.releaseEvents(untilEventId)
 
   /** Release a concurrent persist operation, which waits for the missing acknowledgement and
-   * blocks the persist lock. Avoid a deadlock.
-   */
-  def onPassiveLost(passiveLost: ClusterPassiveLost): IO[Unit] =
+    * blocks the persist lock. Avoid a deadlock.
+    *
+    * MUST BE CALLED BEFORE EMITTING ClusterPassiveLost!
+    */
+  def onPassiveLost: IO[Unit] =
     IO.defer:
-      logger.debug("### ❗️onPassiveLost")
-      // TODO Maybe we don't need this?
+      logger.debug("onPassiveLost: acknowledgements are no longer required")
       requireClusterAck.set(false)
-      //IO.unit // (see above) requireClusterAck.set(false)
 
-  /** */
   def unsafeUncommittedAggregate(): S =
     state.get.uncommitted
 
-  def unsafeCommittedAggregate(): S =
+  def unsafeAggregate(): S =
     state.get.committed
 
-  def isRequiringClusterAcknowledgement: IO[Boolean] =
+  private[journal] def isRequiringClusterAcknowledgement: IO[Boolean] =
     requireClusterAck.get
 
-  def isFlushed: Boolean =
+  private[journal] def isFlushed: Boolean =
     eventWriter != null && eventWriter.isFlushed
 
-  def isSynced: Boolean =
+  private[journal] def isSynced: Boolean =
     eventWriter != null && eventWriter.isSynced
 
-  def journalHeader: JournalHeader =
+  private[journal] def journalHeader: JournalHeader =
     lastJournalHeader
 
   private def assertIsRecoverable(aggregate: S, keyedEvents: => Seq[AnyKeyedEvent] = Nil)
@@ -624,6 +652,14 @@ extends
         Right(Persisted(stampedKeyedEvents, aggregate))
       .void
 
+    def traceLog(): Unit =
+      val prefix = if this.isInstanceOf[Flushed] then "✔" else "+"
+      stampedKeyedEvents.foreachWithBracket(
+        if commitOptions.transaction then Round else Square
+      ): (o, br) =>
+        logger.trace(s"### $prefix$br$o")
+
+
   /** Events have been applied to State#uncommitted. */
   private final case class Applied(
     stampedKeyedEvents: Vector[Stamped[AnyKeyedEvent]],
@@ -640,7 +676,7 @@ extends
       .void
 
 
-  /** Events have been flushed to the journal file. */
+  /** Events have been written and flushed to the journal file. */
   private final case class Flushed(
     eventId: EventId,
     eventCount: Int,
@@ -652,6 +688,7 @@ extends
     commitOptions: CommitOptions,
     flushedPositionAndEventId: PositionAnd[EventId],
     whenPersisted: DeferredSink[IO, Checked[Persisted[S, Event]]],
+    isAcknowledged: Boolean = false,
     isLastOfFlushedOrSynced: Boolean = false)
   extends AppliedOrFlushed with Loggable:
     def isTransaction = commitOptions.transaction

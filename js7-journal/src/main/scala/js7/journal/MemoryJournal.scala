@@ -140,9 +140,9 @@ extends Journal[S]:
       eventNumber = eventNumber,
       stampedEvents,
       isTransaction = false,
-      since = since,
+      isAcknowledged = false,
       isLastOfFlushedOrSynced = true,
-      ack = false)
+      since = since)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueLock.lock(IO.defer:

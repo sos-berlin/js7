@@ -65,7 +65,6 @@ extends AutoCloseable:
     writeEvents(stamped :: Nil)
 
   protected final def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
-    for o <- stampedEvents do logger.trace(s"### writeEvents $o")
     _eventCount += stampedEvents.size
     for stamped <- stampedEvents do
       if stamped.eventId <= _lastEventId then throw IllegalArgumentException:

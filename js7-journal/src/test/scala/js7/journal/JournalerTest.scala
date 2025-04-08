@@ -2,6 +2,8 @@ package js7.journal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.parallel.*
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.BuildInfo
 import js7.base.catsutils.CatsEffectExtensions.orThrow
 import js7.base.catsutils.Environment
@@ -12,7 +14,8 @@ import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.TimestampForTests.ts
-import js7.base.time.{TestWallClock, WallClock}
+import js7.base.time.{Stopwatch, TestWallClock, WallClock}
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.event.{EventCalc, EventId, SnapshotableState, Stamped}
 import js7.journal.Journaler.Persist
 import js7.journal.JournalerTest.*
@@ -29,7 +32,7 @@ final class JournalerTest extends OurAsyncTestSuite:
   private given IORuntime = ioRuntime
 
   "Persist" in:
-    testJournaler: journaler =>
+    testJournaler(): journaler =>
       for
         persisted <-
           journaler.persist:
@@ -87,7 +90,29 @@ final class JournalerTest extends OurAsyncTestSuite:
       yield
         assertion
 
-  private def testJournaler(tester: Journaler[TestState] => IO[Assertion]): IO[Assertion] =
+  "Massive parallel" - {
+    "test" in:
+      run(n = if isIntelliJIdea then 1_000_000 else 100_000, 1000 /*FIXME unused*/)
+
+    def run(n: Int, coalesceEventLimit: Int): IO[Assertion] =
+      testJournaler(config"""
+        js7.journal.coalesce-event-limit = $coalesceEventLimit
+        js7.journal.slow-check-state = false"""
+      ): journaler =>
+        (1 to n).toVector.parTraverse: i =>
+          journaler.persist:
+            i.toString <-: TestEvent.SimpleAdded("A")
+        .timed.flatMap: (duration, _) =>
+          IO:
+            info_(s"$n in parallel, coalesce-event-limit=$coalesceEventLimit " +
+              Stopwatch.itemsPerSecondString(duration, n, "commits"))
+            succeed
+  }
+
+  private def testJournaler(config: Config = ConfigFactory.empty)
+    (tester: Journaler[TestState] => IO[Assertion])
+  : IO[Assertion] =
+    val myConfig = config.withFallback(JournalerTest.config)
     val clock = TestWallClock(ts"1970-01-01T00:00:00.001Z")
     locally:
       for
@@ -95,14 +120,20 @@ final class JournalerTest extends OurAsyncTestSuite:
         dir <- temporaryDirectoryResource[IO]("JournalerTest-")
         journalLocation = JournalLocation(TestState, dir / "test")
         journaler <- Journaler.resource(
-          Recovered.noJournalFile[TestState](journalLocation, Deadline.now, config),
-          journalConf)
+          Recovered.noJournalFile[TestState](
+            journalLocation,
+            Deadline.now,
+            myConfig),
+          JournalConf.fromConfig(myConfig))
       yield
         journaler
     .use: journaler =>
       journaler.failWhenStopped:
         tester(journaler)
 
+  private def info_(line: String) =
+    logger.debug(s"🔵🔵🔵 $line")
+    info(line)
 
 object JournalerTest:
   private val logger = Logger[this.type]
@@ -126,5 +157,3 @@ object JournalerTest:
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = false
   """
-
-  private val journalConf = JournalConf.fromConfig(config)

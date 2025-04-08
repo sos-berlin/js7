@@ -102,7 +102,6 @@ final class ControllerOrderKeeper(
   (implicit protected val ioRuntime: IORuntime)
 extends Stash, MainJournalingActor[ControllerState, Event]:
 
-  import context.watch
   import controllerConfiguration.config
   import js7.controller.ControllerOrderKeeper.RichIdToOrder
 
@@ -267,7 +266,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
     def close(): Unit = stillSwitchingOverSchedule.cancel()
 
-  watch(journalActor)
+  journal.journaler.untilStopped.productR(IO(self ! Internal.JournalerStopped)).unsafeRunAndForget()
 
   override def postStop(): Unit =
     try
@@ -694,7 +693,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     handleExceptionalMessage orElse super.journaling
 
   private def handleExceptionalMessage: Receive =
-    case Terminated(actor) if actor == journalActor =>
+    case Internal.JournalerStopped =>
       journalTerminated = true
       if !shuttingDown && switchover.isEmpty then logger.error("JournalActor terminated")
       if switchover.isDefined && runningAgentDriverCount > 0 then
@@ -1499,6 +1498,7 @@ private[controller] object ControllerOrderKeeper:
     case object StillShuttingDown extends DeadLetterSuppression
     final case class ShutDown(shutdown: ControllerCommand.ShutDown)
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
+    case object JournalerStopped
 
     final case class EventsFromAgent(
       agentPath: AgentPath,

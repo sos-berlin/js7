@@ -1,8 +1,9 @@
 package js7.journal
 
-import cats.effect.IO
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.effect.kernel.DeferredSource
 import cats.effect.unsafe.IORuntime
+import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger.syntax.*
@@ -20,30 +21,27 @@ import js7.journal.JournalActor.*
 import js7.journal.Journaler.Persisted
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
-import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, SupervisorStrategy}
+import org.apache.pekko.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, SupervisorStrategy}
 import scala.concurrent.duration.Deadline
 import scala.language.unsafeNulls
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]: Tag] private(
-  protected val conf: JournalConf,
-  ioRuntime: IORuntime,
-  journaler: Journaler[S])
+final class JournalActor[S <: SnapshotableState[S]: Tag] private(journaler: Journaler[S])
+  (using ioRuntime: IORuntime)
 extends Actor, Stash, JournalLogging:
 
   import context.stop
-  private given IORuntime = ioRuntime
 
   override val supervisorStrategy: SupervisorStrategy = SupervisorStrategies.escalate
+  protected val conf: JournalConf = journaler.conf
 
   for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   def receive: Receive = receiveGet orElse:
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
-     logger.traceCall("### Input.Store", timestamped.map(_.keyedEvent)):
       val sender = this.sender()
       if journaler.isStopping then
         for o <- timestamped do logger.debug:
@@ -70,21 +68,19 @@ extends Actor, Stash, JournalLogging:
               Output.Stored(Left(problem), journaler.unsafeUncommittedAggregate(), callersItem))
           case Right((written, whenCommitted)) =>
             if commitLater then
-              logger.trace(s"### Output.Accepted($callersItem) $timestamped")
               reply(sender, replyTo, Output.Accepted(callersItem))
             else
               self ! Internal.Written(whenCommitted, sender, replyTo, callersItem)
 
     case Internal.Written(whenCommitted, sender, replyTo, callersItem) =>
      try
-       logger.traceCall("### Input.Written"):
-        val committed = whenCommitted.get.logWhenItTakesLonger("whenCommitted in JournalActor")
-          .awaitInfinite.orThrow
-        reply(sender, replyTo,
-          Output.Stored(
-            Right(committed.stampedKeyedEvents),
-            committed.aggregate,
-            callersItem))
+       val committed = whenCommitted.get.logWhenItTakesLonger("whenCommitted in JournalActor")
+         .awaitInfinite.orThrow
+       reply(sender, replyTo,
+         Output.Stored(
+           Right(committed.stampedKeyedEvents),
+           committed.aggregate,
+           callersItem))
      catch case t: Throwable =>
       logger.error(t.toStringWithCauses)
       throw t
@@ -109,7 +105,7 @@ extends Actor, Stash, JournalLogging:
       // Allow the caller outside of this JournalActor to read committedState
       // asynchronously at any time.
       // Returned function accesses committedState directly and asynchronously !!!
-      sender() ! (() => journaler.unsafeCommittedAggregate())
+      sender() ! (() => journaler.unsafeAggregate())
 
     case Input.GetIsHaltedFunction =>
       // Allow the caller outside of this JournalActor to read isHalted
@@ -135,12 +131,22 @@ extends Actor, Stash, JournalLogging:
 object JournalActor:
   private val logger = Logger[this.type]
 
-  def props[S <: SnapshotableState[S]: Tag](
-    conf: JournalConf,
-    ioRuntime: IORuntime,
-    journaler: Journaler[S])
-  : Props =
-    Props(new JournalActor[S](conf, ioRuntime, journaler))
+  def resource[S <: SnapshotableState[S]: Tag](journaler: Journaler[S])
+    (using
+      ioRuntime: IORuntime,
+      actorRefFactory: ActorRefFactory)
+  : ResourceIO[ActorRef @@ JournalActor.type] =
+    Resource.make(
+      acquire = IO:
+        actorRefFactory
+          .actorOf(
+            Props(new JournalActor[S](journaler)),
+            "Journal")
+          .taggedWith[JournalActor.type])(
+      release = journalActor =>
+        logger.debugIO(s"JournalActor[${implicitly[Tag[S]].tag}] stop"):
+          IO:
+            actorRefFactory.stop(journalActor))
 
   private[journal] trait CallersItem
 

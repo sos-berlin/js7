@@ -96,40 +96,6 @@ extends SubagentDriver, Service.StoppableByRequest:
   private def observeAfter(eventId: EventId): IO[Unit] =
     subagent.journal.eventWatch
       .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
-      .evalMap(handleEvent)
-      .evalMap:
-        case (maybeStampedEvent, followUp) =>
-          maybeStampedEvent
-            .fold(IO.unit)(stampedEvent => journal
-              // TODO Save Stamped timestamp
-              .persistKeyedEvent(stampedEvent.value)
-              .map(_.orThrow._1 /*???*/)
-              // After an OrderProcessed event an DetachProcessedOrder must be sent,
-              // to terminate StartOrderProcess command idempotency detection and
-              // allow a new StartOrderProcess command for a next process.
-              .flatTap:
-                case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
-                  subagent.commandExecutor
-                    .executeCommand(
-                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
-                      CommandMeta.System)
-                    .orThrow
-                case _ => IO.unit
-              // TODO Emit SubagentEventsObserved for a chunk of events (use fs2)
-              .*>(journal.persistKeyedEvent:
-                subagentId <-: SubagentEventsObserved(stampedEvent.eventId))
-              .*>(releaseEvents(stampedEvent.eventId)))
-            .*>(followUp)
-      .takeUntilEval(untilStopRequested)
-      .completedL
-      .handleError: t =>
-        logger.error(s"observeEvents => ${t.toStringWithCauses}")
-
-  // NEW VERSION, a little bit slower despite it should be faster, collects multiple events in a transaction, like the Controller
-  // TODO Similar to SubagentEventListener
-  private def observeAfterNEW(eventId: EventId): IO[Unit] =
-    subagent.journal.eventWatch
-      .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
       // TODO handleEvent *before* commit seems to be wrong. Check returned value of handleEvent.
       .evalMap(handleEvent)
       .chunkWithin(chunkSize = 1000/*!!!*/, subagentConf.eventBufferDelay)

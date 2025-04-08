@@ -57,15 +57,6 @@ extends
       // Must have been flushed!
       flushedLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId),
       isActiveNode = true)
-    //??? DOPPELT: observer.onFileWritten(jsonWriter.fileLength)
-
-  ///** For SnapshotTaken event written with SnapshotJournalWriter. */
-  //def onInitialEventsWritten(): Unit = {
-  //  for (o <- observer) {
-  //    // Initially written events are not counted in statistics
-  //    o.onFileWritten(jsonWriter.fileLength)
-  //  }
-  //}
 
   def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false): Unit =
     // TODO Rollback writes in case of error (with seek?)
@@ -80,16 +71,11 @@ extends
   def endEventSection(sync: Boolean): Unit =
     if !eventsStarted then throw new IllegalStateException
     flush(sync = sync)
-    notifyObserver()
     logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
 
   override def flush(sync: Boolean): Unit =
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
-    observer.onFileWritten(jsonWriter.fileLength)
-
-  def notifyObserver(): Unit =
-    assertThat(isFlushed)
     observer.onFileWritten(jsonWriter.fileLength)
 
   /** @param n estimated number of events

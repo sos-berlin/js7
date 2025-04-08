@@ -220,7 +220,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
       journal, conf.directorConf, context.system)
 
-  watch(journalActor)
+  journal.journaler.untilStopped.productR(IO(self ! Internal.JournalerStopped)).unsafeRunAndForget()
   self ! Internal.Recover(recoveredAgentState)
   // Do not use recovered_ after here to allow release of the big object
 
@@ -960,7 +960,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         orderRegister.onActorTerminated(actorRef)  // Delete the OrderEntry
         shutdown.continue()
 
-      case Terminated(`journalActor`) if shuttingDown =>
+      case Internal.JournalerStopped if shuttingDown =>
         context.stop(self)
 
       case Internal.ContinueSwitchover =>
@@ -1018,6 +1018,7 @@ object AgentOrderKeeper:
     case object StillTerminating extends DeadLetterSuppression
     case object ContinueSwitchover
     case object AgentShutdown
+    case object JournalerStopped
 
   private final class JobEntry(
     val jobKey: JobKey,

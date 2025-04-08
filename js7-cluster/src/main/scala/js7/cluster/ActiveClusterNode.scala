@@ -54,7 +54,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock(logMinor = true)
-  private val journalActor = journal.journalActor
   private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = new FiberVar[Unit]
   private val fetchingAcksTerminatedUnexpectedlyPromise =
@@ -469,6 +468,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 suspendHeartbeat(forEvent = true):
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
                     journal.journaler.onPassiveLost(passiveLost) *>
+                     logger.traceIO(s"### persistWithoutTouchingHeartbeat $passiveLost"):
                       persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)

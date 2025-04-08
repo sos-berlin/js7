@@ -75,7 +75,7 @@ extends Actor, Stash, SimpleStateActor:
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart(): Unit =
-    watch(journal.journalActor)
+    journal.journaler.untilStopped.productR(IO(self ! JournalerStopped)).unsafeRunAndForget()
     super.preStart()
 
   override def postStop(): Unit =
@@ -110,7 +110,7 @@ extends Actor, Stash, SimpleStateActor:
       logger.debug("AgentOrderKeeper terminated")
       context.stop(self)
 
-    case Terminated(actor) if actor == journal.journalActor /*&& terminating*/ =>
+    case JournalerStopped /*&& terminating*/ =>
       if !terminating then
         // SwitchOver lets AgentOrderKeeper kill the JournalActor
         logger.error("JournalActor terminated unexpectedly")
@@ -407,3 +407,5 @@ object AgentActor:
   private case class ContinueReset(response: Promise[Checked[AgentCommand.Response]])
 
   private case object AgentDirectorIsShuttingDownProblem extends Problem.ArgumentlessCoded
+
+  private case object JournalerStopped

@@ -34,24 +34,24 @@ private[journal] final class JournalLogger(
     eventNumber: Long,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     isTransaction: Boolean,
-    since: Deadline,
+    isAcknowledged: Boolean,
     isLastOfFlushedOrSynced: Boolean,
-    ack: Boolean)
+    since: Deadline)
   : Unit =
     logCommitted(
       Array(
         SimpleLoggable(eventNumber = eventNumber, stampedSeq = stampedSeq,
-          isTransaction = isTransaction, since, isLastOfFlushedOrSynced = isLastOfFlushedOrSynced)
-      ).view,
-      ack = ack)
+          isTransaction = isTransaction, since, isAcknowledged = isAcknowledged,
+          isLastOfFlushedOrSynced = isLastOfFlushedOrSynced)
+      ).view)
 
-  def logCommitted(persists: IndexedSeqView[Loggable], ack: Boolean = false): Unit =
+  def logCommitted(persists: IndexedSeqView[Loggable]): Unit =
     if !suppressed then logger.whenInfoEnabled:
       val committedAt = now
       val myPersists = dropEmptyPersists(persists)
 
       logger.whenTraceEnabled:
-        logPersists(myPersists, committedAt)(traceLogPersist(ack))
+        logPersists(myPersists, committedAt)(traceLogPersist)
 
       def isLoggable(stamped: Stamped[AnyKeyedEvent]) =
         val event = stamped.value.event
@@ -92,7 +92,7 @@ private[journal] final class JournalLogger(
           frame.isFirstEvent = false
         index += 1
 
-  private def traceLogPersist(ack: Boolean)(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
+  private def traceLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit =
     import frame.*
     sb.clear()
     sb.append(':')  // Allow simple filtering of log file: grep " - :" x.log
@@ -100,7 +100,7 @@ private[journal] final class JournalLogger(
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth):
       if isLastEvent && persist.isLastOfFlushedOrSynced then
-        sb.append(if ack then ackSyncOrFlushString else syncOrFlushString)
+        sb.append(if frame.persist.isAcknowledged then ackSyncOrFlushString else syncOrFlushString)
       else if isFirstEvent && persistIndex == 0 && persistCount >= 2 then
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
       else if nr == beforeLastEventNr && persistEventCount >= 10_000 then
@@ -123,7 +123,7 @@ private[journal] final class JournalLogger(
     else
       sb.append("       ")
 
-    sb.append(transactionMarker(true))
+    sb.append(transactionMarker(forTrace = true))
     sb.append(stamped.eventId)
     if stamped.value.key != NoKey then
       sb.append(' ')
@@ -132,7 +132,11 @@ private[journal] final class JournalLogger(
 
     locally:
       val event = stamped.value.event
-      val eventString = event.toString.truncateWithEllipsis(200, firstLineOnly = true)
+      val eventString =
+        if event.hasShortString then
+          event.toShortString
+        else
+          event.toShortString.truncateWithEllipsis(200, firstLineOnly = true)
       if isColorAllowed && !event.isMinor then
         sb.append(" \u001b[39m\u001b[1m") // default color, bold
         val i = eventString.indexOfOrLength('(')
@@ -151,7 +155,7 @@ private[journal] final class JournalLogger(
     import stamped.value.{event, key}
     sb.clear()
     sb.append("Event ")
-    sb.append(transactionMarker(false))
+    sb.append(transactionMarker(forTrace = false))
     if key != NoKey then
       sb.append(key)
       sb.append(spaceArrowSpace)
@@ -171,6 +175,7 @@ object JournalLogger:
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
     def since: Deadline
+    def isAcknowledged: Boolean
     def isLastOfFlushedOrSynced: Boolean
 
   private final class SimpleLoggable(
@@ -179,6 +184,7 @@ object JournalLogger:
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     val isTransaction: Boolean,
     val since: Deadline,
+    val isAcknowledged: Boolean,
     val isLastOfFlushedOrSynced: Boolean)
   extends Loggable
 

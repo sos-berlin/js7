@@ -2,17 +2,15 @@ package js7.journal.state
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
-import com.softwaremill.tagging.{@@, Tagger}
+import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.cluster.ClusterState
-import js7.data.event.{Event, EventCalc, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
+import js7.data.event.{Event, EventCalc, JournalId, KeyedEvent, SnapshotableState, Stamped, TimeCtx}
 import js7.journal.Journaler.Persist
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
@@ -28,7 +26,6 @@ import sourcecode.Enclosing
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
 final class FileJournal[S <: SnapshotableState[S]: Tag] private(
-  val journalHeader: JournalHeader,
   val journalConf: JournalConf,
   val eventWatch: FileEventWatch,
   val journaler: Journaler[S],
@@ -37,6 +34,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
     protected val S: SnapshotableState.Companion[S])
 extends Journal[S], FileJournal.PossibleFailover:
 
+  val journalHeader = journaler.journalHeader
   def journalId = journalHeader.journalId
 
   def isHalted: Boolean =
@@ -66,7 +64,9 @@ extends Journal[S], FileJournal.PossibleFailover:
     options: CommitOptions = CommitOptions.default)
   : IO[Checked[Unit]] =
     journaler.persist:
-      Persist(EventCalc.add(keyedEvents), options.copy(commitLater = true))
+      Persist(
+        EventCalc.add(keyedEvents),
+        options.copy(commitLater = true))
     .rightAs(())
 
   def persistEvent[E <: Event](using E: Event.KeyCompanion[? >: E])
@@ -102,6 +102,7 @@ extends Journal[S], FileJournal.PossibleFailover:
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
+    (using enclosing: sourcecode.Enclosing)
   : (S => Checked[Seq[E]]) => IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     stateToEvents =>
       lock(key):
@@ -117,8 +118,8 @@ extends Journal[S], FileJournal.PossibleFailover:
     options: CommitOptions)
   : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     journaler.persist(Persist(eventCalc, options))
-    .map(_.map: result =>
-      result.stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> result.aggregate)
+      .map(_.map: result =>
+        result.stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> result.aggregate)
 
   def clusterState: IO[ClusterState] =
     state.map(_.clusterState)
@@ -130,7 +131,6 @@ extends Journal[S], FileJournal.PossibleFailover:
 
 
 object FileJournal:
-  private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]: Tag](
     recovered: Recovered[S],
@@ -142,28 +142,13 @@ object FileJournal:
       actorRefFactory: ActorRefFactory)
   : ResourceIO[FileJournal[S]] =
     for
-      journaler <- Journaler.resource[S](recovered, journalConf, Some(eventIdGenerator))
-      fileJournal <- Resource.make(
-        acquire = IO.defer:
-          val journalActor = actorRefFactory
-            .actorOf(
-              JournalActor.props[S](journalConf, ioRuntime, journaler),
-              "Journal")
-            .taggedWith[JournalActor.type]
-          IO:
-            val journal = new FileJournal[S](
-              journaler.journalHeader, journalConf,
-              recovered.eventWatch,
-              journaler,
-              journalActor)
-            (journal, journalActor))(
-        release = (journal, journalActor) =>
-          logger.debugIO(s"$journal stop"):
-            IO:
-              actorRefFactory.stop(journalActor)
-      ).map(_._1)
+      journaler <- Journaler.resource(recovered, journalConf, Some(eventIdGenerator))
+      journalActor <- JournalActor.resource(journaler)
+      fileJournal <- Resource.eval(IO:
+        new FileJournal(journalConf, recovered.eventWatch, journaler, journalActor))
     yield
       fileJournal
+
 
   sealed trait PossibleFailover:
     private val tryingPassiveLostSwitch = Switch(false)
