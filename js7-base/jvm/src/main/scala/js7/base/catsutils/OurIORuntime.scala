@@ -29,7 +29,7 @@ object OurIORuntime:
   private lazy val logger = Logger[this.type]
 
   val useCommonIORuntime: Boolean =
-    sys.props.asSwitch("js7.test.commonIORuntime") || sys.props.contains("test.speed")
+    sys.props.asSwitch("js7.test.commonIORuntime", ifMissing = sys.props.contains("test.speed"))
 
   val commonThreadPrefix = "js7"
 
