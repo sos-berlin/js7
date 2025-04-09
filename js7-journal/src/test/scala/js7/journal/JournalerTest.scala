@@ -92,11 +92,11 @@ final class JournalerTest extends OurAsyncTestSuite:
 
   "Massive parallel" - {
     "test" in:
-      run(n = if isIntelliJIdea then 1_000_000 else 100_000, 1000 /*FIXME unused*/)
+      run(n = if isIntelliJIdea then 1_000_000 else 100_000, persistLimit = 500)
 
-    def run(n: Int, coalesceEventLimit: Int): IO[Assertion] =
+    def run(n: Int, persistLimit: Int): IO[Assertion] =
       testJournaler(config"""
-        js7.journal.coalesce-event-limit = $coalesceEventLimit
+        js7.journal.persist-limit = $persistLimit
         js7.journal.slow-check-state = false"""
       ): journaler =>
         (1 to n).toVector.parTraverse: i =>
@@ -104,7 +104,7 @@ final class JournalerTest extends OurAsyncTestSuite:
             i.toString <-: TestEvent.SimpleAdded("A")
         .timed.flatMap: (duration, _) =>
           IO:
-            info_(s"$n in parallel, coalesce-event-limit=$coalesceEventLimit " +
+            info_(s"$n in parallel, persist-limit=$persistLimit " +
               Stopwatch.itemsPerSecondString(duration, n, "commits"))
             succeed
   }
@@ -143,7 +143,7 @@ object JournalerTest:
     js7.journal.delay = 0s
     js7.journal.sync-delay = 0s
     js7.journal.simulate-sync = 1ms
-    js7.journal.coalesce-event-limit = 1000
+    js7.journal.persist-limit = 1000
     js7.journal.users-allowed-to-release-events = []
     js7.journal.watch.index-size = 1000
     js7.journal.watch.keep-open = 100

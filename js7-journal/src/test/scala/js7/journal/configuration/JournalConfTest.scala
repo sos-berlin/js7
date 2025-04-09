@@ -42,7 +42,7 @@ object JournalConfTest:
        sync = on
        delay = 1ms
        sync-delay = 2ms
-       coalesce-event-limit = 6
+       persist-limit = 6
        slow-check-state = true  // Set by build.sbt, anyway
        snapshot.log-period = 4s
        snapshot.period = 7h
@@ -59,7 +59,7 @@ object JournalConfTest:
     syncOnCommit = true,
     simulateSync = None,
     delay = 2.ms,
-    coalesceEventLimit = 6,
+    persistLimit = 6,
     snapshotPeriod = 7.h,
     snapshotSizeLimit = 8*1000*1000*1000L,
     snapshotSizeEstimateEventThreshold = 1000L,

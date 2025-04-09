@@ -172,7 +172,7 @@ extends
   private def committer: IO[Unit] =
     logger.debugIO:
       IO.uncancelable: _ =>
-        fs2.Stream.fromQueueNoneTerminated(queue, conf.coalesceEventLimit)
+        fs2.Stream.fromQueueNoneTerminated(queue, conf.persistLimit)
           .chunks
           .flatMap: chunk =>
             fs2.Stream.suspend:

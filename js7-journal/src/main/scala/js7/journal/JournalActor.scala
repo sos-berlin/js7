@@ -219,9 +219,9 @@ extends Actor, Stash, JournalLogging:
                   requireClusterAcknowledgement = false
 
                 case _ =>
-                  if persistBuffer.eventCount >= conf.coalesceEventLimit then
+                  if persistBuffer.eventCount >= conf.persistLimit then
                     // Shrink persistBuffer
-                    // TODO coalesce-event-limit has no effect in cluster mode, persistBuffer does not shrink
+                    // TODO persist-limit has no effect in cluster mode, persistBuffer does not shrink
                     commit()
                   else
                     forwardCommit((options.delay max conf.delay) - options.alreadyDelayed)

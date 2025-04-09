@@ -109,10 +109,10 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
     assert(journalFileNames.length == 7)
 
   "Massive parallel" - {
-    def run(n: Int, coalesceEventLimit: Int): Unit =
+    def run(n: Int, persistLimit: Int): Unit =
       journalLocation.listJournalFiles.map(_.file) foreach delete
       val config = config"""
-       js7.journal.coalesce-event-limit = $coalesceEventLimit
+       js7.journal.persist-limit = $persistLimit
        js7.journal.slow-check-state = false"""
       withTestActor(config) { (_, actor) =>
         val prefixes = for i <- 1 to n yield i.toString
@@ -132,7 +132,7 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
         // DisturbAndRespond responds with String, not Done. See TestActor
         val disturbed = for p <- prefixes yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
         (executed ++ disturbed).await(99.s)
-        info(s"$n actors, coalesce-event-limit=$coalesceEventLimit " + stopwatch.itemsPerSecondString(n, "commands"))
+        info(s"$n actors, persist-limit=$persistLimit " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedTestEvents.groupBy(_.key.split("-").head)
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
@@ -145,9 +145,9 @@ final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixi
       }
       assert(journalFileNames.length == 1)
 
-    for (n, coalesceEventLimit) <- Vector(100/*FIXME SLOW! was 1000*/ -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do
-      s"$n actors, coalesce-event-limit=$coalesceEventLimit" in:
-        run(n = n, coalesceEventLimit = coalesceEventLimit)
+    for (n, persistLimit) <- Vector(100/*FIXME SLOW! was 1000*/ -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do
+      s"$n actors, persist-limit=$persistLimit" in:
+        run(n = n, persistLimit = persistLimit)
   }
 
   if sys.props contains "test.speed" then
