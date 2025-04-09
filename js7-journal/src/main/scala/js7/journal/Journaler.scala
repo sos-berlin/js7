@@ -156,8 +156,6 @@ extends
     // We ignore the event and do not notify the caller,
     // because it would crash and disturb the process of switching-over.
     // (so AgentDriver with AgentReady event)
-    // TODO Warten, bis Warteschlange Platz für persist.size hat — Warum? Nur für OrderStdoutWritten?
-    // conf.coalesceEventLimit
     IO.defer:
       val whenApplied = Deferred.unsafe[IO, Checked[Persisted[S, Event]]] // TODO Required only for JournalActor
       val whenPersisted = Deferred.unsafe[IO, Checked[Persisted[S, Event]]]
@@ -232,38 +230,38 @@ extends
           //    .maxOption.getOrElse(ZeroDuration)
           //</editor-fold>
           .filter(_.nonEmpty)
-          .prefetch
+          .prefetch // We have two chunks in the stream
+          .evalMap: chunk =>
+            chunk.traverse:
+              writeToFile
+              // OrderStdoutEvents are removed from Written
+          .prefetch // We have three chunks in the stream
           .evalMap:
-            writeToFile
-          .map: chunk =>
-            chunk.map: flushed =>
-              flushed.pipeIf(flushed.commitOptions.commitLater):
-                // Empty stampedKeyedEvents to reduce heap usage.
-                // The (OrderStdWritten) events will neither be logged nor returned.
-                _.copy(stampedKeyedEvents = Vector.empty)
-          .prefetch
+            flushToFile
+          .prefetch // We have four chunks in stream //
           .evalTap: chunk =>
-            chunk.traverse: flushed =>
-              flushed.lastStamped.fold(IO.pure(false)): lastStamped =>
-                waitForAck(eventId = flushed.eventId, lastStamped = Some(lastStamped))
+            chunk.traverse: written =>
+              written.lastStamped.fold(IO.pure(false)): lastStamped =>
+                waitForAck(eventId = written.eventId, lastStamped = Some(lastStamped))
               .flatMap: isAcknowledged =>
                 state.updateDirect:
-                  _.copy(committed = flushed.aggregate)
+                  _.copy(committed = written.aggregate)
                 .as:
-                  flushed.copy(isAcknowledged = isAcknowledged)
+                  written.copy(isAcknowledged = isAcknowledged)
             .flatTap: chunk =>
               IO:
                 journalLogger.logCommitted(chunk.asSeq.view)
-                chunk.foreach: flushed =>
-                  statistics.onPersisted(flushed.eventCount, flushed.since)
-                  eventWriter.onCommitted(flushed.flushedPositionAndEventId, n = flushed.eventCount)
+                chunk.foreach: written =>
+                  statistics.onPersisted(written.eventCount, written.since)
+                  eventWriter.onCommitted(written.flushedPositionAndEventId, n = written.eventCount)
               .productR:
-                chunk.traverse: flushed =>
-                  IO.unlessA(flushed.commitOptions.commitLater):
-                    flushed.completePersisted
-          .flatMap: chunk =>
-              // flushed.stampedKeyedEvents are dropped when commitOptions.commitLater
-            fs2.Stream.iterable(chunk.asSeq.flatMap(_.stampedKeyedEvents))
+                chunk.traverse: written =>
+                  IO.unlessA(written.commitOptions.commitLater):
+                    written.completePersisted
+          .map: chunk =>
+            // flushed.stampedKeyedEvents are dropped when commitOptions.commitLater
+            chunk.flatMap(o => Chunk.from(o.stampedKeyedEvents))
+          .unchunks
           .evalMap:
             handleCommittedJournalOrClusterEvent
           .compile.drain
@@ -282,22 +280,29 @@ extends
         queueEntry.commitOptions, queueEntry.since, queueEntry.whenApplied, queueEntry.whenPersisted)
       (aggregate, stamped.size, applied)
 
-  private def writeToFile(chunk: Chunk[Applied]): IO[Chunk[Flushed]] =
+  private def writeToFile(applied: Applied): IO[Written] =
     IO.blocking:
-      val flushedChunk = chunk.map: applied =>
-        import applied.{aggregate, commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
-        // TODO parallelize serialization properly!
-        eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
-        val lastStamped = stampedKeyedEvents.lastOption
-        Flushed(
-          eventId = lastStamped.fold(aggregate.eventId)(_.eventId),
-          eventCount = stampedKeyedEvents.size,
-          lastStamped,
-          stampedKeyedEvents, aggregate, since, eventNumber, commitOptions,
-          eventWriter.fileLengthAndEventId, whenPersisted)
+      import applied.{aggregate, commitOptions, eventNumber, since, stampedKeyedEvents, whenPersisted}
+      // TODO parallelize serialization properly!
+      eventWriter.writeEvents(stampedKeyedEvents, transaction = commitOptions.transaction)
+      val lastStamped = stampedKeyedEvents.lastOption
+      Written(
+        eventId = lastStamped.fold(aggregate.eventId)(_.eventId),
+        eventCount = stampedKeyedEvents.size,
+        lastStamped,
+        if applied.commitOptions.commitLater then
+          // Reduce heap usage. The (OrderStdWritten) events will neither be logged nor returned.
+          Vector.empty
+        else
+          stampedKeyedEvents,
+        aggregate, since, eventNumber, commitOptions,
+        eventWriter.fileLengthAndEventId, whenPersisted)
+
+  private def flushToFile(chunk: Chunk[Written]): IO[Chunk[Written]] =
+    IO.blocking:
       eventWriter.flush(sync = conf.syncOnCommit)
-      flushedChunk.dropRight(1) ++
-        Chunk.fromOption(flushedChunk.last.map(_.copy(isLastOfFlushedOrSynced = true)))
+      chunk.dropRight(1) ++
+        Chunk.fromOption(chunk.last.map(_.copy(isLastOfFlushedOrSynced = true)))
 
   /** Wait for acknowledgement of passive cluster node.
     *
@@ -653,7 +658,7 @@ extends
       .void
 
     def traceLog(): Unit =
-      val prefix = if this.isInstanceOf[Flushed] then "✔" else "+"
+      val prefix = if this.isInstanceOf[Written] then "✔" else "+"
       stampedKeyedEvents.foreachWithBracket(
         if commitOptions.transaction then Round else Square
       ): (o, br) =>
@@ -677,7 +682,7 @@ extends
 
 
   /** Events have been written and flushed to the journal file. */
-  private final case class Flushed(
+  private final case class Written(
     eventId: EventId,
     eventCount: Int,
     lastStamped: Option[Stamped[AnyKeyedEvent]],
