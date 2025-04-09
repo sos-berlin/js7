@@ -34,7 +34,7 @@ object CatsBlocking:
         try
           io.pipeIf(duration != Duration.Inf):
             _.timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
-          .syncStep(512)
+          .syncStep(SyncStepMaximum)
           .unsafeRunSync() match
             case Left(io) =>
               io
