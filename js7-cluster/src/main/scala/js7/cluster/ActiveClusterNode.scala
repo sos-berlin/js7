@@ -78,18 +78,19 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
 
       currentClusterState
         .<*(clusterStateLock.lock:
-          journal.persist: state =>
-            state.clusterState match
-              case clusterState: Coupled =>
-                // ClusterPassiveLost because then a ClusterWatchRegistered due to ClusterWatch change
-                // does not require a passive node acknowledge which would followed by a deadlock
-                // because this ActiveClusterNode is not ready yet.
-                // Anyway, the PassiveClusterNode would try to send a ClusterRecouple to provoke
-                // a ClusterPassiveLost. But we do it first.
-                assert(clusterState.isNonEmptyActive(ownId))
-                Right(Seq(
-                  NoKey <-: ClusterPassiveLost(clusterState.passiveId)))
-              case _ => Right(Nil))
+          journal.journaler.onPassiveLost *>
+            journal.persist: state =>
+              state.clusterState match
+                case clusterState: Coupled =>
+                  // ClusterPassiveLost because then a ClusterWatchRegistered due to ClusterWatch change
+                  // does not require a passive node acknowledge which would followed by a deadlock
+                  // because this ActiveClusterNode is not ready yet.
+                  // Anyway, the PassiveClusterNode would try to send a ClusterRecouple to provoke
+                  // a ClusterPassiveLost. But we do it first.
+                  assert(clusterState.isNonEmptyActive(ownId))
+                  Right(Seq(
+                    NoKey <-: ClusterPassiveLost(clusterState.passiveId)))
+                case _ => Right(Nil))
         .flatMap: initialClusterState =>
           // ClusterState may have changed to PassiveLost but here we look at initialClusterState
           assertThat(initialClusterState.activeId == ownId)
@@ -160,19 +161,23 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       common.requireValidLicense.flatMapT: _ =>
         clusterStateLock.lock:
           suspendHeartbeat(forEvent = true):
-            persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true/*Since v2.7*/):
-              case clusterState: Coupled =>
-                Right:
-                  (passiveUri != clusterState.setting.passiveUri) ?
-                    ClusterPassiveLost(clusterState.passiveId) // Forces recoupling
-              case _ => Right(None)
+            journal.state.map(_.clusterState).flatMap:
+              case clusterState: Coupled if passiveUri != clusterState.setting.passiveUri =>
+                journal.journaler.onPassiveLost *>
+                  persistWithoutTouchingHeartbeat(dontAskClusterWatchWhenUntaught = true /*Since v2.7*/):
+                    case clusterState: Coupled =>
+                      Right:
+                        (passiveUri != clusterState.setting.passiveUri) ?
+                          ClusterPassiveLost(clusterState.passiveId) // Forces recoupling
+                    case _ => Right(None)
+              case _ => IO.right(())
             .flatMapT: _ =>
               persistWithoutTouchingHeartbeat(extraEvent):
                 case clusterState: HasNodes =>
                   if passiveUri == clusterState.setting.passiveUri then
                     Right(None)
                   else if clusterState.isInstanceOf[Coupled] then
-                    // ClusterPassiveLost above should have avoid this
+                    // ClusterPassiveLost above should have avoided this
                     Left(PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem)
                   else
                     Right(Some(ClusterSettingUpdated(Some(passiveUri))))
@@ -273,27 +278,29 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId):
           clusterStateLock.lock(command.toShortString):
-            persist():
-              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                // ClusterPassiveLost leads to recoupling
-                // TODO The cluster is not coupled for a short while.
-                Right(Some(ClusterPassiveLost(passiveId)))
+            journal.journaler.onPassiveLost *>
+              persist():
+                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                  // ClusterPassiveLost leads to recoupling
+                  // TODO The cluster is not coupled for a short while.
+                  Right(Some(ClusterPassiveLost(passiveId)))
 
-              case _ =>
-                Right(None)
-            .map(_.map(_ => ClusterCommand.Response.Accepted))
+                case _ =>
+                  Right(None)
+              .map(_.map(_ => ClusterCommand.Response.Accepted))
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(IO.defer:
           logger.info(s"The passive $passiveId is shutting down")
           clusterStateLock.lock(command.toShortString):
-            persist():
-              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                Right(Some(ClusterPassiveLost(passiveId)))
+            journal.journaler.onPassiveLost *>
+              persist():
+                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                  Right(Some(ClusterPassiveLost(passiveId)))
 
-              case _ =>
-                Right(None)
-            .map(_.map(_ => ClusterCommand.Response.Accepted)))
+                case _ =>
+                  Right(None)
+              .map(_.map(_ => ClusterCommand.Response.Accepted)))
 
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError
@@ -467,8 +474,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]] private[cluster](
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true):
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost):
-                    journal.journaler.onPassiveLost(passiveLost) *>
-                     logger.traceIO(s"### persistWithoutTouchingHeartbeat $passiveLost"):
+                    journal.journaler.onPassiveLost *>
                       persistWithoutTouchingHeartbeat():
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
