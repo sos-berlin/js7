@@ -21,6 +21,9 @@ import scala.util.control.NonFatal
   */
 object CatsBlocking:
 
+  /** @see https://github.com/typelevel/cats-effect/issues/4337#issuecomment-2766981712 */
+  val SyncStepMaximum = 512
+
   object syntax:
     extension [A](io: IO[A])
       def await(duration: Duration, dontLog: Boolean = false)
@@ -31,7 +34,7 @@ object CatsBlocking:
         try
           io.pipeIf(duration != Duration.Inf):
             _.timeoutAndFail(duration)(new TimeoutException(name + " timed out"))
-          .syncStep(Int.MaxValue)
+          .syncStep(SyncStepMaximum)
           .unsafeRunSync() match
             case Left(io) =>
               io

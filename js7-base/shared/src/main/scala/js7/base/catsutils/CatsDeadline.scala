@@ -1,6 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.IO
+import js7.base.thread.CatsBlocking
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
@@ -84,7 +85,7 @@ extends Ordered[CatsDeadline]:
     //s"CatsDeadline(\"${sinceZero.pretty}\")" // Only differences between CatsDeadlines are relevant
     elapsed
       .map(o => (o.isPositive ?? "+") + o.pretty)
-      .syncStep(limit = 1000)
+      .syncStep(CatsBlocking.SyncStepMaximum)
       .map:
         case Left(_) => "CatsDeadline(?)"
         case Right(o) => o
