@@ -103,7 +103,7 @@ object CatsUtils:
             ZeroDuration
               .tailRecM: lastDuration =>
                 val d = durationIterator.nextOption() getOrElse lastDuration
-                if d.isPositive then
+                if !d.isNegative then
                   IO.sleep(d)
                     .*>(since.elapsed)
                     .flatMap(thenDo)
