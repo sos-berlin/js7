@@ -67,6 +67,7 @@ extends ReadableStateJournal[S]:
   private val keyLockKeeper = new LockKeeper[Any]
 
   def lock[A](key: Any)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
-    keyLockKeeper.lock(key)(body)
+    //Das macht der Journaler: keyLockKeeper.lock(key)(body)
+    body
 
   val whenNoFailoverByOtherNode: IO[Unit]
