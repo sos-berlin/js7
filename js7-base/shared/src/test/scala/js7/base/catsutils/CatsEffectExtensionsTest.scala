@@ -6,6 +6,7 @@ import cats.effect.{Deferred, FiberIO, IO, Outcome, OutcomeIO, Resource, SyncIO}
 import cats.effect.testkit.TestControl
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.CatsEffectUtils.FiberCanceledException
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -143,7 +144,7 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
       yield
         joined match
           case Left(t: FiberCanceledException) => assert(t.toString ==
-            "js7.base.catsutils.CatsEffectExtensions$FiberCanceledException: Fiber has been canceled")
+            "js7.base.catsutils.CatsEffectUtils$FiberCanceledException: Fiber has been canceled")
           case _ => fail("Unexpected result vom .joinStd")
   }
 

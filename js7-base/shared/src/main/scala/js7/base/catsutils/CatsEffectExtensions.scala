@@ -5,13 +5,14 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Fiber, FiberIO, IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
+import js7.base.catsutils.CatsEffectUtils.{FiberCanceledException, outcomeToEither}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.NonFatalInterruptedException
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.duration.Duration
-import scala.concurrent.{CancellationException, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 object CatsEffectExtensions:
 
@@ -136,10 +137,7 @@ object CatsEffectExtensions:
       completedIO
 
     def fromOutcome[A](outcome: OutcomeIO[A]): IO[A] =
-      outcome match
-        case Outcome.Succeeded(a) => a
-        case Outcome.Errored(t) => IO.raiseError(t)
-        case Outcome.Canceled() => IO.raiseError_(new FiberCanceledException)
+      IO.fromEither(outcomeToEither(outcome)).flatten
 
     def fromFutureDummyCancelable[A](future: IO[Future[A]]): IO[A] =
       IO.fromFutureCancelable(future.map(_ -> fromFutureDummyCancel))
@@ -178,7 +176,6 @@ object CatsEffectExtensions:
     //
     //def fromCancelableFuture[A](io: IO[CancelableFuture[A]]): IO[A] =
     //  io.flatMap(future => IO.fromFutureCancelable(future, future.cancelToFuture)
-
 
   extension[F[_], A](fiber: Fiber[F, Throwable, A])
     /** Like joinWithUnit but a canceled Fiber results in a Throwable. */
@@ -224,4 +221,3 @@ object CatsEffectExtensions:
       SyncDeadline.fromNanos(scheduler.monotonicNanos())
 
 
-  final class FiberCanceledException extends CancellationException("Fiber has been canceled")
