@@ -33,10 +33,9 @@ object StreamingSupport:
           .onFinalizeCase: exitCase =>
             deferredRelease.get
               .flatMap: release =>
-                logger
-                  .traceIO(s"toPekkoSourceForHttpResponseX deferred release: ${exitCase.toOutcome[IO]}"):
-                    release
-                  .logWhenItTakesLonger("toPekkoSourceForHttpResponseX.release")
+                //logger
+                //  .traceIO(s"toPekkoSourceForHttpResponseX deferred release: ${exitCase.toOutcome[IO]}"):
+                release.logWhenItTakesLonger("toPekkoSourceForHttpResponseX.release")
               // Delay needed. Otherwise, the Pekko stream may not be complete !!!
               // Does this relate to
               // - pekko.http.(client|server).stream-cancellation-delay ?
@@ -50,7 +49,7 @@ object StreamingSupport:
               .as(source)
 
     def toPekkoSourceForHttpResponse(using A: Tag[A]): ResourceIO[Source[A, NotUsed]] =
-      logger.traceResource:
+      //logger.traceResource:
         stream
           .handleErrorWith: throwable =>
             logStreamError(throwable)
