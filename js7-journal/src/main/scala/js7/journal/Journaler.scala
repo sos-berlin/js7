@@ -498,7 +498,6 @@ extends
                 eventNumber = state.totalEventCount,
                 snapshotTaken :: Nil,
                 isTransaction = false, isAcknowledged = isAcknowledged,
-                isLastOfFlushedOrSynced = true,
                 since)
               eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
           .productR:

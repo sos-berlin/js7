@@ -121,10 +121,10 @@ object SnapshotJournalWriter:
           // Write a SnapshotTaken event to increment EventId to
           // get a new (EventId-based) filename for the next journal file
           w.beginEventSection(sync = false)
-          val fileLengthAndEventId = w.fileLengthAndEvenId
+          val firstEventPositionAndEventId = w.fileLengthAndEvenId
           w.writeEvent(snapshotTaken)
           w.flush(sync = syncOnCommit)
-          fileLengthAndEventId
+          firstEventPositionAndEventId
     .flatTap: _ =>
       IO.blocking:
         Files.move(tmpFile, file, ATOMIC_MOVE)

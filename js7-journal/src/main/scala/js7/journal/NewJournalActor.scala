@@ -12,7 +12,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.CatsBlocking.syntax.awaitInfinite
 import js7.base.thread.CatsBlocking.unsafeRunSyncX
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.Problems.ClusterNodeHasBeenSwitchedOverProblem
@@ -74,8 +73,7 @@ extends Actor, Stash, JournalLogging:
 
     case Internal.Written(whenCommitted, sender, replyTo, callersItem) =>
      try
-       val committed = whenCommitted.get.logWhenItTakesLonger("whenCommitted in JournalActor")
-         .awaitInfinite.orThrow
+       val committed = whenCommitted.get.awaitInfinite.orThrow
        reply(sender, replyTo,
          Output.Stored(
            Right(committed.stampedKeyedEvents),

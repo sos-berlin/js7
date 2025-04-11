@@ -35,15 +35,14 @@ private[journal] final class JournalLogger(
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     isTransaction: Boolean,
     isAcknowledged: Boolean,
-    isLastOfFlushedOrSynced: Boolean,
     since: Deadline)
   : Unit =
-    logCommitted(
-      Array(
+    logCommitted:
+      Array:
         SimpleLoggable(eventNumber = eventNumber, stampedSeq = stampedSeq,
           isTransaction = isTransaction, since, isAcknowledged = isAcknowledged,
-          isLastOfFlushedOrSynced = isLastOfFlushedOrSynced)
-      ).view)
+          isLastOfFlushedOrSynced = true)
+      .view
 
   def logCommitted(persists: IndexedSeqView[Loggable]): Unit =
     if !suppressed then logger.whenInfoEnabled:

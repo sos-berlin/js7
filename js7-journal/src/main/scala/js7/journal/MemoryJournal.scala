@@ -141,7 +141,6 @@ extends Journal[S]:
       stampedEvents,
       isTransaction = false,
       isAcknowledged = false,
-      isLastOfFlushedOrSynced = true,
       since = since)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
