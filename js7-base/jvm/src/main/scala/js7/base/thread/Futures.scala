@@ -131,13 +131,13 @@ object Futures:
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal:
       def successValue: A = delegate.future.successValue
 
-  inline def makeBlockingWaitingString[A](using
-    inline A: Tag[A],
-    inline src: sourcecode.Enclosing,
-    inline file: sourcecode.FileName,
-    inline line: sourcecode.Line)
+  def makeBlockingWaitingString[A](using
+    A: Tag[A],
+    src: sourcecode.Enclosing,
+    file: sourcecode.FileName,
+    line: sourcecode.Line)
   : String =
-    s"${A.tag} at ${file.value}:${line.value}"
+    s"await[${A.tag}] in ${src.value} at ${file.value}:${line.value}"
 
   final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 

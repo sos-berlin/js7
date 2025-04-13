@@ -169,9 +169,7 @@ extends MainService, Service.StoppableByRequest:
 
   @TestOnly
   def waitUntilReady()(using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line): Unit =
-    untilReady
-      .logWhenItTakesLonger
-      .await(99.s)
+    untilReady.await(99.s)
 
   def untilReady: IO[Unit] =
     IO.fromFutureDummyCancelable(IO(whenReady))
