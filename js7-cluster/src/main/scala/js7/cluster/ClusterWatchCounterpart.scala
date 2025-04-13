@@ -14,6 +14,7 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic.extensions.:=
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
@@ -28,6 +29,7 @@ import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
 import scala.annotation.tailrec
+import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordering.Implicits.*
 import scala.util.Random
 
@@ -110,6 +112,7 @@ extends Service.StoppableByRequest:
     isHeartbeat: Boolean = false)
   : IO[Checked[ClusterWatchConfirmation]] =
     if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
+      logger.debug(s"Due to !clusterWatchIdChangeAllowed: $NoClusterWatchProblem")
       IO.left(NoClusterWatchProblem)
     else
       IO.defer:
@@ -134,7 +137,7 @@ extends Service.StoppableByRequest:
     requested: Requested)
   : IO[Checked[ClusterWatchConfirmation]] =
     SyncDeadline.now.flatMap(since => IO.defer:
-      _requested.set(Some(requested))
+      _requested := Some(requested)
       val sym = new BlockingSymbol
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
@@ -182,7 +185,7 @@ extends Service.StoppableByRequest:
 
           case _ => IO.unit
         .guarantee(IO:
-          _requested.set(None)))
+          _requested := None))
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): IO[Checked[Unit]] =
     IO(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
@@ -226,6 +229,7 @@ extends Service.StoppableByRequest:
       case None =>
         currentClusterWatchId match
           case Some(o) if o.clusterWatchId != confirm.clusterWatchId =>
+            logger.warn(s"❓ ${confirm.clusterWatchId} confirms without a request · currentClusterWatchId=$o => $OtherClusterWatchStillAliveProblem")
             // Try to return the same problem when ClusterWatchId does not match,
             // whether _requested.get() contains a Requested or not.
             // So a second ClusterWatch gets always the same problem.
@@ -234,18 +238,20 @@ extends Service.StoppableByRequest:
               requestedClusterWatchId = o.clusterWatchId))
 
           case _ =>
-            logger.debug(s"❓ ${confirm.clusterWatchId} confirms, but no request is present")
+            logger.warn(s"❓ ${confirm.clusterWatchId} confirms without a request => $OtherClusterWatchStillAliveProblem")
             Left(ClusterWatchRequestDoesNotMatchProblem)
 
       case value @ Some(requested) =>
-        requested.clusterWatchId match
-          case Some(o) if o != confirm.clusterWatchId
-            && currentClusterWatchId.exists(_.isStillAlive) =>
-            Left(OtherClusterWatchStillAliveProblem(
+        (requested.clusterWatchId, currentClusterWatchId) match
+          case (Some(o), Some(currentClusterWatchId))
+            if o != confirm.clusterWatchId && currentClusterWatchId.isStillAlive =>
+            val problem = OtherClusterWatchStillAliveProblem(
               rejectedClusterWatchId = confirm.clusterWatchId,
-              requestedClusterWatchId = o))
+              requestedClusterWatchId = o)
+            logger.warn(s"${currentClusterWatchId.timeLeft.pretty} left => $problem")
+            Left(problem)
 
-          case Some(o) if o != confirm.clusterWatchId
+          case (Some(o), _) if o != confirm.clusterWatchId
             && !confirm.manualConfirmer.isDefined
             && !requested.clusterWatchIdChangeAllowed =>
             Left(ClusterWatchIdDoesNotMatchProblem(
@@ -292,6 +298,9 @@ extends Service.StoppableByRequest:
 
     def isStillAlive(using SyncDeadline.Now): Boolean =
       expires.hasTimeLeft
+
+    def timeLeft(using SyncDeadline.Now): FiniteDuration =
+      expires.timeLeft
 
     override def toString = clusterWatchId.toString
 
