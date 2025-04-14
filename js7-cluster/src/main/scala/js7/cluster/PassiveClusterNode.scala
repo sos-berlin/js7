@@ -53,7 +53,9 @@ import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.extensions.*
+import js7.journal.log.JournalLogger
 import js7.journal.recover.{FileSnapshotableStateRecoverer, Recovered, RecoveredJournalFile}
+import scala.concurrent.duration.Deadline
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
   ownId: NodeId,
@@ -407,6 +409,10 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                     s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat " +
                       s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Stream.empty  // Ignore
+                else if clusterConf.suppressFailover then
+                  logger.warn(s"❗ No heartbeat from the currently active cluster $activeId " +
+                    s"since ${noHeartbeatSince.elapsed.pretty} - IGNORED")
+                  Stream.empty
                 else
                   logger.warn(s"❗ No heartbeat from the currently active cluster $activeId " +
                     s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
@@ -416,6 +422,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                         throw new IllegalStateException("Failover but nothing has been replicated"))
                       val lastEventId = recoveredJournalFile.eventId
                       eventIdGenerator.updateLastEventId(lastEventId)
+                      val failedOverSince = Deadline.now
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
@@ -424,7 +431,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                           val file = recoveredJournalFile.file
                           val fileSize =
                             autoClosing(FileChannel.open(file, APPEND)): out =>
-                              writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
+                              writeFailedOverEvent(out, file, failedOverStamped,
+                                eventNumber = recoverer.totalEventCount, failedOverSince,
+                                lastProperEventPosition = lastProperEventPosition)
                               out.size
                           recoverer.startWithState(
                             journalHeader = recoveredJournalFile.journalHeader,
@@ -445,12 +454,15 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
                           Right(true)
                     else
                       // TODO Similar to then-part
+                      val failedOverSince = Deadline.now
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver):
                         IO:
-                          writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
+                          writeFailedOverEvent(out, file, failedOverStamped,
+                            eventNumber = recoverer.totalEventCount, failedOverSince,
+                            lastProperEventPosition = lastProperEventPosition)
                           recoverer.rollbackToEventSection()
                           recoverer.put(failedOverStamped)
                           val fileSize = out.size
@@ -647,6 +659,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
     out: FileChannel,
     file: Path,
     failedOverStamped: Stamped[KeyedEvent[ClusterFailedOver]],
+    eventNumber: Long,
+    since: Deadline,
     lastProperEventPosition: Long)
   : Unit =
     eventWatch.onFailover()
@@ -655,7 +669,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]](
       logger.info(s"Truncating open transaction in ${
         file.getFileName}' file at position $lastProperEventPosition")
       out.truncate(lastProperEventPosition)
-    // TODO Use JournalLogger
+    JournalLogger(journalConf)
+      .logCommitted(failedOverStamped :: Nil, eventNumber = eventNumber, since = since)
     val event = failedOverStamped: Stamped[KeyedEvent[ClusterEvent]]
     out.write(ByteBuffer.wrap(
       (event.asJson.compactPrint + '\n').getBytes(UTF_8)))

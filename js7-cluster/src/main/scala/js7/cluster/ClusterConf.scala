@@ -27,6 +27,7 @@ final case class ClusterConf(
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
   testDontHaltWhenPassiveLostRejected: Boolean = false,
+  suppressFailover: Boolean = false,
   delayConf: DelayConf,
   config: Config):
 
@@ -70,6 +71,7 @@ object ClusterConf:
       testDontHaltWhenPassiveLostRejected = config.getBoolean(
         "js7.journal.cluster.dont-halt-when-passive-lost-rejected", false)
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
+      suppressFailover = config.getBoolean("js7.journal.cluster.suppress-failover")
       delayConf = DelayConf:
         Nel.fromList:
           config.getDurationList("js7.journal.cluster.retry-delays")
@@ -89,5 +91,6 @@ object ClusterConf:
         testHeartbeatLoss,
         testAckLoss,
         testDontHaltWhenPassiveLostRejected,
+        suppressFailover,
         delayConf,
         config = config)

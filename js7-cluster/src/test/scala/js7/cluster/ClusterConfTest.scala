@@ -26,6 +26,7 @@ final class ClusterConfTest extends OurTestSuite:
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.journal.cluster.retry-delays = [ 1s ]
+        js7.journal.cluster.suppress-failover = false
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
@@ -60,6 +61,7 @@ final class ClusterConfTest extends OurTestSuite:
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.retry-delays = [ 1s ]
+        js7.journal.cluster.suppress-failover = true
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
@@ -85,6 +87,7 @@ final class ClusterConfTest extends OurTestSuite:
             DelayConf(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
+          suppressFailover = true,
           delayConf = DelayConf(1.s),
           config = config)))
   }
