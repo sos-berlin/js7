@@ -202,10 +202,9 @@ extends AutoCloseable:
               .pipeIf(isStrict):
                 _.tapEach: o =>
                   if o.value == EndOfJournalFileMarker then
-                    sys.error(s"Journal file must not contain a line like $o")
+                    sys.error(s"Journal file must not contain a line like $EndOfJournalFileMarker")
               .concat:
-                (eof && markEOF).thenIterator:
-                  PositionAnd(lastPosition, EndOfJournalFileMarker)
+                (eof && markEOF) ? PositionAnd(lastPosition, EndOfJournalFileMarker)
 
             Stream.fromIterator[IO](
                 iterator,
