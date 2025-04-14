@@ -10,22 +10,17 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.utils.Ascii.{LF, RS}
+import js7.base.utils.Ascii.LF
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.InputStreamJsonSeqReader.*
 import js7.common.utils.UntilNoneIterator
 import scala.collection.mutable
 
-/**
-  * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
-  * <p>
-  *    This implementation class expects no LF in a JSON record
-  *    and does not collapse consecutive RS.
+/** JSON lines reader (JSONL, application/x-ndjson).
   *
   * @author Joacim Zschimmer
-  * @see https://tools.ietf.org/html/rfc7464
-  * @see https://ndjson.org/
+  * @see https://github.com/ndjson/ndjson-spec
   */
 final class InputStreamJsonSeqReader(
   inputStream_ : SeekableInputStream,
@@ -81,19 +76,13 @@ extends AutoCloseable:
   def readRaw(): Option[PositionAnd[ByteArray]] =
     synchronized:
       val startPosition = position
-      var rsReached = false
       var lfReached = false
       var eof = false
       while !lfReached && (!eof || blockRead < blockLength) do
         if blockRead == blockLength then
           eof = !fillByteBuffer()
-        if !rsReached && blockRead < blockLength then
+        if blockRead < blockLength then
           val byte = block(blockRead)
-          if withRS then
-            if byte != RS then
-              throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
-            blockRead += 1
-            rsReached = true
         val start = blockRead
         while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do
           blockRead += 1
@@ -102,16 +91,15 @@ extends AutoCloseable:
           byteArrays += chunk
         if lfReached then
           blockRead += 1
-      if (!withRS && byteArrays.nonEmpty || rsReached) && !lfReached then
+      if byteArrays.nonEmpty && !lfReached then
         logger.warn(s"Discarding truncated last record in '$name': ${byteArrays.toVector.combineAll.utf8String} (terminating LF is missing)")
         byteArrays.clear()
         seek(startPosition)  // Keep a proper file position at start of record
-      lfReached ? {
+      lfReached thenSome:
         if lineNumber != -1 then lineNumber += 1
         val result = ByteArray.combineAll(byteArrays)
         byteArrays.clear()
         PositionAnd(startPosition, result)
-      }
 
   private def fillByteBuffer(): Boolean =
     blockPos = position

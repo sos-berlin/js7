@@ -5,7 +5,7 @@ import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.test.OurTestSuite
-import js7.base.utils.Ascii.{LF, RS}
+import js7.base.utils.Ascii.LF
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.InputStreamJsonSeqReaderTest.*
 import js7.common.message.ProblemCodeMessages
@@ -48,7 +48,7 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
     assert(reader.read() == None)
 
     // seek
-    reader.seek(3+4)
+    reader.seek(2+3)
     assert(seekCount == 1)
     assert(reader.read() == Some(Chunk(2)._2))
     reader.seek(0)
@@ -59,10 +59,10 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
     reader.seek(0)
     assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(0)._2))
-    reader.seek(3)
+    reader.seek(2)
     assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(1)._2))
-    reader.seek(3+4)
+    reader.seek(2+3)
     assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(2)._2))
 
@@ -71,37 +71,19 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
       assert(read("").isEmpty)
 
     "Truncated file" in:
-      assert(read(s"$rs{", withRS = true).isEmpty)
       assert(read("{").isEmpty)
 
     "Truncated file before LF" in:
       var _seek = -1L
-      val in = new ByteArrayInputStream(Array[Byte](RS, '{')) with SeekableInputStream:
+      val in = new ByteArrayInputStream(Array[Byte]('{')) with SeekableInputStream:
         def seek(pos: Long) = _seek = pos
       val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       assert(reader.read().isEmpty)
       assert(reader.position == 0)  // Position unchanged, before the truncated record
       assert(_seek == 0)
-
-    "Truncated file after RS" in:
-      assert(read(s"$rs").isEmpty)
   }
 
-  "Corrupt data, with RS" - {
-    "Missing RS" in:
-      assert(expectException("{}\n", withRS = true).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record (instead read: 7b)")
-
-    "Missing separators" in:
-      assert(expectException(s"$rs{}{}\n", withRS = true).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
-
-    "Invalid JSON" in:
-      assert(expectException(s"$rs{\n", withRS = true).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: exhausted input")
-  }
-
-  "Corrupt data, without RS" - {
+  "Corrupt data" - {
     "Missing separators" in:
       assert(expectException("{}{}\n").toStringWithCauses ==
         "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
@@ -112,14 +94,13 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
   }
 
   "Reading closed" in:
-    withTemporaryFile { file =>
+    withTemporaryFile: file =>
       val in = SeekableInputStream.openFile(file)
       val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       reader.close()
-      intercept[InputStreamJsonSeqReader.ClosedException] {
+      intercept[InputStreamJsonSeqReader.ClosedException]:
         reader.read()
-      }.toStringWithCauses shouldEqual s"JsonSeqFileClosed: JSON sequence from file 'JSON-SEQ-TEST' has been closed"
-    }
+      .toStringWithCauses shouldEqual s"JsonSeqFileClosed: JSON sequence from file 'JSON-SEQ-TEST' has been closed"
 
   "InputStreamJsonSeqReader" in:
     for blockSize <- 1 to 2 * FourByteUtf8.length do
@@ -133,27 +114,26 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite:
 
 private object InputStreamJsonSeqReaderTest:
 
-  private val rs = RS.toChar
   private val Chunk: Seq[(Array[Byte], PositionAnd[Json])] = Vector(
       "1"       -> PositionAnd(0    , Json.fromInt(1)),
-      "23"      -> PositionAnd(3    , Json.fromInt(23)),
-      "\"x\""   -> PositionAnd(3+4  , Json.fromString("x")),
-      "\"x🥕\"" -> PositionAnd(3+4+5, Json.fromString("x🥕")))
+      "23"      -> PositionAnd(2    , Json.fromInt(23)),
+      "\"x\""   -> PositionAnd(2+3  , Json.fromString("x")),
+      "\"x🥕\"" -> PositionAnd(2+3+4, Json.fromString("x🥕")))
     .map(o => o.copy(_1 = o._1.getBytes(UTF_8)))
-  private val ChunkBytes: Seq[Byte] = Chunk.flatMap(o => Array(RS) ++ o._1 :+ LF)
+  private val ChunkBytes: Seq[Byte] = Chunk.flatMap(o => o._1 :+ LF)
 
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1.toVector == FourByteUtf8)
 
-  private def read(bytes: String, withRS: Boolean = false) =
-    newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.getBytes(US_ASCII)), withRS = withRS).read()
+  private def read(bytes: String) =
+    newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.getBytes(US_ASCII))).read()
 
-  private def newInputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = InputStreamJsonSeqReader.BlockSize, withRS: Boolean = true) =
-    new InputStreamJsonSeqReader(in, name = "JSON-SEQ-TEST", blockSize = blockSize, withRS = withRS)
+  private def newInputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = InputStreamJsonSeqReader.BlockSize) =
+    new InputStreamJsonSeqReader(in, name = "JSON-SEQ-TEST", blockSize = blockSize)
 
-  private def expectException(bytes: String, withRS: Boolean = false): Exception =
+  private def expectException(bytes: String): Exception =
     intercept[Exception]:
-      read(bytes, withRS = withRS)
+      read(bytes)
 
   private def simplifiedSeekableInputStream(bytes: Array[Byte]): SeekableInputStream =
     new ByteArrayInputStream(bytes) with SeekableInputStream:
