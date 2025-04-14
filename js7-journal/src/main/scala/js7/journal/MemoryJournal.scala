@@ -137,11 +137,11 @@ extends Journal[S]:
   : Unit =
     journalLogger.logCommitted(
       //CorrelId.current,
-      eventNumber = eventNumber,
       stampedEvents,
+      eventNumber = eventNumber,
+      since = since,
       isTransaction = false,
-      isAcknowledged = false,
-      since = since)
+      isAcknowledged = false)
 
   def releaseEvents(untilEventId: EventId): IO[Checked[Unit]] =
     queueLock.lock(IO.defer:

@@ -9,6 +9,7 @@ import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import js7.journal.configuration.JournalConf
 import js7.journal.log.JournalLogger.*
 import scala.collection.{IndexedSeqView, mutable}
 import scala.concurrent.duration.Deadline
@@ -31,16 +32,20 @@ private[journal] final class JournalLogger(
   //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
 
   def logCommitted(
-    eventNumber: Long,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
-    isTransaction: Boolean,
-    isAcknowledged: Boolean,
-    since: Deadline)
+    eventNumber: Long,
+    since: Deadline,
+    isTransaction: Boolean = false,
+    isAcknowledged: Boolean = false)
   : Unit =
     logCommitted:
       Array:
-        SimpleLoggable(eventNumber = eventNumber, stampedSeq = stampedSeq,
-          isTransaction = isTransaction, since, isAcknowledged = isAcknowledged,
+        SimpleLoggable(
+          stampedSeq,
+          eventNumber = eventNumber,
+          since,
+          isTransaction = isTransaction,
+          isAcknowledged = isAcknowledged,
           isLastOfFlushedOrSynced = true)
       .view
 
@@ -168,6 +173,17 @@ object JournalLogger:
   private val spaceArrow = " " + KeyedEvent.Arrow
   private val spaceArrowSpace = spaceArrow + " "
 
+  def apply(conf: JournalConf): JournalLogger =
+    new JournalLogger(
+      syncOrFlushString =
+        if !conf.syncOnCommit then
+          "flush"
+        else if conf.simulateSync.isDefined then
+          "~sync"
+        else
+          "sync ",
+      infoLogEvents = conf.infoLogEvents)
+
   private[journal] trait Loggable:
     //def correlId: CorrelId
     def eventNumber: Long
@@ -179,10 +195,10 @@ object JournalLogger:
 
   private final class SimpleLoggable(
     //val correlId: CorrelId,
-    val eventNumber: Long,
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
-    val isTransaction: Boolean,
+    val eventNumber: Long,
     val since: Deadline,
+    val isTransaction: Boolean,
     val isAcknowledged: Boolean,
     val isLastOfFlushedOrSynced: Boolean)
   extends Loggable
