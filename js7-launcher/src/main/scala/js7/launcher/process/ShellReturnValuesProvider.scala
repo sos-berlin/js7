@@ -5,6 +5,7 @@ import java.nio.charset.Charset
 import java.nio.file.Path
 import js7.base.io.file.FileDeleter
 import js7.base.io.file.FileUtils.temporaryFileResource
+import js7.base.metering.CallMeter
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.value.{NamedValues, StringValue}
 import js7.launcher.process.ShellReturnValuesProvider.*
@@ -25,9 +26,10 @@ extends AutoCloseable:
     varName -> file.toString
 
   def read: IO[NamedValues] =
-    IO.interruptible:
-      autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)): source =>
-        source.getLines().map(lineToNamedvalue).toMap
+    meterReadShellReturnValues:
+      IO.interruptible:
+        autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)): source =>
+          source.getLines().map(lineToNamedvalue).toMap
 
   private def lineToNamedvalue(line: String): (String, StringValue) =
     line match
@@ -48,6 +50,7 @@ private object ShellReturnValuesProvider:
   private val V1VarName = "SCHEDULER_RETURN_VALUES"
   private val VarName = "JS7_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
+  private val meterReadShellReturnValues = CallMeter("ShellReturnValues")
 
   def resource(tmpDirectory: Path,
     encoding: Charset,
