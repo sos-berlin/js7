@@ -35,8 +35,8 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
-  sys.props(testAckLossPropertyKey) = "false"
   sys.props(testHeartbeatLossPropertyKey) = "false"
+  sys.props(testAckLossPropertyKey) = "false"
 
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
@@ -74,11 +74,13 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
         directoryProvider.runController(): controller =>
           controller.await[AgentMirroredEvent](
             _.event.keyedEvent.event.isInstanceOf[ClusterCoupled])
+        primaryDirector.await[ClusterCoupled]()
+        backupDirector.await[ClusterCoupled]()
 
         // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
         logger.info("💥 Break connection between cluster nodes 💥")
-        sys.props(testAckLossPropertyKey) = "true"
         sys.props(testHeartbeatLossPropertyKey) = "true"
+        sys.props(testAckLossPropertyKey) = "true"
         sleep(clusterTiming.activeLostTimeout + 1.s)
         // Now, both cluster nodes require confirmation for their ClusterNodeLostEvent
 
@@ -102,6 +104,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
           // because it cannot be terminated while persisting and we would stick in a deadlock.
           //?sleep(1.s)
 
+          controller.eventWatch.resetLastWatchedEventId()
           // Now, we as the user kill the primary node and confirm this to the ClusterWatch:
           primaryDirector
             .terminate(
@@ -109,15 +112,16 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
               clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
             .await(99.s)
 
+          //controller.awaitNext[AgentClusterWatchConfirmationRequired](_.key == agentPath)
           controller.execCmd:
             ConfirmClusterNodeLoss(agentPath, lostNodeId = NodeId.primary,
               confirmer = "UntaughtAgentClusterWatchTest")
 
-          controller.await[AgentClusterWatchManuallyConfirmed](_.key == agentPath)
+          controller.awaitNext[AgentClusterWatchManuallyConfirmed](_.key == agentPath)
           assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
             .nodeToLossNotConfirmedProblem.isEmpty)
 
-          backupDirector.await[ClusterFailedOver]()
+          backupDirector.awaitNext[ClusterFailedOver]()
 
 
 object UntaughtAgentClusterWatchTest:

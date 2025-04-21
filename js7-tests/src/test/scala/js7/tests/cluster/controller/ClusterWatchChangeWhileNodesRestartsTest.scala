@@ -11,13 +11,17 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ClusterWatchChangeWhileNodesRestartsTest.*
 import js7.tests.cluster.controller.ControllerClusterTester.TestWorkflow
 
-// Both cluster nodes restart after hard stop while ClusterWatch changes
+// Both cluster nodes restart after a hard stop while ClusterWatch changes
 final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTester:
 
   override protected def primaryControllerConfig = config"""
     # Short timeout because something blocks web server shutdown occasionally
     js7.web.server.shutdown-timeout = 500ms
     js7.web.server.shutdown-delay = 500ms
+    """.withFallback(super.primaryControllerConfig)
+
+  override protected def backupControllerConfig = config"""
+    js7.journal.cluster.suppress-failover = yes
     """.withFallback(super.primaryControllerConfig)
 
   "Start ClusterWatch first" in:
@@ -30,6 +34,7 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
             primaryController.runOrder(FreshOrder(OrderId("FIRST"), TestWorkflow.path))
             eventId = primaryController.eventWatch.lastAddedEventId
             // Shut down without ClusterActiveNodeShutDown
+            // ClusterAction.FailOver means the Controller terminates without touching the journal
             primaryController.terminate(clusterAction = Some(ShutDown.ClusterAction.Failover))
               .await(99.s)
 

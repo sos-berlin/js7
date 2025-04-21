@@ -15,44 +15,41 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.JobResourceControllerClusterTest.*
 import js7.tests.jobs.EmptyJob
 import fs2.Stream
+import js7.data.event.EventId
 
 final class JobResourceControllerClusterTest extends ControllerClusterTester:
 
   "Cluster handles JobResources properly" in:
-    withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
-      primary.runAgents() { _ =>
-        backup.runController(dontWaitUntilReady = true) { backupController =>
-          primary.runController() { primaryController =>
+    withControllerAndBackupWithoutAgents(): (primary, backup, _) =>
+      var eventId = EventId.BeforeFirst
+      primary.runAgents(): _ =>
+        backup.runController(dontWaitUntilReady = true): backupController =>
+          primary.runController(): primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
-            primaryController.updateItemsAsSystemUser(Stream(
-              AddOrChangeSigned(primary.itemSigner.toSignedString(jobResource)),
-              AddVersion(versionId),
-              AddOrChangeSigned(primary.itemSigner.toSignedString(workflow))
-            )).await(99.s).orThrow
+            primaryController.updateItemsAsSystemUser:
+              Stream(
+                AddOrChangeSigned(primary.itemSigner.toSignedString(jobResource)),
+                AddVersion(versionId),
+                AddOrChangeSigned(primary.itemSigner.toSignedString(workflow)))
+            .await(99.s).orThrow
 
             assert(primaryController.controllerState().pathToSignedSimpleItem(jobResource.path).value == jobResource0)
             assert(backupController.controllerState().pathToSignedSimpleItem(jobResource.path).value == jobResource0)
             val stamped = primaryController.runOrder(FreshOrder(OrderId("A"), workflow.path))
             assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished()))
-          }
-        }
-      }
+            eventId = primaryController.eventWatch.lastAddedEventId
 
-      primary.runAgents() { _ =>
-        backup.runController(dontWaitUntilReady = true) { backupController =>
-          primary.runController() { primaryController =>
-            primaryController.eventWatch.await[ClusterCoupled]()
-            primaryController.eventWatch.await[ControllerReady]()
+      primary.runAgents(): _ =>
+        backup.runController(dontWaitUntilReady = true): backupController =>
+          primary.runController(): primaryController =>
+            primaryController.eventWatch.await[ClusterCoupled](after = eventId)
+            primaryController.eventWatch.await[ControllerReady](after = eventId)
             primaryController.waitUntilReady()
 
             assert(primaryController.controllerState().pathToSignedSimpleItem(jobResource.path).value == jobResource0)
             assert(backupController.controllerState().pathToSignedSimpleItem(jobResource.path).value == jobResource0)
             val stamped = primaryController.runOrder(FreshOrder(OrderId("B"), workflow.path))
             assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished()))
-          }
-        }
-      }
-    }
 
 
 object JobResourceControllerClusterTest:

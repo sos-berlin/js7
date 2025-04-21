@@ -56,6 +56,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
         primaryController
           .api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
           .await(99.s).orThrow
+        primaryController.untilTerminated.await(99.s)
         primaryController.stop.await(99.s)
         logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
         assert(since.elapsed < sleepWhileFailing,
@@ -63,7 +64,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
         backupController.testEventBus
           .whenFilterMap[ClusterWatchCounterpart.TestWaitingForConfirmation, ClusterFailedOver]:
-            _.request match 
+            _.request match
               case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _, _) => Some(event)
               case _ => None
           .await(99.s)

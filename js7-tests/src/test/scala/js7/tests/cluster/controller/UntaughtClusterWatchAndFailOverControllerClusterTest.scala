@@ -5,7 +5,6 @@ import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.ClusterWatchCounterpart
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
@@ -56,6 +55,10 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
       withClusterWatchService(primaryClusterWatchId) { (cwService, _) =>
         primaryController.eventWatch.await[ClusterCoupled]()
         awaitAndAssert(cwService.clusterState().exists(_.isInstanceOf[Coupled]))
+        // After ClusterCoupled has been committed, the ClusterWatch must acknowledge the
+        // ClusterState again. We give the ClusterWatch some time to do so.
+        // TODO Is this good?
+        sleep(1.s)
       }
 
       logger.info("💥 Break connection between cluster nodes 💥")
@@ -133,14 +136,17 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
           logger.info("Start Primary Controller")
           sys.props(testAckLossPropertyKey) = "false"
           sys.props(testHeartbeatLossPropertyKey) = "false"
-          primaryController = primary.newController()
-          // Controller restarts due to truncated Journal
-          val termination = primaryController.untilTerminated.await(99.s)
-          assert(termination.restart)
-          intercept[RestartAfterJournalTruncationException]:
-            primaryController.stop.await(99.s)
 
-          logger.info("Start Primary Controller again after journal truncation")
+          //Journal is no longer truncated:
+          //? primaryController = primary.newController()
+          //? // Controller restarts due to truncated Journal
+          //? val termination = primaryController.untilTerminated.await(99.s)
+          //? assert(termination.restart)
+          //? intercept[RestartAfterJournalTruncationException]:
+          //?   primaryController.stop.await(99.s)
+          //?
+          //? logger.info("Start Primary Controller again after journal truncation")
+
           primaryController = primary.newController()
         end if
 

@@ -33,8 +33,8 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
-  sys.props(testAckLossPropertyKey) = "false"
   sys.props(testHeartbeatLossPropertyKey) = "false"
+  sys.props(testAckLossPropertyKey) = "false"
 
   override def agentConfig = config"""
     js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
@@ -75,8 +75,8 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
     TestAgent(backupDirectorAllocated).useSync(99.s) { backupDirector =>
       // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
       logger.info("💥 Break connection between cluster nodes 💥")
-      sys.props(testAckLossPropertyKey) = "true"
       sys.props(testHeartbeatLossPropertyKey) = "true"
+      sys.props(testAckLossPropertyKey) = "true"
       sleep(clusterTiming.activeLostTimeout + 1.s)
       // Now, both cluster nodes require confirmation for their ClusterNodeLostEvent
 
@@ -96,7 +96,6 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
           ClusterNodeLossNotConfirmedProblem(
             NodeId.primary, ClusterPassiveLost(NodeId.backup)))
         assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
-
         val eventId = primaryDirector.eventWatch.lastAddedEventId
 
         // FIXME Delay until AgentOrderKeeper does not persist anything,
@@ -104,6 +103,9 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
         sleep(1.s)
 
         /// Restart the primary ///
+
+        sys.props(testHeartbeatLossPropertyKey) = "false"
+        sys.props(testAckLossPropertyKey) = "false"
 
         primaryDirector
           .terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
@@ -119,7 +121,8 @@ final class AgentClusterNodeLossRestartTest extends OurTestSuite, DirectoryProvi
 
         // FIXME Delay, otherwise SubagentEventListener.observeEvents may not be stoppable
         sleep(1.s)
-        IO.both(primaryDirector.terminate(), backupDirector.terminate()).await(99.s)
+        (primaryDirector.terminate() *> backupDirector.terminate())
+          .await(99.s)
     }
 
 object AgentClusterNodeLossRestartTest:
